@@ -71,7 +71,16 @@ scene_destroy :: proc(s: ^Scene) {
 
 @(private = "file")
 job_for :: proc(s: ^Scene, kind: Setup_Job_Kind, running: string) -> Setup_Job {
-	return Setup_Job{kind = kind, opts = s.opts, running_exe = running, target_dir = s.target}
+	// (the options are a clone, as the job's are: it is what setup_job_done destroys, and a string the work put there that is
+	// not on the heap would be freed wrongly)
+	return Setup_Job{kind = kind, opts = desktop.options_clone(s.opts), running_exe = running, target_dir = s.target}
+}
+
+@(private = "file")
+job_free :: proc(job: ^Setup_Job) {
+	desktop.options_destroy(&job.opts)
+	delete(job.leftovers)
+	job^ = {}
 }
 
 @(private = "file")
@@ -121,6 +130,7 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 
 	// Install: copies the executable and the payload, writes the manifest, the shortcut, the keys, the record
 	job := job_for(&s, .Apply, exe)
+	defer job_free(&job)
 	setup_apply_work(&job)
 	testing.expectf(t, job.result.error == .None, "install: %v %s", job.result.error, job.result.detail)
 	testing.expect(t, os.is_file(installed_exe) && os.is_file(fmt.tprintf("%s\\licenses\\a.txt", s.target)) && os.is_file(fmt.tprintf("%s\\README.txt", s.target)), "the files")
@@ -152,6 +162,7 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 	f = setup_read_facts(&s.opts, installed_exe)
 	testing.expect_value(t, f.kind, Setup_Kind.Repair)
 	setup_facts_destroy(&f)
+	job_free(&job)
 	job = job_for(&s, .Apply, installed_exe)
 	setup_apply_work(&job)   // (Modify / Repair from the installed copy: nothing to copy)
 	testing.expectf(t, job.result.error == .None, "repair: %v %s", job.result.error, job.result.detail)
@@ -161,6 +172,7 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 
 	// Replace: a newer download replaces the installed copy
 	_ = os.write_entire_file(exe_in(s.pkg2), "MZ fake program, newer")
+	job_free(&job)
 	job = job_for(&s, .Apply, exe_in(s.pkg2))
 	setup_apply_work(&job)
 	testing.expectf(t, job.result.error == .None, "replace: %v %s", job.result.error, job.result.detail)
@@ -168,11 +180,11 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 	testing.expect_value(t, string(got), "MZ fake program, newer")
 
 	// Uninstall: everything goes, the keys with it
+	job_free(&job)
 	job = job_for(&s, .Uninstall, exe_in(s.pkg))
 	setup_uninstall_work(&job)
 	testing.expectf(t, job.result.error == .None, "uninstall: %v %s", job.result.error, job.result.detail)
 	testing.expect_value(t, len(job.leftovers), 0)
-	delete(job.leftovers)
 	testing.expect(t, !os.exists(s.target), "the install folder is gone")
 	testing.expect(t, !os.exists(fmt.tprintf("%s\\%s.lnk", s.menu, s.opts.identity.name)), "the shortcut is gone")
 	f = setup_read_facts(&s.opts, exe)
@@ -190,6 +202,7 @@ setup_options_apply_and_modify :: proc(t: ^testing.T) {
 	s.opts.desktop_shortcut = true
 	s.opts.add_to_path = true
 	job := job_for(&s, .Apply, exe)
+	defer job_free(&job)
 	setup_apply_work(&job)
 	testing.expectf(t, job.result.error == .None, "install: %v %s", job.result.error, job.result.detail)
 	testing.expect(t, os.is_file(fmt.tprintf("%s\\%s.lnk", s.desk, s.opts.identity.name)), "the desktop shortcut")
@@ -202,6 +215,7 @@ setup_options_apply_and_modify :: proc(t: ^testing.T) {
 	s.opts.desktop_shortcut = false
 	s.opts.add_to_path = false
 	s.opts.register_browser = false
+	job_free(&job)
 	job = job_for(&s, .Apply, exe_in(s.target))
 	setup_apply_work(&job)
 	testing.expectf(t, job.result.error == .None, "modify: %v %s", job.result.error, job.result.detail)
@@ -212,6 +226,7 @@ setup_options_apply_and_modify :: proc(t: ^testing.T) {
 	testing.expect_value(t, f.kind, Setup_Kind.Running_Installed)
 	setup_facts_destroy(&f)
 
+	job_free(&job)
 	job = job_for(&s, .Uninstall, exe_in(s.target))
 	setup_uninstall_work(&job)
 	testing.expect_value(t, job.result.error, desktop.Error.None)
@@ -223,12 +238,14 @@ setup_install_moves_the_installation :: proc(t: ^testing.T) {
 	defer scene_destroy(&s)
 	s.opts.add_to_path = true
 	job := job_for(&s, .Apply, exe_in(s.pkg))
+	defer job_free(&job)
 	setup_apply_work(&job)
 	testing.expect_value(t, job.result.error, desktop.Error.None)
 
 	// "Move installation": the new folder is installed, the old one removed (its PATH entry too)
 	moved := fmt.tprintf("%s\\Elsewhere\\Wren", s.root)
 	s.opts.install_dir = moved
+	job_free(&job)
 	job = job_for(&s, .Apply, exe_in(s.target))
 	job.target_dir = moved
 	job.old_dir = s.target
@@ -240,6 +257,7 @@ setup_install_moves_the_installation :: proc(t: ^testing.T) {
 	testing.expect(t, f.integ.parts[.Path].present, "the new folder is on the PATH")
 	testing.expect_value(t, f.kind, Setup_Kind.Running_Installed)
 	setup_facts_destroy(&f)
+	job_free(&job)
 	job = job_for(&s, .Uninstall, exe_in(moved))
 	job.target_dir = moved
 	setup_uninstall_work(&job)
@@ -251,6 +269,7 @@ setup_refuses_a_bad_folder_before_touching_anything :: proc(t: ^testing.T) {
 	s := scene_make()
 	defer scene_destroy(&s)
 	job := job_for(&s, .Apply, exe_in(s.pkg))
+	defer job_free(&job)
 	job.target_dir = `C:\Windows\Wren`
 	setup_apply_work(&job)
 	testing.expect_value(t, job.result.error, desktop.Error.Bad_Options)
@@ -265,11 +284,13 @@ setup_uninstalling_the_running_copy_leaves_its_file_for_later :: proc(t: ^testin
 	s := scene_make()
 	defer scene_destroy(&s)
 	job := job_for(&s, .Apply, exe_in(s.pkg))
+	defer job_free(&job)
 	setup_apply_work(&job)
 	installed := exe_in(s.target)
 	// stands for the running program: its file cannot be deleted
 	h := win.CreateFileW(win.utf8_to_wstring(installed, context.temp_allocator), win.GENERIC_READ, win.FILE_SHARE_READ, nil, win.OPEN_EXISTING, win.FILE_ATTRIBUTE_NORMAL, nil)
 	testing.expect(t, h != win.INVALID_HANDLE_VALUE, "opened")
+	job_free(&job)
 	job = job_for(&s, .Uninstall, installed)
 	setup_uninstall_work(&job)
 	testing.expect_value(t, job.result.error, desktop.Error.None)
@@ -281,7 +302,6 @@ setup_uninstalling_the_running_copy_leaves_its_file_for_later :: proc(t: ^testin
 	win.CloseHandle(h)
 	// the helper's job, done by hand: the files go, then the folder
 	for l in job.leftovers { _ = os.remove(l) }
-	delete(job.leftovers)
 	_ = os.remove(fmt.tprintf("%s\\wren_install.txt", s.target))
 	testing.expect(t, os.remove(s.target) == nil, "the folder goes once empty")
 }

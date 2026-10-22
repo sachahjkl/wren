@@ -484,3 +484,29 @@ windows_cleanup_script_waits_for_the_process_and_escapes_percent :: proc(t: ^tes
 	testing.expect(t, strings.contains(text, `del "%~f0"`), "and itself")
 	testing.expect(t, !strings.contains(cleanup_script({`C:\x`}, "", 0), "tasklist"), "no process to wait for")
 }
+
+// The helper for real: a process stands for the running program; once it has ended, the files it held are deleted, then the
+// folder, and the batch file deletes itself.
+@(test)
+windows_cleanup_later_deletes_after_the_process_ends :: proc(t: ^testing.T) {
+	tr := tree_make()
+	defer tree_destroy(&tr)
+	dir := fmt.tprintf("%s\\held", tr.root)
+	_ = os.make_directory_all(dir)
+	a, b := fmt.tprintf("%s\\a.exe.old", dir), fmt.tprintf("%s\\wren_install.txt", dir)
+	_ = os.write_entire_file(a, "x")
+	_ = os.write_entire_file(b, "x")
+	p, err := os.process_start(os.Process_Desc{command = {"cmd.exe", "/d", "/c", "ping -n 4 127.0.0.1 >nul"}})
+	testing.expect(t, err == nil, "a process to wait for")
+	if err != nil { return }
+	ok := cleanup_later({a, b}, dir, u32(p.pid))
+	testing.expect(t, ok, "the helper starts")
+	t0 := time.now()
+	for time.since(t0) < 20 * time.Second && os.exists(dir) { time.sleep(200 * time.Millisecond) }
+	_, _ = os.process_wait(p)
+	testing.expect(t, !os.exists(a) && !os.exists(b), "the files are deleted")
+	testing.expect(t, !os.exists(dir), "and the folder")
+	script := fmt.tprintf("%s\\wren_cleanup_%d.cmd", strings.trim_right(os.temp_dir(context.temp_allocator) or_else "", "\\/"), win.GetCurrentProcessId())
+	for time.since(t0) < 20 * time.Second && os.exists(script) { time.sleep(200 * time.Millisecond) }
+	testing.expect(t, !os.exists(script), "the batch file deleted itself")
+}

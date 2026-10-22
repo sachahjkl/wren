@@ -225,6 +225,13 @@ setup_read_facts :: proc(o: ^desktop.Options, running_exe: string) -> Setup_Fact
 	return f
 }
 
+// The executable the options integrate: a copy on the heap, because the options own it (options_destroy frees it).
+@(private)
+set_exe :: proc(o: ^desktop.Options, exe: string) {
+	delete(o.exe)
+	o.exe = strings.clone(exe)
+}
+
 @(private)
 setup_apply_work :: proc(job: ^Setup_Job) {
 	o := &job.opts
@@ -240,7 +247,7 @@ setup_apply_work :: proc(job: ^Setup_Job) {
 		payload = SETUP_PAYLOAD[:], version = APP_VERSION, channel = channel_name(),
 	}
 	if r := desktop.files_install(plan); r.error != .None { job.result = r; return }
-	o.exe = target_exe
+	set_exe(o, target_exe)
 	if r := desktop.install(o); r.error != .None { job.result = r; return }
 	if r := desktop.record_install(o, job.target_dir, APP_VERSION); r.error != .None { job.result = r; return }
 	job.installed_now = true
@@ -261,7 +268,7 @@ setup_uninstall_work :: proc(job: ^Setup_Job) {
 	o := &job.opts
 	dir := job.target_dir   // the installed folder
 	exe_name := desktop.exe_name_of(o.identity)
-	o.exe = dir != "" ? strings.concatenate({strings.trim_right(dir, "\\/"), desktop.PATH_SEP, exe_name}, context.temp_allocator) : job.running_exe
+	set_exe(o, dir != "" ? strings.concatenate({strings.trim_right(dir, "\\/"), desktop.PATH_SEP, exe_name}, context.temp_allocator) : job.running_exe)
 	if r := desktop.remove(o); r.error != .None { job.result = r }   // (keep going: the files should go even when a key would not)
 	if dir != "" {
 		desktop.forget_path(o, dir)
@@ -284,6 +291,8 @@ setup_job_done :: proc(data: rawptr) {
 		delete(job.leftovers)
 		delete(job.folder_left)
 		delete(job.running_exe)
+		delete(job.target_dir)
+		delete(job.old_dir)
 		desktop.options_destroy(&job.opts)
 		setup_facts_destroy(&job.facts)
 		free(job)
@@ -486,17 +495,23 @@ setup_sync_inputs :: proc(app: ^App) {
 	if !stp.opts_ready {
 		installed := f.inst.exe_present
 		pref :: proc(app: ^App, name: string) -> bool { return config.bool_of(&app.prefs, name) }
-		if installed {
-			stp.opts[.Start_Menu] = f.integ.parts[.Launcher].present
-			stp.opts[.Desktop_Shortcut] = f.integ.parts[.Desktop_Shortcut].present
-			stp.opts[.Add_To_Path] = f.integ.parts[.Path].present
-			stp.opts[.Register_Browser] = f.integ.parts[.Registration].present
-		} else {
-			stp.opts[.Start_Menu] = pref(app, "browser.desktop_integration.start_menu")
-			stp.opts[.Desktop_Shortcut] = pref(app, "browser.desktop_integration.desktop_shortcut")
-			stp.opts[.Add_To_Path] = pref(app, "browser.desktop_integration.add_to_path")
-			stp.opts[.Register_Browser] = pref(app, "browser.desktop_integration.register_browser")
+		// what the boxes show: the disk for an installation that is as it should be (they say what IS there), and what was
+		// chosen (the preferences) for anything else; an installation to repair keeps what is still there too, so that
+		// Repair puts back what is missing and takes nothing away
+		from_disk := installed && (f.kind == .Running_Installed || f.kind == .Other_Copy || f.kind == .Older)
+		both := installed && f.kind == .Repair
+		part :: proc(f: ^Setup_Facts, p: desktop.Part, wanted, from_disk, both: bool) -> bool {
+			present := f.integ.parts[p].present
+			switch {
+			case from_disk: return present
+			case both:      return present || wanted
+			}
+			return wanted
 		}
+		stp.opts[.Start_Menu] = part(f, .Launcher, pref(app, "browser.desktop_integration.start_menu"), from_disk, both)
+		stp.opts[.Desktop_Shortcut] = part(f, .Desktop_Shortcut, pref(app, "browser.desktop_integration.desktop_shortcut"), from_disk, both)
+		stp.opts[.Add_To_Path] = part(f, .Path, pref(app, "browser.desktop_integration.add_to_path"), from_disk, both)
+		stp.opts[.Register_Browser] = part(f, .Registration, pref(app, "browser.desktop_integration.register_browser"), from_disk, both)
 		stp.opts[.Check_Daily] = pref(app, "browser.update.check_daily")
 		stp.baseline = stp.opts
 		stp.opts_ready = true

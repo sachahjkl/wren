@@ -23,6 +23,7 @@ package browser
 
 import "core:fmt"
 import "core:math"
+import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:desktop"
@@ -49,7 +50,7 @@ grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 header_texts :: proc(kind: Setup_Kind) -> (title, badge, tone: string, solid: bool) {
 	switch kind {
 	case .Loading:           return "Reading the installation…", "…", "weak", false
-	case .Not_Installed:     return fmt.tprintf("Install %s", APP_NAME), "Not installed", "weak", false
+	case .Not_Installed:     return fmt.tprintf("Install %s", desktop_identity().name), "Not installed", "weak", false
 	case .Running_Installed: return "Manage this installation", "Running installed", "accent", true
 	case .Other_Copy:        return "Another copy is installed", "Running another copy", "warn", false
 	case .Older:             return "A newer copy is installed", "Older than installed", "warn", false
@@ -77,7 +78,7 @@ status_text :: proc(f: ^Setup_Facts) -> (text, tone: string) {
 	case stp.busy > 0:
 		return "Working\u2026", "weak"
 	case stp.confirm_uninstall:
-		return fmt.tprintf("Click Uninstall again to remove %s: its shortcuts, its PATH entry, its entry in Settings > Apps and the files in %s. Your profile (bookmarks, history, settings) stays.", APP_NAME, f.inst.exe_present ? f.inst.dir : f.installed_dir), "warn"
+		return fmt.tprintf("Click Confirm uninstall to remove %s: its shortcuts, its PATH entry, its entry in Settings > Apps and the files in %s. Your profile (bookmarks, history, settings) stays.", APP_NAME, f.inst.exe_present ? f.inst.dir : f.installed_dir), "warn"
 	case stp.path_problem != "" && stp.path_ready:
 		return stp.path_problem, "bad"
 	case stp.note != "":
@@ -102,9 +103,22 @@ status_text :: proc(f: ^Setup_Facts) -> (text, tone: string) {
 		case f.inst.missing > 0:      return fmt.tprintf("%d installed file%s missing. Repair fixes the shortcuts and keys; to put the files back, run Setup from a complete copy of %s.", f.inst.missing, f.inst.missing == 1 ? " is" : "s are", APP_NAME), "warn"
 		case f.other_target != "":    return fmt.tprintf("A shortcut or key starts %s instead of the installed copy. Repair makes them start this one.", f.other_target), "warn"
 		}
-		return "A shortcut or a key is missing. Repair puts it back.", "warn"
+		if names := missing_parts(f); names != "" { return fmt.tprintf("Missing: %s. Repair puts it back.", names), "warn" }
+		return "A shortcut or a key is missing or incomplete. Repair puts it back.", "warn"
 	}
 	return "", "weak"
+}
+
+// The parts the options want that are not (all) there, in words: "Start menu entry, PATH entry".
+@(private = "file")
+missing_parts :: proc(f: ^Setup_Facts) -> string {
+	names := [desktop.Part]string{.Launcher = "Start menu entry", .Registration = "browser registration", .Icons = "icons", .Desktop_Shortcut = "desktop shortcut", .Path = "PATH entry"}
+	if desktop.menu_name() != "Start menu" { names[.Launcher] = "application menu entry" }
+	out := make([dynamic]string, context.temp_allocator)
+	for p in desktop.Part {
+		if p in f.integ.wanted && (!f.integ.parts[p].present || f.integ.parts[p].partial) { append(&out, names[p]) }
+	}
+	return strings.join(out[:], ", ", context.temp_allocator)
 }
 
 @(private = "file")
