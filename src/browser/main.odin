@@ -1013,6 +1013,13 @@ frame :: proc(app: ^App, idled := false) {
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
+	page_snapshot_wanted = ran > 0
+	if t := current_tab(app); t != nil && t.page != nil {
+		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
+			page_snapshot_wanted = true
+		}
+	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	shell_snapshots_frame(app)
 
