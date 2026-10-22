@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Froment Software</title>
+  <defs>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="3.2"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" fill="#29c659"/>
+  <path d="M82 82H466V178H82Z M82 206H334V302H178V466H82Z" fill="#209c46" filter="url(#shadow)"/>
+  <path d="M64 64H448V160H64Z M64 188H316V284H160V448H64Z" fill="#fff"/>
+</svg>

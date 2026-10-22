@@ -17,3 +17,9 @@ policies.txt
 .vs/
 .vscode/
 src/browser/wren_dev.res
+# licences: the private signing key (tools\license.ps1 keygen writes it to %USERPROFILE%\.wren-license, outside the
+# repository) and the licences issued to supporters never belong here
+.wren-license/
+private.key
+*.private.key
+*.wrenlicense
