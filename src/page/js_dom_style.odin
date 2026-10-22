@@ -689,9 +689,27 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 			bw = used.width + used.padding[1] + used.padding[3] + cs.border_width[.Left] + cs.border_width[.Right]
 			bh = used.height + used.padding[0] + used.padding[2] + cs.border_width[.Top] + cs.border_width[.Bottom]
 		}
+		// a matrix that does something in 3D is a matrix3d() (CSS Transforms 2 §serialization of the computed value)
+		m4 := style.ops_matrix4(cs.transform, bw, bh)
+		if !style.m4_is_2d(m4, 0) {
+			b := strings.builder_make(context.temp_allocator)
+			strings.write_string(&b, "matrix3d(")
+			for v, i in m4 {
+				if i > 0 { strings.write_string(&b, ", ") }
+				strings.write_string(&b, css_num(v))
+			}
+			strings.write_string(&b, ")")
+			return strings.to_string(b)
+		}
 		m := style.ops_matrix(cs.transform, bw, bh)
 		return fmt.tprintf("matrix(%s, %s, %s, %s, %s, %s)", css_num(m[0]), css_num(m[1]), css_num(m[2]), css_num(m[3]), css_num(m[4]), css_num(m[5]))
-	case "transform-origin": return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1])}, context.temp_allocator)
+	case "transform-origin":
+		if cs.transform_origin_z != 0 { return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1]), " ", css_px(cs.transform_origin_z)}, context.temp_allocator) }
+		return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1])}, context.temp_allocator)
+	case "perspective": return cs.perspective > 0 ? css_px(cs.perspective) : "none"
+	case "perspective-origin": return strings.concatenate({css_length(cs.perspective_origin[0]), " ", css_length(cs.perspective_origin[1])}, context.temp_allocator)
+	case "transform-style": return cs.transform_style == .Preserve_3d ? "preserve-3d" : "flat"
+	case "backface-visibility": return cs.backface_visibility == .Hidden ? "hidden" : "visible"
 	}
 	if strings.has_prefix(name, "--") && cs.custom != nil {
 		if v, ok := cs.custom.values[name]; ok { return v }
