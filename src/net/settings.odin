@@ -40,7 +40,8 @@ PREFS := [?]config.Def{
 	{name = "network.http3.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Use HTTP/3 when the server and the OS support it."},
 	{name = "network.proxy.mode", kind = .String, default = {s = "system"}, choices = {"system", "none"}, restart = true,
 		description = "system: the operating system's proxy settings (auto-detection included). none: connect directly."},
-	{name = "network.user_agent", kind = .String, default = {s = "Wren/0.3"}, restart = true, description = "The User-Agent header."},
+	{name = "network.user_agent", kind = .String, default = {s = ""}, restart = true,
+		description = "The User-Agent header (and navigator.userAgent). Empty: Mozilla/5.0 (<platform>) Wren/<version>."},
 	{name = "network.max_response_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 0, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Default largest response body; a request exceeding it fails. 0 = unlimited."},
 	{name = "network.read_chunk_bytes", kind = .Int, default = {i = 64 << 10}, bounded = true, min = 1024, max = 16 << 20, bytes = true, unit = "bytes",
@@ -53,6 +54,23 @@ PREFS := [?]config.Def{
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
 
+// The product token of the default User-Agent ("Wren/0.3.0"): the browser sets it from its version before reading the
+// preferences; tools keep this one.
+user_agent_product := "Wren"
+
+// The form sites expect (Mozilla/5.0, then the platform as browsers write it), without claiming an engine Wren is not:
+// a "Chrome/" token would get pages features it lacks. Windows 11 still says "Windows NT 10.0", as every browser does.
+user_agent_default :: proc(allocator := context.allocator) -> string {
+	when ODIN_OS == .Windows {
+		platform :: "Windows NT 10.0; Win64; x64"
+	} else when ODIN_OS == .Darwin {
+		platform :: "Macintosh; Intel Mac OS X 10_15_7"
+	} else {
+		platform :: "X11; Linux x86_64"
+	}
+	return strings.concatenate({"Mozilla/5.0 (", platform, ") ", user_agent_product}, allocator)
+}
+
 settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) -> Settings {
 	s: Settings
 	s.max_per_host = int(config.int_of(p, "network.max_connections_per_host"))
@@ -64,7 +82,8 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.http2 = config.bool_of(p, "network.http2.enabled")
 	s.http3 = config.bool_of(p, "network.http3.enabled")
 	s.proxy = config.string_of(p, "network.proxy.mode") == "none" ? .None : .System
-	s.user_agent = strings.clone(config.string_of(p, "network.user_agent"), allocator)
+	ua := config.string_of(p, "network.user_agent")
+	s.user_agent = ua != "" ? strings.clone(ua, allocator) : user_agent_default(allocator)
 	s.max_body = int(config.int_of(p, "network.max_response_bytes"))
 	if s.max_body == 0 { s.max_body = max(int) }
 	s.read_chunk = int(config.int_of(p, "network.read_chunk_bytes"))

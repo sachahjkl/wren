@@ -11,6 +11,10 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 - **About Wren** (`about:wren`, menu and command palette): the logo of the channel, version, commit, build, toolkit, Odin, Wasmtime and QuickJS-ng versions, "by Froment Software", the beta notice, the third-party software (`THIRD_PARTY.md`), and `about:licenses` with every license text (Slug's credit included).
 - **Supporter licence** ([docs/licence.md](docs/licence.md)): a key signed offline with Ed25519 and checked in Wren without any network access, entered in `about:wren` (paste it, choose a file, or drop a `.wrenlicense` file). It changes one line of `about:wren` and nothing else: every version stays free and complete during the beta. `tools\license.ps1` makes the key pair and issues licences; `browser.license.*` preferences.
+- **Crash reports**: a crash leaves its symbolized stack and a minidump in `<profile>\crashes`.
+
+### Changed
+- User-Agent `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Wren/0.3.0` (was `Wren/0.3`): the form sites expect, the version from the program, no `Chrome/` token. `network.user_agent` empty = this one.
 
 ## 0.3.0 - 2026-10-21
 
