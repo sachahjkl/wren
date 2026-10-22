@@ -4,11 +4,13 @@ import "core:math"
 import "core:strings"
 import "wb:css"
 
-// CSS Transforms 1 and 2, in 2D. 3D functions are parsed and flattened by orthographic projection (what a viewer looking
-// straight at the page would see without perspective): rotateX/Y shrink an axis by the cosine of the angle, z components
-// are dropped, perspective() is the identity.
+// CSS Transforms 1 and 2. The 3D functions (perspective(), rotateX/Y/Z, rotate3d, translateZ/3d, scaleZ/3d, matrix3d) are
+// kept as such: `transform_matrix4` is the full 4x4 (matrix4.odin), which layout and the compositor project with
+// perspective. `transform_matrix` is its 2D flattening, the orthographic projection (what a viewer looking straight at the
+// page would see without perspective: rotateX/Y shrink an axis by the cosine of the angle, z components are dropped,
+// perspective() is the identity): what is drawn when 3D rendering is off, and the whole story for 2D transforms.
 //
-// Matrices are [6]f32 {a, b, c, d, e, f}, as in CSS matrix(): x' = a*x + c*y + e, y' = b*x + d*y + f, with y pointing
+// 2D matrices are [6]f32 {a, b, c, d, e, f}, as in CSS matrix(): x' = a*x + c*y + e, y' = b*x + d*y + f, with y pointing
 // down, so a positive rotation turns clockwise on screen.
 
 Matrix :: [6]f32
@@ -43,19 +45,26 @@ matrix_invert :: proc(m: Matrix) -> (Matrix, bool) {
 @(private)
 translation :: #force_inline proc(x, y: f32) -> Matrix { return Matrix{1, 0, 0, 1, x, y} }
 
-// The matrix of one transform function in a reference box of w x h (percentages of translate refer to it).
+// The 2D matrix of one transform function (the orthographic projection of its 4x4) in a reference box of w x h
+// (percentages of translate refer to it).
 op_matrix :: proc(op: Transform_Op, w, h: f32) -> Matrix {
 	switch op.kind {
 	case .Translate: return translation(resolve(op.l[0], w), resolve(op.l[1], h))
 	case .Scale: return Matrix{op.v[0], 0, 0, op.v[1], 0, 0}
 	case .Rotate:
-		s, c := math.sin(op.v[0]), math.cos(op.v[0])
-		return Matrix{c, s, -s, c, 0, 0}
+		if op.axis[0] == 0 && op.axis[1] == 0 {
+			a := op.axis[2] < 0 ? -op.v[0] : op.v[0]
+			s, c := math.sin(a), math.cos(a)
+			return Matrix{c, s, -s, c, 0, 0}
+		}
+		return m4_flatten(op_matrix4(op, w, h))
 	case .Skew: return Matrix{1, math.tan(op.v[1]), math.tan(op.v[0]), 1, 0, 0}
 	case .Matrix: return Matrix{op.v[0], op.v[1], op.v[2], op.v[3], op.v[4], op.v[5]}
+	case .Matrix3D: return m4_flatten(op.m3)
 	case .Perspective: return IDENTITY_MATRIX
 	case .Mix:
 		if op.mix == nil { return IDENTITY_MATRIX }
+		if ops_are_3d(op.mix.from) || ops_are_3d(op.mix.to) { return m4_flatten(op_matrix4(op, w, h)) }
 		a := ops_matrix(op.mix.from, w, h)
 		b := ops_matrix(op.mix.to, w, h)
 		return recompose(decomposed_lerp(decompose(a), decompose(b), op.mix.t))
@@ -70,9 +79,69 @@ ops_matrix :: proc(ops: []Transform_Op, w, h: f32) -> Matrix {
 	return m
 }
 
-// Some transform applies (transform, translate, rotate or scale is not none).
+// The 4x4 matrix of one transform function.
+op_matrix4 :: proc(op: Transform_Op, w, h: f32) -> Matrix4 {
+	switch op.kind {
+	case .Translate: return m4_translate(resolve(op.l[0], w), resolve(op.l[1], h), op.z)
+	case .Scale: return m4_scale(op.v[0], op.v[1], op.v[2])
+	case .Rotate:
+		if op.axis[0] == 0 && op.axis[1] == 0 { return m4_from_2d(op_matrix(op, w, h)) }
+		return m4_rotate(op.axis[0], op.axis[1], op.axis[2], op.v[0])
+	case .Skew: return m4_skew(op.v[0], op.v[1])
+	case .Matrix: return m4_from_2d(Matrix{op.v[0], op.v[1], op.v[2], op.v[3], op.v[4], op.v[5]})
+	case .Matrix3D: return op.m3
+	case .Perspective: return m4_perspective(op.v[0])
+	case .Mix:
+		if op.mix == nil { return IDENTITY_MATRIX4 }
+		a := ops_matrix4(op.mix.from, w, h)
+		b := ops_matrix4(op.mix.to, w, h)
+		da, oka := decompose4(a)
+		db, okb := decompose4(b)
+		if !oka || !okb { return op.mix.t < 0.5 ? a : b }
+		return recompose4(decomposed4_lerp(da, db, f64(op.mix.t)))
+	}
+	return IDENTITY_MATRIX4
+}
+
+ops_matrix4 :: proc(ops: []Transform_Op, w, h: f32) -> Matrix4 {
+	m := IDENTITY_MATRIX4
+	for op in ops { m = m4_mul(m, op_matrix4(op, w, h)) }
+	return m
+}
+
+// A function (or list) with a 3D part: it has a z term, a perspective, or turns about an axis other than z.
+op_is_3d :: proc(op: Transform_Op) -> bool {
+	switch op.kind {
+	case .Translate: return op.z != 0
+	case .Scale: return op.v[2] != 1
+	case .Rotate: return op.axis[0] != 0 || op.axis[1] != 0
+	case .Skew, .Matrix: return false
+	case .Matrix3D: return true
+	case .Perspective: return op.v[0] > 0
+	case .Mix: return op.mix != nil && (ops_are_3d(op.mix.from) || ops_are_3d(op.mix.to))
+	}
+	return false
+}
+
+ops_are_3d :: proc(ops: []Transform_Op) -> bool {
+	for op in ops { if op_is_3d(op) { return true } }
+	return false
+}
+
+// Some transform applies (transform, translate, rotate or scale is not none), or the box is a 3D container: perspective or
+// transform-style: preserve-3d (they make a stacking context and the containing block of fixed boxes, as transforms do).
 has_transform :: proc(c: ^Computed) -> bool {
-	return len(c.transform) > 0 || c.translate.set || c.rotate.set || c.scale.set
+	return len(c.transform) > 0 || c.translate.set || c.rotate.set || c.scale.set || c.perspective > 0 || c.transform_style == .Preserve_3d
+}
+
+// Some part of the transform is truly 3D (not the identity on the plane z = 0 up to a 2D matrix once projected without
+// perspective): it needs a plane when 3D rendering is on. The decision on the final matrix is `m4_is_affine`.
+transform_is_3d :: proc(c: ^Computed) -> bool {
+	if c == nil { return false }
+	if c.translate.set && c.translate.z != 0 { return true }
+	if c.rotate.set && (c.rotate.axis[0] != 0 || c.rotate.axis[1] != 0) { return true }
+	if c.scale.set && c.scale.s[2] != 1 { return true }
+	return ops_are_3d(c.transform)
 }
 
 // The full transformation of an element whose reference box (its border box, see transform-box) is at (x, y) with size
@@ -88,6 +157,30 @@ transform_matrix :: proc(c: ^Computed, x, y, w, h: f32) -> Matrix {
 	if c.scale.set { m = matrix_mul(m, Matrix{c.scale.s[0], 0, 0, c.scale.s[1], 0, 0}) }
 	m = matrix_mul(m, ops_matrix(c.transform, w, h))
 	return matrix_mul(m, translation(-ox, -oy))
+}
+
+// The full 4x4 of the element, in the coordinate space of its reference box (at (x, y), size w x h): translate, rotate,
+// scale, then transform, all around transform-origin (its z included). The perspective of the parent is not in it.
+transform_matrix4 :: proc(c: ^Computed, x, y, w, h: f32) -> Matrix4 {
+	if c == nil || !has_transform(c) { return IDENTITY_MATRIX4 }
+	ox := x + resolve(c.transform_origin[0], w)
+	oy := y + resolve(c.transform_origin[1], h)
+	oz := c.transform_origin_z
+	m := m4_translate(ox, oy, oz)
+	if c.translate.set { m = m4_mul(m, m4_translate(resolve(c.translate.x, w), resolve(c.translate.y, h), c.translate.z)) }
+	if c.rotate.set { m = m4_mul(m, m4_rotate(c.rotate.axis[0], c.rotate.axis[1], c.rotate.axis[2], c.rotate.angle)) }
+	if c.scale.set { m = m4_mul(m, m4_scale(c.scale.s[0], c.scale.s[1], c.scale.s[2])) }
+	m = m4_mul(m, ops_matrix4(c.transform, w, h))
+	return m4_mul(m, m4_translate(-ox, -oy, -oz))
+}
+
+// The matrix perspective (property) and perspective-origin give the children of a box at (x, y) of size w x h: the origin
+// moved to (0, 0), the perspective, moved back (CSS Transforms 2 §perspective-property). Identity without a perspective.
+perspective_matrix :: proc(c: ^Computed, x, y, w, h: f32) -> Matrix4 {
+	if c == nil || !(c.perspective > 0) { return IDENTITY_MATRIX4 }
+	ox := x + resolve(c.perspective_origin[0], w)
+	oy := y + resolve(c.perspective_origin[1], h)
+	return m4_mul(m4_translate(ox, oy, 0), m4_mul(m4_perspective(c.perspective), m4_translate(-ox, -oy, 0)))
 }
 
 @(private)
@@ -204,7 +297,9 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 			if !ok { return {}, false }
 			m[i] = f32(x)
 		}
-		return Transform_Op{kind = .Matrix, v = {m[0], m[1], m[4], m[5], m[12], m[13]}}, true
+		// a matrix3d that only does 2D is a 2D matrix (serialized as matrix())
+		if m4_is_2d(m, 0) { return Transform_Op{kind = .Matrix, v = {m[0], m[1], m[4], m[5], m[12], m[13]}}, true }
+		return Transform_Op{kind = .Matrix3D, m3 = m}, true
 	case "translate":
 		if n < 1 || n > 2 { return {}, false }
 		x, ok := lp(cx, vals[0])
@@ -222,14 +317,18 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		return op_translate(zero, y), ok
 	case "translatez":
 		if n != 1 { return {}, false }
-		_, ok := len_only(cx, vals[0])
-		return op_translate(zero, zero), ok
+		z, ok := len_only(cx, vals[0])
+		op := op_translate(zero, zero)
+		op.z = z.v
+		return op, ok
 	case "translate3d":
 		if n != 3 { return {}, false }
 		x, ok1 := lp(cx, vals[0])
 		y, ok2 := lp(cx, vals[1])
-		_, ok3 := len_only(cx, vals[2])
-		return op_translate(x, y), ok1 && ok2 && ok3
+		z, ok3 := len_only(cx, vals[2])
+		op := op_translate(x, y)
+		op.z = z.v
+		return op, ok1 && ok2 && ok3
 	case "scale", "scalex", "scaley", "scalez", "scale3d":
 		name := css.lower_temp(f.tok.text)
 		want_min, want_max := 1, 1
@@ -244,25 +343,24 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 			if !ok { return {}, false }
 			s[i] = x
 		}
-		op := Transform_Op{kind = .Scale, v = {1, 1, 0, 0, 0, 0}}
+		op := Transform_Op{kind = .Scale, v = {1, 1, 1, 0, 0, 0}}
 		switch name {
 		case "scale": op.v[0], op.v[1] = s[0], n == 2 ? s[1] : s[0]
 		case "scalex": op.v[0] = s[0]
 		case "scaley": op.v[1] = s[0]
-		case "scalez":
-		case "scale3d": op.v[0], op.v[1] = s[0], s[1]
+		case "scalez": op.v[2] = s[0]
+		case "scale3d": op.v[0], op.v[1], op.v[2] = s[0], s[1], s[2]
 		}
 		return op, true
 	case "rotate", "rotatez":
 		if n != 1 { return {}, false }
 		a, ok := parse_angle(vals[0])
-		return Transform_Op{kind = .Rotate, v = {a, 0, 0, 0, 0, 0}}, ok
+		return Transform_Op{kind = .Rotate, v = {a, 0, 0, 0, 0, 0}, axis = {0, 0, 1}}, ok
 	case "rotatex", "rotatey":
 		if n != 1 { return {}, false }
 		a, ok := parse_angle(vals[0])
-		c := math.cos(a)
 		is_x := strings.equal_fold(f.tok.text, "rotatex")
-		return Transform_Op{kind = .Scale, v = {is_x ? 1 : c, is_x ? c : 1, 0, 0, 0, 0}}, ok
+		return Transform_Op{kind = .Rotate, v = {a, 0, 0, 0, 0, 0}, axis = is_x ? [3]f32{1, 0, 0} : [3]f32{0, 1, 0}}, ok
 	case "rotate3d":
 		if n != 4 { return {}, false }
 		axis: [3]f32
@@ -273,12 +371,8 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 		}
 		a, ok := parse_angle(vals[3])
 		if !ok { return {}, false }
-		if axis[0] == 0 && axis[1] == 0 {
-			if axis[2] == 0 { return Transform_Op{kind = .Matrix, v = IDENTITY_MATRIX}, true }
-			return Transform_Op{kind = .Rotate, v = {axis[2] > 0 ? a : -a, 0, 0, 0, 0, 0}}, true
-		}
-		m := rotate3d_matrix(axis[0], axis[1], axis[2], a)
-		return Transform_Op{kind = .Matrix, v = m}, true
+		if axis[0] == 0 && axis[1] == 0 && axis[2] == 0 { return Transform_Op{kind = .Matrix, v = IDENTITY_MATRIX}, true }
+		return Transform_Op{kind = .Rotate, v = {a, 0, 0, 0, 0, 0}, axis = axis}, true
 	case "skew":
 		if n < 1 || n > 2 { return {}, false }
 		ax, ok := parse_angle(vals[0])
@@ -304,16 +398,20 @@ parse_transform_function :: proc(cx: ^Cx, f: css.Value) -> (Transform_Op, bool) 
 	return {}, false
 }
 
-parse_transform_origin :: proc(cx: ^Cx, vs: []css.Value) -> ([2]Length, bool) {
+// transform-origin: one or two positions and an optional z length (px, no percentage).
+parse_transform_origin :: proc(cx: ^Cx, vs: []css.Value) -> (o: [2]Length, z: f32, ok: bool) {
 	items := split_items(css.trim_values(vs))
 	switch len(items) {
 	case 1, 2:
-		return parse_position(cx, items)
+		o, ok = parse_position(cx, items)
+		return
 	case 3:
-		if _, ok := length_of(cx, items[2], {.Negative}); !ok || ident_lower(items[2]) != "" { return {}, false }
-		return parse_position(cx, items[:2])
+		zl, zok := length_of(cx, items[2], {.Negative})
+		if !zok || ident_lower(items[2]) != "" || zl.kind != .Px { return {}, 0, false }
+		o, ok = parse_position(cx, items[:2])
+		return o, zl.v, ok
 	}
-	return {}, false
+	return {}, 0, false
 }
 
 parse_translate :: proc(cx: ^Cx, vs: []css.Value) -> (Translate_Value, bool) {

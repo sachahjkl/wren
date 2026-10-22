@@ -66,17 +66,21 @@ Gradient :: struct {
 ////////////////////////////////
 // Transforms
 
-Transform_Kind :: enum u8 { Translate, Scale, Rotate, Skew, Matrix, Perspective, Mix }
+Transform_Kind :: enum u8 { Translate, Scale, Rotate, Skew, Matrix, Perspective, Mix, Matrix3D }
 
-// One transform function, reduced to its 2D primitive: translateX/Y/3d -> Translate, scaleX/Y/Z/3d -> Scale,
-// rotate/rotateZ/rotate3d(0,0,1,a) -> Rotate, rotateX(a) -> Scale(1, cos a) and rotateY(a) -> Scale(cos a, 1) (their
-// orthographic projection), skewX/Y -> Skew, matrix/matrix3d -> Matrix (the 2D part). perspective() keeps its distance but
-// is the identity in 2D. Mix is the result of interpolating two lists that cannot be interpolated function by function and
-// contain box-relative lengths: it is resolved, with the box, by `transform_matrix`.
+// One transform function reduced to its primitive (CSS Transforms 2 §12): translateX/Y/Z/3d -> Translate, scaleX/Y/Z/3d ->
+// Scale, rotate/rotateZ/rotateX/rotateY/rotate3d -> Rotate (about `axis`), skewX/Y -> Skew, matrix -> Matrix (2D),
+// matrix3d -> Matrix3D (a matrix3d that is plain 2D becomes Matrix), perspective(). Mix is the result of interpolating two
+// lists that cannot be interpolated function by function and contain box-relative lengths: it is resolved, with the box, by
+// `transform_matrix4`. `transform_matrix` (2D) is the orthographic projection of all this: what is drawn without 3D support.
 Transform_Op :: struct {
 	kind: Transform_Kind,
 	l:    [2]Length,       // Translate: x, y (percentages refer to the reference box)
-	v:    [6]f32,          // Scale: sx, sy. Rotate: angle (radians, clockwise). Skew: ax, ay (radians). Matrix: a b c d e f
+	v:    [6]f32,          // Scale: sx, sy, sz. Rotate: angle (radians, clockwise). Skew: ax, ay (radians). Matrix: a b c d e f.
+	                       // Perspective: the distance (0: none)
+	z:    f32,             // Translate: z (px)
+	axis: [3]f32,          // Rotate: the axis (not normalized; a zero axis rotates nothing)
+	m3:   [16]f32,         // Matrix3D: the 16 values of matrix3d()
 	mix:  ^Transform_Mix,
 }
 

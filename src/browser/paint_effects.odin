@@ -54,6 +54,7 @@ EFFECTS_PREFS := [?]config.Def{
 register_effects_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, EFFECTS_PREFS[:])
 	register_fx_cache_prefs(p)
+	register_plane_prefs(p)
 }
 
 @(private)
@@ -75,6 +76,7 @@ effects_init :: proc(app: ^App) {
 	render.set_blur_sigma_limit(&app.r, effects_settings.blur_sigma_limit)
 	fx_settings = fx_settings_from_prefs(&app.prefs)
 	fx_settings_apply(app)
+	planes_init(app)
 	effects_watch = config.watch(&app.prefs, "paint.effects.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		effects_settings = effects_settings_from_prefs(p)
@@ -95,7 +97,11 @@ Effects :: struct {
 	l:        ^Layout,
 	v:        ^lay.View,
 	dc:       ^draw.Context,
-	origin:   draw.Vec2,
+	origin:   draw.Vec2,              // where layout coordinates (plus offsets) land in the target being drawn: the page's origin,
+	                                  // or minus the offsets of the plane whose layer is open (fo)
+	page_origin: draw.Vec2,
+	pending:  [dynamic]Pending_Plane, // planes of 3D contexts, waiting for their root to close (sorted by depth then)
+	hide:     int,                    // open plane groups that show nothing (edge-on, empty): their content is not drawn
 	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
 	clip:     i32,              // innermost clip of `chain` (-2: not set yet)
 	chain:    [dynamic]i32,     // clips pushed, outermost first
@@ -113,13 +119,19 @@ Open_Group :: struct {
 	alpha: bool,
 	shape: bool,     // a clip-path shape was pushed
 	mask:  bool,     // the layer is masked: its mask layers are drawn when it closes
+	member: bool,    // a plane in its parent's 3D context: a skip of the parent is put aside while it is open
+	saved_skip: int,
 	skip:  bool,     // its kept result is composited: its content (and its mask layers) are not drawn
+	hidden: bool,    // a plane that shows nothing: no layer, its content is not drawn
+	plane: bool,     // a plane layer was pushed (plane.odin of the toolkit): composited projected when the group closes
+	saved_origin: draw.Vec2,   // e.origin outside the plane
 }
 
 @(private)
 effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
-	e := Effects{l = l, v = v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
-		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
+	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, xform = lay.NONE, clip = -2, group = -2,
+		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
+		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	e.groups = plan_groups(&e)
 	return e
 }
@@ -183,6 +195,7 @@ effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
 	xf := e.l.spaces[it.space].xform
 	if xf != lay.NONE && e.v.singular[it.space] { return false }
 	if it.group != e.group { set_group(e, it.group) }
+	if e.hide > 0 { return false }
 	set_clip(e, it.clip)
 	set_xform(e, xf)
 	return true
@@ -206,9 +219,10 @@ Group_Paint :: struct {
 // `clipped`: cut to the bounds of its clip.
 @(private)
 item_ink :: proc(e: ^Effects, it: ^lay.Display_Item, clipped := true) -> lay.Rect {
-	r := lay.rect_shift(item_ink_local(e.l, it), e.v.offsets[it.space] + e.origin)
-	if !lay.space_plain(e.l, it.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[it.space], e.origin), r) }
-	if clipped && it.clip >= 0 { r = lay.rect_intersect(r, lay.rect_shift(e.v.clips[it.clip], e.origin)) }
+	o := fo(e, it.space)
+	r := lay.rect_shift(item_ink_local(e.l, it), e.v.offsets[it.space] + o)
+	if !lay.space_plain(e.l, it.space) { r = lay.mat_bounds(lay.mat_shifted(e.v.mats[it.space], o), r) }
+	if clipped && it.clip >= 0 && e.l.spaces[e.l.clips[it.clip].space].plane == e.l.spaces[it.space].plane { r = lay.rect_intersect(r, lay.rect_shift(e.v.clips[it.clip], o)) }
 	return r
 }
 
@@ -278,10 +292,11 @@ plan_groups :: proc(e: ^Effects) -> []Group_Paint {
 	}
 	// children (later in the list) into their parents, with what their filters spread
 	for g := len(gp) - 1; g >= 0; g -= 1 {
-		parent := e.l.groups[g].parent
+		parent := e.l.groups[g].dest
 		if parent == lay.NONE || !gp[g].seen { continue }
 		o := group_outset(e, i32(g))
 		b := lay.Rect{gp[g].bounds.min - {o[0], o[1]}, gp[g].bounds.max + {o[2], o[3]}}
+		b = group_bounds_in_dest(e, i32(g), b)
 		p := &gp[parent]
 		p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
 		p.seen = true
@@ -331,6 +346,16 @@ open_group :: proc(e: ^Effects, c: i32) {
 	// the clips around the group's box: they cut its composite
 	set_clip(e, b.clip)
 	og.floor = len(e.chain)
+	plane := .Plane in g.effects
+	if plane {
+		set_xform(e, lay.NONE)
+		if !open_plane(e, c, &og, gp.bounds) {
+			og.hidden = true
+			e.hide += 1
+			append(&e.open, og)
+			return
+		}
+	}
 	space := b.space
 	off := e.v.offsets[space] + e.origin
 	box_xf := l.spaces[space].xform
@@ -374,7 +399,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 	}
 	blend := draw.Blend_Mode.Normal
 	if .Blend in g.effects && effects_settings.blend_modes { blend = draw.Blend_Mode(cs.mix_blend_mode) }
-	alpha := g.alpha
+	alpha := plane ? f32(1) : g.alpha   // a plane is faded when it is composited
 	isolate := .Isolate in g.effects && effects_settings.blend_modes
 	masked := .Mask in g.effects && effects_settings.masks
 	layer := (filters != nil || blend != .Normal || isolate || masked || (alpha < 1 && page_render.settings.opacity_layers && gp.units > 1)) && gp.seen && !lay.rect_empty(gp.bounds)
@@ -404,6 +429,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 @(private)
 close_group :: proc(e: ^Effects) {
 	og := pop(&e.open)
+	if og.hidden { e.hide -= 1; pop_chain_to(e, og.floor); return }
 	if og.skip { e.fxc.skip -= 1 }
 	pop_chain_to(e, og.floor)
 	if og.mask && !og.skip && !fx_cache_skipping(e) {
@@ -414,6 +440,7 @@ close_group :: proc(e: ^Effects) {
 	}
 	if og.layer { draw.pop_layer(e.dc) } else if og.alpha { draw.pop_alpha(e.dc) }
 	if og.shape { draw.pop_clip(e.dc) }
+	if og.plane { close_plane(e, &og) }
 }
 
 #assert(len(draw.Blend_Mode) == len(style.Blend_Mode))

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>3D transforms</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 16px 24px 40px; font-family: system-ui, sans-serif; font-size: 15px; color: light-dark(#1d2433, #c9d1e3); background: light-dark(#f4f6fb, #0d1017); }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  h2 { font-size: 15px; margin: 0 0 4px; }
+  p.note { margin: 0 0 18px; max-width: 760px; line-height: 1.45; color: light-dark(#596278, #8993ad); }
+  .row { display: flex; flex-wrap: wrap; gap: 28px 40px; align-items: flex-start; margin-bottom: 26px; }
+  .cell { width: 260px; }
+  .cell p { margin: 6px 0 0; font-size: 13px; line-height: 1.35; color: light-dark(#596278, #8993ad); }
+  .stage { width: 260px; height: 220px; position: relative; border-radius: 10px; background: light-dark(#e6ebf7, #151b2a); }
+
+  /* a cube: six faces of 120px around the middle of a turning box */
+  .cube-stage { perspective: 600px; }
+  .cube { position: absolute; left: 70px; top: 50px; width: 120px; height: 120px; transform-style: preserve-3d; animation: spin 9s linear infinite; }
+  .face { position: absolute; width: 120px; height: 120px; box-sizing: border-box; border: 2px solid rgba(255, 255, 255, 0.7);
+          display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: bold; color: #fff; }
+  .f1 { transform: translateZ(60px); background: rgba(224, 49, 49, 0.88); }
+  .f2 { transform: rotateY(90deg) translateZ(60px); background: rgba(47, 158, 68, 0.88); }
+  .f3 { transform: rotateY(180deg) translateZ(60px); background: rgba(25, 113, 194, 0.88); }
+  .f4 { transform: rotateY(-90deg) translateZ(60px); background: rgba(240, 140, 0, 0.88); }
+  .f5 { transform: rotateX(90deg) translateZ(60px); background: rgba(156, 54, 181, 0.88); }
+  .f6 { transform: rotateX(-90deg) translateZ(60px); background: rgba(12, 166, 120, 0.88); }
+  @keyframes spin { from { transform: rotateX(-22deg) rotateY(0deg); } to { transform: rotateX(-22deg) rotateY(360deg); } }
+
+  /* a card that turns over: the two faces hide their backs */
+  .flip-stage { perspective: 700px; }
+  .flip { position: absolute; left: 50px; top: 25px; width: 160px; height: 170px; transform-style: preserve-3d; transition: transform 0.9s cubic-bezier(.3, .1, .2, 1); }
+  .flip-stage:hover .flip { transform: rotateY(180deg); }
+  .side { position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+          font-weight: bold; color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+  .front { background: linear-gradient(135deg, #ff8787, #e03131); }
+  .back { background: linear-gradient(135deg, #74c0fc, #1971c2); transform: rotateY(180deg); }
+  .side small { font-weight: normal; opacity: 0.85; margin-top: 4px; }
+
+  /* a carousel: seven panels on a ring */
+  .ring-stage { perspective: 800px; perspective-origin: 50% 40%; overflow: hidden; }
+  .ring { position: absolute; left: 95px; top: 60px; width: 70px; height: 100px; transform-style: preserve-3d; animation: ring 14s linear infinite; }
+  .panel { position: absolute; width: 70px; height: 100px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; color: #fff;
+           box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5) inset; }
+  .panel:nth-child(1) { transform: rotateY(0deg) translateZ(110px); background: #e8590c; }
+  .panel:nth-child(2) { transform: rotateY(51.4deg) translateZ(110px); background: #f08c00; }
+  .panel:nth-child(3) { transform: rotateY(102.8deg) translateZ(110px); background: #74b816; }
+  .panel:nth-child(4) { transform: rotateY(154.3deg) translateZ(110px); background: #0ca678; }
+  .panel:nth-child(5) { transform: rotateY(205.7deg) translateZ(110px); background: #1c7ed6; }
+  .panel:nth-child(6) { transform: rotateY(257.1deg) translateZ(110px); background: #7048e8; }
+  .panel:nth-child(7) { transform: rotateY(308.6deg) translateZ(110px); background: #c2255c; }
+  @keyframes ring { from { transform: rotateX(-8deg) rotateY(0deg); } to { transform: rotateX(-8deg) rotateY(-360deg); } }
+
+  /* the same turned box under three perspective origins */
+  .po { perspective: 300px; display: flex; align-items: center; justify-content: center; }
+  .po .slab { width: 120px; height: 120px; border-radius: 8px; background: linear-gradient(135deg, #ffd43b, #f08c00); transform: rotateY(40deg); box-shadow: inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+              display: flex; align-items: center; justify-content: center; font-weight: bold; color: #5c3b00; }
+  .po.a { perspective-origin: 0% 50%; } .po.b { perspective-origin: 50% 50%; } .po.c { perspective-origin: 100% 0%; }
+  .small { width: 260px; height: 160px; }
+
+  /* text on a tilted plane (rotated, not mirrored) and a hover target that follows the projection */
+  .tilt-stage { perspective: 500px; }
+  .tilt { position: absolute; left: 30px; top: 40px; width: 200px; padding: 14px; box-sizing: border-box; background: light-dark(#fff, #1d2540); border: 2px solid #4c6ef5; border-radius: 10px;
+          transform: rotateX(32deg) rotateY(-24deg); line-height: 1.35; transition: background 0.2s; }
+  .tilt:hover { background: light-dark(#fff3bf, #3b3150); }
+  .tilt b { color: #c2255c; }
+</style>
+</head>
+<body>
+<h1>3D transforms</h1>
+<p class="note">Each element with a 3D transform is drawn into its own layer and projected by the GPU with real perspective. Elements whose parent has
+<code>transform-style: preserve-3d</code> share one space and are sorted by depth; <code>backface-visibility: hidden</code> hides the back of a face.
+Hover the red card to turn it over.</p>
+<div class="row">
+  <div class="cell"><h2>Cube</h2><div class="stage cube-stage"><div class="cube">
+    <div class="face f1">1</div><div class="face f2">2</div><div class="face f3">3</div><div class="face f4">4</div><div class="face f5">5</div><div class="face f6">6</div></div></div>
+    <p><code>preserve-3d</code>, six faces, <code>rotateX</code> <code>rotateY</code> <code>translateZ</code>, animated.</p></div>
+  <div class="cell"><h2>Flip card</h2><div class="stage flip-stage"><div class="flip">
+    <div class="side front">Front<small>hover me</small></div><div class="side back">Back<small>backface-visibility</small></div></div></div>
+    <p>Two faces back to back; each hides its back.</p></div>
+  <div class="cell"><h2>Carousel</h2><div class="stage ring-stage"><div class="ring">
+    <div class="panel">1</div><div class="panel">2</div><div class="panel">3</div><div class="panel">4</div><div class="panel">5</div><div class="panel">6</div><div class="panel">7</div></div></div>
+    <p>Seven panels on a ring of 110px radius; <code>perspective-origin: 50% 40%</code>.</p></div>
+</div>
+<div class="row">
+  <div class="cell"><h2>perspective-origin: left</h2><div class="stage small po a"><div class="slab">0% 50%</div></div></div>
+  <div class="cell"><h2>perspective-origin: center</h2><div class="stage small po b"><div class="slab">50% 50%</div></div></div>
+  <div class="cell"><h2>perspective-origin: top right</h2><div class="stage small po c"><div class="slab">100% 0%</div></div></div>
+  <div class="cell"><h2>Text on a plane</h2><div class="stage tilt-stage"><div class="tilt"><b>perspective(500px)</b><br>rotateX(32deg) rotateY(-24deg). The text is rasterized in the plane, then projected: hover it, the hit area follows the projection.</div></div></div>
+</div>
+</body>
+</html>

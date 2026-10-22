@@ -138,8 +138,8 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 		for idx in v.visible {
 			it := &l.items[idx]
 			if !effects_for(&fx, it) { continue }
-			off := v.offsets[it.space] + origin
-			paint_item(l, dc, d, &v, it, draw.rect_shift(dr(it.rect), off), off, origin)
+			off := v.offsets[it.space] + fx.origin
+			paint_item(l, dc, d, &v, it, draw.rect_shift(dr(it.rect), off), off, fx.origin)
 		}
 		effects_end(&fx)
 	}

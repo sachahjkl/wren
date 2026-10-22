@@ -142,8 +142,16 @@ interp :: proc(dst, a, b: rawptr, ti: ^runtime.Type_Info, t: f64, ctx: ^Interp_C
 		if !x.set && !y.set { (^Rotate_Value)(dst)^ = x; return true }
 		if !x.set { x = Rotate_Value{set = true, axis = y.axis} }
 		if !y.set { y = Rotate_Value{set = true, axis = x.axis} }
-		r := Rotate_Value{set = true, angle = lerp32(x.angle, y.angle, t)}
-		for k in 0 ..< 3 { r.axis[k] = lerp32(x.axis[k], y.axis[k], t) }
+		ox := Transform_Op{v = {x.angle, 0, 0, 0, 0, 0}, axis = x.axis}
+		oy := Transform_Op{v = {y.angle, 0, 0, 0, 0, 0}, axis = y.axis}
+		r := Rotate_Value{set = true}
+		if axis, same := rotate_axes_match(ox, oy); same {
+			r.angle, r.axis = lerp32(x.angle, y.angle, t), axis
+		} else {
+			// other axes: the shortest turn between the two rotations (CSS Transforms 2 §10.1.5: through the matrices)
+			q := quat_slerp(quat_from_axis_angle(x.axis, x.angle), quat_from_axis_angle(y.axis, y.angle), t)
+			r.axis, r.angle = quat_axis_angle(q)
+		}
 		(^Rotate_Value)(dst)^ = r
 		return true
 	case Scale_Value:
@@ -339,10 +347,11 @@ interp_shadows :: proc(a, b: []Shadow, t: f64, ctx: ^Interp_Ctx) -> ([]Shadow, b
 identity_op :: proc(kind: Transform_Kind) -> Transform_Op {
 	switch kind {
 	case .Translate: return op_translate(px(0), px(0))
-	case .Scale: return Transform_Op{kind = .Scale, v = {1, 1, 0, 0, 0, 0}}
-	case .Rotate: return Transform_Op{kind = .Rotate}
+	case .Scale: return Transform_Op{kind = .Scale, v = {1, 1, 1, 0, 0, 0}}
+	case .Rotate: return Transform_Op{kind = .Rotate, axis = {0, 0, 1}}
 	case .Skew: return Transform_Op{kind = .Skew}
 	case .Perspective: return Transform_Op{kind = .Perspective}
+	case .Matrix3D: return Transform_Op{kind = .Matrix3D, m3 = IDENTITY_MATRIX4}
 	case .Matrix, .Mix: return Transform_Op{kind = .Matrix, v = IDENTITY_MATRIX}
 	}
 	return Transform_Op{kind = .Matrix, v = IDENTITY_MATRIX}
@@ -357,6 +366,29 @@ box_relative :: proc(ops: []Transform_Op) -> bool {
 	return false
 }
 
+// Two rotations interpolate by angle when they turn about the same axis (a rotation by 0 turns about any).
+@(private)
+rotate_axes_match :: proc(a, b: Transform_Op) -> (axis: [3]f32, ok: bool) {
+	norm :: proc(v: [3]f32) -> [3]f32 {
+		if v == {} { return {0, 0, 1} }
+		l := math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+		return v / l
+	}
+	na, nb := norm(a.axis), norm(b.axis)
+	if a.v[0] == 0 { return nb, true }
+	if b.v[0] == 0 { return na, true }
+	for k in 0 ..< 3 { if abs(na[k] - nb[k]) > 1e-5 { return {}, false } }
+	return a.axis, true
+}
+
+// Can the two functions be interpolated one with the other (CSS Transforms 2 §10.1)? Otherwise they are matrices.
+@(private)
+ops_match :: proc(a, b: Transform_Op) -> bool {
+	if a.kind != b.kind || a.kind == .Mix || a.kind == .Matrix3D { return false }
+	if a.kind == .Rotate { _, ok := rotate_axes_match(a, b); return ok }
+	return true
+}
+
 @(private)
 interp_op :: proc(a, b: Transform_Op, t: f64, ctx: ^Interp_Ctx) -> (Transform_Op, bool) {
 	if a.kind != b.kind { return {}, false }
@@ -364,13 +396,30 @@ interp_op :: proc(a, b: Transform_Op, t: f64, ctx: ^Interp_Ctx) -> (Transform_Op
 	switch a.kind {
 	case .Translate:
 		if !interp_length(&r.l[0], a.l[0], b.l[0], t, ctx) || !interp_length(&r.l[1], a.l[1], b.l[1], t, ctx) { return {}, false }
-	case .Scale, .Rotate, .Skew:
+		r.z = lerp32(a.z, b.z, t)
+	case .Scale:
+		for k in 0 ..< 3 { r.v[k] = lerp32(a.v[k], b.v[k], t) }
+	case .Rotate:
+		axis, ok := rotate_axes_match(a, b)
+		if !ok { return {}, false }
+		r.v[0] = lerp32(a.v[0], b.v[0], t)
+		r.axis = axis
+	case .Skew:
 		for k in 0 ..< 2 { r.v[k] = lerp32(a.v[k], b.v[k], t) }
 	case .Perspective:
-		r = t < 0.5 ? a : b
+		// 1 / distance is what is linear (none is 1 / infinity = 0)
+		ia := a.v[0] > 0 ? 1 / max(a.v[0], 1) : 0
+		ib := b.v[0] > 0 ? 1 / max(b.v[0], 1) : 0
+		inv := lerp32(ia, ib, t)
+		r.v[0] = inv > 0 ? 1 / inv : 0
 	case .Matrix:
 		m := recompose(decomposed_lerp(decompose(Matrix{a.v[0], a.v[1], a.v[2], a.v[3], a.v[4], a.v[5]}), decompose(Matrix{b.v[0], b.v[1], b.v[2], b.v[3], b.v[4], b.v[5]}), f32(t)))
 		r.v = m
+	case .Matrix3D:
+		da, oka := decompose4(a.m3)
+		db, okb := decompose4(b.m3)
+		if !oka || !okb { return {}, false }
+		r.m3 = recompose4(decomposed4_lerp(da, db, t))
 	case .Mix: return {}, false
 	}
 	return r, true
@@ -394,7 +443,7 @@ interp_transforms :: proc(a_in, b_in: []Transform_Op, t: f64, ctx: ^Interp_Ctx) 
 		b = id
 	}
 	prefix := 0
-	for prefix < min(len(a), len(b)) && a[prefix].kind == b[prefix].kind && a[prefix].kind != .Mix { prefix += 1 }
+	for prefix < min(len(a), len(b)) && ops_match(a[prefix], b[prefix]) { prefix += 1 }
 	rest := prefix < len(a) || prefix < len(b)
 	out := make([dynamic]Transform_Op, ctx.alloc)
 	for i in 0 ..< prefix {
@@ -410,6 +459,12 @@ interp_transforms :: proc(a_in, b_in: []Transform_Op, t: f64, ctx: ^Interp_Ctx) 
 			mix.to = clone_ops(rb, ctx.alloc)
 			mix.t = f32(t)
 			append(&out, Transform_Op{kind = .Mix, mix = mix})
+		} else if ops_are_3d(ra) || ops_are_3d(rb) {
+			da, oka := decompose4(ops_matrix4(ra, 0, 0))
+			db, okb := decompose4(ops_matrix4(rb, 0, 0))
+			if !oka || !okb { return nil, false }
+			m := recompose4(decomposed4_lerp(da, db, t))
+			if m4_is_2d(m, 0) { append(&out, Transform_Op{kind = .Matrix, v = m4_flatten(m)}) } else { append(&out, Transform_Op{kind = .Matrix3D, m3 = m}) }
 		} else {
 			m := recompose(decomposed_lerp(decompose(ops_matrix(ra, 0, 0)), decompose(ops_matrix(rb, 0, 0)), f32(t)))
 			append(&out, Transform_Op{kind = .Matrix, v = m})
