@@ -330,7 +330,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.about_pages", title = "Built-in pages", category = "Browser", keywords = "about:about list", url = ABOUT_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, ABOUT_URL) }})
 	add(r, {name = "browser.about", title = "About Wren", category = "Browser", keywords = "about:wren version build info licence license registered support credits third-party", url = WREN_URL,
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, WREN_URL) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_open(app, WREN_URL) }})
 	add(r, {name = "browser.about_licenses", title = "Third-party licences", category = "Browser", keywords = "about:licenses credits slug open source notices", url = LICENSES_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, LICENSES_URL) }})
 	add(r, {name = "browser.about_cache", title = "HTTP cache", category = "Browser", keywords = "about:cache stored responses statistics", url = CACHE_URL,
