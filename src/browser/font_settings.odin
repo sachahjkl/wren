@@ -30,6 +30,12 @@ FONT_PREFS := [?]config.Def{
 		description = "Color pages (emoji) of the glyph atlas kept before the least recently used one is reused; 4 bytes per texel."},
 	{name = "font.shape_cache_words", kind = .Int, default = {i = 32768}, bounded = true, min = 0, max = 10_000_000,
 		description = "Shaped words kept by the text cache (the layout measures the same words over and over, from several threads). 0: shape every word every time."},
+	{name = "text.renderer", kind = .String, default = {s = "slug"}, choices = {"atlas", "slug"},
+		description = "How glyphs reach the screen. atlas: bitmaps rasterized by DirectWrite (hinted, cached per size and subpixel position). slug: the Slug algorithm (Eric Lengyel) draws each glyph from its outline curves on the GPU, with no bitmaps: sharp at any page zoom, rotation or transform, and exact subpixel positions. Color glyphs (emoji) always use the atlas."},
+	{name = "text.slug.pages", kind = .Int, default = {i = 128}, bounded = true, min = 1, max = 2048,
+		description = "Glyph pages of the Slug renderer kept before the least recently used one is reused (a page a frame still draws from is never reused: one more is made). A page holds about a hundred Latin glyphs; each takes 48 KB of video memory (as much of main memory), up to 6 MB at the default."},
+	{name = "text.slug.tolerance", kind = .Float, default = {f = 0.25}, bounded = true, min = 0.015, max = 16, unit = "1/1000 em",
+		description = "Slug: the largest distance between a cubic outline (CFF / OpenType fonts) and the quadratic curves drawn instead, in thousandths of the em (0.25: a hundredth of a pixel at 40 px). TrueType outlines are quadratic already and are never approximated."},
 	{name = "font.family.emoji", kind = .String, default = {s = "Segoe UI Emoji"}, description = "Font used for the generic family `emoji`."},
 	{name = "font.family.math", kind = .String, default = {s = "Cambria Math"}, description = "Font used for the generic family `math`."},
 	{name = "font.family.fangsong", kind = .String, default = {s = "FangSong"}, description = "Font used for the generic family `fangsong`."},
@@ -59,10 +65,13 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 	s.max_gray_pages = int(config.int_of(p, "font.atlas.gray_pages"))
 	s.max_color_pages = int(config.int_of(p, "font.atlas.color_pages"))
 	s.word_cache = int(config.int_of(p, "font.shape_cache_words"))
+	s.text_renderer = config.string_of(p, "text.renderer") == "slug" ? .Slug : .Atlas
+	s.slug_pages = int(config.int_of(p, "text.slug.pages"))
+	s.slug_tolerance = f32(config.float_of(p, "text.slug.tolerance")) / 1000
 	return s
 }
 
-@(private) font_watch: int
+@(private) font_watch, text_watch: int
 
 // Follows the preferences: glyph bitmaps are made again with new rendering settings, layouts again when what text
 // measures may change (the system fallback), the generic families are resolved again.
@@ -73,21 +82,25 @@ font_settings_init :: proc(app: ^App) {
 		a := (^App)(user)
 		host.post(&a.loop, proc(data: rawptr) { app := (^App)(data); app.frames_requested = max(app.frames_requested, 2) }, a)
 	}, app)
-	font_watch = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
-		a := (^App)(user)
-		old := a.fonts.settings
-		s := font_settings_from_prefs(p)
-		font.set_settings(&a.fonts, s)
-		if s.subpixel_steps != old.subpixel_steps || s.rendering != old.rendering || s.grid_fit != old.grid_fit || s.color_glyphs != old.color_glyphs {
-			font.clear_atlas(&a.fonts)
-		}
-		if s.system_fallback != old.system_fallback {
-			font.clear_word_cache(&a.fonts)
-			for t in a.tabs { t.layout.valid = false }
-		}
-		font_generics_apply(a)
-		a.frames_requested = max(a.frames_requested, 2)
-	}, app)
+	font_watch = config.watch(&app.prefs, "font.", font_prefs_changed, app)
+	text_watch = config.watch(&app.prefs, "text.", font_prefs_changed, app)
+}
+
+@(private)
+font_prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
+	a := (^App)(user)
+	old := a.fonts.settings
+	s := font_settings_from_prefs(p)
+	font.set_settings(&a.fonts, s)
+	if s.subpixel_steps != old.subpixel_steps || s.rendering != old.rendering || s.grid_fit != old.grid_fit || s.color_glyphs != old.color_glyphs {
+		font.clear_atlas(&a.fonts)
+	}
+	if s.system_fallback != old.system_fallback {
+		font.clear_word_cache(&a.fonts)
+		for t in a.tabs { t.layout.valid = false }
+	}
+	font_generics_apply(a)
+	a.frames_requested = max(a.frames_requested, 2)
 }
 
 @(private)
