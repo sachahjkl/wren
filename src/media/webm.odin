@@ -26,6 +26,8 @@ EBML_ID :: enum u32 {
 	Content_Encodings = 0x6D80,
 	Cluster_Timecode = 0xE7, Simple_Block = 0xA3, Block_Group = 0xA0, Block = 0xA1, Block_Duration = 0x9B,
 	Reference_Block = 0xFB, Discard_Padding = 0x75A2,
+	// children of a BlockGroup this parser has no use for (they must not end the group before its Block_Duration)
+	Block_Additions = 0x75A1, Reference_Priority = 0xFA, Reference_Virtual = 0xFD, Codec_State = 0xA4, Slices = 0x8E, Block_Virtual = 0xA2,
 }
 
 @(private = "file")
@@ -90,6 +92,7 @@ webm_reset_parser :: proc(d: ^Webm_Demuxer) {
 	clear(&d.buf)
 	delete(d.group.data, base.process_allocator())
 	d.group = {}
+	d.group_end = 0
 	d.error = .None
 }
 
@@ -194,7 +197,7 @@ webm_element :: proc(d: ^Webm_Demuxer) {
 	// a BlockGroup's Block waits for the rest of its group: anything that is not part of one ends it
 	if d.group.active {
 		#partial switch EBML_ID(d.id) {
-		case .Block, .Block_Duration, .Reference_Block, .Discard_Padding:
+		case .Block, .Block_Duration, .Reference_Block, .Discard_Padding, .Block_Additions, .Reference_Priority, .Reference_Virtual, .Codec_State, .Slices, .Block_Virtual:
 		case: webm_emit_group(d)
 		}
 	}
@@ -247,7 +250,11 @@ webm_collected :: proc(d: ^Webm_Demuxer) {
 	case .Info: webm_info(d, b)
 	case .Tracks: webm_tracks(d, b)
 	case .Cluster_Timecode: d.cluster_tc = i64(read_uint(b))
-	case .Simple_Block: webm_block(d, b, true, d.cluster_tc, -1, false, 0)
+	case .Simple_Block:
+		// the keyframe flag is the top bit of the block's flags byte (after the track number and the 16-bit timecode)
+		_, nl, _ := read_size(b)
+		key := nl > 0 && len(b) > nl + 2 && b[nl + 2] & 0x80 != 0
+		webm_block(d, b, key, d.cluster_tc, -1, false, 0)
 	case .Block:
 		// the rest of the group (duration, references) follows: emitted when the group ends
 		delete(d.group.data, base.process_allocator())
@@ -442,6 +449,28 @@ webm_audio :: proc(b: []u8, info: ^Track) {
 	}
 }
 
+// The duration of an Opus packet from its table of contents (RFC 6716 section 3.1); 0 when it is too short to say.
+opus_packet_duration :: proc(p: []u8) -> Time {
+	if len(p) < 1 { return 0 }
+	config := int(p[0] >> 3)
+	silk := [4]int{10000, 20000, 40000, 60000}
+	celt := [4]int{2500, 5000, 10000, 20000}
+	frame_us: int   // microseconds
+	switch {
+	case config < 12: frame_us = silk[config & 3]
+	case config < 16: frame_us = config & 1 == 0 ? 10000 : 20000
+	case: frame_us = celt[config & 3]
+	}
+	count := 1
+	switch p[0] & 3 {
+	case 1, 2: count = 2
+	case 3:
+		if len(p) < 2 { return 0 }
+		count = int(p[1] & 0x3f)
+	}
+	return Time(frame_us * count) * 1000
+}
+
 // A Block or SimpleBlock payload: track number, relative timecode, flags, then the (laced) frames.
 @(private = "file")
 webm_block :: proc(d: ^Webm_Demuxer, b: []u8, keyframe: bool, cluster_tc: i64, duration: i64, is_group: bool, discard_ns: i64) {
@@ -515,12 +544,15 @@ webm_block :: proc(d: ^Webm_Demuxer, b: []u8, keyframe: bool, cluster_tc: i64, d
 		heap := base.process_allocator()
 		data := make([]u8, len(f), heap)
 		copy(data, f)
-		s := Sample{dts = t, pts = t, duration = each_dur, config = d.config, data = data}
+		// a laced block of frames with no duration given: Opus says how long each packet is, so they do not share one time
+		fd := each_dur
+		if fd == 0 && len(frames) > 1 && tr.info.codec == .Opus { fd = opus_packet_duration(f) }
+		s := Sample{dts = t, pts = t, duration = fd, config = d.config, data = data}
 		if keyframe && i == 0 || tr.info.kind == .Audio { s.flags += {.Keyframe} }
-		if t + each_dur <= 0 && each_dur > 0 { s.flags += {.Pre_Roll} }
+		if t + fd <= 0 && fd > 0 { s.flags += {.Pre_Roll} }
 		if i == len(frames) - 1 && discard_ns > 0 { s.discard_end = Time(discard_ns) }
 		if d.sink.sample != nil { d.sink.sample(d.sink.user, ti, s) } else { delete(data, heap) }
-		t += each_dur
+		t += fd
 	}
 	_ = is_group
 }

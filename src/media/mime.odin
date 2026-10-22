@@ -110,6 +110,18 @@ codec_supported :: proc(c: Codec, s: Settings) -> bool {
 	return false
 }
 
+// Which kinds of track a type names: video/* with no codecs both, audio/* audio only, with codecs the kinds of those.
+type_tracks :: proc(t: Parsed_Type) -> (video, audio: bool) {
+	if len(t.codecs) == 0 { return t.video, true }
+	for c in t.codecs {
+		#partial switch c {
+		case .H264, .HEVC, .VP8, .VP9, .AV1: video = t.video
+		case: audio = true
+		}
+	}
+	return
+}
+
 // canPlayType / isTypeSupported: Probably when the container and every codec named are supported, Maybe when the container
 // is and no codec is named, No otherwise.
 type_support :: proc(type: string, s: Settings) -> Support {
@@ -126,6 +138,8 @@ type_support :: proc(type: string, s: Settings) -> Support {
 		if !codec_supported(c, s) { return .No }
 		// a codec in a container that cannot hold it
 		if t.container == .WebM && (c == .H264 || c == .HEVC || c == .AAC || c == .MP3) { return .No }
+		// a video codec in an audio/* type
+		if !t.video && (c == .H264 || c == .HEVC || c == .VP8 || c == .VP9 || c == .AV1) { return .No }
 		if t.container == .MP4 && (c == .VP8) { return .No }
 	}
 	if len(t.codecs) == 0 { return .Maybe }

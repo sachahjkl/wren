@@ -52,7 +52,8 @@ test("a progressive MP4: metadata, events, ranges", async () => {
   eq(v.videoWidth, 320, "videoWidth");
   eq(v.videoHeight, 180, "videoHeight");
   ok(v.currentSrc.endsWith("/video/f/clip.mp4"), "currentSrc " + v.currentSrc);
-  ok(await until(() => v.readyState >= 4, "canplaythrough"), "enough data");
+  ok(await until(() => v.readyState >= 4, "enough data"), "enough data");
+  await until(() => events.includes("canplaythrough"), "the canplaythrough event");
   ok(events.indexOf("loadstart") < events.indexOf("loadedmetadata") && events.indexOf("loadedmetadata") < events.indexOf("loadeddata") &&
      events.indexOf("loadeddata") < events.indexOf("canplay"), "event order " + events.join(","));
   ok(events.includes("canplaythrough") && events.includes("durationchange"), "canplaythrough and durationchange");
@@ -163,6 +164,44 @@ test("load() restarts, removing src empties", async () => {
   eq(v.readyState, 0, "readyState back to 0");
   ok(Number.isNaN(v.duration), "duration NaN");
   eq(v.buffered.length, 0, "nothing buffered");
+  v.remove();
+});
+
+test("what is offered: honest about the decoders of this machine", () => {
+  const v = document.createElement("video");
+  // the same answer from canPlayType and isTypeSupported, and none for what no decoder here exists for
+  const types = ['video/webm; codecs="vp8"', 'video/webm; codecs="vp8, vorbis"', 'video/webm; codecs="vp9"', 'video/webm; codecs="vp09.00.10.08, opus"',
+    'video/mp4; codecs="hvc1.1.6.L93.B0"', 'video/mp4; codecs="hev1.1.6.L93.B0"', 'video/webm; codecs="av01.0.05M.08, opus"', 'video/mp4; codecs="av01.0.05M.08"',
+    'audio/webm; codecs="opus"', 'audio/mp4; codecs="opus"', 'audio/webm; codecs="vorbis"', 'audio/webm; codecs="av01.0.05M.08"', 'video/webm; codecs="avc1.64001f"'];
+  const answers = types.map(t => t + " -> " + (v.canPlayType(t) || '""') + " / " + MediaSource.isTypeSupported(t));
+  console.log("types: " + answers.join(" | "));
+  for (const t of types) eq(MediaSource.isTypeSupported(t), v.canPlayType(t) === "probably", "isTypeSupported agrees with canPlayType: " + t);
+  eq(v.canPlayType('video/webm; codecs="vp8"'), "", "no VP8 decoder");
+  eq(v.canPlayType('video/webm; codecs="vp8, vorbis"'), "", "no VP8, no Vorbis");
+  eq(v.canPlayType('audio/webm; codecs="vorbis"'), "", "no Vorbis decoder");
+  eq(v.canPlayType('audio/webm; codecs="av01.0.05M.08"'), "", "a video codec in audio/webm");
+  eq(v.canPlayType('video/webm; codecs="avc1.64001f"'), "", "H.264 in WebM");
+  eq(v.canPlayType('audio/webm; codecs="opus"'), "probably", "Opus in WebM");
+  eq(v.canPlayType("video/webm"), "maybe", "WebM without codecs");
+});
+
+test("WebM (AV1 + Opus) plays to the end", async () => {
+  const { v } = video("/video/f/clip.webm");
+  if (!await until(() => v.readyState >= 3 || v.error, "canplay")) return;
+  if (v.error) { console.log("ok no AV1 decoder here: error " + v.error.code); v.remove(); return; }
+  await v.play();
+  ok(await until(() => v.currentTime > 0.3, "the position moves"), "WebM plays: " + v.currentTime);
+  v.currentTime = 3.2;
+  await until(() => !v.seeking, "seek in WebM");
+  ok(Math.abs(v.currentTime - 3.2) < 0.4, "seeked to a keyframe and on: " + v.currentTime);
+  ok(await until(() => v.ended, "ended"), "WebM reaches its end");
+  v.remove();
+});
+
+test("a live WebM (unknown sizes)", async () => {
+  const { v } = video("/video/f/clip_live.webm");
+  ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
+  if (!v.error) ok(v.videoWidth === 320, "videoWidth " + v.videoWidth);
   v.remove();
 });
 
