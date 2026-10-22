@@ -396,6 +396,8 @@ Box_Rects :: struct {
 	inverse:     Matrix,              // the other way (identity when the transform is singular)
 	quad:        [4]Vec2,             // corners of the drawn border box: top-left, top-right, bottom-right, bottom-left
 	bounds:      Rect,                // bounds of the drawn border box (= border without a transform)
+	projective:  bool,                // in a 3D plane: `inverse` is only the best affine map, `unproject` is exact
+	unproject:   [9]f32,              // 3x3 (acting on x, y, 1, then the divide by w): where the box is drawn -> its untransformed rects
 	fixed:   bool,                    // inside a position: fixed box: moves with the viewport
 	visible: bool,                    // visibility: visible
 }
@@ -404,6 +406,9 @@ Box_Rects :: struct {
 // a rotated text field means for its caret.
 box_point_to_local :: proc(r: Box_Rects, p: Vec2) -> Vec2 {
 	if !r.transformed { return p }
+	if r.projective {
+		if q, ok := h3_apply(r.unproject, p); ok { return q }
+	}
 	return mat_apply(r.inverse, p)
 }
 
@@ -434,8 +439,8 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 	r.bounds = q
 	if pl := l.spaces[b.space].plane; pl != NONE {
 		// in a 3D plane: the corners go through the plane's projection (perspective divide included); `transform` is the
-		// affine map that fits the first three corners (what a click on a tilted field is converted with, nearly exact for
-		// the small tilts of an interactive card), `bounds` the box of the quad (CSS Transforms 2: getBoundingClientRect)
+		// affine map that fits the first three corners (a stand-in for callers that want a 2D matrix; `unproject` is the exact
+		// way back, see box_point_to_local), `bounds` the box of the quad (CSS Transforms 2: getBoundingClientRect)
 		ds := Vec2{0, doc_scroll}
 		corners := [4]Vec2{q.min, {q.max.x, q.min.y}, q.max, {q.min.x, q.max.y}}
 		r.transformed = true
@@ -459,6 +464,11 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 			m[5] = r.quad[0].y - (m[1] * x0.x + m[3] * x0.y)
 			r.transform = m
 			if inv, ok := mat_inverse(m); ok { r.inverse = inv }
+		}
+		// the exact map: a document point -> viewport -> the plane's frame (perspective divide) -> the box's space
+		if !v.singular[b.space] {
+			fwd := h3_mul(h3_from_matrix(Matrix{1, 0, 0, 1, 0, ds.y}), h3_mul(plane_chain_h3(l, &v, pl), h3_mul(h3_from_matrix(v.mats[b.space]), h3_from_matrix(Matrix{1, 0, 0, 1, 0, -ds.y}))))
+			if inv, ok := h3_inverse(fwd); ok { r.projective, r.unproject = true, inv }
 		}
 	} else if !space_plain(l, b.space) {
 		// the view's matrix works on viewport coordinates; these rects are in document coordinates

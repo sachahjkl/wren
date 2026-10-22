@@ -200,6 +200,7 @@ effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
 	if e.hide > 0 { return false }
 	set_clip(e, it.clip)
 	set_xform(e, xf)
+	ctl_plane_for(e, it)
 	return true
 }
 

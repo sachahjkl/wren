@@ -85,6 +85,31 @@ h3_det :: proc(h: [9]f32) -> f32 {
 	return h[0] * (h[4] * h[8] - h[5] * h[7]) - h[1] * (h[3] * h[8] - h[5] * h[6]) + h[2] * (h[3] * h[7] - h[4] * h[6])
 }
 
+h3_mul :: proc(a, b: [9]f32) -> (r: [9]f32) {
+	for i in 0 ..< 3 {
+		for j in 0 ..< 3 {
+			for k in 0 ..< 3 { r[i * 3 + j] += a[i * 3 + k] * b[k * 3 + j] }
+		}
+	}
+	return
+}
+
+// A 2D affine matrix (a b c d e f) as a 3x3 acting on (x, y, 1).
+h3_from_matrix :: proc(m: Matrix) -> [9]f32 { return {m[0], m[2], m[4], m[1], m[3], m[5], 0, 0, 1} }
+
+// A point through a 3x3 (perspective divide). ok = false: behind the viewer or at infinity.
+h3_apply :: proc(h: [9]f32, p: Vec2) -> (Vec2, bool) {
+	w := h[6] * p.x + h[7] * p.y + h[8]
+	if !(w > 1e-9) { return {}, false }
+	return {(h[0] * p.x + h[1] * p.y + h[2]) / w, (h[3] * p.x + h[4] * p.y + h[5]) / w}, true
+}
+
+// Plane `pl`'s frame -> the viewport, through the planes that receive it.
+plane_chain_h3 :: proc(l: ^Layout, v: ^View, pl: i32) -> [9]f32 {
+	h := plane_h3(v.accs[pl])
+	for d := l.spaces[pl].dest; d != NONE; d = l.spaces[d].dest { h = h3_mul(plane_h3(v.accs[d]), h) }
+	return h
+}
 h3_inverse :: proc(h: [9]f32) -> (r: [9]f32, ok: bool) {
 	det := h3_det(h)
 	if !(abs(det) > 1e-18) || math.is_inf(det) { return {}, false }
