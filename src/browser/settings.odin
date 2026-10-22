@@ -35,7 +35,7 @@ PREFS := [?]config.Def{
 	{name = "browser.console.max_lines", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000,
 		description = "Console lines kept per tab."},
 	{name = "browser.console.visible", kind = .Bool, default = {b = false},
-		description = "Show the console strip under the page: the last messages of the page and a field that runs JavaScript in it (Menu > View > Console)."},
+		description = "Open the developer tools on their Console tab at start-up (they are browser.devtools.*; Menu > View > Developer tools, F12)."},
 	{name = "browser.profile.autosave_interval_ms", kind = .Int, default = {i = 30_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "How often changed cookies, HSTS entries and preferences are written to the profile. 0 = only when the browser closes."},
 	{name = "browser.profile.persist", kind = .Bool, default = {b = true},
@@ -95,6 +95,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_memory_prefs(p)   // memory_trim.odin
 	register_license_prefs(p)   // license_shell.odin
 	register_desktop_shell_prefs(p)   // desktop_shell.odin, src/desktop
+	register_devtools_prefs(p)   // devtools.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

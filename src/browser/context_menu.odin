@@ -37,6 +37,7 @@ Context_Request :: struct {
 	image:       string,         // absolute URL (owned)
 	image_node:  base.Handle,
 	editable:    base.Handle,    // the page's text field the menu edits
+	target:      base.Handle,    // the element under the pointer (Inspect)
 	selection:   string,         // owned
 }
 
@@ -79,7 +80,7 @@ resolve :: proc(p: ^page.Page, href: string) -> string {
 @(private = "file")
 page_request :: proc(app: ^App, t: ^Tab, target: base.Handle, pos: [2]f32, keyboard: bool) -> Context_Request {
 	p := t.page
-	r := Context_Request{kind = .Page, pos = pos, keyboard = keyboard, page = p}
+	r := Context_Request{kind = .Page, pos = pos, keyboard = keyboard, page = p, target = target}
 	d := p.doc
 	for cur := target; cur != base.NIL_HANDLE; {
 		n := dom.get(d, cur)
@@ -276,6 +277,10 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		ui.menu_separator()
 		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
 		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { page_info_request = true }
+	}
+	if r.target != base.NIL_HANDLE || groups == 0 {
+		ui.menu_separator()
+		if ui.menu_item("Inspect", "Ctrl+Shift+I").clicked { devtools_inspect(app, t, r.target != base.NIL_HANDLE ? r.target : p.body); return }
 	}
 }
 
