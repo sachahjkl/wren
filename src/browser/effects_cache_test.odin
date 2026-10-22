@@ -1,6 +1,7 @@
 package browser
 
 import "core:log"
+import "core:sync"
 import "core:testing"
 import "toolkit:draw"
 import "toolkit:font"
@@ -131,6 +132,8 @@ html, body { margin: 0; background: #fff; font-size: 13px }
 
 @(test)
 kept_effects_match_direct_drawing :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)   // the compositor's state (compositor_test.odin)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	f := new(Fx_Cx)
@@ -200,6 +203,8 @@ html, body { margin: 0; background: #fff; font-size: 13px }
 // inside a filtered group is kept with the text that masks it.
 @(test)
 kept_masked_effects_match_direct_drawing :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)   // the compositor's state (compositor_test.odin)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	f := new(Fx_Cx)

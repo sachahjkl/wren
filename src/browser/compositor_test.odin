@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:log"
 import "core:math"
 import "core:strings"
+import "core:sync"
 import "core:testing"
 import "toolkit:draw"
 import "toolkit:font"
@@ -171,8 +172,15 @@ ul { margin: 4px 24px } li { text-decoration: underline }
 </body></html>`
 
 // One test: the scenarios switch the compositor on and off (a global setting).
+// The compositor's state is the process's (its layer cache, the frame clock, settle_ms): its tests run one at a time
+// (the test runner runs tests on several threads; one test's frame reset another's cache under it). effects_cache_test.odin
+// takes it too.
+compositor_test_lock: sync.Mutex
+
 @(test)
 compositor_matches_direct_drawing :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	page_render_test_lock()
 	defer page_render_test_unlock()
 	composited_pages(t)
@@ -432,6 +440,8 @@ cx_px :: proc(img: []u8, x, y: int) -> [4]int {
 
 @(test)
 planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
 	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
 		.stage { perspective: 700px; width: 340px; height: 280px; position: relative }
@@ -453,6 +463,8 @@ planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
 // pixels are the ones direct drawing gives.
 @(test)
 planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
 	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
 		.stage { perspective: 500px; width: 340px; height: 280px; position: relative }
@@ -493,6 +505,8 @@ planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
 // above it whatever the tilt (it is drawn after the plane it rides on).
 @(test)
 planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
 	f: Cx
 	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
 		.stage { perspective: 600px; width: 340px; height: 280px; position: relative }
