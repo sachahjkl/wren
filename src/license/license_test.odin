@@ -218,3 +218,11 @@ private_keys_cannot_be_committed :: proc(t: ^testing.T) {
 		testing.expectf(t, strings.contains(string(data), pattern), ".gitignore must keep %q out of the repository", pattern)
 	}
 }
+
+@(test)
+dev_public_key_matches_its_seed :: proc(t: ^testing.T) {
+	s := DEV_SEED
+	k, ok := public_key_of(s[:], context.temp_allocator)
+	testing.expect(t, ok)
+	testing.expect_value(t, k, DEV_PUBLIC_KEY)
+}
