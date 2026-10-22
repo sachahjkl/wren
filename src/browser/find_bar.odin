@@ -6,6 +6,7 @@ package browser
 // the counter says "3/12"; Escape closes the bar and leaves the current match selected (as Chromium does).
 
 import "core:fmt"
+import "core:log"
 import "core:strings"
 import "core:time"
 import "core:unicode"
@@ -221,6 +222,13 @@ find_paint_state :: proc(t: ^Tab) -> ^Find_State {
 }
 
 find_paint_item :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, idx: int, r: draw.Rect) {
+	// reached once with the bar closed (find.page nil: an access violation on the 3D transforms demo, 22/10, cause
+	// not found); the painter's state said otherwise: said once in the log, the highlight is skipped
+	if !find.open || find.page == nil {
+		@(static) said: bool
+		if !said { said = true; log.errorf("find: matches painted with the find bar closed (open %v, page %p)", find.open, find.page) }
+		return
+	}
 	d := find.page.doc
 	node, lo, hi, ok := lay.item_source(l, d, idx)
 	if !ok { return }

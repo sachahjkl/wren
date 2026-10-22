@@ -27,6 +27,7 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:url"
 import "wb:wasm"
+import "wb:tools/crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
 
 DEBUG_INPUT :: #config(DEBUG_INPUT, false)
 
@@ -1082,6 +1083,7 @@ main :: proc() {
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
 	_ = os.make_directory_all(app.profile_dir)
+	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
 	if policy_file == "" { policy_file = "policies.txt" }

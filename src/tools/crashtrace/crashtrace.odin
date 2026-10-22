@@ -28,8 +28,67 @@ foreign kernel32 {
 	RtlVirtualUnwind :: proc(HandlerType: u32, ImageBase: u64, ControlPc: u64, FunctionEntry: ^RUNTIME_FUNCTION, ContextRecord: ^win.CONTEXT, HandlerData: ^rawptr, EstablisherFrame: ^u64, ContextPointers: rawptr) -> rawptr ---
 }
 
+@(private = "file", default_calling_convention = "system")
+foreign kernel32 {
+	GetLocalTime :: proc(lpSystemTime: ^win.SYSTEMTIME) ---
+}
+
 @(private = "file")
 installed: bool
+
+// Where a crash also leaves its report (set_report_dir): "<dir>\crash <date> <time>.txt", the stack as printed, and a
+// ".dmp" next to it (a minidump with the threads and the memory they point to, for WinDbg or Visual Studio). Kept as
+// UTF-16 in fixed buffers: nothing is allocated while the process is crashing.
+@(private = "file")
+report_dir: [512]u16
+@(private = "file")
+report_header: [512]u8
+@(private = "file")
+report_header_len: int
+@(private = "file")
+report_file: win.HANDLE
+
+// The folder where crashes leave their report and minidump (created on the first crash), and a line written at the
+// top of each report (the program and its version). Call it once at startup; until then a crash only prints.
+set_report_dir :: proc(dir: string, header := "") {
+	w := win.utf8_to_utf16(dir, context.temp_allocator)
+	n := min(len(w), len(report_dir) - 1)
+	copy(report_dir[:n], w[:n])
+	report_dir[n] = 0
+	report_header_len = copy(report_header[:], header)
+}
+
+@(private = "file")
+open_report :: proc(info: ^win.EXCEPTION_POINTERS) {
+	if report_dir[0] == 0 { return }
+	win.CreateDirectoryW(cstring16(&report_dir[0]), nil)
+	st: win.SYSTEMTIME
+	GetLocalTime(&st)
+	name: [64]u8
+	stem := fmt.bprintf(name[:], "\\crash %04d-%02d-%02d %02d-%02d-%02d", st.year, st.month, st.day, st.hour, st.minute, st.second)
+	path: [len(report_dir) + 80]u16
+	n := 0
+	for report_dir[n] != 0 { path[n] = report_dir[n]; n += 1 }
+	for c in stem { path[n] = u16(c); n += 1 }
+	ext :: proc(path: []u16, n: int, e: string) { for c, i in e { path[n + i] = u16(c) }; path[n + len(e)] = 0 }
+
+	ext(path[:], n, ".dmp")
+	dump := win.CreateFileW(cstring16(&path[0]), win.GENERIC_WRITE, 0, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+	if dump != win.INVALID_HANDLE_VALUE {
+		mei := win.MINIDUMP_EXCEPTION_INFORMATION{ThreadId = win.GetCurrentThreadId(), ExceptionPointers = info, ClientPointers = false}
+		// MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithThreadInfo
+		win.MiniDumpWriteDump(win.GetCurrentProcess(), win.GetCurrentProcessId(), dump, win.MINIDUMP_TYPE(0x1040), &mei, nil, nil)
+		win.CloseHandle(dump)
+	}
+	ext(path[:], n, ".txt")
+	report_file = win.CreateFileW(cstring16(&path[0]), win.GENERIC_WRITE, win.FILE_SHARE_READ, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
+	if report_file == win.INVALID_HANDLE_VALUE { report_file = nil; return }
+	if report_header_len > 0 {
+		written: win.DWORD
+		win.WriteFile(report_file, &report_header[0], win.DWORD(report_header_len), &written, nil)
+		win.WriteFile(report_file, raw_data(string("\n")), 1, &written, nil)
+	}
+}
 
 @(init, private = "file")
 install :: proc "contextless" () {
@@ -59,6 +118,7 @@ on_crash :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
 	process := win.GetCurrentProcess()
 	win.SymSetOptions(win.SYMOPT_LOAD_LINES | win.SYMOPT_DEFERRED_LOADS)
 	win.SymInitialize(process, nil, true)
+	open_report(info)
 
 	buf: [8192]u8
 	b := fmt.bprintf(buf[:], "\n*** crash: %s (0x%08X) at 0x%X, thread %d", code_name(u32(rec.ExceptionCode)), u32(rec.ExceptionCode), uintptr(rec.ExceptionAddress), win.GetCurrentThreadId())
@@ -86,6 +146,7 @@ on_crash :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
 		}
 	}
 	emit("*** end of the stack\n")
+	if report_file != nil { win.CloseHandle(report_file); report_file = nil }
 	return 0   // EXCEPTION_CONTINUE_SEARCH: the process dies as it would have (exit code, event log)
 }
 
@@ -153,7 +214,8 @@ dump_thread :: proc(thread: win.HANDLE, what: string) {
 	emit("*** end of the stack\n")
 }
 
-// On standard output (where test_all keeps the tools' reports) and standard error, with nothing buffered.
+// On standard output (where test_all keeps the tools' reports), standard error and the crash's report file (when
+// set_report_dir was called), with nothing buffered.
 @(private = "file")
 emit :: proc(s: string) {
 	for h in ([2]win.DWORD{win.STD_OUTPUT_HANDLE, win.STD_ERROR_HANDLE}) {
@@ -162,5 +224,10 @@ emit :: proc(s: string) {
 		written: win.DWORD
 		win.WriteFile(out, raw_data(s), win.DWORD(len(s)), &written, nil)
 		win.WriteFile(out, raw_data(string("\n")), 1, &written, nil)
+	}
+	if report_file != nil {
+		written: win.DWORD
+		win.WriteFile(report_file, raw_data(s), win.DWORD(len(s)), &written, nil)
+		win.WriteFile(report_file, raw_data(string("\r\n")), 2, &written, nil)
 	}
 }
