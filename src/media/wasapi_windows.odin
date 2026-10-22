@@ -10,7 +10,7 @@ package media
 // into frames of audible audio: that is what the media clock follows, so an underrun stalls the clock instead of
 // letting it run on silence.
 
-import "base:runtime"
+import "wb:base"
 import "core:sync"
 import "core:thread"
 import win "core:sys/windows"
@@ -162,7 +162,7 @@ Wasapi :: struct {
 
 audio_open :: proc(rate: int) -> ^Audio_Output {
 	if !mf_startup() { return nil }   // (COM, once)
-	w := new(Wasapi, runtime.heap_allocator())
+	w := new(Wasapi, base.process_allocator())
 	w.rate = rate
 	w.gain = transmute(u32)f32(1)
 	w.applied = 1
@@ -183,7 +183,7 @@ audio_open :: proc(rate: int) -> ^Audio_Output {
 	if !hr_ok(w.client->GetService(&IID_IAudioRenderClient, (^rawptr)(&w.render))) || w.render == nil { return nil }
 	if !hr_ok(w.client->GetService(&IID_IAudioClock, (^rawptr)(&w.clock))) || w.clock == nil { return nil }
 	w.ring_frames = max(rate / 2, 4096)   // half a second
-	w.ring = make([]f32, w.ring_frames * 2, runtime.heap_allocator())
+	w.ring = make([]f32, w.ring_frames * 2, base.process_allocator())
 	w.thread = thread.create_and_start_with_data(rawptr(w), wasapi_thread, context, .High)   // (the context of the creating thread)
 	if w.thread == nil { return nil }
 	ok = true
@@ -205,8 +205,8 @@ wasapi_free :: proc(w: ^Wasapi) {
 	if w.client != nil { w.client->Stop() }
 	com_release(w.clock); com_release(w.render); com_release(w.client); com_release(w.device); com_release(w.enumerator)
 	if w.event != nil { win.CloseHandle(w.event) }
-	delete(w.ring, runtime.heap_allocator())
-	free(w, runtime.heap_allocator())
+	delete(w.ring, base.process_allocator())
+	free(w, base.process_allocator())
 }
 
 @(private)

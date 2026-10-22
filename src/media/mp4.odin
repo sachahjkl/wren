@@ -9,6 +9,7 @@ package media
 // Edit lists (elst) shift the timeline the way players do (an AAC priming delay, a B-frame delay, a delayed start).
 
 import "base:runtime"
+import "wb:base"
 import "core:slice"
 import "core:strings"
 
@@ -396,7 +397,7 @@ mp4_trak :: proc(d: ^Mp4_Demuxer, buf: []u8, trak: Box, t: ^Mp4_Track) -> bool {
 					}
 					mdhd_found = true
 					lang := be16(buf, o)
-					t.info.language = strings.clone(string([]u8{u8(((lang >> 10) & 31) + 0x60), u8(((lang >> 5) & 31) + 0x60), u8((lang & 31) + 0x60)}), runtime.heap_allocator())
+					t.info.language = strings.clone(string([]u8{u8(((lang >> 10) & 31) + 0x60), u8(((lang >> 5) & 31) + 0x60), u8((lang & 31) + 0x60)}), base.process_allocator())
 				case "hdlr":
 					copy(t.handler[:], buf[mb.payload + 8:mb.payload + 12])
 				case "minf":
@@ -500,7 +501,7 @@ read_u32s :: proc(buf: []u8, o, n, limit: int) -> []u32 {
 // The first sample description: codec, size or channels, codec private data.
 @(private = "file")
 mp4_sample_entry :: proc(buf: []u8, e: Box, t: ^Mp4_Track) {
-	heap := runtime.heap_allocator()
+	heap := base.process_allocator()
 	info := &t.info
 	kind := e.type
 	children: int
@@ -919,7 +920,7 @@ mp4_deliver :: proc(d: ^Mp4_Demuxer, win: []u8, off: u64) {
 			continue
 		}
 		if p.size > 0 && d.sink.sample != nil {
-			heap := runtime.heap_allocator()
+			heap := base.process_allocator()
 			data := make([]u8, p.size, heap)
 			copy(data, win[p.offset - off:][:p.size])
 			d.sink.sample(d.sink.user, int(p.track), Sample{dts = p.dts, pts = p.pts, duration = p.dur, flags = p.flags, config = p.config, data = data})

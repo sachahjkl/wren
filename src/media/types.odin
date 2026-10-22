@@ -15,6 +15,7 @@
 package media
 
 import "base:runtime"
+import "wb:base"
 
 // All times are in nanoseconds: exact for every timescale of the containers (90 kHz, 44.1 kHz, 12288...) over days.
 Time :: distinct i64
@@ -77,7 +78,7 @@ Track :: struct {
 }
 
 track_clone :: proc(t: Track) -> Track {
-	allocator := runtime.heap_allocator()
+	allocator := base.process_allocator()
 	c := t
 	c.config = clone_bytes(t.config, allocator)
 	c.codec_string = clone_str(t.codec_string, allocator)
@@ -86,7 +87,7 @@ track_clone :: proc(t: Track) -> Track {
 }
 
 track_destroy :: proc(t: ^Track) {
-	allocator := runtime.heap_allocator()
+	allocator := base.process_allocator()
 	delete(t.config, allocator)
 	delete(t.codec_string, allocator)
 	delete(t.language, allocator)
@@ -127,7 +128,7 @@ Sample :: struct {
 }
 
 sample_destroy :: proc(s: ^Sample) {
-	delete(s.data, runtime.heap_allocator())
+	delete(s.data, base.process_allocator())
 	s.data = nil
 }
 

@@ -11,7 +11,7 @@ package media
 // stops the clock, sees stalls and the end) and present() when it paints; everything else runs on the player's threads.
 // Nothing here knows the DOM: `notify` (any thread) tells the owner that tick() has something new to look at.
 
-import "base:runtime"
+import "wb:base"
 import "core:sync"
 import "core:thread"
 import "core:time"
@@ -89,7 +89,7 @@ Player :: struct {
 }
 
 player_create :: proc(video, audio: ^Track_Store, settings: Player_Settings, notify: proc(user: rawptr), user: rawptr) -> ^Player {
-	p := new(Player, runtime.heap_allocator())
+	p := new(Player, base.process_allocator())
 	p.settings = settings
 	p.video, p.audio = video, audio
 	p.notify, p.user = notify, user
@@ -117,7 +117,7 @@ player_destroy :: proc(p: ^Player) {
 	for &f in p.queue { frame_release(&f) }
 	delete(p.queue)
 	if p.has_cur { frame_release(&p.cur) }
-	free(p, runtime.heap_allocator())
+	free(p, base.process_allocator())
 }
 
 @(private)

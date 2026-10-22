@@ -7,7 +7,7 @@ package media
 // handed to the renderer as it is (Video_Frame.gpu_texture), so a frame never passes through the CPU. Without a
 // device, or when the decoder cannot use it, pictures come out in memory.
 
-import "base:runtime"
+import wbbase "wb:base"
 import "core:mem"
 import "core:sync"
 import "vendor:directx/d3d11"
@@ -127,17 +127,17 @@ mf_video_create :: proc(track: Track, use_gpu := true) -> ^Video_Decoder {
 		if hr_ok(acts[i]->ActivateObject(&IID_IMFTransform, (^rawptr)(&mft))) && mft != nil { break }
 	}
 	if mft == nil { return nil }
-	v := new(MF_Video, runtime.heap_allocator())
+	v := new(MF_Video, wbbase.process_allocator())
 	v.mft = mft
 	v.track = track_clone(track)
 	v.nal_len = track.nal_length_size
 	#partial switch track.codec {
 	case .H264:
 		v.annexb = true
-		v.header = avcc_annexb_header(track.config, runtime.heap_allocator())
+		v.header = avcc_annexb_header(track.config, wbbase.process_allocator())
 	case .HEVC:
 		v.annexb = true
-		v.header = hvcc_annexb_header(track.config, runtime.heap_allocator())
+		v.header = hvcc_annexb_header(track.config, wbbase.process_allocator())
 	}
 	v.discont = true
 	// GPU decoding: the transform asks the manager for the device and allocates its pictures as textures
@@ -161,7 +161,7 @@ mf_video_create :: proc(track: Track, use_gpu := true) -> ^Video_Decoder {
 	}
 	mft->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)
 	mft->ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)
-	d := new(Video_Decoder, runtime.heap_allocator())
+	d := new(Video_Decoder, wbbase.process_allocator())
 	d.impl = v
 	d.hardware = v.gpu
 	d.name = "Media Foundation"
@@ -381,7 +381,7 @@ mf_video_frame :: proc(v: ^MF_Video, sample: ^IMFSample, out: ^Video_Frame) -> b
 		idx: u32
 		if hr_ok(dxgi->GetResource(&IID_ID3D11Texture2D, (^rawptr)(&tex))) && tex != nil {
 			dxgi->GetSubresourceIndex(&idx)
-			f := new(MF_Frame, runtime.heap_allocator())
+			f := new(MF_Frame, wbbase.process_allocator())
 			f.sample, f.tex = sample, tex
 			out.gpu_texture, out.gpu_index = tex, idx
 			out.backend = f
@@ -406,9 +406,10 @@ mf_video_frame :: proc(v: ^MF_Video, sample: ^IMFSample, out: ^Video_Frame) -> b
 	bpp := v.format == .P010 ? 2 : 1
 	w, h := v.visible[0], v.visible[1]
 	row_bytes := w * bpp
-	luma := make([]u8, row_bytes * h, runtime.heap_allocator())
+	heap := wbbase.process_allocator()
+	luma := make([]u8, row_bytes * h, heap)
 	chroma_h := (h + 1) / 2
-	chroma := make([]u8, ((w + 1) / 2 * 2) * bpp * chroma_h, runtime.heap_allocator())
+	chroma := make([]u8, ((w + 1) / 2 * 2) * bpp * chroma_h, heap)
 	uv_base := base[pitch * v.surface[1]:]
 	for y in 0 ..< h {
 		src := base[pitch * (y + v.crop[1]) + v.crop[0] * bpp:]
@@ -438,13 +439,13 @@ mf_frame_release :: proc(f: ^Video_Frame) {
 	if m == nil { return }
 	com_release(m.tex)
 	com_release(m.sample)
-	free(m, runtime.heap_allocator())
+	free(m, wbbase.process_allocator())
 }
 
 @(private)
 mf_frame_release_cpu :: proc(f: ^Video_Frame) {
-	delete(f.planes[0], runtime.heap_allocator())
-	delete(f.planes[1], runtime.heap_allocator())
+	delete(f.planes[0], wbbase.process_allocator())
+	delete(f.planes[1], wbbase.process_allocator())
 }
 
 @(private)
@@ -468,13 +469,13 @@ mf_video_free :: proc(v: ^MF_Video) {
 		com_release(v.mft)
 	}
 	track_destroy(&v.track)
-	delete(v.header, runtime.heap_allocator())
+	delete(v.header, wbbase.process_allocator())
 	delete(v.scratch)
-	free(v, runtime.heap_allocator())
+	free(v, wbbase.process_allocator())
 }
 
 @(private)
 mf_video_destroy :: proc(d: ^Video_Decoder) {
 	mf_video_free((^MF_Video)(d.impl))
-	free(d, runtime.heap_allocator())
+	free(d, wbbase.process_allocator())
 }
