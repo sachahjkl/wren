@@ -12,8 +12,8 @@
 # HeapAlloc through ASan), Odin's stack and globals. What it does not: inside the native libraries (not instrumented;
 # their own heaps), virtual memory arenas (base.Scope, vmem.Arena: VirtualAlloc, no redzones), Wasm linear memories
 # (Wasmtime's guard pages already trap there).
-# The browser's ASan build: build\asan\browser_asan.exe (debug, 32 MiB stack, the check build's tracker and script
-# driver); run it through tools\memcheck_e2e.ps1 -Exe build\asan\browser_asan.exe -NoBuild (with ASAN_OPTIONS set).
+# The browser's ASan build: build\asan\wren_asan.exe (debug, 32 MiB stack, the check build's tracker and script
+# driver); run it through tools\memcheck_e2e.ps1 -Exe build\asan\wren_asan.exe -NoBuild (with ASAN_OPTIONS set).
 param([string[]]$Packages = @(), [switch]$Browser, [string]$Program = '', [string]$Names = '', [switch]$Console, [string]$Out = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent

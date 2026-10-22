@@ -1,5 +1,5 @@
 # Builds Wren's built-in image decoders (native\media: resvg, image-webp, zenavif-parse, rav1d, qcms) into
-# build\media\wren_media.lib, a static library linked into browser.exe (no DLL to ship).
+# build\media\wren_media.lib, a static library linked into wren.exe (no DLL to ship).
 #   powershell -NoProfile -File tools\build_media.ps1 [-Force]
 # Pinned inputs: every crate by exact version in native\media\Cargo.toml and by SHA-256 in native\media\Cargo.lock (the
 # build runs with --locked); NASM (rav1d's assembly kernels, the same as dav1d's) by version and SHA-256 below, fetched

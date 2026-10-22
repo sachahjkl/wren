@@ -1,9 +1,9 @@
 # Start-up time and memory of one or more builds of the browser, for comparing render backends.
-#   powershell -File tools\startup_mem.ps1 [-Exes browser_prof.exe,browser_prof_wgpu.exe] [-Runs 5] [-Url about:home] [-SettleMs 6000]
+#   powershell -File tools\startup_mem.ps1 [-Exes wren_prof.exe,wren_prof_wgpu.exe] [-Runs 5] [-Url about:home] [-SettleMs 6000]
 # Per run: time from the process start to the first present (TOOLKIT_RENDER_TRACE), then after the settle time the
 # working set, the private bytes and the GPU memory of the process (the "GPU Process Memory" performance counter). The binary's
 # size and the DLLs next to it are listed too. Medians over the runs.
-param([string[]]$Exes = @('browser_prof.exe', 'browser_prof_wgpu.exe'), [int]$Runs = 5, [string]$Url = 'about:home', [int]$SettleMs = 6000)
+param([string[]]$Exes = @('wren_prof.exe', 'wren_prof_wgpu.exe'), [int]$Runs = 5, [string]$Url = 'about:home', [int]$SettleMs = 6000)
 $ErrorActionPreference = 'Stop'
 $Exes = @($Exes | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $root = Split-Path $PSScriptRoot -Parent

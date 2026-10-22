@@ -1,7 +1,7 @@
 # Captures examples/site/effects.html section by section (filter, backdrop-filter, mix-blend-mode, clip-path, shadows) with the
 # real browser, for a visual check. Each section is cut into its own page next to effects.html (same relative URLs),
 # captured, then deleted. No test server; each capture (tools\screenshot.ps1) holds desktop.lock while its window lives.
-#   powershell -File tools\effects_shots.ps1 [-OutDir build\effects_shots] [-WaitMs 3000] [-Exe browser.exe]
+#   powershell -File tools\effects_shots.ps1 [-OutDir build\effects_shots] [-WaitMs 3000] [-Exe wren.exe]
 param([string]$OutDir = 'build\effects_shots', [int]$WaitMs = 3000)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent

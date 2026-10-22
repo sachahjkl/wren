@@ -14,7 +14,7 @@ import "wb:page"
 //
 // The pages are found, in this order: the folder of the preference browser.demos.path (a directory or a URL); demos\
 // next to the executable (the release package: wren.exe and demos\ side by side); examples\site\ of the repository the
-// executable was built in (build\browser.exe: the repository is a parent of the executable's folder); else the test
+// executable was built in (build\wren.exe: the repository is a parent of the executable's folder); else the test
 // server's /site/ (browser.demos.server_url). Pages that need the test server (images, media, form submission, first
 // paint, CSP, generated images...) always link to it: they fetch its endpoints by absolute path.
 

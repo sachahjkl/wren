@@ -1,4 +1,4 @@
-# Wren's built-in image decoders, linked statically into browser.exe (tools\build_media.ps1 -> build\media\wren_media.lib).
+# Wren's built-in image decoders, linked statically into wren.exe (tools\build_media.ps1 -> build\media\wren_media.lib).
 # Every dependency is safe Rust except rav1d's assembly kernels (the same as dav1d's); versions are pinned exactly here
 # and by Cargo.lock (SHA-256 of every crate), and the build runs with --locked.
 [package]

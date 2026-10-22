@@ -1,5 +1,5 @@
-# Measures the browser on real pages with real input. Needs build\browser_prof.exe (build.bat profile).
-#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe browser_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
+# Measures the browser on real pages with real input. Needs build\wren_prof.exe (build.bat profile).
+#   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe wren_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
 # -GpuSteps 1: the GPU time of each step of the frame too (a timestamp per step: totals grow a little; see the report's
 # "GPU steps" table and the gpu_*_ms CSV columns). -GpuSteps 2: every draw call timed, the slowest listed.
 # -Prefs is added to every run (e.g. '--pref wasm.wasmtime.compiler=winch' with -Tag _winch to compare the Wasm compilers).
@@ -7,7 +7,7 @@
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
 # Each scenario holds bench.lock (tools\test_env.ps1) while its browser runs: the measurements of several worktrees take
 # turns instead of skewing each other. Input is posted to the window: no desktop.lock.
-param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0)
+param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'wren_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\perf'

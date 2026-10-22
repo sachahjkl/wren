@@ -1,6 +1,6 @@
 # Latency of the shell (tabs, address bar, menu, scrolling, resizing) while a page loads or keeps the browser busy.
-#   powershell -File tools\shell_latency.ps1 [-Only name,name] [-Exe browser_prof.exe] [-Tag suffix] [-Prefs '--pref a=b']
-# Needs build\browser_prof.exe (build.bat profile). For each scenario the browser opens a page that loads or works hard
+#   powershell -File tools\shell_latency.ps1 [-Only name,name] [-Exe wren_prof.exe] [-Tag suffix] [-Prefs '--pref a=b']
+# Needs build\wren_prof.exe (build.bat profile). For each scenario the browser opens a page that loads or works hard
 # (a 50 000-element document, scripts that take 16 to 200 ms per frame or per task, a 40 ms relayout every 150 ms), and
 # input is posted to its window meanwhile: the pointer over the tab strip, a click in the address bar and typing,
 # the menu opened and closed, the wheel over the page, the window resized. Every post is noted with its QPC time;
@@ -9,7 +9,7 @@
 # Writes build\shell\<scenario><tag>.inputs.csv, .latency.txt (and the profiler's .csv/.txt), and a summary table
 # (build\shell\summary<tag>.txt). -NoLock: without bench.lock (to try the script out; other runs skew the numbers).
 # -Report: the table again from the files of an earlier run. Holds bench.lock (tools\test_env.ps1) for each scenario; input is posted: no desktop.
-param([string[]]$Only = @(), [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Prefs = '', [switch]$Report, [switch]$NoLock)
+param([string[]]$Only = @(), [string]$Exe = 'wren_prof.exe', [string]$Tag = '', [string]$Prefs = '', [switch]$Report, [switch]$NoLock)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\shell'

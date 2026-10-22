@@ -3,15 +3,15 @@
 ::  build.bat : builds Wren with the Odin compiler
 :: ============================================================================================================
 ::
-::    build.bat            development build, fast to compile       -> build\browser.exe
-::    build.bat debug      debug information, no optimisation       -> build\browser.exe
-::    build.bat profile    optimised + PDB + measurement hooks      -> build\browser_prof.exe
-::    build.bat check      debug + every allocation tracked         -> build\browser_check.exe
-::    build.bat release    the build the release workflow packages  -> build\browser.exe
+::    build.bat            development build, fast to compile       -> build\wren.exe
+::    build.bat debug      debug information, no optimisation       -> build\wren.exe
+::    build.bat profile    optimised + PDB + measurement hooks      -> build\wren_prof.exe
+::    build.bat check      debug + every allocation tracked         -> build\wren_check.exe
+::    build.bat release    the build the release workflow packages  -> build\wren.exe
 ::
 ::  Channel: every build is a *development* build (blueprint icon, "development build" in about:home and the menu)
 ::  but `release` (amber icon). It goes in as -define:WREN_CHANNEL (about.odin: APP_CHANNEL) with its icon, and in
-::  build\browser.channel, which tools\package.ps1 checks before packaging.
+::  build\wren.channel, which tools\package.ps1 checks before packaging.
 ::
 ::  Compile speed: Odin hands LLVM one module per package with -use-separate-modules, and LLVM then works on all
 ::  cores (about 5 s instead of 55 s for a full build). The development, debug and check builds use it; `release`
@@ -23,6 +23,16 @@ setlocal
 cd /D "%~dp0"
 set "VARIANT=%~1"
 if "%VARIANT%"=="" set "VARIANT=dev"
+if /I "%VARIANT%"=="help" goto usage
+if "%VARIANT%"=="-h" goto usage
+if "%VARIANT%"=="--help" goto usage
+if "%VARIANT%"=="/?" goto usage
+for %%v in (dev debug profile check release) do if /I "%VARIANT%"=="%%v" goto variant_ok
+echo unknown build "%VARIANT%"
+echo.
+call :usage
+exit /b 1
+:variant_ok
 
 
 :: ------------------------------------------------------------------------------------------------------------
@@ -70,7 +80,7 @@ if not exist build mkdir build
 ::  bindgen    the web API from its description (api\*.widl): host bindings, guest SDK, docs and conformance
 ::             tests (only what changed)
 ::  JS engine  QuickJS-ng + the generated bindings, compiled to Wasm with a pinned zig and pre-initialized
-::             -> build\js\wren_js.wasm, embedded in browser.exe (src\js\image)
+::             -> build\js\wren_js.wasm, embedded in wren.exe (src\js\image)
 
 odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:build/bindgen.exe || exit /b 1
 call :step "building the JavaScript engine"  tools\build_js.ps1 || exit /b 1
@@ -113,7 +123,7 @@ set "FLAGS=%FLAGS% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "FLAGS=%FLAGS% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 
 set "FLAGS=%FLAGS% -vet -subsystem:windows"
-:: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\browser_prof_wgpu.exe etc. and links wgpu-native
+:: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\wren_prof_wgpu.exe etc. and links wgpu-native
 :: as a DLL (wgpu_native.dll, next to the program: Wren already links another Rust static library, the image decoders, and two cannot coexist),
 :: with the DXC DLLs next to it (toolkit tools\fetch_wgpu.ps1) so that Direct3D 12 compiles the shaders in 0.3 s instead of 2.8 s
 set "WREN_SUFFIX="
@@ -136,27 +146,26 @@ if "%VARIANT%"=="debug"   goto build_debug
 if "%VARIANT%"=="profile" goto build_profile
 if "%VARIANT%"=="check"   goto build_check
 if "%VARIANT%"=="release" goto build_release
-echo unknown build "%VARIANT%": dev (default), debug, profile, check or release
 exit /b 1
 
 :build_dev
 :: -debug only adds the PDB: a crash report then names functions and lines (crashtrace)
-odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug %FAST% || exit /b 1
+odin build src/browser -out:build/wren%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug %FAST% || exit /b 1
 goto done_browser
 
 :build_debug
-odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %FLAGS% -debug %FAST% || exit /b 1
+odin build src/browser -out:build/wren%WREN_SUFFIX%.exe %FLAGS% -debug %FAST% || exit /b 1
 goto done_browser
 
 :build_release
 :: one module: LLVM inlines across packages
-odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %FLAGS% -o:speed || exit /b 1
+odin build src/browser -out:build/wren%WREN_SUFFIX%.exe %FLAGS% -o:speed || exit /b 1
 goto done_browser
 
 :build_profile
 :: one module, as the release; a PDB for the profiler; no Direct3D debug layer (GPU and present times as shipped)
-odin build src/browser -out:build/browser_prof%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false || exit /b 1
-echo built build\browser_prof%WREN_SUFFIX%.exe
+odin build src/browser -out:build/wren_prof%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false || exit /b 1
+echo built build\wren_prof%WREN_SUFFIX%.exe
 exit /b 0
 
 :build_check
@@ -164,13 +173,37 @@ exit /b 0
 :: ownership), and every allocation of the process tracked (src\base\memory.odin). At exit the blocks still allocated
 :: go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
 :: WREN_MEMTRACK_STACK=1 records each block's call stack. Never shipped: the tracker serializes every allocation.
-odin build src/browser -out:build/browser_check%WREN_SUFFIX%.exe %FLAGS% -debug -define:WREN_TRACK_MEMORY=true %FAST% || exit /b 1
-echo built build\browser_check%WREN_SUFFIX%.exe
+odin build src/browser -out:build/wren_check%WREN_SUFFIX%.exe %FLAGS% -debug -define:WREN_TRACK_MEMORY=true %FAST% || exit /b 1
+echo built build\wren_check%WREN_SUFFIX%.exe
 exit /b 0
 
 :done_browser
->build\browser.channel echo %WREN_CHANNEL%
-echo built build\browser.exe (%WREN_CHANNEL%)
+>build\wren.channel echo %WREN_CHANNEL%
+echo built build\wren%WREN_SUFFIX%.exe (%VARIANT%, %WREN_CHANNEL% channel)
+exit /b 0
+
+
+:: ------------------------------------------------------------------------------------------------------------
+::  :usage
+:: ------------------------------------------------------------------------------------------------------------
+:usage
+echo usage: build.bat [variant]
+echo.
+echo   dev       (default) optimised, PDB, fast to compile          -^> build\wren.exe
+echo   debug     debug information, no optimisation                 -^> build\wren.exe
+echo   profile   optimised, PDB, the built-in profiler (perf.ps1)   -^> build\wren_prof.exe
+echo   check     debug, every allocation tracked, leak report       -^> build\wren_check.exe
+echo   release   what the release packages (one module, amber icon) -^> build\wren.exe
+echo   help      this text
+echo.
+echo environment:
+echo   WREN_RENDER=wgpu      the WebGPU render backend (-^> wren_wgpu.exe, wren_prof_wgpu.exe...)
+echo   WREN_TAG=_x           a suffix for the output name, to keep several builds side by side
+echo   WREN_ODIN_EXTRA=...   more Odin flags
+echo   WREN_TOOLKIT=path     another gui_toolkit checkout instead of ext\gui_toolkit
+echo   WREN_ANY_ODIN=1       build with another Odin than odin.version says
+echo.
+echo then: build\wren.exe [URL]   tests: powershell -File tools\test_all.ps1 -Quick
 exit /b 0
 
 

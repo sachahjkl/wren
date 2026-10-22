@@ -228,10 +228,10 @@ Zig (for the JavaScript engine) and NASM are downloaded by the build itself, pin
 ```bat
 git clone --recurse-submodules https://github.com/sachahjkl/wren.git
 cd wren
-build.bat            &:: optimized build -> build\browser.exe
+build.bat            &:: optimized build -> build\wren.exe
 build.bat debug      &:: debug build
-build.bat profile    &:: optimized + PDB + the built-in profiler -> build\browser_prof.exe
-build.bat check      &:: debug build tracking every allocation, a leak report at exit -> build\browser_check.exe
+build.bat profile    &:: optimized + PDB + the built-in profiler -> build\wren_prof.exe
+build.bat check      &:: debug build tracking every allocation, a leak report at exit -> build\wren_check.exe
 build.bat release    &:: optimized build of the release channel (what the release workflow packages)
 ```
 
@@ -252,10 +252,10 @@ What `build.bat` does, each step skipped when it is already up to date:
 5. `tools\build_js.ps1` downloads **Zig 0.15.2** and the **QuickJS-ng 0.17.0** source (both SHA-256 pinned), applies
    the patches of `native/js/patches`, compiles the engine with the browser's bindings to `wasm32-wasi`, and
    pre-initializes it into `build\js\wren_js.wasm`.
-6. `odin build src/browser` links everything into one self-contained `build\browser.exe`, the JavaScript engine
+6. `odin build src/browser` links everything into one self-contained `build\wren.exe`, the JavaScript engine
    included (no DLL beyond the system's and the Visual C++ runtime that Windows ships).
 
-Run it with `build\browser.exe [URL]`. For the demo pages that need a server, build and start the test server first:
+Run it with `build\wren.exe [URL]`. For the demo pages that need a server, build and start the test server first:
 
 ```bat
 cd tools\testserver && go build -o ..\..\build\testserver.exe . && cd ..\..
