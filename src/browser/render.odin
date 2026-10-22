@@ -134,7 +134,7 @@ paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, page_origin, size
 	paint_canvas_images(l, dc, origin, size, scroll)
 	if !(compositor_settings.enabled && composite_paint(l, dc, d, origin, size, scroll)) {
 		v := lay.view_make(l, size, scroll)
-		fx := effects_make(l, &v, dc, origin)
+		fx := effects_make(l, &v, dc, origin, size)
 		for idx in v.visible {
 			it := &l.items[idx]
 			if !effects_for(&fx, it) { continue }
