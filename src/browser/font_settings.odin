@@ -38,9 +38,9 @@ FONT_PREFS := [?]config.Def{
 	{name = "text.slug.tolerance", kind = .Float, default = {f = 0.25}, bounded = true, min = 0.015, max = 16, unit = "1/1000 em",
 		description = "Slug: the largest distance between a cubic outline (CFF / OpenType fonts) and the quadratic curves drawn instead, in thousandths of the em (0.25: a hundredth of a pixel at 40 px). TrueType outlines are quadratic already and are never approximated."},
 	{name = "text.emoji", kind = .String, default = {s = "builtin"}, choices = {"builtin", "system"},
-		description = "Where emoji come from. builtin: Noto Color Emoji (COLR v1, SIL OFL), shipped in the emoji folder next to wren.exe and drawn by Wren's own COLR interpreter: the same emoji, sharp and vector, on every platform, replacing the system's emoji font even when a page names it. system: the emoji font of Windows (Segoe UI Emoji) drawn by Direct2D, as before."},
+		description = "Where emoji come from. builtin: Noto Color Emoji (COLR v1, SIL OFL), compiled into wren.exe and drawn by Wren's own COLR interpreter: the same emoji, sharp and vector, on every platform, replacing the system's emoji font even when a page names it. system: the emoji font of Windows (Segoe UI Emoji) drawn by Direct2D, as before."},
 	{name = "text.emoji.font", kind = .String, default = {s = ""},
-		description = "Path of the emoji font used by text.emoji = builtin: a font file with COLR v0 / v1 color glyphs (a Noto Color Emoji build, Twemoji COLR...). Empty: emoji\\NotoColorEmoji-COLRv1.ttf next to wren.exe. When the file is missing, emoji come from the system's fonts."},
+		description = "Path of the emoji font used by text.emoji = builtin: a font file with COLR v0 / v1 color glyphs (a Noto Color Emoji build, Twemoji COLR...). Empty: the Noto Color Emoji compiled into wren.exe. When the file is missing, emoji come from the system's fonts."},
 	{name = "text.emoji.raster_samples", kind = .Int, default = {i = 8}, bounded = true, min = 1, max = 64,
 		description = "Built-in emoji: vertical samples per pixel row when a color glyph's shapes are drawn (horizontal coverage is exact). 8 matches Chrome's emoji to within a third of a percent; more is slower and not visibly better."},
 	{name = "text.emoji.outline_cache", kind = .Int, default = {i = 8192}, bounded = true, min = 64, max = 1048576, unit = "KiB",
@@ -83,27 +83,45 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 	return s
 }
 
-// The emoji font file text.emoji = builtin reads (text.emoji.font, else the one next to the executable); "" when emoji
-// come from the system.
+// Noto Color Emoji, compiled into the executable (build.bat fetches it into build\emoji first): nothing to ship next to
+// wren.exe. The bytes stay in the image, mapped by Windows only as the emoji font reads them. A build without the file
+// (a tool compiling this package before fetch_emoji.ps1) has none, and emoji come from the system.
+@(private = "file") EMOJI_FILE :: "../../build/emoji/NotoColorEmoji-COLRv1.ttf"
+when #exists(EMOJI_FILE) {
+	@(private = "file") emoji_builtin := #load(EMOJI_FILE)
+} else {
+	@(private = "file") emoji_builtin: []byte
+}
+
+// What text.emoji = builtin draws from: the font file text.emoji.font names, else EMOJI_BUILTIN (the compiled-in font);
+// "" when emoji come from the system.
+EMOJI_BUILTIN :: "<built-in>"
 emoji_font_path :: proc(p: ^config.Prefs, allocator := context.temp_allocator) -> string {
 	if config.ref_of(p, "text.emoji") == config.NO_REF || config.string_of(p, "text.emoji") != "builtin" { return "" }
 	if own := strings.trim_space(config.string_of(p, "text.emoji.font")); own != "" { return strings.clone(own, allocator) }
-	exe := exe_directory()
-	if exe == "" { return "" }
-	return strings.concatenate({exe, "\\emoji\\NotoColorEmoji-COLRv1.ttf"}, allocator)
+	return len(emoji_builtin) > 0 ? EMOJI_BUILTIN : ""
 }
 
-@(private) emoji_applied: string   // the path the font state has (heap), "" for none
+@(private) emoji_applied: string   // what the font state has: a path (heap), EMOJI_BUILTIN, or "" for none
 
 // Hands the emoji font to the font state, or takes it away. Returns true when what the font state draws emoji from changed.
 @(private)
 emoji_source_apply :: proc(app: ^App) -> bool {
 	want := emoji_font_path(&app.prefs)
-	if want != "" && !is_file(want) { want = "" }   // missing: the system's emoji font, as with text.emoji = system
+	if want != "" && want != EMOJI_BUILTIN && !is_file(want) { want = "" }   // missing: the system's emoji font, as with text.emoji = system
 	if want == emoji_applied { return false }
-	delete(emoji_applied)
-	emoji_applied = want == "" ? "" : strings.clone(want)
-	font.set_emoji_source(&app.fonts, emoji_applied)
+	if emoji_applied != EMOJI_BUILTIN { delete(emoji_applied) }
+	switch want {
+	case "":
+		emoji_applied = ""
+		font.set_emoji_source(&app.fonts)
+	case EMOJI_BUILTIN:
+		emoji_applied = EMOJI_BUILTIN
+		font.set_emoji_source(&app.fonts, data = emoji_builtin)
+	case:
+		emoji_applied = strings.clone(want)
+		font.set_emoji_source(&app.fonts, emoji_applied)
+	}
 	return true
 }
 
