@@ -43,27 +43,75 @@
 <section class="section">
   <div class="wrap">
     <h2>Releases</h2>
-    <div class="table-box">
-      <table>
-        <thead><tr><th>Version</th><th>Date</th><th>Highlights</th></tr></thead>
-        <tbody>
-          <tr>
-            <td class="n">0.3.0</td><td class="n">2026-10-21</td>
-            <td>A JavaScript JIT that produces WebAssembly, iframes, a browser that never waits for a busy page, an
-              HTTP cache, passkeys, history as a tree, a command palette, and memory given back when idle.
-              <a href="https://github.com/sachahjkl/wren/blob/main/docs/releases/v0.3.0.md">Release notes</a>.</td>
-          </tr>
-          <tr>
-            <td class="n">0.2.1</td><td class="n">2026-10-20</td>
-            <td>A crash about three seconds after start when the pointer was over the window.</td>
-          </tr>
-          <tr>
-            <td class="n">0.2.0</td><td class="n">2026-10-20</td>
-            <td>JavaScript inside WebAssembly: QuickJS-ng compiled to Wasm, bindings from the Web IDL, Shadow DOM,
-              test262 and web-platform-tests in the suite.</td>
-          </tr>
-        </tbody>
-      </table>
+    <p class="intro">Four versions in three days: the first public build, JavaScript, then a JIT.</p>
+    <div class="timeline">
+
+      <article class="release latest" id="v0-3-0">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-21">October 21, 2026</time></p>
+          <div class="release-title"><h3>0.3.0</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>A JIT for JavaScript that produces WebAssembly</strong>: hot functions are compiled to Wasm
+              modules on background threads, then by Cranelift; a second tab compiles nothing.</li>
+            <li><strong>Iframes</strong>, each a document of its own: origin, scripts, sandbox, <code>postMessage</code>,
+              storage and HTTP cache partitioned by top-level site.</li>
+            <li><strong>A browser that never waits for a page</strong>: a 200&nbsp;ms script task now holds the
+              interface about 15&nbsp;ms, and a busy page keeps its last picture.</li>
+            <li>An <strong>HTTP cache</strong> in memory and on disk (RFC 9111), with <code>about:cache</code>.</li>
+            <li>Passkeys, history as a tree, a command palette, and memory given back when idle.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/main/docs/releases/v0.3.0.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.3.0">Download</a></p>
+        </div>
+      </article>
+
+      <article class="release" id="v0-2-1">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-20">October 20, 2026</time></p>
+          <div class="release-title"><h3>0.2.1</h3><span class="badge fix">Fix</span></div>
+          <ul class="release-list">
+            <li>Fixes a crash about three seconds after start when the pointer was over the window: the first frame
+              read the interface state before it was built.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/releases">Releases on GitHub</a></p>
+        </div>
+      </article>
+
+      <article class="release" id="v0-2-0">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-20">October 20, 2026</time></p>
+          <div class="release-title"><h3>0.2.0</h3><span class="badge milestone">Milestone</span></div>
+          <ul class="release-list">
+            <li><strong>JavaScript inside WebAssembly</strong>: QuickJS-ng compiled to a Wasm module, one realm per page
+              and per worker, a new one ready in about 0.5&nbsp;ms.</li>
+            <li><strong>Bindings generated from the Web IDL</strong>: 2,630 of 4,991 members implemented, the others
+              absent, so feature detection sees the truth.</li>
+            <li><strong>Shadow DOM</strong>: declarative roots, slots, <code>::part()</code>, constructable stylesheets,
+              event retargeting.</li>
+            <li>test262 at <strong>99.92&nbsp;%</strong> and 106,188 web-platform-tests subtests in every run.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/main/docs/releases/v0.2.0.md">Release notes</a></p>
+        </div>
+      </article>
+
+      <article class="release" id="v0-1-0">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-19">October 19, 2026</time></p>
+          <div class="release-title"><h3>0.1.0</h3><span class="badge first">First public release</span></div>
+          <ul class="release-list">
+            <li>The first public build: <strong>WebAssembly is the only execution engine</strong>, and pages written in
+              Wasm draw on a retained GPU compositor.</li>
+            <li>The web APIs are imports generated from one description, <code>api/*.widl</code>, with an Odin SDK and
+              its conformance tests.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/main/docs/releases/v0.1.0.md">Release notes</a></p>
+        </div>
+      </article>
+
     </div>
     <p class="more"><a class="btn" href="archive.html">Every version</a>
       <a class="btn" href="https://github.com/sachahjkl/wren/releases">Releases on GitHub</a></p>
