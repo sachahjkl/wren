@@ -5,14 +5,14 @@ import "core:os"
 import "core:testing"
 
 // Files: examples/site/media/video (tools/gen_video_fixtures.ps1).
-@(private = "file")
+@(private)
 fixture :: proc(name: string) -> []u8 {
 	data, err := os.read_entire_file(fmt.tprintf("examples/site/media/video/%s", name), context.allocator)
 	if err != nil { return nil }
 	return data
 }
 
-@(private = "file")
+@(private)
 Collected :: struct {
 	tracks:  [dynamic]Track,
 	samples: [dynamic][dynamic]Sample,   // by track
@@ -20,7 +20,7 @@ Collected :: struct {
 	inits:   int,
 }
 
-@(private = "file")
+@(private)
 collector :: proc(c: ^Collected) -> Demux_Sink {
 	return Demux_Sink{
 		user = c,
@@ -41,7 +41,7 @@ collector :: proc(c: ^Collected) -> Demux_Sink {
 	}
 }
 
-@(private = "file")
+@(private)
 collected_free :: proc(c: ^Collected) {
 	for &t in c.tracks { track_destroy(&t) }
 	delete(c.tracks)
