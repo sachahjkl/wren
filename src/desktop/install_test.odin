@@ -212,3 +212,14 @@ install_exe_name :: proc(t: ^testing.T) {
 	testing.expect_value(t, exe_name_of(Identity{slug = "wren", exe_name = "wren.exe"}), "wren.exe")
 	when ODIN_OS == .Windows { testing.expect_value(t, exe_name_of(Identity{slug = "wren-dev"}), "wren-dev.exe") }
 }
+
+@(test)
+install_refuses_a_folder_inside_what_it_copies :: proc(t: ^testing.T) {
+	tr := tree_make()
+	defer tree_destroy(&tr)
+	p := plan_of(&tr)
+	p.dir = fmt.tprintf("%s/demos/app", tr.src)   // would copy demos\ into itself for ever
+	r := files_install(p)
+	testing.expect_value(t, r.error, Error.Bad_Options)
+	testing.expect(t, !os.exists(fmt.tprintf("%s/demos/app", tr.src)), "nothing was made")
+}
