@@ -328,7 +328,9 @@ Run 'nojs_anim'        (FileUrl (Join-Path $site 'animations.html')) { param($h)
 # video (examples/site/video-bench.html on the test server): a paused video must not make the browser draw (frames in
 # the report ~ 0 per second), a playing one draws at the video's picture rate (24 / s for the clip) and no more, and
 # the memory of the process after the load (<name>.mem)
-if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' })) {
+# a real site (network, only when named): YouTube's watch page, autoplaying with sound allowed (media.autoplay.policy)
+Run 'video_youtube' 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' { param($h) Start-Sleep 14; Mark; Start-Sleep 12 } $true '--pref media.autoplay.policy=allow-all'
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' -and $_ -ne 'video_youtube' })) {
     $srv = Start-WrenTestServer
     try {
         $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"

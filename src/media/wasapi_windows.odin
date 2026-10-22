@@ -288,6 +288,7 @@ wasapi_failed :: proc(o: ^Audio_Output) -> bool { return sync.atomic_load(&(^Was
 
 @(private)
 wasapi_thread :: proc(data: rawptr) {
+	name_current_thread("wren-audio-out")
 	w := (^Wasapi)(data)
 	com_thread_init()
 	for sync.atomic_load(&w.quit) == 0 {

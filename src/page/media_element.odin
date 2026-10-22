@@ -106,6 +106,7 @@ Media_Element :: struct {
 	unseen:        bool,       // media_update made a picture current that the shell has not seen
 	user_active_ms: f64,
 	notify_pending: b32,       // atomic: a notice of the player is waiting in the loop
+	timer_tok:     ^Media_Notice,   // the data of `timer` until it fires (freed with the element when it never does)
 }
 
 Page_Media :: struct {
@@ -208,7 +209,7 @@ media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	delete(el.played)
 	delete(el.current_src)
 	delete(el.err_message)
-	if el.timer != base.NIL_HANDLE { host.clear_timer(p.loop, el.timer) }
+	if el.timer != base.NIL_HANDLE { host.clear_timer(p.loop, el.timer); free(el.timer_tok) }   // (a timer cleared before it fires does not free its data)
 	free(el)
 }
 
@@ -838,6 +839,7 @@ media_resolve_play :: proc(el: ^Media_Element) {
 media_arm_timer :: proc(el: ^Media_Element) {
 	p := el.page
 	if el.timer != base.NIL_HANDLE { return }
+	el.timer_tok = new_clone(Media_Notice{page_id = p.web.id, node = el.node, serial = el.serial})
 	el.timer = host.set_timer(p.loop, max(p.settings.media.timeupdate_ms / 2, 8), 0, proc(data: rawptr) {
 		tok := (^Media_Notice)(data)
 		defer free(tok)
@@ -846,9 +848,10 @@ media_arm_timer :: proc(el: ^Media_Element) {
 		el, ok := p.media.elements[tok.node]
 		if !ok || el.serial != tok.serial { return }
 		el.timer = base.NIL_HANDLE
+		el.timer_tok = nil
 		host.quiet_note(p.loop)
 		media_update(el)
-	}, new_clone(Media_Notice{page_id = p.web.id, node = el.node, serial = el.serial}), p.scope)
+	}, el.timer_tok, p.scope)
 }
 
 @(private)
