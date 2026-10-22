@@ -30,7 +30,7 @@ FONT_PREFS := [?]config.Def{
 		description = "Color pages (emoji) of the glyph atlas kept before the least recently used one is reused; 4 bytes per texel."},
 	{name = "font.shape_cache_words", kind = .Int, default = {i = 32768}, bounded = true, min = 0, max = 10_000_000,
 		description = "Shaped words kept by the text cache (the layout measures the same words over and over, from several threads). 0: shape every word every time."},
-	{name = "text.renderer", kind = .String, default = {s = "atlas"}, choices = {"atlas", "slug"},
+	{name = "text.renderer", kind = .String, default = {s = "slug"}, choices = {"atlas", "slug"},
 		description = "How glyphs reach the screen. atlas: bitmaps rasterized by DirectWrite (hinted, cached per size and subpixel position). slug: the Slug algorithm (Eric Lengyel) draws each glyph from its outline curves on the GPU, with no bitmaps: sharp at any page zoom, rotation or transform, and exact subpixel positions. Color glyphs (emoji) always use the atlas."},
 	{name = "text.slug.pages", kind = .Int, default = {i = 128}, bounded = true, min = 1, max = 2048,
 		description = "Glyph pages of the Slug renderer kept before the least recently used one is reused (a page a frame still draws from is never reused: one more is made). A page holds about a hundred Latin glyphs; each takes 48 KB of video memory (as much of main memory), up to 6 MB at the default."},
