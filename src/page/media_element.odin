@@ -17,6 +17,7 @@ import "core:math"
 import "core:mem"
 import "core:slice"
 import "core:strings"
+import "core:sync"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -104,6 +105,7 @@ Media_Element :: struct {
 	viewed_ms:     f64,        // the loop clock when the shell last asked for a picture (an element nobody paints is not shown any)
 	unseen:        bool,       // media_update made a picture current that the shell has not seen
 	user_active_ms: f64,
+	notify_pending: b32,       // atomic: a notice of the player is waiting in the loop
 }
 
 Page_Media :: struct {
@@ -621,6 +623,9 @@ media_make_player :: proc(el: ^Media_Element) {
 media_player_notify :: proc(user: rawptr) {
 	el := (^Media_Element)(user)
 	p := el.page
+	// one notice in flight is enough: it looks at the whole state when it runs (a decoder thread notifies for every
+	// block it makes)
+	if _, swapped := sync.atomic_compare_exchange_strong(&el.notify_pending, false, true); !swapped { return }
 	tok := new(Media_Notice)
 	tok^ = Media_Notice{page_id = p.web.id, node = el.node, serial = el.serial}
 	host.post(p.loop, proc(d: rawptr) {
@@ -630,6 +635,8 @@ media_player_notify :: proc(user: rawptr) {
 		if p == nil || p.closed || p.media == nil { return }
 		el, ok := p.media.elements[tok.node]
 		if !ok || el.serial != tok.serial { return }
+		sync.atomic_store(&el.notify_pending, false)   // (before looking: a notice meanwhile posts another)
+		host.quiet_note(p.loop)   // the pictures are drawn on their own timer; what this changes in the page asks for its frame
 		if el.player != nil { media.player_seen(el.player) }
 		media_update(el)
 	}, tok)
@@ -640,7 +647,24 @@ media_player_notify :: proc(user: rawptr) {
 
 @(private)
 media_fire :: proc(el: ^Media_Element, type: string) {
+	// timeupdate and progress come several times a second and each dispatch makes the shell draw a frame: with no
+	// listener for them on the element or what it is in (and no on<type> attribute) they are not queued at all
+	if (type == "timeupdate" || type == "progress") && !media_listened(el, type) { return }
 	queue_element_event(el.page, el.node, type)
+}
+
+// Whether the element or an ancestor has a listener for `type` (the Window's, which the embedder keeps, is not looked at).
+@(private)
+media_listened :: proc(el: ^Media_Element, type: string) -> bool {
+	d := el.page.doc
+	for h := el.node; h != base.NIL_HANDLE; {
+		n := dom.get(d, h)
+		if n == nil { break }
+		for l in n.listeners { if !l.removed && l.type == type { return true } }
+		h = n.parent
+	}
+	_, has := dom.get_attribute(d, el.node, strings.concatenate({"on", type}, context.temp_allocator))
+	return has
 }
 
 @(private)
@@ -822,6 +846,7 @@ media_arm_timer :: proc(el: ^Media_Element) {
 		el, ok := p.media.elements[tok.node]
 		if !ok || el.serial != tok.serial { return }
 		el.timer = base.NIL_HANDLE
+		host.quiet_note(p.loop)
 		media_update(el)
 	}, new_clone(Media_Notice{page_id = p.web.id, node = el.node, serial = el.serial}), p.scope)
 }
