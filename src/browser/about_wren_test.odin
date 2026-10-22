@@ -329,10 +329,16 @@ support_link_is_a_web_page :: proc(t: ^testing.T) {
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.support_url", "file:///C:/x", .User), config.Set_Error.None)
 	testing.expect_value(t, license_support_url(app), SUPPORT_URL)
-	// the production key is empty until it is made: the build reads no licence, whatever the preference says
+	// the production key is empty until it is made: a release reads no licence; a development build still accepts the
+	// development pair's (tools\license.ps1 issue -dev), never another pair's
 	testing.expect_value(t, config.set_from_string(&app.prefs, "browser.license.public_key", "", .User), config.Set_Error.None)
 	testing.expect_value(t, license_public_key(app), license.PRODUCTION_PUBLIC_KEY)
 	if license.PRODUCTION_PUBLIC_KEY == "" {
-		testing.expect_value(t, license_install(app, dev_license("x")), license.Error.No_Public_Key)
+		when IS_DEV_BUILD {
+			testing.expect_value(t, license_install(app, dev_license("x")), license.Error.None)
+			testing.expect_value(t, license_install(app, dev_license("y", license.OTHER_DEV_SEED)), license.Error.No_Public_Key)
+		} else {
+			testing.expect_value(t, license_install(app, dev_license("x")), license.Error.No_Public_Key)
+		}
 	}
 }

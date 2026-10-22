@@ -45,6 +45,21 @@ license_public_key :: proc(app: ^App) -> string {
 	return license.PRODUCTION_PUBLIC_KEY
 }
 
+// Checks a licence with the key in force; a development build also accepts the development pair's licences (tools\license.ps1
+// issue -dev), so that a build being tried shows the card without settings. A release only knows the production key.
+license_check :: proc(app: ^App, text: string, allocator := context.allocator) -> (license.License, license.Error) {
+	lic, err := license.verify(text, license_public_key(app), allocator)
+	when IS_DEV_BUILD {
+		if err != .None {
+			if dev, dev_err := license.verify(text, license.DEV_PUBLIC_KEY, allocator); dev_err == .None {
+				license.license_destroy(&lic)
+				return dev, .None
+			}
+		}
+	}
+	return lic, err
+}
+
 license_support_url :: proc(app: ^App) -> string {
 	u := strings.trim_space(config.string_of(&app.prefs, "browser.license.support_url"))
 	// only a web page: the link is the one of the page's author, but a pref must not turn it into script or a file
@@ -72,13 +87,13 @@ license_stored_text :: proc(app: ^App) -> string {
 license_state :: proc(app: ^App) -> License_State {
 	text := license_stored_text(app)
 	if strings.trim_space(text) == "" { return {} }
-	lic, err := license.verify(text, license_public_key(app), context.temp_allocator)
+	lic, err := license_check(app, text, context.temp_allocator)
 	return {lic = lic, registered = err == .None, stored = true, err = err}
 }
 
 // Checks `text` and keeps it. Nothing is written when it does not check out.
 license_install :: proc(app: ^App, text: string) -> license.Error {
-	lic, err := license.verify(text, license_public_key(app))
+	lic, err := license_check(app, text)
 	if err != .None { return err }
 	license.license_destroy(&lic)
 	canonical := license.normalize(text, context.temp_allocator)
