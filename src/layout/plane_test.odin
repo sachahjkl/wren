@@ -1,5 +1,6 @@
 package layout
 
+import "core:fmt"
 import "core:math"
 import "core:testing"
 import "wb:base"
@@ -185,3 +186,30 @@ backface_hidden_boxes_in_a_3d_context_are_planes :: proc(t: ^testing.T) {
 	testing.expect(t, style.m4_back_facing(v.accs[flip]) && style.m4_back_facing(v.accs[face.space]), "rotateY(180deg): seen from behind, and so is its child")
 }
 
+
+// Every point of a box that holds a tilted preserve-3d card hits something of the box (the card, or the box itself): the pointer
+// never "leaves" it while it is over it (the licence card of about:wren).
+@(test)
+hit_inside_a_box_with_a_tilted_card :: proc(t: ^testing.T) {
+	for tilt in ([]string{"rotateX(11.20deg) rotateY(16.74deg)", "rotateX(-11deg) rotateY(16deg)", "rotateX(11deg) rotateY(-16deg)", "rotateX(0deg) rotateY(0deg)"}) {
+		src := fmt.tprintf(`<body style="margin:0"><div id=box style="perspective:900px;width:440px;padding:12px 0;margin:40px"><div id=lic style="position:relative;width:100%;aspect-ratio:1.586;transform-style:preserve-3d;transform:%s">
+			<div id=base style="position:absolute;inset:0;border-radius:14px;overflow:hidden;background:#446"></div>
+			<div id=face style="position:absolute;inset:0;transform:translate3d(0,0,18px) scale(0.98)">Face text</div>
+			<div id=seal style="position:absolute;right:16px;bottom:14px;width:88px;height:88px;border-radius:50%;background:#2a2;transform:translate3d(0,0,30px) scale(0.9667)"></div></div></div></body>`, tilt)
+		f := pt_load(src)
+		defer pt_unload(f)
+		box := dom.find_by_id(f.doc, "box")
+		bb := pbx(f, "box")
+		bad := 0
+		first := Vec2{}
+		for y := bb.abs.y + 1; y < bb.abs.y + bb.size.y - 1; y += 7 {
+			for x := bb.abs.x + 1; x < bb.abs.x + bb.size.x - 1; x += 9 {
+				h := hit_test(&f.l, {x, y}, f.vp, 0)
+				inside := false
+				for n := h.node; n != base.NIL_HANDLE; n = dom.get(f.doc, n).parent { if n == box { inside = true; break } }
+				if !inside { if bad == 0 { first = {x, y} }; bad += 1 }
+			}
+		}
+		testing.expectf(t, bad == 0, "%s: %d points of the box hit something outside it (first at %v)", tilt, bad, first)
+	}
+}

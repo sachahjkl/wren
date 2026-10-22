@@ -19,8 +19,10 @@ import "wb:style"
 // one the root of the context lands in), so their composites wait (`Effects.pending`) until the root closes, then are drawn
 // sorted by depth, far to near, with the root's own layer among them. A plane whose content did not change is kept by the
 // toolkit between frames (cache id and key from the effects cache, `fx_cache_plane`): tilting it again only changes the
-// matrix. Sorting is by the depth of the middle of each plane; planes that cut through each other are not split (a BSP split
-// as Chromium does would be the exact answer): they are drawn in the order of their middles.
+// matrix. Sorting is geometric (flush_context): a plane wholly on the viewer's side of another's plane is drawn after it, which
+// keeps a layer lifted above the card it rides on above it whatever the tilt; where that says nothing (two planes that cut
+// through each other, coplanar ones) it is the depth of the middles, then paint order. Planes that cut through each other are
+// not split (a BSP split as Chromium does would be the exact answer): one is simply drawn over the other.
 
 PLANE_PREFS := [?]config.Def{
 	{name = "paint.planes.max_raster_scale", kind = .Float, default = {f = 3}, bounded = true, min = 1, max = 8,
@@ -68,6 +70,8 @@ Pending_Plane :: struct {
 	ctx:   i32,           // the plane space that roots its context
 	cull:  bool,          // backface-visibility: hidden and seen from behind
 	seq:   int,
+	v:     [4][3]f32,     // corners in the context's space (flush_context)
+	ok3:   bool,
 }
 
 // Where layout coordinates (plus the offsets of `space`) land in the target its items are drawn in: the page's origin, or minus
@@ -242,18 +246,85 @@ flush_context :: proc(e: ^Effects, own: Pending_Plane, root: i32) {
 	}
 	resize(&e.pending, keep)
 	append(&list, own)
-	// far to near; equal depths in paint order (stable)
-	for i in 1 ..< len(list) {
-		x := list[i]
-		j := i
-		for j > 0 && (list[j - 1].z > x.z || (list[j - 1].z == x.z && list[j - 1].seq > x.seq)) {
-			list[j] = list[j - 1]
-			j -= 1
+	n := len(list)
+	for &p in list { p.v, p.ok3 = plane_corners3(p.pl, p.m) }
+	// before[i * n + j]: i must be drawn before j (j is wholly in front of i's plane)
+	before := make([]bool, n * n, context.temp_allocator)
+	for i in 0 ..< n {
+		for j in i + 1 ..< n {
+			switch in_front(&list[i], &list[j]) {
+			case 1: before[j * n + i] = true
+			case -1: before[i * n + j] = true
+			}
 		}
-		list[j] = x
 	}
-	for p in list {
+	done := make([]bool, n, context.temp_allocator)
+	for _ in 0 ..< n {
+		pick := -1
+		// a plane everything that has to be under it is already drawn for; the farthest middle (then the earliest) first
+		for i in 0 ..< n {
+			if done[i] { continue }
+			free := true
+			for j in 0 ..< n { if !done[j] && before[j * n + i] { free = false; break } }
+			if !free { continue }
+			if pick < 0 || list[i].z < list[pick].z || (list[i].z == list[pick].z && list[i].seq < list[pick].seq) { pick = i }
+		}
+		if pick < 0 {
+			// a cycle: planes that cut through each other: the farthest middle
+			for i in 0 ..< n {
+				if done[i] { continue }
+				if pick < 0 || list[i].z < list[pick].z { pick = i }
+			}
+		}
+		done[pick] = true
+		p := list[pick]
 		if p.cull { draw.discard_plane(e.dc, p.pl); continue }
 		draw.draw_plane(e.dc, p.pl, p.m, p.alpha, draw.Plane_Draw{max_taps = plane_settings.taps})
 	}
+}
+
+// Where a plane lies in the frame its context is drawn in, as (x / w, y / w, z / w) of its four corners: a space in which
+// planes are planes and the viewer looks along -z from infinity, whatever the perspective is (a projective map keeps both).
+// ok = false: a corner is behind the viewer.
+@(private)
+plane_corners3 :: proc(pl: draw.Plane_Layer, m: draw.Mat4) -> (v: [4][3]f32, ok: bool) {
+	r0 := pl.origin
+	r1 := pl.origin + draw.Vec2{f32(pl.size.x), f32(pl.size.y)} / pl.scale
+	pts := [4]draw.Vec2{r0, {r1.x, r0.y}, r1, {r0.x, r1.y}}
+	for p, i in pts {
+		h := draw.mat4_apply(m, {p.x, p.y, 0})
+		if !(h[3] > 1e-6) { return {}, false }
+		v[i] = {h[0] / h[3], h[1] / h[3], h[2] / h[3]}
+	}
+	return v, true
+}
+
+// Is `a` wholly on the viewer's side of the plane of `b` (1), wholly behind it (-1), or neither (0: they cut each other, are
+// coplanar, or `b` is edge-on)?
+@(private)
+side_of :: proc(a, b: [4][3]f32) -> int {
+	e1 := b[1] - b[0]
+	e2 := b[3] - b[0]
+	n := [3]f32{e1.y * e2.z - e1.z * e2.y, e1.z * e2.x - e1.x * e2.z, e1.x * e2.y - e1.y * e2.x}
+	l := math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z)
+	if l < 1e-9 || abs(n.z) < 1e-4 * l { return 0 }
+	if n.z < 0 { n = -n }
+	lo, hi := f32(math.F32_MAX), f32(-math.F32_MAX)
+	for p in a {
+		d := (n.x * (p.x - b[0].x) + n.y * (p.y - b[0].y) + n.z * (p.z - b[0].z)) / l
+		lo, hi = min(lo, d), max(hi, d)
+	}
+	TOL :: 0.02
+	if lo >= -TOL && hi <= TOL { return 0 }
+	if lo >= -TOL { return 1 }
+	if hi <= TOL { return -1 }
+	return 0
+}
+
+// Does `a` have to be drawn after `b` (1), before it (-1), or does the geometry not say (0)?
+@(private)
+in_front :: proc(a, b: ^Pending_Plane) -> int {
+	if !a.ok3 || !b.ok3 { return 0 }
+	if r := side_of(a.v, b.v); r != 0 { return r }
+	return -side_of(b.v, a.v)
 }

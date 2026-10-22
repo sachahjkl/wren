@@ -2,6 +2,7 @@ package browser
 
 import "core:fmt"
 import "core:log"
+import "core:math"
 import "core:strings"
 import "core:testing"
 import "toolkit:draw"
@@ -105,6 +106,7 @@ cx_close :: proc(f: ^Cx) {
 @(private = "file")
 cx_paint :: proc(f: ^Cx, composited: bool, scroll: f32 = 0) -> []u8 {
 	compositor_settings.enabled = composited
+	compositor_settings.settle_ms = 0   // (a global: another test closing its fixture puts the default back)
 	size := draw.Vec2{f32(COMP_SIZE.x), f32(COMP_SIZE.y)}
 	draw.begin_frame(&f.dc, size)
 	render.frame_begin(&f.r, {1, 1, 1, 1})
@@ -445,5 +447,79 @@ planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
 		img := cx_paint(&f, composited)
 		testing.expectf(t, cx_px(img, 100, 90) == {255, 0, 0, 255}, "composited %v: the member plane shows: %v", composited, cx_px(img, 100, 90))
 		testing.expectf(t, cx_px(img, 220, 50) == {0, 0, 255, 255}, "composited %v: the second member (outside its root's own box) shows: %v", composited, cx_px(img, 220, 50))
+	}
+}
+// Planes: a plane whose content did not change is kept: tilting it again records nothing and draws nothing again, and the
+// pixels are the ones direct drawing gives.
+@(test)
+planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 500px; width: 340px; height: 280px; position: relative }
+		.card { position: absolute; left: 60px; top: 50px; width: 200px; height: 120px; background: linear-gradient(135deg, #e03131, #1971c2); border-radius: 12px; transform: rotateY(20deg) }
+		</style></head><body><div class=stage><div class=card>Card</div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	// settle: recorded, then drawn twice so the toolkit keeps the layer
+	for _ in 0 ..< 3 { cx_paint(&f, true) }
+	card := &f.l.spaces[0]
+	for &sp in f.l.spaces { if sp.proj { card = &sp } }
+	testing.expect(t, card.proj, "the card is a plane")
+	for deg in ([]f32{30, 40, 50}) {
+		a := deg * 3.1415927 / 180
+		co, si := math.cos(a), math.sin(a)
+		// rotateY(deg) about the middle of the card: translate(c) * rotateY * translate(-c)
+		c := lay.Vec2{f.l.boxes[card.box].abs.x + 100, f.l.boxes[card.box].abs.y + 60}
+		ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
+		card.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
+		img := cx_paint(&f, true)
+		stats := composite_stats
+		kept := draw.layer_cache_stats(&f.dc)
+		testing.expectf(t, stats.recorded == 0, "%v degrees: nothing is recorded again (%v)", deg, stats)
+		testing.expectf(t, kept.hits >= 1 && kept.misses == 0, "%v degrees: the plane comes from the cache (%v)", deg, kept)
+		// the same frame with nothing kept: drawn again, the same pixels
+		draw.set_layer_cache(&f.dc, 0)
+		again := cx_paint(&f, true)
+		draw.set_layer_cache(&f.dc, draw.LAYER_CACHE_DEFAULT_BUDGET)
+		worst, count := cx_diff(img, again)
+		testing.expectf(t, worst <= 1, "%v degrees: kept plane differs from drawing it (%d bytes, worst %d)", deg, count, worst)
+		for _ in 0 ..< 2 { cx_paint(&f, true) }   // (kept again for the next angle)
+	}
+}
+
+// backface-visibility: hidden hides what faces away inside a preserve-3d context; a layer lifted above a tilted card stays
+// above it whatever the tilt (it is drawn after the plane it rides on).
+@(test)
+planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 600px; width: 340px; height: 280px; position: relative }
+		.flip { position: absolute; left: 20px; top: 20px; width: 120px; height: 120px; transform-style: preserve-3d; transform: rotateY(180deg) }
+		.face { position: absolute; inset: 0; backface-visibility: hidden; background: rgb(255, 0, 0) }
+		.back { position: absolute; inset: 0; backface-visibility: hidden; background: rgb(0, 160, 0); transform: rotateY(180deg) }
+		.scene { position: absolute; left: 180px; top: 20px; width: 140px; height: 140px; transform-style: preserve-3d; transform: rotateX(55deg) rotateY(40deg) }
+		.base { position: absolute; inset: 0; background: rgb(255, 0, 0) }
+		.lift { position: absolute; left: 40px; top: 40px; width: 60px; height: 60px; background: rgb(0, 0, 255); transform: translateZ(25px) }
+		</style></head><body><div class=stage><div class=flip><div class=face></div><div class=back></div></div>
+		<div class=scene><div class=base></div><div class=lift></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		// the card is turned over: its green back shows, its red front does not
+		p := cx_px(img, 80, 80)
+		testing.expectf(t, p[1] > 150 && p[0] < 40, "composited %v: the back shows where the front faces away: %v", composited, p)
+		// the lifted layer is above the base at its own projected middle
+		v := lay.view_make(&f.l, {f32(COMP_SIZE.x), f32(COMP_SIZE.y)}, 0, cull = false)
+		var_lift: lay.Box
+		for &b in f.l.boxes { if .Plane in b.flags && b.cs != nil && b.cs.width.v == 60 { var_lift = b } }
+		mid, ok := lay.plane_project(&f.l, &v, var_lift.space, {var_lift.abs.x + 30, var_lift.abs.y + 30})
+		testing.expect(t, ok)
+		q := cx_px(img, int(mid.x), int(mid.y))
+		testing.expectf(t, q[2] > 200 && q[0] < 60, "composited %v: the lifted layer is over its base at %v: %v", composited, mid, q)
 	}
 }

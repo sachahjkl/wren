@@ -9,9 +9,10 @@ import "wb:license"
 // date and order number, an iridescent foil that shifts with the pointer, and a certification seal. Made with the page
 // engine's own CSS and a little JavaScript:
 //
-//  - the card tilts with the pointer (rotateX / rotateY, eased back to rest by a CSS transition) and its layers move by
-//    different amounts (the foil, the glare, the text, the seal), which is what gives it depth: Wren's transforms are
-//    2D (rotateX/Y are projected without perspective, style/transform.odin), so the tilt alone would only squeeze it;
+//  - the card tilts with the pointer (rotateX / rotateY, eased back to rest by a CSS transition) in the perspective of its box
+//    (CSS Transforms 2: .cardbox has perspective, .lic preserve-3d): the base with its foil and glare lies at z = 0, the
+//    text 18px above it and the seal 30px, so the tilt shows real parallax between them, and the layers also slide a little
+//    on the pointer. At rest the scales (900 / (900 - z)) cancel the enlargement the perspective gives the lifted layers;
 //  - the script runs on pointer events only, applies at most one update per frame (requestAnimationFrame) and never
 //    loops: a card at rest, or the pointer still, costs no frame;
 //  - without JavaScript (javascript.enabled off) or with prefers-reduced-motion the card is the same, still, foil at
@@ -19,18 +20,20 @@ import "wb:license"
 
 @(private = "file")
 CARD_STYLE :: `
-  .cardbox { width: 100%; max-width: 440px; margin: 16px 0 6px; padding: 12px 0; }
-  .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; border-radius: 14px; overflow: hidden; color: #eceff7;
-    background-color: #161a26; background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%);
-    border: 1px solid rgba(255, 255, 255, 0.16); transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .cardbox { width: 100%; max-width: 440px; margin: 16px 0 6px; padding: 12px 0; perspective: 900px; }
+  .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; color: #eceff7; transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
   .lic.live { transition: none; }
   .lic > div { position: absolute; }
+  .lic .base { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26;
+    background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16); }
+  .lic .base > div { position: absolute; }
   .lic .tex { left: 0; top: 0; right: 0; bottom: 0; background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.04) 0px, rgba(255, 255, 255, 0.04) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 4px); }
   .lic .holo { left: 0; top: 0; right: 0; bottom: 0; opacity: 0.19; mix-blend-mode: color-dodge; background-size: 240% 240%; background-position: var(--bx, 35%) var(--by, 30%);
     background-image: linear-gradient(var(--ang, 115deg), rgba(255, 122, 198, 0) 8%, #ff7ac6 22%, #ffd36e 36%, #7dffb2 50%, #6ec7ff 64%, #b48cff 78%, rgba(180, 140, 255, 0) 92%); }
   .lic .glare { left: 0; top: 0; right: 0; bottom: 0; mix-blend-mode: soft-light;
     background-image: radial-gradient(circle at var(--gx, 30%) var(--gy, 24%), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 55%); }
-  .lic .face { left: 0; top: 0; right: 0; bottom: 0; padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+  .lic .face { left: 0; top: 0; right: 0; bottom: 0; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
   .lic .top { display: flex; align-items: center; }
   .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
   .lic .top b { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
@@ -46,7 +49,7 @@ CARD_STYLE :: `
     .lic .meta { flex-direction: column; }
     .lic .meta div { margin: 0 0 5px 0; }
   }
-  .lic .seal { right: 16px; bottom: 14px; width: 88px; height: 88px; border-radius: 50%; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px rgba(0, 0, 0, 0.4);
+  .lic .seal { right: 16px; bottom: 14px; transform: translate3d(0, 0, 30px) scale(0.9667); width: 88px; height: 88px; border-radius: 50%; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px rgba(0, 0, 0, 0.4);
     background-image: repeating-conic-gradient(from 0deg, #f3dc8e 0deg, #f3dc8e 1.5deg, #d3a93d 1.5deg, #d3a93d 5deg, #9c7220 5deg, #9c7220 8deg); }
   .lic .seal .ring { position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border-radius: 50%; border: 2px solid #f4df9a; box-sizing: border-box;
     box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.35);
@@ -69,14 +72,14 @@ CARD_SCRIPT :: `
   var px = 0, py = 0, queued = false, live = false;
   function apply() {
     queued = false;
-    card.style.transform = "perspective(900px) rotateX(" + (-py * 14).toFixed(2) + "deg) rotateY(" + (px * 18).toFixed(2) + "deg)";
+    card.style.transform = "rotateX(" + (-py * 14).toFixed(2) + "deg) rotateY(" + (px * 18).toFixed(2) + "deg)";
     card.style.setProperty("--bx", (50 + px * 50).toFixed(1) + "%");
     card.style.setProperty("--by", (50 + py * 50).toFixed(1) + "%");
     card.style.setProperty("--ang", (115 + px * 22).toFixed(1) + "deg");
     card.style.setProperty("--gx", (50 + px * 50).toFixed(1) + "%");
     card.style.setProperty("--gy", (50 + py * 50).toFixed(1) + "%");
-    face.style.transform = "translate(" + (-px * 5).toFixed(2) + "px," + (-py * 4).toFixed(2) + "px)";
-    seal.style.transform = "translate(" + (px * 7).toFixed(2) + "px," + (py * 6).toFixed(2) + "px)";
+    face.style.transform = "translate3d(" + (-px * 5).toFixed(2) + "px," + (-py * 4).toFixed(2) + "px,18px) scale(0.98)";
+    seal.style.transform = "translate3d(" + (px * 7).toFixed(2) + "px," + (py * 6).toFixed(2) + "px,30px) scale(0.9667)";
   }
   function move(e) {
     var r = box.getBoundingClientRect();
@@ -88,9 +91,9 @@ CARD_SCRIPT :: `
   function leave() {
     live = false; px = 0; py = 0; queued = false;
     card.className = "lic";
-    card.style.transform = "perspective(900px) rotateX(0deg) rotateY(0deg)";
-    face.style.transform = "translate(0px,0px)";
-    seal.style.transform = "translate(0px,0px)";
+    card.style.transform = "rotateX(0deg) rotateY(0deg)";
+    face.style.transform = "translate3d(0px,0px,18px) scale(0.98)";
+    seal.style.transform = "translate3d(0px,0px,30px) scale(0.9667)";
   }
   box.addEventListener(window.PointerEvent ? "pointermove" : "mousemove", move);
   box.addEventListener(window.PointerEvent ? "pointerleave" : "mouseleave", leave);
@@ -103,7 +106,7 @@ card_css :: proc() -> string { return CARD_STYLE }
 license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	e :: proc(s: string) -> string { return escape_html(s) }
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
-	strings.write_string(sb, "<div class=\"tex\"></div>")
+	strings.write_string(sb, "<div class=\"base\"><div class=\"tex\"></div><div class=\"holo\"></div><div class=\"glare\"></div></div>")
 	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><img src=\"%s\" alt=\"\"><b>%s</b><span>%s</span></div>", app_logo_url(), APP_NAME, e(license.edition_title(lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }
@@ -111,7 +114,6 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	if lic.date != "" { fmt.sbprintf(sb, "<div><small>Issued</small><em>%s</em></div>", e(lic.date)) }
 	if lic.order != "" { fmt.sbprintf(sb, "<div><small>Order</small><em>%s</em></div>", e(lic.order)) }
 	strings.write_string(sb, "</div></div>")
-	strings.write_string(sb, "<div class=\"holo\"></div><div class=\"glare\"></div>")
 	strings.write_string(sb, "<div class=\"seal\"><div class=\"ring\"><div class=\"rim\"></div><div class=\"gloss\"></div><div class=\"tickwrap\"><div class=\"tick\"></div></div><div class=\"word\">CERTIFIED</div></div></div>")
 	strings.write_string(sb, "</div></div>\n<script>")
 	strings.write_string(sb, CARD_SCRIPT)
