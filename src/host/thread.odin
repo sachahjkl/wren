@@ -7,8 +7,10 @@ package host
 // and a temporary allocator of its own, destroyed when the procedure returns.
 
 import "base:runtime"
+import "core:strings"
 import "core:sync"
 import win "core:sys/windows"
+import "wb:base"
 
 Thread :: struct {
 	handle: win.HANDLE,
@@ -17,6 +19,28 @@ Thread :: struct {
 	data:   rawptr,
 	ctx:    runtime.Context,
 	done:   b32,   // atomic: the procedure has returned
+	name:   [48]u8,
+	name_len: int,
+}
+
+// Every thread started and not joined yet (shutdown.odin lists the ones still running when the teardown waits).
+@(private)
+live_mu: sync.Mutex
+@(private)
+live: [dynamic]^Thread
+
+thread_name :: proc(t: ^Thread) -> string { return string(t.name[:t.name_len]) }
+
+// The names of the threads whose procedure has not returned.
+threads_running :: proc(allocator := context.allocator) -> []string {
+	out := make([dynamic]string, allocator)
+	sync.mutex_lock(&live_mu)
+	for t in live {
+		n := thread_name(t)
+		if !sync.atomic_load(&t.done) && !strings.has_prefix(n, "wren-shutdown") { append(&out, strings.clone(n == "" ? "(unnamed)" : n, allocator)) }
+	}
+	sync.mutex_unlock(&live_mu)
+	return out[:]
 }
 
 @(private)
@@ -33,7 +57,13 @@ thread_start :: proc(fn: Task_Proc, data: rawptr, stack_bytes := 0, priority := 
 	t.ctx = context
 	t.handle = win.CreateThread(nil, uint(max(stack_bytes, 0)), thread_entry, t, STACK_SIZE_PARAM_IS_A_RESERVATION | win.CREATE_SUSPENDED, &t.id)
 	if t.handle == nil { free(t); return nil }
+	t.name_len = min(len(name), len(t.name))
+	copy(t.name[:t.name_len], name[:t.name_len])
 	if name != "" { win.SetThreadDescription(t.handle, win.utf8_to_wstring(name, context.temp_allocator)) }   // what debuggers and Process Explorer show
+	sync.mutex_lock(&live_mu)
+	if live == nil { live = make([dynamic]^Thread, base.process_allocator()) }
+	append(&live, t)
+	sync.mutex_unlock(&live_mu)
 	if priority != .Normal { win.SetThreadPriority(t.handle, i32(priority)) }
 	win.ResumeThread(t.handle)
 	return t
@@ -69,7 +99,12 @@ thread_finished :: proc(t: ^Thread) -> bool { return t == nil || bool(sync.atomi
 // Waits for the thread to end and frees it.
 thread_join :: proc(t: ^Thread) {
 	if t == nil { return }
+	shutdown_joining(thread_name(t) == "" ? "(unnamed)" : thread_name(t))
 	win.WaitForSingleObject(t.handle, win.INFINITE)
+	shutdown_joining("")
+	sync.mutex_lock(&live_mu)
+	for l, i in live { if l == t { unordered_remove(&live, i); break } }
+	sync.mutex_unlock(&live_mu)
 	win.CloseHandle(t.handle)
 	free(t)
 }

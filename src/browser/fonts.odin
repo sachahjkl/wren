@@ -423,7 +423,7 @@ fonts_preload_start :: proc(app: ^App) -> ^Font_Preload {
 		for name in fp.generics {
 			for weight in ([]int{400, 700}) { _, _ = font.load_system(fp.fonts, name, weight) }
 		}
-	}, fp)   // nil (no thread): fonts_preload_finish does the work
+	}, fp, name = "wren-font-preload")   // nil (no thread): fonts_preload_finish does the work
 	return fp
 }
 

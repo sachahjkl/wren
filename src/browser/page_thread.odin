@@ -26,6 +26,10 @@ PAGE_THREAD_PREFS := [?]config.Def{
 		description = "A page's layout goes to the page thread (browser.shell.page_thread) when its last pass took at least this long (or none was measured yet). Shorter passes stay on the interface thread: handing them over costs more than it saves."},
 	{name = "browser.shell.resize_anchored", kind = .Bool, default = {b = true},
 		description = "While the window is resized, a page whose layout is long (browser.shell.page_thread_min_ms) shows its last layout anchored at the top left for a frame, and is laid out at the new size in the next one (on the page thread, the interface drawing meanwhile). Off: it is laid out at once, in the frame that shows the new size."},
+	{name = "browser.shell.shutdown_warn_ms", kind = .Int, default = {i = 2000}, bounded = true, min = 500, max = 600000, unit = "ms",
+		description = "When closing the window takes longer than this, the browser logs once a second what the shutdown waits for (the step, the thread, the threads still running) to the standard error and to shutdown.log in the profile."},
+	{name = "browser.shell.shutdown_force_ms", kind = .Int, default = {i = 10000}, bounded = true, min = 0, max = 600000, unit = "ms",
+		description = "When closing the window takes longer than this, the process is ended (after logging what it waited for): a thread that never answers cannot keep a closed window on screen. 0: never forced."},
 	{name = "browser.shell.page_thread_stack_mb", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024, unit = "MB", restart = true,
 		description = "Stack of the page thread: a deeply nested document recurses that deep in layout."},
 }
@@ -68,7 +72,7 @@ page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, 
 	if pt.thread == nil {
 		stack := int(config.int_of(&app.prefs, "browser.shell.page_thread_stack_mb")) << 20
 		context = base.process_context()
-		pt.thread = host.thread_start(page_thread_main, &pt, stack)
+		pt.thread = host.thread_start(page_thread_main, &pt, stack, name = "wren-page-layout")
 		if pt.thread == nil { layout_job_run(&job); return }
 	}
 	pt.job = job

@@ -19,6 +19,7 @@ import "core:sync"
 import "core:thread"
 import "core:time"
 import "wb:base"
+import "wb:host"
 
 MAX_SIG_VALUES :: 32
 
@@ -169,12 +170,16 @@ wt_stop :: proc() {
 		sync.atomic_store(&wt.ticker_stop, true)
 		sync.atomic_add(&wt.running, 1)   // wakes it
 		sync.futex_broadcast(&wt.running)
+		host.shutdown_step("wasm.runtime_destroy: epoch ticker thread")
 		thread.join(wt.ticker)
 		thread.destroy(wt.ticker)
 		wt.ticker = nil
 	}
+	host.shutdown_step("wasm.runtime_destroy: attach (module compile) threads")
 	attach_stop()   // (its jobs hold module cache entries)
+	host.shutdown_step("wasm.runtime_destroy: module cache writer")
 	cache_stop()
+	host.shutdown_step("wasm.runtime_destroy: engine delete")
 	wasmtime_linker_delete(wt.linker)
 	wasm_engine_delete(wt.engine)
 	runtime_settings_destroy(&wt.rs)

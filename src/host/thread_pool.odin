@@ -31,7 +31,7 @@ Thread_Pool :: struct {
 thread_pool_make :: proc(threads: int, stack_bytes := 0) -> ^Thread_Pool {
 	p := new(Thread_Pool)
 	for _ in 0 ..< max(threads, 0) {
-		t := thread_start(pool_thread, p, stack_bytes)
+		t := thread_start(pool_thread, p, stack_bytes, name = "wren-pool")
 		if t == nil { break }
 		append(&p.threads, t)
 	}

@@ -107,9 +107,9 @@ disk_open :: proc(c: ^Cache, dir: string) -> ^Disk {
 	op := new(Op, a)
 	op.kind = .Load_Index
 	push_write(d, op)
-	d.writer = host.thread_start(writer_main, d, priority = .Below_Normal)
+	d.writer = host.thread_start(writer_main, d, priority = .Below_Normal, name = "wren-httpcache-writer")
 	for _ in 0 ..< max(c.settings.read_threads, 1) {
-		if t := host.thread_start(reader_main, d, priority = .Below_Normal); t != nil { append(&d.readers, t) }
+		if t := host.thread_start(reader_main, d, priority = .Below_Normal, name = "wren-httpcache-reader"); t != nil { append(&d.readers, t) }
 	}
 	if d.writer == nil || len(d.readers) == 0 { disk_close_raw(d); return nil }
 	return d

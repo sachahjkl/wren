@@ -93,7 +93,7 @@ compile_service_start :: proc(p: ^Page, n: int) -> bool {
 	compiler.opt = p.settings.wasm
 	compiler.stack = p.settings.workers.thread_stack_bytes
 	for len(compiler.threads) < n {
-		t := host.thread_start(compile_main, nil, compiler.stack, .Below_Normal)
+		t := host.thread_start(compile_main, nil, compiler.stack, .Below_Normal, "wren-js-compile")
 		if t == nil { break }
 		append(&compiler.threads, t)
 	}
