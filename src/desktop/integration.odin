@@ -34,6 +34,7 @@ Identity :: struct {
 	aumid:       string,   // "FromentSoftware.Wren": Windows AppUserModelID, the same the window declares
 	description: string,   // one line, for the menu entry
 	vendor:      string,   // "Froment Software"
+	exe_name:    string,   // "wren.exe": the executable's file name in an install folder ("" = slug, with .exe on Windows)
 }
 
 // An icon of the theme (Linux): a square PNG of `size` pixels.
@@ -48,9 +49,18 @@ Options :: struct {
 	register_browser: bool,       // also register as a program that opens http(s) addresses and the file types
 	file_types:       []string,   // extensions with their dot (".html"): registered when register_browser
 
+	// What an installation of these options has (`install` writes the parts that are on and takes away the ones that are
+	// off: that is what "Modify" does; `remove` takes away all of them).
+	start_menu:       bool,       // the launcher in the application menu (options_make: on)
+	desktop_shortcut: bool,       // a launcher on the desktop
+	add_to_path:      bool,       // the folder of the executable on the user's PATH
+
 	// Where things go. The zero value is the user's real desktop; a test (or WREN_DESKTOP_* in the environment, roots_from_env)
 	// points each at a scratch place.
 	menu_dir:         string,     // Windows: the Programs folder of the user's Start menu
+	desktop_dir:      string,     // Windows: the user's Desktop folder
+	environment_root: string,     // Windows: the subkey of HKEY_CURRENT_USER that stands for "Environment" (PATH lives there)
+	install_dir:      string,     // where the installed copy lives ("" = the platform's default, install.odin)
 	registry_root:    string,     // Windows: the subkey of HKEY_CURRENT_USER that stands for "Software" (default "Software")
 	applications_dir: string,     // Linux: $XDG_DATA_HOME/applications
 	icons_dir:        string,     // Linux: $XDG_DATA_HOME/icons/hicolor
@@ -60,9 +70,11 @@ Options :: struct {
 
 // The parts of an integration, as the platforms keep them (`Backend.parts`).
 Part :: enum u8 {
-	Launcher,       // the shortcut in the application menu, the .desktop file
-	Registration,   // the registry keys that list the program as a browser (Windows)
-	Icons,          // the icons of the theme (Linux)
+	Launcher,           // the shortcut in the application menu, the .desktop file
+	Registration,       // the registry keys that list the program as a browser (Windows)
+	Icons,              // the icons of the theme (Linux)
+	Desktop_Shortcut,   // a shortcut on the desktop (Windows)
+	Path,               // the program's folder in the user's PATH (Windows)
 }
 Parts :: bit_set[Part]
 
@@ -121,6 +133,14 @@ Backend :: struct {
 	install:       proc(o: ^Options) -> Result,
 	remove:        proc(o: ^Options) -> Result,
 	open_defaults: proc() -> bool,   // the system's page where the user picks the default programs
+
+	// The installed copy (install.odin). All optional (nil: the platform has no such thing; the folder is then the default).
+	default_install_dir: proc(o: ^Options, allocator: runtime.Allocator) -> string,   // where a copy is installed unless told otherwise
+	locate:              proc(o: ^Options, allocator: runtime.Allocator) -> string,   // the folder the system recorded for it ("" = none)
+	record:              proc(o: ^Options, dir, version: string) -> Result,           // the system's record (Windows: the Apps list)
+	unrecord:            proc(o: ^Options) -> Result,
+	cleanup_later:       proc(files: []string, folder: string, pid: u32) -> bool,     // deletes files after process `pid` ends
+	path_remove:         proc(o: ^Options, dir: string) -> Result,                    // takes one folder out of the user's PATH
 }
 
 DEFAULT_FILE_TYPES :: ".htm,.html,.xhtml,.svg,.webp,.avif"
@@ -137,6 +157,7 @@ options_make :: proc(identity: Identity, allocator := context.temp_allocator) ->
 		identity = identity,
 		exe = executable_path(allocator),
 		register_browser = true,
+		start_menu = true,
 		file_types = split_list(DEFAULT_FILE_TYPES, allocator),
 		notify_system = true,
 	}
@@ -148,6 +169,9 @@ options_clone :: proc(o: Options, allocator := context.allocator) -> Options {
 	c := o   // (the identity's strings are the program's constants)
 	c.exe = clone_or_empty(o.exe, allocator)
 	c.menu_dir = clone_or_empty(o.menu_dir, allocator)
+	c.desktop_dir = clone_or_empty(o.desktop_dir, allocator)
+	c.environment_root = clone_or_empty(o.environment_root, allocator)
+	c.install_dir = clone_or_empty(o.install_dir, allocator)
 	c.registry_root = clone_or_empty(o.registry_root, allocator)
 	c.applications_dir = clone_or_empty(o.applications_dir, allocator)
 	c.icons_dir = clone_or_empty(o.icons_dir, allocator)
@@ -159,6 +183,7 @@ options_clone :: proc(o: Options, allocator := context.allocator) -> Options {
 
 options_destroy :: proc(o: ^Options, allocator := context.allocator) {
 	delete(o.exe, allocator); delete(o.menu_dir, allocator); delete(o.registry_root, allocator)
+	delete(o.desktop_dir, allocator); delete(o.environment_root, allocator); delete(o.install_dir, allocator)
 	delete(o.applications_dir, allocator); delete(o.icons_dir, allocator)
 	for ft in o.file_types { delete(ft, allocator) }
 	delete(o.file_types, allocator)
@@ -182,6 +207,9 @@ executable_path :: proc(allocator := context.temp_allocator) -> string {
 // Every part of the backend that these options ask for.
 parts_wanted :: proc(b: ^Backend, o: ^Options) -> Parts {
 	w := b.parts
+	if !o.start_menu { w -= {.Launcher} }
+	if !o.desktop_shortcut { w -= {.Desktop_Shortcut} }
+	if !o.add_to_path { w -= {.Path} }
 	if !o.register_browser { w -= {.Registration} }
 	if len(o.icons) == 0 { w -= {.Icons} }   // nothing to install: nothing to miss
 	return w

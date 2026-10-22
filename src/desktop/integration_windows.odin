@@ -27,11 +27,17 @@ import win "core:sys/windows"
 WINDOWS_BACKEND := Backend{
 	name = "windows",
 	targets = "Start menu, default apps",
-	parts = {.Launcher, .Registration},
+	parts = {.Launcher, .Desktop_Shortcut, .Registration, .Path},
 	status = windows_status,
 	install = windows_install,
 	remove = windows_remove,
 	open_defaults = windows_open_defaults,
+	default_install_dir = windows_default_install_dir,
+	locate = windows_locate,
+	record = windows_record,
+	unrecord = windows_unrecord,
+	cleanup_later = windows_cleanup_later,
+	path_remove = windows_path_remove,
 }
 
 @(private)
@@ -51,6 +57,7 @@ MARK_VALUE :: "WrenIntegration"
 Layout :: struct {
 	menu_dir:     string,
 	lnk:          string,   // the shortcut's path
+	desktop_lnk:  string,   // the shortcut on the desktop ("" when the Desktop folder is unknown)
 	capabilities: string,   // Software\Clients\StartMenuInternet\<key>\Capabilities (relative to HKCU)
 	client:       string,   // Software\Clients\StartMenuInternet\<key>
 	progid:       string,   // Software\Classes\<key>HTML
@@ -64,6 +71,8 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 	l.menu_dir = o.menu_dir != "" ? o.menu_dir : programs_folder()
 	if l.menu_dir == "" { return {}, false }
 	l.lnk = strings.concatenate({l.menu_dir, "\\", o.identity.name, ".lnk"}, context.temp_allocator)
+	desktop := o.desktop_dir != "" ? o.desktop_dir : known_folder(win.FOLDERID_Desktop)
+	if desktop != "" { l.desktop_lnk = strings.concatenate({desktop, "\\", o.identity.name, ".lnk"}, context.temp_allocator) }
 	l.client = reg_join(root, "Clients", "StartMenuInternet", o.identity.key)
 	l.capabilities = reg_join(l.client, "Capabilities")
 	l.progid_name = strings.concatenate({o.identity.key, "HTML"}, context.temp_allocator)
@@ -74,8 +83,12 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 
 // The user's Start menu Programs folder (%APPDATA%\Microsoft\Windows\Start Menu\Programs).
 @(private = "file")
-programs_folder :: proc() -> string {
-	id := win.FOLDERID_Programs
+programs_folder :: proc() -> string { return known_folder(win.FOLDERID_Programs) }
+
+// A folder of the user's profile by its known-folder id ("" when the system cannot say).
+@(private)
+known_folder :: proc(folder: win.GUID) -> string {
+	id := folder
 	path: win.LPWSTR
 	if win.SHGetKnownFolderPath(&id, 0, nil, &path) < 0 || path == nil { return "" }
 	defer win.CoTaskMemFree(path)
@@ -96,18 +109,12 @@ windows_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 	com := com_enter()
 	defer com_leave(com)
 
-	// the shortcut: ours when it carries the AppUserModelID or runs the executable
-	if os.is_file(l.lnk) {
-		target, aumid, read := read_shortcut(l.lnk)
-		mine := read && (aumid == o.identity.aumid || same_path(target, o.exe))
-		if mine {
-			ps := &s.parts[.Launcher]
-			ps.present = true
-			ps.target = clone_or_empty(target, allocator)
-			ps.stale = !same_path(target, o.exe)
-			ps.partial = aumid != o.identity.aumid   // a shortcut without the AppUserModelID does not group with the windows
-		}
-	}
+	// the shortcuts: ours when they carry the AppUserModelID or run the executable
+	s.parts[.Launcher] = shortcut_status(o, l.lnk, allocator)
+	if l.desktop_lnk != "" { s.parts[.Desktop_Shortcut] = shortcut_status(o, l.desktop_lnk, allocator) }
+
+	// the folder of the program on the user's PATH
+	if dir := exe_dir(o.exe); dir != "" && path_contains(o, dir) { s.parts[.Path].present = true }
 
 	// the registration: three pieces; each one is ours when it has the mark or runs the executable
 	client_cmd, client_cmd_ok := reg_get(reg_join(l.client, "shell", "open", "command"), "")
@@ -132,6 +139,18 @@ windows_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 		if ps.target == "" && client_cmd_ok { ps.target = clone_or_empty(client_prog, allocator) }
 	}
 	return s
+}
+
+@(private = "file")
+shortcut_status :: proc(o: ^Options, lnk: string, allocator: runtime.Allocator) -> (ps: Part_Status) {
+	if !os.is_file(lnk) { return }
+	target, aumid, read := read_shortcut(lnk)
+	if !(read && (aumid == o.identity.aumid || same_path(target, o.exe))) { return }
+	ps.present = true
+	ps.target = clone_or_empty(target, allocator)
+	ps.stale = !same_path(target, o.exe)
+	ps.partial = aumid != o.identity.aumid   // a shortcut without the AppUserModelID does not group with the windows
+	return
 }
 
 // What a shortcut runs and its AppUserModelID; read = false when the file is not a shortcut the shell can load.
@@ -171,18 +190,56 @@ read_shortcut :: proc(path: string) -> (target, aumid: string, read: bool) {
 windows_install :: proc(o: ^Options) -> Result {
 	l, ok := layout_of(o)
 	if !ok { return {.System, "the Start menu folder is unknown"} }
-	if !ensure_dir(l.menu_dir) { return {.Io, strings.concatenate({"cannot create ", l.menu_dir}, context.temp_allocator)} }
 	com := com_enter()
 	defer com_leave(com)
 
-	if r := write_shortcut(o, l.lnk); r.error != .None { return r }
+	// each part the options have is written, each one they do not have is taken away (when it is ours): applying a
+	// change of options is the same call as installing
+	if o.start_menu {
+		if !ensure_dir(l.menu_dir) { return {.Io, strings.concatenate({"cannot create ", l.menu_dir}, context.temp_allocator)} }
+		if r := write_shortcut(o, l.lnk); r.error != .None { return r }
+	} else if r := remove_shortcut(o, l.lnk); r.error != .None { return r }
+
+	if o.desktop_shortcut {
+		if l.desktop_lnk == "" { return {.System, "the Desktop folder is unknown"} }
+		if !ensure_dir(parent_dir(l.desktop_lnk)) { return {.Io, strings.concatenate({"cannot create ", parent_dir(l.desktop_lnk)}, context.temp_allocator)} }
+		if r := write_shortcut(o, l.desktop_lnk); r.error != .None { return r }
+	} else if l.desktop_lnk != "" {
+		if r := remove_shortcut(o, l.desktop_lnk); r.error != .None { return r }
+	}
 
 	if o.register_browser {
 		if r := write_registration(o, l); r.error != .None { return r }
 	} else {
 		remove_registration(o, l)   // an earlier install that registered: the option says it should not
 	}
-	if o.notify_system { notify_associations() }
+
+	path_changed := false
+	if dir := exe_dir(o.exe); dir != "" {
+		if o.add_to_path {
+			had := path_contains(o, dir)
+			if r := path_add(o, dir); r.error != .None { return r }
+			path_changed = !had
+		} else {
+			had := path_contains(o, dir)
+			if r := path_take_out(o, dir, force = false); r.error != .None { return r }
+			path_changed = had && !path_contains(o, dir)
+		}
+	}
+	if o.notify_system {
+		notify_associations()
+		if path_changed { broadcast_environment() }
+	}
+	return {}
+}
+
+// Deletes a shortcut when it is the program's (its AppUserModelID or its executable); another file of that name stays.
+@(private = "file")
+remove_shortcut :: proc(o: ^Options, lnk: string) -> Result {
+	if !os.is_file(lnk) { return {} }
+	target, aumid, read := read_shortcut(lnk)
+	if !(read && (aumid == o.identity.aumid || same_path(target, o.exe))) { return {} }
+	if err := os.remove(lnk); err != nil { return {.Io, strings.concatenate({"cannot delete ", lnk}, context.temp_allocator)} }
 	return {}
 }
 
@@ -292,14 +349,21 @@ windows_remove :: proc(o: ^Options) -> Result {
 	com := com_enter()
 	defer com_leave(com)
 	res: Result
-	if os.is_file(l.lnk) {
-		target, aumid, read := read_shortcut(l.lnk)
-		if read && (aumid == o.identity.aumid || same_path(target, o.exe)) {
-			if err := os.remove(l.lnk); err != nil { res = {.Io, strings.concatenate({"cannot delete ", l.lnk}, context.temp_allocator)} }
-		}
+	if r := remove_shortcut(o, l.lnk); r.error != .None { res = r }
+	if l.desktop_lnk != "" {
+		if r := remove_shortcut(o, l.desktop_lnk); r.error != .None && res.error == .None { res = r }
 	}
 	if r := remove_registration(o, l); r.error != .None && res.error == .None { res = r }
-	if o.notify_system { notify_associations() }
+	path_changed := false
+	if dir := exe_dir(o.exe); dir != "" {
+		had := path_contains(o, dir)
+		if r := path_take_out(o, dir, force = false); r.error != .None && res.error == .None { res = r }
+		path_changed = had && !path_contains(o, dir)
+	}
+	if o.notify_system {
+		notify_associations()
+		if path_changed { broadcast_environment() }
+	}
 	return res
 }
 

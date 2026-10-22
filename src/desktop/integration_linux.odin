@@ -27,10 +27,21 @@ LINUX_BACKEND := Backend{
 	install = linux_install,
 	remove = linux_remove,
 	open_defaults = nil,   // each desktop has its own settings program; there is no portable address for it
+	default_install_dir = linux_default_install_dir,
 }
 
 @(private)
 platform_backend :: proc() -> ^Backend { return &LINUX_BACKEND }
+
+// A copy is installed under the data directory: $XDG_DATA_HOME/<slug> (~/.local/share/wren). Linux has no desktop shortcut,
+// PATH or Apps-list part (those are Windows parts: docs/desktop-integration.md): Setup installs the files and the launcher
+// entry. Nothing records the install: the manifest in the folder is the record.
+@(private = "file")
+linux_default_install_dir :: proc(o: ^Options, allocator: runtime.Allocator) -> string {
+	data_home := xdg_data_home()
+	if data_home == "" { return "" }
+	return strings.concatenate({data_home, "/", o.identity.slug}, allocator)
+}
 
 // The window class and application id belong to the toolkit's window on this platform.
 set_process_identity :: proc(id: Identity) {}
@@ -133,7 +144,15 @@ linux_install :: proc(o: ^Options) -> Result {
 		if !ensure_dir(filepath.dir(path)) { return {.Io, strings.concatenate({"cannot create the directory of ", path}, context.temp_allocator)} }
 		if r := write_atomic(path, ic.png); r.error != .None { return r }
 	}
-	if r := write_atomic(l.entry, transmute([]byte)desktop_entry_text(o)); r.error != .None { return r }
+	if o.start_menu {
+		if r := write_atomic(l.entry, transmute([]byte)desktop_entry_text(o)); r.error != .None { return r }
+	} else if text, rerr := os.read_entire_file(l.entry, context.temp_allocator); rerr == nil {
+		// the option is off: an entry of ours goes (another program's file of that name stays)
+		content := string(text)
+		mark, _ := entry_value(content, ENTRY_MARKER)
+		exec, _ := entry_value(content, "Exec")
+		if mark == o.identity.slug || same_path(exec_program(exec), o.exe) { _ = os.remove(l.entry) }
+	}
 
 	// (the icon theme's cache is checked against the directories' times: there is nothing to run for the icons)
 	if o.notify_system { run_tool("update-desktop-database", {l.applications}) }

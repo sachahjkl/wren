@@ -35,6 +35,40 @@ reg_get :: proc(path, name: string) -> (value: string, ok: bool) {
 	return narrow(buf), true
 }
 
+// A REG_SZ or REG_EXPAND_SZ value as stored (%VARIABLES% not expanded), with whether it is the expanding kind.
+@(private)
+reg_get_any :: proc(path, name: string) -> (value: string, expand, ok: bool) {
+	flags := win.DWORD(win.RRF_RT_REG_SZ | win.RRF_RT_REG_EXPAND_SZ | win.RRF_NOEXPAND)
+	size, kind: win.DWORD
+	if win.RegGetValueW(win.HKEY_CURRENT_USER, wide(path), name == "" ? nil : wide(name), flags, &kind, nil, &size) != 0 { return "", false, false }
+	buf := make([]u16, int(size) / 2 + 1, context.temp_allocator)
+	if win.RegGetValueW(win.HKEY_CURRENT_USER, wide(path), name == "" ? nil : wide(name), flags, &kind, raw_data(buf), &size) != 0 { return "", false, false }
+	return narrow(buf), kind == win.REG_EXPAND_SZ, true
+}
+
+// Sets a string value of the given kind (REG_EXPAND_SZ when `expand`), creating the key.
+@(private)
+reg_set_kind :: proc(path, name, value: string, expand: bool) -> bool {
+	key: win.HKEY
+	if win.RegCreateKeyExW(win.HKEY_CURRENT_USER, wide(path), 0, nil, win.REG_OPTION_NON_VOLATILE, win.KEY_SET_VALUE | win.KEY_CREATE_SUB_KEY, nil, &key, nil) != 0 { return false }
+	defer win.RegCloseKey(key)
+	w := win.utf8_to_wstring(value, context.temp_allocator)
+	units := 0
+	for (cast([^]u16)w)[units] != 0 { units += 1 }
+	kind := expand ? win.DWORD(win.REG_EXPAND_SZ) : win.DWORD(win.REG_SZ)
+	return win.RegSetValueExW(key, name == "" ? nil : wide(name), 0, kind, cast(^win.BYTE)rawptr(w), win.DWORD((units + 1) * 2)) == 0
+}
+
+// A DWORD value (0 and false when missing).
+@(private)
+reg_set_dword :: proc(path, name: string, value: u32) -> bool {
+	key: win.HKEY
+	if win.RegCreateKeyExW(win.HKEY_CURRENT_USER, wide(path), 0, nil, win.REG_OPTION_NON_VOLATILE, win.KEY_SET_VALUE | win.KEY_CREATE_SUB_KEY, nil, &key, nil) != 0 { return false }
+	defer win.RegCloseKey(key)
+	v := value
+	return win.RegSetValueExW(key, wide(name), 0, win.REG_DWORD, cast(^win.BYTE)&v, 4) == 0
+}
+
 @(private)
 reg_key_exists :: proc(path: string) -> bool {
 	key: win.HKEY
