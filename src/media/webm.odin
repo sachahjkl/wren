@@ -5,7 +5,7 @@ package media
 // BlockGroup are entered (their sizes may be unknown: live streams, Media Source Extensions segments, which carry
 // clusters with no Segment around them); everything else is skipped without being kept.
 
-import "base:runtime"
+import "wb:base"
 import "core:strings"
 
 Webm_Limits :: struct {
@@ -79,7 +79,7 @@ webm_destroy :: proc(d: ^Webm_Demuxer) {
 	for &t in d.tracks { track_destroy(&t.info) }
 	delete(d.tracks)
 	delete(d.buf)
-	delete(d.group.data, runtime.heap_allocator())
+	delete(d.group.data, base.process_allocator())
 	d^ = {}
 }
 
@@ -88,7 +88,7 @@ webm_reset_parser :: proc(d: ^Webm_Demuxer) {
 	d.state = .Header
 	d.hdr_len = 0
 	clear(&d.buf)
-	delete(d.group.data, runtime.heap_allocator())
+	delete(d.group.data, base.process_allocator())
 	d.group = {}
 	d.error = .None
 }
@@ -250,8 +250,8 @@ webm_collected :: proc(d: ^Webm_Demuxer) {
 	case .Simple_Block: webm_block(d, b, true, d.cluster_tc, -1, false, 0)
 	case .Block:
 		// the rest of the group (duration, references) follows: emitted when the group ends
-		delete(d.group.data, runtime.heap_allocator())
-		d.group = Block_Pending{active = true, data = clone_bytes(b, runtime.heap_allocator()), cluster_tc = d.cluster_tc, duration = -1}
+		delete(d.group.data, base.process_allocator())
+		d.group = Block_Pending{active = true, data = clone_bytes(b, base.process_allocator()), cluster_tc = d.cluster_tc, duration = -1}
 	case .Block_Duration: if d.group.active { d.group.duration = i64(read_uint(b)) }
 	case .Reference_Block: if d.group.active { d.group.has_ref = true }
 	case .Discard_Padding: if d.group.active { d.group.discard = read_sint(b) }
@@ -271,7 +271,7 @@ webm_emit_group :: proc(d: ^Webm_Demuxer) {
 	d.group_end = 0
 	if g.data != nil {
 		webm_block(d, g.data, !g.has_ref, g.cluster_tc, g.duration, true, g.discard)
-		delete(g.data, runtime.heap_allocator())
+		delete(g.data, base.process_allocator())
 	}
 }
 
@@ -330,7 +330,7 @@ webm_tracks :: proc(d: ^Webm_Demuxer, b: []u8) {
 
 @(private = "file")
 webm_track_entry :: proc(d: ^Webm_Demuxer, b: []u8, t: ^Webm_Track) -> bool {
-	heap := runtime.heap_allocator()
+	heap := base.process_allocator()
 	info := &t.info
 	codec_id: string
 	ttype: u64
@@ -512,7 +512,7 @@ webm_block :: proc(d: ^Webm_Demuxer, b: []u8, keyframe: bool, cluster_tc: i64, d
 	t := pts
 	for f, i in frames {
 		if len(f) == 0 { continue }
-		heap := runtime.heap_allocator()
+		heap := base.process_allocator()
 		data := make([]u8, len(f), heap)
 		copy(data, f)
 		s := Sample{dts = t, pts = t, duration = each_dur, config = d.config, data = data}

@@ -866,7 +866,13 @@ media_pause :: proc(el: ^Media_Element) {
 		el.autoplay_ok = false
 		for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the play() request was interrupted by a call to pause()") }
 		clear(&el.pending_play)
-		if el.player != nil { media.player_pause(el.player); el.position = media.time_seconds(media.player_time(el.player)) }
+		if el.player != nil {
+			media.player_pause(el.player)
+			el.position = media.time_seconds(media.player_time(el.player))
+			// what played since the last timeupdate counts as played
+			media_note_played(el, el.last_position, el.position)
+			el.last_position = el.position
+		}
 		media_fire(el, "timeupdate")
 		media_fire(el, "pause")
 	}

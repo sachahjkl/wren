@@ -5,7 +5,7 @@ package media
 // player's decode threads read from it, so every operation takes the mutex; the bytes of a frame are shared (reference
 // counted) so that a reader keeps its frame after the store removed it.
 
-import "base:runtime"
+import "wb:base"
 import "core:slice"
 import "core:sync"
 
@@ -15,7 +15,7 @@ Blob :: struct {
 }
 
 blob_new :: proc(data: []u8) -> ^Blob {
-	b := new(Blob, runtime.heap_allocator())
+	b := new(Blob, base.process_allocator())
 	b.rc, b.data = 1, data
 	return b
 }
@@ -25,8 +25,8 @@ blob_ref :: proc(b: ^Blob) { if b != nil { sync.atomic_add(&b.rc, 1) } }
 blob_unref :: proc(b: ^Blob) {
 	if b == nil { return }
 	if sync.atomic_sub(&b.rc, 1) == 1 {
-		delete(b.data, runtime.heap_allocator())
-		free(b, runtime.heap_allocator())
+		delete(b.data, base.process_allocator())
+		free(b, base.process_allocator())
 	}
 }
 
@@ -63,7 +63,7 @@ Track_Store :: struct {
 	max_end:  Time,             // the greatest end of a frame in presentation time (0 when empty)
 }
 
-store_create :: proc() -> ^Track_Store { return new(Track_Store, runtime.heap_allocator()) }
+store_create :: proc() -> ^Track_Store { return new(Track_Store, base.process_allocator()) }
 
 store_destroy :: proc(s: ^Track_Store) {
 	if s == nil { return }
@@ -71,7 +71,7 @@ store_destroy :: proc(s: ^Track_Store) {
 	delete(s.frames)
 	for &e in s.configs { track_destroy(&e.track) }
 	delete(s.configs)
-	free(s, runtime.heap_allocator())
+	free(s, base.process_allocator())
 }
 
 // A description of the track for the frames that carry `config` (an initialization segment, or a file's header).

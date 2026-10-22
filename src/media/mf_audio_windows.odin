@@ -4,7 +4,7 @@ package media
 // Audio decoding with a Media Foundation transform (AAC, Opus, MP3, FLAC: whichever the system has). The output is
 // 32-bit float PCM.
 
-import "base:runtime"
+import "wb:base"
 import "core:mem"
 
 @(private)
@@ -59,7 +59,7 @@ mf_audio_create :: proc(track: Track) -> ^Audio_Decoder {
 		if hr_ok(acts[i]->ActivateObject(&IID_IMFTransform, (^rawptr)(&mft))) && mft != nil { break }
 	}
 	if mft == nil { return nil }
-	a := new(MF_Audio, runtime.heap_allocator())
+	a := new(MF_Audio, base.process_allocator())
 	a.mft = mft
 	a.track = track_clone(track)
 	a.channels = max(track.channels, 1)
@@ -72,7 +72,7 @@ mf_audio_create :: proc(track: Track) -> ^Audio_Decoder {
 	}
 	mft->ProcessMessage(MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, 0)
 	mft->ProcessMessage(MFT_MESSAGE_NOTIFY_START_OF_STREAM, 0)
-	d := new(Audio_Decoder, runtime.heap_allocator())
+	d := new(Audio_Decoder, base.process_allocator())
 	d.impl = a
 	d.name = "Media Foundation"
 	d.push = mf_audio_push
@@ -276,11 +276,11 @@ mf_audio_free :: proc(a: ^MF_Audio) {
 		com_release(a.mft)
 	}
 	track_destroy(&a.track)
-	free(a, runtime.heap_allocator())
+	free(a, base.process_allocator())
 }
 
 @(private)
 mf_audio_destroy :: proc(d: ^Audio_Decoder) {
 	mf_audio_free((^MF_Audio)(d.impl))
-	free(d, runtime.heap_allocator())
+	free(d, base.process_allocator())
 }
