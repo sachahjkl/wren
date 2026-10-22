@@ -906,7 +906,7 @@ line_float :: proc(lb: ^Line_Builder, k: i32) {
 
 // Width an atomic inline takes on the line (margin box) after laying it out.
 @(private)
-layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
+layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32, ch: f32 = -1) -> f32 {
 	resolve_box_model(c, &c.l.boxes[k], cw)
 	kb := &c.l.boxes[k]
 	if kb.auto_l { kb.margin[3] = 0 }
@@ -915,7 +915,7 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 	if kb.auto_b { kb.margin[2] = 0 }
 	w: f32
 	if kb.kind == .Replaced {
-		w = replaced_size(c, k, cw, -1).x
+		w = replaced_size(c, k, cw, ch).x
 	} else if kb.kind == .Table {
 		w = table_width(c, k, cw, cw - mg_w(kb))
 	} else if spec, ok := to_border_w(c, kb, kb.cs.width, cw); ok {
@@ -929,7 +929,7 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 		kb = &c.l.boxes[k]
 		w = clamp_w(c, kb, w, cw)
 	}
-	layout_contents(c, k, w, -1, -1, nil)
+	layout_contents(c, k, w, ch, -1, nil)
 	kb = &c.l.boxes[k]
 	return w + mg_w(kb)
 }
@@ -938,7 +938,7 @@ layout_atomic :: proc(c: ^Ctx, k: i32, cw: f32) -> f32 {
 // it is empty (no line boxes: margins collapse through it) and the bottom margin of a block-in-inline that ends it (not
 // in the height).
 @(private)
-layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool, f32) {
+layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (f32, bool, f32) {
 	b := &c.l.boxes[bi]
 	// a re-layout replaces the previous result; when it was the last one made, its storage is reused
 	if b.lines[1] > b.lines[0] {
@@ -958,7 +958,7 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool, f32)
 	if c.pre != nil {
 		if h, empty, ok := pre_adopt(c, bi, cw, fc); ok { return h, empty, 0 }   // (simple contexts: no block inside)
 	}
-	out, lines, h, empty, trail := ifc_build(c, bi, cw, fc)
+	out, lines, h, empty, trail := ifc_build(c, bi, cw, fc, ch)
 	ifc_publish(c, bi, out, lines)
 	return h, empty, trail
 }
@@ -968,7 +968,7 @@ layout_ifc :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (f32, bool, f32)
 @(private)
 // `trail`: the bottom margin of a block-in-inline that ends the context, left out of `h` (it collapses with what
 // follows: layout_contents).
-ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lines: []Line, h: f32, empty: bool, trail: f32) {
+ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx, ch: f32 = -1) -> (out: []Frag, lines: []Line, h: f32, empty: bool, trail: f32) {
 	b := &c.l.boxes[bi]
 	// working buffers, one set per nesting level of inline formatting contexts, reused for the whole pass
 	if c.lb_depth >= len(c.lb_bufs) {
@@ -1039,7 +1039,7 @@ ifc_build :: proc(c: ^Ctx, bi: i32, cw: f32, fc: ^Flow_Ctx) -> (out: []Frag, lin
 			if s.brk { commit_unit(&lb, true) }
 			k := c.l.inline_items[s.item].box
 			s2 := s
-			s2.w = layout_atomic(c, k, cw)
+			s2.w = layout_atomic(c, k, cw, ch)
 			append(&lb.unit, s2)
 			if s.brk { commit_unit(&lb, true) }
 		case .Float:
