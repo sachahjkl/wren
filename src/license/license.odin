@@ -57,7 +57,7 @@ error_text :: proc(e: Error) -> string {
 	case .None:          return ""
 	case .Empty:         return "The licence is empty."
 	case .Too_Long:      return "That is too long to be a licence key."
-	case .Bad_Format:    return "That is not a Wren licence key (it should look like WREN1.…)."
+	case .Bad_Format:    return "That is not a Wren licence key: it should start with WREN1 and have three parts separated by dots."
 	case .Bad_Encoding:  return "The licence key is damaged: it is not valid base64url text."
 	case .Bad_Payload:   return "The licence key is damaged: its content is not a licence."
 	case .Wrong_Product: return "This licence is for another product."
