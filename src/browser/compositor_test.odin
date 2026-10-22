@@ -491,7 +491,9 @@ planes_tilt_is_a_matrix_only :: proc(t: ^testing.T) {
 		kept := draw.layer_cache_stats(&f.dc)
 		testing.expectf(t, stats.recorded == 0, "%v degrees: nothing is recorded again (%v)", deg, stats)
 		testing.expectf(t, kept.hits >= 1 && kept.misses == 0, "%v degrees: the plane comes from the cache (%v)", deg, kept)
-		// the same frame with nothing kept: drawn again, the same pixels
+		// the same frame with nothing kept: drawn again, the same pixels (at the scale the plane has while it moves: at rest it
+		// would be rasterized sharper)
+		for k, v in plane_mem { plane_mem[k] = Plane_Mem{scale = v.scale, mat = 0, ms = v.ms} }
 		draw.set_layer_cache(&f.dc, 0)
 		again := cx_paint(&f, true)
 		draw.set_layer_cache(&f.dc, draw.LAYER_CACHE_DEFAULT_BUDGET)
@@ -536,4 +538,281 @@ planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
 		q := cx_px(img, int(mid.x), int(mid.y))
 		testing.expectf(t, q[2] > 200 && q[0] < 60, "composited %v: the lifted layer is over its base at %v: %v", composited, mid, q)
 	}
+}
+
+// Planes that cut through each other: two members of a preserve-3d context in an X (rotateY +45 and -45 about the same axis)
+// are split along their line of intersection, each in front on its own side.
+@(test)
+planes_cutting_through_each_other_are_split :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 600px; width: 340px; height: 280px; position: relative }
+		.root { position: absolute; left: 100px; top: 60px; width: 120px; height: 120px; transform-style: preserve-3d }
+		.a, .b { position: absolute; inset: 0 }
+		.a { background: rgb(255, 0, 0); transform: rotateY(45deg) }
+		.b { background: rgb(0, 0, 255); transform: rotateY(-45deg) }
+		</style></head><body><div class=stage><div class=root><div class=a></div><div class=b></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		testing.expectf(t, cx_px(img, 140, 120)[0] > 240 && cx_px(img, 140, 120)[2] < 20, "composited %v: left of the crossing is the first plane: %v", composited, cx_px(img, 140, 120))
+		testing.expectf(t, cx_px(img, 180, 120)[2] > 240 && cx_px(img, 180, 120)[0] < 20, "composited %v: right of the crossing is the second plane: %v", composited, cx_px(img, 180, 120))
+	}
+}
+
+// mix-blend-mode and backdrop-filter on a plane act on the projected quad.
+@(test)
+planes_blend_and_backdrop_filter :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 600px; width: 340px; height: 280px; position: relative; background: repeating-linear-gradient(90deg, #000 0 4px, #fff 4px 8px) }
+		.m { position: absolute; left: 20px; top: 20px; width: 120px; height: 100px; background: rgb(128, 128, 128); mix-blend-mode: multiply; transform: rotateY(25deg) }
+		.g { position: absolute; left: 200px; top: 20px; width: 120px; height: 100px; border-radius: 20px; backdrop-filter: blur(8px); transform: rotateY(25deg) }
+		</style></head><body><div class=stage><div class=m></div><div class=g></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		// multiply: black stripes stay black, white ones become the gray of the plane
+		whites, blacks, grays := 0, 0, 0
+		for x in 60 ..< 100 {
+			p := cx_px(img, x, 70)
+			if p[0] < 8 { blacks += 1 }
+			if p[0] > 110 && p[0] < 145 { grays += 1 }
+			if p[0] > 245 { whites += 1 }
+		}
+		testing.expectf(t, blacks > 12 && grays > 12 && whites == 0, "composited %v: multiply on the turned plane: %d black, %d gray, %d white", composited, blacks, grays, whites)
+		// backdrop blur: inside the glass the stripes are gone, outside they stay
+		lo, hi := 255, 0
+		for x in 235 ..< 275 {
+			v := cx_px(img, x, 70)[0]
+			lo, hi = min(lo, v), max(hi, v)
+		}
+		testing.expectf(t, hi - lo < 90, "composited %v: the glass blurs what is under it (levels %d..%d)", composited, lo, hi)
+		lo, hi = 255, 0
+		for x in 160 ..< 180 {
+			v := cx_px(img, x, 70)[0]
+			lo, hi = min(lo, v), max(hi, v)
+		}
+		testing.expectf(t, hi - lo > 240, "composited %v: outside the glass the stripes stay (levels %d..%d)", composited, lo, hi)
+	}
+}
+
+// A form control painted in a plane: the pointer maps back through the projection (and the layer's texel map and the stack's
+// transform), exactly, to the coordinates its content rect is in.
+@(test)
+planes_painted_control_projection :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><body>x`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	// frame -> screen: a 50 degree turn about the y axis with a 300 px perspective, about (100, 80)
+	a := f32(50 * math.PI / 180)
+	co, si := math.cos(a), math.sin(a)
+	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
+	pers := style.IDENTITY_MATRIX4
+	pers[11] = -1.0 / 300
+	m := style.m4_mul(style.m4_translate(100, 80, 0), style.m4_mul(pers, style.m4_mul(ry, style.m4_translate(-100, -80, 0))))
+	draw.begin_frame(&f.dc, {f32(COMP_SIZE.x), f32(COMP_SIZE.y)})
+	ctl_plane = Ctl_Plane{ok = true, h = lay.plane_h3(m)}
+	defer ctl_plane = {}
+	draw.push_plane(&f.dc, draw.Rect{{10, 20}, {210, 140}}, 2)
+	draw.push_transform(&f.dc, draw.affine_translate({5, 7}))
+	fwd, inv, ok := painted_projection(&f.dc, draw.current_transform(&f.dc))
+	testing.expect(t, ok)
+	for u in ([]lay.Vec2{{40, 50}, {10, 20}, {180, 110}, {95, 66}}) {
+		p, pok := lay.h3_apply(fwd, u)
+		want, _ := lay.h3_apply(ctl_plane.h, u + lay.Vec2{5, 7})
+		testing.expectf(t, pok && math.abs(p.x - want.x) < 0.01 && math.abs(p.y - want.y) < 0.01, "%v goes where the plane puts it: %v, want %v", u, p, want)
+		back, bok := lay.h3_apply(inv, p)
+		testing.expectf(t, bok && math.abs(back.x - u.x) < 0.01 && math.abs(back.y - u.y) < 0.01, "the pointer at %v is back at %v, want %v", p, back, u)
+	}
+	draw.pop_transform(&f.dc)
+	draw.discard_plane(&f.dc, draw.pop_plane(&f.dc))
+	draw.end_frame(&f.dc)
+}
+
+// The density a plane's projection asks for is the larger singular value of the Jacobian: it matches finite differences, and
+// the scale steps are a quarter octave.
+@(test)
+planes_density_is_the_jacobian :: proc(t: ^testing.T) {
+	a := f32(60 * math.PI / 180)
+	co, si := math.cos(a), math.sin(a)
+	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
+	pers := style.IDENTITY_MATRIX4
+	pers[11] = -1.0 / 250
+	m := style.m4_mul(style.m4_translate(150, 100, 0), style.m4_mul(pers, style.m4_mul(ry, style.m4_translate(-100, -60, 0))))
+	proj :: proc(m: style.Matrix4, p: lay.Vec2) -> lay.Vec2 {
+		h := style.m4_apply(m, p.x, p.y, 0)
+		return {h[0] / h[3], h[1] / h[3]}
+	}
+	for p in ([]lay.Vec2{{0, 0}, {200, 0}, {200, 120}, {100, 60}, {10, 100}}) {
+		h := style.m4_apply(m, p.x, p.y, 0)
+		got := plane_density_at(m, Plane_Vert{p, {h[0], h[1], h[3]}})
+		e := f32(0.01)
+		dx := (proj(m, p + lay.Vec2{e, 0}) - proj(m, p - lay.Vec2{e, 0})) / (2 * e)
+		dy := (proj(m, p + lay.Vec2{0, e}) - proj(m, p - lay.Vec2{0, e})) / (2 * e)
+		g11, g12, g22 := dx.x * dx.x + dx.y * dx.y, dx.x * dy.x + dx.y * dy.y, dy.x * dy.x + dy.y * dy.y
+		want := math.sqrt(0.5 * (g11 + g22 + math.sqrt((g11 - g22) * (g11 - g22) + 4 * g12 * g12)))
+		testing.expectf(t, math.abs(got - want) < 0.01 * want, "density at %v: %.4f, finite differences %.4f", p, got, want)
+	}
+	testing.expect(t, quantize_scale(1.0001) == 1 && quantize_scale(0.5) == 0.5 && math.abs(quantize_scale(1.3) - 1.4142135) < 1e-4)
+	// the polygon that shows: a plane partly behind the eye is cut at the eye plane, the rest by the screen
+	poly := plane_visible_polygon(m, lay.Rect{{-400, -300}, {600, 400}}, lay.Rect{{0, 0}, {360, 300}})
+	testing.expect(t, len(poly) >= 3)
+	for v in poly {
+		testing.expectf(t, v.h[2] > 0 && v.h[0] >= -0.01 * v.h[2] && v.h[0] <= 360.01 * v.h[2] && v.h[1] >= -0.01 * v.h[2] && v.h[1] <= 300.01 * v.h[2], "the vertex %v is on the screen", v)
+	}
+}
+
+// A plane turned toward the viewer so that perspective makes its near edge much larger than the layout size is rasterized
+// denser than 1 (it stays sharp), and one too big for the layer budget is rasterized for the part that shows, still dense.
+@(test)
+planes_are_rasterized_as_dense_as_they_show :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 260px; width: 360px; height: 300px; position: relative; overflow: hidden }
+		.card { position: absolute; left: 80px; top: 60px; width: 200px; height: 120px; background: linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 0, 255)); transform: translateZ(120px) rotateY(55deg) }
+		.big { position: absolute; left: -1400px; top: -1400px; width: 3200px; height: 3200px; background: linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 0, 255)); transform: rotateY(8deg) }
+		</style></head><body><div class=stage><div class=card></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	saved := plane_settings
+	defer plane_settings = saved
+	clear(&plane_mem)
+	cx_paint(&f, true)
+	best: f32
+	for _, v in plane_mem { best = max(best, v.scale) }
+	testing.expectf(t, best >= 1.4, "the card nearer than its size is rasterized denser than 1 (%.2f)", best)
+	// the same on a page with a plane much bigger than the budget: the part that shows is rasterized, at a scale of at least 1
+	clear(&plane_mem)
+	plane_settings.layer_bytes = 6 << 20
+	cx_close(&f)
+	f = {}
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 900px; width: 360px; height: 300px; position: relative; overflow: hidden }
+		.big { position: absolute; left: -1400px; top: -1400px; width: 3200px; height: 3200px; background: linear-gradient(90deg, rgb(255, 0, 0), rgb(0, 0, 255)); transform: rotateY(8deg) }
+		</style></head><body><div class=stage><div class=big></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	img := cx_paint(&f, true)
+	p := cx_px(img, 180, 150)
+	testing.expectf(t, p[0] > 20 && p[2] > 20 && p[1] < 12, "the visible part of the big plane is drawn: %v", p)
+	best = 0
+	for _, v in plane_mem { best = max(best, v.scale) }
+	testing.expectf(t, best >= 0.9, "...at full density, not scaled down to fit (%.2f)", best)
+}
+
+// While a plane moves it keeps the scale it was rasterized at (no new layer at every frame); once its matrix holds still it
+// is rasterized at the scale it needs.
+@(test)
+planes_keep_their_scale_while_moving_and_sharpen_at_rest :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 300px; width: 360px; height: 300px; position: relative }
+		.card { position: absolute; left: 60px; top: 50px; width: 200px; height: 120px; background: linear-gradient(135deg, #e03131, #1971c2); transform: rotateY(1deg) }
+		</style></head><body><div class=stage><div class=card></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	clear(&plane_mem)
+	scale_now :: proc() -> f32 {
+		s: f32
+		for _, v in plane_mem { s = max(s, v.scale) }
+		return s
+	}
+	cx_paint(&f, true)
+	cx_paint(&f, true)
+	at_rest := scale_now()
+	card := &f.l.spaces[0]
+	for &sp in f.l.spaces { if sp.proj { card = &sp } }
+	a := f32(50 * math.PI / 180)
+	co, si := math.cos(a), math.sin(a)
+	c := lay.Vec2{f.l.boxes[card.box].abs.x + 100, f.l.boxes[card.box].abs.y + 60}
+	ry := style.Matrix4{co, 0, -si, 0, 0, 1, 0, 0, si, 0, co, 0, 0, 0, 0, 1}
+	card.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(ry, style.m4_translate(-c.x, -c.y, 0)))
+	cx_paint(&f, true)
+	moving := scale_now()
+	cx_paint(&f, true)
+	settled := scale_now()
+	testing.expectf(t, at_rest <= 1.2, "at 1 degree the card needs about 1 texel per pixel (%.2f)", at_rest)
+	testing.expectf(t, moving == at_rest, "the first frame of the move keeps the scale (%.2f, was %.2f)", moving, at_rest)
+	testing.expectf(t, settled > moving * 1.2, "with the matrix unchanged it is rasterized at the scale it needs (%.2f, was %.2f)", settled, moving)
+}
+
+// A flat 3D child on a plain 3D parent is composited on its own: animating it draws the parent again not at all (its layer
+// comes from the cache), and z-order is kept (what the parent paints after the child is over it).
+@(test)
+planes_flat_child_does_not_draw_its_parent_again :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 800px; width: 360px; height: 300px; position: relative }
+		.parent { position: absolute; left: 20px; top: 20px; width: 300px; height: 240px; background: rgb(200, 200, 255); transform: rotateY(12deg) }
+		.pre { position: absolute; left: 10px; top: 10px; width: 80px; height: 50px; background: rgb(255, 0, 0) }
+		.child { position: absolute; left: 110px; top: 60px; width: 90px; height: 90px; background: rgb(0, 160, 0); transform: rotateX(20deg) }
+		.post { position: absolute; left: 150px; top: 100px; width: 90px; height: 60px; background: rgb(0, 0, 255) }
+		</style></head><body><div class=stage><div class=parent><div class=pre></div><div class=child></div><div class=post></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for _ in 0 ..< 3 { cx_paint(&f, true) }
+	child: ^lay.Space
+	for &sp in f.l.spaces { if sp.proj && f.l.boxes[sp.box].cs != nil && f.l.boxes[sp.box].cs.width.v == 90 { child = &sp } }
+	testing.expect(t, child != nil, "the child is a plane")
+	if child == nil { return }
+	base_mat := child.mat4
+	c := lay.Vec2{f.l.boxes[child.box].abs.x + 45, f.l.boxes[child.box].abs.y + 45}
+	for deg in ([]f32{30, 40, 50, 60}) {
+		a := deg * math.PI / 180
+		co, si := math.cos(a), math.sin(a)
+		rx := style.Matrix4{1, 0, 0, 0, 0, co, si, 0, 0, -si, co, 0, 0, 0, 0, 1}
+		child.mat4 = style.m4_mul(style.m4_translate(c.x, c.y, 0), style.m4_mul(rx, style.m4_translate(-c.x, -c.y, 0)))
+		img := cx_paint(&f, true)
+		stats := draw.layer_cache_stats(&f.dc)
+		testing.expectf(t, composite_stats.recorded == 0 && stats.misses == 0 && stats.hits >= 3, "%v degrees: nothing is drawn again, parent segments and child come from the cache (%v)", deg, stats)
+		// z-order: the child over the parent's content before it, the blue block (painted after) over the child
+		testing.expectf(t, cx_px(img, 60, 60)[0] > 240 && cx_px(img, 60, 60)[1] < 20, "%v degrees: the content before the child shows: %v", deg, cx_px(img, 60, 60))
+		blue := cx_px(img, 205, 160)
+		testing.expectf(t, blue[2] > 240 && blue[0] < 20, "%v degrees: what the parent paints after the child is over it: %v", deg, blue)
+		_ = base_mat
+		for _ in 0 ..< 2 { cx_paint(&f, true) }
+	}
+	// the same pixels with the child drawn into its parent's layer (the preference off), but for resampling at the edges
+	img := cx_paint(&f, true)
+	saved := plane_settings.detach
+	plane_settings.detach = false
+	defer plane_settings.detach = saved
+	again := cx_paint(&f, false)
+	worst, count := cx_diff(img, again)
+	log.infof("detached vs merged: %d bytes differ, worst %d", count, worst)
+	inside := 0
+	for y in 120 ..< 180 { for x in 110 ..< 150 {
+		a, b := cx_px(img, x, y), cx_px(again, x, y)
+		if abs(a[0] - b[0]) > 24 || abs(a[1] - b[1]) > 24 || abs(a[2] - b[2]) > 24 { inside += 1 }
+	} }
+	testing.expectf(t, inside < 40, "inside the child both ways give the same picture (%d pixels differ)", inside)
 }

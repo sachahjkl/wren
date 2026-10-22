@@ -85,6 +85,31 @@ h3_det :: proc(h: [9]f32) -> f32 {
 	return h[0] * (h[4] * h[8] - h[5] * h[7]) - h[1] * (h[3] * h[8] - h[5] * h[6]) + h[2] * (h[3] * h[7] - h[4] * h[6])
 }
 
+h3_mul :: proc(a, b: [9]f32) -> (r: [9]f32) {
+	for i in 0 ..< 3 {
+		for j in 0 ..< 3 {
+			for k in 0 ..< 3 { r[i * 3 + j] += a[i * 3 + k] * b[k * 3 + j] }
+		}
+	}
+	return
+}
+
+// A 2D affine matrix (a b c d e f) as a 3x3 acting on (x, y, 1).
+h3_from_matrix :: proc(m: Matrix) -> [9]f32 { return {m[0], m[2], m[4], m[1], m[3], m[5], 0, 0, 1} }
+
+// A point through a 3x3 (perspective divide). ok = false: behind the viewer or at infinity.
+h3_apply :: proc(h: [9]f32, p: Vec2) -> (Vec2, bool) {
+	w := h[6] * p.x + h[7] * p.y + h[8]
+	if !(w > 1e-9) { return {}, false }
+	return {(h[0] * p.x + h[1] * p.y + h[2]) / w, (h[3] * p.x + h[4] * p.y + h[5]) / w}, true
+}
+
+// Plane `pl`'s frame -> the viewport, through the planes that receive it.
+plane_chain_h3 :: proc(l: ^Layout, v: ^View, pl: i32) -> [9]f32 {
+	h := plane_h3(v.accs[pl])
+	for d := l.spaces[pl].dest; d != NONE; d = l.spaces[d].dest { h = h3_mul(plane_h3(v.accs[d]), h) }
+	return h
+}
 h3_inverse :: proc(h: [9]f32) -> (r: [9]f32, ok: bool) {
 	det := h3_det(h)
 	if !(abs(det) > 1e-18) || math.is_inf(det) { return {}, false }
@@ -144,6 +169,31 @@ plane_group :: proc(l: ^Layout, g: i32, si: i32) {
 	}
 }
 
+// Can plane group `g` be composited on its own instead of into the layer of its parent plane? It can when its parent is a plain
+// plane (nothing but the projection happens to its layer: no opacity, filter, clip-path, mask, blend, isolation), g is a flat
+// plane on it (not a member of a 3D context), and no clip lies between them inside the parent's layer. The parent's layer then
+// holds nothing of g: moving g (an animation) does not draw the parent again, and g is projected once (flattened onto the
+// parent's plane, then the parent's projection: one homography, not two resamplings).
+plane_detachable :: proc(l: ^Layout, g: i32) -> bool {
+	// (one level: a plane that is itself detached keeps its own children in its layer)
+	return detachable_shape(l, g) && !detachable_shape(l, l.groups[g].parent)
+}
+
+@(private)
+detachable_shape :: proc(l: ^Layout, g: i32) -> bool {
+	if g == NONE { return false }
+	gr := &l.groups[g]
+	if .Plane not_in gr.effects || gr.space == NONE { return false }
+	p := gr.parent
+	if p == NONE || gr.dest != p { return false }
+	pg := &l.groups[p]
+	if pg.effects != {.Plane} || pg.space == NONE || pg.alpha < 1 { return false }
+	if l.spaces[gr.space].ctx != gr.space { return false }
+	for ci := l.boxes[gr.box].clip; ci != NONE; ci = l.clips[ci].parent {
+		if l.spaces[l.clips[ci].space].plane == pg.space { return false }
+	}
+	return true
+}
 // Is a plane (a 3D transform, preserve-3d, or a hidden backface in a 3D context)? Used while the boxes are made.
 @(private)
 plane_wanted :: proc(l: ^Layout, b: ^Box, parent: i32) -> bool {

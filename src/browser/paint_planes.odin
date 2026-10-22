@@ -2,7 +2,9 @@ package browser
 
 import "core:math"
 import "toolkit:draw"
+import "wb:base"
 import "wb:config"
+import "wb:host"
 import lay "wb:layout"
 import "wb:style"
 
@@ -17,29 +19,48 @@ import "wb:style"
 //
 // The members of a preserve-3d context do not land in their parent's layer: they are all projected into the same frame (the
 // one the root of the context lands in), so their composites wait (`Effects.pending`) until the root closes, then are drawn
-// sorted by depth, far to near, with the root's own layer among them. A plane whose content did not change is kept by the
-// toolkit between frames (cache id and key from the effects cache, `fx_cache_plane`): tilting it again only changes the
-// matrix. Sorting is geometric (flush_context): a plane wholly on the viewer's side of another's plane is drawn after it, which
-// keeps a layer lifted above the card it rides on above it whatever the tilt; where that says nothing (two planes that cut
-// through each other, coplanar ones) it is the depth of the middles, then paint order. Planes that cut through each other are
-// not split (a BSP split as Chromium does would be the exact answer): one is simply drawn over the other.
+// sorted, with the root's own layer among them (draw.draw_planes: the toolkit orders planes by the sides they lie on, and splits
+// planes that cut through each other along their line of intersection, as Chromium's BSP does). A plane whose content did not
+// change is kept by the toolkit between frames (cache id and key from the effects cache, `fx_cache_plane`): tilting it again
+// only changes the matrix.
+//
+// How sharp a plane is: its layer is rasterized at the density its projection asks for where it shows (plane_plan: the most
+// screen pixels per layout unit over the part of the quad that is on the page, from the Jacobian of the projection), capped by
+// a memory budget (the part that shows when the whole does not fit), with mip levels and anisotropic filtering for the
+// reduction. While a plane moves it keeps the scale it has; a moment after it stops it is rasterized again at the scale it
+// needs (a timer asks for the frame).
 
 PLANE_PREFS := [?]config.Def{
-	{name = "paint.planes.max_raster_scale", kind = .Float, default = {f = 3}, bounded = true, min = 1, max = 8,
-		description = "Largest number of texels per CSS pixel a 3D-transformed element is rasterized at. A plane that perspective brings nearer than it is drawn is rasterized denser (up to this) so that it stays sharp; farther or foreshortened ones use less memory."},
-	{name = "paint.planes.min_raster_scale", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.0625, max = 1, 
+	{name = "paint.planes.max_raster_scale", kind = .Float, default = {f = 16}, bounded = true, min = 1, max = 64,
+		description = "Largest number of texels per CSS pixel a 3D-transformed element is rasterized at. A plane that perspective brings nearer than it is drawn is rasterized as dense as the screen shows it (up to this, and within paint.planes.layer_mb) so that it stays sharp; farther or foreshortened ones use less memory."},
+	{name = "paint.planes.min_raster_scale", kind = .Float, default = {f = 0.0625}, bounded = true, min = 0.0625, max = 1,
 		description = "Smallest number of texels per CSS pixel a plane is rasterized at (a plane far away or seen edge-on is rasterized smaller than 1 to 1)."},
 	{name = "paint.planes.anisotropic_taps", kind = .Int, default = {i = 8}, bounded = true, min = 1, max = 16,
 		description = "Most texture reads per pixel along the long axis of a plane seen at a slant (anisotropic filtering of the projected layer). 1: plain bilinear."},
+	{name = "paint.planes.mipmaps", kind = .Bool, default = {b = true},
+		description = "Give the layer of a plane its mip levels (rebuilt when it is rasterized), so that a plane that perspective makes smaller than its layer is filtered instead of aliased. Costs a third more GPU memory per layer."},
+	{name = "paint.planes.layer_mb", kind = .Int, default = {i = 96}, bounded = true, min = 4, max = 4096, unit = "MB",
+		description = "GPU memory one plane's layer may use. A plane that would need more at the scale its projection asks for is rasterized for the part of it that shows, and then at a lower scale if that is still too much."},
+	{name = "paint.planes.motion_tolerance", kind = .Float, default = {f = 2}, bounded = true, min = 1, max = 16,
+		description = "While a plane moves (an animation, a drag) its layer keeps the scale it has, so that it is not rasterized again at every frame, until the scale it needs is this many times larger (the plane then looks that much softer). It is rasterized again at the right scale a moment after it stops."},
+	{name = "paint.planes.detach_children", kind = .Bool, default = {b = true},
+		description = "Composite a flat 3D-transformed child of a plain 3D-transformed element on its own, projected once with its parent, instead of drawing it into the parent's layer: animating the child then does not rasterize the parent again every frame, and the child is resampled once. Off: the child is drawn into the parent's layer."},
+	{name = "paint.planes.settle_ms", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 5000, unit = "ms",
+		description = "How long after a plane stopped moving it is rasterized again at the scale it needs, when it kept a smaller one while moving."},
 }
 
 @(private)
 Plane_Settings :: struct {
 	max_scale, min_scale: f32,
 	taps:                 int,
+	mips:                 bool,
+	layer_bytes:          int,
+	tolerance:            f32,
+	settle_ms:            f64,
+	detach:               bool,
 }
 
-@(private) plane_settings := Plane_Settings{max_scale = 3, min_scale = 0.5, taps = 8}
+@(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120, detach = true}
 @(private) planes_watch: int
 
 register_plane_prefs :: proc(p: ^config.Prefs) { config.register(p, PLANE_PREFS[:]) }
@@ -50,6 +71,11 @@ plane_settings_from_prefs :: proc(p: ^config.Prefs) -> Plane_Settings {
 		max_scale = f32(config.float_of(p, "paint.planes.max_raster_scale")),
 		min_scale = f32(config.float_of(p, "paint.planes.min_raster_scale")),
 		taps = int(config.int_of(p, "paint.planes.anisotropic_taps")),
+		mips = config.bool_of(p, "paint.planes.mipmaps"),
+		layer_bytes = int(config.int_of(p, "paint.planes.layer_mb")) << 20,
+		tolerance = f32(config.float_of(p, "paint.planes.motion_tolerance")),
+		settle_ms = config.float_of(p, "paint.planes.settle_ms"),
+		detach = config.bool_of(p, "paint.planes.detach_children"),
 	}
 }
 
@@ -57,21 +83,15 @@ planes_init :: proc(app: ^App) {
 	plane_settings = plane_settings_from_prefs(&app.prefs)
 	planes_watch = config.watch(&app.prefs, "paint.planes.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		plane_settings = plane_settings_from_prefs(p)
+		clear(&plane_mem)
 		draw.layer_cache_clear(&(^App)(user).dc)   // kept planes were rasterized at the old scales
 	}, app)
 }
 
 @(private)
 Pending_Plane :: struct {
-	pl:    draw.Plane_Layer,
-	m:     draw.Mat4,
-	alpha: f32,
-	z:     f32,           // depth of the middle of the plane (larger: nearer)
-	ctx:   i32,           // the plane space that roots its context
-	cull:  bool,          // backface-visibility: hidden and seen from behind
-	seq:   int,
-	v:     [4][3]f32,     // corners in the context's space (flush_context)
-	ok3:   bool,
+	item: draw.Plane_Item,   // skip: backface-visibility: hidden and seen from behind
+	ctx:  i32,               // the plane space that roots its context
 }
 
 // Where layout coordinates (plus the offsets of `space`) land in the target its items are drawn in: the page's origin, or minus
@@ -116,32 +136,161 @@ plane_dest_bounds :: proc(e: ^Effects, s: i32, r: lay.Rect, huge: lay.Rect) -> l
 	return out
 }
 
-// How many texels per layout unit to rasterize a plane at: the largest stretch its projection gives an edge, in steps (a
-// plane that animates does not rasterize again at every frame), within the preferences.
+// Is plane group g composited on its own, not into its parent plane's layer (layout.plane_detachable, and the preference)?
 @(private)
-raster_scale_of :: proc(e: ^Effects, s: i32, r: lay.Rect) -> f32 {
+plane_detach :: proc(l: ^Layout, g: i32) -> bool { return plane_settings.detach && lay.plane_detachable(l, g) }
+
+// Plane frame (offsets taken out) -> the page's draw space, through the planes that receive it.
+@(private)
+plane_total_matrix :: proc(e: ^Effects, s: i32) -> style.Matrix4 {
 	m := plane_matrix(e, s)
-	corners := [4]lay.Vec2{r.min, {r.max.x, r.min.y}, r.max, {r.min.x, r.max.y}}
-	proj: [4]lay.Vec2
-	for c, i in corners {
-		p, _, ok := lay.project4(m, c)
-		if !ok { return plane_settings.max_scale }
-		proj[i] = p
+	for d := e.l.spaces[s].dest; d != lay.NONE; d = e.l.spaces[d].dest { m = style.m4_mul(plane_matrix(e, d), m) }
+	return m
+}
+
+// A corner of the polygon where a plane meets the page: its place in the plane's frame and the homogeneous screen position.
+@(private)
+Plane_Vert :: struct {
+	p: lay.Vec2,
+	h: [3]f32,   // X, Y, W
+}
+
+// The part of `r` (plane frame) that is in front of the eye and inside `screen` once projected by `m`: Sutherland-Hodgman against
+// the five half-spaces, on homogeneous positions (affine in the plane's frame, so the cut points interpolate exactly).
+@(private)
+plane_visible_polygon :: proc(m: style.Matrix4, r: lay.Rect, screen: lay.Rect) -> []Plane_Vert {
+	h_of :: proc(m: style.Matrix4, p: lay.Vec2) -> [3]f32 {
+		return {m[0] * p.x + m[4] * p.y + m[12], m[1] * p.x + m[5] * p.y + m[13], m[3] * p.x + m[7] * p.y + m[15]}
 	}
-	stretch: f32
-	for i in 0 ..< 4 {
-		j := (i + 1) % 4
-		dl := corners[j] - corners[i]
-		dp := proj[j] - proj[i]
-		ll := math.sqrt(dl.x * dl.x + dl.y * dl.y)
-		if ll < 1e-3 { continue }
-		stretch = max(stretch, math.sqrt(dp.x * dp.x + dp.y * dp.y) / ll)
+	Cut :: struct { a, b, c, d: f32 }   // a X + b Y + c W + d >= 0
+	cuts := [5]Cut{{0, 0, 1, -1e-4}, {1, 0, -screen.min.x, 0}, {-1, 0, screen.max.x, 0}, {0, 1, -screen.min.y, 0}, {0, -1, screen.max.y, 0}}
+	poly := make([dynamic]Plane_Vert, 0, 12, context.temp_allocator)
+	for c in ([4]lay.Vec2{r.min, {r.max.x, r.min.y}, r.max, {r.min.x, r.max.y}}) { append(&poly, Plane_Vert{c, h_of(m, c)}) }
+	for cut in cuts {
+		if len(poly) == 0 { break }
+		out := make([dynamic]Plane_Vert, 0, len(poly) + 2, context.temp_allocator)
+		for i in 0 ..< len(poly) {
+			a, b := poly[i], poly[(i + 1) % len(poly)]
+			fa := cut.a * a.h[0] + cut.b * a.h[1] + cut.c * a.h[2] + cut.d
+			fb := cut.a * b.h[0] + cut.b * b.h[1] + cut.c * b.h[2] + cut.d
+			if fa >= 0 { append(&out, a) }
+			if (fa >= 0) != (fb >= 0) {
+				t := fa / (fa - fb)
+				append(&out, Plane_Vert{a.p + (b.p - a.p) * t, {a.h[0] + (b.h[0] - a.h[0]) * t, a.h[1] + (b.h[1] - a.h[1]) * t, a.h[2] + (b.h[2] - a.h[2]) * t}})
+			}
+		}
+		poly = out
 	}
-	// the page's device scale is already in layout units; the matrix may scale on top (a zoom, a scale())
-	steps := [?]f32{0.0625, 0.125, 0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8}
-	want := stretch
-	for st in steps { if st >= want * 0.98 { want = st; break } }
-	return clamp(want, plane_settings.min_scale, plane_settings.max_scale)
+	return poly[:]
+}
+
+// Screen pixels per plane-frame unit at the point `v` of the plane through `m`: the larger singular value of the Jacobian of the
+// projection there (the most the projection stretches anything at that point).
+@(private)
+plane_density_at :: proc(m: style.Matrix4, v: Plane_Vert) -> f32 {
+	w := v.h[2]
+	if !(w > 1e-9) { return 0 }
+	sx, sy := v.h[0] / w, v.h[1] / w
+	j11, j12 := (m[0] - sx * m[3]) / w, (m[4] - sx * m[7]) / w
+	j21, j22 := (m[1] - sy * m[3]) / w, (m[5] - sy * m[7]) / w
+	a, b, d := j11 * j11 + j21 * j21, j11 * j12 + j21 * j22, j12 * j12 + j22 * j22
+	return math.sqrt(0.5 * (a + d + math.sqrt((a - d) * (a - d) + 4 * b * b)))
+}
+
+// Raster scales come in steps of a quarter octave (a plane that animates is not rasterized again for every change).
+@(private)
+quantize_scale :: proc(x: f32) -> f32 {
+	if !(x > 0) { return 1 }
+	return math.pow(2, math.ceil(math.log2(x) * 4 - 0.1) / 4)
+}
+
+// What a plane's layer was last rasterized at, to keep that while it moves.
+@(private)
+Plane_Mem :: struct {
+	scale: f32,
+	mat:   u64,
+	ms:    f64,
+}
+
+@(private) plane_mem: map[u64]Plane_Mem
+@(private) plane_settle: base.Handle
+
+@(private)
+matrix_signature :: proc(m: style.Matrix4) -> u64 {
+	h: u64 = 0xcbf29ce484222325
+	for v in m { h = (h ~ u64(transmute(u32)(math.round(v * 64) / 64))) * 0x100000001B3 }
+	return h
+}
+
+// Asks for a frame a moment from now (the planes that kept a smaller scale while moving are rasterized right then).
+@(private)
+plane_arm_settle :: proc() {
+	if the_app == nil { return }
+	if plane_settle != base.NIL_HANDLE { host.clear_timer(&the_app.loop, plane_settle) }
+	plane_settle = host.set_timer(&the_app.loop, plane_settings.settle_ms, 0, proc(data: rawptr) { plane_settle = base.NIL_HANDLE }, nil)
+}
+
+@(private)
+Plane_Plan :: struct {
+	bounds: lay.Rect,   // what the layer holds: the plane's bounds, or the window of them that shows when the whole does not fit
+	scale:  f32,        // texels per plane-frame unit
+}
+
+// How a plane group's layer is rasterized: its bounds (cut to the part that shows when the layer would be too big) and its
+// scale. The scale is the density the projection asks for over the part of the quad on the page, in quarter octaves, within
+// the preferences and the layer memory budget. While the plane's matrix is changing the scale it had is kept, unless the one
+// it needs is `motion_tolerance` times larger (or much smaller: memory); a timer then brings the sharper frame.
+@(private)
+plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
+	st := plane_settings
+	m := plane_total_matrix(e, s)
+	poly := plane_visible_polygon(m, bounds, e.screen)
+	shows := len(poly) > 0
+	if !shows { poly = plane_visible_polygon(m, bounds, lay.Rect{{-1e9, -1e9}, {1e9, 1e9}}) }
+	density: f32
+	window: lay.Rect
+	for v, i in poly {
+		density = max(density, plane_density_at(m, v))
+		window = i == 0 ? lay.Rect{v.p, v.p} : lay.rect_union(window, lay.Rect{v.p, v.p})
+	}
+	plan := Plane_Plan{bounds = bounds, scale = clamp(f32(1), st.min_scale, st.max_scale)}
+	if density <= 0 { return plan }
+	want := clamp(quantize_scale(density), st.min_scale, st.max_scale)
+	// the memory the layer may use: texels at 8 bytes (fp16), a third more for the mip levels
+	max_texels := f32(st.layer_bytes) / (st.mips ? 8 * 4.0 / 3.0 : 8)
+	area :: proc(r: lay.Rect) -> f32 { return max(r.max.x - r.min.x, 0) * max(r.max.y - r.min.y, 0) }
+	if area(bounds) * want * want > max_texels && shows {
+		// too big whole: the part that shows, with a margin, on a grid (it holds still while the plane moves a little)
+		grid: f32 = 64
+		win := lay.Rect{
+			{math.floor((window.min.x - 32) / grid) * grid, math.floor((window.min.y - 32) / grid) * grid},
+			{math.ceil((window.max.x + 32) / grid) * grid, math.ceil((window.max.y + 32) / grid) * grid},
+		}
+		cut := lay.rect_intersect(bounds, win)
+		if !lay.rect_empty(cut) { plan.bounds = cut }
+	}
+	if a := area(plan.bounds); a * want * want > max_texels { want = clamp(math.sqrt(max_texels / a), st.min_scale, want) }
+	// motion
+	scale := want
+	key := u64(uintptr(e.l)) * 0x9E3779B97F4A7C15 + u64(g)
+	sig := matrix_signature(m)
+	now := pacer.frame_ms
+	if plane_mem.allocator.procedure == nil { plane_mem = make(map[u64]Plane_Mem, 64, base.permanent_allocator()) }   // (lives as long as the process)
+	mem, known := plane_mem[key]
+	stale := false
+	if known && now - mem.ms < 2000 && mem.scale > 0 {
+		if sig != mem.mat && mem.scale * st.tolerance >= want && mem.scale <= want * 4 {
+			scale = mem.scale
+			stale = mem.scale < want * 0.98
+		}
+	}
+	if len(plane_mem) > 512 {
+		for k, v in plane_mem { if now - v.ms > 5000 { delete_key(&plane_mem, k) } }
+	}
+	plane_mem[key] = Plane_Mem{scale = scale, mat = sig, ms = now}
+	if stale { plane_arm_settle() }
+	plan.scale = scale
+	return plan
 }
 
 // Does a plane group's projection show on the page (its destination frame, after the planes that receive it)? Planes inside
@@ -182,149 +331,196 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 		og.member, og.saved_skip = true, e.fxc.skip
 		e.fxc.skip = 0
 	}
-	fx := draw.Plane_Fx{}
-	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx) }
-	scale := raster_scale_of(e, s, bounds)
+	og.plan = plane_plan(e, c, s, bounds)
 	og.saved_origin = e.origin
-	drawn := draw.push_plane(e.dc, draw.Rect{bounds.min, bounds.max}, scale, fx)
-	e.origin = -e.v.offsets[s]
 	og.plane = true
+	if !plane_segment_empty(e, c, 0) { plane_push_segment(e, og, c, s) }
+	e.origin = -e.v.offsets[s]
+	return true
+}
+
+// The cache parameters of segment `seg` of plane group `c`'s layer (see Fx_Cache.segs).
+@(private)
+plane_fx :: proc(e: ^Effects, c: i32, seg: int) -> draw.Plane_Fx {
+	fx := draw.Plane_Fx{mips = plane_settings.mips}
+	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx, seg) }
+	return fx
+}
+
+// Is segment `seg` of the plane's layer without any content (the plane has detached children and nothing is drawn in it)?
+@(private)
+plane_segment_empty :: proc(e: ^Effects, c: i32, seg: int) -> bool {
+	_, items, known := fx_seg(e.fxc, c, seg)
+	return known && items == 0 && len(e.fxc.segs[c]) > 0
+}
+
+@(private)
+plane_push_segment :: proc(e: ^Effects, og: ^Open_Group, c, s: i32) {
+	fx := plane_fx(e, c, og.seg)
+	drawn := draw.push_plane(e.dc, draw.Rect{og.plan.bounds.min, og.plan.bounds.max}, og.plan.scale, fx)
+	og.layer_open = true
 	if !drawn {
 		og.skip = true
 		e.fxc.skip += 1
 	}
-	return true
 }
 
-// Closes a plane group's layer: composited now, or kept for its context's root.
+// A flat child plane is about to open on the plane at e.open[pi] and will be composited on its own: the parent's layer so far is
+// closed (its content before the child) and kept as the first part of what the parent composites; plane_resume opens the
+// next one when the child is done.
+@(private)
+plane_pause :: proc(e: ^Effects, pi: int) {
+	pg := &e.open[pi]
+	pop_chain_to(e, pg.floor)
+	set_xform(e, lay.NONE)
+	if pg.layer_open {
+		pl := draw.pop_plane(e.dc)
+		s := e.l.groups[pg.g].space
+		if pg.parts == nil { pg.parts = make([dynamic]draw.Plane_Part, 0, 4, context.temp_allocator) }
+		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(plane_matrix(e, s)), alpha = plane_alpha(e.l, &e.l.groups[pg.g]), o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+		pg.layer_open = false
+	}
+	if pg.skip { e.fxc.skip -= 1; pg.skip = false }
+	if pg.member { e.fxc.skip = pg.saved_skip }
+	e.origin = pg.saved_origin
+}
+
+@(private)
+plane_resume :: proc(e: ^Effects, pi: int) {
+	pg := &e.open[pi]
+	pg.seg += 1
+	s := e.l.groups[pg.g].space
+	if pg.member && e.fxc != nil { pg.saved_skip = e.fxc.skip; e.fxc.skip = 0 }
+	if !plane_segment_empty(e, pg.g, pg.seg) { plane_push_segment(e, pg, pg.g, s) }
+	e.origin = -e.v.offsets[s]
+}
+
+// The matrix of `m` (plane frame -> the frame of the plane that receives it) with the plane that receives it flattened: the
+// result of m is taken as a point of the receiving plane, z dropped after the perspective divide. For a point of the plane
+// itself that is the 3x3 homography of m, as a 4x4 acting on (x, y, 0, 1).
+@(private)
+flatten4 :: proc(m: style.Matrix4) -> style.Matrix4 {
+	return {m[0], m[1], 0, m[3], m[4], m[5], 0, m[7], 0, 0, 1, 0, m[12], m[13], 0, m[15]}
+}
+
+// Closes a plane group's layer: composited now, or kept for its context's root, or (a flat child of a plain plane) set among the
+// parts its parent composites.
 @(private)
 close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	l := e.l
 	g := &l.groups[og.g]
 	s := g.space
+	defer if og.detach_to > 0 { plane_resume(e, og.detach_to - 1) }
 	set_xform(e, lay.NONE)   // (the transform of the last item drawn in the layer goes, then the layer's own)
-	pl := draw.pop_plane(e.dc)
+	pl: draw.Plane_Layer
+	if og.layer_open { pl = draw.pop_plane(e.dc) }
 	e.origin = og.saved_origin
 	if og.member { e.fxc.skip = og.saved_skip }
-	if pl.img.tex == 0 || pl.direct { return }
 	sp := &l.spaces[s]
 	acc := e.v.accs[s]
 	m := plane_matrix(e, s)
 	alpha := plane_alpha(l, g)
 	cull := sp.back_hidden && style.m4_back_facing(acc)
+	o := draw.Plane_Draw{max_taps = plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
+	if og.detach_to > 0 {
+		// composited on its own: flattened onto the parent's plane, then projected with it, in the parent's z-order position
+		if pl.img.tex == 0 || pl.direct { return }
+		pg := &e.open[og.detach_to - 1]
+		mp := plane_matrix(e, l.groups[pg.g].space)
+		if len(og.backdrop) > 0 { o.shape = plane_shape(e, og.g, pl) }
+		o.cull_back = sp.back_hidden
+		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(style.m4_mul(mp, flatten4(m))), alpha = alpha, o = o})
+		return
+	}
+	if len(og.parts) > 0 {
+		// a plane with children composited on their own: its segments and its children, in order
+		if og.layer_open {
+			append(&og.parts, draw.Plane_Part{layer = pl, m = to_mat4(m), alpha = alpha, o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+		}
+		// (the plane the parts lie on: its rect as its layers cover it)
+		sc := og.plan.scale
+		o0 := draw.Vec2{math.floor(og.plan.bounds.min.x * sc) / sc, math.floor(og.plan.bounds.min.y * sc) / sc}
+		geom := draw.Plane_Layer{origin = o0, scale = sc, size = {int(math.ceil((og.plan.bounds.max.x - o0.x) * sc)), int(math.ceil((og.plan.bounds.max.y - o0.y) * sc))}}
+		item := draw.Plane_Item{parts = og.parts[:], geom = geom, geom_m = to_mat4(m), skip = cull}
+		finish_plane_item(e, sp, s, item)
+		return
+	}
+	if pl.img.tex == 0 || pl.direct { return }
+	if len(og.backdrop) > 0 && !cull { o.shape = plane_shape(e, og.g, pl) }
+	item := draw.plane_item(pl, to_mat4(m), alpha, o, cull)
+	if sp.ctx == s && !sp.preserve {
+		if cull { draw.discard_plane(e.dc, pl); draw.discard_plane(e.dc, o.shape); return }
+		draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
+		return
+	}
+	finish_plane_item(e, sp, s, item)
+}
+
+// Where a plane's composite goes: kept for its 3D context's root (a member), or the root draws its context now, or alone.
+@(private)
+finish_plane_item :: proc(e: ^Effects, sp: ^lay.Space, s: i32, item: draw.Plane_Item) {
 	if sp.ctx != s {
 		// a member of a 3D context: drawn with its whole context, sorted
-		cx := (pl.origin.x + f32(pl.size.x) / pl.scale * 0.5)
-		cy := (pl.origin.y + f32(pl.size.y) / pl.scale * 0.5)
-		z := style.m4_apply(m, cx, cy, 0)[2]
-		append(&e.pending, Pending_Plane{pl = pl, m = to_mat4(m), alpha = alpha, z = z, ctx = sp.ctx, cull = cull, seq = len(e.pending)})
+		append(&e.pending, Pending_Plane{item = item, ctx = sp.ctx})
 		return
 	}
 	if sp.preserve {
-		// the root of a context: its members, and itself, sorted by depth
-		cx := (pl.origin.x + f32(pl.size.x) / pl.scale * 0.5)
-		cy := (pl.origin.y + f32(pl.size.y) / pl.scale * 0.5)
-		z := style.m4_apply(m, cx, cy, 0)[2]
-		flush_context(e, Pending_Plane{pl = pl, m = to_mat4(m), alpha = alpha, z = z, ctx = s, cull = cull, seq = len(e.pending)}, s)
+		// the root of a context: its members, and itself, sorted
+		flush_context(e, item, s)
 		return
 	}
-	if cull { draw.discard_plane(e.dc, pl); return }
-	draw.draw_plane(e.dc, pl, to_mat4(m), alpha, draw.Plane_Draw{max_taps = plane_settings.taps})
+	draw.draw_planes(e.dc, []draw.Plane_Item{item})
 }
 
 // The opacity a plane is composited with: its group's, unless the group also has a layer of its own for it.
 @(private)
 plane_alpha :: proc(l: ^Layout, g: ^lay.Group) -> f32 { return g.alpha }
 
-// Draws the members of the context rooted at `root` (waiting in e.pending) and the root's own layer, far to near.
+// What a plane's backdrop-filter shows through: the shape of its border box (rounded corners, clip-path, mask) as the alpha of
+// a layer in the plane's frame. (The plane's own content may spill out of the box, or be transparent: the backdrop follows the
+// box, not the paint.)
 @(private)
-flush_context :: proc(e: ^Effects, own: Pending_Plane, root: i32) {
-	list := make([dynamic]Pending_Plane, 0, 8, context.temp_allocator)
+plane_shape :: proc(e: ^Effects, c: i32, pl: draw.Plane_Layer) -> draw.Plane_Layer {
+	l := e.l
+	g := &l.groups[c]
+	b := &l.boxes[g.box]
+	cs := b.cs
+	saved := e.origin
+	e.origin = -e.v.offsets[g.space]
+	defer e.origin = saved
+	off := e.v.offsets[b.space] + e.origin
+	r := draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
+	bounds := draw.Rect{r.min - 1, r.max + 1}
+	draw.push_plane(e.dc, bounds, pl.scale)
+	box_xf := l.spaces[b.space].xform
+	clipped := .Clip_Path in g.effects && effects_settings.clip_paths && push_clip_path(e, g, box_xf, off)
+	masked := .Mask in g.effects && effects_settings.masks
+	if masked { draw.push_mask(e.dc, bounds, draw.Layer_Effects{alpha = 1}) }
+	set_xform(e, box_xf)
+	circular := draw.set_circular_corners(e.dc, true)
+	white := draw.Color{1, 1, 1, 1}
+	draw.rect_corners(e.dc, r, {white, white, white, white}, lay.border_radii(cs, b.size.x, b.size.y, l.scale))
+	draw.set_circular_corners(e.dc, circular)
+	if masked {
+		paint_mask_layers(e, b, off)
+		set_xform(e, lay.NONE)
+		draw.pop_mask(e.dc)
+	}
+	set_xform(e, lay.NONE)
+	if clipped { draw.pop_clip(e.dc) }
+	return draw.pop_plane(e.dc)
+}
+
+// Draws the members of the context rooted at `root` (waiting in e.pending) and the root's own layer: the toolkit sorts them, and
+// splits those that cut through each other (a BSP, as Chromium does).
+@(private)
+flush_context :: proc(e: ^Effects, own: draw.Plane_Item, root: i32) {
+	list := make([dynamic]draw.Plane_Item, 0, 8, context.temp_allocator)
 	keep := 0
 	for p in e.pending {
-		if p.ctx == root { append(&list, p) } else { e.pending[keep] = p; keep += 1 }
+		if p.ctx == root { append(&list, p.item) } else { e.pending[keep] = p; keep += 1 }
 	}
 	resize(&e.pending, keep)
 	append(&list, own)
-	n := len(list)
-	for &p in list { p.v, p.ok3 = plane_corners3(p.pl, p.m) }
-	// before[i * n + j]: i must be drawn before j (j is wholly in front of i's plane)
-	before := make([]bool, n * n, context.temp_allocator)
-	for i in 0 ..< n {
-		for j in i + 1 ..< n {
-			switch in_front(&list[i], &list[j]) {
-			case 1: before[j * n + i] = true
-			case -1: before[i * n + j] = true
-			}
-		}
-	}
-	done := make([]bool, n, context.temp_allocator)
-	for _ in 0 ..< n {
-		pick := -1
-		// a plane everything that has to be under it is already drawn for; the farthest middle (then the earliest) first
-		for i in 0 ..< n {
-			if done[i] { continue }
-			free := true
-			for j in 0 ..< n { if !done[j] && before[j * n + i] { free = false; break } }
-			if !free { continue }
-			if pick < 0 || list[i].z < list[pick].z || (list[i].z == list[pick].z && list[i].seq < list[pick].seq) { pick = i }
-		}
-		if pick < 0 {
-			// a cycle: planes that cut through each other: the farthest middle
-			for i in 0 ..< n {
-				if done[i] { continue }
-				if pick < 0 || list[i].z < list[pick].z { pick = i }
-			}
-		}
-		done[pick] = true
-		p := list[pick]
-		if p.cull { draw.discard_plane(e.dc, p.pl); continue }
-		draw.draw_plane(e.dc, p.pl, p.m, p.alpha, draw.Plane_Draw{max_taps = plane_settings.taps})
-	}
-}
-
-// Where a plane lies in the frame its context is drawn in, as (x / w, y / w, z / w) of its four corners: a space in which
-// planes are planes and the viewer looks along -z from infinity, whatever the perspective is (a projective map keeps both).
-// ok = false: a corner is behind the viewer.
-@(private)
-plane_corners3 :: proc(pl: draw.Plane_Layer, m: draw.Mat4) -> (v: [4][3]f32, ok: bool) {
-	r0 := pl.origin
-	r1 := pl.origin + draw.Vec2{f32(pl.size.x), f32(pl.size.y)} / pl.scale
-	pts := [4]draw.Vec2{r0, {r1.x, r0.y}, r1, {r0.x, r1.y}}
-	for p, i in pts {
-		h := draw.mat4_apply(m, {p.x, p.y, 0})
-		if !(h[3] > 1e-6) { return {}, false }
-		v[i] = {h[0] / h[3], h[1] / h[3], h[2] / h[3]}
-	}
-	return v, true
-}
-
-// Is `a` wholly on the viewer's side of the plane of `b` (1), wholly behind it (-1), or neither (0: they cut each other, are
-// coplanar, or `b` is edge-on)?
-@(private)
-side_of :: proc(a, b: [4][3]f32) -> int {
-	e1 := b[1] - b[0]
-	e2 := b[3] - b[0]
-	n := [3]f32{e1.y * e2.z - e1.z * e2.y, e1.z * e2.x - e1.x * e2.z, e1.x * e2.y - e1.y * e2.x}
-	l := math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z)
-	if l < 1e-9 || abs(n.z) < 1e-4 * l { return 0 }
-	if n.z < 0 { n = -n }
-	lo, hi := f32(math.F32_MAX), f32(-math.F32_MAX)
-	for p in a {
-		d := (n.x * (p.x - b[0].x) + n.y * (p.y - b[0].y) + n.z * (p.z - b[0].z)) / l
-		lo, hi = min(lo, d), max(hi, d)
-	}
-	TOL :: 0.02
-	if lo >= -TOL && hi <= TOL { return 0 }
-	if lo >= -TOL { return 1 }
-	if hi <= TOL { return -1 }
-	return 0
-}
-
-// Does `a` have to be drawn after `b` (1), before it (-1), or does the geometry not say (0)?
-@(private)
-in_front :: proc(a, b: ^Pending_Plane) -> int {
-	if !a.ok3 || !b.ok3 { return 0 }
-	if r := side_of(a.v, b.v); r != 0 { return r }
-	return -side_of(b.v, a.v)
+	draw.draw_planes(e.dc, list[:])
 }

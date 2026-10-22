@@ -293,6 +293,11 @@ if (-not (Test-Path $p10kmq)) { [IO.File]::WriteAllText($p10kmq, [IO.File]::Read
 Run 'p10k_mq_resize_drag' (FileUrl $p10kmq) { param($h) Start-Sleep 5; Mark; ResizeDrag $h 6000 4 } $false
 Run 'anim_pacing'       (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'transforms_pacing' (FileUrl (Join-Path $site 'transforms.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
+# 3D planes: the demo page (cube, carousel, planes that cut each other, backdrop-filter...) and a plane turning inside a plane
+# with the child composited on its own (the parent's layer is kept) or drawn into the parent's layer (paint.planes.detach_children=false)
+Run 'transforms3d' (FileUrl (Join-Path $site 'transforms-3d.html')) { param($h) Start-Sleep 10 } $false
+Run 'planes_nested' (FileUrl (Join-Path $root 'tools\perf_pages\planes-nested.html')) { param($h) Start-Sleep 10 } $false
+Run 'planes_nested_merged' (FileUrl (Join-Path $root 'tools\perf_pages\planes-nested.html')) { param($h) Start-Sleep 10 } $false '--pref paint.planes.detach_children=false'
 Run 'effects_pacing'    (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'effects_wheel'     (FileUrl (Join-Path $site 'effects.html')) { param($h) Start-Sleep 3; Mark; WheelStream $h 8000 4 -120 } $false
 # JavaScript (examples/jsbench): pages driven by their scripts, at 180 Hz (frames are what the script costs, plus the
