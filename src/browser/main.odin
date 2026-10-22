@@ -1030,6 +1030,7 @@ frame :: proc(app: ^App, idled := false) {
 		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
 	build_ui(app)
+	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
 	ui.end_build()
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
@@ -1090,8 +1091,10 @@ main :: proc() {
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
 	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
+	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
+	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a4[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a6[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
@@ -1109,6 +1112,7 @@ main :: proc() {
 	prof_mark(.Prefs)
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
+	instance_early(app, rest[:], setup_requested, new_window || no_single)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
@@ -1120,6 +1124,7 @@ main :: proc() {
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
+	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
@@ -1153,6 +1158,10 @@ main :: proc() {
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
+	if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
+		for a in rest[1:] { tab_open(app, command_line_address(a)) }
+		app.current = len(app.tabs) - len(rest)
+	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
 	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
 	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
@@ -1211,6 +1220,7 @@ main :: proc() {
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 
+	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	prof_report()
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
