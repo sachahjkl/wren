@@ -9,6 +9,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
+import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -652,9 +653,8 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
 	t := current_tab(app)
-	if shell_nested() || (pacer.resizing && t != nil && t.kind == .Web && shell_has_snapshot(t.id)) {
-		// a chrome frame (shell_frames.odin), or a resize step: the page holds the thread or keeps its layout; its last
-		// frame, nothing of it runs
+	if shell_nested() {
+		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		return
 	}
@@ -1003,21 +1003,16 @@ frame :: proc(app: ^App, idled := false) {
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
 	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
-	// A resize step has no page phase: the page keeps its layout and is drawn from its last frame (page_draw), so the
-	// frame reaches the screen before the composer stretches the previous one; the first frame at a size that holds
-	// lays it out again.
-	if !pacer.resizing {
-		// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
-		if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
-			prof_begin(.Animation)
-			page.run_animation_frames(t.page, pacer.frame_ms)
-			prof_end(.Animation)
-			// (the loop counts this frame off after it: 2 = this one and the next)
-			if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
-			if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
-		}
-		page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
+	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
+		prof_begin(.Animation)
+		page.run_animation_frames(t.page, pacer.frame_ms)
+		prof_end(.Animation)
+		// (the loop counts this frame off after it: 2 = this one and the next)
+		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
+		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
+	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	shell_snapshots_frame(app)
 
@@ -1111,7 +1106,7 @@ main :: proc() {
 	// the first navigation, whose loads run on their own threads while the renderer starts.
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
-	app.win = platform.open_window(APP_NAME, {1280, 800}, integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
+	app.win = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
@@ -1152,7 +1147,17 @@ main :: proc() {
 	desktop_startup(app, profile_override != "")   // desktop_shell.odin: the first run integrates once; an existing integration is looked at
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
-	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
+	if !render.init(&app.r, app.win.hwnd, app.win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	if fixed_surface {
+		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
+		// (browser.window.fixed_surface; render.set_fixed_surface)
+		mon := win.MonitorFromWindow(app.win.hwnd, .MONITOR_DEFAULTTONEAREST)
+		mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
+		if win.GetMonitorInfoW(mon, &mi) {
+			render.set_fixed_surface(&app.r, {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)})
+		}
+	}
 	prof_mark(.Renderer)
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
 	prof_mark(.UI_Fonts)

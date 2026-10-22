@@ -200,7 +200,9 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 		pacer.latency = want_latency
 	}
 	if pacer.resizing { return }
-	if pacer.timed && pacer.timer != nil {
+	// input waiting in the queue: the frame is made for it now, not at the next slot of the target rate (the pointer's
+	// hover state follows the hand, not a refresh later)
+	if pacer.timed && pacer.timer != nil && !shell_input_pending() {
 		now := time.tick_now()._nsec
 		period := i64(pacer.period_ms * 1e6)
 		// a run starts now; a frame later than a whole period does not try to catch up
