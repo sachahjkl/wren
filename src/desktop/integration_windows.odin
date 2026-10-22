@@ -73,7 +73,6 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 }
 
 // The user's Start menu Programs folder (%APPDATA%\Microsoft\Windows\Start Menu\Programs).
-@(private = "file")
 programs_folder :: proc() -> string {
 	id := win.FOLDERID_Programs
 	path: win.LPWSTR
