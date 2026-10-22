@@ -119,7 +119,10 @@ web APIs). browser.demos.path in about:config points about:demos
 to another folder. The address bar takes paths (C:\..., \\server\share) as well as URLs; a folder opens its
 index.html, else the list of its files; files and folders dropped on the window open.
 
-Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE.
+Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE,
+--desktop-integration=install|remove|status (the Start menu shortcut and the entry in Settings > Apps > Default apps:
+the same as the box in about:config; run it with `start /wait` or Start-Process -Wait to get the exit code: 0 done or
+installed, 1 failed or absent, 2 to repair). Wren adds them itself at the first start; remove them before deleting wren.exe.
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address, Ctrl+F find, Ctrl+U view source, Ctrl+B status bar,
 Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom, F11 full screen.
 
