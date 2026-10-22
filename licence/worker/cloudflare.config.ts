@@ -43,8 +43,8 @@ export default defineConfig(({ mode }) => {
 				// the public key of src/license/public_key.odin (the line printed by tools\license.ps1 pubkey)
 				LICENSE_PUBLIC_KEY: bindings.text(""),
 				// "Wren <licences@your-domain>", an address of a domain onboarded in Email Service > Email Sending
-				MAIL_FROM: bindings.text(""),
-				MAIL_REPLY_TO: bindings.text(""),
+				MAIL_FROM: bindings.text("Wren <licences@froment.software>"),
+				MAIL_REPLY_TO: bindings.text("contact@froment.software"),
 				WEBHOOK_TOLERANCE_SECONDS: bindings.text("300"),
 				RESEND_ENABLED: bindings.text("false"),
 				RESEND_MAX_PER_HOUR: bindings.text("3"),
