@@ -148,7 +148,7 @@ $script:watchdog = Start-Watchdog
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
 if ($Jobs -gt 1) { Flush-Steps }
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 

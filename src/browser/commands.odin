@@ -318,6 +318,13 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, true) }})
 	add(r, {name = "browser.settings", title = "Settings", category = "Browser", glyph = GLYPH_GEAR, keywords = "about:config preferences options", url = "about:config",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, "about:config") }})
+	add(r, {name = "browser.desktop_integration", title = "Integrate Wren with the desktop", category = "Browser", keywords = "start menu shortcut default apps browser application menu desktop entry install uninstall",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_checked(app) },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { desktop_command_toggle(app) }})
+	add(r, {name = "browser.default_apps", title = "Open the default apps settings", category = "Browser", keywords = "default browser windows settings choose",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_has_default_apps() },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { desktop_open_default_apps() }})
 	add(r, {name = "browser.demos", title = "Demos", category = "Browser", keywords = "about:demos examples", url = DEMOS_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, DEMOS_URL) }})
 	add(r, {name = "browser.about_pages", title = "Built-in pages", category = "Browser", keywords = "about:about list", url = ABOUT_URL,
