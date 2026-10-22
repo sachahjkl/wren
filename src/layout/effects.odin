@@ -20,6 +20,7 @@ Group_Effect :: enum u8 {
 	Isolate,      // an isolated group for blending descendants
 	Clip_Path,    // clip-path other than none
 	Mask,         // a mask-image layer with an image
+	Plane,        // a 3D plane: the box and its content drawn offscreen, projected (plane.odin)
 }
 Group_Effects :: bit_set[Group_Effect; u8]
 

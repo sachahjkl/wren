@@ -148,6 +148,10 @@ box_flags_from_style :: proc(c: ^Ctx, bi: i32, cb, fcb: i32, sum: ^Style_Sum = n
 	// under a transformed ancestor a fixed box is positioned in it and moves with it (CSS Transforms 1 §3)
 	if sm.position == .Fixed && fcb == 0 { b.flags += {.Fixed} }
 	if b.kind != .Inline && .Transform in sm.bits { b.flags += {.Transformed, .Stacking} }
+	// 3D: a plane when the transform has a 3D part, keeps its children in 3D, or hides its backface in a 3D context
+	if b.kind != .Inline && c.l.settings.transforms_3d && (.Transformed in b.flags || b.cs.backface_visibility == .Hidden) && plane_wanted(c.l, b, b.parent) {
+		b.flags += {.Transformed, .Stacking, .Plane}
+	}
 	if .Abs in b.flags {
 		cbi := sm.position == .Fixed ? fcb : cb
 		b.cb = cbi

@@ -74,11 +74,13 @@ build_bands :: proc(l: ^Layout, band_h: f32) {
 //
 // A layout point p of an item in space s is drawn at mats[s](p + offsets[s]): offsets are the scroll and sticky
 // translations; mats[s] is the identity unless a transformed box encloses the space (Space.xform != NONE), then the
-// product of the transforms, outermost first, each taken around where its box is drawn.
+// product of the transforms, outermost first, each taken around where its box is drawn. Inside a 3D plane (Space.plane !=
+// NONE) the product starts at the plane: mats is relative to the plane's frame, and ccs projects the plane.
 View :: struct {
 	offsets:  []Vec2,
 	mats:     []Matrix,   // per space
 	invs:     []Matrix,   // per space: inverse of mats (viewport -> untransformed)
+	accs:     []Matrix4,  // per plane space: its frame -> the frame of what receives it (plane.odin)
 	singular: []bool,     // per space: a transform above flattens it to nothing (not drawn, not hit)
 	clips:    []Rect,     // per clip: bounds in viewport coordinates, intersected with the enclosing clips' bounds
 	alphas:   []f32,
@@ -95,6 +97,12 @@ space_plain :: #force_inline proc(l: ^Layout, s: i32) -> bool { return l.spaces[
 view_to_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> (Vec2, bool) {
 	if space_plain(l, s) { return p - v.offsets[s], true }
 	if v.singular[s] { return {}, false }
+	if pl := l.spaces[s].plane; pl != NONE {
+		u, _, ok := plane_point(l, v, pl, p)
+		if !ok { return {}, false }
+		if s == pl { return u - v.offsets[s], true }
+		return mat_apply(v.invs[s], u) - v.offsets[s], true
+	}
 	return mat_apply(v.invs[s], p) - v.offsets[s], true
 }
 
@@ -102,14 +110,19 @@ view_to_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> (Vec2, bool) {
 view_from_local :: proc(l: ^Layout, v: ^View, s: i32, p: Vec2) -> Vec2 {
 	q := p + v.offsets[s]
 	if space_plain(l, s) { return q }
+	if pl := l.spaces[s].plane; pl != NONE {
+		r, _ := plane_project(l, v, pl, mat_apply(v.mats[s], q))
+		return r
+	}
 	return mat_apply(v.mats[s], q)
 }
 
 // Is the viewport point `p` inside clip `ci` and all the clips around it (rounded corners and transforms respected)?
 clip_contains :: proc(l: ^Layout, v: ^View, ci: i32, p: Vec2) -> bool {
 	for c := ci; c != NONE; c = l.clips[c].parent {
-		if !rect_contains(v.clips[c], p) { return false }
 		cl := &l.clips[c]
+		// (the bounds of a clip inside a plane are in the plane's frame: the exact test below covers it)
+		if l.spaces[cl.space].plane == NONE && !rect_contains(v.clips[c], p) { return false }
 		if space_plain(l, cl.space) && cl.radii == {} { continue }
 		q, ok := view_to_local(l, v, cl.space, p)
 		if !ok || !rounded_contains(cl.rect, cl.radii, q) { return false }
@@ -165,6 +178,7 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 	v.offsets = make([]Vec2, ns, allocator)
 	v.mats = make([]Matrix, ns, allocator)
 	v.invs = make([]Matrix, ns, allocator)
+	v.accs = make([]Matrix4, ns, allocator)
 	v.singular = make([]bool, ns, allocator)
 	for i in 0 ..< ns {
 		sp := &l.spaces[i]
@@ -176,7 +190,13 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		case .Transform: v.offsets[i] = v.offsets[sp.parent]
 		}
 		v.mats[i], v.invs[i] = IDENTITY, IDENTITY
-		if sp.kind == .Transform {
+		if sp.kind == .Transform && sp.proj {
+			// a plane: its frame starts here (its own transform is the projection, accs)
+			acc, ok := plane_acc(l, &v, i32(i))
+			v.accs[i] = acc
+			v.singular[i] = !ok || (sp.parent != NONE && v.singular[sp.parent])
+			v.transformed = true
+		} else if sp.kind == .Transform {
 			// the box's transform, around where the box is drawn, then whatever encloses it
 			outer := sp.parent != NONE ? v.mats[sp.parent] : IDENTITY
 			m := mat_mul(outer, mat_shifted(sp.mat, v.offsets[i]))
@@ -193,7 +213,8 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		cl := &l.clips[i]
 		r := rect_shift(cl.rect, v.offsets[cl.space])
 		if !space_plain(l, cl.space) { r = v.singular[cl.space] ? Rect{} : mat_bounds(v.mats[cl.space], r) }
-		if cl.parent != NONE { r = rect_intersect(r, v.clips[cl.parent]) }
+		// (bounds of clips in different frames, a plane's and the page's, do not compare)
+		if cl.parent != NONE && l.spaces[cl.space].plane == l.spaces[l.clips[cl.parent].space].plane { r = rect_intersect(r, v.clips[cl.parent]) }
 		v.clips[i] = r
 	}
 	v.alphas = make([]f32, len(l.groups), allocator)
@@ -211,10 +232,14 @@ view_make :: proc(l: ^Layout, viewport: Vec2, doc_scroll: f32, cull := true, all
 		sp := &l.spaces[i]
 		if sp.band_count == 0 { continue }
 		region := screen
-		if sp.clip != NONE { region = rect_intersect(region, v.clips[sp.clip]) }
+		if sp.clip != NONE && sp.plane == NONE { region = rect_intersect(region, v.clips[sp.clip]) }
 		if rect_empty(region) { continue }
 		local: Rect
-		if space_plain(l, i32(i)) {
+		if sp.plane != NONE {
+			// inside a plane: its content is culled where it is projected (the compositor), not item by item here
+			if v.singular[i] { continue }
+			local = Rect{{-1e9, -1e9}, {1e9, 1e9}}
+		} else if space_plain(l, i32(i)) {
 			local = rect_shift(region, -v.offsets[i])
 		} else {
 			if v.singular[i] { continue }
@@ -268,26 +293,40 @@ hit_test :: proc(l: ^Layout, p: Vec2, viewport: Vec2, doc_scroll: f32) -> Hit {
 	if !l.valid || len(l.items) == 0 { return Hit{box = NONE, item = NONE} }
 	v := view_make(l, viewport, doc_scroll, cull = false)
 	best := i32(-1)
+	best_plane, best_ctx := NONE, NONE   // the plane the best item is in, and the root of its 3D context
+	best_z: f32
 	for i in 0 ..< len(l.spaces) {
 		sp := &l.spaces[i]
 		if sp.band_count == 0 { continue }
-		if sp.clip != NONE && !rect_contains(v.clips[sp.clip], p) { continue }
+		if sp.clip != NONE && sp.plane == NONE && !rect_contains(v.clips[sp.clip], p) { continue }
 		local, ok := view_to_local(l, &v, i32(i), p)
 		if !ok { continue }
+		// where the ray meets the plane the space is in: items of planes in one 3D context are ordered by depth
+		z: f32
+		ctx := NONE
+		if sp.plane != NONE {
+			_, z, _ = plane_point(l, &v, sp.plane, p)
+			ctx = l.spaces[sp.plane].ctx
+		}
 		// in f32 first: a point mapped through an extreme transform can be huge or NaN, which int() turns negative
 		fb := (local.y - sp.band0) / sp.band_h
 		if !(fb >= 0 && fb < f32(sp.band_count)) { continue }
 		b := int(fb)
 		g := int(sp.band_first) + b
 		list := l.band_items[l.band_start[g]:l.band_start[g + 1]]
+		sorted := ctx != NONE && ctx == best_ctx && sp.plane != best_plane
 		for k := len(list) - 1; k >= 0; k -= 1 {
 			idx := i32(list[k])
-			if idx <= best { break }
+			if idx <= best && !sorted { break }
 			it := &l.items[idx]
 			if .Hit not_in it.flags || !rect_contains(it.rect, local) { continue }
 			if it.clip != NONE && !clip_contains(l, &v, it.clip, p) { continue }
 			if it.group != NONE && !group_clips_contain(l, &v, it.group, p) { continue }
-			best = idx
+			// nearer wins inside a 3D context (equal depth: the later item); anywhere else the later item
+			if sorted && best >= 0 {
+				if z < best_z - 1e-4 || (abs(z - best_z) <= 1e-4 && idx < best) { break }
+			} else if idx <= best { break }
+			best, best_plane, best_ctx, best_z = idx, sp.plane, ctx, z
 			break
 		}
 	}
@@ -393,7 +432,35 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 	q := r.border
 	r.quad = {q.min, {q.max.x, q.min.y}, q.max, {q.min.x, q.max.y}}
 	r.bounds = q
-	if !space_plain(l, b.space) {
+	if pl := l.spaces[b.space].plane; pl != NONE {
+		// in a 3D plane: the corners go through the plane's projection (perspective divide included); `transform` is the
+		// affine map that fits the first three corners (what a click on a tilted field is converted with, nearly exact for
+		// the small tilts of an interactive card), `bounds` the box of the quad (CSS Transforms 2: getBoundingClientRect)
+		ds := Vec2{0, doc_scroll}
+		corners := [4]Vec2{q.min, {q.max.x, q.min.y}, q.max, {q.min.x, q.max.y}}
+		r.transformed = true
+		first := true
+		for c, k in corners {
+			pp, ok := plane_project(l, &v, pl, mat_apply(v.mats[b.space], c - ds))
+			if v.singular[b.space] { ok = false }
+			if !ok { continue }
+			pp += ds
+			r.quad[k] = pp
+			if first { r.bounds = Rect{pp, pp}; first = false } else { r.bounds = rect_union(r.bounds, Rect{pp, pp}) }
+		}
+		if first { r.bounds = Rect{}; r.quad = {} }
+		w, h := q.max.x - q.min.x, q.max.y - q.min.y
+		if w > 0 && h > 0 && !first {
+			ex := (r.quad[1] - r.quad[0]) / w
+			ey := (r.quad[3] - r.quad[0]) / h
+			x0 := q.min
+			m := Matrix{ex.x, ex.y, ey.x, ey.y, 0, 0}
+			m[4] = r.quad[0].x - (m[0] * x0.x + m[2] * x0.y)
+			m[5] = r.quad[0].y - (m[1] * x0.x + m[3] * x0.y)
+			r.transform = m
+			if inv, ok := mat_inverse(m); ok { r.inverse = inv }
+		}
+	} else if !space_plain(l, b.space) {
 		// the view's matrix works on viewport coordinates; these rects are in document coordinates
 		ds := Vec2{0, doc_scroll}
 		m := v.singular[b.space] ? Matrix{} : mat_shifted(v.mats[b.space], ds)

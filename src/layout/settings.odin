@@ -28,6 +28,7 @@ Settings :: struct {
 	round_metrics:      bool,      // ascent, descent, line gap and the top half-leading on whole device pixels (Blink)
 	paint_refresh:      bool,      // paint-only style changes refresh the existing layout instead of redoing it
 	opacity_layers:     bool,      // opacity groups are composited from an offscreen layer (else per primitive)
+	transforms_3d:      bool,      // CSS 3D transforms are drawn in perspective (planes); off: flattened to their orthographic projection
 	grid_max_tracks:    int,       // grid lines are clamped to ± this (explicit and implicit tracks per axis)
 	grid_max_items:     int,       // grid items placed per container; the rest are not laid out
 	table_max_columns:  int,       // columns of one table; cells past it share the last column
@@ -95,6 +96,8 @@ PREFS := [?]config.Def{
 		description = "When only paint-only values change (transform, opacity, colors, backgrounds, shadows: the usual animations and hover effects), keep the boxes and update matrices, opacities and colors instead of laying the page out again. Off: every style change lays the page out (diagnostics)."},
 	{name = "layout.paint.opacity_layers", kind = .Bool, default = {b = true},
 		description = "Paint an element with opacity below 1 into an offscreen layer and blend it once, as CSS requires (what overlaps inside it does not show through). Off: each shape is faded on its own (cheaper, inexact where children overlap)."},
+	{name = "layout.transforms_3d", kind = .Bool, default = {b = true},
+		description = "Draw CSS 3D transforms (perspective(), rotateX/Y, translateZ, preserve-3d, backface-visibility...) with real perspective: an element with a 3D transform is painted into an offscreen plane that the GPU projects onto the page. Off: they are flattened to their orthographic projection (what a viewer looking straight at the page sees without perspective), the way 2D-only engines draw them."},
 	{name = "layout.grid.max_tracks", kind = .Int, default = {i = 10000}, bounded = true, min = 100, max = 1_000_000,
 		description = "Largest grid line number honored, and most tracks of an axis (implicit ones and spans included). Placements further out are clamped, as CSS Grid allows (a hostile `grid-row: 10000000` stays cheap). The style engine already reads line numbers and repeat() counts up to 10000 at most."},
 	{name = "layout.grid.max_items", kind = .Int, default = {i = 200_000}, bounded = true, min = 1000, max = 10_000_000,
@@ -166,6 +169,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		round_metrics = config.bool_of(p, "layout.text.round_font_metrics"),
 		paint_refresh = config.bool_of(p, "layout.paint_refresh"),
 		opacity_layers = config.bool_of(p, "layout.paint.opacity_layers"),
+		transforms_3d = config.bool_of(p, "layout.transforms_3d"),
 		grid_max_tracks = int(config.int_of(p, "layout.grid.max_tracks")),
 		grid_max_items = int(config.int_of(p, "layout.grid.max_items")),
 		table_max_columns = int(config.int_of(p, "layout.table.max_columns")),

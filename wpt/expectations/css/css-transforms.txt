@@ -1,0 +1,795 @@
+# web-platform-tests expectations of Wren for css/css-transforms, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/css/css-transforms/2d-rotate-js.html: OK
+	JS test: Rotate via javascript must show the correct computed rotation: PASS
+/css/css-transforms/2d-transform-inline-js.html: OK
+	JS test: Inline renderer must return the correct computed transform: PASS
+/css/css-transforms/3d-point-mapping-2-transforminterop.html: OK
+	More point mapping through 3D transform hierarchies, hittesting box1): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box10): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box11): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box12): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box2): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box3): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box4): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box5): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box6): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box7): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box8): FAIL
+	More point mapping through 3D transform hierarchies, hittesting box9): FAIL
+/css/css-transforms/3d-point-mapping-3.html: OK
+	Point mapping through 3D transform hierarchies, hittesting card): FAIL
+/css/css-transforms/3d-point-mapping-4.html: OK
+	Point mapping through 3D transform hierarchies, hittesting card: FAIL
+	Point mapping through 3D transform hierarchies, hittesting card2: FAIL
+/css/css-transforms/3d-point-mapping-coplanar.html: OK
+	Hit test coplanar elements, hittesting box1): FAIL
+	Hit test coplanar elements, hittesting box2): FAIL
+	Hit test coplanar elements, hittesting box3): FAIL
+	Hit test coplanar elements, hittesting box4): FAIL
+/css/css-transforms/3d-point-mapping-deep.html: OK
+	Point mapping through deeply nested 3D transforms, hittesting box1: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box2: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box3: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box4: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box5: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box6: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box7: FAIL
+	Point mapping through deeply nested 3D transforms, hittesting box8: FAIL
+/css/css-transforms/3d-point-mapping-origins.html: OK
+	Point mapping through 3D transforms with origins, hittesting bottom-left-blue): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-left-light-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-left-medium-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-right-blue): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-right-green): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-right-light-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting bottom-right-medium-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting top-left-light-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting top-left-medium-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting top-right-blue): FAIL
+	Point mapping through 3D transforms with origins, hittesting top-right-light-gray): FAIL
+	Point mapping through 3D transforms with origins, hittesting top-right-medium-gray): FAIL
+/css/css-transforms/3d-point-mapping-overlapping.html: OK
+	Hit test overlapping elements, hittesting box1): FAIL
+	Hit test overlapping elements, hittesting box2): FAIL
+	Hit test overlapping elements, hittesting box3): FAIL
+	Hit test overlapping elements, hittesting overlay): FAIL
+/css/css-transforms/3d-point-mapping-preserve-3d.html: OK
+	Point mapping through 3D transform hierarchies, hittesting bottom-left-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-left-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-left-light-yellow: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-middle-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-middle-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-middle-light-yellow: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-middle-medium-blue: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-right-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-right-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-right-light-rose: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-right-light-yellow: FAIL
+	Point mapping through 3D transform hierarchies, hittesting bottom-right-medium-blue: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-left-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-left-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-middle-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-middle-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-middle-medium-blue: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-right-light-gray: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-right-light-green: FAIL
+	Point mapping through 3D transform hierarchies, hittesting top-right-medium-blue: FAIL
+/css/css-transforms/3d-point-mapping.html: OK
+	Point mapping through 3D transforms, hittesting box1): FAIL
+	Point mapping through 3D transforms, hittesting box10): FAIL
+	Point mapping through 3D transforms, hittesting box11): FAIL
+	Point mapping through 3D transforms, hittesting box12): FAIL
+	Point mapping through 3D transforms, hittesting box13): FAIL
+	Point mapping through 3D transforms, hittesting box14): FAIL
+	Point mapping through 3D transforms, hittesting box2): FAIL
+	Point mapping through 3D transforms, hittesting box5): FAIL
+	Point mapping through 3D transforms, hittesting box6): FAIL
+	Point mapping through 3D transforms, hittesting box7): FAIL
+	Point mapping through 3D transforms, hittesting box8): FAIL
+	Point mapping through 3D transforms, hittesting box9): FAIL
+/css/css-transforms/3d-rendering-context-behavior.html: OK
+	Direct DOM parent is root of rendering context (absolute): FAIL
+	Direct DOM parent is root of rendering context (fixed): FAIL
+	Direct DOM parent is root of rendering context (normal flow): FAIL
+	Intermediate DOM nodes cause rendering context to end (absolute): FAIL
+	Intermediate DOM nodes cause rendering context to end (fixed): FAIL
+	Intermediate DOM nodes cause rendering context to end (normal flow): FAIL
+	Perspective applies to direct DOM abs-pos children: FAIL
+	Perspective applies to direct DOM fixed-pos children: FAIL
+	Perspective applies to direct DOM normal-flow children: FAIL
+	Perspective does not apply to DOM abs-pos grandchildren: FAIL
+	Perspective does not apply to DOM fixed-pos grandchildren: FAIL
+	Perspective does not apply to DOM normal-flow grandchildren: FAIL
+/css/css-transforms/animation/backface-visibility-no-interpolation.html: ERROR
+/css/css-transforms/animation/composited-transform.html: OK
+	An additive transform animation on-top of a replace transform animation should composite correctly: FAIL
+/css/css-transforms/animation/list-interpolation.html: ERROR
+/css/css-transforms/animation/matrix-interpolation.html: ERROR
+/css/css-transforms/animation/perspective-composition.html: ERROR
+/css/css-transforms/animation/perspective-interpolation.html: ERROR
+/css/css-transforms/animation/perspective-origin-composition.html: ERROR
+/css/css-transforms/animation/perspective-origin-interpolation.html: ERROR
+/css/css-transforms/animation/rotate-composition.html: ERROR
+/css/css-transforms/animation/rotate-interpolation-math-functions-tentative.html: ERROR
+/css/css-transforms/animation/rotate-interpolation.html: ERROR
+/css/css-transforms/animation/scale-animation-math-functions-tentative.html: ERROR
+/css/css-transforms/animation/scale-composition.html: ERROR
+/css/css-transforms/animation/scale-interpolation.html: ERROR
+/css/css-transforms/animation/transform-composition.html: ERROR
+/css/css-transforms/animation/transform-interpolation-001.html: ERROR
+/css/css-transforms/animation/transform-interpolation-002.html: ERROR
+/css/css-transforms/animation/transform-interpolation-003.html: ERROR
+/css/css-transforms/animation/transform-interpolation-004.html: ERROR
+/css/css-transforms/animation/transform-interpolation-005.html: ERROR
+/css/css-transforms/animation/transform-interpolation-006.html: ERROR
+/css/css-transforms/animation/transform-interpolation-007.html: ERROR
+/css/css-transforms/animation/transform-interpolation-computed-value.html: OK
+	Interpolation between matrix(2, 0, 0, 2, 10, 30) and matrix(4, 0, 0, 6, 14, 10) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between matrix(2, 0, 0, 2, 10, 30) and matrix(4, 0, 0, 6, 14, 10) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 0, 5, 10, 4, 1) and matrix3d(3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, -11, 2, 2, 1) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 0, 5, 10, 4, 1) and matrix3d(3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, -11, 2, 2, 1) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 3, 0, 1, 0, 2, 0, 0, 1, 8, 0, 0, 0, 1) and matrix3d(1, 0, 0, 5, 0, 1, 0, 8, 0, 0, 1, 14, 0, 0, 0, 1) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 3, 0, 1, 0, 2, 0, 0, 1, 8, 0, 0, 0, 1) and matrix3d(1, 0, 0, 5, 0, 1, 0, 8, 0, 0, 1, 14, 0, 0, 0, 1) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between perspective(10px) and perspective(2.5px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between perspective(10px) and perspective(2.5px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between perspective(10px) and perspective(none) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between perspective(10px) and perspective(none) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between perspective(none) and perspective(none) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between perspective(none) and perspective(none) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between rotate(0deg) and rotateX(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between rotate(0deg) and rotateX(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between rotate(0deg) and rotateZ(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between rotate(0deg) and rotateZ(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between rotate(30deg) and rotate(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between rotate(30deg) and rotate(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between rotateX(0deg) and rotateX(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between rotateX(0deg) and rotateX(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between rotateZ(30deg) and rotateZ(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between rotateZ(30deg) and rotateZ(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale(1) and scale(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale(1) and scale(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale(1, 2) and scale(3, 4) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale(1, 2) and scale(3, 4) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale(1, 2) and scale3d(3, 4, 5) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale(1, 2) and scale3d(3, 4, 5) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale(1, 3) and scale(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale(1, 3) and scale(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale(4, 5) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale(4, 5) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale3d(4, 5, 6) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale3d(4, 5, 6) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleX(1) and scaleX(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleX(1) and scaleX(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleX(2) and scaleY(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleX(2) and scaleY(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleX(2) and scaleY(3) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleX(2) and scaleY(3) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleY(1) and scaleY(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleY(1) and scaleY(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleZ(1) and scale(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleZ(1) and scale(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between scaleZ(1) and scaleZ(2) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between scaleZ(1) and scaleZ(2) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between skew(0deg, 0deg) and skew(60deg, 60deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between skew(0deg, 0deg) and skew(60deg, 60deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between skew(45deg, 0deg) and skew(0deg, 45deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between skew(45deg, 0deg) and skew(0deg, 45deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between skewX(0deg) and skewX(180deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between skewX(0deg) and skewX(180deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between skewX(0deg) and skewX(60deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between skewX(0deg) and skewX(60deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between skewX(0deg) and skewX(90deg) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between skewX(0deg) and skewX(90deg) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate(0%) and translate(50%) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate(0%) and translate(50%) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate(0%, 50%) and translate(50%, 100%) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate(0%, 50%) and translate(50%, 100%) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate(50%) and translate(100%, 50%) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate(50%) and translate(100%, 50%) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate(50px, -50px) and translate(100px, 50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate(50px, -50px) and translate(100px, 50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate(50px, 0px) and translate(100px, 0px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate(50px, 0px) and translate(100px, 0px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translate3d(0,0,-50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translate3d(0,0,-50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateX(0%) and translateX(50%) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateX(0%) and translateX(50%) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateX(0px) and translateX(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateX(0px) and translateX(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateX(50px) and translateY(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateX(50px) and translateY(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateX(50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateX(50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateY(0%) and translateX(50%) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateY(0%) and translateX(50%) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateZ(-50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateZ(-50px) and translateZ(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+	Interpolation between translateZ(50px) and translateX(50px) gives the correct computed value halfway according to computedStyleMap with zoom active.: FAIL
+	Interpolation between translateZ(50px) and translateX(50px) gives the correct computed value halfway according to computedStyleMap.: FAIL
+/css/css-transforms/animation/transform-interpolation-inline-value.html: OK
+	Interpolation between matrix(2, 0, 0, 2, 10, 30) and matrix(4, 0, 0, 6, 14, 10) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 0, 5, 10, 4, 1) and matrix3d(3, 0, 0, 0, 0, 2, 0, 0, 0, 0, 3, 0, -11, 2, 2, 1) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between matrix3d(1, 0, 0, 3, 0, 1, 0, 2, 0, 0, 1, 8, 0, 0, 0, 1) and matrix3d(1, 0, 0, 5, 0, 1, 0, 8, 0, 0, 1, 14, 0, 0, 0, 1) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between perspective(10px) and perspective(2.5px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between perspective(10px) and perspective(none) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between perspective(none) and perspective(none) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between rotate(0deg) and rotateX(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between rotate(0deg) and rotateZ(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between rotate(30deg) and rotate(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between rotateX(0deg) and rotateX(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between rotateZ(30deg) and rotateZ(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale(1) and scale(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale(1, 2) and scale(3, 4) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale(1, 2) and scale3d(3, 4, 5) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale(1, 3) and scale(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale(4, 5) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scale3d(1, 2, 3) and scale3d(4, 5, 6) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleX(1) and scaleX(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleX(2) and scaleY(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleX(2) and scaleY(3) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleY(1) and scaleY(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleZ(1) and scale(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between scaleZ(1) and scaleZ(2) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between skew(0deg, 0deg) and skew(60deg, 60deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between skew(45deg, 0deg) and skew(0deg, 45deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between skewX(0deg) and skewX(180deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between skewX(0deg) and skewX(60deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between skewX(0deg) and skewX(90deg) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate(0%) and translate(50%) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate(0%, 50%) and translate(50%, 100%) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate(50%) and translate(100%, 50%) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate(50px, -50px) and translate(100px, 50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate(50px, 0px) and translate(100px, 0px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translate3d(0,0,-50px) and translateZ(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateX(0%) and translateX(50%) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateX(0px) and translateX(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateX(50px) and translateY(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateX(50px) and translateZ(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateY(0%) and translateX(50%) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateZ(-50px) and translateZ(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+	Interpolation between translateZ(50px) and translateX(50px) gives the correct computed value halfway according to commitStyles.: FAIL
+/css/css-transforms/animation/transform-interpolation-rotate3d-180deg-near-x-axis.html: OK
+	decompose4() recovers the correct quaternion y component near a 180deg rotation about the X axis: FAIL
+/css/css-transforms/animation/transform-interpolation-verify-reftests.html: ERROR
+/css/css-transforms/animation/transform-matrix-composition.html: ERROR
+/css/css-transforms/animation/transform-non-invertible-no-transition.html: OK
+	Setting 'transform' to a non-invertible matrix does not yield a CSS Transition: FAIL
+/css/css-transforms/animation/transform-origin-composition.html: ERROR
+/css/css-transforms/animation/transform-origin-interpolation.html: ERROR
+/css/css-transforms/animation/transform-perspective-composition.html: ERROR
+/css/css-transforms/animation/transform-rotate-composition.html: ERROR
+/css/css-transforms/animation/transform-scale-composition.html: ERROR
+/css/css-transforms/animation/transform-skew-composition.html: ERROR
+/css/css-transforms/animation/transform-translate-composition.html: ERROR
+/css/css-transforms/animation/translate-composition.html: ERROR
+/css/css-transforms/animation/translate-interpolation.html: ERROR
+/css/css-transforms/css-transform-property-existence.html: OK
+	Check the existence of backface-visibility.: PASS
+	Check the existence of perspective-origin.: PASS
+	Check the existence of perspective.: PASS
+	Check the existence of transform-origin.: PASS
+	Check the existence of transform-style.: PASS
+	Check the existence of transform.: PASS
+/css/css-transforms/css-transform-style-evaluation-validation.html: OK
+	transform: Check bad-format multi-expr input.: PASS
+	transform: Check multi-expr input with spaces start and end.: PASS
+	transform: Check multi-expr input with tab.: PASS
+	transform: Check multi-expr input with two spaces.: PASS
+	transform: Check rotate(0) input.: PASS
+	transform: Check rotate(string) input.: PASS
+	transform: Check rotateX(0) input.: PASS
+	transform: Check rotateX(string) input.: PASS
+	transform: Check rotateY(0) input.: PASS
+	transform: Check rotateY(string) input.: PASS
+	transform: Check rotateZ(0) input.: PASS
+	transform: Check rotateZ(string) input.: PASS
+	transform: Check valied multi-expr input.: PASS
+/css/css-transforms/hittest-preserve-3d-2.html: OK
+	Hit test preserve-3d descendant: FAIL
+/css/css-transforms/hittest-preserve-3d.html: OK
+	Hit test preserve-3d descendant: FAIL
+/css/css-transforms/inheritance.html: ERROR
+/css/css-transforms/inline-with-filter-and-hidden-backface.html: OK
+	Hit test: FAIL
+/css/css-transforms/parsing/backface-visibility-computed.html: OK
+	Property backface-visibility value 'hidden': PASS
+	Property backface-visibility value 'visible': PASS
+/css/css-transforms/parsing/backface-visibility-invalid.html: OK
+	e.style['backface-visibility'] = "auto" should not set the property value: PASS
+	e.style['backface-visibility'] = "visible hidden" should not set the property value: PASS
+/css/css-transforms/parsing/backface-visibility-valid.html: OK
+	e.style['backface-visibility'] = "hidden" should set the property value: PASS
+	e.style['backface-visibility'] = "visible" should set the property value: PASS
+/css/css-transforms/parsing/perspective-invalid.html: OK
+	e.style['perspective'] = "-1px" should not set the property value: PASS
+	e.style['perspective'] = "1000" should not set the property value: PASS
+	e.style['perspective'] = "80%" should not set the property value: PASS
+/css/css-transforms/parsing/perspective-origin-computed.html: OK
+	Property perspective-origin value '10% center': FAIL
+	Property perspective-origin value '10%': FAIL
+	Property perspective-origin value '20% 30px': FAIL
+	Property perspective-origin value '30px center': FAIL
+	Property perspective-origin value '40px top': FAIL
+	Property perspective-origin value 'bottom 10% right 20%': FAIL
+	Property perspective-origin value 'bottom right': FAIL
+	Property perspective-origin value 'center 50px': FAIL
+	Property perspective-origin value 'center bottom': FAIL
+	Property perspective-origin value 'center center': FAIL
+	Property perspective-origin value 'center left': FAIL
+	Property perspective-origin value 'center': FAIL
+	Property perspective-origin value 'left 10px': FAIL
+	Property perspective-origin value 'left bottom': FAIL
+	Property perspective-origin value 'left center': FAIL
+	Property perspective-origin value 'left': FAIL
+	Property perspective-origin value 'right 20px bottom 30px': FAIL
+	Property perspective-origin value 'right 30% top -60px': FAIL
+	Property perspective-origin value 'right 40%': FAIL
+	Property perspective-origin value 'right calc(10px - 0.5em) top calc(10px - 0.5em)': FAIL
+	Property perspective-origin value 'top': FAIL
+/css/css-transforms/parsing/perspective-origin-invalid.html: OK
+	e.style['perspective-origin'] = "1px 2px 3px" should not set the property value: PASS
+	e.style['perspective-origin'] = "auto" should not set the property value: PASS
+	e.style['perspective-origin'] = "bottom 10% top 20%" should not set the property value: PASS
+	e.style['perspective-origin'] = "bottom 6% center" should not set the property value: FAIL
+	e.style['perspective-origin'] = "bottom 7% left" should not set the property value: FAIL
+	e.style['perspective-origin'] = "bottom right 8%" should not set the property value: FAIL
+	e.style['perspective-origin'] = "center left 1px" should not set the property value: FAIL
+	e.style['perspective-origin'] = "center top 2px" should not set the property value: FAIL
+	e.style['perspective-origin'] = "left 4px top" should not set the property value: FAIL
+	e.style['perspective-origin'] = "left right" should not set the property value: PASS
+	e.style['perspective-origin'] = "right 3% center" should not set the property value: FAIL
+	e.style['perspective-origin'] = "right top 5px" should not set the property value: FAIL
+/css/css-transforms/parsing/perspective-origin-valid.html: OK
+	e.style['perspective-origin'] = "10%" should set the property value: FAIL
+	e.style['perspective-origin'] = "20% 30px" should set the property value: PASS
+	e.style['perspective-origin'] = "30px center" should set the property value: PASS
+	e.style['perspective-origin'] = "40px top" should set the property value: PASS
+	e.style['perspective-origin'] = "bottom 10% right 20%" should set the property value: FAIL
+	e.style['perspective-origin'] = "bottom right" should set the property value: FAIL
+	e.style['perspective-origin'] = "center 50px" should set the property value: PASS
+	e.style['perspective-origin'] = "center bottom" should set the property value: PASS
+	e.style['perspective-origin'] = "center center" should set the property value: PASS
+	e.style['perspective-origin'] = "center left" should set the property value: FAIL
+	e.style['perspective-origin'] = "center" should set the property value: FAIL
+	e.style['perspective-origin'] = "left bottom" should set the property value: PASS
+	e.style['perspective-origin'] = "left center" should set the property value: PASS
+	e.style['perspective-origin'] = "left" should set the property value: FAIL
+	e.style['perspective-origin'] = "right 30% top 60px" should set the property value: PASS
+	e.style['perspective-origin'] = "right 40%" should set the property value: PASS
+	e.style['perspective-origin'] = "top center" should set the property value: FAIL
+	e.style['perspective-origin'] = "top" should set the property value: FAIL
+/css/css-transforms/parsing/rotate-parsing-computed.html: OK
+	Property rotate value '-0.5 0 0 400grad': PASS
+	Property rotate value '-1 0 0 400grad': PASS
+	Property rotate value '0 -0.5 0 400grad': PASS
+	Property rotate value '0 -1 0 400grad': PASS
+	Property rotate value '0 0 -0.5 400grad': PASS
+	Property rotate value '0 0 -1 400grad': PASS
+	Property rotate value '0 0 0 400grad': PASS
+	Property rotate value '0 0 0.5 400grad': PASS
+	Property rotate value '0 0 1 400grad': PASS
+	Property rotate value '0 0.5 0 400grad': PASS
+	Property rotate value '0 1 0 400grad': PASS
+	Property rotate value '0.5 0 0 400grad': PASS
+	Property rotate value '0deg': PASS
+	Property rotate value '1 0 0 400grad': PASS
+	Property rotate value '100 200 300 400grad': PASS
+	Property rotate value '400grad 100 200 300': PASS
+	Property rotate value '400grad x': PASS
+	Property rotate value '400grad y': PASS
+	Property rotate value '400grad z': PASS
+	Property rotate value '400grad': PASS
+	Property rotate value 'none': PASS
+	Property rotate value 'x 400grad': PASS
+	Property rotate value 'y 400grad': PASS
+/css/css-transforms/parsing/rotate-parsing-invalid.html: OK
+	e.style['rotate'] = "1 2 3" should not set the property value: PASS
+	e.style['rotate'] = "1 2" should not set the property value: PASS
+	e.style['rotate'] = "100 200 300 500 400deg" should not set the property value: PASS
+	e.style['rotate'] = "100 200 400deg" should not set the property value: PASS
+	e.style['rotate'] = "100 400deg" should not set the property value: PASS
+	e.style['rotate'] = "100px" should not set the property value: PASS
+	e.style['rotate'] = "45deg x y" should not set the property value: PASS
+	e.style['rotate'] = "x y 45deg" should not set the property value: PASS
+	e.style['rotate'] = "z" should not set the property value: PASS
+/css/css-transforms/parsing/rotate-parsing-valid.html: OK
+	e.style['rotate'] = "-0.5 0 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "-1 0 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 -0.5 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 -1 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 0 -0.5 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 0 -1 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 0 0 400grad" should set the property value: PASS
+	e.style['rotate'] = "0 0 0.5 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 0 1 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 0.5 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0 1 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0.5 0 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "0deg" should set the property value: PASS
+	e.style['rotate'] = "1 0 0 400grad" should set the property value: FAIL
+	e.style['rotate'] = "100 200 300 400grad" should set the property value: PASS
+	e.style['rotate'] = "400grad 100 200 300" should set the property value: FAIL
+	e.style['rotate'] = "400grad x" should set the property value: FAIL
+	e.style['rotate'] = "400grad y" should set the property value: FAIL
+	e.style['rotate'] = "400grad z" should set the property value: FAIL
+	e.style['rotate'] = "400grad" should set the property value: PASS
+	e.style['rotate'] = "none" should set the property value: PASS
+	e.style['rotate'] = "x 400grad" should set the property value: PASS
+	e.style['rotate'] = "y 400grad" should set the property value: PASS
+/css/css-transforms/parsing/scale-parsing-computed.html: OK
+	Property scale value '-100 -100 1': PASS
+	Property scale value '-100 -100': PASS
+	Property scale value '-100% -100% 1': PASS
+	Property scale value '-100% -100%': PASS
+	Property scale value '-100%': PASS
+	Property scale value '-100': PASS
+	Property scale value '1%': PASS
+	Property scale value '1': PASS
+	Property scale value '100 100 1': PASS
+	Property scale value '100 100 2': PASS
+	Property scale value '100 100': PASS
+	Property scale value '100 200 1': PASS
+	Property scale value '100 200 300': PASS
+	Property scale value '100 200': PASS
+	Property scale value '100% 100% 1': PASS
+	Property scale value '100% 100%': PASS
+	Property scale value '100% 200% 1': PASS
+	Property scale value '100% 200% 300%': PASS
+	Property scale value '100% 200%': PASS
+	Property scale value '100%': PASS
+	Property scale value '100': PASS
+	Property scale value '2 calc(300% * sign(1em - 1px)': FAIL
+	Property scale value '2 calc(300%)': FAIL
+	Property scale value 'calc(1 + 1)': PASS
+	Property scale value 'calc(1 + sign(1em - 1px))': PASS
+	Property scale value 'calc(2 * 100%)': FAIL
+	Property scale value 'calc(2 * sign(1em - 1px)) calc(3)': PASS
+	Property scale value 'calc(2 * sign(1em - 1px))': PASS
+	Property scale value 'calc(2) calc(3)': PASS
+	Property scale value 'calc(200% * sign(1em - 1px)) 3': FAIL
+	Property scale value 'calc(200% * sign(1em - 1px))': FAIL
+	Property scale value 'calc(200%) 3': FAIL
+	Property scale value 'calc(200%) calc(300% * sign(1em - 1px))': FAIL
+	Property scale value 'calc(200%) calc(300%) calc(400% * sign(1em - 1px))': FAIL
+	Property scale value 'calc(200%) calc(300%) calc(400%)': FAIL
+	Property scale value 'calc(200%) calc(300%)': FAIL
+	Property scale value 'calc(200%)': FAIL
+	Property scale value 'none': PASS
+/css/css-transforms/parsing/scale-parsing-invalid.html: OK
+	e.style['scale'] = "1 2 3 junk" should not set the property value: PASS
+	e.style['scale'] = "1 2 junk" should not set the property value: PASS
+	e.style['scale'] = "1 junk" should not set the property value: PASS
+	e.style['scale'] = "100 200 300 400" should not set the property value: PASS
+	e.style['scale'] = "100px" should not set the property value: PASS
+	e.style['scale'] = "calc(100px)" should not set the property value: PASS
+	e.style['scale'] = "calc(180deg) 2 3" should not set the property value: PASS
+	e.style['scale'] = "calc(1s) 2" should not set the property value: PASS
+/css/css-transforms/parsing/scale-parsing-valid.html: OK
+	e.style['scale'] = "-100 -100 1" should set the property value: FAIL
+	e.style['scale'] = "-100 -100" should set the property value: FAIL
+	e.style['scale'] = "-100" should set the property value: PASS
+	e.style['scale'] = "-100% -100% 1" should set the property value: FAIL
+	e.style['scale'] = "-100% -100%" should set the property value: FAIL
+	e.style['scale'] = "-100%" should set the property value: FAIL
+	e.style['scale'] = "1" should set the property value: PASS
+	e.style['scale'] = "1%" should set the property value: FAIL
+	e.style['scale'] = "100 100 1" should set the property value: FAIL
+	e.style['scale'] = "100 100 2" should set the property value: PASS
+	e.style['scale'] = "100 100" should set the property value: FAIL
+	e.style['scale'] = "100 200 1" should set the property value: FAIL
+	e.style['scale'] = "100 200 300" should set the property value: PASS
+	e.style['scale'] = "100 200" should set the property value: PASS
+	e.style['scale'] = "100" should set the property value: PASS
+	e.style['scale'] = "100% 100% 1" should set the property value: FAIL
+	e.style['scale'] = "100% 100%" should set the property value: FAIL
+	e.style['scale'] = "100% 200% 1" should set the property value: FAIL
+	e.style['scale'] = "100% 200% 300%" should set the property value: FAIL
+	e.style['scale'] = "100% 200%" should set the property value: FAIL
+	e.style['scale'] = "100%" should set the property value: FAIL
+	e.style['scale'] = "calc(-100% * sign(1em - 1px))" should set the property value: FAIL
+	e.style['scale'] = "calc(-100%)" should set the property value: FAIL
+	e.style['scale'] = "calc(2 * 1) 3 calc(4 * 100%)" should set the property value: FAIL
+	e.style['scale'] = "calc(2 * sign(1em - 1px)) 3 calc(4 * 100%)" should set the property value: FAIL
+	e.style['scale'] = "calc(2 * sign(1em - 1px))" should set the property value: PASS
+	e.style['scale'] = "calc(2)" should set the property value: PASS
+	e.style['scale'] = "calc(200% * sign(1em - 1px))" should set the property value: FAIL
+	e.style['scale'] = "calc(200%) calc(3 * sign(1em - 1px))" should set the property value: FAIL
+	e.style['scale'] = "calc(200%) calc(3)" should set the property value: FAIL
+	e.style['scale'] = "calc(200%)" should set the property value: FAIL
+	e.style['scale'] = "none" should set the property value: PASS
+/css/css-transforms/parsing/transform-box-computed.html: OK
+	Property transform-box value 'border-box': FAIL
+	Property transform-box value 'content-box': FAIL
+	Property transform-box value 'fill-box': FAIL
+	Property transform-box value 'stroke-box': FAIL
+	Property transform-box value 'view-box': FAIL
+/css/css-transforms/parsing/transform-box-invalid.html: OK
+	e.style['transform-box'] = "fill-box view-box" should not set the property value: PASS
+	e.style['transform-box'] = "margin-box" should not set the property value: PASS
+	e.style['transform-box'] = "padding-box" should not set the property value: PASS
+/css/css-transforms/parsing/transform-box-valid.html: OK
+	e.style['transform-box'] = "border-box" should set the property value: PASS
+	e.style['transform-box'] = "content-box" should set the property value: PASS
+	e.style['transform-box'] = "fill-box" should set the property value: PASS
+	e.style['transform-box'] = "stroke-box" should set the property value: PASS
+	e.style['transform-box'] = "view-box" should set the property value: PASS
+/css/css-transforms/parsing/transform-computed.html: OK
+	Property -moz-transform value 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)': FAIL
+	Property -moz-transform value 'perspective(10px)': FAIL
+	Property -moz-transform value 'perspective(none)': FAIL
+	Property -webkit-transform value 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)': PASS
+	Property -webkit-transform value 'perspective(10px)': PASS
+	Property -webkit-transform value 'perspective(none)': PASS
+	Property transform value 'matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)': PASS
+	Property transform value 'perspective(10px)': PASS
+	Property transform value 'perspective(none)': PASS
+/css/css-transforms/parsing/transform-invalid.html: OK
+	e.style['transform'] = "matrix(1, 2)" should not set the property value: PASS
+	e.style['transform'] = "none scale(2)" should not set the property value: PASS
+	e.style['transform'] = "perspective(1000)" should not set the property value: PASS
+	e.style['transform'] = "rotate(0, 0)" should not set the property value: PASS
+	e.style['transform'] = "rotate(0, 0, 0)" should not set the property value: PASS
+	e.style['transform'] = "rotate(0, 0, 0, 0)" should not set the property value: PASS
+	e.style['transform'] = "scale(6%, 7%, 8%)" should not set the property value: PASS
+	e.style['transform'] = "scale(6, 7, 8)" should not set the property value: PASS
+	e.style['transform'] = "scaleX(1%, 2%)" should not set the property value: PASS
+	e.style['transform'] = "scaleX(1, 2)" should not set the property value: PASS
+	e.style['transform'] = "scaleX(2), scaleY(3)" should not set the property value: PASS
+	e.style['transform'] = "scaleY(3%, 4%)" should not set the property value: PASS
+	e.style['transform'] = "scaleY(3, 4)" should not set the property value: PASS
+	e.style['transform'] = "skew(0, 0, 0)" should not set the property value: PASS
+	e.style['transform'] = "skewX(0, 0)" should not set the property value: PASS
+	e.style['transform'] = "skewY(0, 0)" should not set the property value: PASS
+	e.style['transform'] = "translate(1px, 2px, 3px)" should not set the property value: PASS
+	e.style['transform'] = "translateX(-4px, 5px)" should not set the property value: PASS
+	e.style['transform'] = "translateX(3%) none" should not set the property value: PASS
+	e.style['transform'] = "translateY(4%, 5%)" should not set the property value: PASS
+/css/css-transforms/parsing/transform-origin-computed.html: OK
+	Property transform-origin value '-1px -2px -3px': FAIL
+	Property transform-origin value '-1px bottom 5px': FAIL
+	Property transform-origin value '10% center': FAIL
+	Property transform-origin value '10%': FAIL
+	Property transform-origin value '20% 30px': FAIL
+	Property transform-origin value '30px center': FAIL
+	Property transform-origin value '40px top': FAIL
+	Property transform-origin value 'bottom right': FAIL
+	Property transform-origin value 'calc(-100% + 10px - 0.5em) calc(10px - 0.5em) calc(10px - 0.5em)': FAIL
+	Property transform-origin value 'center 50px': FAIL
+	Property transform-origin value 'center bottom': FAIL
+	Property transform-origin value 'center center': FAIL
+	Property transform-origin value 'center left': FAIL
+	Property transform-origin value 'center top': FAIL
+	Property transform-origin value 'center': FAIL
+	Property transform-origin value 'left 10px': FAIL
+	Property transform-origin value 'left bottom': FAIL
+	Property transform-origin value 'left center 6px': FAIL
+	Property transform-origin value 'left center': FAIL
+	Property transform-origin value 'left': FAIL
+	Property transform-origin value 'right 40%': FAIL
+	Property transform-origin value 'right bottom 7px': FAIL
+	Property transform-origin value 'top': FAIL
+/css/css-transforms/parsing/transform-origin-invalid.html: OK
+	e.style['transform-origin'] = "1px 2px 3%" should not set the property value: PASS
+	e.style['transform-origin'] = "1px 2px 3px 4px" should not set the property value: PASS
+	e.style['transform-origin'] = "1px 2px left" should not set the property value: PASS
+	e.style['transform-origin'] = "1px left" should not set the property value: PASS
+	e.style['transform-origin'] = "bottom 10% right 20%" should not set the property value: PASS
+	e.style['transform-origin'] = "right 20px bottom 30px" should not set the property value: PASS
+	e.style['transform-origin'] = "right 30% top -60px" should not set the property value: PASS
+	e.style['transform-origin'] = "right left" should not set the property value: PASS
+	e.style['transform-origin'] = "top 1px" should not set the property value: PASS
+	e.style['transform-origin'] = "top bottom" should not set the property value: PASS
+/css/css-transforms/parsing/transform-origin-valid.html: OK
+	e.style['transform-origin'] = "-1px -2px -3px" should set the property value: PASS
+	e.style['transform-origin'] = "-1px bottom 5px" should set the property value: PASS
+	e.style['transform-origin'] = "-1px" should set the property value: FAIL
+	e.style['transform-origin'] = "-4%" should set the property value: FAIL
+	e.style['transform-origin'] = "bottom right 7px" should set the property value: FAIL
+	e.style['transform-origin'] = "bottom" should set the property value: FAIL
+	e.style['transform-origin'] = "calc(2em + 3ex)" should set the property value: FAIL
+	e.style['transform-origin'] = "center left 6px" should set the property value: FAIL
+	e.style['transform-origin'] = "center top" should set the property value: PASS
+	e.style['transform-origin'] = "center" should set the property value: FAIL
+	e.style['transform-origin'] = "left center" should set the property value: PASS
+	e.style['transform-origin'] = "left" should set the property value: FAIL
+	e.style['transform-origin'] = "right -4%" should set the property value: PASS
+	e.style['transform-origin'] = "right" should set the property value: FAIL
+	e.style['transform-origin'] = "top center" should set the property value: FAIL
+	e.style['transform-origin'] = "top" should set the property value: FAIL
+/css/css-transforms/parsing/transform-valid.html: OK
+	e.style['transform'] = "matrix(-0.1, -0.2, -0.3, -0.4, -0.5, -0.6)" should set the property value: PASS
+	e.style['transform'] = "matrix(1, 0, 0, 1, 0, 0)" should set the property value: PASS
+	e.style['transform'] = "matrix(1, 2, 3, 4, 5, 6)" should set the property value: PASS
+	e.style['transform'] = "none" should set the property value: PASS
+	e.style['transform'] = "perspective(10px)" should set the property value: PASS
+	e.style['transform'] = "perspective(none)" should set the property value: PASS
+	e.style['transform'] = "rotate(0)" should set the property value: FAIL
+	e.style['transform'] = "rotate(90deg)" should set the property value: PASS
+	e.style['transform'] = "scale(-2)" should set the property value: PASS
+	e.style['transform'] = "scale(-250%)" should set the property value: FAIL
+	e.style['transform'] = "scale(-5, -6)" should set the property value: PASS
+	e.style['transform'] = "scale(-500%, -620%)" should set the property value: FAIL
+	e.style['transform'] = "scale(1, 200%)" should set the property value: FAIL
+	e.style['transform'] = "scale(2)" should set the property value: PASS
+	e.style['transform'] = "scale(250%)" should set the property value: FAIL
+	e.style['transform'] = "scale(3, 4)" should set the property value: PASS
+	e.style['transform'] = "scale(325%, 475%)" should set the property value: FAIL
+	e.style['transform'] = "scale3d(-0.5, 2.5, -3)" should set the property value: PASS
+	e.style['transform'] = "scale3d(-50%, 250%, -300%)" should set the property value: FAIL
+	e.style['transform'] = "scale3d(0.5, 2.5, 3)" should set the property value: PASS
+	e.style['transform'] = "scale3d(1, 200%, 3)" should set the property value: FAIL
+	e.style['transform'] = "scale3d(50%, 250%, 300%)" should set the property value: FAIL
+	e.style['transform'] = "scaleX(7)" should set the property value: FAIL
+	e.style['transform'] = "scaleX(720%)" should set the property value: FAIL
+	e.style['transform'] = "scaleY(-8)" should set the property value: FAIL
+	e.style['transform'] = "scaleY(-85%)" should set the property value: FAIL
+	e.style['transform'] = "scaleZ(25%)" should set the property value: FAIL
+	e.style['transform'] = "scaleZ(4)" should set the property value: FAIL
+	e.style['transform'] = "skew(0)" should set the property value: FAIL
+	e.style['transform'] = "skew(0, -90deg)" should set the property value: FAIL
+	e.style['transform'] = "skew(90deg)" should set the property value: PASS
+	e.style['transform'] = "skew(90deg, 0)" should set the property value: FAIL
+	e.style['transform'] = "skewX(0)" should set the property value: FAIL
+	e.style['transform'] = "skewX(90deg)" should set the property value: FAIL
+	e.style['transform'] = "skewY(-90deg)" should set the property value: FAIL
+	e.style['transform'] = "skewY(0)" should set the property value: FAIL
+	e.style['transform'] = "translate(1px)" should set the property value: PASS
+	e.style['transform'] = "translate(1px, 0%)" should set the property value: PASS
+	e.style['transform'] = "translate(1px, 2%) scale(3, 4) rotate(-90deg)" should set the property value: PASS
+	e.style['transform'] = "translate(2%, -3%)" should set the property value: PASS
+	e.style['transform'] = "translateX(-4px)" should set the property value: PASS
+	e.style['transform'] = "translateY(5%)" should set the property value: PASS
+/css/css-transforms/parsing/translate-parsing-computed.html: OK
+	Property translate value '0% 0% 100px': PASS
+	Property translate value '0': PASS
+	Property translate value '0em 0em 100px': PASS
+	Property translate value '0px': PASS
+	Property translate value '100% 0% 200px': PASS
+	Property translate value '100% 200% 300px': PASS
+	Property translate value '100% 200px': PASS
+	Property translate value '100%': PASS
+	Property translate value '100px 0%': PASS
+	Property translate value '100px 0.1px': PASS
+	Property translate value '100px 0px 0px': PASS
+	Property translate value '100px 0px 300px': PASS
+	Property translate value '100px 0px': PASS
+	Property translate value '100px 200%': PASS
+	Property translate value '100px 200px 0px': PASS
+	Property translate value '100px 200px 300px': PASS
+	Property translate value '100px calc(10px - 10%)': FAIL
+	Property translate value '1px 2px 0': PASS
+	Property translate value 'none': PASS
+/css/css-transforms/parsing/translate-parsing-invalid.html: OK
+	e.style['translate'] = "100deg" should not set the property value: PASS
+	e.style['translate'] = "100px 200px 300%" should not set the property value: PASS
+	e.style['translate'] = "100px 200px 300px junk" should not set the property value: PASS
+	e.style['translate'] = "100px 200px calc(30px + 30%)" should not set the property value: PASS
+	e.style['translate'] = "100px 200px junk" should not set the property value: PASS
+	e.style['translate'] = "100px junk" should not set the property value: PASS
+/css/css-transforms/parsing/translate-parsing-valid.html: OK
+	e.style['translate'] = "0" should set the property value: FAIL
+	e.style['translate'] = "0% 0% 100px" should set the property value: PASS
+	e.style['translate'] = "0em 0em 100px" should set the property value: PASS
+	e.style['translate'] = "0px" should set the property value: PASS
+	e.style['translate'] = "100% 0% 200px" should set the property value: PASS
+	e.style['translate'] = "100% 200% 300px" should set the property value: PASS
+	e.style['translate'] = "100% 200px" should set the property value: PASS
+	e.style['translate'] = "100%" should set the property value: PASS
+	e.style['translate'] = "100px 0%" should set the property value: PASS
+	e.style['translate'] = "100px 0.1px" should set the property value: PASS
+	e.style['translate'] = "100px 0px 0px" should set the property value: FAIL
+	e.style['translate'] = "100px 0px 300px" should set the property value: PASS
+	e.style['translate'] = "100px 0px" should set the property value: FAIL
+	e.style['translate'] = "100px 200%" should set the property value: PASS
+	e.style['translate'] = "100px 200px 0px" should set the property value: FAIL
+	e.style['translate'] = "100px 200px 300px" should set the property value: PASS
+	e.style['translate'] = "100px calc(10px - 10%)" should set the property value: FAIL
+	e.style['translate'] = "1px 2px 0" should set the property value: FAIL
+	e.style['translate'] = "calc(10% + 10px) calc(20% + 20px) calc(30em + 30px)" should set the property value: PASS
+	e.style['translate'] = "none" should set the property value: PASS
+/css/css-transforms/parsing/webkit-perspective-invalid.tentative.html: OK
+	e.style['-webkit-perspective'] = "calc(1000)" should not set the property value: PASS
+	e.style['-webkit-perspective'] = "calc(25)" should not set the property value: PASS
+/css/css-transforms/parsing/webkit-perspective-valid.tentative.html: OK
+	e.style['-webkit-perspective'] = "1000" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "12px" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "25" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "3.5em" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "inherit" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "initial" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "none" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "revert" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "revert-layer" should set the property value: FAIL
+	e.style['-webkit-perspective'] = "unset" should set the property value: FAIL
+/css/css-transforms/parsing/webkit-transform-valid.tentative.html: OK
+	e.style['-webkit-transform'] = "inherit" should set the property value: FAIL
+	e.style['-webkit-transform'] = "initial" should set the property value: FAIL
+	e.style['-webkit-transform'] = "perspective(1000)" should set the property value: FAIL
+	e.style['-webkit-transform'] = "perspective(12px)" should set the property value: FAIL
+	e.style['-webkit-transform'] = "perspective(25)" should set the property value: FAIL
+	e.style['-webkit-transform'] = "perspective(3.5em)" should set the property value: FAIL
+	e.style['-webkit-transform'] = "revert" should set the property value: FAIL
+	e.style['-webkit-transform'] = "revert-layer" should set the property value: FAIL
+	e.style['-webkit-transform'] = "unset" should set the property value: FAIL
+/css/css-transforms/preserve-3d-flat-grouping-properties-containing-block.html: OK
+	Preserve-3d element with a grouping property still a containing block: FAIL
+	Preserve-3d element without a grouping property still a containing block: FAIL
+/css/css-transforms/preserve-3d-flat-grouping-properties.html: OK
+	Preserve-3d element flattened due to backdrop-filter: FAIL
+	Preserve-3d element flattened due to clip CSS: FAIL
+	Preserve-3d element flattened due to clip-path: FAIL
+	Preserve-3d element flattened due to filter: FAIL
+	Preserve-3d element flattened due to isolation: FAIL
+	Preserve-3d element flattened due to mask: FAIL
+	Preserve-3d element flattened due to mix-blend-mode: PASS
+	Preserve-3d element flattened due to opacity: FAIL
+	Preserve-3d element flattened due to overflow clip: FAIL
+	Preserve-3d element not flattened: PASS
+/css/css-transforms/preserve3d-backface-hit-test-1.html: OK
+	Hit test back face hidden preserve3d, hittesting: FAIL
+/css/css-transforms/preserve3d-backface-hit-test-2.html: OK
+	Hit test back face hidden preserve3d, hittesting: FAIL
+/css/css-transforms/scroll-preserve-3d.html: OK
+	Element is scrollable over preserve-3d descendant: FAIL
+/css/css-transforms/transform-2d-getComputedStyle-001.html: OK
+	Matrix for general transform: PASS
+	Matrix for rotate: PASS
+	Matrix for scaling: PASS
+	Matrix for skew: PASS
+	Matrix for translation transforms: PASS
+/css/css-transforms/transform-and-individual-transform-properties-computed-style.html: OK
+	The transform property should not be affected by individual transform properties.: PASS
+/css/css-transforms/transform-getBoundingClientRect-001.html: OK
+	correct getBoundingClientRect() result within set of transforms: FAIL
+/css/css-transforms/transform-hit-testing.html: OK
+	hit testing of rectangle with 'transform': FAIL
+	hit testing of rectangle with 'translate' and 'rotate': FAIL
+	hit testing of rectangle with 'translate' and 'rotate' and 'scale' and 'transform': FAIL
+	hit testing of square with 'rotate': FAIL
+	hit testing of square with 'scale': FAIL
+/css/css-transforms/transform-important.html: OK
+	CSS Transforms: !important flag parsing: PASS
+/css/css-transforms/transform-origin-014.html: OK
+	Percentage 'transform-origin' with 'fill-box' transform-box: FAIL
+	Percentage 'transform-origin' with 'view-box' transform-box: FAIL
+	Percentage 'transform-origin' with 'view-box' transform-box in nested <svg> with 'viewBox': FAIL
+	Percentage 'transform-origin' with 'view-box' transform-box in nested <svg> without 'viewBox': FAIL
+/css/css-transforms/transform-origin-in-shadow.html: OK
+	'transform-origin' on <svg> being direct descendant of shadow root: FAIL
+/css/css-transforms/transform-percent-009.html: OK
+	Percentage 'translate(...)' with 'fill-box' transform-box: FAIL
+	Percentage 'translate(...)' with 'view-box' transform-box: FAIL
+	Percentage 'translate(...)' with 'view-box' transform-box in nested <svg> with 'viewBox': FAIL
+	Percentage 'translate(...)' with 'view-box' transform-box in nested <svg> without 'viewBox': FAIL
+/css/css-transforms/transform-scale-hittest.html: OK
+	Hit test intersecting scaled box: FAIL
+	Hit test within unscaled box: FAIL
+/css/css-transforms/transform-with-sign-function.html: ERROR
+/css/css-transforms/transform_translate.html: OK
+	transform_translate_100px_100px: PASS
+/css/css-transforms/transform_translate_invalid.html: OK
+	transform_translate_null_null: PASS
+/css/css-transforms/transform_translate_max.html: OK
+	transform_translate_max: PASS
+/css/css-transforms/transform_translate_min.html: OK
+	transform_translate_min: PASS
+/css/css-transforms/transform_translate_neg.html: OK
+	transform_translate_-1px_-1px: PASS
+/css/css-transforms/transform_translate_second_omited.html: OK
+	transform_translate_100px: PASS
+/css/css-transforms/transform_translate_zero.html: OK
+	transform_translate_0_0: PASS
+/css/css-transforms/transformed-table-section-containing-block.html: OK
+	A table section that gains a transform becomes the containing block for an absolutely positioned descendant: FAIL
+	A transformed table section is the containing block for an absolutely positioned descendant: FAIL
+/css/css-transforms/transforms-support-calc.html: OK
+	perspective supports calc: PASS
+	perspective-origin supports calc: FAIL
+	rotate supports calc: PASS
+	scale supports calc: PASS
+	transform supports calc: FAIL
+	transform-origin supports calc: FAIL
+	translate supports calc: FAIL
+/css/css-transforms/translate-getComputedStyle.html: OK
+	computed style for translate: FAIL

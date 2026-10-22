@@ -94,6 +94,8 @@ DEMOS := [?]Demo{
 		"Linear, radial, conic and repeating gradients, interpolation color spaces, background layers (size, position, repeat, origin, clip) and <code>box-shadow</code>.", false, "", false},
 	{.Rendering, "Transforms", "transforms.html",
 		"Rotated text and blocks, nested rounded clips with a rotated one inside, a form turned by 10 degrees whose clicks land on the right character, group opacity, a transformed scroll box, and 500 cards turning forever over 300 static paragraphs.", false, "", false},
+	{.Rendering, "3D transforms", "transforms-3d.html",
+		"Real perspective: <code>perspective</code> and <code>perspective-origin</code>, <code>rotateX/Y</code>, <code>translateZ</code>, <code>preserve-3d</code> (a turning cube with six translucent faces sorted by depth, a carousel on a ring), a card that flips over with <code>backface-visibility: hidden</code>, and text on a tilted plane that is hit where it is drawn. Each 3D element is rasterized once into a layer the GPU projects; tilting it again costs one matrix.", false, "", false},
 
 	{.Text, "Text: fallback, shaping, bidi", "text.html",
 		"Per-character font fallback, color emoji, ligatures, kerning and OpenType features, complex scripts, bidirectional text, <code>unicode-range</code> (digits from another font), spacing and justification (the page is in French).", false, "", false},

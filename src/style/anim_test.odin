@@ -164,7 +164,8 @@ transforms_parse_and_matrix :: proc(t: ^testing.T) {
 	testing.expect(t, math.abs(q.x + 50) < 1e-3 && math.abs(q.y + 50) < 1e-3, "scale(2) around the center")
 	m := node(&f, "m").transform
 	testing.expect_value(t, len(m), 4)
-	testing.expect(t, m[1].kind == .Scale && math.abs(m[1].v[1] - 0.5) < 1e-4, "rotateX is flattened to its projection")
+	testing.expect(t, m[1].kind == .Rotate && m[1].axis == {1, 0, 0}, "rotateX turns about the x axis")
+	testing.expect(t, math.abs(op_matrix(m[1], 0, 0)[3] - 0.5) < 1e-4, "its 2D flattening is the orthographic projection")
 	testing.expect(t, m[2].kind == .Translate && m[3].kind == .Skew)
 	i := node(&f, "i")
 	testing.expect(t, i.translate.set && i.rotate.set && i.scale.set && i.scale.s[1] == 3)
@@ -548,4 +549,125 @@ more_properties :: proc(t: ^testing.T) {
 	testing.expect(t, mi.isolation == .Isolate && mi.mix_blend_mode == .Multiply && mi.scroll_behavior == .Smooth && mi.hyphens == .Auto)
 	testing.expect(t, mi.object_position[0].kind == .Calc && mi.object_position[1].v == 100)
 	testing.expect(t, node(&f, "sup").color == css.Color{1, 0, 0, 1} && node(&f, "sup2").color != css.Color{1, 0, 0, 1}, "@supports knows the new properties")
+}
+
+////////////////////////////////
+// 3D transforms
+
+@(private = "file")
+near3 :: proc(a, b: f32, eps: f32 = 1e-3) -> bool { return math.abs(a - b) <= eps }
+
+@(private = "file")
+near3x4 :: proc(a, b: [4]f32, eps: f32 = 1e-3) -> bool {
+	for i in 0 ..< 4 { if !near3(a[i], b[i], eps) { return false } }
+	return true
+}
+
+@(test)
+transforms3d_parse_and_matrix :: proc(t: ^testing.T) {
+	f := open(`<style>
+		#a { transform: rotateY(90deg) }
+		#b { transform: translateZ(50px) }
+		#c { transform: perspective(100px) }
+		#d { transform: matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0, 5,6,0,1) }
+		#e { transform: matrix3d(1,0,0,0, 0,1,0,0, 0,0,1,0.001, 5,6,7,1) }
+		#f { transform: translateZ(10%) }
+		#g { transform: perspective(-1px) }
+		#h { transform: rotateY(180deg); width: 100px; height: 100px }
+		#i { transform: scale3d(2, 3, 4) translate3d(1px, 2px, 3px) rotate3d(0, 0, 1, 90deg) }
+		#j { transform-origin: 10px 20px 30px; transform: rotateX(90deg) }
+		#k { perspective: 100px; perspective-origin: 25% 50%; transform-style: preserve-3d; backface-visibility: hidden }
+		#l { transform: rotate3d(0, 0, 0, 40deg) }
+	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=f></div><div id=g></div>
+	<div id=h></div><div id=i></div><div id=j></div><div id=k></div><div id=l></div>`)
+	defer close(&f)
+	// rotateY(90deg) takes +x to -z
+	p := m4_apply(ops_matrix4(node(&f, "a").transform, 0, 0), 10, 0, 0)
+	testing.expectf(t, near3x4(p, {0, 0, -10, 1}), "rotateY(90deg) of (10,0,0): %v", p)
+	testing.expect(t, ops_are_3d(node(&f, "a").transform) && !ops_are_3d(node(&f, "d").transform))
+	testing.expect(t, near3(ops_matrix4(node(&f, "b").transform, 0, 0)[14], 50), "translateZ")
+	c := ops_matrix4(node(&f, "c").transform, 0, 0)
+	testing.expect(t, near3(c[11], -0.01, 1e-6), "perspective(100px) is m34 = -1/100")
+	pc := m4_apply(c, 0, 0, 50)
+	testing.expect(t, near3(pc[3], 0.5), "a point halfway to the viewer has w = 1/2")
+	testing.expect(t, node(&f, "d").transform[0].kind == .Matrix && node(&f, "d").transform[0].v[4] == 5, "a 2D matrix3d is a matrix")
+	testing.expect(t, node(&f, "e").transform[0].kind == .Matrix3D && node(&f, "e").transform[0].m3[11] == 0.001)
+	testing.expect(t, node(&f, "f").transform == nil && node(&f, "g").transform == nil, "translateZ(%) and negative perspective are invalid")
+	// rotateY(180deg) around the middle of a 100px box: x -> 100 - x, and the back faces the viewer
+	m := transform_matrix4(node(&f, "h"), 0, 0, 100, 100)
+	q := m4_apply(m, 0, 0, 0)
+	testing.expectf(t, near3(q[0], 100) && near3(q[1], 0), "rotateY(180deg) around the middle: (0,0) -> (100,0), got %v", q)
+	testing.expect(t, m4_back_facing(m), "rotateY(180deg) shows its back")
+	testing.expect(t, !m4_back_facing(m4_scale(-1, 1, 1)), "a mirror does not")
+	// product order: scale3d after (outside) translate3d
+	mi := ops_matrix4(node(&f, "i").transform, 0, 0)
+	r := m4_apply(mi, 1, 0, 0)
+	// rotate z 90deg: (1,0,0) -> (0,1,0); translate: (1,3,3); scale: (2,9,12)
+	testing.expectf(t, near3x4(r, {2, 9, 12, 1}), "function order, got %v", r)
+	testing.expect(t, near3(node(&f, "j").transform_origin_z, 30), "transform-origin z")
+	mj := transform_matrix4(node(&f, "j"), 0, 0, 100, 100)
+	// the origin (10px, 20px, 30px) stays put
+	pj := m4_apply(mj, 10, 20, 30)
+	testing.expectf(t, near3x4(pj, {10, 20, 30, 1}, 1e-2), "the origin is a fixed point, got %v", pj)
+	k := node(&f, "k")
+	testing.expect(t, has_transform(k) && k.transform_style == .Preserve_3d && k.backface_visibility == .Hidden && k.perspective == 100)
+	pm := perspective_matrix(k, 0, 0, 200, 100)
+	pp := m4_apply(pm, 50, 0, 50)   // origin (50, 50): (0,-50,50) -> w = 0.5
+	testing.expectf(t, near3(pp[0] / pp[3], 50) && near3(pp[1] / pp[3], -50), "perspective-origin 25% 50%: got %v", pp)
+	testing.expect(t, node(&f, "l").transform[0].kind == .Matrix, "a rotation about no axis is the identity")
+}
+
+@(test)
+matrix4_algebra :: proc(t: ^testing.T) {
+	m := m4_mul(m4_translate(3, 4, 5), m4_mul(m4_rotate(1, 1, 0, 0.7), m4_mul(m4_perspective(300), m4_scale(2, 3, 1.5))))
+	inv, ok := m4_invert(m)
+	testing.expect(t, ok)
+	id := m4_mul(m, inv)
+	for i in 0 ..< 16 { testing.expectf(t, near3(id[i], (i % 5 == 0 ? f32(1) : 0), 1e-4), "m * inverse(m) is the identity (entry %d: %f)", i, id[i]) }
+	_, sing := m4_invert(m4_scale(1, 0, 1))
+	testing.expect(t, !sing, "a flattened matrix has no inverse")
+	// decomposition round trip, perspective, skew and a rotation included
+	src := m4_mul(m4_perspective(500), m4_mul(m4_translate(10, -20, 30), m4_mul(m4_rotate(0.3, 0.8, 0.2, 1.1), m4_mul(m4_skew(0.2, 0), m4_scale(1.5, 0.7, 2)))))
+	d, dok := decompose4(src)
+	testing.expect(t, dok)
+	back := recompose4(d)
+	for i in 0 ..< 16 { testing.expectf(t, near3(back[i], src[i] / src[15], 1e-3 * max(1, abs(src[i]))), "recompose(decompose(m)) = m up to the scale of w (entry %d: %f vs %f)", i, back[i], src[i]) }
+	_, fail := decompose4(m4_scale(1, 0, 1))
+	testing.expect(t, !fail, "a singular matrix does not decompose")
+}
+
+@(test)
+transforms3d_interpolate :: proc(t: ^testing.T) {
+	f := open(`<style>
+		#a { transform: rotateY(0deg) } #b { transform: rotateY(90deg) }
+		#c { transform: rotateX(90deg) } #d { transform: perspective(100px) } #e { transform: none }
+		#g { transform: translateZ(0px) } #h { transform: translateZ(40px) }
+		#i { rotate: x 0deg } #j { rotate: y 90deg } #k { rotate: z 0deg } #l { rotate: z 90deg }
+	</style><div id=a></div><div id=b></div><div id=c></div><div id=d></div><div id=e></div><div id=g></div><div id=h></div>
+	<div id=i></div><div id=j></div><div id=k></div><div id=l></div>`)
+	defer close(&f)
+	ctx := Interp_Ctx{alloc = context.temp_allocator}
+	out := new(Computed, context.temp_allocator)
+	a, b, c := node(&f, "a"), node(&f, "b"), node(&f, "c")
+	out^ = a^
+	testing.expect(t, interpolate_prop(out, a, b, .Transform, 0.5, &ctx) && len(out.transform) == 1 && out.transform[0].kind == .Rotate)
+	testing.expect(t, near3(out.transform[0].v[0], math.PI / 4) && out.transform[0].axis == {0, 1, 0}, "same axis: the angle is interpolated")
+	// other axes: through the matrices (a Matrix3D), a proper rotation
+	testing.expect(t, interpolate_prop(out, c, b, .Transform, 0.5, &ctx) && out.transform[0].kind == .Matrix3D)
+	mm := out.transform[0].m3
+	testing.expectf(t, near3(m4_determinant(mm), 1, 1e-3), "the halfway rotation is a rotation (det %f)", m4_determinant(mm))
+	// 1/d is what is linear for perspective(): 100px to none halfway is 200px
+	d, e := node(&f, "d"), node(&f, "e")
+	testing.expect(t, interpolate_prop(out, d, e, .Transform, 0.5, &ctx) && out.transform[0].kind == .Perspective)
+	testing.expectf(t, near3(out.transform[0].v[0], 200, 1e-2), "perspective(100px) to none at 1/2: %f", out.transform[0].v[0])
+	g, h := node(&f, "g"), node(&f, "h")
+	testing.expect(t, interpolate_prop(out, g, h, .Transform, 0.25, &ctx) && near3(out.transform[0].z, 10), "translateZ")
+	// rotate property: other axes by quaternion
+	i, j := node(&f, "i"), node(&f, "j")
+	testing.expect(t, interpolate_prop(out, i, j, .Rotate, 0.5, &ctx) && out.rotate.axis == {0, 1, 0} && near3(out.rotate.angle, math.PI / 4), "rotate: a zero angle takes the other axis")
+	k, l := node(&f, "k"), node(&f, "l")
+	testing.expect(t, interpolate_prop(out, k, l, .Rotate, 0.5, &ctx) && near3(out.rotate.angle, math.PI / 4))
+	k.rotate = Rotate_Value{set = true, axis = {1, 0, 0}, angle = 1}
+	l.rotate = Rotate_Value{set = true, axis = {0, 1, 0}, angle = 1}
+	testing.expect(t, interpolate_prop(out, k, l, .Rotate, 0.5, &ctx) && out.rotate.axis[2] == 0 && out.rotate.axis[0] > 0 && out.rotate.axis[1] > 0, "between two axes: an axis between them")
 }

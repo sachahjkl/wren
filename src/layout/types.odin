@@ -172,6 +172,7 @@ Box_Flag :: enum u8 {
 	Blends,        // mix-blend-mode other than normal (isolated_contexts)
 	Fieldset,      // a <fieldset> block (fieldset.odin)
 	Legend,        // the rendered legend of the fieldset that is its parent: drawn on its top border
+	Plane,         // with Transformed: a 3D plane (a 3D transform, preserve-3d, or backface-visibility: hidden in a 3D context): drawn offscreen, projected (plane.odin)
 }
 Box_Flags :: bit_set[Box_Flag; u32]
 
@@ -350,6 +351,16 @@ Space :: struct {
 	max_scroll: Vec2,               // Scroll
 	inset:    [4]f32,               // Sticky: top right bottom left, NaN = auto
 	mat:      Matrix,               // Transform: the box's transformation in layout coordinates (origin folded in)
+	// 3D (plane.odin). plane is set on every space: the innermost plane space at or above it (NONE: none)
+	plane:    i32,
+	proj:     bool,                 // Transform: a plane (its items are drawn offscreen and projected)
+	mat4:     Matrix4,              // plane: the box's 4x4 in layout coordinates (origin folded in)
+	persp:    Matrix4,              // plane: the perspective of the nearest transformed ancestor persp_from, in layout coordinates
+	persp_from: i32,                // plane: that ancestor's space (NONE: no perspective applies)
+	preserve: bool,                 // plane: transform-style: preserve-3d is in force (no grouping property flattens it)
+	back_hidden: bool,              // plane: backface-visibility: hidden
+	ctx:      i32,                  // plane: the plane that roots its 3D rendering context (itself when it is the root)
+	dest:     i32,                  // plane: the plane its context is drawn into (NONE: the page)
 	band0:    f32,                  // spatial index: layout y of the first band
 	band_h:   f32,
 	band_first, band_count: i32,    // its bands: [band_first, band_first + band_count) of Layout.band_start
@@ -361,11 +372,14 @@ Space :: struct {
 Clip :: struct { parent: i32, space: i32, box: i32, rect: Rect, radii: [4]f32 }
 
 Matrix :: [6]f32   // 2D affine: x' = a x + c y + e, y' = b x + d y + f  (a b c d e f), as style.Matrix and CSS matrix()
+Matrix4 :: style.Matrix4   // 4x4, column-major as CSS matrix3d()
 
 // An effect group: a box with opacity below 1, a filter, a backdrop filter, a blend mode or a clip-path, or the
 // stacking context a blending descendant must be isolated in (CSS Compositing 1 §3.2), and everything it paints.
 // `reach`: how far (device px, the largest side) its filters and those of the groups around it spread what it paints.
-Group :: struct { parent: i32, box: i32, alpha: f32, effects: Group_Effects, reach: f32 }
+// A plane group (.Plane) is a box drawn offscreen and projected: `space` is its plane space, `dest` the group the projection
+// lands in (the parent group, except for the members of a preserve-3d context, which land where the context's root does).
+Group :: struct { parent: i32, box: i32, alpha: f32, effects: Group_Effects, reach: f32, space: i32, dest: i32 }
 
 Pass_Kind :: enum u8 { None, Full, Refresh, Incremental }
 

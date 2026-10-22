@@ -689,9 +689,58 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 			bw = used.width + used.padding[1] + used.padding[3] + cs.border_width[.Left] + cs.border_width[.Right]
 			bh = used.height + used.padding[0] + used.padding[2] + cs.border_width[.Top] + cs.border_width[.Bottom]
 		}
+		// a matrix that does something in 3D is a matrix3d() (CSS Transforms 2 §serialization of the computed value)
+		m4 := style.ops_matrix4(cs.transform, bw, bh)
+		if !style.m4_is_2d(m4, 0) {
+			b := strings.builder_make(context.temp_allocator)
+			strings.write_string(&b, "matrix3d(")
+			for v, i in m4 {
+				if i > 0 { strings.write_string(&b, ", ") }
+				strings.write_string(&b, css_num(v))
+			}
+			strings.write_string(&b, ")")
+			return strings.to_string(b)
+		}
 		m := style.ops_matrix(cs.transform, bw, bh)
 		return fmt.tprintf("matrix(%s, %s, %s, %s, %s, %s)", css_num(m[0]), css_num(m[1]), css_num(m[2]), css_num(m[3]), css_num(m[4]), css_num(m[5]))
-	case "transform-origin": return strings.concatenate({css_length(cs.transform_origin[0]), " ", css_length(cs.transform_origin[1])}, context.temp_allocator)
+	case "transform-origin", "perspective-origin":
+		// the resolved value is the used one: percentages and keywords against the border box, in px (CSS Transforms 1 §9)
+		o := name == "transform-origin" ? cs.transform_origin : cs.perspective_origin
+		if !used.ok { return strings.concatenate({css_length(o[0]), " ", css_length(o[1])}, context.temp_allocator) }
+		bw := used.width + used.padding[1] + used.padding[3] + cs.border_width[.Left] + cs.border_width[.Right]
+		bh := used.height + used.padding[0] + used.padding[2] + cs.border_width[.Top] + cs.border_width[.Bottom]
+		if name == "transform-origin" && cs.transform_origin_z != 0 {
+			return fmt.tprintf("%s %s %s", css_px(style.resolve(o[0], bw)), css_px(style.resolve(o[1], bh)), css_px(cs.transform_origin_z))
+		}
+		return fmt.tprintf("%s %s", css_px(style.resolve(o[0], bw)), css_px(style.resolve(o[1], bh)))
+	case "perspective": return cs.perspective > 0 ? css_px(cs.perspective) : "none"
+	case "translate":
+		// (CSS Transforms 2 §individual-transform-serialization: the shortest form that says the same)
+		if !cs.translate.set { return "none" }
+		t := cs.translate
+		y_zero := t.y.kind == .Px && t.y.v == 0
+		if t.z != 0 { return fmt.tprintf("%s %s %s", css_length(t.x), css_length(t.y), css_px(t.z)) }
+		if y_zero { return css_length(t.x) }
+		return fmt.tprintf("%s %s", css_length(t.x), css_length(t.y))
+	case "rotate":
+		if !cs.rotate.set { return "none" }
+		r := cs.rotate
+		deg :: proc(rad: f32) -> string { return fmt.tprintf("%sdeg", css_num(rad * 180 / math.PI)) }
+		ax, ay, az := r.axis[0], r.axis[1], r.axis[2]
+		switch {
+		case ax == 0 && ay == 0 && az != 0: return deg(az > 0 ? r.angle : -r.angle)
+		case ay == 0 && az == 0 && ax != 0: return fmt.tprintf("x %s", deg(ax > 0 ? r.angle : -r.angle))
+		case ax == 0 && az == 0 && ay != 0: return fmt.tprintf("y %s", deg(ay > 0 ? r.angle : -r.angle))
+		}
+		return fmt.tprintf("%s %s %s %s", css_num(ax), css_num(ay), css_num(az), deg(r.angle))
+	case "scale":
+		if !cs.scale.set { return "none" }
+		s := cs.scale.s
+		if s[2] != 1 { return fmt.tprintf("%s %s %s", css_num(s[0]), css_num(s[1]), css_num(s[2])) }
+		if s[0] == s[1] { return css_num(s[0]) }
+		return fmt.tprintf("%s %s", css_num(s[0]), css_num(s[1]))
+	case "transform-style": return cs.transform_style == .Preserve_3d ? "preserve-3d" : "flat"
+	case "backface-visibility": return cs.backface_visibility == .Hidden ? "hidden" : "visible"
 	}
 	if strings.has_prefix(name, "--") && cs.custom != nil {
 		if v, ok := cs.custom.values[name]; ok { return v }
