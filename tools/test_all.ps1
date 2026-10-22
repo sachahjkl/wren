@@ -146,7 +146,7 @@ $script:watchdog = Start-Watchdog
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
 if ($Jobs -gt 1) { Flush-Steps }
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -185,6 +185,26 @@ Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers an
 Step 'build policytest' { odin build src/tools/policytest -use-separate-modules -collection:wb=src -vet $Track -out:build/policytest.exe $Stack }
 Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -use-separate-modules -collection:wb=src -vet $Track -out:build/webapitest.exe $Stack } }
 Step 'build fetch' { odin build src/tools/fetch -use-separate-modules -collection:wb=src -vet -out:build/fetch.exe $Stack }
+Step 'licence tool (tools\license.ps1: a licence issued with the development pair verifies; an altered one and one of another key do not; keygen refuses a path inside the repository)' {
+    odin build src/tools/license -use-separate-modules -collection:wb=src -vet -out:build/license.exe $Stack
+    if ($LASTEXITCODE -ne 0) { return }
+    $f = 'build\tmp\license_tool_test.wrenlicense'
+    Remove-Item $f -ErrorAction SilentlyContinue
+    & build\license.exe issue -dev -name 'Test Name' -email t@example.org -edition patron -order T-1 -out $f | Out-Null
+    if ($LASTEXITCODE -ne 0) { 'issue failed'; return }
+    $v = & build\license.exe verify $f -dev | Out-String; $v
+    if ($LASTEXITCODE -ne 0 -or $v -notmatch 'VALID: Patron licence of Test Name') { 'verify failed'; $global:LASTEXITCODE = 1; return }
+    $text = (Get-Content $f | Where-Object { $_ -notmatch '^#' }) -join ''
+    $i = $text.IndexOf('.') + 12
+    $bad = $text.Substring(0, $i) + $(if ($text[$i] -eq 'A') { 'B' } else { 'A' }) + $text.Substring($i + 1)
+    & build\license.exe verify -text $bad -dev | Out-Null
+    if ($LASTEXITCODE -eq 0) { 'an altered licence verified'; $global:LASTEXITCODE = 1; return }
+    & build\license.exe verify $f -public AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA | Out-Null
+    if ($LASTEXITCODE -eq 0) { 'a licence verified with another key'; $global:LASTEXITCODE = 1; return }
+    & build\license.exe keygen -private build\tmp\license_tool_private.key 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) { 'keygen wrote a private key inside the repository'; Remove-Item build\tmp\license_tool_private.key; $global:LASTEXITCODE = 1; return }
+    $global:LASTEXITCODE = 0
+}
 Step 'file: folders end-to-end test (index file, listing, redirect to /, errors, who may open what; no server)' {
     odin build src/tools/filetest -use-separate-modules -collection:wb=src -vet $Track -out:build/filetest.exe $Stack
     if ($LASTEXITCODE -ne 0) { return }

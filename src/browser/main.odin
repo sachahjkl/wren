@@ -276,12 +276,15 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if restore && entry != nil && hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
 	if restore { timing_begin(t, false, target) }
 	defer if restore { restore_begin(app, t, entry, .New_Document) }
-	if is_builtin_address(target) { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
+	license_file := is_license_file_address(target) && (from == nil || builtin_document(from))   // license_shell.odin
+	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
 	if target == HOME_URL { show_home(app, t); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
+	if is_wren_address(target) { show_wren_page(app, t, target, from); return }   // about_wren.odin
+	if license_file { license_open_file(app, t, target); return }
 	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
@@ -801,8 +804,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		hovered := base.NIL_HANDLE
 		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
+		was := st.hover
 		st.hover = hovered
 		page.set_style_state(t.page, st)
+		page_pointer_events(app, t, was, hovered, last_move.pos)   // page_pointer.odin
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)

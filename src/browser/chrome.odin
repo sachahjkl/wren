@@ -563,6 +563,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 		}
 		menu_command(app, t, "browser.command_palette")
 		menu_command(app, t, "browser.settings")
+		menu_command(app, t, "browser.about")
 		ui.menu_separator()
 		ui.next({width = ui.px(em * 14), height = ui.px(ui.dense(em * 1.8))})
 		if ui.row(.Center) {

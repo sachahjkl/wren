@@ -395,5 +395,5 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 builtin_document :: proc(p: ^page.Page) -> bool {
 	if p == nil { return false }
 	h := p.env.location.href
-	return h == HOME_URL || h == DEMOS_URL || h == ABOUT_URL
+	return h == HOME_URL || h == DEMOS_URL || h == ABOUT_URL || is_wren_address(h)
 }
