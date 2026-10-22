@@ -1056,7 +1056,7 @@ frame :: proc(app: ^App, idled := false) {
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
 	prof_begin(.Present)
-	render.frame_end(&app.r, !pacer.resizing)   // a resize step is shown at once (pacer.resizing, pacing.odin)
+	render.frame_end(&app.r, !(pacer.resizing || pacer.input_frame))   // a resize step or an input frame is shown at once
 	app.presented = true
 	prof_end(.Present)
 	pacer_end_frame(app)
