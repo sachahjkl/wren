@@ -4,11 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Wren — a browser where WebAssembly runs everything, JavaScript included</title>
-  <meta name="description" content="Wren is a Windows web browser written from scratch in Odin, where WebAssembly is the only execution engine: the JavaScript of pages runs in QuickJS-ng compiled to WebAssembly, and pages can also be written directly as WebAssembly modules that call the web APIs as imports.">
-  <meta property="og:title" content="Wren — a browser where WebAssembly runs everything, JavaScript included">
-  <meta property="og:description" content="A Windows browser written from scratch in Odin. WebAssembly is its only engine: JavaScript runs inside it, in a sandboxed QuickJS-ng module.">
-  <meta property="og:image" content="https://sachahjkl.github.io/wren/img/css-effects.webp">
+  <title>Wren - A browser where WebAssembly runs everything</title>
+  <meta name="description" content="Wren is a browser written from scratch in Odin, for Windows: WebAssembly is its only execution engine, JavaScript included, and everything is drawn on the GPU.">
   <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
   <link rel="stylesheet" href="style.css">
@@ -18,13 +15,15 @@
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="32" height="32">Wren</a>
-    <ul class="nav">
-      <li><a href="#features">Features</a></li>
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="30" height="30">Wren</a>
+        <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
       <li><a href="gallery.html">Gallery</a></li>
       <li><a href="architecture.html">Architecture</a></li>
-      <li><a href="#write">Write a page</a></li>
-      <li><a href="https://github.com/sachahjkl/wren">GitHub</a></li>
+      <li><a href="write.html">Write a page</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+      <li><a href="support.html">Pricing</a></li>
+      <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
     </ul>
   </div>
 </header>
@@ -33,52 +32,74 @@
 
 <section class="hero">
   <div class="wrap">
-    <img class="logo" src="img/logo.png" alt="Wren logo: a white wren on an amber square" width="112" height="112">
-    <h1>Wren</h1>
+    <div class="lockup">
+      <img class="logo" src="img/logo.png" alt="Wren logo: a white wren on an amber square" width="76" height="76">
+      <h1>Wren</h1>
+    </div>
     <p class="tagline">A browser where WebAssembly runs everything, JavaScript included</p>
-    <p class="lede">WebAssembly is Wren's only execution engine. The JavaScript of a page runs in QuickJS-ng compiled
-      to a WebAssembly module, in the same sandbox as any other module; a page can also skip JavaScript and be
-      WebAssembly calling the web APIs directly. The engine around it is written from scratch in Odin, for Windows,
-      and draws everything on the GPU.</p>
+    <p class="lede">Written <strong>from scratch</strong> in <a href="https://odin-lang.org">Odin</a>, for Windows, and
+      drawn on the GPU.</p>
     <div class="actions">
       <a class="btn primary" href="https://github.com/sachahjkl/wren/releases/latest">Download for Windows</a>
       <a class="btn" href="https://github.com/sachahjkl/wren">View on GitHub</a>
     </div>
     <p class="fine">Version 0.2.0, an early preview · Windows x64 · MIT license</p>
 
-    <figure class="shot frame" style="aspect-ratio: 1580 / 990">
-      <img src="img/css-effects.webp" alt="The Wren window showing a page of CSS effects: filters, frosted-glass backdrop filters and blend modes, with the status bar at the bottom" width="1580" height="990">
-    </figure>
-    <p class="caption">CSS filters, <code>backdrop-filter</code> and blend modes, drawn by Wren's GPU compositor.</p>
+    <div class="shot-stage">
+      <input class="shot-radio" type="radio" name="shot" id="shot-1" checked>
+      <input class="shot-radio" type="radio" name="shot" id="shot-2">
+      <input class="shot-radio" type="radio" name="shot" id="shot-3">
+      <input class="shot-radio" type="radio" name="shot" id="shot-4">
+
+      <figure class="shot-panel shot-panel-1">
+        <img src="img/hero-css.webp" alt="Wren showing a page of CSS effects: filters, frosted-glass backdrop filters and blend modes" width="1600" height="1002">
+      </figure>
+      <figure class="shot-panel shot-panel-2">
+        <img src="img/hero-js.webp" alt="Wren showing a page of plain JavaScript: a click counter and a list built with createElement" width="1600" height="1002" loading="lazy">
+      </figure>
+      <figure class="shot-panel shot-panel-3">
+        <img src="img/hero-shadow.webp" alt="Wren showing the shadow DOM demo: encapsulated styles, slots and a tabs custom element" width="1600" height="1002" loading="lazy">
+      </figure>
+      <figure class="shot-panel shot-panel-4">
+        <img src="img/hero-config.webp" alt="Wren showing about:config: every preference with its description, default and bounds" width="1600" height="1002" loading="lazy">
+      </figure>
+
+      <label class="shot-hot hot-1" for="shot-1"><span class="sr-only">CSS effects</span></label>
+      <label class="shot-hot hot-2" for="shot-2"><span class="sr-only">JavaScript in Wren</span></label>
+      <label class="shot-hot hot-3" for="shot-3"><span class="sr-only">Wren - shadow DOM</span></label>
+      <label class="shot-hot hot-4" for="shot-4"><span class="sr-only">Configuration</span></label>
+    </div>
+    <p class="caption">Click a tab in the screenshot: each one is a page Wren rendered.</p>
   </div>
 </section>
 
 <section class="section" id="idea">
   <div class="wrap">
     <h2>The idea</h2>
-    <p class="intro">Browsers carry a native JavaScript engine and added WebAssembly next to it. Wren starts from the
-      other end: WebAssembly is the only way code runs, and JavaScript is one more WebAssembly module, held to the same
-      limits as any other.</p>
-    <div class="three">
-      <div class="card idea">
-        <h3>JavaScript, inside WebAssembly</h3>
-        <p>Scripts run in <a href="https://github.com/quickjs-ng/quickjs">QuickJS-ng</a> compiled to WebAssembly: one
-          instance per page and per worker, a capped heap, scripts stopped cleanly when they run too long. A new
-          page's engine starts in about <span class="num">0.5&nbsp;ms</span>. Off with one setting, globally or per
-          site.</p>
+    <p class="intro">Every browser today carries a native JavaScript engine, with WebAssembly bolted on next to it.
+      Wren starts at the other end.</p>
+    <div class="rows">
+      <div class="row">
+        <p class="eyebrow">JavaScript</p>
+        <h3>A whole engine in a sandbox</h3>
+        <p><a href="https://github.com/quickjs-ng/quickjs">QuickJS-ng</a> compiled to WebAssembly: <strong>one instance
+          per page and per worker</strong>, a capped heap, scripts stopped when they run too long. A page's JavaScript
+          starts in about <span class="num">0.5&nbsp;ms</span>.</p>
       </div>
-      <div class="card idea">
-        <h3>Or WebAssembly directly</h3>
-        <p>A page can name its modules with <code>&lt;script type="application/wasm"&gt;</code> and call the browser
-          without any JavaScript. Every import is described once, in <code>api/*.widl</code>, and generated: 25
-          modules, 672 functions. A call into the browser costs about <span class="num">7&nbsp;ns</span>.</p>
+      <div class="row">
+        <p class="eyebrow">Or none at all</p>
+        <h3>A page can be one .wasm file</h3>
+        <p>Name the module with <code>&lt;script type="application/wasm"&gt;</code> and call the browser directly:
+          <strong>25 modules, 672 functions</strong>, described once in
+          <a href="https://github.com/w3c/webref">Web IDL</a>, about <span class="num">7&nbsp;ns</span> a call.</p>
       </div>
-      <div class="card idea">
-        <h3>Written from scratch in Odin</h3>
-        <p>Style, layout, painting, the DOM, the Fetch policy and the shell are new code in
-          <a href="https://odin-lang.org">Odin</a>, drawn on Direct3D 11. HTML parsing, the Wasm runtime, the
-          JavaScript interpreter and image codecs are proven libraries; text, networking and decoding use what Windows
-          provides.</p>
+      <div class="row">
+        <p class="eyebrow">Under it</p>
+        <h3>New code, not a wrapper</h3>
+        <p>Style, layout, painting, the DOM, Fetch and the shell are written in
+          <a href="https://odin-lang.org">Odin</a> and drawn on
+          <a href="https://learn.microsoft.com/windows/win32/direct3d11/atoc-dx-graphics-direct3d-11">Direct3D 11</a>.
+          <strong>No Chromium underneath.</strong></p>
       </div>
     </div>
   </div>
@@ -87,91 +108,49 @@
 <section class="section alt" id="features">
   <div class="wrap">
     <h2>Features</h2>
-    <p class="intro">What the 0.2.0 preview does today. Every number on this site was measured on the development
-      machine; the notes behind them are in the repository history.</p>
+    <p class="intro">Six things the 0.2.0 preview does that most browsers don't. <strong>Every number here was
+      measured</strong> on the development machine; the long list is in the <a href="changelog.html">changelog</a>.</p>
     <div class="cards">
       <div class="card">
         <h3>The web platform, from its specifications</h3>
-        <p>The JavaScript bindings are generated from the official Web IDL (webref) with Web IDL's rules: DOM, CSSOM,
-          events, observers, custom elements, script loading with ES modules, <code>fetch</code>, XHR, streams, storage,
-          WebSocket, workers, <code>crypto.subtle</code>. 2,630 of 4,991 members are implemented; the others are
-          absent, so feature detection sees the truth.</p>
+        <p>The JavaScript bindings are generated from the official
+          <a href="https://github.com/w3c/webref">Web IDL</a>: DOM, CSSOM, events, observers, custom elements,
+          <code>fetch</code>, streams, storage, WebSocket, workers. <span class="num">2,630</span> of 4,991 members
+          are implemented; the others are <strong>absent</strong>, so feature detection sees the truth.</p>
       </div>
       <div class="card">
-        <h3>Measured against the standards</h3>
-        <p>The engine in WebAssembly passes <span class="num">99.92&nbsp;%</span> of test262. 4,494 web-platform-tests
-          files run with every change, <span class="num">106,188</span> subtests pass, and any regression fails the
-          test suite.</p>
-      </div>
-      <div class="card">
-        <h3>Shadow DOM</h3>
-        <p>Declarative shadow roots that render even without JavaScript, slots, encapsulated styles with
-          <code>:host</code>, <code>::slotted()</code>, <code>::part()</code> and <code>:state()</code>,
-          constructable stylesheets, event retargeting: web components, such as MDN's, show up.</p>
-      </div>
-      <div class="card">
-        <h3>Nothing runs outside the sandbox</h3>
-        <p>Every call from the browser into a module, JavaScript included, has a deadline
-          (<code>wasm.max_call_ms</code>), and each module's memory is capped. A loop that never returns is interrupted;
-          a crashed engine loses the page's scripts, not the browser.</p>
-      </div>
-      <div class="card">
-        <h3>Wasm pages, any number of modules</h3>
-        <p>Modules are fetched concurrently and run in document order, each in its own instance sharing the DOM.
-          Wasmtime 49 with Cranelift, a memory cache and an authenticated disk cache of compiled code.</p>
+        <h3>Nothing escapes the sandbox</h3>
+        <p>Every call into a module, JavaScript included, has a <strong>deadline</strong> and a capped heap. A loop
+          that never returns is interrupted; a crashed engine loses the page's scripts, <strong>not the
+          browser</strong>.</p>
       </div>
       <div class="card">
         <h3>Modern CSS</h3>
-        <p>Cascade layers, custom properties and <code>@property</code>, container queries, CSS Color 4 and
-          <code>color-mix()</code>, math functions, flexbox, Grid Level 1 with subgrid, transforms, animations
-          and transitions; text placed vertically as Chromium places it.</p>
+        <p>Cascade layers, <a href="https://www.w3.org/TR/css-properties-values-api-1/">@property</a>,
+          <a href="https://www.w3.org/TR/css-contain-3/">container queries</a>,
+          <a href="https://www.w3.org/TR/css-color-4/">CSS Color 4</a>, flexbox,
+          <a href="https://www.w3.org/TR/css-grid-2/">Grid with subgrid</a>, transforms, animations and transitions.</p>
       </div>
       <div class="card">
         <h3>Effects on the GPU</h3>
-        <p><code>filter</code>, <code>backdrop-filter</code>, the 16 blend modes plus <code>plus-lighter</code>
-          and <code>plus-darker</code>, <code>clip-path</code>, masks, <code>background-clip: text</code>, linear,
-          radial and conic gradients interpolated in sRGB, Oklab, Oklch, Lab and more.</p>
-      </div>
-      <div class="card">
-        <h3>Text on DirectWrite</h3>
-        <p>Per-character font fallback, OpenType shaping and features, bidirectional text, line breaking with
-          dictionaries for Thai, Lao, Khmer and Burmese, variable fonts, WOFF2, colour emoji in every font format.</p>
-      </div>
-      <div class="card">
-        <h3>Images</h3>
-        <p>PNG, JPEG, GIF, BMP, ICO and TIFF through Windows; WebP, AVIF and SVG built in, whatever Windows has
-          installed, with ICC colour management. Decoding runs on its own threads.</p>
+        <p><a href="https://www.w3.org/TR/filter-effects-1/">filter</a>,
+          <a href="https://drafts.fxtf.org/filter-effects-2/#backdrop-filter">backdrop-filter</a>, 18 blend modes,
+          <code>clip-path</code>, masks, <code>background-clip: text</code>, and gradients interpolated in sRGB,
+          Oklab, Oklch and Lab.</p>
       </div>
       <div class="card">
         <h3>At the display's refresh rate</h3>
-        <p>Frames follow the monitor's exact rate, with a budget of 1000/Hz. Wheel scrolling a page of 10,000
-          paragraphs: <span class="num">1.4&nbsp;ms</span> CPU and <span class="num">2.3&nbsp;ms</span> GPU at the
-          99th percentile, under the 5.56&nbsp;ms of a 180&nbsp;Hz screen. The start page is drawn
-          <span class="num">0.3&nbsp;s</span> after launch.</p>
-      </div>
-      <div class="card">
-        <h3>Security from the standards</h3>
-        <p>One policy layer for every request: CORS with preflights, cookies (third-party cookies blocked by
-          default), Content Security Policy for scripts and Wasm modules, HSTS, mixed content blocking, referrer
-          policy.</p>
-      </div>
-      <div class="card">
-        <h3>Everything is configurable</h3>
-        <p><code>about:config</code> lists every setting with its description, default, bounds and unit:
-          rendering, scrolling, fonts, network limits, Wasm and JavaScript limits. Nothing is hard-wired.</p>
-      </div>
-      <div class="card">
-        <h3>Frame statistics built in</h3>
-        <p>The status bar draws a graph of every frame by phase. A click opens CPU and GPU percentiles, compositor,
-          layout, memory and the time spent in Wasm.</p>
+        <p>Wheel scrolling a page of 10,000 paragraphs: <span class="num">1.4&nbsp;ms</span> CPU and
+          <span class="num">2.3&nbsp;ms</span> GPU at the 99th percentile, <strong>under the 5.56&nbsp;ms</strong> of a
+          180&nbsp;Hz screen. The start page is drawn <span class="num">0.3&nbsp;s</span> after launch.</p>
       </div>
       <div class="card">
         <h3>A native window</h3>
-        <p>Tabs in the title bar with favicons and Snap Layouts, error pages, downloads, local folders and dropped
-          files, pages that follow Windows' light or dark mode, selection, find in page, zoom,
-          <code>view-source:</code> and a keyboard path through all of it.</p>
+        <p><strong>Tabs in the title bar</strong> with Snap Layouts, downloads, local folders, light and dark mode, find
+          in page, zoom, <code>view-source:</code> and a <strong>keyboard path</strong> through all of it.</p>
       </div>
     </div>
+    <p class="more"><a class="btn" href="changelog.html">All features and measurements</a></p>
   </div>
 </section>
 
@@ -211,184 +190,89 @@
 
 <section class="section alt" id="status">
   <div class="wrap">
-    <h2>What works, and what doesn't yet</h2>
-    <p class="intro">Wren is a young engine with one goal, and an honest list of gaps.</p>
+    <h2>Status</h2>
+    <p class="intro">A young engine, and <strong>no pretending otherwise</strong>: what works, and what does not,
+      yet.</p>
     <div class="split">
       <div class="card">
-        <h3>Works well</h3>
+        <h3>Works today</h3>
         <ul class="list yes">
-          <li>Documents and CSS-heavy sites. <span>Compared pixel by pixel with Edge at 1280×720: 0.7% of pixels
-            differ on example.com, 4.5% on rust-lang.org, 7.3% on webassembly.org.</span></li>
-          <li>Sites whose scripts add to the page: menus, themes, web components, observers. <span>Wikipedia, MDN,
-            webassembly.org and odin-lang.org run their scripts.</span></li>
-          <li>Pages scripted in WebAssembly, with the DOM, events, timers, fetch, WebSocket, workers and storage.</li>
-          <li>HTTPS through WinHTTP, cookies, CORS and CSP.</li>
-          <li>Web fonts (WOFF, WOFF2, variable fonts), SVG, AVIF and WebP images.</li>
-          <li>Smooth scrolling, selection, find in page and zoom on long pages.</li>
+          <li><strong>Documents and CSS-heavy sites</strong>, within a few percent of Edge pixel for pixel.</li>
+          <li>Sites whose scripts add to the page: menus, themes, web components, observers.</li>
+          <li><strong>WebAssembly pages</strong> with the DOM, events, timers, fetch, WebSocket, workers and
+            storage.</li>
         </ul>
       </div>
       <div class="card">
         <h3>Not yet</h3>
         <ul class="list no">
-          <li>JavaScript is interpreted, without a JIT. <span>About 55 times slower than Edge on the Octane
-            benchmarks, and a simple DOM call costs about ten times as much: script-heavy pages are slow.</span></li>
-          <li>About half of the web platform's members. <span>No <code>&lt;canvas&gt;</code> drawing, IndexedDB,
-            <code>ResizeObserver</code>, Web Animations or service workers; <code>&lt;iframe&gt;</code> content is not
-            loaded. The full list is <a href="https://github.com/sachahjkl/wren/blob/main/docs/js/coverage.md">docs/js/coverage.md</a>.</span></li>
-          <li>No HTTP cache: every request goes to the network. No HTTP authentication.</li>
-          <li>No IME for East Asian input, no vertical writing modes, grayscale text anti-aliasing only.</li>
-          <li>No <code>&lt;video&gt;</code> or <code>&lt;audio&gt;</code> playback.</li>
-          <li>Wasm threads and shared memory are off. The guest SDK exists for Odin only; the ABI is documented for
-            other languages.</li>
-          <li>Windows only.</li>
+          <li><strong>JavaScript is interpreted</strong>, without a JIT: script-heavy pages are slow.</li>
+          <li>About <strong>half of the web platform</strong>; no <code>&lt;canvas&gt;</code>, no
+            <code>&lt;video&gt;</code>.</li>
+          <li><strong>Windows only</strong>.</li>
         </ul>
       </div>
     </div>
+    <p class="more"><a class="btn" href="changelog.html#status">The full status</a></p>
   </div>
 </section>
 
 <section class="section" id="write">
   <div class="wrap">
     <h2>Write a page for Wren</h2>
-    <p class="intro">In JavaScript, as for any browser: Wren runs a page's scripts, classic or modules, and what it
-      does not implement is simply absent. Or in WebAssembly, without JavaScript: a page names a module, which exports
-      <code>wb_main</code> and calls the browser through the generated Odin SDK, <code>sdk/odin/web</code>. The whole
-      API, with its ABI, is in <a href="https://github.com/sachahjkl/wren/tree/main/docs/api"><code>docs/api</code></a>.</p>
-    <div class="steps">
-      <div>
-        <div class="code">
-          <div class="file">hello/main.odin</div>
-<pre><code><span class="k">package</span> hello
-
-<span class="k">import</span> <span class="s">"web:web"</span>
-
-<span class="f">on_click</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, ev: web.<span class="t">Event</span>) {
-	out := web.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
-	web.<span class="f">Node_setTextContent</span>(out, <span class="s">"Hello from WebAssembly!"</span>)
-}
-
-<span class="c">// called once the document is parsed</span>
-@(export)
-<span class="f">wb_main</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> () {
-	button := web.<span class="f">Document_getElementById</span>(<span class="s">"greet"</span>)
-	web.<span class="f">EventTarget_addEventListener</span>(button, <span class="s">"click"</span>, on_click)
-}</code></pre>
-        </div>
-        <div class="code">
-          <div class="file">the same page in JavaScript</div>
-<pre><code><span class="k">&lt;script&gt;</span>
-document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<span class="f">addEventListener</span>(<span class="s">"click"</span>, () =&gt; {
-  document.<span class="f">getElementById</span>(<span class="s">"out"</span>).textContent = <span class="s">"Hello from JavaScript!"</span>;
-});
-<span class="k">&lt;/script&gt;</span></code></pre>
-        </div>
-      </div>
-      <div>
-        <div class="code">
-          <div class="file">index.html</div>
-<pre><code>&lt;!doctype html&gt;
-&lt;meta charset="utf-8"&gt;
-&lt;title&gt;Hello, Wren&lt;/title&gt;
-&lt;script type="application/wasm" src="hello.wasm"&gt;&lt;/script&gt;
-&lt;button id="greet"&gt;Say hello&lt;/button&gt;
-&lt;p id="out"&gt;&lt;/p&gt;</code></pre>
-        </div>
-        <div class="code">
-          <div class="file">build (from a clone of the repository)</div>
-<pre><code>odin build hello -target:freestanding_wasm32 -no-entry-point ^
-  -default-to-nil-allocator -collection:web=sdk/odin ^
-  -out:hello.wasm -o:size</code></pre>
-        </div>
-        <p class="fine">The module above compiles to 702 bytes. Open <code>index.html</code> in Wren (a <code>file:///</code>
-          address or a Windows path works) and click the button. For the JavaScript version, put the script at the end
-          of the page instead of the module.</p>
-      </div>
-    </div>
+    <p class="intro">Two ways to write a page: <strong>JavaScript</strong>, as anywhere, or <strong>WebAssembly
+      alone</strong> - a module exporting <code>wb_main</code> that calls the browser through the generated
+      <a href="https://github.com/sachahjkl/wren/tree/main/sdk/odin">Odin SDK</a>. Every import is described once, in
+      <a href="https://github.com/sachahjkl/wren/tree/main/docs/api"><code>docs/api</code></a>.</p>
+    <p class="more"><a class="btn" href="write.html">The two ways to write a page</a></p>
   </div>
 </section>
 
 <section class="section alt" id="architecture">
   <div class="wrap">
     <h2>Architecture</h2>
-    <p class="intro">From what you see down to the platform. A page owns its DOM, its Wasm instances (its JavaScript
-      realm is one of them), its requests and its timers; closing a tab closes all of it.</p>
-    <div class="diagram" role="img" aria-label="Layers of Wren: the shell on top; the page with its DOM, its Wasm instances and the JavaScript engine compiled to Wasm; the engine from HTML parsing to the compositor; loading through Fetch and WinHTTP; the platform: Direct3D 11, DirectWrite and Windows codecs.">
-      <div class="layer"><div class="name">Shell</div><div class="boxes">
-        <div class="box"><b>browser</b><span>window, tabs, address bar, about:config, status bar</span></div>
-        <div class="box ext"><b>gui_toolkit ui</b><span>retained-state immediate-mode UI</span></div>
-      </div></div>
-      <div class="arrow">▼</div>
-      <div class="layer"><div class="name">Page</div><div class="boxes">
-        <div class="box"><b>page</b><span>DOM, realm, instances, requests, timers, origin and CSP</span></div>
-        <div class="box wasm"><b>Web IDL → bindgen</b><span>generated, checked imports and JS bindings</span></div>
-        <div class="box wasm ext"><b>QuickJS-ng</b><span>the page's JavaScript, as a Wasm module</span></div>
-        <div class="box wasm ext"><b>Wasmtime</b><span>every module, compiled by Cranelift</span></div>
-      </div></div>
-      <div class="arrow">▼</div>
-      <div class="layer"><div class="name">Engine</div><div class="boxes">
-        <div class="box ext"><b>html</b><span>Lexbor parser</span></div>
-        <div class="box"><b>css · style</b><span>cascade, shadow scopes, restyle</span></div>
-        <div class="box"><b>layout</b><span>block, inline, flex, grid</span></div>
-        <div class="box"><b>compositor</b><span>retained pictures</span></div>
-      </div></div>
-      <div class="arrow">▼</div>
-      <div class="layer"><div class="name">Loading</div><div class="boxes">
-        <div class="box"><b>fetch</b><span>policy: CORS, cookies, CSP, HSTS, redirects</span></div>
-        <div class="box"><b>net</b><span>transport only, on WinHTTP</span></div>
-        <div class="box"><b>images</b><span>decoders on their own threads</span></div>
-      </div></div>
-      <div class="arrow">▼</div>
-      <div class="layer"><div class="name">Platform</div><div class="boxes">
-        <div class="box ext"><b>Direct3D 11</b><span>through gui_toolkit render</span></div>
-        <div class="box ext"><b>DirectWrite · Direct2D</b><span>text, colour glyphs</span></div>
-        <div class="box ext"><b>WinHTTP · WIC · BCrypt</b><span>network, codecs, crypto</span></div>
-      </div></div>
-    </div>
-    <p class="legend"><i></i> Wren's own code · <i class="wasm"></i> the WebAssembly boundary · <i class="ext"></i> a library or a Windows service</p>
-    <p class="more"><a class="btn" href="architecture.html">How it fits together</a></p>
+    <p class="intro">A page owns its DOM, its WebAssembly instances (its JavaScript realm is one of them), its requests
+      and its timers. <strong>Close a tab and all of it goes</strong>, in order. Below: the engine, then Windows.</p>
+    <p class="more"><a class="btn" href="architecture.html">How Wren fits together</a></p>
   </div>
 </section>
 
-<section class="section" id="credits">
+<section class="section" id="pricing">
   <div class="wrap">
-    <h2>Credits</h2>
-    <p class="intro">Wren is written by <a href="https://github.com/sachahjkl">sachahjkl</a>. It stands on these projects:</p>
-    <ul class="credits">
-      <li><a href="https://odin-lang.org">Odin</a>, the language everything is written in.</li>
-      <li><a href="https://github.com/sachahjkl/gui_toolkit">gui_toolkit</a>, the GPU drawing, text and UI layer.</li>
-      <li><a href="https://wasmtime.dev">Wasmtime</a> (Bytecode Alliance), the WebAssembly engine.</li>
-      <li><a href="https://github.com/quickjs-ng/quickjs">QuickJS-ng</a>, after Fabrice Bellard's QuickJS, the JavaScript interpreter.</li>
-      <li><a href="https://github.com/WebAssembly/wasi-libc">wasi-libc</a> and <a href="https://ziglang.org">Zig</a>, its C library and compiler.</li>
-      <li><a href="https://github.com/w3c/webref">webref</a>, the Web IDL of the specifications.</li>
-      <li><a href="https://github.com/lexbor/lexbor">Lexbor</a>, HTML parsing, URLs and encodings.</li>
-      <li><a href="https://github.com/linebender/resvg">resvg</a>, SVG rendering.</li>
-      <li><a href="https://github.com/memorysafety/rav1d">rav1d</a> and zenavif-parse, AVIF.</li>
-      <li><a href="https://github.com/image-rs/image-webp">image-webp</a>, WebP.</li>
-      <li><a href="https://github.com/FirefoxGraphics/qcms">qcms</a>, colour management.</li>
-      <li><a href="https://github.com/dropbox/rust-brotli-decompressor">brotli-decompressor</a>, WOFF2 fonts.</li>
-      <li><a href="https://publicsuffix.org">Public Suffix List</a>, sites and cookies.</li>
-      <li><a href="https://github.com/tc39/test262">test262</a> and <a href="https://github.com/web-platform-tests/wpt">web-platform-tests</a>, the conformance suites.</li>
-      <li>Windows: Direct3D 11, DirectWrite, Direct2D, WinHTTP, WIC, BCrypt.</li>
-      <li>The web standards of the WHATWG, the W3C, TC39 and the WebAssembly Community Group.</li>
-    </ul>
+    <h2>Support Wren</h2>
+    <p class="intro">Every version is free during the beta. The supporter licence is <strong>one payment of
+      29&nbsp;&euro;</strong>, no subscription - and it <strong>unlocks nothing</strong>, on purpose: it keeps the work
+      going.</p>
+    <p class="more"><a class="btn primary" href="support.html">Get the licence</a></p>
   </div>
 </section>
 
 <section class="section alt" id="license">
   <div class="wrap">
     <h2>License</h2>
-    <p>Wren is free software under the <a href="https://github.com/sachahjkl/wren/blob/main/LICENSE">MIT License</a>.
-      The libraries it links keep their own licenses. Wren is a beta and every version is free;
-      <a href="support.html">a licence only supports its development</a>.</p>
+    <p>Wren is <strong>free software</strong> under the
+      <a href="https://github.com/sachahjkl/wren/blob/main/LICENSE">MIT License</a>, and the libraries it links keep
+      their own. Every version is free during the beta; <a href="support.html">a licence only supports its
+      development</a>.</p>
   </div>
 </section>
 
 </main>
 
-<footer class="foot">
+<footer class="site-foot">
   <div class="wrap">
-    <span>Wren · a browser where WebAssembly runs everything</span>
-    <span>This site is plain HTML and CSS, without a line of script: it renders in Wren too.</span>
+    <p class="foot-line">Wren · a browser where WebAssembly runs everything · by
+      <span class="maker"><img src="img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+    <nav class="foot-links">
+      <a href="changelog.html">Changelog</a>
+      <a href="archive.html">Archive</a>
+      <a href="support.html">Pricing</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="https://github.com/sachahjkl/wren">GitHub</a>
+    </nav>
   </div>
 </footer>
 </body>

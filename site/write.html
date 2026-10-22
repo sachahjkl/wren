@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Write a page - Wren</title>
+  <meta name="description" content="Two ways to write a page for Wren: JavaScript as in any browser, or WebAssembly alone with the generated Odin SDK.">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="30" height="30">Wren</a>
+        <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="write.html" aria-current="page">Write a page</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+      <li><a href="support.html">Pricing</a></li>
+      <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main">
+<div class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Developers</p>
+    <h1>Write a page</h1>
+    <p class="intro">Two ways to write a page: <strong>JavaScript</strong>, as anywhere, or <strong>WebAssembly
+      alone</strong>. Wren runs a page's scripts, classic or modules, and what it does not implement is simply absent.
+      Or the page names a module that exports <code>wb_main</code> and calls the browser through the generated
+      <a href="https://github.com/sachahjkl/wren/tree/main/sdk/odin">Odin SDK</a>; the whole API, with its ABI, is in
+      <a href="https://github.com/sachahjkl/wren/tree/main/docs/api"><code>docs/api</code></a>.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The same page, two ways</h2>
+    <div class="steps">
+      <div>
+        <div class="code">
+          <div class="file">hello/main.odin</div>
+<pre><code><span class="k">package</span> hello
+
+<span class="k">import</span> <span class="s">"web:web"</span>
+
+<span class="f">on_click</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> (user: <span class="t">i32</span>, ev: web.<span class="t">Event</span>) {
+	out := web.<span class="f">Document_getElementById</span>(<span class="s">"out"</span>)
+	web.<span class="f">Node_setTextContent</span>(out, <span class="s">"Hello from WebAssembly!"</span>)
+}
+
+<span class="c">// called once the document is parsed</span>
+@(export)
+<span class="f">wb_main</span> :: <span class="k">proc</span> <span class="s">"contextless"</span> () {
+	button := web.<span class="f">Document_getElementById</span>(<span class="s">"greet"</span>)
+	web.<span class="f">EventTarget_addEventListener</span>(button, <span class="s">"click"</span>, on_click)
+}</code></pre>
+        </div>
+        <div class="code">
+          <div class="file">the same page in JavaScript</div>
+<pre><code><span class="k">&lt;script&gt;</span>
+document.<span class="f">getElementById</span>(<span class="s">"greet"</span>).<span class="f">addEventListener</span>(<span class="s">"click"</span>, () =&gt; {
+  document.<span class="f">getElementById</span>(<span class="s">"out"</span>).textContent = <span class="s">"Hello from JavaScript!"</span>;
+});
+<span class="k">&lt;/script&gt;</span></code></pre>
+        </div>
+      </div>
+      <div>
+        <div class="code">
+          <div class="file">index.html</div>
+<pre><code>&lt;!doctype html&gt;
+&lt;meta charset="utf-8"&gt;
+&lt;title&gt;Hello, Wren&lt;/title&gt;
+&lt;script type="application/wasm" src="hello.wasm"&gt;&lt;/script&gt;
+&lt;button id="greet"&gt;Say hello&lt;/button&gt;
+&lt;p id="out"&gt;&lt;/p&gt;</code></pre>
+        </div>
+        <div class="code">
+          <div class="file">build (from a clone of the repository)</div>
+<pre><code>odin build hello -target:freestanding_wasm32 -no-entry-point ^
+  -default-to-nil-allocator -collection:web=sdk/odin ^
+  -out:hello.wasm -o:size</code></pre>
+        </div>
+        <p class="fine">The module above compiles to 702 bytes. Open <code>index.html</code> in Wren (a
+          <code>file:///</code> address or a Windows path works) and click the button. For the JavaScript version, put
+          the script at the end of the page instead of the module.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <h2>What a page can use</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>The web API</h3>
+        <p><strong>25 modules, 672 functions</strong>: DOM, events, timers, fetch, WebSocket, workers, storage, URL and
+          encoding. Described once in <code>api/*.widl</code>, generated for Odin, documented with its ABI for other
+          languages.</p>
+      </div>
+      <div class="card">
+        <h3>JavaScript, if you want it</h3>
+        <p>Classic scripts, ES modules and import maps, <code>defer</code> and <code>async</code>,
+          <code>document.write</code>, inline handlers and <code>javascript:</code> URLs. A member Wren does not
+          implement is <strong>absent</strong>, so feature detection tells the truth.</p>
+      </div>
+      <div class="card">
+        <h3>No build step for the page</h3>
+        <p>Wren loads <code>file:///</code> addresses and Windows paths as well as HTTPS. A page can be one
+          <code>.wasm</code> module and one HTML file, opened from disk.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="foot-line">Wren · a browser where WebAssembly runs everything · by
+      <span class="maker"><img src="img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+    <nav class="foot-links">
+      <a href="changelog.html">Changelog</a>
+      <a href="archive.html">Archive</a>
+      <a href="support.html">Pricing</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="https://github.com/sachahjkl/wren">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

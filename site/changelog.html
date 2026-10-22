@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Changelog and status - Wren</title>
+  <meta name="description" content="What each version of Wren brings, what the current preview does today, and what it does not do yet.">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="30" height="30">Wren</a>
+        <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="write.html">Write a page</a></li>
+      <li><a href="changelog.html" aria-current="page">Changelog</a></li>
+      <li><a href="support.html">Pricing</a></li>
+      <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main">
+<div class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Versions</p>
+    <h1>Changelog</h1>
+    <p class="intro">What each version of Wren brings, what the current preview does, and what it does not do yet.
+      The release notes on GitHub list every change.</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Releases</h2>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Version</th><th>Date</th><th>Highlights</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="n">0.3.0</td><td class="n">2026-10-21</td>
+            <td>A JavaScript JIT that produces WebAssembly, iframes, a browser that never waits for a busy page, an
+              HTTP cache, passkeys, history as a tree, a command palette, and memory given back when idle.
+              <a href="https://github.com/sachahjkl/wren/blob/main/docs/releases/v0.3.0.md">Release notes</a>.</td>
+          </tr>
+          <tr>
+            <td class="n">0.2.1</td><td class="n">2026-10-20</td>
+            <td>A crash about three seconds after start when the pointer was over the window.</td>
+          </tr>
+          <tr>
+            <td class="n">0.2.0</td><td class="n">2026-10-20</td>
+            <td>JavaScript inside WebAssembly: QuickJS-ng compiled to Wasm, bindings from the Web IDL, Shadow DOM,
+              test262 and web-platform-tests in the suite.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="more"><a class="btn" href="archive.html">Every version</a>
+      <a class="btn" href="https://github.com/sachahjkl/wren/releases">Releases on GitHub</a></p>
+  </div>
+</section>
+
+<section class="section alt" id="features">
+  <div class="wrap">
+    <h2>What the 0.2.0 preview does</h2>
+    <p class="intro">Every number on this site was measured on the development machine; the notes behind them are in
+      the repository history.</p>
+    <div class="cards">
+      <div class="card">
+        <h3>The web platform, from its specifications</h3>
+        <p>The JavaScript bindings are generated from the official
+          <a href="https://github.com/w3c/webref">Web IDL (webref)</a> with Web IDL's rules: DOM, CSSOM,
+          events, observers, custom elements, script loading with ES modules, <code>fetch</code>, XHR, streams, storage,
+          WebSocket, workers, <code>crypto.subtle</code>. <strong>2,630 of 4,991 members</strong> are implemented; the
+          others are absent, so feature detection sees the truth.</p>
+      </div>
+      <div class="card">
+        <h3>Measured against the standards</h3>
+        <p>The engine in WebAssembly passes <span class="num">99.92&nbsp;%</span> of
+          <a href="https://github.com/tc39/test262">test262</a>. 4,494
+          <a href="https://web-platform-tests.org/">web-platform-tests</a> files run with every change,
+          <span class="num">106,188</span> subtests pass, and <strong>any regression fails the test suite</strong>.</p>
+      </div>
+      <div class="card">
+        <h3>Shadow DOM</h3>
+        <p>Declarative shadow roots that render even without JavaScript, slots, encapsulated styles with
+          <code>:host</code>, <code>::slotted()</code>, <code>::part()</code> and <code>:state()</code>,
+          constructable stylesheets, event retargeting: web components, such as MDN's, show up.</p>
+      </div>
+      <div class="card">
+        <h3>Nothing runs outside the sandbox</h3>
+        <p>Every call from the browser into a module, JavaScript included, has a deadline
+          (<code>wasm.max_call_ms</code>), and each module's memory is capped. A loop that never returns is interrupted;
+          a crashed engine loses the page's scripts, not the browser.</p>
+      </div>
+      <div class="card">
+        <h3>Wasm pages, any number of modules</h3>
+        <p>Modules are fetched concurrently and run in document order, each in its own instance sharing the DOM.
+          <a href="https://wasmtime.dev">Wasmtime</a> 49 with <a href="https://cranelift.dev">Cranelift</a>, a memory
+          cache and an <strong>authenticated disk cache</strong> of compiled code.</p>
+      </div>
+      <div class="card">
+        <h3>Modern CSS</h3>
+        <p>Cascade layers, custom properties and
+          <a href="https://www.w3.org/TR/css-properties-values-api-1/">@property</a>,
+          <a href="https://www.w3.org/TR/css-contain-3/">container queries</a>,
+          <a href="https://www.w3.org/TR/css-color-4/">CSS Color 4</a> and
+          <a href="https://www.w3.org/TR/css-color-5/#color-mix"><code>color-mix()</code></a>, math functions, flexbox,
+          <a href="https://www.w3.org/TR/css-grid-2/">Grid Level 1 with subgrid</a>, transforms, animations and
+          transitions; text placed vertically as Chromium places it.</p>
+      </div>
+      <div class="card">
+        <h3>Effects on the GPU</h3>
+        <p><a href="https://www.w3.org/TR/filter-effects-1/">filter</a>,
+          <a href="https://drafts.fxtf.org/filter-effects-2/#backdrop-filter">backdrop-filter</a>, the 16 blend modes
+          plus <code>plus-lighter</code> and <code>plus-darker</code>, <code>clip-path</code>, masks,
+          <code>background-clip: text</code>, linear, radial and conic gradients interpolated in sRGB, Oklab, Oklch,
+          Lab and more.</p>
+      </div>
+      <div class="card">
+        <h3>Text on DirectWrite</h3>
+        <p>Per-character font fallback, OpenType shaping and features, bidirectional text, line breaking with
+          dictionaries for Thai, Lao, Khmer and Burmese, variable fonts, WOFF2, colour emoji in every font format.</p>
+      </div>
+      <div class="card">
+        <h3>Images</h3>
+        <p>PNG, JPEG, GIF, BMP, ICO and TIFF through Windows; WebP, AVIF and SVG built in, whatever Windows has
+          installed, with ICC colour management. Decoding runs on its own threads.</p>
+      </div>
+      <div class="card">
+        <h3>At the display's refresh rate</h3>
+        <p>Frames follow the monitor's exact rate, with a budget of 1000/Hz. Wheel scrolling a page of 10,000
+          paragraphs: <span class="num">1.4&nbsp;ms</span> CPU and <span class="num">2.3&nbsp;ms</span> GPU at the
+          99th percentile, under the 5.56&nbsp;ms of a 180&nbsp;Hz screen. The start page is drawn
+          <span class="num">0.3&nbsp;s</span> after launch.</p>
+      </div>
+      <div class="card">
+        <h3>Security from the standards</h3>
+        <p>One policy layer for every request: <a href="https://fetch.spec.whatwg.org/">CORS</a> with preflights,
+          cookies (<a href="https://www.rfc-editor.org/rfc/rfc6265">RFC 6265bis</a>, third-party cookies
+          <strong>blocked by default</strong>), <a href="https://www.w3.org/TR/CSP3/">Content Security Policy</a> for
+          scripts and Wasm modules, <a href="https://www.rfc-editor.org/rfc/rfc6797">HSTS</a>, mixed content blocking,
+          referrer policy.</p>
+      </div>
+      <div class="card">
+        <h3>Everything is configurable</h3>
+        <p><code>about:config</code> lists every setting with its description, default, bounds and unit:
+          rendering, scrolling, fonts, network limits, Wasm and JavaScript limits. Nothing is hard-wired.</p>
+      </div>
+      <div class="card">
+        <h3>Frame statistics built in</h3>
+        <p>The status bar draws a graph of every frame by phase. A click opens CPU and GPU percentiles, compositor,
+          layout, memory and the time spent in Wasm.</p>
+      </div>
+      <div class="card">
+        <h3>A native window</h3>
+        <p>Tabs in the title bar with favicons and Snap Layouts, error pages, downloads, local folders and dropped
+          files, pages that follow Windows' light or dark mode, selection, find in page, zoom,
+          <code>view-source:</code> and a keyboard path through all of it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="status">
+  <div class="wrap">
+    <h2>What works, and what doesn't yet</h2>
+    <p class="intro">Wren is a young engine with one goal, and an honest list of gaps.</p>
+    <div class="split">
+      <div class="card">
+        <h3>Works well</h3>
+        <ul class="list yes">
+          <li>Documents and CSS-heavy sites. <span>Compared pixel by pixel with Edge at 1280×720: 0.7% of pixels
+            differ on example.com, 4.5% on rust-lang.org, 7.3% on webassembly.org.</span></li>
+          <li>Sites whose scripts add to the page: menus, themes, web components, observers. <span>Wikipedia, MDN,
+            webassembly.org and odin-lang.org run their scripts.</span></li>
+          <li>Pages scripted in WebAssembly, with the DOM, events, timers, fetch, WebSocket, workers and storage.</li>
+          <li>HTTPS through WinHTTP, cookies, CORS and CSP.</li>
+          <li>Web fonts (WOFF, WOFF2, variable fonts), SVG, AVIF and WebP images.</li>
+          <li>Smooth scrolling, selection, find in page and zoom on long pages.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Not yet</h3>
+        <ul class="list no">
+          <li>JavaScript is interpreted, without a JIT. <span>About 55 times slower than Edge on the Octane
+            benchmarks, and a simple DOM call costs about ten times as much: script-heavy pages are slow.</span></li>
+          <li>About half of the web platform's members. <span>No <code>&lt;canvas&gt;</code> drawing, IndexedDB,
+            <code>ResizeObserver</code>, Web Animations or service workers; <code>&lt;iframe&gt;</code> content is not
+            loaded. The full list is <a href="https://github.com/sachahjkl/wren/blob/main/docs/js/coverage.md">docs/js/coverage.md</a>.</span></li>
+          <li>No HTTP cache: every request goes to the network. No HTTP authentication.</li>
+          <li>No IME for East Asian input, no vertical writing modes, grayscale text anti-aliasing only.</li>
+          <li>No <code>&lt;video&gt;</code> or <code>&lt;audio&gt;</code> playback.</li>
+          <li>Wasm threads and shared memory are off. The guest SDK exists for Odin only; the ABI is documented for
+            other languages.</li>
+          <li>Windows only.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <h2>Measurements</h2>
+    <p class="intro">Medians or percentiles from the repository's tools, on the development machine (RTX 4070 SUPER).
+      Frame budgets are those of a 180&nbsp;Hz display: 5.56&nbsp;ms.</p>
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Measure</th><th>Result</th></tr></thead>
+        <tbody>
+          <tr><td>Call from a module into the browser, no arguments</td><td class="n">7.3 ns</td></tr>
+          <tr><td>Call with an address and a length</td><td class="n">8.4 ns</td></tr>
+          <tr><td>Call with a 64-byte string, UTF-8 checked</td><td class="n">12.1 ns</td></tr>
+          <tr><td>Instantiating a module already compiled (memory cache)</td><td class="n">0.03 ms</td></tr>
+          <tr><td>Loading the same module from the disk cache after a restart</td><td class="n">0.52 ms</td></tr>
+          <tr><td>A new JavaScript realm, from the pre-initialized image (median of 50)</td><td class="n">0.5 ms</td></tr>
+          <tr><td>test262, engine in Wasm: runs passed</td><td class="n">99.92 % of 82,220</td></tr>
+          <tr><td>First frame of the start page after launch (shaders precompiled)</td><td class="n">1.79 → 0.29 s</td></tr>
+          <tr><td>Wheel scrolling 10,000 paragraphs, CPU / GPU per frame, 99th percentile</td><td class="n">1.41 / 2.28 ms</td></tr>
+          <tr><td>about:config, building the interface per frame while scrolling</td><td class="n">34.4 → 0.29 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fine" style="margin-top: 12px">Arrows show a measured improvement, before and after the change that made
+      it. The whole table is on the <a href="architecture.html#measurements">architecture page</a>.</p>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="foot-line">Wren · a browser where WebAssembly runs everything · by
+      <span class="maker"><img src="img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+    <nav class="foot-links">
+      <a href="changelog.html" aria-current="page">Changelog</a>
+      <a href="archive.html">Archive</a>
+      <a href="support.html">Pricing</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="https://github.com/sachahjkl/wren">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Privacy - Wren</title>
+  <meta name="description" content="What Wren and this site do with your data: the browser keeps it local, the site has no analytics, and purchases go through Paddle.">
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="30" height="30">Wren</a>
+        <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="write.html">Write a page</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+      <li><a href="support.html">Pricing</a></li>
+      <li><a class="btn primary nav-dl" href="https://github.com/sachahjkl/wren/releases/latest">Download</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main" class="legal">
+<div class="page-head">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
+    <h1>Privacy</h1>
+    <p class="intro">Last updated: 2026-10-22</p>
+  </div>
+</div>
+
+<section class="section">
+  <div class="wrap">
+    <h2>The browser keeps everything local</h2>
+    <p>Wren has <strong>no telemetry and no analytics</strong>. It does not send reports about what you browse, and it
+      does not contact a server about your licence: a key is checked on your computer, offline.</p>
+    <p>Your profile (history, cookies, storage, settings) stays on your computer, in the profile folder. Crash reports
+      are written there too, as files, and are never uploaded by Wren.</p>
+    <p>Wren connects to the network for the pages you open and nothing else. The sites you visit receive what any
+      browser sends them: the request, your IP address and the headers the standards define.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>This site</h2>
+    <p>This site is plain HTML and CSS. It sets <strong>no cookies</strong>, runs <strong>no analytics</strong> and
+      loads nothing from third parties, with one exception: on the <a href="support.html">pricing page</a>, the
+      Paddle checkout script is loaded <strong>only when you press the buy button</strong>.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>When you buy a licence</h2>
+    <p><a href="https://www.paddle.com">Paddle</a> acts as Merchant of Record and processes the payment. It collects
+      what a payment requires (name, e-mail address, billing details, tax information) under
+      <a href="https://www.paddle.com/legal/privacy">Paddle's privacy policy</a>.</p>
+    <p>Once the payment is confirmed, a small service run by Froment Software (a Cloudflare Worker) stores the
+      <strong>name, e-mail address, order number, transaction id and the licence</strong>. That is what the thank-you
+      page shows and what the e-mail with your key is sent from. Its logs hold event names, transaction ids, order
+      numbers and statuses, never a name, an address or a key.</p>
+    <p>Nothing else is stored, and nothing is sold or shared beyond what issuing the licence requires.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Your rights</h2>
+    <p>You can ask for a copy of what is stored about your purchase, or for its deletion, by writing to
+      <span class="todo">contact e-mail to be completed</span>. A licence whose record is deleted can no longer be
+      re-sent; the key you already have keeps working.</p>
+    <p>You can also contact Paddle about the data it holds for the payment, and your local data-protection authority
+      if you think your rights are not respected.</p>
+  </div>
+</section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <p class="foot-line">Wren · a browser where WebAssembly runs everything · by
+      <span class="maker"><img src="img/froment-software-64.png" alt="" width="16" height="16"><a href="https://froment.software">Froment Software</a></span></p>
+    <nav class="foot-links">
+      <a href="changelog.html">Changelog</a>
+      <a href="archive.html">Archive</a>
+      <a href="support.html">Pricing</a>
+      <a href="privacy.html" aria-current="page">Privacy</a>
+      <a href="terms.html">Terms</a>
+      <a href="refunds.html">Refunds</a>
+      <a href="imprint.html">Imprint</a>
+      <a href="https://github.com/sachahjkl/wren">GitHub</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>
