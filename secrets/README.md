@@ -15,7 +15,9 @@ Fields (the Worker's `licence/worker/src/env.ts`):
 | `LICENSE_PRIVATE_KEY` | the 32-byte Ed25519 seed, base64url: the line of `%USERPROFILE%\.wren-license\private.key` that is not a `#` comment (`tools\license.ps1 keygen`) |
 | `PADDLE_WEBHOOK_SECRET` | Paddle > Developer tools > Notifications > the destination > Secret key (`pdl_ntfset_...`) |
 | `PADDLE_API_KEY` | Paddle > Developer tools > Authentication > API keys (server side, `customer.read`) |
-| `RESEND_API_KEY` | Resend > API Keys (sending access); empty: licences are not mailed, the thank-you page still shows them |
+
+The mail of the licence needs no secret: the Worker sends it through its Cloudflare Email Service binding (`EMAIL`;
+`MAIL_FROM` is a plain setting, see `docs/licence.md`).
 
 ## Key
 
