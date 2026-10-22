@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <title>Thank you &middot; Wren</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .key { font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; word-break: break-all; white-space: pre-wrap;
+           background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 12px; user-select: all; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+  </style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-64.png" alt="" width="32" height="32">Wren</a>
+    <ul class="nav">
+      <li><a href="index.html#features">Features</a></li>
+      <li><a href="gallery.html">Gallery</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="support.html">Support</a></li>
+      <li><a href="https://github.com/sachahjkl/wren">GitHub</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="main"
+      data-worker=""
+      data-poll-seconds="3"
+      data-give-up-seconds="150">
+
+<section class="section">
+  <div class="wrap">
+    <h1>Thank you for supporting Wren</h1>
+    <p class="intro" id="status" role="status">Making your licence&hellip;</p>
+
+    <div id="licence" hidden>
+      <div class="card">
+        <h3 id="who"></h3>
+        <p class="fine" id="details"></p>
+        <p>Your key:</p>
+        <div class="key" id="key" tabindex="0"></div>
+        <div class="actions">
+          <button class="btn primary" type="button" id="download">Download the .wrenlicense</button>
+          <button class="btn" type="button" id="copy">Copy the key</button>
+        </div>
+      </div>
+
+      <h2>Registering it</h2>
+      <p>Open <code>about:wren</code> in Wren (menu, <em>About Wren</em>), paste the key into the box and press
+        <em>Register</em>. Or drop the <code>.wrenlicense</code> file you just downloaded onto the Wren window.</p>
+      <p class="fine">The same key is sent to the e-mail address you gave at the checkout, with the file attached. Keep
+        it: it works for every version of Wren, on every computer you use. A licence only supports the development and
+        unlocks nothing. Wren checks it on your computer, without any network access.</p>
+    </div>
+
+    <p class="fine">Questions about a licence: open an issue on
+      <a href="https://github.com/sachahjkl/wren/issues">GitHub</a>, with your order number (never the key).
+      Back to <a href="support.html">the support page</a>.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>Wren · a browser where WebAssembly runs everything · by Froment Software</span>
+    <span><a href="index.html">Back to the home page</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var main = document.getElementById("main");
+  var status = document.getElementById("status");
+  var worker = (main.dataset.worker || "").replace(/\/+$/, "");
+  var every = (parseInt(main.dataset.pollSeconds, 10) || 3) * 1000;
+  var giveUp = (parseInt(main.dataset.giveUpSeconds, 10) || 150) * 1000;
+
+  // Paddle's checkout leads here with the transaction id (support.html passes txn; _ptxn is Paddle's own name for it)
+  var params = new URLSearchParams(location.search);
+  var txn = params.get("txn") || params.get("_ptxn") || "";
+  var started = Date.now();
+
+  function say(text) { status.textContent = text; }
+
+  if (!/^txn_[0-9a-z]{20,40}$/.test(txn)) {
+    say("This page shows the licence of a purchase: it needs the transaction number that the checkout passes on. If you have just paid, your licence is also on its way to your e-mail address.");
+    return;
+  }
+  if (!worker) {
+    say("The licence service is not set up yet (this page's data-worker is empty).");
+    return;
+  }
+
+  function show(j) {
+    document.getElementById("who").textContent = (j.edition === "patron" ? "Patron" : "Supporter") + " licence for " + j.name;
+    document.getElementById("details").textContent = "Order " + j.order + ", " + j.date;
+    document.getElementById("key").textContent = j.licence;
+    document.getElementById("licence").hidden = false;
+    say("Your licence is ready. Thank you!");
+
+    document.getElementById("download").addEventListener("click", function () {
+      var url = URL.createObjectURL(new Blob([j.file], { type: "application/octet-stream" }));
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = j.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    });
+    document.getElementById("copy").addEventListener("click", function () {
+      var done = function () { document.getElementById("copy").textContent = "Copied"; };
+      if (navigator.clipboard) navigator.clipboard.writeText(j.licence).then(done, function () { selectKey(); });
+      else selectKey();
+    });
+  }
+
+  function selectKey() {
+    var r = document.createRange();
+    r.selectNodeContents(document.getElementById("key"));
+    var s = getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+    say("Press Ctrl+C to copy the selected key.");
+  }
+
+  function poll() {
+    fetch(worker + "/licence?txn=" + encodeURIComponent(txn), { cache: "no-store" }).then(function (res) {
+      if (res.status === 200) return res.json().then(show);
+      if (res.status === 202 && Date.now() - started < giveUp) {
+        say("Making your licence (this takes a few seconds)\u2026");
+        setTimeout(poll, every);
+        return;
+      }
+      fail();
+    }, function () {
+      if (Date.now() - started < giveUp) setTimeout(poll, every * 2); else fail();
+    });
+  }
+
+  function fail() {
+    say("The licence is not ready yet, or the service could not be reached. Nothing is lost: it is sent by e-mail to the address you gave at the checkout, within a few minutes. If nothing arrives, reload this page later or open an issue on GitHub with your order number.");
+  }
+
+  poll();
+})();
+</script>
+</body>
+</html>

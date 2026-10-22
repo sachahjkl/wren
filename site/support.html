@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Support Wren</title>
-  <meta name="description" content="Wren is a beta under development and every version is free. A supporter licence is a one-time purchase that helps pay for its development; it unlocks nothing. Not available to buy yet.">
+  <meta name="description" content="Wren is a beta under development and every version is free. A supporter licence is a one-time purchase that helps pay for its development; it unlocks nothing.">
   <link rel="icon" type="image/png" sizes="32x32" href="img/logo-32.png">
   <link rel="icon" type="image/png" sizes="64x64" href="img/logo-64.png">
   <link rel="stylesheet" href="style.css">
@@ -34,10 +34,32 @@
     <p class="intro"><strong>Wren is a beta under development. Every version is free.</strong> A licence only supports
       its development: it unlocks nothing, and Wren works the same without one.</p>
 
-    <div class="card">
-      <h3>Not for sale yet</h3>
-      <p>Licences are <strong>coming soon</strong>. There is nothing to buy today, and nothing is missing from Wren
-        while you wait. This page will get a purchase button when it is ready.</p>
+    <!--
+      Purchase (Paddle Billing, checkout overlay). While data-client-token and the price ids are empty, the buttons
+      stay on "Coming soon". To go live, fill in (docs/licence.md):
+        data-environment   "sandbox" or "production"
+        data-client-token  Paddle > Developer tools > Authentication > Client-side tokens (test_... / live_...)
+        data-price-*       the Paddle price ids (pri_...) of each edition
+        data-worker        the Worker's address, e.g. https://wren-licence.<account>.workers.dev (no trailing slash)
+        data-thanks        the absolute address of thanks.html
+    -->
+    <div class="card" id="buy"
+         data-environment="sandbox"
+         data-client-token=""
+         data-price-supporter=""
+         data-price-patron=""
+         data-worker=""
+         data-thanks="https://sachahjkl.github.io/wren/thanks.html">
+      <h3 id="buy-title">Coming soon</h3>
+      <p id="buy-note">Licences are <strong>coming soon</strong>. There is nothing to buy today, and nothing is missing
+        from Wren while you wait.</p>
+      <p>
+        <button class="btn primary" type="button" data-edition="supporter" disabled>Supporter &mdash; 29&nbsp;&euro;</button>
+        <button class="btn" type="button" data-edition="patron" disabled>Patron &mdash; 79&nbsp;&euro;</button>
+      </p>
+      <p class="fine">Prices include taxes. The payment is handled by <a href="https://www.paddle.com">Paddle</a>, who
+        sell the licence on behalf of Froment Software and handle VAT and receipts. Paddle's checkout is only loaded when
+        you press a button. The key is shown on the next page and sent to the e-mail address you give.</p>
     </div>
   </div>
 </section>
@@ -91,6 +113,60 @@
 </section>
 
 </main>
+
+<script>
+(function () {
+  var box = document.getElementById("buy");
+  var buttons = box.querySelectorAll("button[data-edition]");
+  var d = box.dataset;
+  var prices = { supporter: d.priceSupporter, patron: d.pricePatron };
+  var live = !!d.clientToken && !!d.worker && (!!prices.supporter || !!prices.patron);
+  if (!live) return;   // "Coming soon" stays
+
+  document.getElementById("buy-title").textContent = "Support Wren";
+  document.getElementById("buy-note").textContent = "One payment, no subscription, valid for every version of Wren.";
+  buttons.forEach(function (b) {
+    var has = !!prices[b.dataset.edition];
+    b.disabled = !has;
+    b.hidden = !has;
+  });
+
+  var loading = null;
+  function paddle() {
+    if (loading) return loading;
+    loading = new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
+      s.onload = function () {
+        if (d.environment === "sandbox") Paddle.Environment.set("sandbox");
+        Paddle.Initialize({
+          token: d.clientToken,
+          eventCallback: function (e) {
+            // Paddle gives the transaction id here; the thank-you page asks the Worker for its licence
+            if (e.name === "checkout.completed" && e.data && e.data.transaction_id) {
+              location.href = d.thanks + "?txn=" + encodeURIComponent(e.data.transaction_id);
+            }
+          }
+        });
+        resolve(Paddle);
+      };
+      s.onerror = function () { loading = null; reject(new Error("Paddle.js did not load")); };
+      document.head.appendChild(s);
+    });
+    return loading;
+  }
+
+  buttons.forEach(function (b) {
+    b.addEventListener("click", function () {
+      paddle().then(function (P) {
+        P.Checkout.open({ items: [{ priceId: prices[b.dataset.edition], quantity: 1 }], settings: { displayMode: "overlay" } });
+      }, function () {
+        document.getElementById("buy-note").textContent = "The payment page could not be loaded. Check your connection, or an ad blocker, and try again.";
+      });
+    });
+  });
+})();
+</script>
 
 <footer class="foot">
   <div class="wrap">
