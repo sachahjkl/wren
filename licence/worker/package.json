@@ -9,6 +9,11 @@
 		"test": "node --test \"test/*.test.ts\"",
 		"test:bun": "bun test test/",
 		"deploy": "cf deploy --secrets-file secrets.env",
-		"deploy:sandbox": "cf deploy --mode sandbox --secrets-file secrets.sandbox.env"
+		"deploy:sandbox": "cf deploy --mode sandbox --secrets-file secrets.sandbox.env",
+		"dev": "cf dev"
+	},
+	"devDependencies": {
+		"cf": "1.0.0-beta.17",
+		"wrangler": "^4.136.0"
 	}
 }

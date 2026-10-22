@@ -6,3 +6,4 @@ secrets.*.env
 .wrangler/
 .cf/
 node_modules/
+.cloudflare/
