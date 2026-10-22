@@ -1192,6 +1192,7 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
+	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
@@ -1250,6 +1251,7 @@ main :: proc() {
 	host.shutdown_step("frames_shell_destroy")
 	frames_shell_destroy()   // (their views went with their documents)
 	host.shutdown_step("webauthn_shell_destroy")
+	clipboard_js_destroy()
 	webauthn_shell_destroy(app)   // passkey requests: their threads joined
 	host.shutdown_step("favicons_destroy")
 	favicons_destroy(app)

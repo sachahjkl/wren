@@ -9,6 +9,7 @@ import "core:fmt"
 import "core:strings"
 import win "core:sys/windows"
 import stbi "vendor:stb/image"
+import "wb:page"
 
 Clip_Item :: struct {
 	format: u32,
@@ -120,3 +121,13 @@ encode_png :: proc(rgba: []u8, w, h, stride: int) -> []byte {
 
 @(private = "file")
 the_context: runtime.Context
+
+// navigator.clipboard.writeText / readText (page/js_clipboard.odin decides who may; this is the clipboard they reach).
+clipboard_js_init :: proc(app: ^App) {
+	page.clipboard_embedder = {
+		read = proc() -> (string, bool) { return clip_get(), the_app != nil },
+		write = proc(text: string) -> bool { return the_app != nil && clipboard_set_rich(the_app, text, "", "") },
+	}
+}
+
+clipboard_js_destroy :: proc() { page.clipboard_embedder = {} }

@@ -65,7 +65,7 @@ function not exposed to workers is not instantiated.
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
 | [`scripts`](scripts.md) | 18 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
-| [`navigator`](navigator.md) | 5 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
+| [`navigator`](navigator.md) | 7 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | 12 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
@@ -77,4 +77,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-817 imports in 718 functions.
+819 imports in 720 functions.

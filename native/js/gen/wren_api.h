@@ -1865,6 +1865,14 @@ WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEna
 // whose response nobody reads; it is not cancelled when the page closes. False when the beacon is refused (too large:
 // navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.
 WR_IMPORT("navigator", "Beacon_send") int32_t wr_Beacon_send(const uint8_t *url, uint32_t url_len, const uint8_t *data, uint32_t data_len, const uint8_t *content_type, uint32_t content_type_len);
+// navigator.clipboard.writeText(data): puts the text on the system clipboard. Fulfilled when it is there; rejected
+// with NotAllowedError when the document is not focused and has no recent click or key press, when the clipboard
+// cannot be had, or when writing is turned off (navigator.clipboard_write).
+WR_IMPORT("navigator", "Clipboard_writeText") uint64_t wr_Clipboard_writeText(const uint8_t *data, uint32_t data_len);
+// navigator.clipboard.readText(): the text on the system clipboard (an empty string when it holds none). Rejected
+// with NotAllowedError unless the document is focused and has a recent click or key press (there is no permission
+// prompt), or when reading is turned off (navigator.clipboard_read).
+WR_IMPORT("navigator", "Clipboard_readText") uint64_t wr_Clipboard_readText(void);
 
 /* module media */
 // window.matchMedia(query): an invalid query is "not all" (it never matches).

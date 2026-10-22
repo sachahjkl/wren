@@ -198,7 +198,7 @@ credential_create :: proc(p: ^Page, cer: ^webauthn.Ceremony, owner: u32) -> u64 
 ////////////////////////////////
 // Ceremonies
 
-@(private="file")
+@(private)
 reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 	R :: struct { pr: u64, code: i64, msg: string }
 	r := new(R, base.process_allocator())
@@ -210,7 +210,7 @@ reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 	}, r)
 }
 
-@(private="file")
+@(private)
 resolve_later :: proc(p: ^Page, pr: u64, value: i64, text := "") {
 	R :: struct { pr: u64, value: i64, text: string }
 	r := new(R, base.process_allocator())

@@ -25,7 +25,7 @@ test("navigator", async () => {
   eq(navigator.doNotTrack, null, "doNotTrack (privacy.do_not_track)");
   eq(navigator.plugins.length, 0, "no plugins");
   eq("serviceWorker" in navigator, false, "serviceWorker is absent");
-  eq("clipboard" in navigator, false, "clipboard is absent");
+  eq("clipboard" in navigator, true, "clipboard is present (a secure context)");
   eq("geolocation" in navigator, false, "geolocation is absent");
   ok(navigator instanceof Navigator, "a Navigator");
 });
@@ -54,6 +54,48 @@ test("screen", () => {
   ok(screen.availHeight > 0 && screen.availHeight <= screen.height, "availHeight");
   eq(screen.colorDepth, 24, "colorDepth");
   eq(screen.pixelDepth, 24, "pixelDepth");
+});
+
+test("clipboard", async () => {
+  const cb = navigator.clipboard;
+  ok(cb === navigator.clipboard && cb instanceof Clipboard, "one Clipboard, [SameObject]");
+  eq(typeof cb.writeText, "function", "writeText");
+  const w = cb.writeText("hello \u2713 clip");
+  ok(w instanceof Promise, "writeText returns a promise");
+  eq(await w, undefined, "writeText fulfils with undefined");
+  eq(await cb.readText(), "hello \u2713 clip", "readText gives the text back");
+  await cb.writeText("");
+  eq(await cb.readText(), "", "an empty clipboard reads as an empty string");
+  eq((await cb.read()).length, 0, "read(): no item for an empty clipboard");
+
+  eq(typeof ClipboardItem, "function", "ClipboardItem");
+  eq(ClipboardItem.supports("text/plain"), true, "supports text/plain");
+  eq(ClipboardItem.supports("application/x-nothing"), false, "supports an unknown type");
+  const item = new ClipboardItem({ "text/plain": new Blob(["blob text"], { type: "text/plain" }) });
+  eq(item.types.join(), "text/plain", "item.types");
+  ok(Object.isFrozen(item.types), "types is frozen");
+  eq(item.presentationStyle, "unspecified", "presentationStyle");
+  eq(await (await item.getType("text/plain")).text(), "blob text", "getType gives a Blob");
+  await rejects(item.getType("text/html"), "NotFoundError", "getType of a type the item lacks");
+  await cb.write([item]);
+  eq(await cb.readText(), "blob text", "write([item]) puts its text/plain on the clipboard");
+  const items = await cb.read();
+  eq(items.length, 1, "read() gives one item");
+  eq(items[0].types.join(), "text/plain", "its type");
+  eq(await (await items[0].getType("text/plain")).text(), "blob text", "its text");
+  const s = new ClipboardItem({ "text/plain": Promise.resolve("from a promise") });
+  await cb.write([s]);
+  eq(await cb.readText(), "from a promise", "a promise of a string is accepted");
+
+  throws(() => new ClipboardItem({}), "TypeError", "an item needs an entry");
+  throws(() => new ClipboardItem(), "TypeError", "an item needs an argument");
+  await rejects(cb.write([]), "NotAllowedError", "write([]): nothing to write");
+  await rejects(cb.write([item, s]), "NotAllowedError", "write: several items are not supported");
+  await rejects(cb.write([new ClipboardItem({ "image/png": new Blob(["x"], { type: "image/png" }) })]), "NotAllowedError", "write: no text/plain");
+  await rejects(cb.write(["text"]), "TypeError", "write: not ClipboardItems");
+  await rejects(cb.write(), "TypeError", "write: an argument is needed");
+  await rejects(cb.read.call({}), "TypeError", "read: illegal invocation");
+  eq(await cb.readText.call(cb), "from a promise", "readText on the object itself");
 });
 
 __run();
