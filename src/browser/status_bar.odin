@@ -506,6 +506,7 @@ set_pref_bool :: proc(app: ^App, name: string, v: bool) {
 hud_captures :: proc(pos: draw.Vec2) -> bool {
 	if fullscreen_bars_capture(pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
 	if palette_captures(pos) { return true }   // and the command palette while it is open (palette.odin)
+	if setup_captures() { return true }   // and the Setup dialog (setup.odin)
 	if urlbar_captures(pos) { return true }   // and the address bar's suggestions (urlbar.odin)
 	if !hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)

@@ -465,3 +465,9 @@ forget_path :: proc(o: ^Options, dir: string) -> Result {
 	if b == nil || b.path_remove == nil { return {} }
 	return b.path_remove(o, dir)
 }
+
+// The path separator of this platform.
+PATH_SEP :: "\\" when ODIN_OS == .Windows else "/"
+
+// This process's id (what a deferred deletion waits for).
+current_process_id :: proc() -> u32 { return u32(os.get_pid()) }

@@ -248,6 +248,22 @@ open_default_apps :: proc() -> bool {
 // True when this platform can integrate at all (the shell hides the box otherwise).
 supported :: proc() -> bool { return platform_backend() != nil }
 
+// The parts this platform's integration has (the shell shows an option only for a part that exists).
+supported_parts :: proc() -> Parts {
+	b := platform_backend()
+	return b == nil ? {} : b.parts
+}
+
+// The launcher's place in the user's words: "Start menu" on Windows, "application menu" elsewhere.
+menu_name :: proc() -> string {
+	when ODIN_OS == .Windows { return "Start menu" } else { return "application menu" }
+}
+
+// Where the system lists the programs that can be the default browser, in the user's words.
+default_apps_name :: proc() -> string {
+	when ODIN_OS == .Windows { return "Default apps" } else { return "the default browser setting" }
+}
+
 // What the integration adds on this platform, for a label: "Start menu, default apps".
 targets :: proc() -> string {
 	b := platform_backend()

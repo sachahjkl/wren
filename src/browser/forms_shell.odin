@@ -1080,7 +1080,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 }
 
 @(private = "file")
-keyboard_to_page :: proc(app: ^App) -> bool { return fview.page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() }
+keyboard_to_page :: proc(app: ^App) -> bool { return fview.page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures() }
 
 // Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
 page_focus_leave_backward: bool
