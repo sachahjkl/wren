@@ -652,8 +652,9 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
 	app.page_rect = b.rect
 	t := current_tab(app)
-	if shell_nested() {
-		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
+	if shell_nested() || (pacer.resizing && t != nil && t.kind == .Web && shell_has_snapshot(t.id)) {
+		// a chrome frame (shell_frames.odin), or a resize step: the page holds the thread or keeps its layout; its last
+		// frame, nothing of it runs
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		return
 	}
@@ -1002,16 +1003,21 @@ frame :: proc(app: ^App, idled := false) {
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
 	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
-	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
-	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
-		prof_begin(.Animation)
-		page.run_animation_frames(t.page, pacer.frame_ms)
-		prof_end(.Animation)
-		// (the loop counts this frame off after it: 2 = this one and the next)
-		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
-		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
+	// A resize step has no page phase: the page keeps its layout and is drawn from its last frame (page_draw), so the
+	// frame reaches the screen before the composer stretches the previous one; the first frame at a size that holds
+	// lays it out again.
+	if !pacer.resizing {
+		// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
+		if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
+			prof_begin(.Animation)
+			page.run_animation_frames(t.page, pacer.frame_ms)
+			prof_end(.Animation)
+			// (the loop counts this frame off after it: 2 = this one and the next)
+			if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
+			if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
+		}
+		page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	}
-	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	shell_snapshots_frame(app)
 

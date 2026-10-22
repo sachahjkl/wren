@@ -132,6 +132,7 @@ Pacer :: struct {
 	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
 	size:       [2]int,       // the window's size at the last frame (another one: the window is being resized)
 	resizing:   bool,         // this frame follows a size change: drawn and shown at once (pacer_wait)
+	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize)
 }
 
 pacer: Pacer
@@ -190,6 +191,14 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
 	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	// During a resize step, two frames may queue: a present is not made to wait behind the previous one when frames come
+	// faster than the screen (the next one shows the new size sooner). 1 the rest of the time: input latency stays one
+	// frame.
+	want_latency := pacer.resizing ? 2 : 1
+	if want_latency != pacer.latency {
+		render.set_max_frame_latency(&app.r, want_latency)
+		pacer.latency = want_latency
+	}
 	if pacer.resizing { return }
 	if pacer.timed && pacer.timer != nil {
 		now := time.tick_now()._nsec
