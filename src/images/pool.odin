@@ -179,7 +179,7 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
 	d.threads = make([dynamic]^host.Thread)
 	dec = d
 	for _ in 0 ..< max(threads, 1) {
-		if t := host.thread_start(decoder_thread, d, stack_bytes, .Below_Normal); t != nil { append(&d.threads, t) }
+		if t := host.thread_start(decoder_thread, d, stack_bytes, .Below_Normal, "wren-image-decode"); t != nil { append(&d.threads, t) }
 	}
 	// <source type> selection needs to know the optional codecs: the first thread looks (a few CoCreateInstance calls)
 	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, 2 * time.Second) }

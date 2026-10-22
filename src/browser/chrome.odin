@@ -557,6 +557,7 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.smooth_scrolling")
 			menu_command(app, t, "view.frame_statistics")
 			menu_command(app, t, "view.title_statistics")
+			menu_command(app, t, "view.devtools")
 			menu_command(app, t, "view.console")
 			menu_command(app, t, "view.full_screen")
 			menu_command(app, t, "view.tabs_in_title_bar")

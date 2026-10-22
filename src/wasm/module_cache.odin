@@ -463,8 +463,12 @@ disk_queue :: proc(path: string, filekey: Digest, m: wt_module) {
 }
 
 @(private)
+DISK_STOP_BUDGET :: 1500 * time.Millisecond
+
+@(private)
 disk_writer_main :: proc(_: rawptr) {
 	context.allocator = base.process_allocator()
+	stopped_at: time.Tick   // when the writer first saw the stop request
 	for {
 		sync.mutex_lock(&cache.qlock)
 		for len(cache.queue) == 0 && !cache.stop { sync.cond_wait(&cache.qcond, &cache.qlock) }
@@ -472,15 +476,28 @@ disk_writer_main :: proc(_: rawptr) {
 			sync.mutex_unlock(&cache.qlock)
 			return
 		}
+		if cache.stop {
+			// Closing the program: a page that compiled many modules leaves many writes queued, and each one scans the
+			// folder (disk_trim); waiting for all of them keeps a closed window on screen for seconds. The cache is only
+			// an optimisation: after DISK_STOP_BUDGET the writes still queued are dropped.
+			if stopped_at == {} { stopped_at = time.tick_now() }
+			if time.tick_since(stopped_at) > DISK_STOP_BUDGET {
+				for j in cache.queue { delete(j.path); delete(j.payload) }
+				clear(&cache.queue)
+				sync.mutex_unlock(&cache.qlock)
+				return
+			}
+		}
 		job := pop_front(&cache.queue)
 		cache.busy = true
+		last := len(cache.queue) == 0
 		sync.mutex_unlock(&cache.qlock)
 
 		if disk_write(job) {
 			sync.mutex_lock(&cache.lock)
 			cache.stats.disk_writes += 1
 			sync.mutex_unlock(&cache.lock)
-			disk_trim()
+			if last || !cache.stop { disk_trim() }
 		}
 		delete(job.path)
 		delete(job.payload)

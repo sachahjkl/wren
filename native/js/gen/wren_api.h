@@ -1865,6 +1865,14 @@ WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEna
 // whose response nobody reads; it is not cancelled when the page closes. False when the beacon is refused (too large:
 // navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.
 WR_IMPORT("navigator", "Beacon_send") int32_t wr_Beacon_send(const uint8_t *url, uint32_t url_len, const uint8_t *data, uint32_t data_len, const uint8_t *content_type, uint32_t content_type_len);
+// navigator.clipboard.writeText(data): puts the text on the system clipboard. Fulfilled when it is there; rejected
+// with NotAllowedError when the document is not focused and has no recent click or key press, when the clipboard
+// cannot be had, or when writing is turned off (navigator.clipboard_write).
+WR_IMPORT("navigator", "Clipboard_writeText") uint64_t wr_Clipboard_writeText(const uint8_t *data, uint32_t data_len);
+// navigator.clipboard.readText(): the text on the system clipboard (an empty string when it holds none). Rejected
+// with NotAllowedError unless the document is focused and has a recent click or key press (there is no permission
+// prompt), or when reading is turned off (navigator.clipboard_read).
+WR_IMPORT("navigator", "Clipboard_readText") uint64_t wr_Clipboard_readText(void);
 
 /* module media */
 // window.matchMedia(query): an invalid query is "not all" (it never matches).
@@ -1969,6 +1977,10 @@ WR_IMPORT("storage", "StorageEvent_storageArea") int32_t wr_StorageEvent_storage
 // Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
 // the animation frame callbacks of every rendering update, and asks for one frame at once.
 WR_IMPORT("timers", "IntersectionObservers_schedule") void wr_IntersectionObservers_schedule(int32_t observing);
+// Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
+// observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
+// and asks for one frame at once.
+WR_IMPORT("timers", "ResizeObservers_schedule") void wr_ResizeObservers_schedule(int32_t observing);
 // setTimeout(callback, delay_ms)
 WR_IMPORT("timers", "Timers_setTimeout") uint64_t wr_Timers_setTimeout(uint32_t callback, int32_t user, double delay_ms);
 // setInterval(callback, delay_ms)

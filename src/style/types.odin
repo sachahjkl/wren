@@ -159,6 +159,11 @@ Computed :: struct {
 	color_pair:   Scheme_Color,   // `color` resolved in both schemes (children with another scheme pick the other)
 	// --- text ---
 	color:      css.Color,
+	// --- SVG paint (CSS Fill and Stroke 3 §7): `fill` and `stroke` of an element, inherited into its inline <svg> ---
+	svg_fill, svg_stroke: Svg_Paint,
+	stroke_width: f32,
+	stroke_linecap: Stroke_Linecap,
+	stroke_linejoin: Stroke_Linejoin,
 	font_family: []string,
 	font_size:  f32,
 	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
@@ -360,6 +365,7 @@ Prop :: enum u8 {
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
+	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:
@@ -376,6 +382,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
 	.Font_Variant_East_Asian, .Font_Variant_Position, .Text_Fill_Color,
+	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin,
 }
 
 // Shorthands: expanded to longhands when a stylesheet is compiled.

@@ -1,0 +1,107 @@
+<!doctype html>
+<html><head><title>ResizeObserver</title>
+<style>body { margin: 0 } #a { width: 100px; height: 50px; padding: 10px; border: 2px solid } #hid { display: none }</style></head>
+<body><div id="a"></div><div id="hid"></div><span id="inl">text</span><div id="b" style="width:40px;height:20px"></div>
+<script>
+(async () => {
+  const frame = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  const a = document.getElementById("a"), hid = document.getElementById("hid"), inl = document.getElementById("inl"), b = document.getElementById("b");
+  const seen = [];
+  const ro = new ResizeObserver((entries, observer) => {
+    for (const e of entries) seen.push({ id: e.target.id, e, observer });
+  });
+  t("ResizeObserver", ro instanceof ResizeObserver && Object.prototype.toString.call(ro) === "[object ResizeObserver]");
+  throws("callback required", () => new ResizeObserver(1), "TypeError");
+  throws("an argument required", () => new ResizeObserver(), "TypeError");
+  throws("observe a non-element", () => ro.observe(document), "TypeError");
+  throws("unobserve a non-element", () => ro.unobserve({}), "TypeError");
+  throws("an invalid box", () => ro.observe(a, { box: "margin-box" }), "TypeError");
+  throws("no public constructor for entries", () => new ResizeObserverEntry(), "TypeError");
+  throws("no public constructor for sizes", () => new ResizeObserverSize(), "TypeError");
+
+  ro.observe(a);
+  ro.observe(hid);
+  ro.observe(inl);
+  ro.observe(a);   // twice: once
+  await frame();
+  await frame();
+  const by = id => seen.filter(s => s.id === id);
+  eq("one initial entry: the rendered block alone", seen.map(s => s.id).join(), "a");
+  const e = by("a")[0].e;
+  t("a ResizeObserverEntry", e instanceof ResizeObserverEntry && e.target === a && Object.prototype.toString.call(e) === "[object ResizeObserverEntry]");
+  t("contentRect is the content box at the padding's offset", e.contentRect instanceof DOMRectReadOnly && e.contentRect.x === 10 && e.contentRect.y === 10 && e.contentRect.width === 100 && e.contentRect.height === 50);
+  eq("contentBoxSize", e.contentBoxSize.length === 1 && e.contentBoxSize[0] instanceof ResizeObserverSize && e.contentBoxSize[0].inlineSize + "x" + e.contentBoxSize[0].blockSize, "100x50");
+  eq("borderBoxSize", e.borderBoxSize[0].inlineSize + "x" + e.borderBoxSize[0].blockSize, "124x74");
+  t("devicePixelContentBoxSize", e.devicePixelContentBoxSize.length === 1 && e.devicePixelContentBoxSize[0].inlineSize >= 100);
+  t("the sizes are frozen arrays, the same each time", Object.isFrozen(e.contentBoxSize) && e.contentBoxSize === e.contentBoxSize);
+  t("the callback gets the observer", by("a")[0].observer === ro);
+
+  seen.length = 0;
+  await frame();
+  eq("nothing new without change", seen.length, 0);
+
+  a.style.width = "200px";
+  await frame();
+  await frame();
+  eq("a change of width is reported", by("a").length, 1);
+  eq("with the new size", by("a")[0] && by("a")[0].e.contentRect.width, 200);
+
+  seen.length = 0;
+  hid.style.cssText = "display:block;width:30px;height:10px";
+  inl.style.display = "inline-block";
+  inl.style.width = "25px";
+  inl.style.height = "5px";
+  await frame();
+  await frame();
+  eq("a box that appears is reported", by("hid").length, 1);
+  eq("its size", by("hid")[0] && by("hid")[0].e.contentRect.width + "x" + by("hid")[0].e.contentRect.height, "30x10");
+  eq("an inline-block too", by("inl").length === 1 && by("inl")[0].e.contentRect.width, 25);
+
+  seen.length = 0;
+  hid.style.display = "none";
+  await frame();
+  await frame();
+  t("a box that disappears reports 0 x 0", by("hid").length === 1 && by("hid")[0].e.contentRect.width === 0 && by("hid")[0].e.contentBoxSize[0].blockSize === 0);
+
+  // border-box: padding and border count; the content box changing alone is not an observation
+  const seenB = [];
+  const rb = new ResizeObserver(entries => { for (const x of entries) seenB.push(x); });
+  rb.observe(b, { box: "border-box" });
+  await frame();
+  await frame();
+  eq("border-box: the initial entry", seenB.length, 1);
+  b.style.width = "60px";
+  await frame();
+  await frame();
+  eq("border-box: a change", seenB.length, 2);
+  eq("border-box: its size", seenB[1].borderBoxSize[0].inlineSize, 60);
+
+  // what a callback changes is observed again in the same update (a few times at most)
+  const loops = [];
+  const rl = new ResizeObserver(entries => {
+    loops.push(entries[0].contentRect.width);
+    if (loops.length === 1) b.style.width = "90px";
+  });
+  rl.observe(b);
+  await frame();
+  await frame();
+  eq("a change made by a callback is delivered too", loops.join(), "60,90");
+
+  ro.unobserve(a);
+  seen.length = 0;
+  a.style.width = "50px";
+  await frame();
+  await frame();
+  eq("unobserve stops a target's entries", by("a").length, 0);
+  ro.disconnect();
+  rb.disconnect();
+  rl.disconnect();
+  const before = seen.length + seenB.length + loops.length;
+  b.style.width = "10px";
+  await frame();
+  await frame();
+  eq("disconnect stops everything", seen.length + seenB.length + loops.length, before);
+  done();
+})();
+</script>
+</body></html>

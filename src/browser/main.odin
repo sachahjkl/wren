@@ -1,4 +1,4 @@
-// Wasm-first browser shell. The chrome (tabs, address bar, console strip) is built with gui_toolkit's `ui`; the page is a
+// Wasm-first browser shell. The chrome (tabs, address bar, developer tools) is built with gui_toolkit's `ui`; the page is a
 // custom-draw box painted from the DOM. Everything a tab starts lives in the tab's scope: closing a tab is one call.
 //
 // Every load goes through the policy layer (package fetch): the main document, its Wasm modules (in document order), and
@@ -9,6 +9,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
+import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -90,6 +91,8 @@ Tab :: struct {
 	title:    string,
 	status:   string,
 	console:  [dynamic]string,
+	console_added: u64,         // lines ever added to console: line i of it is number console_added - len + i (devtools_console.odin)
+	net:      Net_Log,         // the document's requests, for the Network tab (devtools_network.odin)
 	layout:   Layout,
 	scroll:   f32,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
@@ -215,6 +218,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	delete(t.history)
 	for l in t.console { delete(l) }
 	delete(t.console)
+	net_log_destroy(&t.net)
 	layout_destroy(&t.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
@@ -223,6 +227,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	prefix := level == .Error ? "error: " : level == .Warn ? "warn: " : ""
 	append(&t.console, fmt.aprintf("%s%s", prefix, message))
+	t.console_added += 1
 	for len(t.console) > the_app.cfg.console_max_lines {
 		delete(t.console[0])
 		ordered_remove(&t.console, 0)
@@ -663,6 +668,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		return
 	}
 	defer loading_bar(app, t, dc, b.rect)
+	defer devtools_overlay(app, t, dc, b.rect)   // devtools.odin: the Elements tab's box over the page
 	if t.page == nil {
 		// the request is out: the previous page stays (first_paint.odin), else the expected canvas
 		hold_paint(app, t, dc, b.rect, expected_canvas(app))
@@ -728,8 +734,21 @@ find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
 	return base.NIL_HANDLE
 }
 
-build_ui :: proc(app: ^App) {
-	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
+// The page's own box (or the view of a built-in page): what fills the room the developer tools leave.
+page_view :: proc(app: ^App, t: ^Tab) {
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if t != nil && t.kind == .Config {
+		config_page(&app.config_view, &app.prefs)
+	} else if t != nil && t.kind == .History {
+		history_page(app, t)   // history_ui.odin
+	} else {
+		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
+		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
+		page_area_focus(app, t, pb)
+	}
+}
+
+build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
 	em := ui.font_size()
 	t := current_tab(app)
@@ -746,33 +765,29 @@ build_ui :: proc(app: ^App) {
 			}
 			desktop_offer_bar(app)   // desktop_shell.odin
 			find_bar(app, t)
-			// page
-			ui.next({width = ui.fill(), height = ui.fill()})
-			if t != nil && t.kind == .Config {
-				config_page(&app.config_view, &app.prefs)
-			} else if t != nil && t.kind == .History {
-				history_page(app, t)   // history_ui.odin
-			} else {
-				// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
-				pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
-				page_area_focus(app, t, pb)
-			}
-			// console strip + status bar (status_bar.odin)
-			if t != nil {
-				lines := app.show_console ? min(len(t.console), 3) : 0
-				if lines > 0 {
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5 * f32(lines) + em * 0.4))})
-					if ui.column() {
-						for i in len(t.console) - lines ..< len(t.console) {
-							ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
-							ui.label(fmt.aprintf("%s###cl%d", t.console[i], i, allocator = ui.frame_allocator()))
-						}
-					}
+			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
+			dock, dev_on := devtools_dock(app, t)
+			switch {
+			case dev_on && dock == .Right:
+				ui.next({width = ui.fill(), height = ui.fill()})
+				if ui.row(.Start, {}, "###page_and_devtools") {
+					page_view(app, t)
+					devtools_splitter(app, true)
+					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+					devtools_panel(app, t)
 				}
-				if app.show_console { console_eval_row(app, t, em) }   // "run JavaScript" (console_eval.odin)
+			case dev_on && dock == .Bottom:
+				page_view(app, t)
+				devtools_splitter(app, false)
+				ui.next({width = ui.fill(), height = ui.px(devtools_extent(app, false))})
+				devtools_panel(app, t)
+			case:
+				page_view(app, t)
 			}
+			// status bar (status_bar.odin)
 			status_bar_build(app, t)
 			fullscreen_bars(app, t)
+			devtools_floating(app, t)   // over the page when it is undocked
 		}
 	}
 	context_menus_build(app)
@@ -965,6 +980,8 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
+	// back from another window (the Windows settings, say): the desktop integration may have changed there
+	for e in events { if e.kind == .Activate { desktop_note_activate() } }
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
@@ -1012,6 +1029,13 @@ frame :: proc(app: ^App, idled := false) {
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
+	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
+	page_snapshot_wanted = ran > 0
+	if t := current_tab(app); t != nil && t.page != nil {
+		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
+			page_snapshot_wanted = true
+		}
+	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	shell_snapshots_frame(app)
 
@@ -1046,7 +1070,7 @@ frame :: proc(app: ^App, idled := false) {
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
 	prof_begin(.Present)
-	render.frame_end(&app.r)
+	render.frame_end(&app.r, !(pacer.resizing || pacer.input_frame))   // a resize step or an input frame is shown at once
 	app.presented = true
 	prof_end(.Present)
 	pacer_end_frame(app)
@@ -1105,7 +1129,7 @@ main :: proc() {
 	// the first navigation, whose loads run on their own threads while the renderer starts.
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
-	app.win = platform.open_window(APP_NAME, {1280, 800}, integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
+	app.win = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
 	prof_mark(.Window)
 
 	host.loop_init(&app.loop, wake_window, app.win)
@@ -1146,7 +1170,17 @@ main :: proc() {
 	desktop_startup(app, profile_override != "")   // desktop_shell.odin: the first run integrates once; an existing integration is looked at
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
-	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
+	if !render.init(&app.r, app.win.hwnd, app.win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	if fixed_surface {
+		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
+		// (browser.window.fixed_surface; render.set_fixed_surface)
+		mon := win.MonitorFromWindow(app.win.hwnd, .MONITOR_DEFAULTTONEAREST)
+		mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
+		if win.GetMonitorInfoW(mon, &mi) {
+			render.set_fixed_surface(&app.r, {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)})
+		}
+	}
 	prof_mark(.Renderer)
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
 	prof_mark(.UI_Fonts)
@@ -1172,9 +1206,11 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
+	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
+	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1199,62 +1235,123 @@ main :: proc() {
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 
+	win.ShowWindow(app.win.hwnd, win.SW_HIDE)   // closed means gone from the screen at once, whatever the teardown below takes
+	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
+	host.shutdown_step("prof_report")
 	prof_report()
+	host.shutdown_step("desktop_shell_shutdown")
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
+	host.shutdown_step("shell_frames_destroy")
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
+	host.shutdown_step("session capture")
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
+	host.shutdown_step("profile_save")
 	profile_save(app, force = true)
+	host.shutdown_step("bfcache_shutdown")
 	bfcache_shutdown(app)
+	host.shutdown_step("tab_free")
 	for t in app.tabs { tab_free(app, t) }   // (their session storage goes with the storage manager below)
+	host.shutdown_step("clear")
 	clear(&app.tabs)
+	host.shutdown_step("urlbar_destroy")
 	urlbar_destroy(app)   // urlbar.odin
+	host.shutdown_step("global_history_shutdown")
 	global_history_shutdown(app)
+	host.shutdown_step("history_ui_destroy")
 	history_ui_destroy()
+	host.shutdown_step("history_settings_shutdown")
 	history_settings_shutdown(app)
+	host.shutdown_step("base.scope_close")
 	base.scope_close(app.process)   // every tab, page and request
+	host.shutdown_step("frames_shell_destroy")
 	frames_shell_destroy()   // (their views went with their documents)
+	host.shutdown_step("webauthn_shell_destroy")
+	clipboard_js_destroy()
 	webauthn_shell_destroy(app)   // passkey requests: their threads joined
+	host.shutdown_step("favicons_destroy")
 	favicons_destroy(app)
+	host.shutdown_step("images_shell_destroy")
 	images_shell_destroy(app)
+	host.shutdown_step("page.storage_manager_destroy")
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
+	host.shutdown_step("page.shutdown_threads")
 	page.shutdown_threads()
+	host.shutdown_step("page_thread_destroy")
 	page_thread_destroy()   // page_thread.odin
+	host.shutdown_step("lay.shutdown_threads")
 	lay.shutdown_threads()
+	host.shutdown_step("page.images_shutdown")
 	page.images_shutdown()   // the image cache and its decoding threads
+	host.shutdown_step("page.fonts_shutdown")
 	page.fonts_shutdown()    // the decoded web fonts kept for every page
+	host.shutdown_step("fetch.loader_destroy")
 	fetch.loader_destroy(&app.loader)
+	host.shutdown_step("http_cache_stop")
 	http_cache_stop(app)   // writes what is pending and the index
+	host.shutdown_step("host.blocking_destroy")
 	host.blocking_destroy(&app.blocking)
+	host.shutdown_step("downloads_shutdown")
 	downloads_shutdown()   // (no write or dialog of theirs is running any more)
+	host.shutdown_step("net.client_destroy")
 	net.client_destroy(&app.client)
+	host.shutdown_step("fetch.profile_destroy")
 	fetch.profile_destroy(&app.profile)
+	host.shutdown_step("appearance_destroy")
 	appearance_destroy()
+	host.shutdown_step("hud_destroy")
+	devtools_destroy(app)
 	hud_destroy(app)
+	host.shutdown_step("smooth_shutdown")
 	smooth_shutdown(app)
+	host.shutdown_step("page_cursor_shutdown")
 	page_cursor_shutdown(app)
+	host.shutdown_step("drop_files_destroy")
 	drop_files_destroy(app)
+	host.shutdown_step("app_commands_destroy")
 	app_commands_destroy()
+	host.shutdown_step("window_chrome_destroy")
 	window_chrome_destroy(app)
+	host.shutdown_step("pacer_destroy")
 	pacer_destroy(app)
+	host.shutdown_step("font.set_color_ready_callback")
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
+	host.shutdown_step("page.compile_shutdown")
 	page.compile_shutdown()   // the script compile threads post to the loop: stopped before it goes
+	host.shutdown_step("host.loop_destroy")
 	host.loop_destroy(&app.loop)
+	host.shutdown_step("page.js_shutdown")
 	page.js_shutdown()
+	host.shutdown_step("wasm.runtime_destroy")
 	wasm.runtime_destroy()
+	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
+	host.shutdown_step("forms_shell_destroy")
 	forms_shell_destroy()
+	host.shutdown_step("page_render_destroy")
 	page_render_destroy()
+	host.shutdown_step("config_view_destroy")
 	config_view_destroy(&app.config_view)
+	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
+	host.shutdown_step("ui.field_destroy")
 	ui.field_destroy(&app.address)
+	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()
+	host.shutdown_step("session_destroy")
 	session_destroy()
+	host.shutdown_step("palette_destroy")
 	palette_destroy()   // palette.odin (and the command registry)
+	host.shutdown_step("ui.destroy")
 	ui.destroy(&app.ui_state)
+	host.shutdown_step("ui.theme_destroy")
 	ui.theme_destroy(&app.theme)
+	host.shutdown_step("draw.destroy")
 	draw.destroy(&app.dc)
+	host.shutdown_step("render.destroy")
 	render.destroy(&app.r)
+	host.shutdown_step("font.destroy")
 	font.destroy(&app.fonts)
+	host.shutdown_step("platform.destroy_window")
 	platform.destroy_window(app.win)
 	page.settings_destroy(&app.page_settings)
 	delete(app.cfg.homepage)
@@ -1265,5 +1362,6 @@ main :: proc() {
 	delete(app.tabs)
 	free(app)
 	the_app = nil
+	host.shutdown_end()
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 }

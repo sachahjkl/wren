@@ -31,6 +31,8 @@ foreign _m_navigator {
 	@(link_name = "Navigator_onLine") _Navigator_onLine :: proc() -> i32 ---
 	@(link_name = "Navigator_cookieEnabled") _Navigator_cookieEnabled :: proc() -> i32 ---
 	@(link_name = "Beacon_send") _Beacon_send :: proc(url: [^]u8, url_len: u32, data: [^]u8, data_len: u32, content_type: [^]u8, content_type_len: u32) -> i32 ---
+	@(link_name = "Clipboard_writeText") _Clipboard_writeText :: proc(data: [^]u8, data_len: u32) -> Promise ---
+	@(link_name = "Clipboard_readText") _Clipboard_readText :: proc() -> Promise ---
 }
 
 // A string member of Navigator.
@@ -85,5 +87,19 @@ Beacon_send :: proc "contextless" (url: string, data: Maybe([]u8) = nil, content
 	_data_n := max(u32)
 	if v, ok := data.?; ok { _data_p, _data_n = raw_data(v), u32(len(v)) }
 	return _Beacon_send(raw_data(url), u32(len(url)), _data_p, _data_n, raw_data(content_type), u32(len(content_type))) != 0
+}
+
+// navigator.clipboard.writeText(data): puts the text on the system clipboard. Fulfilled when it is there; rejected
+// with NotAllowedError when the document is not focused and has no recent click or key press, when the clipboard
+// cannot be had, or when writing is turned off (navigator.clipboard_write).
+Clipboard_writeText :: proc "contextless" (data: string) -> Promise {
+	return _Clipboard_writeText(raw_data(data), u32(len(data)))
+}
+
+// navigator.clipboard.readText(): the text on the system clipboard (an empty string when it holds none). Rejected
+// with NotAllowedError unless the document is focused and has a recent click or key press (there is no permission
+// prompt), or when reading is turned off (navigator.clipboard_read).
+Clipboard_readText :: proc "contextless" () -> Promise {
+	return _Clipboard_readText()
 }
 

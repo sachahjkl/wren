@@ -1,0 +1,65 @@
+<!doctype html>
+<html><head><title>compat</title></head>
+<body><input id="i" value="hello world"><div id="far" style="margin-top:3000px;height:10px">far</div>
+<script>
+(async () => {
+  // document.fonts
+  const f = document.fonts;
+  t("document.fonts is a FontFaceSet, the same each time", f instanceof FontFaceSet && f === document.fonts && Object.prototype.toString.call(f) === "[object FontFaceSet]");
+  eq("status", f.status, "loaded");
+  t("ready is a promise of the set", f.ready instanceof Promise && (await f.ready) === f);
+  eq("check", f.check("12px Arial"), true);
+  eq("load", (await f.load("12px Arial")).length, 0);
+  eq("size", f.size, 0);
+  eq("onloading", f.onloading, null);
+  throws("FontFaceSet has no public constructor", () => new FontFaceSet(), "TypeError");
+
+  // navigator.permissions
+  const p = navigator.permissions;
+  t("navigator.permissions", p instanceof Permissions && p === navigator.permissions);
+  const w = await p.query({ name: "clipboard-write" });
+  t("clipboard-write is granted", w instanceof PermissionStatus && w.name === "clipboard-write" && w.state === "granted" && w.onchange === null);
+  eq("clipboard-read prompts", (await p.query({ name: "clipboard-read" })).state, "prompt");
+  eq("geolocation is denied (not supported)", (await p.query({ name: "geolocation" })).state, "denied");
+  let err;
+  try { await p.query({ name: "nope" }); } catch (e) { err = e; }
+  eq("an unknown name", err && err.name, "TypeError");
+  try { await p.query(); err = null; } catch (e) { err = e; }
+  eq("a descriptor is needed", err && err.name, "TypeError");
+
+  // dialogs
+  eq("alert", alert("x"), undefined);
+  eq("confirm", confirm("x"), false);
+  eq("prompt", prompt("x", "y"), null);
+
+  // visualViewport
+  const vv = window.visualViewport;
+  t("visualViewport", vv instanceof VisualViewport && vv === window.visualViewport && vv.scale === 1 && vv.offsetLeft === 0);
+  t("its size is the viewport's", vv.width === document.documentElement.clientWidth && vv.height === document.documentElement.clientHeight && vv.width > 0);
+  let resized = 0;
+  vv.onresize = () => resized++;
+  window.dispatchEvent(new Event("resize"));
+  eq("visualViewport hears the window's resize", resized, 1);
+
+  // scrollIntoViewIfNeeded
+  const far = document.getElementById("far");
+  eq("far is below the viewport", far.getBoundingClientRect().top > window.innerHeight, true);
+  far.scrollIntoViewIfNeeded();
+  t("scrollIntoViewIfNeeded scrolls to it", far.getBoundingClientRect().top < window.innerHeight);
+
+  // execCommand
+  const i = document.getElementById("i");
+  i.focus();
+  i.setSelectionRange(0, 5);
+  eq("queryCommandSupported", document.queryCommandSupported("copy") && !document.queryCommandSupported("bold"), true);
+  eq("queryCommandEnabled with a selection", document.queryCommandEnabled("copy"), true);
+  eq("execCommand copy", document.execCommand("copy"), true);
+  eq("execCommand of another command", document.execCommand("bold"), false);
+  eq("copied", await navigator.clipboard.readText(), "hello");
+  eq("execCommand cut", document.execCommand("cut"), true);
+  eq("cut removes the selection", i.value, " world");
+  eq("nothing selected: false", document.execCommand("copy"), false);
+  done();
+})();
+</script>
+</body></html>

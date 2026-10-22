@@ -8,7 +8,7 @@
 /* ---- life cycle: the parts, called in this order (weak: a part not linked is skipped) ---- */
 
 #define WEB_PARTS(X) X(buffer) X(encoding) X(url) X(abort) X(blob) X(stream) X(fetch) X(xhr) X(storage) X(location) \
-    X(navigator) X(perf) X(crypto) X(media) X(socket) X(message) X(credentials)
+    X(navigator) X(perf) X(crypto) X(media) X(socket) X(message) X(credentials) X(clipboard) X(resize) X(compat)
 #define WEB_DECLARE(name) __attribute__((weak)) int web_##name##_preinit(JSContext *ctx); \
                           __attribute__((weak)) int web_##name##_start(JSContext *ctx, int kind);
 WEB_PARTS(WEB_DECLARE)
