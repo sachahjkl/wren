@@ -82,7 +82,7 @@ windows_cleanup_later :: proc(files: []string, folder: string, pid: u32) -> bool
 	cmd = append_nul(cmd)
 	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW), dwFlags = win.STARTF_USESHOWWINDOW, wShowWindow = u16(win.SW_HIDE)}
 	pi: win.PROCESS_INFORMATION
-	flags := win.DWORD(win.CREATE_NO_WINDOW | win.DETACHED_PROCESS)
+	flags := win.DWORD(win.CREATE_NO_WINDOW)   // (a hidden console of its own: the tools it runs inherit it and show nothing)
 	if !win.CreateProcessW(nil, cstring16(raw_data(cmd)), nil, nil, false, flags, nil, nil, &si, &pi) { return false }
 	win.CloseHandle(pi.hThread)
 	win.CloseHandle(pi.hProcess)
