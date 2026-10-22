@@ -115,6 +115,7 @@ error_text :: proc(e: Error) -> string {
 // What one platform implements. A backend reads and changes the disk only through the roots of `Options`.
 Backend :: struct {
 	name:          string,
+	targets:       string,   // what the integration adds, for a label: "Start menu, default apps"
 	parts:         Parts,
 	status:        proc(o: ^Options, allocator: runtime.Allocator) -> Status,   // fills parts and error only (classify does the rest)
 	install:       proc(o: ^Options) -> Result,
@@ -139,6 +140,29 @@ options_make :: proc(identity: Identity, allocator := context.temp_allocator) ->
 		file_types = split_list(DEFAULT_FILE_TYPES, allocator),
 		notify_system = true,
 	}
+}
+
+// A copy of `o` that owns its strings (for a job on another thread). The icons are shared: they are the program's own
+// embedded data.
+options_clone :: proc(o: Options, allocator := context.allocator) -> Options {
+	c := o   // (the identity's strings are the program's constants)
+	c.exe = clone_or_empty(o.exe, allocator)
+	c.menu_dir = clone_or_empty(o.menu_dir, allocator)
+	c.registry_root = clone_or_empty(o.registry_root, allocator)
+	c.applications_dir = clone_or_empty(o.applications_dir, allocator)
+	c.icons_dir = clone_or_empty(o.icons_dir, allocator)
+	types := make([]string, len(o.file_types), allocator)
+	for ft, i in o.file_types { types[i] = strings.clone(ft, allocator) }
+	c.file_types = types
+	return c
+}
+
+options_destroy :: proc(o: ^Options, allocator := context.allocator) {
+	delete(o.exe, allocator); delete(o.menu_dir, allocator); delete(o.registry_root, allocator)
+	delete(o.applications_dir, allocator); delete(o.icons_dir, allocator)
+	for ft in o.file_types { delete(ft, allocator) }
+	delete(o.file_types, allocator)
+	o^ = {}
 }
 
 // The path of the running executable ("" when the system cannot say).
@@ -188,6 +212,18 @@ open_default_apps :: proc() -> bool {
 
 // True when this platform can integrate at all (the shell hides the box otherwise).
 supported :: proc() -> bool { return platform_backend() != nil }
+
+// What the integration adds on this platform, for a label: "Start menu, default apps".
+targets :: proc() -> string {
+	b := platform_backend()
+	return b == nil ? "" : b.targets
+}
+
+// True when the system has a page where the user picks the default programs.
+has_default_apps_page :: proc() -> bool {
+	b := platform_backend()
+	return b != nil && b.open_defaults != nil
+}
 
 @(private)
 validate :: proc(o: ^Options, need_exe: bool) -> Result {

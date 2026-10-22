@@ -17,6 +17,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
+import "wb:desktop"
 import "wb:dom"
 import "wb:fetch"
 import "wb:host"
@@ -743,6 +744,7 @@ build_ui :: proc(app: ^App) {
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
+			desktop_offer_bar(app)   // desktop_shell.odin
 			find_bar(app, t)
 			// page
 			ui.next({width = ui.fill(), height = ui.fill()})
@@ -1078,8 +1080,9 @@ main :: proc() {
 	args := os.args[1:]
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
+	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a2[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a3[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	app.profile_dir = strings.clone(profile_override != "" ? profile_override : (cfg_dir == "" ? "build/profile" : strings.concatenate({cfg_dir, "/", APP_NAME}, context.temp_allocator)))
 	_ = os.make_directory_all(app.profile_dir)
@@ -1093,6 +1096,9 @@ main :: proc() {
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
+	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
+	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
+	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
 	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
@@ -1137,6 +1143,7 @@ main :: proc() {
 	prof_mark(.Navigation)
 	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
+	desktop_startup(app, profile_override != "")   // desktop_shell.odin: the first run integrates once; an existing integration is looked at
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	if !render.init(&app.r, app.win.hwnd, app.win.size) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
@@ -1193,6 +1200,7 @@ main :: proc() {
 	}
 
 	prof_report()
+	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	profile_save(app, force = true)

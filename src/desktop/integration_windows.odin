@@ -26,6 +26,7 @@ import win "core:sys/windows"
 @(private = "file")
 WINDOWS_BACKEND := Backend{
 	name = "windows",
+	targets = "Start menu, default apps",
 	parts = {.Launcher, .Registration},
 	status = windows_status,
 	install = windows_install,
