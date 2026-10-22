@@ -23,7 +23,6 @@ import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:time"
-import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 import "wb:desktop"
@@ -204,7 +203,16 @@ desktop_watch_wake :: proc(user: rawptr) {
 	app := (^App)(user)
 	sync.atomic_store(&dsk.stale, true)
 	sync.atomic_add(&dsk.changes, 1)
-	if app != nil { platform.wake(app.win) }
+	if app != nil { host.post(&app.loop, desktop_changed_on_loop, nil) }
+}
+
+// On the loop's thread (a woken idle loop builds no frame by itself): what shows the integration is drawn again. Nothing
+// is drawn for the changes nobody looks at (HKCU\Software changes all the time).
+@(private = "file")
+desktop_changed_on_loop :: proc(_: rawptr) {
+	app := the_app
+	if app == nil { return }
+	if t := current_tab(app); setup_is_open() || (t != nil && t.kind == .Config) { app.frames_requested = max(app.frames_requested, 3) }
 }
 
 // After the first tab exists, before Setup's start-up: the system tells us when the integration changes (its registry

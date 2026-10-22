@@ -550,4 +550,12 @@ windows_watcher_wakes_on_every_place_it_watches :: proc(t: ^testing.T) {
 	step(t, "a file in the Desktop folder", proc() -> bool { return os.write_entire_file(fmt.tprintf("%s\\a.lnk", sc.desk), "x") == nil })
 	step(t, "a value in the environment key", proc() -> bool { return reg_set(sc.env, "Path", "C:\\scratch;C:\\more") })
 	step(t, "a key in the registry subtree", proc() -> bool { return reg_set(fmt.tprintf("%s\\Clients\\X", sc.root), "", "x") })
+
+	// a place that goes does not end the watcher: it is a change, and it is watched again when it comes back
+	step(t, "the environment key deleted", proc() -> bool { return reg_delete_tree(sc.env) })
+	step(t, "the Desktop folder deleted", proc() -> bool { return os.remove_all(sc.desk) == nil })
+	step(t, "the Desktop folder back", proc() -> bool { return os.make_directory_all(sc.desk) == nil })
+	step(t, "a file in the Desktop folder again", proc() -> bool { return os.write_entire_file(fmt.tprintf("%s\\b.lnk", sc.desk), "x") == nil })
+	step(t, "the environment key back", proc() -> bool { return reg_set(sc.env, "Path", "C:\\scratch") })
+	step(t, "a value in it again", proc() -> bool { return reg_set(sc.env, "Path", "C:\\scratch;C:\\x") })
 }
