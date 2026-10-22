@@ -34,8 +34,8 @@ DESKTOP_PREFS := [?]config.Def{
 		description = "At the first start of a profile, integrate Wren with the desktop (Start menu shortcut and the entry in the list of default apps on Windows; the application menu entry on Linux), once. Only the release build does by default; development builds, profiles given with --profile and profiles in the temporary folder never do, whatever this says. If the integration is removed later (the box in about:config), it does not come back by itself."},
 	{name = "browser.desktop_integration.offer_update", kind = .Bool, default = {b = true},
 		description = "At start-up, when Wren's desktop integration exists but runs another copy of Wren (the program was moved or updated into another folder), show a line under the address bar that offers to update it. It never changes it by itself."},
-	{name = "browser.desktop_integration.status_refresh_ms", kind = .Int, default = {i = 1000}, bounded = true, min = 0, max = 60_000, unit = "ms",
-		description = "How often about:config reads the state of the desktop integration again from the disk while it is shown. 0 = at every frame."},
+	{name = "browser.desktop_integration.status_refresh_ms", kind = .Int, default = {i = 30000}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "Longest time about:config shows the state of the desktop integration read from the disk before reading it again. Coming back to the window reads it at once (the integration is changed elsewhere); 0 = at every frame."},
 }
 
 register_desktop_shell_prefs :: proc(p: ^config.Prefs) {
@@ -110,6 +110,8 @@ Desktop_Shell :: struct {
 	known:           bool,
 	read_at:         time.Tick,
 	jobs:            int,              // out in the pool
+	writes:          int,              // of those, the ones that change the integration (install / remove)
+	stale:           bool,             // the window came back: the integration may have changed elsewhere
 	offer:           bool,             // the line under the address bar shows
 	offer_dismissed: bool,
 	failure:         string,           // the last failed change, shown under the box (owned)
@@ -135,6 +137,7 @@ desktop_job_start :: proc(app: ^App, kind: Desktop_Job_Kind, reason: Desktop_Rea
 	job.kind, job.reason = kind, reason
 	job.opts = desktop.options_clone(desktop_options(app))
 	dsk.jobs += 1
+	if kind != .Read { dsk.writes += 1 }
 	host.run_blocking(&app.blocking, desktop_job_work, desktop_job_done, job)
 }
 
@@ -159,6 +162,7 @@ desktop_job_done :: proc(data: rawptr) {
 		desktop.options_destroy(&job.opts)
 		desktop.status_destroy(&job.status)
 		free(job)
+		if job.kind != .Read { dsk.writes = max(dsk.writes - 1, 0) }
 		dsk.jobs -= 1
 	}
 	if app == nil { return }
@@ -190,10 +194,14 @@ desktop_job_done :: proc(data: rawptr) {
 
 // The integration of this channel as it is on the disk now, read again when older than the preference says. Called
 // while something shows it.
+// The window came back from another program: the integration may have changed there (read again when shown).
+desktop_note_activate :: proc() { dsk.stale = true }
+
 desktop_status_poll :: proc(app: ^App) {
 	if dsk.jobs > 0 { return }
 	every := time.Duration(config.int_of(&app.prefs, "browser.desktop_integration.status_refresh_ms")) * time.Millisecond
-	if dsk.known && time.tick_since(dsk.read_at) < every { return }
+	if dsk.known && !dsk.stale && time.tick_since(dsk.read_at) < every { return }
+	dsk.stale = false
 	desktop_job_start(app, .Read, .Refresh)
 }
 
@@ -298,7 +306,10 @@ desktop_config_panel :: proc(app: ^App) {
 	if !desktop.supported() { return }
 	desktop_status_poll(app)
 	em := ui.font_size()
-	busy := dsk.jobs > 0
+	// a background read changes nothing on the disk: the box keeps its state and stays usable (a "Working..." every
+	// second made the panel jump), only a change being written or the first read shows as work
+	busy := dsk.writes > 0
+	first := !dsk.known
 	state := dsk.known ? dsk.status.state : .Absent
 
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
@@ -307,13 +318,13 @@ desktop_config_panel :: proc(app: ^App) {
 		checked := dsk.known && state != .Absent
 		label := fmt.aprintf("Integrate %s with the desktop (%s)", APP_NAME, desktop.targets(), allocator = ui.frame_allocator())
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-		if ui.disabled(busy || !dsk.known) {
+		if ui.disabled(busy || first) {
 			if ui.checkbox("###desktop_box", label, &checked).clicked { desktop_toggle(app) }
 		}
 		ui.spacer(ui.px(em * 0.5))
 		if state == .Repair {
 			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
-			if ui.disabled(busy) { if ui.button(dsk.status.stale_exe != "" ? "Update###desktop_update" : "Repair###desktop_update").clicked { desktop_update(app) } }
+			if ui.disabled(busy || first) { if ui.button(dsk.status.stale_exe != "" ? "Update###desktop_update" : "Repair###desktop_update").clicked { desktop_update(app) } }
 			ui.spacer(ui.px(em * 0.5))
 		}
 		if desktop.has_default_apps_page() {
@@ -327,7 +338,7 @@ desktop_config_panel :: proc(app: ^App) {
 	tone := "weak"
 	switch {
 	case dsk.failure != "": note, tone = dsk.failure, "bad"
-	case busy:              note = "Working..."
+	case busy || first:    note = "Working..."
 	case state == .Repair && dsk.status.stale_exe != "": note = fmt.tprintf("Points to %s \u2014 Update makes it run this copy of %s.", dsk.status.stale_exe, APP_NAME)
 	case state == .Repair:  note = "Some of its files are missing \u2014 Repair puts them back."
 	case state == .Installed: note = fmt.tprintf("Installed. %s is listed as a program that can open web addresses; the default is yours to pick.", APP_NAME)
