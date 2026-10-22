@@ -4,12 +4,12 @@
 # The demo pages go in demos\ next to wren.exe: that is where about:demos looks for them first (src\browser\demos.odin),
 # and where testserver.exe serves /site/ from when it runs outside the repository (tools\testserver\site.go).
 # The version defaults to APP_VERSION of src\browser\about.odin; a release tag vX.Y.Z must match it (release.yml checks).
-# Contents: wren.exe (build\browser.exe), vcruntime140.dll, demos\ (examples\site with every Wasm module its pages
+# Contents: wren.exe (build\wren.exe), vcruntime140.dll, demos\ (examples\site with every Wasm module its pages
 # load, built here), examples\jsload and examples\jsweb (served by the test server), testserver.exe and demo.bat
 # (starts the server and opens about:demos), README.txt, LICENSE, THIRD_PARTY.md and licenses\. The JavaScript engine
 # is not a file of its own: its pre-initialized image is embedded in wren.exe (src\js\image).
 # -Dev packages a development build (CI's smoke test) as wren-<version>-dev-windows-x64.zip; without it, the build must
-# be a release one (build.bat release, written in build\browser.channel).
+# be a release one (build.bat release, written in build\wren.channel).
 param([string]$Version = '', [switch]$Dev)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -20,12 +20,12 @@ if (-not $Version) {
     if (-not $m) { throw 'APP_VERSION not found in src\browser\about.odin' }
     $Version = $m.Matches[0].Groups[1].Value
 }
-if (-not (Test-Path build\browser.exe)) { throw 'build\browser.exe is missing: run build.bat release first' }
+if (-not (Test-Path build\wren.exe)) { throw 'build\wren.exe is missing: run build.bat release first' }
 # a package is a release: never a development build (blueprint icon, "development build" in the browser)
-$channel = if (Test-Path build\browser.channel) { [IO.File]::ReadAllText("$root\build\browser.channel").Trim() } else { '' }
+$channel = if (Test-Path build\wren.channel) { [IO.File]::ReadAllText("$root\build\wren.channel").Trim() } else { '' }
 if ($Dev) {
-    if ($channel -ne 'dev') { throw "build\browser.exe is a '$channel' build, not a development one (-Dev)" }
-} elseif ($channel -ne 'release') { throw "build\browser.exe is a '$channel' build, not a release one: run build.bat release first" }
+    if ($channel -ne 'dev') { throw "build\wren.exe is a '$channel' build, not a development one (-Dev)" }
+} elseif ($channel -ne 'release') { throw "build\wren.exe is a '$channel' build, not a release one: run build.bat release first" }
 
 $name = if ($Dev) { "wren-$Version-dev-windows-x64" } else { "wren-$Version-windows-x64" }
 $dist = Join-Path $root 'build\dist'
@@ -51,7 +51,7 @@ foreach ($page in Get-ChildItem examples\site -Recurse -Filter *.html) {
 Push-Location tools\testserver
 try { go build -trimpath -o ..\..\build\testserver.exe .; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
 
-Copy-Item build\browser.exe "$out\wren.exe"
+Copy-Item build\wren.exe "$out\wren.exe"
 Copy-Item build\testserver.exe "$out\testserver.exe"
 Copy-Item -Recurse examples\site "$out\demos"
 # the script loading and web API demos of about:demos: testserver.exe serves them from examples\ under its working

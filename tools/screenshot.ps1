@@ -4,7 +4,7 @@
 # -Actions: drags, right / double / triple clicks, keys with modifiers, typed text, captures in between (see below).
 # The cursor is parked outside the window for the first capture. Aborts if another window covers the target.
 # -Extra: more arguments for the browser before the address (e.g. "--pref","browser.ui.theme=daylight").
-# -Exe: another build of the browser (default build\browser.exe).
+# -Exe: another build of the browser (default build\wren.exe).
 # The desktop: the window is topmost, captured from the screen, and may get the real pointer and keyboard; the script holds
 # desktop.lock (tools\test_env.ps1) from the start of the browser to its end, waiting at most -LockTimeoutSec for it
 # (another run's capture: a few seconds). Callers take no lock. A page of the test server: start one with
@@ -77,7 +77,7 @@ function Grab($h, $path, $withCursor = $false) {
 # (through powershell -File an array comes as one comma-joined string: "--pref,a=b" is split back at its option names)
 $Extra = @($Extra | ForEach-Object { $_ -split ',(?=--)' } | ForEach-Object { if ($_ -match '^(--[a-z-]+),(.*)$') { $Matches[1]; $Matches[2] } else { $_ } })
 $args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
-$exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\browser.exe' }
+$exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\wren.exe' }
 . (Join-Path $PSScriptRoot 'test_env.ps1')
 $desktop = Enter-WrenLock desktop "screenshot.ps1 $Url" $LockTimeoutSec
 $p = $null

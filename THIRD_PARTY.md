@@ -1,6 +1,6 @@
 # Third-party components
 
-Wren's own code is MIT licensed ([LICENSE](LICENSE)). `wren.exe` (`build\browser.exe`) statically links the
+Wren's own code is MIT licensed ([LICENSE](LICENSE)). `wren.exe` (`build\wren.exe`) statically links the
 components below; the release zip carries their license texts in `licenses\`.
 
 | Component | Version | License | Where |

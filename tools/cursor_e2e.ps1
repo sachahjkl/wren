@@ -7,12 +7,12 @@
 # moves elsewhere.
 # Starts build\testserver.exe on a block of ports of its own (tools\test_env.ps1) and holds desktop.lock while the
 # browser window is open.
-#   powershell -File tools\cursor_e2e.ps1 [-Exe build\browser.exe]
+#   powershell -File tools\cursor_e2e.ps1 [-Exe build\wren.exe]
 param([string]$Exe = "")
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
-if (-not $Exe) { $Exe = Join-Path $root 'build\browser.exe' }
+if (-not $Exe) { $Exe = Join-Path $root 'build\wren.exe' }
 Add-Type @"
 using System; using System.Runtime.InteropServices;
 public class CE {

@@ -1,9 +1,9 @@
-# Measures the chrome's UI build on about:config with the profiling build (build.bat profile -> build\browser_prof.exe):
+# Measures the chrome's UI build on about:config with the profiling build (build.bat profile -> build\wren_prof.exe):
 # a quiet phase (no input: how many frames are drawn), a wheel scroll down then up the list, then the pointer moving
 # over the rows. Prints the Build_UI time (ui build + layout of the chrome) and the boxes built per frame, per phase.
-#   powershell -File tools\cfg_bench.ps1 [-Tag before] [-Exe build\browser_prof.exe] [-Url about:config]
+#   powershell -File tools\cfg_bench.ps1 [-Tag before] [-Exe build\wren_prof.exe] [-Url about:config]
 # Opens the browser window and moves the real pointer: holds bench.lock and desktop.lock (tools\test_env.ps1) while it runs.
-param([string]$Tag = "run", [string]$Exe = "build\browser_prof.exe", [string]$Url = "about:config", [int]$Width = 1280, [int]$Height = 1000,
+param([string]$Tag = "run", [string]$Exe = "build\wren_prof.exe", [string]$Url = "about:config", [int]$Width = 1280, [int]$Height = 1000,
       [int]$QuietMs = 2000, [int]$ScrollMs = 3000, [int]$HoverMs = 3000, [switch]$Sample, [string]$Extra = "",
       [int]$X = 40, [int]$Y = 40, [string]$From = "")
 # -X / -Y: where the window goes (screen pixels); -From "x,y": where it is put first (another monitor: a DPI change)

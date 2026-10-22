@@ -1,5 +1,5 @@
 # Compatibility sweep: Wren against Edge over a panel of sites (tools\compare_edge.ps1), without scripts and with them.
-#   powershell -NoProfile -File tools\compat_sweep.ps1 [-OutDir build\sweep] [-Exe build\browser.exe] [-Sites a,b] [-WaitMs 7000]
+#   powershell -NoProfile -File tools\compat_sweep.ps1 [-OutDir build\sweep] [-Exe build\wren.exe] [-Sites a,b] [-WaitMs 7000]
 #       [-Modes noscript,js] [-Rebuild]
 # Modes: noscript compares with scripts off on both sides (compare_edge -NoScript: Edge sends Wren's User-Agent; sites
 # in -SnapshotSites are rendered by Edge from the document fetched with Wren's headers, -Snapshot); js compares both

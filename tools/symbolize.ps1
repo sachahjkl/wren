@@ -1,6 +1,6 @@
 # Names the function and source line at an offset of a module, with its PDB (DbgHelp), e.g. the "Fault offset" of a
 # crash in the Windows event log.
-#   powershell -File tools\symbolize.ps1 -Exe build\browser_prof.exe -Offset 0x18575b [-Offset ...]
+#   powershell -File tools\symbolize.ps1 -Exe build\wren_prof.exe -Offset 0x18575b [-Offset ...]
 param([Parameter(Mandatory)][string]$Exe, [Parameter(Mandatory)][string[]]$Offset)
 $ErrorActionPreference = 'Stop'
 Add-Type @"

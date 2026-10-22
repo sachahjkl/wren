@@ -7,7 +7,7 @@ package browser
 // (QueryPerformanceCounter) to the frame's phases, when someone reads them: the status bar's graph and the window
 // title (hud.odin), or the profiler. Off, each is one test of a flag.
 //
-// The profiler, compiled in only with -define:PROFILE=true (build.bat profile -> build\browser_prof.exe), records at run
+// The profiler, compiled in only with -define:PROFILE=true (build.bat profile -> build\wren_prof.exe), records at run
 // time, when the environment variable WREN_PROF names an output prefix:
 //   * wall time of each phase of every frame, written as <prefix>.csv;
 //   * GPU time of the frame's draw commands (the renderer's timestamp queries, read back a few frames later);

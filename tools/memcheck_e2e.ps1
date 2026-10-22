@@ -1,10 +1,10 @@
 # The browser's check build on a real session: several tabs, navigations (JavaScript, images, forms, animations,
 # shadow DOM), back / forward / reload (the back/forward cache), closed tabs and their reopening, the command palette,
-# about:history and its tree, then a normal exit. The check build (build.bat check -> build\browser_check.exe: every
+# about:history and its tree, then a normal exit. The check build (build.bat check -> build\wren_check.exe: every
 # allocation tracked, src\base\memory.odin) drives itself from a script (WREN_MEMCHECK_SCRIPT, src\browser\memcheck.odin:
 # no keyboard or mouse of the desktop, no lock), writes what is still allocated at exit to the profile's memtrack.txt
 # and exits with code 3 when anything is (WREN_MEMTRACK_FAIL=1).
-#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\browser_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck] [-TimeoutSec 600] [-Prefs name=value,...]
+#   powershell -File tools\memcheck_e2e.ps1 [-Exe build\wren_check.exe] [-NoBuild] [-Stacks] [-Out build\memcheck] [-TimeoutSec 600] [-Prefs name=value,...]
 # -Stacks records the call stack of every block (slower; the report then names the callers). Its own test server, a
 # fresh profile under -Out. Exit code: 0 clean, 1 leaks / bad frees or a failure of the run.
 param([string]$Exe = '', [switch]$NoBuild, [switch]$Stacks, [string]$Out = '', [int]$TimeoutSec = 600, [string[]]$Prefs = @())
@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'test_env.ps1')
-if (-not $Exe) { $Exe = Join-Path $root 'build\browser_check.exe' }
+if (-not $Exe) { $Exe = Join-Path $root 'build\wren_check.exe' }
 if (-not $Out) { $Out = Join-Path $root 'build\memcheck' }
 if (-not $NoBuild) {
     cmd /c "build.bat check" | Out-Host

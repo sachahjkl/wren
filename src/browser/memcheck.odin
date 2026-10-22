@@ -1,6 +1,6 @@
 package browser
 
-// The check build (build.bat check -> build\browser_check.exe: -debug, -define:WREN_TRACK_MEMORY=true): every
+// The check build (build.bat check -> build\wren_check.exe: -debug, -define:WREN_TRACK_MEMORY=true): every
 // allocation of the process is tracked (base/memory.odin), and once the browser has shut everything down the blocks
 // still allocated are written to <profile>/memtrack.txt (or to the file WREN_MEMTRACK_REPORT names). With
 // WREN_MEMTRACK_FAIL=1 the process then exits with code 3 when there are any.

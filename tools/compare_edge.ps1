@@ -2,7 +2,7 @@
 # side-by-side image, a difference image and a measure of the difference.
 #   powershell -NoProfile -File tools\compare_edge.ps1 -Url https://example.com [-Name example] [-Width 1280] [-Height 720]
 #       [-WaitMs 6000] [-OutDir build\cmp] [-NoWren] [-NoEdge] [-NoScript [-UserAgent <ua>] [-AcceptLanguage <list>]]
-# -Exe: another build of Wren (an older one, to measure a change; default build\browser.exe).
+# -Exe: another build of Wren (an older one, to measure a change; default build\wren.exe).
 # -Js compares the two browsers running scripts: Wren with javascript.enabled, Edge as it is (its own User-Agent: each
 # browser gets what its server sends it). Wren's JavaScript errors on that page come from build\jspage.exe (the same
 # engine and bindings without a window), kept as <name>_console.txt and summed up in the JSON line ("js_errors", and

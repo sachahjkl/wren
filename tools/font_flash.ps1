@@ -6,7 +6,7 @@
 # the frame they start at and saved as PNG (<Out>\<name>_state<k>.png). A navigation without a flash has two states:
 # the old page, the new one (three when the link shows a hover or pressed style first).
 #   powershell -File tools\font_flash.ps1 -Url https://sacha.house -Click "300,208;478,208" -Out build\flash [-Profile dir]
-#       [-KeepProfile] [-Extra "--pref","a=b"] [-Exe build\browser_prof.exe] [-WaitMs 6000] [-Name run]
+#       [-KeepProfile] [-Extra "--pref","a=b"] [-Exe build\wren_prof.exe] [-WaitMs 6000] [-Name run]
 # Opens a window: take the shared lock (S:\wb_wt\shared.lock) around it. WREN_PROF is set for a profile build: first
 # paints go to <Out>\<name>.firstpaint.txt (first_paint.odin), what each page cost to <Out>\<name>.requests.txt.
 param([string]$Url, [string]$Click = '', [string]$Out = 'build\flash', [string]$Profile = '', [switch]$KeepProfile,
@@ -32,7 +32,7 @@ public class FF {
 [FF]::SetProcessDpiAwarenessContext([IntPtr](-4)) | Out-Null
 New-Item -ItemType Directory -Force $Out | Out-Null
 $Out = (Resolve-Path $Out).Path
-if (-not $Exe) { $Exe = Join-Path $root 'build\browser_prof.exe' }
+if (-not $Exe) { $Exe = Join-Path $root 'build\wren_prof.exe' }
 if (-not $Profile) { $Profile = Join-Path $env:TEMP "wren_flash_profile" }
 if (-not $KeepProfile -and (Test-Path $Profile)) { Remove-Item -LiteralPath $Profile -Recurse -Force }
 New-Item -ItemType Directory -Force $Profile | Out-Null

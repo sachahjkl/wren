@@ -1,6 +1,6 @@
 # Downloads the official Wasmtime C API release (pinned version, SHA-256 checked) into build\wasmtime:
 #   build\wasmtime\include\...      headers (reference for src\wasm\wasmtime.odin)
-#   build\wasmtime\lib\wasmtime.lib static library (linked into browser.exe: no DLL to ship)
+#   build\wasmtime\lib\wasmtime.lib static library (linked into wren.exe: no DLL to ship)
 #   build\wasmtime\VERSION          the version installed (the script does nothing when it already matches)
 # Usage: powershell -NoProfile -File tools\fetch_wasmtime.ps1 [-Force]
 # To move to another release: change $Version and $Sha256 (the digest GitHub shows for the x86_64-windows-c-api asset),

@@ -53,7 +53,7 @@ function Run-Case($label, $prefs, $expectPersisted, $run) {
     $desktop = Enter-WrenLock desktop "history_e2e.ps1 $label"
     $p = $null
     try {
-        $p = Start-Process (Join-Path $root 'build\browser.exe') -ArgumentList $args2 -PassThru
+        $p = Start-Process (Join-Path $root 'build\wren.exe') -ArgumentList $args2 -PassThru
         $sw = [Diagnostics.Stopwatch]::StartNew()
         while ($p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
         $h = $p.MainWindowHandle

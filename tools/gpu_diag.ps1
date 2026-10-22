@@ -1,13 +1,13 @@
-# GPU time by step on a few pages and window sizes (needs build\browser_prof.exe, build.bat profile).
+# GPU time by step on a few pages and window sizes (needs build\wren_prof.exe, build.bat profile).
 #   powershell -File tools\gpu_diag.ps1 [-Cases blank_anim,home,text_scroll,effects] [-Sizes 2000x1250,1280x800] [-Seconds 8]
-#                                       [-Exe browser_prof.exe] [-Tag _x] [-Out dir] [-ExtraArgs '--pref a=b'] [-GpuSteps 1|2]
+#                                       [-Exe wren_prof.exe] [-Tag _x] [-Out dir] [-ExtraArgs '--pref a=b'] [-GpuSteps 1|2]
 #                                       [-Load]   (-Load: build\gpuload.exe, odin build src/tools/gpuload, runs alongside to keep
 #                                       the graphics clock at its maximum: the driver lowers it at low load, which inflates durations)
 # Each run: the window is set to the client size, the page loads, the measured part (Seconds) starts, nvidia-smi samples the
 # graphics clock and the performance state every 200 ms. Frames of the measured part are summarised per step (mean / p50 /
 # p95, ms) in <Out>\summary.txt and summary.csv. The runs hold bench.lock (tools\test_env.ps1).
 param([string[]]$Cases = @('blank_anim', 'blank_caret', 'home', 'text_scroll', 'effects'), [string[]]$Sizes = @('2000x1250', '1280x800'),
-      [int]$Seconds = 8, [string]$Exe = 'browser_prof.exe', [string]$Tag = '', [string]$Out = '', [string]$ExtraArgs = '', [int]$GpuSteps = 1, [switch]$Load)
+      [int]$Seconds = 8, [string]$Exe = 'wren_prof.exe', [string]$Tag = '', [string]$Out = '', [string]$ExtraArgs = '', [int]$GpuSteps = 1, [switch]$Load)
 $ErrorActionPreference = 'Stop'
 $Cases = @($Cases | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $Sizes = @($Sizes | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
