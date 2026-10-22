@@ -76,3 +76,27 @@ navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.
 
 Host: `Beacon_send :: proc(c: ^Call, url: string, data: Maybe([]u8), content_type: string) -> bool`
 
+### `Clipboard_writeText`
+
+```
+Promise Clipboard_writeText(string data)
+```
+
+navigator.clipboard.writeText(data): puts the text on the system clipboard. Fulfilled when it is there; rejected
+with NotAllowedError when the document is not focused and has no recent click or key press, when the clipboard
+cannot be had, or when writing is turned off (navigator.clipboard_write).
+
+Host: `Clipboard_writeText :: proc(c: ^Call, data: string) -> u64`
+
+### `Clipboard_readText`
+
+```
+Promise<string> Clipboard_readText()
+```
+
+navigator.clipboard.readText(): the text on the system clipboard (an empty string when it holds none). Rejected
+with NotAllowedError unless the document is focused and has a recent click or key press (there is no permission
+prompt), or when reading is turned off (navigator.clipboard_read).
+
+Host: `Clipboard_readText :: proc(c: ^Call) -> u64`
+
