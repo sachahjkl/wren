@@ -104,6 +104,7 @@ thread_join :: proc(t: ^Thread) {
 	shutdown_joining("")
 	sync.mutex_lock(&live_mu)
 	for l, i in live { if l == t { unordered_remove(&live, i); break } }
+	if len(live) == 0 { delete(live); live = nil }   // (nothing kept while no thread lives: the leak check of the tools)
 	sync.mutex_unlock(&live_mu)
 	win.CloseHandle(t.handle)
 	free(t)
