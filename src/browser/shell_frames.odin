@@ -278,7 +278,6 @@ shell_preempt :: proc(user: rawptr) {
 }
 
 // Messages wait in the thread's queue (input, posted or sent messages, a repaint), without taking them.
-@(private = "file")
 shell_input_pending :: proc() -> bool {
 	QS_KEY :: 0x0001; QS_MOUSEMOVE :: 0x0002; QS_MOUSEBUTTON :: 0x0004; QS_POSTMESSAGE :: 0x0008
 	QS_PAINT :: 0x0020; QS_SENDMESSAGE :: 0x0040
@@ -469,9 +468,6 @@ shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	for &s in chrome_frames.snaps { if s.tab == tab { return &s } }
 	return nil
 }
-
-// Whether a tab has a last page frame to show (a resize step draws it instead of laying the page out again).
-shell_has_snapshot :: proc(tab: u64) -> bool { return shell_snapshot_of(tab) != nil }
 
 // After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames.
 shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, canvas: draw.Color) {

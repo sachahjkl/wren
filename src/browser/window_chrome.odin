@@ -27,6 +27,8 @@ WINDOW_PREFS := [?]config.Def{
 		description = "Height of the strip along the top of the screen that brings the tabs and the address bar back in full screen."},
 	{name = "browser.window.square_corners", kind = .Bool, default = {b = true},
 		description = "Square corners on the window itself (Windows 11 rounds them, Windows 10 never does). On (the default): the corners are cut square, by DWM_WINDOW_CORNER_PREFERENCE. Off: the system's rounded corners. Applies at once."},
+	{name = "browser.window.fixed_surface", kind = .Bool, default = {b = true}, restart = true,
+		description = "Never resize the surface the window shows: a composition swap chain holds one surface (the monitor's size) and the window shows the top-left part of it, 1:1, clipped. A window being resized then cuts what was drawn instead of stretching it, and the newly shown strip stays the background until the next frame paints it. Needs a restart; falls back to the usual swap chain when the system cannot compose."},
 }
 
 register_window_prefs :: proc(p: ^config.Prefs) { config.register(p, WINDOW_PREFS[:]) }
