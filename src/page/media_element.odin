@@ -14,6 +14,7 @@ package page
 
 import "core:fmt"
 import "core:math"
+import "core:mem"
 import "core:slice"
 import "core:strings"
 import "wb:base"
@@ -100,6 +101,8 @@ Media_Element :: struct {
 	created_ms:    f64,
 	// the shell
 	paint_gen:     u64,        // changes whenever a new picture is current
+	viewed_ms:     f64,        // the loop clock when the shell last asked for a picture (an element nobody paints is not shown any)
+	unseen:        bool,       // media_update made a picture current that the shell has not seen
 	user_active_ms: f64,
 }
 
@@ -108,6 +111,7 @@ Page_Media :: struct {
 	doc:      ^dom.Document,
 	serial:   u64,
 	activated: bool,       // the page had a click or key press
+	urls:     map[string]u64,   // object URL (URL.createObjectURL) -> Media Source handle
 }
 
 Media_Notice :: struct {
@@ -122,6 +126,7 @@ media_pm :: proc(p: ^Page) -> ^Page_Media {
 	if p.media == nil {
 		p.media = new(Page_Media)
 		p.media.elements = make(map[base.Handle]^Media_Element)
+		p.media.urls = make(map[string]u64)
 		p.media.doc = p.doc
 	}
 	return p.media
@@ -131,6 +136,7 @@ media_destroy :: proc(p: ^Page) {
 	if p.media == nil { return }
 	for _, el in p.media.elements { media_element_free(p, el, true) }
 	delete(p.media.elements)
+	delete(p.media.urls)
 	free(p.media)
 	p.media = nil
 }
@@ -337,6 +343,11 @@ media_load :: proc(el: ^Media_Element) {
 	el.network_state = NETWORK_NO_SOURCE
 	if !st.enabled {
 		media_error(el, MEDIA_ERR_SRC_NOT_SUPPORTED, "media is disabled (media.enabled)")
+		return
+	}
+	// neither a src attribute nor a <source> child: nothing to select (HTML resource selection step: NETWORK_EMPTY, no error)
+	if !media_has_attr(p.doc, el.node, "src") && !media_has_source_child(p, el.node) {
+		el.network_state = NETWORK_EMPTY
 		return
 	}
 	// the candidate: the src attribute, else the <source> children in order
@@ -662,6 +673,12 @@ media_update :: proc(el: ^Media_Element) {
 	if p.closed || el.player == nil { return }
 	st := &p.settings.media
 	media.player_tick(el.player)
+	// Pictures leave the player's queue when they are presented; the shell does that for the videos it paints. For one it
+	// does not (hidden, scrolled out of a tab's view, in a background tab), the clock still runs: late pictures are
+	// presented here and dropped, or the queue would never drain and the media would never end.
+	if el.is_video && page_now_ms(p) - el.viewed_ms >= st.timeupdate_ms {
+		if _, changed := media.player_present(el.player); changed { el.unseen = true }
+	}
 	playing, stalled, ended, perr := media.player_state(el.player)
 	t := media.time_seconds(media.player_time(el.player))
 	if perr != .None && el.err_code == 0 {
@@ -965,7 +982,7 @@ HTMLMediaElement_play :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u64 {
 	el := e.data
 	p := c.page
 	pr := promise_create(p, c.owner)
-	if el.err_code == MEDIA_ERR_SRC_NOT_SUPPORTED || (el.network_state == NETWORK_NO_SOURCE && el.load_gen > 0 && el.kind == .None && el.ms == nil && !media_has_attr(p.doc, el.node, "src") && !media_has_source_child(p, el.node)) {
+	if el.err_code == MEDIA_ERR_SRC_NOT_SUPPORTED || (el.kind == .None && el.ms == nil && !media_has_attr(p.doc, el.node, "src") && !media_has_source_child(p, el.node)) {
 		promise_reject(p, pr, i64(Api_Error.Not_Supported), "NotSupportedError: the media element has no supported source")
 		return pr
 	}
@@ -1000,39 +1017,8 @@ HTMLVideoElement_videoWidth :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u32 { 
 HTMLVideoElement_videoHeight :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u32 { return u32(e.data.vh) }
 
 ////////////////////////////////
-// TimeRanges, MediaError, VideoPlaybackQuality
-
-Time_Ranges :: struct { ranges: [dynamic][2]f64 }
-
-time_ranges_vt := Object_VTable{
-	name = "TimeRanges",
-	destroy = proc(p: ^Page, data: rawptr) {
-		t := (^Time_Ranges)(data)
-		delete(t.ranges)
-		free(t)
-	},
-}
-
-lookup_TimeRanges :: proc(c: ^Call, h: u64) -> ^Time_Ranges { return (^Time_Ranges)(object_data(c.page, h, &time_ranges_vt)) }
-
-@(private)
-make_time_ranges :: proc(c: ^Call, ranges: [][2]f64) -> u64 {
-	t := new(Time_Ranges)
-	for r in ranges { append(&t.ranges, r) }
-	return object_create(c.page, &time_ranges_vt, t, c.owner)
-}
-
-TimeRanges_length :: proc(c: ^Call, r: Api_TimeRanges) -> u32 { return u32(len(r.data.ranges)) }
-
-TimeRanges_start :: proc(c: ^Call, r: Api_TimeRanges, index: u32) -> (f64, Api_Error) {
-	if int(index) >= len(r.data.ranges) { return 0, fail(c, .Index_Size, "The index provided is greater than or equal to the number of ranges.") }
-	return r.data.ranges[index][0], .None
-}
-
-TimeRanges_end :: proc(c: ^Call, r: Api_TimeRanges, index: u32) -> (f64, Api_Error) {
-	if int(index) >= len(r.data.ranges) { return 0, fail(c, .Index_Size, "The index provided is greater than or equal to the number of ranges.") }
-	return r.data.ranges[index][1], .None
-}
+// TimeRanges, MediaError, VideoPlaybackQuality: the page hands out numbers, the script engine makes the objects (an
+// immutable snapshot needs no host object that would have to be released)
 
 // The ranges (seconds) the tracks that play have in common.
 @(private)
@@ -1058,80 +1044,42 @@ media_buffered_ranges :: proc(el: ^Media_Element) -> [][2]f64 {
 	return out[:]
 }
 
-HTMLMediaElement_buffered :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u64 {
+// element.buffered (0), played (1), seekable (2) as (start, end) pairs of f64.
+HTMLMediaElement_ranges :: proc(c: ^Call, e: Api_HTMLMediaElement, which: i32) -> []u8 {
 	el := e.data
-	if el.ms != nil { return make_time_ranges(c, media_source_buffered(el)) }
-	return make_time_ranges(c, media_buffered_ranges(el))
-}
-
-HTMLMediaElement_played :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u64 {
-	return make_time_ranges(c, e.data.played[:])
-}
-
-HTMLMediaElement_seekable :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u64 {
-	el := e.data
-	if !el.got_tracks { return make_time_ranges(c, nil) }
-	if el.ms != nil { return make_time_ranges(c, media_source_seekable(el)) }
-	end := el.duration
-	if math.is_nan(end) || math.is_inf(end) {
+	switch which {
+	case 0:
+		if el.ms != nil { return ranges_bytes(media_source_buffered(el)) }
+		return ranges_bytes(media_buffered_ranges(el))
+	case 1:
+		return ranges_bytes(el.played[:])
+	case 2:
+		if !el.got_tracks { return nil }
+		if el.ms != nil { return ranges_bytes(media_source_seekable(el)) }
+		end := el.duration
 		r := media_buffered_ranges(el)
-		return make_time_ranges(c, r)
+		// a progressive file is seekable over what is downloaded
+		if !math.is_nan(end) && !math.is_inf(end) && el.download_done { r = {{0, end}} }
+		return ranges_bytes(r)
 	}
-	// a progressive file is seekable over what is downloaded
-	r := media_buffered_ranges(el)
-	if el.download_done { r = {{0, end}} }
-	return make_time_ranges(c, r)
+	return nil
 }
 
-Media_Error_Object :: struct { code: u32, message: string }
+HTMLMediaElement_errorCode :: proc(c: ^Call, e: Api_HTMLMediaElement) -> i32 { return i32(e.data.err_code) }
+HTMLMediaElement_errorMessage :: proc(c: ^Call, e: Api_HTMLMediaElement) -> string { return e.data.err_message }
 
-media_error_vt := Object_VTable{
-	name = "MediaError",
-	destroy = proc(p: ^Page, data: rawptr) {
-		m := (^Media_Error_Object)(data)
-		delete(m.message)
-		free(m)
-	},
-}
-
-lookup_MediaError :: proc(c: ^Call, h: u64) -> ^Media_Error_Object { return (^Media_Error_Object)(object_data(c.page, h, &media_error_vt)) }
-
-HTMLMediaElement_error :: proc(c: ^Call, e: Api_HTMLMediaElement) -> (u64, Api_Error) {
+// getVideoPlaybackQuality(): creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames.
+HTMLVideoElement_playbackQuality :: proc(c: ^Call, e: Api_HTMLMediaElement) -> []u8 {
 	el := e.data
-	if el.err_code == 0 { return 0, .Not_Found }
-	m := new(Media_Error_Object)
-	m.code, m.message = u32(el.err_code), strings.clone(el.err_message)
-	return object_create(c.page, &media_error_vt, m, c.owner), .None
-}
-
-MediaError_code :: proc(c: ^Call, e: Api_MediaError) -> u32 { return e.data.code }
-MediaError_message :: proc(c: ^Call, e: Api_MediaError) -> string { return e.data.message }
-
-Video_Quality_Object :: struct { creation: f64, dropped, total: u32 }
-
-video_quality_vt := Object_VTable{
-	name = "VideoPlaybackQuality",
-	destroy = proc(p: ^Page, data: rawptr) { free((^Video_Quality_Object)(data)) },
-}
-
-lookup_VideoPlaybackQuality :: proc(c: ^Call, h: u64) -> ^Video_Quality_Object { return (^Video_Quality_Object)(object_data(c.page, h, &video_quality_vt)) }
-
-HTMLVideoElement_getVideoPlaybackQuality :: proc(c: ^Call, e: Api_HTMLMediaElement) -> u64 {
-	el := e.data
-	q := new(Video_Quality_Object)
-	q.creation = page_now_ms(c.page)
+	q := [4]f64{page_now_ms(c.page), 0, 0, 0}
 	if el.player != nil {
 		s := media.player_stats(el.player)
-		q.total, q.dropped = u32(s.decoded), u32(s.dropped)
+		q[1], q[2] = f64(s.dropped), f64(s.decoded)
 	}
-	return object_create(c.page, &video_quality_vt, q, c.owner)
+	out := make([]u8, size_of(q), context.temp_allocator)
+	mem.copy(raw_data(out), &q, size_of(q))
+	return out
 }
-
-VideoPlaybackQuality_creationTime :: proc(c: ^Call, q: Api_VideoPlaybackQuality) -> f64 { return q.data.creation }
-VideoPlaybackQuality_droppedVideoFrames :: proc(c: ^Call, q: Api_VideoPlaybackQuality) -> u32 { return q.data.dropped }
-VideoPlaybackQuality_totalVideoFrames :: proc(c: ^Call, q: Api_VideoPlaybackQuality) -> u32 { return q.data.total }
-VideoPlaybackQuality_corruptedVideoFrames :: proc(c: ^Call, q: Api_VideoPlaybackQuality) -> u32 { return 0 }
-VideoPlaybackQuality_totalFrameDelay :: proc(c: ^Call, q: Api_VideoPlaybackQuality) -> f64 { return 0 }
 
 ////////////////////////////////
 // The shell
@@ -1169,7 +1117,12 @@ media_view :: proc(p: ^Page, node: base.Handle, present := true) -> (v: Media_Vi
 	v.next_due_ns = -1
 	if el.player == nil { return v, true }
 	media.player_tick(el.player)
-	if present { v.frame, v.changed = media.player_present(el.player) }
+	if present {
+		v.frame, v.changed = media.player_present(el.player)
+		v.changed = v.changed || el.unseen
+		el.unseen = false
+		el.viewed_ms = page_now_ms(p)
+	}
 	v.position = media.time_seconds(media.player_time(el.player))
 	if el.seeking { v.position = el.position }
 	_, v.stalled, _, _ = media.player_state(el.player)

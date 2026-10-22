@@ -1,16 +1,10 @@
 /// HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the
-/// media package's player, and the host objects it hands out: TimeRanges, MediaError, VideoPlaybackQuality. The events
-/// (loadstart ... ended) are plain events fired at the element.
+/// media package's player. The events (loadstart ... ended) are plain events fired at the element; TimeRanges, MediaError and
+/// VideoPlaybackQuality are made by the engine (native/js/runtime/web_mediaobjects.c) from the numbers below.
 [Exposed=Window]
 module htmlmedia {
   /// A <video> or <audio> element; anything else is not a live HTMLMediaElement.
   handle HTMLMediaElement : Element = Media_Element via lookup_HTMLMediaElement;
-  /// A TimeRanges: an immutable snapshot of normalized, non-overlapping ranges in seconds.
-  handle TimeRanges : Object = Time_Ranges via lookup_TimeRanges;
-  /// A MediaError (code, message).
-  handle MediaError : Object = Media_Error_Object via lookup_MediaError;
-  /// A VideoPlaybackQuality sample.
-  handle VideoPlaybackQuality : Object = Video_Quality_Object via lookup_VideoPlaybackQuality;
 
   /// element.currentSrc: the absolute URL of the resource being played ("" when none).
   string HTMLMediaElement_currentSrc(HTMLMediaElement element);
@@ -41,12 +35,12 @@ module htmlmedia {
   void HTMLMediaElement_set_volume(HTMLMediaElement element, f64 value) raises;
   bool HTMLMediaElement_muted(HTMLMediaElement element);
   void HTMLMediaElement_set_muted(HTMLMediaElement element, bool value);
-  /// element.buffered, played, seekable: a new TimeRanges each time.
-  TimeRanges HTMLMediaElement_buffered(HTMLMediaElement element);
-  TimeRanges HTMLMediaElement_played(HTMLMediaElement element);
-  TimeRanges HTMLMediaElement_seekable(HTMLMediaElement element);
-  /// element.error: Not_Found when null.
-  MediaError HTMLMediaElement_error(HTMLMediaElement element) raises;
+  /// element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
+  /// makes the TimeRanges object of them.
+  bytes HTMLMediaElement_ranges(HTMLMediaElement element, i32 which);
+  /// element.error: the code (0 when null) and the message.
+  i32 HTMLMediaElement_errorCode(HTMLMediaElement element);
+  string HTMLMediaElement_errorMessage(HTMLMediaElement element);
   /// element.play(): a promise settled when playback starts (NotAllowedError when the autoplay policy forbids it,
   /// NotSupportedError when there is no usable source, AbortError when a pause or a load interrupts it).
   Promise HTMLMediaElement_play(HTMLMediaElement element);
@@ -58,21 +52,6 @@ module htmlmedia {
   /// video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
   u32 HTMLVideoElement_videoWidth(HTMLMediaElement element);
   u32 HTMLVideoElement_videoHeight(HTMLMediaElement element);
-  /// video.getVideoPlaybackQuality()
-  VideoPlaybackQuality HTMLVideoElement_getVideoPlaybackQuality(HTMLMediaElement element);
-
-  u32 TimeRanges_length(TimeRanges ranges);
-  /// ranges.start(index): IndexSize past the end.
-  f64 TimeRanges_start(TimeRanges ranges, u32 index) raises;
-  f64 TimeRanges_end(TimeRanges ranges, u32 index) raises;
-
-  /// MediaError.code: 1 aborted, 2 network, 3 decode, 4 source not supported.
-  u32 MediaError_code(MediaError error);
-  string MediaError_message(MediaError error);
-
-  f64 VideoPlaybackQuality_creationTime(VideoPlaybackQuality quality);
-  u32 VideoPlaybackQuality_droppedVideoFrames(VideoPlaybackQuality quality);
-  u32 VideoPlaybackQuality_totalVideoFrames(VideoPlaybackQuality quality);
-  u32 VideoPlaybackQuality_corruptedVideoFrames(VideoPlaybackQuality quality);
-  f64 VideoPlaybackQuality_totalFrameDelay(VideoPlaybackQuality quality);
+  /// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+  bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element);
 }

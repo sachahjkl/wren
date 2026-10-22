@@ -400,8 +400,10 @@ JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, in
 {
     WJ_UNUSED(this_val);
     if (argc < 1) { return wj_throw_arity(ctx, "URL.createObjectURL", 1, argc); }
-    if (!blob_of(argv[0])) { return JS_ThrowTypeError(ctx, "Failed to execute 'createObjectURL' on 'URL': parameter 1 is not of type 'Blob'."); }
-    if (!blob_urls_map(ctx)) { return JS_EXCEPTION; }
+    /* (Blob or MediaSource): a Media Source's URL is known to the browser, which plays it in a media element */
+    wj_obj *source = blob_of(argv[0]) ? NULL : wj_unwrap(argv[0], WJ_IFACE_MediaSource);
+    if (!source && !blob_of(argv[0])) { return JS_ThrowTypeError(ctx, "Failed to execute 'createObjectURL' on 'URL': parameter 1 is not of type 'Blob'."); }
+    if (!source && !blob_urls_map(ctx)) { return JS_EXCEPTION; }
     uint8_t r[16];
     arc4random_buf(r, sizeof r);
     r[6] = (uint8_t)((r[6] & 0x0F) | 0x40);
@@ -413,6 +415,10 @@ JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, in
              o && strcmp(o, "null") != 0 ? o : "null", r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], r[10], r[11], r[12], r[13], r[14], r[15]);
     if (o) { JS_FreeCString(ctx, o); }
     JS_FreeValue(ctx, origin);
+    if (source) {
+        wr_MediaSource_registerObjectURL(source->handle, (const uint8_t *)buf, (uint32_t)strlen(buf));
+        return JS_NewString(ctx, buf);
+    }
     JSValue args[2] = { JS_NewString(ctx, buf), JS_DupValue(ctx, argv[0]) };
     JSValue res = map_call(ctx, MAP_SET, 2, args);
     JS_FreeValue(ctx, args[1]);
@@ -428,6 +434,12 @@ JSValue wjr_URL_static_revokeObjectURL(JSContext *ctx, JSValueConst this_val, in
     if (!JS_IsObject(blob_urls)) { return JS_UNDEFINED; }
     JSValue key = JS_ToString(ctx, argv[0]);
     if (JS_IsException(key)) { return key; }
+    size_t klen;
+    const char *ks = JS_ToCStringLen(ctx, &klen, key);
+    if (ks) {
+        if (klen >= 5 && memcmp(ks, "blob:", 5) == 0) { wr_MediaSource_revokeObjectURL((const uint8_t *)ks, (uint32_t)klen); }
+        JS_FreeCString(ctx, ks);
+    }
     JSValue r = map_call(ctx, MAP_DELETE, 1, (JSValueConst *)&key);
     JS_FreeValue(ctx, key);
     if (JS_IsException(r)) { return r; }

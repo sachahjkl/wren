@@ -415,6 +415,10 @@ JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst this_va
 JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_buffered(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
@@ -585,11 +589,19 @@ JSValue wjr_Location_set_pathname(JSContext *ctx, JSValueConst this_val, JSValue
 JSValue wjr_Location_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Location_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Location_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_MediaError_get_code(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MediaError_get_message(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaQueryListEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_MediaQueryListEvent_get_matches(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaQueryListEvent_get_media(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaQueryList_addListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_MediaQueryList_removeListener(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaSource_addSourceBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaSource_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaSource_get_activeSourceBuffers(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MediaSource_get_sourceBuffers(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_MediaSource_removeSourceBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_MediaSource_static_get_canConstructInDedicatedWorker(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MessageChannel_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_MessageChannel_get_port1(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MessageChannel_get_port2(JSContext *ctx, JSValueConst this_val);
@@ -873,6 +885,10 @@ JSValue wjr_ShadowRoot_getHTML(JSContext *ctx, JSValueConst this_val, int argc, 
 JSValue wjr_ShadowRoot_get_adoptedStyleSheets(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ShadowRoot_setHTMLUnsafe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ShadowRoot_set_adoptedStyleSheets(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_SourceBufferList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_SourceBufferList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_SourceBuffer_appendBuffer(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_SourceBuffer_get_buffered(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_StaticRange_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_StorageEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_StorageEvent_get_key(JSContext *ctx, JSValueConst this_val);
@@ -918,6 +934,9 @@ JSValue wjr_TextEncoder_encode(JSContext *ctx, JSValueConst this_val, int argc, 
 JSValue wjr_TextEncoder_encodeInto(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextEncoder_get_encoding(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Text_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TimeRanges_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TreeWalker_firstChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TreeWalker_get_currentNode(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TreeWalker_get_filter(JSContext *ctx, JSValueConst this_val);
@@ -1365,12 +1384,96 @@ static JSValue wjg_MediaQueryList_get_matches(JSContext *ctx, JSValueConst this_
 
 static JSValue wjg_MediaQueryList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 215, "change"); }
 static JSValue wjg_MediaQueryList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 215, "change", v, 0); }
+/* MediaSource.readyState -> mse.MediaSource_readyState */
+static JSValue wjg_MediaSource_get_readyState(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_MediaSource_readyState(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MediaSource.readyState"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* MediaSource.duration -> mse.MediaSource_duration */
+static JSValue wjg_MediaSource_get_duration(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_MediaSource_duration(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* MediaSource.duration = v -> mse.MediaSource_set_duration */
+static JSValue wjg_MediaSource_set_duration(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_MediaSource_set_duration(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.duration"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_MediaSource_get_onsourceopen(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 216, "sourceopen"); }
 static JSValue wjg_MediaSource_set_onsourceopen(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 216, "sourceopen", v, 0); }
 static JSValue wjg_MediaSource_get_onsourceended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 216, "sourceended"); }
 static JSValue wjg_MediaSource_set_onsourceended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 216, "sourceended", v, 0); }
 static JSValue wjg_MediaSource_get_onsourceclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 216, "sourceclose"); }
 static JSValue wjg_MediaSource_set_onsourceclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 216, "sourceclose", v, 0); }
+/* MediaSource.endOfStream() -> mse.MediaSource_endOfStream */
+static JSValue wjg_MediaSource_endOfStream(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_MediaSource_endOfStream(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.endOfStream"); }
+    return JS_UNDEFINED;
+}
+
+/* MediaSource.setLiveSeekableRange() -> mse.MediaSource_setLiveSeekableRange */
+static JSValue wjg_MediaSource_setLiveSeekableRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "MediaSource.setLiveSeekableRange", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    int32_t st = wr_MediaSource_setLiveSeekableRange(self->handle, a0, a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.setLiveSeekableRange"); }
+    return JS_UNDEFINED;
+}
+
+/* MediaSource.clearLiveSeekableRange() -> mse.MediaSource_clearLiveSeekableRange */
+static JSValue wjg_MediaSource_clearLiveSeekableRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 216);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t st = wr_MediaSource_clearLiveSeekableRange(self->handle);
+    if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.clearLiveSeekableRange"); }
+    return JS_UNDEFINED;
+}
+
+/* MediaSource.isTypeSupported() -> mse.MediaSource_isTypeSupported */
+static JSValue wjg_MediaSource_static_isTypeSupported(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return wj_throw_arity(ctx, "MediaSource.isTypeSupported", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t r = wr_MediaSource_isTypeSupported((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_NewBool(ctx, r != 0);
+}
+
 static JSValue wjg_ManagedMediaSource_get_onstartstreaming(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 217, "startstreaming"); }
 static JSValue wjg_ManagedMediaSource_set_onstartstreaming(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 217, "startstreaming", v, 0); }
 static JSValue wjg_ManagedMediaSource_get_onendstreaming(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 217, "endstreaming"); }
@@ -5196,18 +5299,6 @@ static JSValue wjg_HTMLMarqueeElement_get_vspace(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLMarqueeElement_set_vspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 271, "vspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 271, "width", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 271, "width", WJ_REFLECT_STRING, v, 0, 0, 0); }
-/* HTMLMediaElement.error -> htmlmedia.HTMLMediaElement_error */
-static JSValue wjg_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 272);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = 0;
-    int32_t st = wr_HTMLMediaElement_error(self->handle, (void *)&r);
-    if (st == wr_Error_Not_Found) { return JS_NULL; }
-    if (st < 0) { return wj_throw_status(ctx, st, "HTMLMediaElement.error"); }
-    return wj_wrap_host(ctx, r, 421);
-}
-
 static JSValue wjg_HTMLMediaElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
 /* HTMLMediaElement.currentSrc -> htmlmedia.HTMLMediaElement_currentSrc */
@@ -5228,15 +5319,6 @@ static JSValue wjg_HTMLMediaElement_get_networkState(JSContext *ctx, JSValueCons
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_HTMLMediaElement_networkState(self->handle);
     return JS_NewUint32(ctx, r);
-}
-
-/* HTMLMediaElement.buffered -> htmlmedia.HTMLMediaElement_buffered */
-static JSValue wjg_HTMLMediaElement_get_buffered(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 272);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_HTMLMediaElement_buffered(self->handle);
-    return wj_wrap_host(ctx, r, 528);
 }
 
 /* HTMLMediaElement.load() -> htmlmedia.HTMLMediaElement_load */
@@ -5385,24 +5467,6 @@ static JSValue wjg_HTMLMediaElement_set_preservesPitch(JSContext *ctx, JSValueCo
     if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
     wr_HTMLMediaElement_set_preservesPitch(self->handle, a0 ? 1 : 0);
     return JS_UNDEFINED;
-}
-
-/* HTMLMediaElement.played -> htmlmedia.HTMLMediaElement_played */
-static JSValue wjg_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 272);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_HTMLMediaElement_played(self->handle);
-    return wj_wrap_host(ctx, r, 528);
-}
-
-/* HTMLMediaElement.seekable -> htmlmedia.HTMLMediaElement_seekable */
-static JSValue wjg_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 272);
-    if (!self) { return JS_EXCEPTION; }
-    uint64_t r = wr_HTMLMediaElement_seekable(self->handle);
-    return wj_wrap_host(ctx, r, 528);
 }
 
 /* HTMLMediaElement.ended -> htmlmedia.HTMLMediaElement_ended */
@@ -7680,6 +7744,110 @@ static JSValue wjg_ServiceWorkerRegistration_get_onupdatefound(JSContext *ctx, J
 static JSValue wjg_ServiceWorkerRegistration_set_onupdatefound(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 354, "updatefound", v, 0); }
 static JSValue wjg_SharedWorker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 355, "error"); }
 static JSValue wjg_SharedWorker_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 355, "error", v, 0); }
+/* SourceBuffer.mode -> mse.SourceBuffer_mode */
+static JSValue wjg_SourceBuffer_get_mode(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_SourceBuffer_mode(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "SourceBuffer.mode"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* SourceBuffer.mode = v -> mse.SourceBuffer_set_mode */
+static JSValue wjg_SourceBuffer_set_mode(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_set_mode(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.mode"); }
+    return JS_UNDEFINED;
+}
+
+/* SourceBuffer.updating -> mse.SourceBuffer_updating */
+static JSValue wjg_SourceBuffer_get_updating(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_SourceBuffer_updating(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* SourceBuffer.timestampOffset -> mse.SourceBuffer_timestampOffset */
+static JSValue wjg_SourceBuffer_get_timestampOffset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_SourceBuffer_timestampOffset(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* SourceBuffer.timestampOffset = v -> mse.SourceBuffer_set_timestampOffset */
+static JSValue wjg_SourceBuffer_set_timestampOffset(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_set_timestampOffset(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.timestampOffset"); }
+    return JS_UNDEFINED;
+}
+
+/* SourceBuffer.appendWindowStart -> mse.SourceBuffer_appendWindowStart */
+static JSValue wjg_SourceBuffer_get_appendWindowStart(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_SourceBuffer_appendWindowStart(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* SourceBuffer.appendWindowStart = v -> mse.SourceBuffer_set_appendWindowStart */
+static JSValue wjg_SourceBuffer_set_appendWindowStart(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_set_appendWindowStart(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.appendWindowStart"); }
+    return JS_UNDEFINED;
+}
+
+/* SourceBuffer.appendWindowEnd -> mse.SourceBuffer_appendWindowEnd */
+static JSValue wjg_SourceBuffer_get_appendWindowEnd(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_SourceBuffer_appendWindowEnd(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* SourceBuffer.appendWindowEnd = v -> mse.SourceBuffer_set_appendWindowEnd */
+static JSValue wjg_SourceBuffer_set_appendWindowEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_set_appendWindowEnd(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.appendWindowEnd"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_SourceBuffer_get_onupdatestart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 356, "updatestart"); }
 static JSValue wjg_SourceBuffer_set_onupdatestart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 356, "updatestart", v, 0); }
 static JSValue wjg_SourceBuffer_get_onupdate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 356, "update"); }
@@ -7690,8 +7858,56 @@ static JSValue wjg_SourceBuffer_get_onerror(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_SourceBuffer_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 356, "error", v, 0); }
 static JSValue wjg_SourceBuffer_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 356, "abort"); }
 static JSValue wjg_SourceBuffer_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 356, "abort", v, 0); }
+/* SourceBuffer.abort() -> mse.SourceBuffer_abort */
+static JSValue wjg_SourceBuffer_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_abort(self->handle);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.abort"); }
+    return JS_UNDEFINED;
+}
+
+/* SourceBuffer.changeType() -> mse.SourceBuffer_changeType */
+static JSValue wjg_SourceBuffer_changeType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "SourceBuffer.changeType", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_changeType(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.changeType"); }
+    return JS_UNDEFINED;
+}
+
+/* SourceBuffer.remove() -> mse.SourceBuffer_remove */
+static JSValue wjg_SourceBuffer_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 356);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "SourceBuffer.remove", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_SourceBuffer_remove(self->handle, a0, a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "SourceBuffer.remove"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_ManagedSourceBuffer_get_onbufferedchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 357, "bufferedchange"); }
 static JSValue wjg_ManagedSourceBuffer_set_onbufferedchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 357, "bufferedchange", v, 0); }
+/* SourceBufferList.length -> mse.SourceBufferList_length */
+static JSValue wjg_SourceBufferList_get_length(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 358);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_SourceBufferList_length(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
 static JSValue wjg_SourceBufferList_get_onaddsourcebuffer(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 358, "addsourcebuffer"); }
 static JSValue wjg_SourceBufferList_set_onaddsourcebuffer(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 358, "addsourcebuffer", v, 0); }
 static JSValue wjg_SourceBufferList_get_onremovesourcebuffer(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 358, "removesourcebuffer"); }
@@ -8277,26 +8493,6 @@ static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, J
     return JS_UNDEFINED;
 }
 
-/* MediaError.code -> htmlmedia.MediaError_code */
-static JSValue wjg_MediaError_get_code(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 421);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_MediaError_code(self->handle);
-    return JS_NewUint32(ctx, r);
-}
-
-/* MediaError.message -> htmlmedia.MediaError_message */
-static JSValue wjg_MediaError_get_message(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 421);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_MediaError_message(self->handle, wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "MediaError.message"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
 static JSValue wjg_StyleSheet_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 /* TextDecoder.encoding -> encoding.TextDecoder_encoding */
 static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_val)
@@ -8307,43 +8503,6 @@ static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_va
     WJ_FETCH_STRING(n, wr_TextDecoder_encoding(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "TextDecoder.encoding"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* TimeRanges.length -> htmlmedia.TimeRanges_length */
-static JSValue wjg_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 528);
-    if (!self) { return JS_EXCEPTION; }
-    uint32_t r = wr_TimeRanges_length(self->handle);
-    return JS_NewUint32(ctx, r);
-}
-
-/* TimeRanges.start() -> htmlmedia.TimeRanges_start */
-static JSValue wjg_TimeRanges_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 528);
-    if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "TimeRanges.start", 1, argc); }
-    uint32_t a0 = 0;
-    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
-    double r = 0;
-    int32_t st = wr_TimeRanges_start(self->handle, a0, (void *)&r);
-    if (st < 0) { return wj_throw_status(ctx, st, "TimeRanges.start"); }
-    return JS_NewFloat64(ctx, (double)r);
-}
-
-/* TimeRanges.end() -> htmlmedia.TimeRanges_end */
-static JSValue wjg_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 528);
-    if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "TimeRanges.end", 1, argc); }
-    uint32_t a0 = 0;
-    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
-    double r = 0;
-    int32_t st = wr_TimeRanges_end(self->handle, a0, (void *)&r);
-    if (st < 0) { return wj_throw_status(ctx, st, "TimeRanges.end"); }
-    return JS_NewFloat64(ctx, (double)r);
 }
 
 /* URLSearchParams.size -> url.URLSearchParams_size */
@@ -10095,20 +10254,20 @@ static const wj_member wj_m_MediaQueryList[] = {
 };
 static const wj_member wj_m_MediaSource[] = {
     { "handle", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_WORKER_ONLY, 41, NULL, NULL, NULL, 0 },
-    { "sourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "activeSourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "sourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaSource_get_sourceBuffers, NULL, 0 },
+    { "activeSourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaSource_get_activeSourceBuffers, NULL, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_readyState, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_duration, wjg_MediaSource_set_duration, 0 },
     { "onsourceopen", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_onsourceopen, wjg_MediaSource_set_onsourceopen, 0 },
     { "onsourceended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_onsourceended, wjg_MediaSource_set_onsourceended, 0 },
     { "onsourceclose", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_onsourceclose, wjg_MediaSource_set_onsourceclose, 0 },
-    { "canConstructInDedicatedWorker", WJ_M_STATIC_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "addSourceBuffer", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeSourceBuffer", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "endOfStream", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setLiveSeekableRange", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "clearLiveSeekableRange", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isTypeSupported", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "canConstructInDedicatedWorker", WJ_M_STATIC_ATTRIBUTE, 0, 0, NULL, wjr_MediaSource_static_get_canConstructInDedicatedWorker, NULL, 0 },
+    { "addSourceBuffer", WJ_M_METHOD, 0, 1, wjr_MediaSource_addSourceBuffer, NULL, NULL, 0 },
+    { "removeSourceBuffer", WJ_M_METHOD, 0, 1, wjr_MediaSource_removeSourceBuffer, NULL, NULL, 0 },
+    { "endOfStream", WJ_M_METHOD, 0, 0, wjg_MediaSource_endOfStream, NULL, NULL, 0 },
+    { "setLiveSeekableRange", WJ_M_METHOD, 0, 2, wjg_MediaSource_setLiveSeekableRange, NULL, NULL, 0 },
+    { "clearLiveSeekableRange", WJ_M_METHOD, 0, 0, wjg_MediaSource_clearLiveSeekableRange, NULL, NULL, 0 },
+    { "isTypeSupported", WJ_M_STATIC_METHOD, 0, 1, wjg_MediaSource_static_isTypeSupported, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ManagedMediaSource[] = {
     { "streaming", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -11283,7 +11442,7 @@ static const wj_member wj_m_HTMLMarqueeElement[] = {
     { "stop", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMediaElement[] = {
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_error, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_error, NULL, 0 },
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
     { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_currentSrc, NULL, 0 },
@@ -11294,7 +11453,7 @@ static const wj_member wj_m_HTMLMediaElement[] = {
     { "NETWORK_NO_SOURCE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_networkState, NULL, 0 },
     { "preload", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_buffered, NULL, 0 },
+    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_buffered, NULL, 0 },
     { "load", WJ_M_METHOD, 0, 0, wjg_HTMLMediaElement_load, NULL, NULL, 0 },
     { "canPlayType", WJ_M_METHOD, 0, 1, wjg_HTMLMediaElement_canPlayType, NULL, NULL, 0 },
     { "HAVE_NOTHING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
@@ -11312,8 +11471,8 @@ static const wj_member wj_m_HTMLMediaElement[] = {
     { "defaultPlaybackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_defaultPlaybackRate, wjg_HTMLMediaElement_set_defaultPlaybackRate, 0 },
     { "playbackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_playbackRate, wjg_HTMLMediaElement_set_playbackRate, 0 },
     { "preservesPitch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_preservesPitch, wjg_HTMLMediaElement_set_preservesPitch, 0 },
-    { "played", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_played, NULL, 0 },
-    { "seekable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_seekable, NULL, 0 },
+    { "played", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_played, NULL, 0 },
+    { "seekable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_seekable, NULL, 0 },
     { "ended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_ended, NULL, 0 },
     { "autoplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_autoplay, wjg_HTMLMediaElement_set_autoplay, 0 },
     { "loop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_loop, wjg_HTMLMediaElement_set_loop, 0 },
@@ -12292,30 +12451,30 @@ static const wj_member wj_m_SharedWorker[] = {
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SharedWorker_get_onerror, wjg_SharedWorker_set_onerror, 0 },
 };
 static const wj_member wj_m_SourceBuffer[] = {
-    { "mode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "updating", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "timestampOffset", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "mode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_mode, wjg_SourceBuffer_set_mode, 0 },
+    { "updating", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_updating, NULL, 0 },
+    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_SourceBuffer_get_buffered, NULL, 0 },
+    { "timestampOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_timestampOffset, wjg_SourceBuffer_set_timestampOffset, 0 },
     { "audioTracks", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, NULL, NULL, 0 },
     { "videoTracks", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, NULL, NULL, 0 },
     { "textTracks", WJ_M_ATTRIBUTE, WJ_F_WINDOW_ONLY, 0, NULL, NULL, NULL, 0 },
-    { "appendWindowStart", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "appendWindowEnd", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "appendWindowStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_appendWindowStart, wjg_SourceBuffer_set_appendWindowStart, 0 },
+    { "appendWindowEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_appendWindowEnd, wjg_SourceBuffer_set_appendWindowEnd, 0 },
     { "onupdatestart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_onupdatestart, wjg_SourceBuffer_set_onupdatestart, 0 },
     { "onupdate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_onupdate, wjg_SourceBuffer_set_onupdate, 0 },
     { "onupdateend", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_onupdateend, wjg_SourceBuffer_set_onupdateend, 0 },
     { "onerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_onerror, wjg_SourceBuffer_set_onerror, 0 },
     { "onabort", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBuffer_get_onabort, wjg_SourceBuffer_set_onabort, 0 },
-    { "appendBuffer", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "abort", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "changeType", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "appendBuffer", WJ_M_METHOD, 0, 1, wjr_SourceBuffer_appendBuffer, NULL, NULL, 0 },
+    { "abort", WJ_M_METHOD, 0, 0, wjg_SourceBuffer_abort, NULL, NULL, 0 },
+    { "changeType", WJ_M_METHOD, 0, 1, wjg_SourceBuffer_changeType, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 2, wjg_SourceBuffer_remove, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ManagedSourceBuffer[] = {
     { "onbufferedchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ManagedSourceBuffer_get_onbufferedchange, wjg_ManagedSourceBuffer_set_onbufferedchange, 0 },
 };
 static const wj_member wj_m_SourceBufferList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBufferList_get_length, NULL, 0 },
     { "onaddsourcebuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBufferList_get_onaddsourcebuffer, wjg_SourceBufferList_set_onaddsourcebuffer, 0 },
     { "onremovesourcebuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SourceBufferList_get_onremovesourcebuffer, wjg_SourceBufferList_set_onremovesourcebuffer, 0 },
 };
@@ -13061,8 +13220,8 @@ static const wj_member wj_m_MediaError[] = {
     { "MEDIA_ERR_NETWORK", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "MEDIA_ERR_DECODE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "MEDIA_ERR_SRC_NOT_SUPPORTED", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
-    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaError_get_code, NULL, 0 },
-    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaError_get_message, NULL, 0 },
+    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaError_get_code, NULL, 0 },
+    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaError_get_message, NULL, 0 },
 };
 static const wj_member wj_m_MediaList[] = {
     { "mediaText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -14020,9 +14179,9 @@ static const wj_member wj_m_TextTrackCueList[] = {
     { "getCueById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TimeRanges[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TimeRanges_get_length, NULL, 0 },
-    { "start", WJ_M_METHOD, 0, 1, wjg_TimeRanges_start, NULL, NULL, 0 },
-    { "end", WJ_M_METHOD, 0, 1, wjg_TimeRanges_end, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TimeRanges_get_length, NULL, 0 },
+    { "start", WJ_M_METHOD, 0, 1, wjr_TimeRanges_start, NULL, NULL, 0 },
+    { "end", WJ_M_METHOD, 0, 1, wjr_TimeRanges_end, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Touch[] = {
     { "identifier", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -15168,7 +15327,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaQueryList, .n_members = 5, .subtree_end = 216,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MediaSource", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MediaSource", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_MediaSource_constructor,
       .members = wj_m_MediaSource, .n_members = 15, .subtree_end = 218,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15728,7 +15887,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_SharedWorker, .n_members = 2, .subtree_end = 356,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "SourceBuffer", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "SourceBuffer", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_SourceBuffer, .n_members = 18, .subtree_end = 358,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15736,9 +15895,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ManagedSourceBuffer, .n_members = 1, .subtree_end = 358,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "SourceBufferList", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "SourceBufferList", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_SourceBufferList, .n_members = 3, .subtree_end = 359,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_SourceBufferList_index_get, .length_get = wjr_SourceBufferList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechRecognition", .parent = 170, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_SpeechRecognition, .n_members = 24, .subtree_end = 360,
