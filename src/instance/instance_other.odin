@@ -18,6 +18,8 @@ acquire :: proc(key: string, own_exe: string, msg: Message, wait_ms: int) -> (Ou
 
 owner_start :: proc(o: ^Owner, handler: Handler, user: rawptr) -> bool { return false }
 
+owner_closing :: proc(o: ^Owner) {}
+
 owner_stop :: proc(o: ^Owner) {}
 
 focus :: proc(hwnd: rawptr) {}

@@ -117,6 +117,18 @@ try {
         Check ($ms -ge 2500 -and $ms -lt 9000) 'after about the 3 s timeout, not at once and not for ever'
     } finally { [IE]::NtResumeProcess($a.Handle) | Out-Null }
     Close-Wren $b; Close-Wren $a
+
+    "5. a start while the first one is closing: its address is not lost"
+    $P5 = "$scratch\p5"
+    $a = Start-Wren $Exe (@('--profile', $P5) + $restore + @('about:config'))
+    Wait-Window $a
+    [IE]::PostMessage($a.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE, and at once:
+    $b = Start-Wren $Exe (@('--profile', $P5) + $restore + @('about:wren'))
+    Start-Sleep -Milliseconds 4000
+    $bAlive = -not $b.HasExited
+    Check ($bAlive -or $b.ExitCode -eq 0) "the second start either took the profile over or handed its address over (alive=$bAlive)"
+    Close-Wren $b; Close-Wren $a
+    Check ((Tabs $P5) -contains 'about:wren') "the address arrived either way: $((Tabs $P5) -join ', ')"
 }
 finally {
     Exit-WrenLock $desktopLock

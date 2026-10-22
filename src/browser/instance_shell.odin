@@ -82,8 +82,14 @@ instance_begin :: proc(app: ^App) {
 	}
 }
 
-// Before the loop's end work: later starts are told to wait, then the mutex goes.
+// When the loop ends: later starts are told to wait (the window goes, the profile is still this one's until the end of main,
+// when the profile has been written: instance_release).
 instance_end :: proc() {
+	if inst.mine { instance.owner_closing(&inst.owner) }
+}
+
+// The very end: the profile is free.
+instance_release :: proc() {
 	if inst.mine { instance.owner_stop(&inst.owner); inst.mine = false }
 }
 
@@ -107,7 +113,10 @@ instance_handler :: proc(user: rawptr, m: instance.Message) {
 	if the_app == nil { return }
 	d := new(Instance_Open)
 	d.setup = m.setup
-	for a in m.addresses { append(&d.addresses, strings.clone(a)) }
+	for a, i in m.addresses {
+		if i >= 64 { break }   // (a message from a program that means harm is not a way to open a thousand tabs)
+		append(&d.addresses, strings.clone(a))
+	}
 	host.post(&the_app.loop, instance_open, d)
 }
 
