@@ -64,7 +64,41 @@
           transform: rotateX(32deg) rotateY(-24deg); line-height: 1.35; transition: background 0.2s; }
   .tilt:hover { background: light-dark(#fff3bf, #3b3150); }
   .tilt b { color: #c2255c; }
-</style>
+
+  /* two planes that cut through each other (split along their line of intersection), and a star of three */
+  .x-stage { perspective: 600px; }
+  .x-root { position: absolute; left: 70px; top: 50px; width: 120px; height: 120px; transform-style: preserve-3d; animation: xspin 8s linear infinite; }
+  .x-root .p { position: absolute; inset: 0; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 28px; color: #fff; }
+  .x-root .a { background: rgba(224, 49, 49, 0.92); transform: rotateY(50deg); }
+  .x-root .b { background: rgba(25, 113, 194, 0.92); transform: rotateY(-50deg); }
+  @keyframes xspin { from { transform: rotateX(-18deg) rotateY(0deg); } to { transform: rotateX(-18deg) rotateY(360deg); } }
+  .star { position: absolute; left: 70px; top: 50px; width: 120px; height: 120px; transform-style: preserve-3d; animation: sspin 12s linear infinite; }
+  .star .p { position: absolute; inset: 0; border-radius: 60px; opacity: 1; }
+  .star .a { background: #f03e3e; transform: rotateX(70deg); }
+  .star .b { background: #37b24d; transform: rotateY(70deg); }
+  .star .c { background: #1c7ed6; transform: rotateZ(45deg) rotateX(70deg); }
+  @keyframes sspin { from { transform: rotateX(-25deg) rotateY(0deg); } to { transform: rotateX(-25deg) rotateY(360deg); } }
+
+  /* backdrop-filter and blend modes on cards in perspective */
+  .glass-stage { perspective: 500px; background: repeating-linear-gradient(90deg, #ff6b6b 0 18px, #ffd43b 18px 36px, #51cf66 36px 54px, #339af0 54px 72px, #cc5de8 72px 90px); overflow: hidden; }
+  .glass { position: absolute; left: 36px; top: 34px; width: 188px; height: 150px; box-sizing: border-box; padding: 12px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.7);
+           background: rgba(255, 255, 255, 0.22); backdrop-filter: blur(5px) saturate(1.4); color: #111; font-weight: bold; transform: rotateY(-34deg) rotateX(12deg); }
+  .glass small { display: block; font-weight: normal; margin-top: 4px; }
+  .mix { position: absolute; left: 150px; top: 120px; width: 90px; height: 70px; border-radius: 10px; background: #fff; mix-blend-mode: difference; transform: rotateY(40deg); }
+
+  /* a card seen at a steep angle: rasterized as dense as the screen shows it, filtered by mip levels */
+  .sharp-stage { perspective: 330px; overflow: hidden; }
+  .sharp { position: absolute; left: 96px; top: 58px; width: 150px; padding: 8px; box-sizing: border-box; background: light-dark(#fff, #1d2540); border: 2px solid #4c6ef5; border-radius: 8px; font-size: 11px; line-height: 1.3;
+           transform: translateZ(120px) rotateY(58deg); transform-origin: 0% 50%; }
+
+  /* a flat plane inside a plane, turning: the parent is not drawn again at every frame */
+  .nest-stage { perspective: 700px; }
+  .nest { position: absolute; left: 24px; top: 26px; width: 212px; height: 168px; border-radius: 10px; background: linear-gradient(135deg, #dbe4ff, #b2bef5); transform: rotateY(-24deg) rotateX(8deg);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25); color: #1d2433; padding: 10px; box-sizing: border-box; font-weight: bold; }
+  .nest .spinner { position: absolute; right: 18px; bottom: 16px; width: 84px; height: 84px; border-radius: 10px; background: linear-gradient(135deg, #ffa94d, #e8590c); display: flex; align-items: center; justify-content: center;
+                   color: #fff; font-size: 30px; animation: nspin 3s linear infinite; }
+  .nest .tag { position: absolute; left: 10px; bottom: 12px; padding: 4px 10px; border-radius: 12px; background: #1c7ed6; color: #fff; font-size: 12px; }
+  @keyframes nspin { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }</style>
 </head>
 <body>
 <h1>3D transforms</h1>
@@ -88,5 +122,17 @@ Hover the red card to turn it over.</p>
   <div class="cell"><h2>perspective-origin: top right</h2><div class="stage small po c"><div class="slab">100% 0%</div></div></div>
   <div class="cell"><h2>Text on a plane</h2><div class="stage tilt-stage"><div class="tilt"><b>perspective(500px)</b><br>rotateX(32deg) rotateY(-24deg). The text is rasterized in the plane, then projected: hover it, the hit area follows the projection.</div></div></div>
 </div>
-</body>
+<div class="row">
+  <div class="cell"><h2>Planes that cut each other</h2><div class="stage x-stage"><div class="x-root"><div class="p a">A</div><div class="p b">B</div></div></div>
+    <p>Two planes in an X, turning: split along their line of intersection (BSP), each in front on its own side.</p></div>
+  <div class="cell"><h2>Star of three</h2><div class="stage x-stage"><div class="star"><div class="p a"></div><div class="p b"></div><div class="p c"></div></div></div>
+    <p>Three discs through one point: six sectors, each showing the nearest.</p></div>
+  <div class="cell"><h2>backdrop-filter, blend</h2><div class="stage glass-stage"><div class="glass">Frosted<small><code>backdrop-filter: blur(5px) saturate(1.4)</code> on a plane</small></div><div class="mix"></div></div>
+    <p>What lies under the projected card is filtered through its shape; the white card <code>difference</code>-blends.</p></div>
+</div>
+<div class="row">
+  <div class="cell"><h2>Steep card, sharp</h2><div class="stage sharp-stage"><div class="sharp"><b>translateZ(120px) rotateY(58deg)</b><br>Magnified by perspective, still sharp: rasterized as dense as it shows.</div></div></div>
+  <div class="cell"><h2>Plane in a plane</h2><div class="stage nest-stage"><div class="nest">Parent card<div class="spinner">3D</div><div class="tag">kept</div></div></div>
+    <p>The turning child is composited on its own: the parent card is not drawn again at each frame.</p></div>
+</div></body>
 </html>

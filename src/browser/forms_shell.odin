@@ -47,15 +47,39 @@ Painted :: struct {
 	font:    font.Font_Id,
 	line_h:  f32,           // the control's line-height, physical pixels (0: normal)
 	frame:   u64,
+	proj_ok:  bool,         // painted in a 3D plane: `proj` is exact where `xform` / `inv` know nothing of the projection
+	proj:     [9]f32,       // 3x3 (x, y, 1; then the divide by w): that space -> screen
+	proj_inv: [9]f32,       // screen -> that space
 }
 
-// A screen position in the space a control was painted in (a field inside a rotated box takes the click where it shows).
+// A screen position in the space a control was painted in (a field inside a rotated box takes the click where it shows; a
+// field in a 3D plane takes it through the inverse of the projection, perspective divide included).
 @(private = "file")
-painted_local :: #force_inline proc(pt: Painted, pos: [2]f32) -> [2]f32 { return draw.affine_apply(pt.inv, pos) }
+painted_local :: proc(pt: Painted, pos: [2]f32) -> [2]f32 {
+	if pt.proj_ok {
+		if q, ok := lay.h3_apply(pt.proj_inv, pos); ok { return q }
+	}
+	return draw.affine_apply(pt.inv, pos)
+}
 
 // Where the control shows on screen: the bounds of its (possibly transformed) content rect.
 @(private = "file")
-painted_bounds :: #force_inline proc(pt: Painted) -> draw.Rect { return draw.affine_bounds(pt.xform, pt.content) }
+painted_bounds :: proc(pt: Painted) -> draw.Rect {
+	if pt.proj_ok {
+		c := pt.content
+		pts := [4]lay.Vec2{c.min, {c.max.x, c.min.y}, c.max, {c.min.x, c.max.y}}
+		r: draw.Rect
+		n := 0
+		for p in pts {
+			if q, ok := lay.h3_apply(pt.proj, p); ok {
+				r = n == 0 ? draw.Rect{q, q} : draw.Rect{{min(r.min.x, q.x), min(r.min.y, q.y)}, {max(r.max.x, q.x), max(r.max.y, q.y)}}
+				n += 1
+			}
+		}
+		if n > 0 { return r }
+	}
+	return draw.affine_bounds(pt.xform, pt.content)
+}
 
 Drag_Kind :: enum u8 { None, Text, Range }
 
@@ -576,6 +600,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	case .Length: lh = cs.line_height.v * scale
 	}
 	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fview.frame}
+	pt.proj, pt.proj_inv, pt.proj_ok = painted_projection(dc, xf)
 	if fview.page_id != f.id { clear(&fview.painted); clear(&fview.scroll); fview.page_id = f.id }
 	fview.painted[node] = pt
 	focused := f.focus == node && fview.page_focus

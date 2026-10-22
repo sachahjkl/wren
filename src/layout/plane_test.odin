@@ -140,6 +140,28 @@ plane_projection_and_hit_test :: proc(t: ^testing.T) {
 	testing.expect(t, pnear(r.bounds.max.y - r.bounds.min.y, 243, 2), "the near edge grows")
 }
 
+// A point where the card is drawn goes back to the point of the card that is there, exactly (perspective divide included): the
+// affine fit through three corners is off by several pixels at the far corner of a strongly turned card.
+@(test)
+box_point_to_local_is_exact_in_a_plane :: proc(t: ^testing.T) {
+	f := pt_load(CARD)
+	defer pt_unload(f)
+	card := pbx(f, "card")
+	v := view_make(&f.l, f.vp, 0, cull = false)
+	r, ok := box_of(&f.l, dom.find_by_id(f.doc, "card"), f.vp, 0)
+	testing.expect(t, ok && r.projective)
+	worst, affine_worst: f32
+	for p in ([]Vec2{{0, 0}, {200, 0}, {200, 200}, {0, 200}, {100, 100}, {30, 170}, {180, 20}, {150, 100}}) {
+		screen, sok := plane_project(&f.l, &v, card.space, p)
+		testing.expect(t, sok)
+		back := box_point_to_local(r, screen)
+		worst = max(worst, math.abs(back.x - p.x), math.abs(back.y - p.y))
+		approx := mat_apply(r.inverse, screen)
+		affine_worst = max(affine_worst, math.abs(approx.x - p.x), math.abs(approx.y - p.y))
+	}
+	testing.expectf(t, worst < 0.05, "the round trip is exact (off by %.3f)", worst)
+	testing.expectf(t, affine_worst > 2, "(the affine fit alone is off by %.2f: the exact map is needed)", affine_worst)
+}
 @(test)
 preserve_3d_contexts :: proc(t: ^testing.T) {
 	f := pt_load(`<body style="margin:0"><div id=root style="perspective:600px;width:300px;height:300px">

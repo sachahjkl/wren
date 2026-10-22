@@ -100,6 +100,7 @@ Effects :: struct {
 	origin:   draw.Vec2,              // where layout coordinates (plus offsets) land in the target being drawn: the page's origin,
 	                                  // or minus the offsets of the plane whose layer is open (fo)
 	page_origin: draw.Vec2,
+	screen:   lay.Rect,               // the page area in the draw space (planes are rasterized for what shows of them)
 	pending:  [dynamic]Pending_Plane, // planes of 3D contexts, waiting for their root to close (sorted by depth then)
 	hide:     int,                    // open plane groups that show nothing (edge-on, empty): their content is not drawn
 	xform:    i32,              // Transform space whose matrix is pushed (lay.NONE: none)
@@ -125,11 +126,19 @@ Open_Group :: struct {
 	hidden: bool,    // a plane that shows nothing: no layer, its content is not drawn
 	plane: bool,     // a plane layer was pushed (plane.odin of the toolkit): composited projected when the group closes
 	saved_origin: draw.Vec2,   // e.origin outside the plane
+	blend:    draw.Blend_Mode,   // plane: its mix-blend-mode, applied to the projected quad
+	backdrop: []draw.Filter,     // plane: its backdrop-filter, applied to what lies under the projected quad
+	// planes with flat child planes composited on their own (layout.plane_detachable, see plane_pause):
+	plan:      Plane_Plan,       // how the layer is rasterized (the same for every segment)
+	layer_open: bool,            // the current segment has a layer open
+	seg:       int,              // the current segment: the content before the first child is 0, after it 1...
+	parts:     [dynamic]draw.Plane_Part,   // the layers to composite for the plane so far, in order: segments and children
+	detach_to: int,              // this plane is composited on its own into the parts of e.open[detach_to - 1] (0: not)
 }
 
 @(private)
-effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin: draw.Vec2) -> Effects {
-	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, xform = lay.NONE, clip = -2, group = -2,
+effects_make :: proc(l: ^Layout, v: ^lay.View, dc: ^draw.Context, origin, size: draw.Vec2) -> Effects {
+	e := Effects{l = l, v = v, dc = dc, origin = origin, page_origin = origin, screen = lay.Rect{origin, origin + size}, xform = lay.NONE, clip = -2, group = -2,
 		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
 		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	e.groups = plan_groups(&e)
@@ -198,6 +207,7 @@ effects_for :: proc(e: ^Effects, it: ^lay.Display_Item) -> bool {
 	if e.hide > 0 { return false }
 	set_clip(e, it.clip)
 	set_xform(e, xf)
+	ctl_plane_for(e, it)
 	return true
 }
 
@@ -297,6 +307,19 @@ plan_groups :: proc(e: ^Effects) -> []Group_Paint {
 		o := group_outset(e, i32(g))
 		b := lay.Rect{gp[g].bounds.min - {o[0], o[1]}, gp[g].bounds.max + {o[2], o[3]}}
 		b = group_bounds_in_dest(e, i32(g), b)
+		if plane_detach(e.l, i32(g)) {
+			// composited on its own: its parent's layer holds nothing of it (and does not grow or move with it); what receives
+			// the parent receives it. (A parent with no content of its own is only there to carry the child: any bounds do.)
+			if !gp[parent].seen { gp[parent].bounds, gp[parent].seen = b, true }
+			grand := e.l.groups[parent].dest
+			if grand == lay.NONE { continue }
+			b = group_bounds_in_dest(e, parent, b)
+			p := &gp[grand]
+			p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
+			p.seen = true
+			p.units += 1
+			continue
+		}
 		p := &gp[parent]
 		p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
 		p.seen = true
@@ -335,6 +358,24 @@ any_active :: proc(fs: []draw.Filter) -> bool {
 	return false
 }
 
+// Pushes the clip-path of group `g`'s box (drawn under `off` and the transform space `box_xf`); false: it has none.
+@(private)
+push_clip_path :: proc(e: ^Effects, g: ^lay.Group, box_xf: i32, off: draw.Vec2) -> bool {
+	sh := lay.clip_path_shape(e.l, g.box)
+	if sh.kind == .None { return false }
+	set_xform(e, box_xf)
+	switch sh.kind {
+	case .None:
+	case .Rect: draw.push_clip_rounded(e.dc, draw.rect_shift(to_rect(sh.rect), off), sh.radii)
+	case .Ellipse: draw.push_clip_ellipse(e.dc, sh.center + off, sh.radius)
+	case .Polygon:
+		pts := make([]draw.Vec2, len(sh.points), context.temp_allocator)
+		for p, i in sh.points { pts[i] = p + off }
+		draw.push_clip_polygon(e.dc, pts, sh.evenodd)
+	}
+	return true
+}
+
 @(private)
 open_group :: proc(e: ^Effects, c: i32) {
 	l := e.l
@@ -343,6 +384,19 @@ open_group :: proc(e: ^Effects, c: i32) {
 	cs := b.cs
 	gp := &e.groups[c]
 	og := Open_Group{g = c}
+	// a flat plane on a plain plane is composited on its own: the parent's layer so far is set aside, its content after this
+	// goes in the next one (so animating this plane does not draw the parent again)
+	if .Plane in g.effects && g.parent != lay.NONE && plane_detach(l, c) {
+		for i := len(e.open) - 1; i >= 0; i -= 1 {
+			if e.open[i].g == g.parent {
+				if e.open[i].plane && !e.open[i].hidden {
+					plane_pause(e, i)
+					og.detach_to = i + 1
+				}
+				break
+			}
+		}
+	}
 	// the clips around the group's box: they cut its composite
 	set_clip(e, b.clip)
 	og.floor = len(e.chain)
@@ -360,20 +414,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 	off := e.v.offsets[space] + e.origin
 	box_xf := l.spaces[space].xform
 	if .Clip_Path in g.effects && effects_settings.clip_paths {
-		sh := lay.clip_path_shape(l, g.box)
-		if sh.kind != .None {
-			set_xform(e, box_xf)
-			switch sh.kind {
-			case .None:
-			case .Rect: draw.push_clip_rounded(e.dc, draw.rect_shift(to_rect(sh.rect), off), sh.radii)
-			case .Ellipse: draw.push_clip_ellipse(e.dc, sh.center + off, sh.radius)
-			case .Polygon:
-				pts := make([]draw.Vec2, len(sh.points), context.temp_allocator)
-				for p, i in sh.points { pts[i] = p + off }
-				draw.push_clip_polygon(e.dc, pts, sh.evenodd)
-			}
-			og.shape = true
-		}
+		og.shape = push_clip_path(e, g, box_xf, off)
 	}
 	bd: draw.Backdrop
 	bd_rect: draw.Rect
@@ -381,7 +422,10 @@ open_group :: proc(e: ^Effects, c: i32) {
 	has_bd := false
 	if .Backdrop in g.effects && effects_settings.backdrop_filters && b.kind != .Inline {
 		bfs := css_filters(cs.backdrop_filter, l.scale)
-		if any_active(bfs) {
+		if plane {
+			// a plane's backdrop is what lies under its projection: read when it is composited (close_plane)
+			if any_active(bfs) { og.backdrop = bfs }
+		} else if any_active(bfs) {
 			bd_rect = draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
 			bd_radii = lay.border_radii(cs, b.size.x, b.size.y, l.scale)
 			set_xform(e, box_xf)
@@ -398,7 +442,10 @@ open_group :: proc(e: ^Effects, c: i32) {
 		if !any_active(filters) { filters = nil }
 	}
 	blend := draw.Blend_Mode.Normal
-	if .Blend in g.effects && effects_settings.blend_modes { blend = draw.Blend_Mode(cs.mix_blend_mode) }
+	if .Blend in g.effects && effects_settings.blend_modes {
+		// (a plane blends as a projected quad against what it lands on, not inside its own layer)
+		if plane { og.blend = draw.Blend_Mode(cs.mix_blend_mode) } else { blend = draw.Blend_Mode(cs.mix_blend_mode) }
+	}
 	alpha := plane ? f32(1) : g.alpha   // a plane is faded when it is composited
 	isolate := .Isolate in g.effects && effects_settings.blend_modes
 	masked := .Mask in g.effects && effects_settings.masks
@@ -429,7 +476,12 @@ open_group :: proc(e: ^Effects, c: i32) {
 @(private)
 close_group :: proc(e: ^Effects) {
 	og := pop(&e.open)
-	if og.hidden { e.hide -= 1; pop_chain_to(e, og.floor); return }
+	if og.hidden {
+		e.hide -= 1
+		pop_chain_to(e, og.floor)
+		if og.detach_to > 0 { plane_resume(e, og.detach_to - 1) }
+		return
+	}
 	if og.skip { e.fxc.skip -= 1 }
 	pop_chain_to(e, og.floor)
 	if og.mask && !og.skip && !fx_cache_skipping(e) {
