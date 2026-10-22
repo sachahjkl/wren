@@ -27,12 +27,13 @@ STACK_SIZE_PARAM_IS_A_RESERVATION :: 0x00010000
 Thread_Priority :: enum i32 { Lowest = -2, Below_Normal = -1, Normal = 0 }
 
 // Starts `fn(data)` on a new thread with `stack_bytes` of reserved stack (0 = the executable's default). Nil on failure.
-thread_start :: proc(fn: Task_Proc, data: rawptr, stack_bytes := 0, priority := Thread_Priority.Normal) -> ^Thread {
+thread_start :: proc(fn: Task_Proc, data: rawptr, stack_bytes := 0, priority := Thread_Priority.Normal, name := "") -> ^Thread {
 	t := new(Thread)
 	t.fn, t.data = fn, data
 	t.ctx = context
 	t.handle = win.CreateThread(nil, uint(max(stack_bytes, 0)), thread_entry, t, STACK_SIZE_PARAM_IS_A_RESERVATION | win.CREATE_SUSPENDED, &t.id)
 	if t.handle == nil { free(t); return nil }
+	if name != "" { win.SetThreadDescription(t.handle, win.utf8_to_wstring(name, context.temp_allocator)) }   // what debuggers and Process Explorer show
 	if priority != .Normal { win.SetThreadPriority(t.handle, i32(priority)) }
 	win.ResumeThread(t.handle)
 	return t

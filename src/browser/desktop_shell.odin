@@ -23,7 +23,9 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:strings"
+import "core:sync"
 import "core:time"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 import "wb:desktop"
@@ -111,7 +113,8 @@ Desktop_Shell :: struct {
 	read_at:         time.Tick,
 	jobs:            int,              // out in the pool
 	writes:          int,              // of those, the ones that change the integration (install / remove)
-	stale:           bool,             // the window came back: the integration may have changed elsewhere
+	stale:           b32,              // atomic: the window came back, or the watcher saw a change on the disk
+	watcher:         ^desktop.Watcher, // nil: no system watcher here, the periodic read below stays
 	offer:           bool,             // the line under the address bar shows
 	offer_dismissed: bool,
 	failure:         string,           // the last failed change, shown under the box (owned)
@@ -120,6 +123,7 @@ Desktop_Shell :: struct {
 @(private = "file") dsk: Desktop_Shell
 
 desktop_shell_destroy :: proc() {
+	desktop.watch_stop(dsk.watcher)
 	desktop.status_destroy(&dsk.status)
 	delete(dsk.failure)
 	dsk = {}
@@ -195,13 +199,23 @@ desktop_job_done :: proc(data: rawptr) {
 // The integration of this channel as it is on the disk now, read again when older than the preference says. Called
 // while something shows it.
 // The window came back from another program: the integration may have changed there (read again when shown).
-desktop_note_activate :: proc() { dsk.stale = true }
+desktop_note_activate :: proc() { sync.atomic_store(&dsk.stale, true) }
+
+// The watcher's thread: a place the integration lives changed on the disk.
+@(private = "file")
+desktop_watch_wake :: proc(user: rawptr) {
+	app := (^App)(user)
+	sync.atomic_store(&dsk.stale, true)
+	if app != nil { platform.wake(app.win) }
+}
 
 desktop_status_poll :: proc(app: ^App) {
 	if dsk.jobs > 0 { return }
+	stale := sync.atomic_load(&dsk.stale)
+	if dsk.known && !stale && dsk.watcher != nil { return }   // the system tells us: no periodic read at all
 	every := time.Duration(config.int_of(&app.prefs, "browser.desktop_integration.status_refresh_ms")) * time.Millisecond
-	if dsk.known && !dsk.stale && time.tick_since(dsk.read_at) < every { return }
-	dsk.stale = false
+	if dsk.known && !stale && time.tick_since(dsk.read_at) < every { return }
+	if stale { sync.atomic_store(&dsk.stale, false) }
 	desktop_job_start(app, .Read, .Refresh)
 }
 
@@ -261,6 +275,9 @@ desktop_startup :: proc(app: ^App, profile_explicit: bool) {
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	mark := strings.concatenate({app.profile_dir, "/", DESKTOP_MARK_FILE}, context.temp_allocator)
+	// the system tells us when the integration changes (its registry keys, the Start menu shortcut): no periodic read
+	o := desktop_options(app)
+	dsk.watcher = desktop.watch_start(&o, desktop_watch_wake, app)
 	if config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") && !os.exists(mark) {
 		// the mark first: if the profile cannot be written, it is not "once" and nothing is done
 		text := fmt.tprintf("wren desktop integration: first run handled\nchannel=%s\nexe=%s\n", channel_name(), desktop.executable_path())
