@@ -110,3 +110,7 @@ function Start-WrenTestServer([int]$BasePort = 0, [string]$Exe = '', [switch]$Wp
 function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
+
+# No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
+# the first-run integration and the update offer of src/browser/desktop_shell.odin read this variable. (--desktop-integration=... on the command line still works.)
+$env:WREN_DESKTOP_INTEGRATION = 'off'

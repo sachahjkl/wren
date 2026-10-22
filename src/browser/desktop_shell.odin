@@ -11,7 +11,8 @@ package browser
 //   * the same two commands in the palette;
 //   * the first run: a release build integrates itself once per profile (a mark in the profile; removing the integration
 //     later never brings it back). Development builds, the profiles given on the command line (`--profile`: every test
-//     and tool does) and the profiles in the temporary folder never do;
+//     and tool does), the profiles in the temporary folder, and every run with WREN_DESKTOP_INTEGRATION=off in the
+//     environment (tools\test_env.ps1 sets it for the scripts that start the browser) never do;
 //   * a discreet line at start-up when an existing integration runs another executable of the same channel: it offers
 //     "Update", it never changes anything by itself;
 //   * `--desktop-integration=install|remove|status`, without a window (an uninstall script, the tests).
@@ -235,7 +236,6 @@ desktop_update :: proc(app: ^App) {
 DESKTOP_MARK_FILE :: "desktop_integration.txt"
 
 // A profile that is temporary or given on the command line is a test's, a tool's, an agent's: it never integrates.
-@(private = "file")
 desktop_profile_is_disposable :: proc(app: ^App, explicit: bool) -> bool {
 	if explicit || !app.cfg.persist_profile { return true }
 	tmp, err := os.temp_dir(context.temp_allocator)
@@ -250,6 +250,7 @@ desktop_profile_is_disposable :: proc(app: ^App, explicit: bool) -> bool {
 // After the first tab exists. The first run integrates (once); any other start looks at an integration that exists.
 desktop_startup :: proc(app: ^App, profile_explicit: bool) {
 	if !desktop.supported() { return }
+	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
 	if desktop_profile_is_disposable(app, profile_explicit) { return }
 	mark := strings.concatenate({app.profile_dir, "/", DESKTOP_MARK_FILE}, context.temp_allocator)
 	if config.bool_of(&app.prefs, "browser.desktop_integration.on_first_run") && !os.exists(mark) {
@@ -305,11 +306,11 @@ desktop_config_panel :: proc(app: ^App) {
 		ui.spacer(ui.px(em * 0.8))
 		checked := dsk.known && state != .Absent
 		label := fmt.aprintf("Integrate %s with the desktop (%s)", APP_NAME, desktop.targets(), allocator = ui.frame_allocator())
-		ui.next({width = ui.text_size(em * 2.6), height = ui.px(ui.dense(em * 2))})
+		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		if ui.disabled(busy || !dsk.known) {
 			if ui.checkbox("###desktop_box", label, &checked).clicked { desktop_toggle(app) }
 		}
-		ui.spacer(ui.fill())
+		ui.spacer(ui.px(em * 0.5))
 		if state == .Repair {
 			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
 			if ui.disabled(busy) { if ui.button(dsk.status.stale_exe != "" ? "Update###desktop_update" : "Repair###desktop_update").clicked { desktop_update(app) } }
