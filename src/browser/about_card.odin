@@ -41,13 +41,22 @@ CARD_STYLE :: `
   .lic .meta div { margin-right: 26px; }
   .lic .meta small { display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(236, 239, 247, 0.5); }
   .lic .meta em { font-style: normal; font-size: 13px; font-variant-numeric: tabular-nums; }
-  .lic .seal { right: 18px; bottom: 16px; width: 78px; height: 78px; border-radius: 50%;
-    background-image: repeating-conic-gradient(from 0deg, #e9c96a 0deg, #e9c96a 4deg, #b88a28 4deg, #b88a28 8deg); }
+  @media (max-width: 520px) {
+    .lic { aspect-ratio: 1.2; }
+    .lic .meta { flex-direction: column; }
+    .lic .meta div { margin: 0 0 5px 0; }
+  }
+  .lic .seal { right: 16px; bottom: 14px; width: 88px; height: 88px; border-radius: 50%; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px rgba(0, 0, 0, 0.4);
+    background-image: repeating-conic-gradient(from 0deg, #f3dc8e 0deg, #f3dc8e 1.5deg, #d3a93d 1.5deg, #d3a93d 5deg, #9c7220 5deg, #9c7220 8deg); }
   .lic .seal .ring { position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border-radius: 50%; border: 2px solid #f4df9a; box-sizing: border-box;
-    background-image: repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.10) 0px, rgba(255, 255, 255, 0.10) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 3px), radial-gradient(circle at 34% 28%, #46c27d, #1f7a47 72%); }
-  .lic .seal .gloss { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 50%; background-image: linear-gradient(140deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 46%); }
-  .lic .seal .tick { position: absolute; left: 29px; top: 13px; width: 11px; height: 21px; border: solid #fbf0c4; border-width: 0 4px 4px 0; transform: rotate(45deg); }
-  .lic .seal .word { position: absolute; left: 0; right: 0; top: 46px; text-align: center; font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: #f7e9b0; }
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+    background-image: repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.09) 0px, rgba(255, 255, 255, 0.09) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 3px), radial-gradient(circle at 34% 28%, #46c27d, #1f7a47 72%); }
+  .lic .seal .rim { position: absolute; left: 4px; top: 4px; right: 4px; bottom: 4px; border-radius: 50%; border: 1px solid rgba(244, 223, 154, 0.6); }
+  .lic .seal .gloss { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 50%; background-image: linear-gradient(140deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0) 46%); }
+  .lic .seal .tickwrap { position: absolute; left: 30px; top: 11px; width: 13px; height: 22px; filter: drop-shadow(0px 1px 0px rgba(0, 0, 0, 0.4)) drop-shadow(0px -1px 0px rgba(255, 255, 255, 0.3)); }
+  .lic .seal .tick { width: 9px; height: 18px; border: solid #fbf0c4; border-width: 0 4px 4px 0; transform: rotate(45deg); }
+  .lic .seal .word { position: absolute; left: 0; right: 0; top: 43px; text-align: center; font-size: 8px; line-height: 10px; font-weight: 700; letter-spacing: 0.08em; color: #f7e9b0;
+    text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.4), 0px -1px 0px rgba(255, 255, 255, 0.28); }
 `
 
 @(private = "file")
@@ -103,7 +112,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	if lic.order != "" { fmt.sbprintf(sb, "<div><small>Order</small><em>%s</em></div>", e(lic.order)) }
 	strings.write_string(sb, "</div></div>")
 	strings.write_string(sb, "<div class=\"holo\"></div><div class=\"glare\"></div>")
-	strings.write_string(sb, "<div class=\"seal\"><div class=\"ring\"></div><div class=\"gloss\"></div><div class=\"tick\"></div><div class=\"word\">CERTIFIED</div></div>")
+	strings.write_string(sb, "<div class=\"seal\"><div class=\"ring\"><div class=\"rim\"></div><div class=\"gloss\"></div><div class=\"tickwrap\"><div class=\"tick\"></div></div><div class=\"word\">CERTIFIED</div></div></div>")
 	strings.write_string(sb, "</div></div>\n<script>")
 	strings.write_string(sb, CARD_SCRIPT)
 	strings.write_string(sb, "</script>\n")

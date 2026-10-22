@@ -127,7 +127,7 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !strings.contains(html, "Unregistered"), "a registered Wren is not unregistered")
 	testing.expect(t, !strings.contains(html, "<b>Martin</b>"), "the name is escaped")
-	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", ".lic .holo", "mix-blend-mode"}) {
+	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", ".lic .holo", "mix-blend-mode", `class="tickwrap"`, "text-shadow", "@media (max-width: 520px)"}) {
 		testing.expectf(t, strings.contains(html, want), "the licence card lacks %q", want)
 	}
 	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")

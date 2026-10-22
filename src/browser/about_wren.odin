@@ -84,6 +84,10 @@ WREN_STYLE :: `
   .id { display: flex; align-items: center; }
   .id img.mark { width: 96px; height: 96px; flex: none; object-fit: contain; margin-right: 22px; }
   .id .text { min-width: 0; }
+  @media (max-width: 520px) {
+    .id { flex-direction: column; align-items: flex-start; }
+    .id img.mark { margin: 0 0 16px 0; }
+  }
   .id p { margin: 2px 0 0; }
   .id p.sig { margin-top: 8px; font-size: 13px; color: $WEAK$; white-space: nowrap; }
   .sig img { width: 16px; height: 16px; vertical-align: -3px; margin: 0 4px 0 2px; }
