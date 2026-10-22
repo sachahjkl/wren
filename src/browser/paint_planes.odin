@@ -63,15 +63,8 @@ planes_init :: proc(app: ^App) {
 
 @(private)
 Pending_Plane :: struct {
-	pl:    draw.Plane_Layer,
-	m:     draw.Mat4,
-	alpha: f32,
-	z:     f32,           // depth of the middle of the plane (larger: nearer)
-	ctx:   i32,           // the plane space that roots its context
-	cull:  bool,          // backface-visibility: hidden and seen from behind
-	seq:   int,
-	v:     [4][3]f32,     // corners in the context's space (flush_context)
-	ok3:   bool,
+	item: draw.Plane_Item,   // skip: backface-visibility: hidden and seen from behind
+	ctx:  i32,               // the plane space that roots its context
 }
 
 // Where layout coordinates (plus the offsets of `space`) land in the target its items are drawn in: the page's origin, or minus
@@ -212,119 +205,72 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	m := plane_matrix(e, s)
 	alpha := plane_alpha(l, g)
 	cull := sp.back_hidden && style.m4_back_facing(acc)
+	o := draw.Plane_Draw{max_taps = plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
+	if len(og.backdrop) > 0 && !cull { o.shape = plane_shape(e, og.g, pl) }
+	item := draw.plane_item(pl, to_mat4(m), alpha, o, cull)
 	if sp.ctx != s {
 		// a member of a 3D context: drawn with its whole context, sorted
-		cx := (pl.origin.x + f32(pl.size.x) / pl.scale * 0.5)
-		cy := (pl.origin.y + f32(pl.size.y) / pl.scale * 0.5)
-		z := style.m4_apply(m, cx, cy, 0)[2]
-		append(&e.pending, Pending_Plane{pl = pl, m = to_mat4(m), alpha = alpha, z = z, ctx = sp.ctx, cull = cull, seq = len(e.pending)})
+		append(&e.pending, Pending_Plane{item = item, ctx = sp.ctx})
 		return
 	}
 	if sp.preserve {
-		// the root of a context: its members, and itself, sorted by depth
-		cx := (pl.origin.x + f32(pl.size.x) / pl.scale * 0.5)
-		cy := (pl.origin.y + f32(pl.size.y) / pl.scale * 0.5)
-		z := style.m4_apply(m, cx, cy, 0)[2]
-		flush_context(e, Pending_Plane{pl = pl, m = to_mat4(m), alpha = alpha, z = z, ctx = s, cull = cull, seq = len(e.pending)}, s)
+		// the root of a context: its members, and itself, sorted
+		flush_context(e, item, s)
 		return
 	}
 	if cull { draw.discard_plane(e.dc, pl); return }
-	draw.draw_plane(e.dc, pl, to_mat4(m), alpha, draw.Plane_Draw{max_taps = plane_settings.taps})
+	draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
 }
 
 // The opacity a plane is composited with: its group's, unless the group also has a layer of its own for it.
 @(private)
 plane_alpha :: proc(l: ^Layout, g: ^lay.Group) -> f32 { return g.alpha }
 
-// Draws the members of the context rooted at `root` (waiting in e.pending) and the root's own layer, far to near.
+// What a plane's backdrop-filter shows through: the shape of its border box (rounded corners, clip-path, mask) as the alpha of
+// a layer in the plane's frame. (The plane's own content may spill out of the box, or be transparent: the backdrop follows the
+// box, not the paint.)
 @(private)
-flush_context :: proc(e: ^Effects, own: Pending_Plane, root: i32) {
-	list := make([dynamic]Pending_Plane, 0, 8, context.temp_allocator)
+plane_shape :: proc(e: ^Effects, c: i32, pl: draw.Plane_Layer) -> draw.Plane_Layer {
+	l := e.l
+	g := &l.groups[c]
+	b := &l.boxes[g.box]
+	cs := b.cs
+	saved := e.origin
+	e.origin = -e.v.offsets[g.space]
+	defer e.origin = saved
+	off := e.v.offsets[b.space] + e.origin
+	r := draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
+	bounds := draw.Rect{r.min - 1, r.max + 1}
+	draw.push_plane(e.dc, bounds, pl.scale)
+	box_xf := l.spaces[b.space].xform
+	clipped := .Clip_Path in g.effects && effects_settings.clip_paths && push_clip_path(e, g, box_xf, off)
+	masked := .Mask in g.effects && effects_settings.masks
+	if masked { draw.push_mask(e.dc, bounds, draw.Layer_Effects{alpha = 1}) }
+	set_xform(e, box_xf)
+	circular := draw.set_circular_corners(e.dc, true)
+	white := draw.Color{1, 1, 1, 1}
+	draw.rect_corners(e.dc, r, {white, white, white, white}, lay.border_radii(cs, b.size.x, b.size.y, l.scale))
+	draw.set_circular_corners(e.dc, circular)
+	if masked {
+		paint_mask_layers(e, b, off)
+		set_xform(e, lay.NONE)
+		draw.pop_mask(e.dc)
+	}
+	set_xform(e, lay.NONE)
+	if clipped { draw.pop_clip(e.dc) }
+	return draw.pop_plane(e.dc)
+}
+
+// Draws the members of the context rooted at `root` (waiting in e.pending) and the root's own layer: the toolkit sorts them, and
+// splits those that cut through each other (a BSP, as Chromium does).
+@(private)
+flush_context :: proc(e: ^Effects, own: draw.Plane_Item, root: i32) {
+	list := make([dynamic]draw.Plane_Item, 0, 8, context.temp_allocator)
 	keep := 0
 	for p in e.pending {
-		if p.ctx == root { append(&list, p) } else { e.pending[keep] = p; keep += 1 }
+		if p.ctx == root { append(&list, p.item) } else { e.pending[keep] = p; keep += 1 }
 	}
 	resize(&e.pending, keep)
 	append(&list, own)
-	n := len(list)
-	for &p in list { p.v, p.ok3 = plane_corners3(p.pl, p.m) }
-	// before[i * n + j]: i must be drawn before j (j is wholly in front of i's plane)
-	before := make([]bool, n * n, context.temp_allocator)
-	for i in 0 ..< n {
-		for j in i + 1 ..< n {
-			switch in_front(&list[i], &list[j]) {
-			case 1: before[j * n + i] = true
-			case -1: before[i * n + j] = true
-			}
-		}
-	}
-	done := make([]bool, n, context.temp_allocator)
-	for _ in 0 ..< n {
-		pick := -1
-		// a plane everything that has to be under it is already drawn for; the farthest middle (then the earliest) first
-		for i in 0 ..< n {
-			if done[i] { continue }
-			free := true
-			for j in 0 ..< n { if !done[j] && before[j * n + i] { free = false; break } }
-			if !free { continue }
-			if pick < 0 || list[i].z < list[pick].z || (list[i].z == list[pick].z && list[i].seq < list[pick].seq) { pick = i }
-		}
-		if pick < 0 {
-			// a cycle: planes that cut through each other: the farthest middle
-			for i in 0 ..< n {
-				if done[i] { continue }
-				if pick < 0 || list[i].z < list[pick].z { pick = i }
-			}
-		}
-		done[pick] = true
-		p := list[pick]
-		if p.cull { draw.discard_plane(e.dc, p.pl); continue }
-		draw.draw_plane(e.dc, p.pl, p.m, p.alpha, draw.Plane_Draw{max_taps = plane_settings.taps})
-	}
-}
-
-// Where a plane lies in the frame its context is drawn in, as (x / w, y / w, z / w) of its four corners: a space in which
-// planes are planes and the viewer looks along -z from infinity, whatever the perspective is (a projective map keeps both).
-// ok = false: a corner is behind the viewer.
-@(private)
-plane_corners3 :: proc(pl: draw.Plane_Layer, m: draw.Mat4) -> (v: [4][3]f32, ok: bool) {
-	r0 := pl.origin
-	r1 := pl.origin + draw.Vec2{f32(pl.size.x), f32(pl.size.y)} / pl.scale
-	pts := [4]draw.Vec2{r0, {r1.x, r0.y}, r1, {r0.x, r1.y}}
-	for p, i in pts {
-		h := draw.mat4_apply(m, {p.x, p.y, 0})
-		if !(h[3] > 1e-6) { return {}, false }
-		v[i] = {h[0] / h[3], h[1] / h[3], h[2] / h[3]}
-	}
-	return v, true
-}
-
-// Is `a` wholly on the viewer's side of the plane of `b` (1), wholly behind it (-1), or neither (0: they cut each other, are
-// coplanar, or `b` is edge-on)?
-@(private)
-side_of :: proc(a, b: [4][3]f32) -> int {
-	e1 := b[1] - b[0]
-	e2 := b[3] - b[0]
-	n := [3]f32{e1.y * e2.z - e1.z * e2.y, e1.z * e2.x - e1.x * e2.z, e1.x * e2.y - e1.y * e2.x}
-	l := math.sqrt(n.x * n.x + n.y * n.y + n.z * n.z)
-	if l < 1e-9 || abs(n.z) < 1e-4 * l { return 0 }
-	if n.z < 0 { n = -n }
-	lo, hi := f32(math.F32_MAX), f32(-math.F32_MAX)
-	for p in a {
-		d := (n.x * (p.x - b[0].x) + n.y * (p.y - b[0].y) + n.z * (p.z - b[0].z)) / l
-		lo, hi = min(lo, d), max(hi, d)
-	}
-	TOL :: 0.02
-	if lo >= -TOL && hi <= TOL { return 0 }
-	if lo >= -TOL { return 1 }
-	if hi <= TOL { return -1 }
-	return 0
-}
-
-// Does `a` have to be drawn after `b` (1), before it (-1), or does the geometry not say (0)?
-@(private)
-in_front :: proc(a, b: ^Pending_Plane) -> int {
-	if !a.ok3 || !b.ok3 { return 0 }
-	if r := side_of(a.v, b.v); r != 0 { return r }
-	return -side_of(b.v, a.v)
+	draw.draw_planes(e.dc, list[:])
 }

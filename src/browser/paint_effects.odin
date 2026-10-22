@@ -125,6 +125,8 @@ Open_Group :: struct {
 	hidden: bool,    // a plane that shows nothing: no layer, its content is not drawn
 	plane: bool,     // a plane layer was pushed (plane.odin of the toolkit): composited projected when the group closes
 	saved_origin: draw.Vec2,   // e.origin outside the plane
+	blend:    draw.Blend_Mode,   // plane: its mix-blend-mode, applied to the projected quad
+	backdrop: []draw.Filter,     // plane: its backdrop-filter, applied to what lies under the projected quad
 }
 
 @(private)
@@ -335,6 +337,24 @@ any_active :: proc(fs: []draw.Filter) -> bool {
 	return false
 }
 
+// Pushes the clip-path of group `g`'s box (drawn under `off` and the transform space `box_xf`); false: it has none.
+@(private)
+push_clip_path :: proc(e: ^Effects, g: ^lay.Group, box_xf: i32, off: draw.Vec2) -> bool {
+	sh := lay.clip_path_shape(e.l, g.box)
+	if sh.kind == .None { return false }
+	set_xform(e, box_xf)
+	switch sh.kind {
+	case .None:
+	case .Rect: draw.push_clip_rounded(e.dc, draw.rect_shift(to_rect(sh.rect), off), sh.radii)
+	case .Ellipse: draw.push_clip_ellipse(e.dc, sh.center + off, sh.radius)
+	case .Polygon:
+		pts := make([]draw.Vec2, len(sh.points), context.temp_allocator)
+		for p, i in sh.points { pts[i] = p + off }
+		draw.push_clip_polygon(e.dc, pts, sh.evenodd)
+	}
+	return true
+}
+
 @(private)
 open_group :: proc(e: ^Effects, c: i32) {
 	l := e.l
@@ -360,20 +380,7 @@ open_group :: proc(e: ^Effects, c: i32) {
 	off := e.v.offsets[space] + e.origin
 	box_xf := l.spaces[space].xform
 	if .Clip_Path in g.effects && effects_settings.clip_paths {
-		sh := lay.clip_path_shape(l, g.box)
-		if sh.kind != .None {
-			set_xform(e, box_xf)
-			switch sh.kind {
-			case .None:
-			case .Rect: draw.push_clip_rounded(e.dc, draw.rect_shift(to_rect(sh.rect), off), sh.radii)
-			case .Ellipse: draw.push_clip_ellipse(e.dc, sh.center + off, sh.radius)
-			case .Polygon:
-				pts := make([]draw.Vec2, len(sh.points), context.temp_allocator)
-				for p, i in sh.points { pts[i] = p + off }
-				draw.push_clip_polygon(e.dc, pts, sh.evenodd)
-			}
-			og.shape = true
-		}
+		og.shape = push_clip_path(e, g, box_xf, off)
 	}
 	bd: draw.Backdrop
 	bd_rect: draw.Rect
@@ -381,7 +388,10 @@ open_group :: proc(e: ^Effects, c: i32) {
 	has_bd := false
 	if .Backdrop in g.effects && effects_settings.backdrop_filters && b.kind != .Inline {
 		bfs := css_filters(cs.backdrop_filter, l.scale)
-		if any_active(bfs) {
+		if plane {
+			// a plane's backdrop is what lies under its projection: read when it is composited (close_plane)
+			if any_active(bfs) { og.backdrop = bfs }
+		} else if any_active(bfs) {
 			bd_rect = draw.rect_shift(draw.Rect{b.abs, b.abs + b.size}, off)
 			bd_radii = lay.border_radii(cs, b.size.x, b.size.y, l.scale)
 			set_xform(e, box_xf)
@@ -398,7 +408,10 @@ open_group :: proc(e: ^Effects, c: i32) {
 		if !any_active(filters) { filters = nil }
 	}
 	blend := draw.Blend_Mode.Normal
-	if .Blend in g.effects && effects_settings.blend_modes { blend = draw.Blend_Mode(cs.mix_blend_mode) }
+	if .Blend in g.effects && effects_settings.blend_modes {
+		// (a plane blends as a projected quad against what it lands on, not inside its own layer)
+		if plane { og.blend = draw.Blend_Mode(cs.mix_blend_mode) } else { blend = draw.Blend_Mode(cs.mix_blend_mode) }
+	}
 	alpha := plane ? f32(1) : g.alpha   // a plane is faded when it is composited
 	isolate := .Isolate in g.effects && effects_settings.blend_modes
 	masked := .Mask in g.effects && effects_settings.masks
