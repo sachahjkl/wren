@@ -1,4 +1,4 @@
-// Wasm-first browser shell. The chrome (tabs, address bar, console strip) is built with gui_toolkit's `ui`; the page is a
+// Wasm-first browser shell. The chrome (tabs, address bar, developer tools) is built with gui_toolkit's `ui`; the page is a
 // custom-draw box painted from the DOM. Everything a tab starts lives in the tab's scope: closing a tab is one call.
 //
 // Every load goes through the policy layer (package fetch): the main document, its Wasm modules (in document order), and
@@ -91,6 +91,8 @@ Tab :: struct {
 	title:    string,
 	status:   string,
 	console:  [dynamic]string,
+	console_added: u64,         // lines ever added to console: line i of it is number console_added - len + i (devtools_console.odin)
+	net:      Net_Log,         // the document's requests, for the Network tab (devtools_network.odin)
 	layout:   Layout,
 	scroll:   f32,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
@@ -216,6 +218,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	delete(t.history)
 	for l in t.console { delete(l) }
 	delete(t.console)
+	net_log_destroy(&t.net)
 	layout_destroy(&t.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
@@ -224,6 +227,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	prefix := level == .Error ? "error: " : level == .Warn ? "warn: " : ""
 	append(&t.console, fmt.aprintf("%s%s", prefix, message))
+	t.console_added += 1
 	for len(t.console) > the_app.cfg.console_max_lines {
 		delete(t.console[0])
 		ordered_remove(&t.console, 0)
@@ -664,6 +668,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		return
 	}
 	defer loading_bar(app, t, dc, b.rect)
+	defer devtools_overlay(app, t, dc, b.rect)   // devtools.odin: the Elements tab's box over the page
 	if t.page == nil {
 		// the request is out: the previous page stays (first_paint.odin), else the expected canvas
 		hold_paint(app, t, dc, b.rect, expected_canvas(app))
@@ -729,8 +734,21 @@ find_named_anchor :: proc(d: ^dom.Document, name: string) -> base.Handle {
 	return base.NIL_HANDLE
 }
 
-build_ui :: proc(app: ^App) {
-	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
+// The page's own box (or the view of a built-in page): what fills the room the developer tools leave.
+page_view :: proc(app: ^App, t: ^Tab) {
+	ui.next({width = ui.fill(), height = ui.fill()})
+	if t != nil && t.kind == .Config {
+		config_page(&app.config_view, &app.prefs)
+	} else if t != nil && t.kind == .History {
+		history_page(app, t)   // history_ui.odin
+	} else {
+		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
+		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
+		page_area_focus(app, t, pb)
+	}
+}
+
+build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
 	em := ui.font_size()
 	t := current_tab(app)
@@ -747,33 +765,29 @@ build_ui :: proc(app: ^App) {
 			}
 			desktop_offer_bar(app)   // desktop_shell.odin
 			find_bar(app, t)
-			// page
-			ui.next({width = ui.fill(), height = ui.fill()})
-			if t != nil && t.kind == .Config {
-				config_page(&app.config_view, &app.prefs)
-			} else if t != nil && t.kind == .History {
-				history_page(app, t)   // history_ui.odin
-			} else {
-				// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
-				pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
-				page_area_focus(app, t, pb)
-			}
-			// console strip + status bar (status_bar.odin)
-			if t != nil {
-				lines := app.show_console ? min(len(t.console), 3) : 0
-				if lines > 0 {
-					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5 * f32(lines) + em * 0.4))})
-					if ui.column() {
-						for i in len(t.console) - lines ..< len(t.console) {
-							ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
-							ui.label(fmt.aprintf("%s###cl%d", t.console[i], i, allocator = ui.frame_allocator()))
-						}
-					}
+			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
+			dock, dev_on := devtools_dock(app, t)
+			switch {
+			case dev_on && dock == .Right:
+				ui.next({width = ui.fill(), height = ui.fill()})
+				if ui.row(.Start, {}, "###page_and_devtools") {
+					page_view(app, t)
+					devtools_splitter(app, true)
+					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+					devtools_panel(app, t)
 				}
-				if app.show_console { console_eval_row(app, t, em) }   // "run JavaScript" (console_eval.odin)
+			case dev_on && dock == .Bottom:
+				page_view(app, t)
+				devtools_splitter(app, false)
+				ui.next({width = ui.fill(), height = ui.px(devtools_extent(app, false))})
+				devtools_panel(app, t)
+			case:
+				page_view(app, t)
 			}
+			// status bar (status_bar.odin)
 			status_bar_build(app, t)
 			fullscreen_bars(app, t)
+			devtools_floating(app, t)   // over the page when it is undocked
 		}
 	}
 	context_menus_build(app)
@@ -1196,6 +1210,7 @@ main :: proc() {
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
 	hud_init(app)
+	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
@@ -1284,6 +1299,7 @@ main :: proc() {
 	host.shutdown_step("appearance_destroy")
 	appearance_destroy()
 	host.shutdown_step("hud_destroy")
+	devtools_destroy(app)
 	hud_destroy(app)
 	host.shutdown_step("smooth_shutdown")
 	smooth_shutdown(app)

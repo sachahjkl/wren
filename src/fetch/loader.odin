@@ -18,6 +18,8 @@ Loader :: struct {
 	profile:  ^Profile,
 	tasks:    base.Pool(Task),
 	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
+	observer: Observer,   // the developer tools' view of every request (observe.odin)
+	next_obs: u64,
 }
 
 loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking: ^host.Blocking_Pool, profile: ^Profile) {
@@ -83,6 +85,10 @@ Task :: struct {
 	collected: [dynamic]byte,
 
 	cache:     Task_Cache,      // the HTTP cache's view of the request (http_cache.odin)
+
+	obs_id:    u64,             // observe.odin
+	obs_bytes: int,
+	obs_done:  bool,           // a Done or Failed was reported
 }
 
 ////////////////////////////////
@@ -127,6 +133,9 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 
 	h, tp := base.pool_insert(&l.tasks, t)
 	tp.self = h
+	l.next_obs += 1
+	tp.obs_id = l.next_obs
+	observe(tp, Observed{kind = .Started, scope = d.scope, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination})
 	if d.scope != nil { tp.cleanup = base.on_close(d.scope, task_scope_closed, new_clone(Kick{l, h})) }
 	host.post(l.loop, kick, new_clone(Kick{l, h}))
 	return h
@@ -169,6 +178,7 @@ cancel :: proc(l: ^Loader, h: base.Handle) -> bool { return l != nil && release(
 release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
+	if !t.obs_done && l.observer.event != nil { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
 	cancel_net(l, &t)
 	cache_task_release(l, &t)
 	url.destroy(&t.target)
@@ -198,6 +208,22 @@ cancel_net :: proc(l: ^Loader, t: ^Task) {
 
 @(private)
 deliver :: proc(t: ^Task, ev: ^Event) {
+	if t.loader != nil && t.loader.observer.event != nil && !t.obs_done {
+		switch ev.kind {
+		case .Response:
+			if r := ev.response; r != nil {
+				mime := r.has_mime ? http.mime_essence(r.mime) : ""
+				observe(t, Observed{kind = .Response, url = r.url, destination = t.destination, status = r.status, mime = mime, cache = r.cache, redirected = r.redirected})
+			}
+		case .Data: t.obs_bytes += len(ev.data)
+		case .Done:
+			t.obs_done = true
+			observe(t, Observed{kind = .Done, bytes = t.collect ? len(ev.data) : t.obs_bytes})
+		case .Failed:
+			t.obs_done = true
+			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes})
+		}
+	}
 	if t.on_event != nil { t.on_event(t.user, t.self, ev) }
 }
 

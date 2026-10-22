@@ -288,9 +288,29 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.title_statistics", title = "Statistics in the title", category = "View", keywords = "fps",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return hud.cfg.title_stats },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }})
-	add(r, {name = "view.console", title = "Console", category = "View", keywords = "log javascript eval",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.show_console },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.console.visible", !app.show_console) }})
+	add(r, {name = "view.devtools", title = "Developer tools", category = "View", keywords = "inspect console elements network dom debug f12",
+		keys = keys(&r.arena, {key = .F12}, {key = .I, mods = cs}),
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle(app) }})
+	add(r, {name = "view.console", title = "Console", category = "View", keywords = "log javascript eval devtools",
+		keys = keys(&r.arena, {key = .J, mods = cs}),
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Console },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle_panel(app, .Console) }})
+	add(r, {name = "view.devtools_elements", title = "Developer tools: Elements", category = "View", keywords = "inspect dom document tree html",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Elements },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Elements) }})
+	add(r, {name = "view.devtools_network", title = "Developer tools: Network", category = "View", keywords = "requests http fetch log",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Network },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Network) }})
+	add(r, {name = "view.devtools_dock_bottom", title = "Developer tools: dock at the bottom", category = "View", keywords = "devtools panel position",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Bottom },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Bottom) }})
+	add(r, {name = "view.devtools_dock_right", title = "Developer tools: dock at the right", category = "View", keywords = "devtools panel position side",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Right },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Right) }})
+	add(r, {name = "view.devtools_dock_floating", title = "Developer tools: undock into a floating panel", category = "View", keywords = "devtools panel position window",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Floating },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
 	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(app.win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
