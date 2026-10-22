@@ -22,7 +22,8 @@ console_js: Console_Js
 console_eval_row :: proc(app: ^App, t: ^Tab, em: f32) {
 	if t == nil || t.page == nil || !app.page_settings.js.console_eval { return }
 	c := &console_js
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.9))})
+	// flush with the console strip and the status bar: their edges already frame it (a field border doubled them)
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.9)), border = ui.Color{}, radius = 0})
 	res := ui.line_edit("###console_js", &c.field, "Run JavaScript in this page (Enter)")
 	if res.focused {
 		forms_page_blur()
