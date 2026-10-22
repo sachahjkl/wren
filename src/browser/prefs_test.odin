@@ -44,6 +44,9 @@ text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
 	defer config.prefs_destroy(&p)
 	register_all_prefs(&p)
 	s := font_settings_from_prefs(&p)
+	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Slug)   // the default
+	testing.expect_value(t, config.set_from_string(&p, "text.renderer", "atlas", .User), config.Set_Error.None)
+	s = font_settings_from_prefs(&p)
 	testing.expect_value(t, s.text_renderer, font.Text_Renderer.Atlas)
 	testing.expect_value(t, config.set_from_string(&p, "text.renderer", "slug", .User), config.Set_Error.None)
 	testing.expect_value(t, config.set_from_string(&p, "text.slug.pages", "32", .User), config.Set_Error.None)
