@@ -64,6 +64,9 @@ if defined WREN_DATE set "COLL=%COLL% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 set "WREN_SUFFIX="
 if "%WREN_RENDER%"=="wgpu" set "WREN_SUFFIX=_wgpu"
 if "%WREN_RENDER%"=="wgpu" set "COLL=%COLL% -define:TOOLKIT_RENDER=wgpu -define:WGPU_SHARED=true"
+:: more Odin flags and an output suffix for experiments (WREN_ODIN_EXTRA="-define:TOOLKIT_WGPU_BACKEND=vulkan" WREN_TAG=_vk)
+if defined WREN_ODIN_EXTRA set "COLL=%COLL% %WREN_ODIN_EXTRA%"
+if defined WREN_TAG set "WREN_SUFFIX=%WREN_SUFFIX%%WREN_TAG%"
 if "%WREN_RENDER%"=="wgpu" powershell -NoProfile -ExecutionPolicy Bypass -File ext\gui_toolkit\tools\fetch_wgpu.ps1 -Dest build >nul || (echo fetching the wgpu dependencies failed & exit /b 1)
 if "%1"=="debug" goto debug
 if "%1"=="profile" goto profile
