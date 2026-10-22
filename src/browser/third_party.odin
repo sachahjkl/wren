@@ -41,6 +41,7 @@ LICENSE_TEXTS := [?]License_Text{
 	{"slug", "Slug", #load("../../ext/gui_toolkit/font/slug_ref/LICENSE-MIT", string), "Slug", "Text rendering uses the Slug algorithm and shaders by Eric Lengyel (credit required by its license)."},
 	{"roboto", "Roboto", #load("../../ext/gui_toolkit/font/data/Roboto-LICENSE.txt", string), "Roboto, Inconsolata", "Fallback interface font, used only when Segoe UI is missing."},
 	{"inconsolata", "Inconsolata", #load("../../ext/gui_toolkit/font/data/Inconsolata-OFL.txt", string), "Roboto, Inconsolata", "Fallback monospace font, used only when Consolas is missing."},
+	{"noto-emoji", "Noto Color Emoji", #load("../../ext/gui_toolkit/font/data/NotoColorEmoji-OFL.txt", string), "Noto Color Emoji", "The built-in emoji font (text.emoji = builtin), drawn by the COLR interpreter of gui_toolkit."},
 	{"wasmtime", "Wasmtime", #load("../../build/wasmtime/LICENSE", string), "Wasmtime", ""},
 	{"lexbor", "Lexbor", #load("../../ext/lexbor/LICENSE", string), "Lexbor", ""},
 	{"lexbor-notice", "Lexbor notice", #load("../../ext/lexbor/NOTICE", string), "Lexbor", ""},

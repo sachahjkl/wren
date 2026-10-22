@@ -52,6 +52,11 @@ Push-Location tools\testserver
 try { go build -trimpath -o ..\..\build\testserver.exe .; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
 
 Copy-Item build\browser.exe "$out\wren.exe"
+# the built-in emoji font (text.emoji = builtin): wren.exe reads emoji\NotoColorEmoji-COLRv1.ttf next to itself
+& powershell -NoProfile -File tools\fetch_emoji.ps1
+if ($LASTEXITCODE -ne 0) { throw 'fetching the emoji font failed' }
+New-Item -ItemType Directory -Force "$out\emoji" | Out-Null
+Copy-Item build\emoji\NotoColorEmoji-COLRv1.ttf "$out\emoji\NotoColorEmoji-COLRv1.ttf"
 Copy-Item build\testserver.exe "$out\testserver.exe"
 Copy-Item -Recurse examples\site "$out\demos"
 # the script loading and web API demos of about:demos: testserver.exe serves them from examples\ under its working
@@ -81,6 +86,7 @@ Copy-Item ext\gui_toolkit\NOTICE.md "$out\licenses\gui_toolkit-NOTICE.md"
 Copy-Item ext\gui_toolkit\font\slug_ref\LICENSE-MIT "$out\licenses\Slug-LICENSE-MIT.txt"
 Copy-Item ext\gui_toolkit\font\data\Roboto-LICENSE.txt "$out\licenses\Roboto-LICENSE.txt"
 Copy-Item ext\gui_toolkit\font\data\Inconsolata-OFL.txt "$out\licenses\Inconsolata-OFL.txt"
+Copy-Item ext\gui_toolkit\font\data\NotoColorEmoji-OFL.txt "$out\licenses\NotoColorEmoji-OFL.txt"
 # the JavaScript engine embedded in wren.exe (QuickJS-ng and the wasi-libc Zig links into it) and webref's Web IDL
 Copy-Item native\js\licenses\* "$out\licenses\"
 

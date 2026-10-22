@@ -211,7 +211,6 @@ with_slash :: proc(s: string, allocator := context.temp_allocator) -> string {
 }
 
 // The folder of the running executable (no trailing separator).
-@(private = "file")
 exe_directory :: proc() -> string {
 	buf: [win.MAX_PATH_WIDE]u16
 	n := win.GetModuleFileNameW(nil, raw_data(buf[:]), u32(len(buf)))
@@ -235,7 +234,6 @@ repository_of :: proc(dir: string) -> string {
 	return ""
 }
 
-@(private = "file")
 is_file :: proc(path: string) -> bool {
 	attr := win.GetFileAttributesW(win.utf8_to_wstring(path, context.temp_allocator))
 	return attr != win.INVALID_FILE_ATTRIBUTES && attr & win.FILE_ATTRIBUTE_DIRECTORY == 0

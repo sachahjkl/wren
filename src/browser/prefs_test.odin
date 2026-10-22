@@ -58,6 +58,31 @@ text_renderer_preference_reaches_the_font_settings :: proc(t: ^testing.T) {
 	testing.expect(t, config.set_from_string(&p, "text.renderer", "bitmap", .User) != config.Set_Error.None)   // not a choice
 }
 
+// text.emoji picks the built-in emoji (the default) or the system's; the font is the one next to the executable unless a
+// path is given.
+@(test)
+emoji_preferences_reach_the_font_settings :: proc(t: ^testing.T) {
+	p := config.prefs_make()
+	defer config.prefs_destroy(&p)
+	register_all_prefs(&p)
+	s := font_settings_from_prefs(&p)
+	testing.expect_value(t, s.color_engine, font.Color_Engine.Builtin)
+	testing.expect_value(t, s.colr_samples, 8)
+	testing.expect_value(t, s.colr_cache_kb, 8192)
+	path := emoji_font_path(&p)
+	testing.expect(t, strings.has_suffix(path, "\\emoji\\NotoColorEmoji-COLRv1.ttf"), path)
+	testing.expect_value(t, config.set_from_string(&p, "text.emoji.font", "D:\\fonts\\Twemoji.ttf", .User), config.Set_Error.None)
+	testing.expect_value(t, emoji_font_path(&p), "D:\\fonts\\Twemoji.ttf")
+	testing.expect_value(t, config.set_from_string(&p, "text.emoji", "system", .User), config.Set_Error.None)
+	testing.expect_value(t, config.set_from_string(&p, "text.emoji.raster_samples", "16", .User), config.Set_Error.None)
+	s = font_settings_from_prefs(&p)
+	testing.expect_value(t, s.color_engine, font.Color_Engine.System)
+	testing.expect_value(t, s.colr_samples, 16)
+	testing.expect_value(t, emoji_font_path(&p), "")   // system emoji: no font file
+	testing.expect(t, config.set_from_string(&p, "text.emoji", "twemoji", .User) != config.Set_Error.None)   // not a choice
+	testing.expect(t, config.set_from_string(&p, "text.emoji.raster_samples", "0", .User) != config.Set_Error.None)   // out of bounds
+}
+
 @(test)
 settings_round_trip_through_the_registry :: proc(t: ^testing.T) {
 	p := config.prefs_make()
