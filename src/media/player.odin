@@ -375,6 +375,7 @@ tracks_equal :: proc(a, b: Track) -> bool {
 
 @(private)
 video_thread :: proc(p: ^Player) {
+	name_current_thread("wren-video-decode")
 	com_thread_init_any()
 	dec: ^Video_Decoder
 	cur_track: Track
@@ -537,6 +538,7 @@ video_thread :: proc(p: ^Player) {
 
 @(private)
 audio_thread :: proc(p: ^Player) {
+	name_current_thread("wren-audio-decode")
 	com_thread_init_any()
 	dec: ^Audio_Decoder
 	cur_track: Track

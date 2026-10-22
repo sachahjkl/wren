@@ -205,4 +205,19 @@ test("a live WebM (unknown sizes)", async () => {
   v.remove();
 });
 
+test("playback keeps time: the position follows the wall clock, no stall", async () => {
+  const { v, events } = video("/video/f/clip.mp4");
+  ok(await until(() => v.readyState >= 4, "enough data"), "ready");
+  const t0 = performance.now();
+  await v.play();
+  const start = v.currentTime;
+  ok(await until(() => v.currentTime > 1.5, "1.5 s of playback"), "plays");
+  const wall = (performance.now() - t0) / 1000;
+  const media = v.currentTime - start;
+  // the audio clock and the wall clock agree within a few percent (a start-up of the audio device is before `start`)
+  ok(Math.abs(wall - media) < 0.35 + wall * 0.1, "media time " + media.toFixed(2) + " s in " + wall.toFixed(2) + " s of wall time");
+  eq(events.filter(e => e === "waiting").length, 0, "no stall while playing a buffered file");
+  v.remove();
+});
+
 __run();
