@@ -34,6 +34,10 @@ int wj_run_preludes(JSContext *ctx)
     JS_SetPropertyStr(ctx, global, "__wren_frames_host", wj_frames_host_object(ctx));
     extern JSValue wj_clipboard_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_clipboard_host", wj_clipboard_host_object(ctx));
+    extern JSValue wj_resize_host_object(JSContext *ctx);
+    JS_SetPropertyStr(ctx, global, "__wren_resize_host", wj_resize_host_object(ctx));
+    extern JSValue wj_compat_host_object(JSContext *ctx);
+    JS_SetPropertyStr(ctx, global, "__wren_compat_host", wj_compat_host_object(ctx));
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;

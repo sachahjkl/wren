@@ -74,6 +74,8 @@ Web_State :: struct {
 	next_frame_id:   u64,
 	io_active:       bool,      // some IntersectionObserver watches a target: each rendering update computes them
 	io_pending:      bool,      // ... and one is wanted soon (a target was just observed): a frame is requested
+	ro_active:       bool,      // some ResizeObserver observes a target: each rendering update runs the resize observations
+	ro_pending:      bool,      // ... and one is wanted soon (a target was just observed): a frame is requested
 	scroll_pending:  bool,      // a script scrolled something: its scroll event wants a frame (scroll_events.odin)
 	idle:            [dynamic]Idle_Callback,
 	next_idle_id:    u64,

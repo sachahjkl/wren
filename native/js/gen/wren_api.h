@@ -1977,6 +1977,10 @@ WR_IMPORT("storage", "StorageEvent_storageArea") int32_t wr_StorageEvent_storage
 // Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
 // the animation frame callbacks of every rendering update, and asks for one frame at once.
 WR_IMPORT("timers", "IntersectionObservers_schedule") void wr_IntersectionObservers_schedule(int32_t observing);
+// Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
+// observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
+// and asks for one frame at once.
+WR_IMPORT("timers", "ResizeObservers_schedule") void wr_ResizeObservers_schedule(int32_t observing);
 // setTimeout(callback, delay_ms)
 WR_IMPORT("timers", "Timers_setTimeout") uint64_t wr_Timers_setTimeout(uint32_t callback, int32_t user, double delay_ms);
 // setInterval(callback, delay_ms)

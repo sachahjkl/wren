@@ -16,8 +16,14 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 - **Supporter licence** ([docs/licence.md](docs/licence.md)): a key signed offline with Ed25519 and checked in Wren without any network access, entered in `about:wren` (paste it, choose a file, or drop a `.wrenlicense` file). It changes one line of `about:wren` and nothing else: every version stays free and complete during the beta. `tools\license.ps1` makes the key pair and issues licences; `browser.license.*` preferences.
 - **Crash reports**: a crash leaves its symbolized stack and a minidump in `<profile>\crashes`.
 
-### Changed
-- User-Agent `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Wren/0.3.0` (was `Wren/0.3`): the form sites expect, the version from the program, no `Chrome/` token. `network.user_agent` empty = this one.
+- **`navigator.clipboard`** (`writeText`, `readText`, `write`, `read`, `ClipboardItem`; `navigator.clipboard_write` / `navigator.clipboard_read`): `writeText` needs a focused document or a recent click or key press, `readText` both (the gesture is the consent: no permission prompt); text/plain only. **`ResizeObserver`** (with `ResizeObserverEntry` and `ResizeObserverSize`; content, border and device-pixel boxes), run at each rendering update before the intersection observations: GitHub's pages (React) stopped at its absence. **`document.fonts`** (a `FontFaceSet` that is always ready), **`navigator.permissions`**, **`window.visualViewport`**, `alert` / `confirm` / `prompt` that show no dialog and return what a dismissed one does, `Element.scrollIntoViewIfNeeded`, `document.execCommand("copy" / "cut")`.
+- **Shutdown diagnostics**: when closing the window takes more than `browser.shell.shutdown_warn_ms` (2 s), the browser logs once a second the step, the thread it joins and the threads still running (standard error and `shutdown.log` in the profile); after `browser.shell.shutdown_force_ms` (10 s) the process ends. The window disappears at once.
+
+### Fixed
+- Closing the window after a heavy page (GitHub) could take 5 to 15 s or more: the Wasm module cache wrote every compiled module still queued to its disk cache, each one scanning the folder. It stops after 1.5 s and drops the rest.
+- reCAPTCHA's "I'm not a robot" box (google.com/sorry) drew its checkbox in the corner of its card: an inline-block with `height: 100%` now resolves against its container's definite height, and a table beside a float no longer shrinks to its minimum width.
+
+### Changed- User-Agent `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Wren/0.3.0` (was `Wren/0.3`): the form sites expect, the version from the program, no `Chrome/` token. `network.user_agent` empty = this one.
 
 ## 0.3.0 - 2026-10-21
 
