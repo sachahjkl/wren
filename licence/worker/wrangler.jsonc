@@ -1,7 +1,8 @@
 // The Wren licence Worker. Setup: licence/worker/README.md and docs/licence.md.
 //
-// Secrets are NOT written here (this file is committed): LICENSE_PRIVATE_KEY, PADDLE_WEBHOOK_SECRET, PADDLE_API_KEY,
-// RESEND_API_KEY. Put them in secrets.env (git-ignored, see secrets.example.env) and deploy with it.
+// Secrets are NOT written here (this file is committed): LICENSE_PRIVATE_KEY, PADDLE_WEBHOOK_SECRET, PADDLE_API_KEY.
+// Put them in secrets.env (git-ignored, see secrets.example.env) and deploy with it. The mail goes through Cloudflare
+// Email Service (the "send_email" binding): no key, but MAIL_FROM must be on a domain onboarded in Email Sending.
 //
 // The top level is production (live Paddle). `--env sandbox` is a second Worker with its own KV for testing with
 // Paddle's sandbox: other ids, other keys, other webhook secret.
@@ -14,6 +15,10 @@
 
 	// No id: the deploy creates the namespace (or: create it yourself and add "id").
 	"kv_namespaces": [{ "binding": "LICENSES" }],
+
+	// Cloudflare Email Service. Sending to buyers (anyone) needs the Workers Paid plan; on the free plan only verified
+	// destination addresses of the account work. `wrangler dev` only logs the mail; add "remote": true to send for real.
+	"send_email": [{ "name": "EMAIL" }],
 
 	"vars": {
 		"PADDLE_API_BASE": "https://api.paddle.com",
@@ -34,6 +39,7 @@
 			"workers_dev": true,
 			"observability": { "enabled": true },
 			"kv_namespaces": [{ "binding": "LICENSES" }],
+			"send_email": [{ "name": "EMAIL" }],
 			"vars": {
 				"PADDLE_API_BASE": "https://sandbox-api.paddle.com",
 				"PRICE_SUPPORTER": "",

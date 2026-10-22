@@ -9,7 +9,10 @@ import type { Edition } from "./licence.ts";
 import type { KVNamespace } from "./env.ts";
 import { sha256Hex } from "./encoding.ts";
 
-export type MailState = "pending" | "sent" | "failed" | "skipped";
+// pending: owed, nothing started (or the last attempt was refused for a passing reason). sending: an attempt was started
+// and its outcome is not known: it is not repeated by itself (src/issue.ts). sent / failed / skipped: final, but skipped
+// (no mail binding or sender configured) is tried again once they are.
+export type MailState = "pending" | "sending" | "sent" | "failed" | "skipped";
 
 export interface Stored {
 	v: 1;
@@ -23,7 +26,7 @@ export interface Stored {
 	file: string;      // the .wrenlicense text
 	issued_at: string;
 	mail: MailState;
-	mail_detail?: string;
+	mail_detail?: string;   // the Email Service error code of the last refusal (E_…); never an address
 	mail_at?: string;
 }
 

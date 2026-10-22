@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { handle } from "../src/handler.ts";
 import { b64urlDecode } from "../src/encoding.ts";
 import { loadSigner } from "../src/licence.ts";
-import { DEV_SEED, NOW, PRICE_PATRON, TXN, WEBHOOK_SECRET, fakeNetwork, fixture, jsonResponse, makeEnv, paddleSignature, waiter, webhookRequest } from "./helpers.ts";
+import { DEV_SEED, NOW, PRICE_PATRON, TXN, WEBHOOK_SECRET, emailError, fakeNetwork, fixture, jsonResponse, makeEnv, paddleSignature, waiter, webhookRequest } from "./helpers.ts";
 import type { Call } from "./helpers.ts";
 import { b64urlEncode } from "../src/encoding.ts";
 
@@ -11,12 +11,12 @@ const body = fixture("transaction.completed.json");
 const customer = fixture("customer.json");
 const URL_BASE = "https://licences.example.workers.dev";
 
-function network(opts: { resend?: (c: Call) => Response; customers?: (c: Call) => Response } = {}) {
-	return fakeNetwork({
-		"https://sandbox-api.paddle.com/customers/": opts.customers ?? (() => jsonResponse(customer)),
-		"https://api.resend.com/emails": opts.resend ?? (() => jsonResponse('{"id":"em_1"}')),
-	});
+// The mail does not go through the network any more (it is the `EMAIL` binding of the env): only Paddle does.
+function network(opts: { customers?: (c: Call) => Response } = {}) {
+	return fakeNetwork({ "https://sandbox-api.paddle.com/customers/": opts.customers ?? (() => jsonResponse(customer)) });
 }
+
+const stateOf = (env: ReturnType<typeof makeEnv>) => JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!) as { mail: string; mail_detail?: string };
 
 const post = (env: ReturnType<typeof makeEnv>, net: ReturnType<typeof network>, b = body) => handle(webhookRequest(b), env, waiter, net.deps);
 const get = (env: ReturnType<typeof makeEnv>, path: string, net = network(), init: RequestInit = {}) => handle(new Request(URL_BASE + path, init), env, waiter, net.deps);
@@ -58,17 +58,32 @@ test("transaction.completed issues a licence, keeps it and mails it", async () =
 	assert.ok(!(await signer.verify(forged)));
 
 	// the mail: to the buyer, from the configured sender, the key in the text and the file attached
-	const mail = net.calls[1];
-	assert.equal(mail.url, "https://api.resend.com/emails");
-	assert.equal(mail.headers.authorization, "Bearer re_test_key");
-	assert.equal(mail.headers["idempotency-key"], `wren-licence-${TXN}`);
-	const sent = JSON.parse(mail.body);
-	assert.deepEqual(sent.to, ["jeanne@example.org"]);
-	assert.equal(sent.from, "Wren <licences@example.org>");
+	assert.equal(env.EMAIL.sent.length, 1);
+	const sent = env.EMAIL.sent[0];
+	assert.equal(sent.to, "jeanne@example.org");
+	assert.deepEqual(sent.from, { email: "licences@example.org", name: "Wren" });
+	assert.equal(sent.subject, "Your Wren licence (order WREN-EEP4-4CYR-EWP9)");
+	assert.equal(sent.replyTo, undefined, "no MAIL_REPLY_TO, no reply-to");
 	assert.ok(sent.text.includes("about:wren"));
 	assert.ok(sent.text.replace(/\s/g, "").includes(stored.licence));
-	assert.equal(sent.attachments[0].filename, "Wren-WREN-EEP4-4CYR-EWP9.wrenlicense");
-	assert.equal(Buffer.from(sent.attachments[0].content, "base64").toString("utf8"), stored.file);
+	assert.equal(sent.attachments?.length, 1);
+	const file = sent.attachments![0];
+	assert.equal(file.filename, "Wren-WREN-EEP4-4CYR-EWP9.wrenlicense");
+	assert.equal(file.type, "application/octet-stream");
+	assert.equal(file.disposition, "attachment");
+	assert.equal(Buffer.from(file.content, "base64").toString("utf8"), stored.file, "the attachment is the base64 of the .wrenlicense text");
+	assert.equal(stored.mail, "sent");
+});
+
+test("the sender is given to Email Service as an address and a name; the reply-to when there is one", async () => {
+	const named = makeEnv({ MAIL_FROM: '"Wren, by Froment" <licences@example.org>', MAIL_REPLY_TO: "contact@example.org" });
+	await post(named, network());
+	assert.deepEqual(named.EMAIL.sent[0].from, { email: "licences@example.org", name: "Wren, by Froment" });
+	assert.equal(named.EMAIL.sent[0].replyTo, "contact@example.org");
+
+	const bare = makeEnv({ MAIL_FROM: "licences@example.org" });
+	await post(bare, network());
+	assert.equal(bare.EMAIL.sent[0].from, "licences@example.org");
 });
 
 test("a webhook delivered again gives the same licence, writes nothing and mails nothing twice", async () => {
@@ -84,7 +99,54 @@ test("a webhook delivered again gives the same licence, writes nothing and mails
 	assert.equal((await again.json() as { status: string }).status, "replayed");
 	assert.equal(env.LICENSES.data.get(`txn:${TXN}`), first);
 	assert.equal(env.LICENSES.writes, writes);
-	assert.equal(net.calls.length, calls, "no new request: neither Paddle nor Resend");
+	assert.equal(net.calls.length, calls, "no new request to Paddle");
+	assert.equal(env.EMAIL.attempts, 1, "and no second mail");
+});
+
+test("webhooks delivered again after every kind of mail outcome never send a second mail", async () => {
+	for (const failure of [null, emailError("E_SENDER_NOT_VERIFIED"), emailError("E_DELIVERY_FAILED"), new Error("boom")]) {
+		const env = makeEnv();
+		if (failure) env.EMAIL.fail = () => { throw failure; };
+		assert.equal((await post(env, network())).status, 200);
+		const before = env.EMAIL.attempts;
+		for (let i = 0; i < 3; i++) assert.equal((await post(env, network())).status, 200);
+		assert.equal(env.EMAIL.attempts, before, String(failure));
+		assert.equal(before, 1);
+	}
+});
+
+test("a send whose outcome is lost is not repeated: the record says 'sending' and a new delivery leaves it alone", async () => {
+	// the last write of the first delivery fails (KV down): the mail is out, the record still says "sending"
+	const env = makeEnv();
+	const put = env.LICENSES.put.bind(env.LICENSES);
+	let failFinalWrite = true;
+	env.LICENSES.put = async (key: string, value: string) => {
+		if (failFinalWrite && key.startsWith("txn:") && value.includes('"mail":"sent"')) throw new Error("KV unavailable");
+		await put(key, value);
+	};
+	assert.equal((await post(env, network())).status, 500);
+	assert.equal(env.EMAIL.attempts, 1);
+	assert.equal(stateOf(env).mail, "sending");
+
+	failFinalWrite = false;
+	const again = await post(env, network());
+	assert.equal(again.status, 200, "acknowledged: Paddle stops redelivering");
+	assert.deepEqual(await again.json(), { status: "replayed", order: "WREN-EEP4-4CYR-EWP9", mail: "sending" });
+	assert.equal(env.EMAIL.attempts, 1, "no second mail");
+	assert.equal(stateOf(env).mail, "sending", "nothing written either");
+
+	// the buyer can still ask for it again
+	const resend = makeEnv({ RESEND_ENABLED: "true" });
+	resend.LICENSES.data = new Map(env.LICENSES.data);
+	const res = await handle(new Request(URL_BASE + "/resend", { method: "POST", body: JSON.stringify({ email: "jeanne@example.org" }) }), resend, waiter, network().deps);
+	assert.equal(res.status, 202);
+	assert.equal(resend.EMAIL.sent.length, 1);
+});
+
+test("an issued licence costs four KV writes, mail included", async () => {
+	const env = makeEnv();
+	await post(env, network());
+	assert.equal(env.LICENSES.writes, 4, "txn (sending), order, email, txn (sent)");
 });
 
 test("the licence is a function of the transaction: a second Worker with empty storage signs the same text", async () => {
@@ -177,28 +239,80 @@ test("names are made safe to sign: control characters, bidi overrides, length", 
 });
 
 test("a mail that cannot be sent now makes the webhook fail; the next delivery sends it and only it", async () => {
-	const env = makeEnv();
-	let fail = true;
-	const net = network({ resend: () => (fail ? new Response("", { status: 503 }) : jsonResponse("{}")) });
-	assert.equal((await post(env, net)).status, 500);
-	assert.equal(JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!).mail, "pending", "the licence exists, the mail is owed");
-	fail = false;
-	const retry = await post(env, net);
-	assert.equal(retry.status, 200);
-	assert.equal(JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!).mail, "sent");
-	assert.equal(net.calls.filter((c) => c.url.startsWith("https://sandbox-api.paddle.com")).length, 1, "the customer is read once");
+	for (const code of ["E_RATE_LIMIT_EXCEEDED", "E_DAILY_LIMIT_EXCEEDED", "E_INTERNAL_SERVER_ERROR"]) {
+		const env = makeEnv();
+		env.EMAIL.fail = (n) => { if (n === 1) throw emailError(code); };
+		const net = network();
+		assert.equal((await post(env, net)).status, 500, code);
+		assert.deepEqual({ mail: stateOf(env).mail, detail: stateOf(env).mail_detail }, { mail: "pending", detail: code }, "the licence exists, the mail is owed");
+		assert.equal(env.EMAIL.sent.length, 0);
+
+		const retry = await post(env, net);
+		assert.equal(retry.status, 200, code);
+		assert.equal(stateOf(env).mail, "sent");
+		assert.equal(env.EMAIL.sent.length, 1, "one mail in the end");
+		assert.equal(net.calls.filter((c) => c.url.startsWith("https://sandbox-api.paddle.com")).length, 1, "the customer is read once");
+		assert.equal((await post(env, net)).status, 200);
+		assert.equal(env.EMAIL.attempts, 2, "refused once, sent once, nothing more");
+	}
 });
 
-test("a mail refused for good is recorded and the webhook still succeeds; no key for Resend is 'skipped'", async () => {
-	const refused = makeEnv();
-	assert.equal((await post(refused, network({ resend: () => new Response("{}", { status: 422 }) }))).status, 200);
-	assert.equal(JSON.parse(refused.LICENSES.data.get(`txn:${TXN}`)!).mail, "failed");
+test("a mail refused for good is recorded and the webhook still succeeds (no retry: Paddle would only get the same answer)", async () => {
+	const codes = ["E_VALIDATION_ERROR", "E_SENDER_NOT_VERIFIED", "E_SENDER_DOMAIN_NOT_AVAILABLE", "E_RECIPIENT_NOT_ALLOWED", "E_RECIPIENT_SUPPRESSED", "E_ACCOUNT_SUSPENDED", "E_DELIVERY_FAILED", "E_CONTENT_TOO_LARGE", "E_SOMETHING_NEW"];
+	for (const code of codes) {
+		const env = makeEnv();
+		env.EMAIL.fail = () => { throw emailError(code); };
+		assert.equal((await post(env, network())).status, 200, code);
+		assert.deepEqual({ mail: stateOf(env).mail, detail: stateOf(env).mail_detail }, { mail: "failed", detail: code });
+		assert.equal(env.EMAIL.attempts, 1);
+	}
+	// an error with no code (the binding itself broke) is named by its class, and is not retried either
+	const broken = makeEnv();
+	broken.EMAIL.fail = () => { throw new TypeError("cannot reach jeanne@example.org"); };
+	assert.equal((await post(broken, network())).status, 200);
+	assert.deepEqual({ mail: stateOf(broken).mail, detail: stateOf(broken).mail_detail }, { mail: "failed", detail: "TypeError" });
+});
 
-	const none = makeEnv({ RESEND_API_KEY: "" });
-	const net = network();
-	assert.equal((await post(none, net)).status, 200);
-	assert.equal(JSON.parse(none.LICENSES.data.get(`txn:${TXN}`)!).mail, "skipped");
-	assert.ok(net.calls.every((c) => !c.url.includes("resend")));
+test("without the mail binding or without MAIL_FROM the mail is 'skipped'; once configured, a replay sends it", async () => {
+	const none = makeEnv({ EMAIL: undefined });
+	assert.equal((await post(none, network())).status, 200);
+	assert.equal(stateOf(none).mail, "skipped");
+	const writes = none.LICENSES.writes;
+	assert.equal((await post(none, network())).status, 200);
+	assert.equal(none.LICENSES.writes, writes, "a replay of a skipped mail writes nothing while nothing is configured");
+
+	const noSender = makeEnv({ MAIL_FROM: "" });
+	assert.equal((await post(noSender, network())).status, 200);
+	assert.equal(stateOf(noSender).mail, "skipped");
+	assert.equal(noSender.EMAIL.attempts, 0);
+
+	// the same record, the binding now there
+	const configured = makeEnv();
+	configured.LICENSES.data = new Map(noSender.LICENSES.data);
+	assert.equal((await post(configured, network())).status, 200);
+	assert.equal(stateOf(configured).mail, "sent");
+	assert.equal(configured.EMAIL.sent.length, 1);
+	assert.equal((await post(configured, network())).status, 200);
+	assert.equal(configured.EMAIL.attempts, 1);
+});
+
+test("a buyer address that cannot be an address is 'failed' without calling Email Service", async () => {
+	const env = makeEnv();
+	const odd = body.replace('"customer_id":', '"customer": {"name": "Odd", "email": "not an address"}, "customer_id":');
+	assert.equal((await post(env, network(), odd)).status, 200);
+	assert.deepEqual({ mail: stateOf(env).mail, detail: stateOf(env).mail_detail }, { mail: "failed", detail: "invalid_address" });
+	assert.equal(env.EMAIL.attempts, 0);
+});
+
+test("a name cannot turn the mail into something else: it only ever appears in the text, and as one line", async () => {
+	const env = makeEnv();
+	const evil = body.replace('"customer_id":', '"customer": {"name": "<script>alert(1)</script>\\r\\nBcc: spy@example.org", "email": "a@example.org"}, "customer_id":');
+	assert.equal((await post(env, network(), evil)).status, 200);
+	const m = env.EMAIL.sent[0];
+	assert.ok(!("html" in m), "a plain-text mail: no markup to escape");
+	assert.ok(!m.subject.includes("script") && !/[\r\n]/.test(m.subject));
+	assert.ok(m.text.split("\n")[0].startsWith("Hello <script>alert(1)</script> Bcc: spy@example.org,"), "control characters became spaces");
+	assert.equal(m.to, "a@example.org");
 });
 
 test("GET /licence: 202 while the licence does not exist, then the licence", async () => {
@@ -271,12 +385,22 @@ test("logs carry no name, e-mail address or key", async () => {
 		await post(env, network());
 		await post(env, network());
 		await handle(webhookRequest(body, "ts=1;h1=00"), env, waiter, network().deps);
+		// the errors of Email Service may quote the address: only the code is logged
+		for (const code of ["E_DELIVERY_FAILED", "E_RATE_LIMIT_EXCEEDED"]) {
+			const bad = makeEnv();
+			bad.EMAIL.fail = () => { throw emailError(code, "could not deliver to jeanne@example.org (Jeanne Dupont) WREN1.abc"); };
+			await post(bad, network()).catch(() => {});
+		}
+		const broken = makeEnv();
+		broken.EMAIL.fail = () => { throw new Error("jeanne@example.org"); };
+		await post(broken, network());
 	} finally {
 		console.log = original;
 	}
 	assert.ok(lines.length >= 3);
 	const all = lines.join("\n");
-	for (const secret of ["Jeanne", "jeanne@", "WREN1.", WEBHOOK_SECRET, "re_test_key"]) assert.ok(!all.includes(secret), secret);
+	assert.ok(all.includes("E_DELIVERY_FAILED") && all.includes("WREN-EEP4-4CYR-EWP9"), "the code and the order are logged");
+	for (const secret of ["Jeanne", "jeanne@", "WREN1.", WEBHOOK_SECRET, "example.org"]) assert.ok(!all.includes(secret), secret);
 });
 
 test("POST /resend: off by default, the same answer for known and unknown addresses, limited per address", async () => {
@@ -288,14 +412,16 @@ test("POST /resend: off by default, the same answer for known and unknown addres
 
 	const env = makeEnv({ RESEND_ENABLED: "true", RESEND_MAX_PER_HOUR: "2" });
 	await post(env, network());
+	const first = env.EMAIL.sent.length;   // the mail of the purchase
 	const net = network();
 	const known = await ask(env, net, " Jeanne@Example.org ");
 	const unknown = await ask(env, net, "nobody@example.org");
 	assert.equal(known.status, 202);
 	assert.equal(unknown.status, 202);
 	assert.deepEqual(await known.json(), await unknown.json());
-	assert.equal(net.calls.length, 1, "one mail, to the buyer only");
-	assert.equal(net.calls[0].headers["idempotency-key"], `wren-resend-${TXN}-${Math.floor(NOW / 3_600_000)}`);
+	assert.equal(env.EMAIL.sent.length, first + 1, "one mail, to the buyer only");
+	assert.equal(env.EMAIL.sent[first].to, "jeanne@example.org");
+	assert.equal(net.calls.length, 0);
 
 	const writes = env.LICENSES.writes;
 	await ask(env, net, "nobody-else@example.org");
@@ -303,7 +429,7 @@ test("POST /resend: off by default, the same answer for known and unknown addres
 
 	await ask(env, net, "jeanne@example.org");
 	await ask(env, net, "jeanne@example.org");   // over the limit of 2 an hour
-	assert.equal(net.calls.length, 2);
+	assert.equal(env.EMAIL.sent.length, first + 2);
 
 	assert.equal((await ask(env, net, "not an address")).status, 400);
 	const bad = await handle(new Request(URL_BASE + "/resend", { method: "POST", body: "{" }), env, waiter, net.deps);
