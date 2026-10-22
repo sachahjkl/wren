@@ -20,10 +20,12 @@ import "core:strings"
 import "core:time"
 import win "core:sys/windows"
 import "wb:config"
+import "wb:cookies"
 import "wb:js"
 import "wb:page"
 import "wb:tools/headless"
 import "wb:tools/testenv"
+import "wb:url"
 import "wb:wasm"
 
 until_text: string
@@ -83,6 +85,7 @@ main :: proc() {
 	pages := 20
 	url := ""
 	pref_args := make([dynamic]string)
+	cookie_args := make([dynamic]string)
 	args := os.args[1:]
 	for i := 0; i < len(args); i += 1 {
 		need :: proc(args: []string, i: ^int) -> string { i^ += 1; if i^ >= len(args) { usage() }; return args[i^] }
@@ -97,6 +100,7 @@ main :: proc() {
 			if err != nil { fmt.eprintln("jspage: cannot read the image"); os.exit(2) }
 			page.js_image_override = data
 		case "-profile": profile_path = need(args, &i)
+		case "-cookie": append(&cookie_args, need(args, &i))
 		case "-eval": eval_code = need(args, &i)
 		case "-wasm-cache": wasm_cache_dir = need(args, &i)
 		case:
@@ -115,6 +119,16 @@ main :: proc() {
 	env: headless.Env
 	if !headless.init(&env, &prefs, "build/jspage_profile") { fmt.eprintln("jspage: the page stack could not start"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
+	// -cookie "name=value; Domain=.example.com; Path=/; Secure": a Set-Cookie of the page's site, stored before the load
+	// (a consent cookie that keeps a site from redirecting to its consent page)
+	if len(cookie_args) > 0 {
+		if u, ok := url_parse(url); ok {
+			for c in cookie_args {
+				res := cookies.store(&env.profile.jar, c, cookies.Context{url = u, http_api = true, now_ms = cookies.now_ms()})
+				if res != .Stored && res != .Replaced { fmt.eprintfln("jspage: cookie %q: %v", c, res) }
+			}
+		}
+	}
 
 	if profile_path != "" {
 		page.js_on_realm = proc(p: ^page.Page, inst: ^wasm.Instance) {
@@ -168,6 +182,10 @@ main :: proc() {
 	headless.destroy(&env)
 	js.cache_stop()
 	os.exit(status)
+}
+
+url_parse :: proc(s: string) -> (url.URL, bool) {
+	return url.parse_absolute(s, context.temp_allocator)
 }
 
 parse_int :: proc(s: string) -> int {
