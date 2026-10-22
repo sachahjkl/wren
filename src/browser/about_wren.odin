@@ -82,11 +82,12 @@ WREN_STYLE :: `
   p { margin: 0 0 10px; }
   .weak { color: $WEAK$; }
   .id { display: flex; align-items: center; }
-  .id img { width: 96px; height: 96px; margin-right: 22px; }
+  .id img.mark { width: 96px; height: 96px; flex: none; object-fit: contain; margin-right: 22px; }
+  .id .text { min-width: 0; }
   .id p { margin: 2px 0 0; }
-  .by { display: flex; align-items: center; margin: 18px 0 0; }
-  .by img { width: 32px; height: 32px; margin-right: 10px; }
-  .by p { margin: 0; }
+  .id p.sig { margin-top: 8px; font-size: 13px; color: $WEAK$; }
+  .sig img { width: 16px; height: 16px; vertical-align: -3px; margin: 0 4px 0 2px; }
+  .sig a { color: $TEXT$; font-weight: 600; }
   .beta { margin: 24px 0 0; padding: 10px 14px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; }
   .status { margin: 0 0 4px; }
   .notice { margin: 12px 0 0; padding: 8px 12px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; }
@@ -141,11 +142,12 @@ row :: proc(sb: ^strings.Builder, key, value: string) {
 }
 
 @(private = "file")
-page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette) {
+page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette, extra_css := "") {
 	strings.write_string(sb, "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>")
 	esc(sb, title)
 	strings.write_string(sb, "</title>\n<style>")
 	strings.write_string(sb, theme_css(p))
+	strings.write_string(sb, extra_css)
 	strings.write_string(sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n")
 }
 
@@ -157,11 +159,9 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	if s.registered {
 		strings.write_string(sb, "<p class=\"status\"><b>Registered to ")
 		esc(sb, s.lic.name)
-		fmt.sbprintf(sb, "</b> &middot; %s licence</p>\n<table>\n", escape_html(license.edition_title(s.lic.edition)))
-		if s.lic.date != "" { row(sb, "Issued", s.lic.date) }
-		if s.lic.order != "" { row(sb, "Order", s.lic.order) }
-		if s.lic.email != "" { row(sb, "E-mail", s.lic.email) }
-		strings.write_string(sb, "</table>\n<p style=\"margin-top: 10px\">Thank you for supporting the development of Wren.</p>\n")
+		fmt.sbprintf(sb, "</b> &middot; %s licence</p>\n", escape_html(license.edition_title(s.lic.edition)))
+		license_card_html(sb, s.lic)
+		strings.write_string(sb, "<p>Thank you for supporting the development of Wren.</p>\n")
 	} else {
 		strings.write_string(sb, "<p class=\"status weak\">Unregistered &mdash; free during the beta &middot; <a href=\"")
 		esc(sb, d.support_url)
@@ -243,10 +243,11 @@ third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
 
 wren_page_html :: proc(d: Wren_Page) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	page_head(&sb, "About Wren", d.palette)
-	fmt.sbprintf(&sb, "<div class=\"id\"><img src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p></div></div>\n",
+	page_head(&sb, "About Wren", d.palette, d.state.registered ? card_css() : "")
+	// the name, the version, the tagline, and the maker's signature as the last, small line of the header
+	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p>",
 		app_logo_url(), APP_NAME, APP_VERSION, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
-	fmt.sbprintf(&sb, "<div class=\"by\"><img src=\"%s\" width=\"32\" height=\"32\" alt=\"\"><p>by <a href=\"%s\"><b>Froment Software</b></a></p></div>\n",
+	fmt.sbprintf(&sb, "<p class=\"sig\">by<img src=\"%s\" width=\"16\" height=\"16\" alt=\"\"><a href=\"%s\">Froment Software</a></p></div></div>\n",
 		png_url(FROMENT_LOGO_PNG), FROMENT_URL)
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a licence only supports development.</p>\n")
 	licence_section(&sb, d)
@@ -323,6 +324,8 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = n
 	d := wren_page_data(app, notice)
 	html := strings.has_prefix(shown, LICENSES_URL) ? licenses_page_html(d) : wren_page_html(d)
 	page.load_html(t.page, transmute([]byte)html)
+	// the licence card's pointer script (about_card.odin); the other built-in pages have none, so they start no realm
+	if d.state.registered && !strings.has_prefix(shown, LICENSES_URL) { page.scripts_start(t.page) }
 	if shown != address {
 		page.session_replace(&t.session, shown)
 		sync_history(t)

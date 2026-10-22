@@ -804,8 +804,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		hovered := base.NIL_HANDLE
 		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
+		was := st.hover
 		st.hover = hovered
 		page.set_style_state(t.page, st)
+		page_pointer_events(app, t, was, hovered, last_move.pos)   // page_pointer.odin
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)

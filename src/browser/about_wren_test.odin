@@ -107,6 +107,11 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 		pal, _ := ui.palette_named(theme)
 		testing.expectf(t, strings.contains(html, pal.dark ? "color-scheme: dark" : "color-scheme: light"), "%s's color scheme", theme)
 		testing.expect(t, !strings.contains(html, "$"), "every theme token was replaced")
+		testing.expect(t, !strings.contains(html, "<script") && !strings.contains(html, `id="lic"`), "no card, no script without a licence")
+		// the maker's signature is part of the header, under the tagline; the logo keeps its proportions in a narrow row
+		sig := strings.index(html, `class="sig"`)
+		testing.expect(t, sig > strings.index(html, "<h1>") && sig < strings.index(html, "beta under development"), "by Froment Software ends the header")
+		testing.expect(t, strings.contains(html, "flex: none; object-fit: contain"), "the logo is neither squashed nor stretched")
 	}
 	// the two themes differ
 	testing.expect(t, wren_page_html(test_page("graphite")) != wren_page_html(test_page("daylight")))
@@ -122,6 +127,11 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !strings.contains(html, "Unregistered"), "a registered Wren is not unregistered")
 	testing.expect(t, !strings.contains(html, "<b>Martin</b>"), "the name is escaped")
+	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", ".lic .holo", "mix-blend-mode"}) {
+		testing.expectf(t, strings.contains(html, want), "the licence card lacks %q", want)
+	}
+	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")
+	testing.expect(t, !strings.contains(html, "setInterval") && !strings.contains(html, "requestAnimationFrame(loop"), "the card's script never loops: no frame at rest")
 	// every page has the beta notice
 	testing.expect(t, strings.contains(html, "Wren is a beta under development."))
 }
