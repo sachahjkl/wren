@@ -181,8 +181,8 @@ finish :: proc(c: ^Ctx) {
 
 	// spaces, clips, groups
 	clear(&l.spaces); clear(&l.clips); clear(&l.groups)
-	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
-	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE})
+	append(&l.spaces, Space{kind = .Document, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE, plane = NONE, persp_from = NONE, ctx = NONE, dest = NONE})
+	append(&l.spaces, Space{kind = .Fixed, parent = NONE, box = 0, frame = NONE, clip = NONE, xform = NONE, plane = NONE, persp_from = NONE, ctx = NONE, dest = NONE})
 	nan := math.nan_f32()
 	isolate := isolated_contexts(l)
 	for x in order {
@@ -202,8 +202,9 @@ finish :: proc(c: ^Ctx) {
 		b.group = tp.group
 		fx := isolate[x] ? Group_Effects{.Isolate} : {}
 		if .Effects in b.flags { fx += box_effects(b.cs) }
+		if .Plane in b.flags { fx += {.Plane} }
 		if fx != {} {
-			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0), effects = fx})
+			append(&l.groups, Group{parent = b.group, box = x, alpha = max(b.cs.opacity, 0), effects = fx, space = NONE, dest = b.group})
 			b.group = i32(len(l.groups) - 1)
 		}
 		if .Sticky in b.flags && b.kind != .Inline {
@@ -224,15 +225,18 @@ finish :: proc(c: ^Ctx) {
 				v, ok := definite(c, b.cs.inset[s], base)
 				ins[i] = ok ? v : nan
 			}
-			append(&l.spaces, Space{kind = .Sticky, parent = b.space, box = x, frame = frame, clip = b.clip, xform = l.spaces[b.space].xform, port = border_rect(b), limit = lim, inset = ins})
+			append(&l.spaces, Space{kind = .Sticky, parent = b.space, box = x, frame = frame, clip = b.clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = border_rect(b), limit = lim, inset = ins})
 			b = &l.boxes[x]
 			b.space = i32(len(l.spaces) - 1)
 		}
 		if .Transformed in b.flags {
 			si := i32(len(l.spaces))
-			append(&l.spaces, Space{kind = .Transform, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = si, mat = box_matrix(l, b)})
+			sp := Space{kind = .Transform, parent = b.space, box = x, frame = NONE, clip = b.clip, xform = si, mat = box_matrix(l, b), plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE}
+			if .Plane in b.flags { plane_space(l, &sp, si, b) }
+			append(&l.spaces, sp)
 			b = &l.boxes[x]
 			b.space = si
+			if .Plane in b.flags && b.group != NONE && .Plane in l.groups[b.group].effects { plane_group(l, b.group, si) }
 		}
 		b.content_space, b.content_clip = b.space, b.clip
 		if .Clips in b.flags && .Propagated not_in b.flags && b.kind != .Inline {
@@ -246,7 +250,7 @@ finish :: proc(c: ^Ctx) {
 			if b.cs.overflow_x != .Scroll && b.cs.overflow_x != .Auto { ms.x = 0 }
 			if b.cs.overflow_y != .Scroll && b.cs.overflow_y != .Auto { ms.y = 0 }
 			if ms.x > 0.5 || ms.y > 0.5 {
-				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, port = port, max_scroll = ms})
+				append(&l.spaces, Space{kind = .Scroll, parent = b.space, box = x, frame = NONE, clip = b.content_clip, xform = l.spaces[b.space].xform, plane = l.spaces[b.space].plane, persp_from = NONE, ctx = NONE, dest = NONE, port = port, max_scroll = ms})
 				b.content_space = i32(len(l.spaces) - 1)
 				b.scroll_space = b.content_space
 				if off, ok := l.scroll[b.node]; ok { l.scroll[b.node] = {clamp(off.x, 0, ms.x), clamp(off.y, 0, ms.y)} }
