@@ -265,9 +265,10 @@ shell_preempt :: proc(user: rawptr) {
 	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !app.presented || platform.is_closed(app.win) { return }
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(chrome_frames.phase_start, now)) < chrome_frames.cfg.after_ms { return }
-	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest
+	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
+	// has no such rate: the chrome must show at the new size before the composer stretches the last frame)
 	since := time.duration_milliseconds(time.tick_diff(chrome_frames.last_present, now))
-	if since < pacer.period_ms * 0.75 { return }
+	if !pacer.resizing && since < pacer.period_ms * 0.75 { return }
 	// and only when the chrome has something new to show: input (or a message: a resize, a repaint), an animation of its
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
@@ -294,8 +295,9 @@ foreign user32_shell {
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
-	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it)
-	if !pacer.slot_held {
+	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
+	// resize step skips it: its frame is presented at once, whatever the screen is doing
+	if !pacer.slot_held && !pacer.resizing {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
 		pacer.slot_held = true
 	}
@@ -337,7 +339,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(&app.ui_state, &app.dc)
 	draw.end_frame(&app.dc)
-	render.frame_end(&app.r)
+	render.frame_end(&app.r, !pacer.resizing)   // a resize step is shown at once (pacer.resizing, pacing.odin)
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too

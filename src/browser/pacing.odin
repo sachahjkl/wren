@@ -48,6 +48,8 @@ FRAME_PREFS := [?]config.Def{
 		description = "Back buffers of the window's swap chain. 3 lets a frame be presented while the desktop compositor still holds the previous one (no wait in Present when frames come faster than the monitor refreshes: tearing mode, a variable refresh monitor); the time from input to screen does not grow (one frame in flight at most). 2 saves one window-sized buffer of GPU memory."},
 	{name = "browser.frame.vblank_clock", kind = .Bool, default = {b = true},
 		description = "The time each frame shows (requestAnimationFrame timestamps, CSS animations, smooth scrolling) is the vblank it starts at, so motion advances by whole refresh periods. Off: the time the frame starts computing."},
+	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
+		description = "While the window is resized, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
 }
 
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
@@ -58,6 +60,7 @@ Pacer_Settings :: struct {
 	mode:       render.Present_Mode,
 	timeout_ms: int,
 	vblank_clock: bool,
+	resize_immediate: bool,
 }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
@@ -66,6 +69,7 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		mode = config.string_of(p, "browser.frame.present_mode") == "tearing" ? .Tearing : .Vsync,
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
 		vblank_clock = config.bool_of(p, "browser.frame.vblank_clock"),
+		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
 	return s
@@ -126,6 +130,8 @@ Pacer :: struct {
 	waited_ms:  f64,          // time spent waiting for the screen (or the timer) at the start of this frame
 	missed_timeouts: int,     // waits that ran into wait_timeout_ms
 	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
+	size:       [2]int,       // the window's size at the last frame (another one: the window is being resized)
+	resizing:   bool,         // this frame follows a size change: drawn and shown at once (pacer_wait)
 }
 
 pacer: Pacer
@@ -177,6 +183,14 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	t0 := time.tick_now()
 	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
 	pacer.continuous = !idled
+	// The window changed size since the last frame: this frame is a resize step. It is drawn and shown at once, without
+	// the timer nor the wait for the swap chain's slot (below): the desktop composer would otherwise show the previous
+	// frame, drawn for the old size, stretched over the new one until this frame reaches the screen
+	// (browser.frame.resize_immediate).
+	resized := app.win.size != pacer.size
+	pacer.size = app.win.size
+	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	if pacer.resizing { return }
 	if pacer.timed && pacer.timer != nil {
 		now := time.tick_now()._nsec
 		period := i64(pacer.period_ms * 1e6)
