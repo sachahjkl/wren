@@ -4,6 +4,7 @@ import "wb:config"
 import "wb:forms"
 import "wb:html"
 import "wb:js"
+import "wb:media"
 import img "wb:images"
 import "wb:style"
 import "wb:wasm"
@@ -29,6 +30,7 @@ Settings :: struct {
 	dom:             Js_Dom_Settings,     // the DOM for JavaScript (js_dom_settings.odin)
 	authn:           webauthn.Settings,   // Web Authentication (bindings_webauthn.odin)
 	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
+	media:           media.Settings,      // video and audio (media/settings.odin)
 }
 
 PREFS := [?]config.Def{
@@ -56,6 +58,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, JS_DOM_PREFS[:])
 	webauthn.register_prefs(p)
 	config.register(p, FRAME_PREFS[:])
+	media.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -78,6 +81,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		dom = js_dom_settings_from_prefs(p),
 		authn = webauthn.settings_from_prefs(p),
 		frames = frame_settings_from_prefs(p),
+		media = media.settings_from_prefs(p),
 	}
 }
 

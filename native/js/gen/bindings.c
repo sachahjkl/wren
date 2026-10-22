@@ -415,30 +415,6 @@ JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst this_va
 JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_canPlayType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-JSValue wjr_HTMLMediaElement_get_currentSrc(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_currentTime(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_duration(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_ended(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_muted(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_networkState(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_paused(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_playbackRate(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_preservesPitch(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_readyState(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_seeking(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_get_volume(JSContext *ctx, JSValueConst this_val);
-JSValue wjr_HTMLMediaElement_load(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-JSValue wjr_HTMLMediaElement_pause(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-JSValue wjr_HTMLMediaElement_play(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
-JSValue wjr_HTMLMediaElement_set_currentTime(JSContext *ctx, JSValueConst this_val, JSValueConst v);
-JSValue wjr_HTMLMediaElement_set_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
-JSValue wjr_HTMLMediaElement_set_muted(JSContext *ctx, JSValueConst this_val, JSValueConst v);
-JSValue wjr_HTMLMediaElement_set_playbackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v);
-JSValue wjr_HTMLMediaElement_set_preservesPitch(JSContext *ctx, JSValueConst this_val, JSValueConst v);
-JSValue wjr_HTMLMediaElement_set_volume(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
@@ -5220,20 +5196,323 @@ static JSValue wjg_HTMLMarqueeElement_get_vspace(JSContext *ctx, JSValueConst th
 static JSValue wjg_HTMLMarqueeElement_set_vspace(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 271, "vspace", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 271, "width", WJ_REFLECT_STRING, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMarqueeElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 271, "width", WJ_REFLECT_STRING, v, 0, 0, 0); }
+/* HTMLMediaElement.error -> htmlmedia.HTMLMediaElement_error */
+static JSValue wjg_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_HTMLMediaElement_error(self->handle, (void *)&r);
+    if (st == wr_Error_Not_Found) { return JS_NULL; }
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLMediaElement.error"); }
+    return wj_wrap_host(ctx, r, 421);
+}
+
 static JSValue wjg_HTMLMediaElement_get_src(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "src", WJ_REFLECT_URL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_src(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "src", WJ_REFLECT_URL, v, 0, 0, 0); }
+/* HTMLMediaElement.currentSrc -> htmlmedia.HTMLMediaElement_currentSrc */
+static JSValue wjg_HTMLMediaElement_get_currentSrc(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLMediaElement_currentSrc(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLMediaElement.currentSrc"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLMediaElement.networkState -> htmlmedia.HTMLMediaElement_networkState */
+static JSValue wjg_HTMLMediaElement_get_networkState(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLMediaElement_networkState(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* HTMLMediaElement.buffered -> htmlmedia.HTMLMediaElement_buffered */
+static JSValue wjg_HTMLMediaElement_get_buffered(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLMediaElement_buffered(self->handle);
+    return wj_wrap_host(ctx, r, 528);
+}
+
+/* HTMLMediaElement.load() -> htmlmedia.HTMLMediaElement_load */
+static JSValue wjg_HTMLMediaElement_load(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    wr_HTMLMediaElement_load(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.canPlayType() -> htmlmedia.HTMLMediaElement_canPlayType */
+static JSValue wjg_HTMLMediaElement_canPlayType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "HTMLMediaElement.canPlayType", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLMediaElement_canPlayType(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, wj_scratch.data, wj_scratch.cap));
+    wj_str_free(ctx, &a0);
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLMediaElement.canPlayType"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* HTMLMediaElement.readyState -> htmlmedia.HTMLMediaElement_readyState */
+static JSValue wjg_HTMLMediaElement_get_readyState(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLMediaElement_readyState(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* HTMLMediaElement.seeking -> htmlmedia.HTMLMediaElement_seeking */
+static JSValue wjg_HTMLMediaElement_get_seeking(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLMediaElement_seeking(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLMediaElement.currentTime -> htmlmedia.HTMLMediaElement_currentTime */
+static JSValue wjg_HTMLMediaElement_get_currentTime(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_HTMLMediaElement_currentTime(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* HTMLMediaElement.currentTime = v -> htmlmedia.HTMLMediaElement_set_currentTime */
+static JSValue wjg_HTMLMediaElement_set_currentTime(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    wr_HTMLMediaElement_set_currentTime(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.duration -> htmlmedia.HTMLMediaElement_duration */
+static JSValue wjg_HTMLMediaElement_get_duration(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_HTMLMediaElement_duration(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* HTMLMediaElement.paused -> htmlmedia.HTMLMediaElement_paused */
+static JSValue wjg_HTMLMediaElement_get_paused(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLMediaElement_paused(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLMediaElement.defaultPlaybackRate -> htmlmedia.HTMLMediaElement_defaultPlaybackRate */
+static JSValue wjg_HTMLMediaElement_get_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_HTMLMediaElement_defaultPlaybackRate(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* HTMLMediaElement.defaultPlaybackRate = v -> htmlmedia.HTMLMediaElement_set_defaultPlaybackRate */
+static JSValue wjg_HTMLMediaElement_set_defaultPlaybackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    wr_HTMLMediaElement_set_defaultPlaybackRate(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.playbackRate -> htmlmedia.HTMLMediaElement_playbackRate */
+static JSValue wjg_HTMLMediaElement_get_playbackRate(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_HTMLMediaElement_playbackRate(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* HTMLMediaElement.playbackRate = v -> htmlmedia.HTMLMediaElement_set_playbackRate */
+static JSValue wjg_HTMLMediaElement_set_playbackRate(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    wr_HTMLMediaElement_set_playbackRate(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.preservesPitch -> htmlmedia.HTMLMediaElement_preservesPitch */
+static JSValue wjg_HTMLMediaElement_get_preservesPitch(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLMediaElement_preservesPitch(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLMediaElement.preservesPitch = v -> htmlmedia.HTMLMediaElement_set_preservesPitch */
+static JSValue wjg_HTMLMediaElement_set_preservesPitch(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    wr_HTMLMediaElement_set_preservesPitch(self->handle, a0 ? 1 : 0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.played -> htmlmedia.HTMLMediaElement_played */
+static JSValue wjg_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLMediaElement_played(self->handle);
+    return wj_wrap_host(ctx, r, 528);
+}
+
+/* HTMLMediaElement.seekable -> htmlmedia.HTMLMediaElement_seekable */
+static JSValue wjg_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLMediaElement_seekable(self->handle);
+    return wj_wrap_host(ctx, r, 528);
+}
+
+/* HTMLMediaElement.ended -> htmlmedia.HTMLMediaElement_ended */
+static JSValue wjg_HTMLMediaElement_get_ended(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLMediaElement_ended(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
 static JSValue wjg_HTMLMediaElement_get_autoplay(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "autoplay", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_autoplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "autoplay", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_get_loop(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "loop", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_loop(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "loop", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* HTMLMediaElement.play() -> htmlmedia.HTMLMediaElement_play */
+static JSValue wjg_HTMLMediaElement_play_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_HTMLMediaElement_play(self->handle);
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_HTMLMediaElement_play(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_HTMLMediaElement_play_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
+/* HTMLMediaElement.pause() -> htmlmedia.HTMLMediaElement_pause */
+static JSValue wjg_HTMLMediaElement_pause(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    wr_HTMLMediaElement_pause(self->handle);
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLMediaElement_get_controls(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "controls", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_controls(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "controls", WJ_REFLECT_BOOL, v, 0, 0, 0); }
+/* HTMLMediaElement.volume -> htmlmedia.HTMLMediaElement_volume */
+static JSValue wjg_HTMLMediaElement_get_volume(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_HTMLMediaElement_volume(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* HTMLMediaElement.volume = v -> htmlmedia.HTMLMediaElement_set_volume */
+static JSValue wjg_HTMLMediaElement_set_volume(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, true)) { return JS_EXCEPTION; }
+    int32_t st = wr_HTMLMediaElement_set_volume(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLMediaElement.volume"); }
+    return JS_UNDEFINED;
+}
+
+/* HTMLMediaElement.muted -> htmlmedia.HTMLMediaElement_muted */
+static JSValue wjg_HTMLMediaElement_get_muted(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_HTMLMediaElement_muted(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* HTMLMediaElement.muted = v -> htmlmedia.HTMLMediaElement_set_muted */
+static JSValue wjg_HTMLMediaElement_set_muted(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 272);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    wr_HTMLMediaElement_set_muted(self->handle, a0 ? 1 : 0);
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLMediaElement_get_defaultMuted(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 272, "muted", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLMediaElement_set_defaultMuted(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 272, "muted", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_get_width(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "width", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 274, "width", WJ_REFLECT_ULONG, v, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_get_height(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "height", WJ_REFLECT_ULONG, 0, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 274, "height", WJ_REFLECT_ULONG, v, 0, 0, 0); }
+/* HTMLVideoElement.videoWidth -> htmlmedia.HTMLVideoElement_videoWidth */
+static JSValue wjg_HTMLVideoElement_get_videoWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 274);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLVideoElement_videoWidth(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* HTMLVideoElement.videoHeight -> htmlmedia.HTMLVideoElement_videoHeight */
+static JSValue wjg_HTMLVideoElement_get_videoHeight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 274);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLVideoElement_videoHeight(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
 static JSValue wjg_HTMLVideoElement_get_poster(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "poster", WJ_REFLECT_URL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_set_poster(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 274, "poster", WJ_REFLECT_URL, v, 0, 0, 0); }
 static JSValue wjg_HTMLVideoElement_get_playsInline(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 274, "playsinline", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
@@ -7998,6 +8277,26 @@ static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, J
     return JS_UNDEFINED;
 }
 
+/* MediaError.code -> htmlmedia.MediaError_code */
+static JSValue wjg_MediaError_get_code(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 421);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_MediaError_code(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* MediaError.message -> htmlmedia.MediaError_message */
+static JSValue wjg_MediaError_get_message(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 421);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_MediaError_message(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "MediaError.message"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
 static JSValue wjg_StyleSheet_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 /* TextDecoder.encoding -> encoding.TextDecoder_encoding */
 static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_val)
@@ -8008,6 +8307,43 @@ static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_va
     WJ_FETCH_STRING(n, wr_TextDecoder_encoding(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "TextDecoder.encoding"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* TimeRanges.length -> htmlmedia.TimeRanges_length */
+static JSValue wjg_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 528);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_TimeRanges_length(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* TimeRanges.start() -> htmlmedia.TimeRanges_start */
+static JSValue wjg_TimeRanges_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 528);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "TimeRanges.start", 1, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    double r = 0;
+    int32_t st = wr_TimeRanges_start(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "TimeRanges.start"); }
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TimeRanges.end() -> htmlmedia.TimeRanges_end */
+static JSValue wjg_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 528);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "TimeRanges.end", 1, argc); }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
+    double r = 0;
+    int32_t st = wr_TimeRanges_end(self->handle, a0, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "TimeRanges.end"); }
+    return JS_NewFloat64(ctx, (double)r);
 }
 
 /* URLSearchParams.size -> url.URLSearchParams_size */
@@ -10947,45 +11283,45 @@ static const wj_member wj_m_HTMLMarqueeElement[] = {
     { "stop", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMediaElement[] = {
-    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_error, NULL, 0 },
+    { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_error, NULL, 0 },
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
     { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_currentSrc, NULL, 0 },
+    { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_currentSrc, NULL, 0 },
     { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "NETWORK_EMPTY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "NETWORK_IDLE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "NETWORK_LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "NETWORK_NO_SOURCE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
-    { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_networkState, NULL, 0 },
+    { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_networkState, NULL, 0 },
     { "preload", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "load", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_load, NULL, NULL, 0 },
-    { "canPlayType", WJ_M_METHOD, 0, 1, wjr_HTMLMediaElement_canPlayType, NULL, NULL, 0 },
+    { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_buffered, NULL, 0 },
+    { "load", WJ_M_METHOD, 0, 0, wjg_HTMLMediaElement_load, NULL, NULL, 0 },
+    { "canPlayType", WJ_M_METHOD, 0, 1, wjg_HTMLMediaElement_canPlayType, NULL, NULL, 0 },
     { "HAVE_NOTHING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "HAVE_METADATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "HAVE_CURRENT_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "HAVE_FUTURE_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "HAVE_ENOUGH_DATA", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_readyState, NULL, 0 },
-    { "seeking", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_seeking, NULL, 0 },
-    { "currentTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_currentTime, wjr_HTMLMediaElement_set_currentTime, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_readyState, NULL, 0 },
+    { "seeking", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_seeking, NULL, 0 },
+    { "currentTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_currentTime, wjg_HTMLMediaElement_set_currentTime, 0 },
     { "fastSeek", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_duration, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_duration, NULL, 0 },
     { "getStartDate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "paused", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_paused, NULL, 0 },
-    { "defaultPlaybackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_defaultPlaybackRate, wjr_HTMLMediaElement_set_defaultPlaybackRate, 0 },
-    { "playbackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_playbackRate, wjr_HTMLMediaElement_set_playbackRate, 0 },
-    { "preservesPitch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_preservesPitch, wjr_HTMLMediaElement_set_preservesPitch, 0 },
-    { "played", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "seekable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_ended, NULL, 0 },
+    { "paused", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_paused, NULL, 0 },
+    { "defaultPlaybackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_defaultPlaybackRate, wjg_HTMLMediaElement_set_defaultPlaybackRate, 0 },
+    { "playbackRate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_playbackRate, wjg_HTMLMediaElement_set_playbackRate, 0 },
+    { "preservesPitch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_preservesPitch, wjg_HTMLMediaElement_set_preservesPitch, 0 },
+    { "played", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_played, NULL, 0 },
+    { "seekable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_seekable, NULL, 0 },
+    { "ended", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_ended, NULL, 0 },
     { "autoplay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_autoplay, wjg_HTMLMediaElement_set_autoplay, 0 },
     { "loop", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_loop, wjg_HTMLMediaElement_set_loop, 0 },
-    { "play", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_play, NULL, NULL, 0 },
-    { "pause", WJ_M_METHOD, 0, 0, wjr_HTMLMediaElement_pause, NULL, NULL, 0 },
+    { "play", WJ_M_METHOD, 0, 0, wjg_HTMLMediaElement_play, NULL, NULL, 0 },
+    { "pause", WJ_M_METHOD, 0, 0, wjg_HTMLMediaElement_pause, NULL, NULL, 0 },
     { "controls", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_controls, wjg_HTMLMediaElement_set_controls, 0 },
-    { "volume", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_volume, wjr_HTMLMediaElement_set_volume, 0 },
-    { "muted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_muted, wjr_HTMLMediaElement_set_muted, 0 },
+    { "volume", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_volume, wjg_HTMLMediaElement_set_volume, 0 },
+    { "muted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_muted, wjg_HTMLMediaElement_set_muted, 0 },
     { "defaultMuted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_defaultMuted, wjg_HTMLMediaElement_set_defaultMuted, 0 },
     { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "audioTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 76, NULL, NULL, NULL, 0 },
@@ -10999,8 +11335,8 @@ static const wj_member wj_m_HTMLAudioElement[] = {
 static const wj_member wj_m_HTMLVideoElement[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_width, wjg_HTMLVideoElement_set_width, 0 },
     { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_height, wjg_HTMLVideoElement_set_height, 0 },
-    { "videoWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "videoHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "videoWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_videoWidth, NULL, 0 },
+    { "videoHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_videoHeight, NULL, 0 },
     { "poster", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_poster, wjg_HTMLVideoElement_set_poster, 0 },
     { "playsInline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_playsInline, wjg_HTMLVideoElement_set_playsInline, 0 },
 };
@@ -12725,8 +13061,8 @@ static const wj_member wj_m_MediaError[] = {
     { "MEDIA_ERR_NETWORK", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "MEDIA_ERR_DECODE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "MEDIA_ERR_SRC_NOT_SUPPORTED", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 4 },
-    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "code", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaError_get_code, NULL, 0 },
+    { "message", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaError_get_message, NULL, 0 },
 };
 static const wj_member wj_m_MediaList[] = {
     { "mediaText", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -13684,9 +14020,9 @@ static const wj_member wj_m_TextTrackCueList[] = {
     { "getCueById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TimeRanges[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "start", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "end", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TimeRanges_get_length, NULL, 0 },
+    { "start", WJ_M_METHOD, 0, 1, wjg_TimeRanges_start, NULL, NULL, 0 },
+    { "end", WJ_M_METHOD, 0, 1, wjg_TimeRanges_end, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Touch[] = {
     { "identifier", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -15652,7 +15988,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_InputDeviceInfo, .n_members = 1, .subtree_end = 421,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MediaError", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MediaError", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MediaError, .n_members = 6, .subtree_end = 422,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -16080,7 +16416,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextTrackCueList, .n_members = 2, .subtree_end = 528,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TimeRanges", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TimeRanges", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TimeRanges, .n_members = 3, .subtree_end = 529,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

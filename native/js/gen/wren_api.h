@@ -298,6 +298,16 @@ enum wr_ScreenField {
 
 /* module forms (partial): types */
 
+/* module htmlmedia: types */
+// A <video> or <audio> element; anything else is not a live HTMLMediaElement.
+typedef uint64_t wr_HTMLMediaElement;
+// A TimeRanges: an immutable snapshot of normalized, non-overlapping ranges in seconds.
+typedef uint64_t wr_TimeRanges;
+// A MediaError (code, message).
+typedef uint64_t wr_MediaError;
+// A VideoPlaybackQuality sample.
+typedef uint64_t wr_VideoPlaybackQuality;
+
 /* module net: types */
 // A request and, once it arrived, its response.
 typedef uint64_t wr_Fetch;
@@ -1875,6 +1885,68 @@ WR_IMPORT("media", "MediaQueryList_media") int32_t wr_MediaQueryList_media(uint6
 WR_IMPORT("media", "MediaQueryList_matches") int32_t wr_MediaQueryList_matches(uint64_t list);
 // screen.width, screen.availHeight...
 WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
+
+/* module htmlmedia */
+// element.currentSrc: the absolute URL of the resource being played ("" when none).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_currentSrc") int32_t wr_HTMLMediaElement_currentSrc(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.networkState: 0 empty, 1 idle, 2 loading, 3 no source.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_networkState") int32_t wr_HTMLMediaElement_networkState(uint64_t element);
+// element.readyState: 0 nothing ... 4 enough data.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_readyState") int32_t wr_HTMLMediaElement_readyState(uint64_t element);
+// element.seeking
+WR_IMPORT("htmlmedia", "HTMLMediaElement_seeking") int32_t wr_HTMLMediaElement_seeking(uint64_t element);
+// element.currentTime, in seconds.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_currentTime") double wr_HTMLMediaElement_currentTime(uint64_t element);
+// element.currentTime = value: a seek (a NaN or infinite value is refused by Web IDL before).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_currentTime") void wr_HTMLMediaElement_set_currentTime(uint64_t element, double value);
+// element.duration: NaN until the metadata is known, Infinity for a stream with no end.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_duration") double wr_HTMLMediaElement_duration(uint64_t element);
+// element.paused
+WR_IMPORT("htmlmedia", "HTMLMediaElement_paused") int32_t wr_HTMLMediaElement_paused(uint64_t element);
+// element.ended
+WR_IMPORT("htmlmedia", "HTMLMediaElement_ended") int32_t wr_HTMLMediaElement_ended(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_defaultPlaybackRate") double wr_HTMLMediaElement_defaultPlaybackRate(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_defaultPlaybackRate") void wr_HTMLMediaElement_set_defaultPlaybackRate(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_playbackRate") double wr_HTMLMediaElement_playbackRate(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_playbackRate") void wr_HTMLMediaElement_set_playbackRate(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_preservesPitch") int32_t wr_HTMLMediaElement_preservesPitch(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_preservesPitch") void wr_HTMLMediaElement_set_preservesPitch(uint64_t element, int32_t value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_volume") double wr_HTMLMediaElement_volume(uint64_t element);
+// element.volume = value: IndexSize outside [0, 1].
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_volume") int32_t wr_HTMLMediaElement_set_volume(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_muted") int32_t wr_HTMLMediaElement_muted(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_muted") void wr_HTMLMediaElement_set_muted(uint64_t element, int32_t value);
+// element.buffered, played, seekable: a new TimeRanges each time.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_buffered") uint64_t wr_HTMLMediaElement_buffered(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_played") uint64_t wr_HTMLMediaElement_played(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_seekable") uint64_t wr_HTMLMediaElement_seekable(uint64_t element);
+// element.error: Not_Found when null.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_error") int32_t wr_HTMLMediaElement_error(uint64_t element, uint64_t *_ret);
+// element.play(): a promise settled when playback starts (NotAllowedError when the autoplay policy forbids it,
+// NotSupportedError when there is no usable source, AbortError when a pause or a load interrupts it).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_play") uint64_t wr_HTMLMediaElement_play(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_pause") void wr_HTMLMediaElement_pause(uint64_t element);
+// element.load(): the media element load algorithm.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_load") void wr_HTMLMediaElement_load(uint64_t element);
+// element.canPlayType(type): "", "maybe" or "probably".
+WR_IMPORT("htmlmedia", "HTMLMediaElement_canPlayType") int32_t wr_HTMLMediaElement_canPlayType(uint64_t element, const uint8_t *type, uint32_t type_len, uint8_t *_buf, uint32_t _cap);
+// video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
+WR_IMPORT("htmlmedia", "HTMLVideoElement_videoWidth") uint32_t wr_HTMLVideoElement_videoWidth(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElement_videoHeight(uint64_t element);
+// video.getVideoPlaybackQuality()
+WR_IMPORT("htmlmedia", "HTMLVideoElement_getVideoPlaybackQuality") uint64_t wr_HTMLVideoElement_getVideoPlaybackQuality(uint64_t element);
+WR_IMPORT("htmlmedia", "TimeRanges_length") uint32_t wr_TimeRanges_length(uint64_t ranges);
+// ranges.start(index): IndexSize past the end.
+WR_IMPORT("htmlmedia", "TimeRanges_start") int32_t wr_TimeRanges_start(uint64_t ranges, uint32_t index, double *_ret);
+WR_IMPORT("htmlmedia", "TimeRanges_end") int32_t wr_TimeRanges_end(uint64_t ranges, uint32_t index, double *_ret);
+// MediaError.code: 1 aborted, 2 network, 3 decode, 4 source not supported.
+WR_IMPORT("htmlmedia", "MediaError_code") uint32_t wr_MediaError_code(uint64_t error);
+WR_IMPORT("htmlmedia", "MediaError_message") int32_t wr_MediaError_message(uint64_t error, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("htmlmedia", "VideoPlaybackQuality_creationTime") double wr_VideoPlaybackQuality_creationTime(uint64_t quality);
+WR_IMPORT("htmlmedia", "VideoPlaybackQuality_droppedVideoFrames") uint32_t wr_VideoPlaybackQuality_droppedVideoFrames(uint64_t quality);
+WR_IMPORT("htmlmedia", "VideoPlaybackQuality_totalVideoFrames") uint32_t wr_VideoPlaybackQuality_totalVideoFrames(uint64_t quality);
+WR_IMPORT("htmlmedia", "VideoPlaybackQuality_corruptedVideoFrames") uint32_t wr_VideoPlaybackQuality_corruptedVideoFrames(uint64_t quality);
+WR_IMPORT("htmlmedia", "VideoPlaybackQuality_totalFrameDelay") double wr_VideoPlaybackQuality_totalFrameDelay(uint64_t quality);
 
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A

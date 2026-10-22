@@ -110,6 +110,8 @@ DEMOS := [?]Demo{
 		"PNG, BMP, JPEG with EXIF orientation, ICO, TIFF, animated GIF, <code>object-fit</code>, <code>srcset</code> and <code>&lt;picture&gt;</code>, broken, missing, truncated and decompression-bomb files, cross-origin images, CSS backgrounds and lazy loading, all counted by the server.", true, "", false},
 	{.Images, "Built-in image decoders", "media.html",
 		"AVIF (8 and 10 bits, alpha, 4:4:4, rotation and mirroring, Display P3, animation), WebP (lossy, lossless, alpha, animation), Adobe RGB JPEG, <code>&lt;picture&gt;</code> and <code>Accept</code> negotiation, SVG as an image and as a background, inline <code>&lt;svg&gt;</code>.", true, "", false},
+	{.Images, "Video and audio", "video.html",
+		"<code>&lt;video&gt;</code> and <code>&lt;audio&gt;</code>: H.264 + AAC (MP4) and AV1 + Opus (WebM) through the system's decoders, on the GPU where possible, the picture drawn with <code>border-radius</code>, <code>object-fit</code> and a transform, exact colors, events, <code>canPlayType</code>, seeking, rate and volume.", true, "", false},
 	{.Images, "External link icons", "media/dark-links.html",
 		"An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.", true, "", false},
 
