@@ -252,6 +252,9 @@ main :: proc() {
 		close(r)
 	}
 
+	if selected("htmlmedia") { run("htmlmedia", seconds = 120) }
+	if selected("mse") { run("mse", seconds = 120) }
+
 	if selected("bench") { run("bench", seconds = 120) }
 
 	base.scope_close(process)
