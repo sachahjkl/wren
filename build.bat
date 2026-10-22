@@ -138,7 +138,8 @@ echo unknown build "%VARIANT%": dev (default), debug, profile, check or release
 exit /b 1
 
 :build_dev
-odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %FLAGS% -o:speed %FAST% || exit /b 1
+:: -debug only adds the PDB: a crash report then names functions and lines (crashtrace)
+odin build src/browser -out:build/browser%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug %FAST% || exit /b 1
 goto done_browser
 
 :build_debug
