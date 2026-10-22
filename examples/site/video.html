@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Video and audio</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.45; }
+  h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .lead { color: GrayText; margin-top: 0; }
+  section { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 10px; padding: .7rem 1rem; margin: 1rem 0; }
+  h2 { font-size: 1rem; margin: 0 0 .5rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  video { background: #000; }
+  #main { width: 320px; height: 180px; }
+  #round { width: 200px; height: 112px; border-radius: 24px; object-fit: cover; }
+  #tilted { width: 200px; height: 112px; transform: rotate(-6deg); }
+  #quad { width: 128px; height: 64px; image-rendering: pixelated; }
+  button { font: inherit; padding: .2rem .8rem; border-radius: 6px; }
+  pre { font-size: .85rem; margin: .4rem 0 0; white-space: pre-wrap; }
+  .ok { color: #1a7f37; } .ko { color: #cf222e; }
+</style>
+</head>
+<body>
+<h1>Video and audio</h1>
+<p class="lead">H.264 + AAC in MP4, AV1 + Opus in WebM, decoded by the system's decoders (on the GPU where it can): the picture stays in
+video memory, the sound comes from the audio device, and the page is not painted again for each frame.</p>
+
+<section>
+  <h2>A progressive MP4 with controls</h2>
+  <div class="row">
+    <video id="main" controls preload="auto" src="/video/f/clip.mp4"></video>
+    <div>
+      <button id="play" type="button">Play</button>
+      <button id="pause" type="button">Pause</button>
+      <button id="seek" type="button">Seek to 2 s</button>
+      <button id="mute" type="button">Mute</button>
+      <button id="rate" type="button">Rate x2</button>
+      <pre id="state"></pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The same picture, through border-radius, object-fit and a transform</h2>
+  <div class="row">
+    <video id="round" muted loop autoplay src="/video/f/clip.mp4"></video>
+    <video id="tilted" muted loop autoplay><source src="/video/f/clip.webm" type="video/webm; codecs=av01.0.00M.08, opus"><source src="/video/f/clip.mp4" type="video/mp4"></video>
+  </div>
+</section>
+
+<section>
+  <h2>Exact colors: four quadrants (red, lime, blue, white), BT.709 limited range</h2>
+  <video id="quad" muted loop autoplay src="/video/f/quad.mp4"></video>
+</section>
+
+<section>
+  <h2>Audio only</h2>
+  <audio id="tone" controls src="/video/f/tone.m4a"></audio>
+  <pre id="types"></pre>
+</section>
+
+<script>
+  const v = document.getElementById('main');
+  const state = document.getElementById('state');
+  const events = [];
+  for (const name of ['loadstart', 'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'play', 'playing', 'pause', 'seeking', 'seeked', 'waiting', 'ended', 'ratechange', 'volumechange', 'durationchange', 'error']) {
+    v.addEventListener(name, () => { events.push(name); if (events.length > 14) events.shift(); show(); });
+  }
+  function show() {
+    state.textContent = 'readyState ' + v.readyState + '  networkState ' + v.networkState + '\n' +
+      'currentTime ' + v.currentTime.toFixed(2) + ' / ' + v.duration.toFixed(2) + '\n' +
+      'paused ' + v.paused + '  ended ' + v.ended + '  seeking ' + v.seeking + '\n' +
+      'size ' + v.videoWidth + 'x' + v.videoHeight + '  rate ' + v.playbackRate + '  muted ' + v.muted + '\n' +
+      'buffered ' + (v.buffered.length ? v.buffered.start(0).toFixed(2) + '-' + v.buffered.end(0).toFixed(2) : 'none') + '\n' +
+      (v.error ? 'error ' + v.error.code + ' ' + v.error.message + '\n' : '') +
+      'events: ' + events.join(' ');
+  }
+  v.addEventListener('timeupdate', show);
+  document.getElementById('play').onclick = () => v.play().catch(e => { events.push('play() ' + e.name); show(); });
+  document.getElementById('pause').onclick = () => v.pause();
+  document.getElementById('seek').onclick = () => { v.currentTime = 2; };
+  document.getElementById('mute').onclick = () => { v.muted = !v.muted; };
+  document.getElementById('rate').onclick = () => { v.playbackRate = v.playbackRate === 1 ? 2 : 1; };
+  show();
+  const types = ['video/mp4; codecs="avc1.64001f, mp4a.40.2"', 'video/mp4; codecs="avc1.42E01E"', 'video/webm; codecs="av01.0.00M.08, opus"',
+    'video/webm; codecs="vp9, opus"', 'video/mp4; codecs="hvc1.1.6.L93.B0"', 'audio/mp4; codecs="mp4a.40.2"', 'audio/webm; codecs="opus"',
+    'audio/mpeg', 'video/ogg; codecs="theora"', 'video/mp4'];
+  document.getElementById('types').textContent = types.map(t => (document.createElement('video').canPlayType(t) || '""').padEnd(10) + t).join('\n');
+</script>
+</body>
+</html>
