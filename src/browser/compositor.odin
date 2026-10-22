@@ -673,10 +673,11 @@ plan :: proc(c: ^Comp, e: ^Effects) -> []Group_Paint {
 	}
 	for g := len(gp) - 1; g >= 0; g -= 1 {
 		gp[g].units = c.group_units[g]
-		parent := l.groups[g].parent
+		parent := l.groups[g].dest
 		if parent == lay.NONE || !gp[g].seen { continue }
 		o := group_outset(e, i32(g))
 		b := lay.Rect{gp[g].bounds.min - {o[0], o[1]}, gp[g].bounds.max + {o[2], o[3]}}
+		b = group_bounds_in_dest(e, i32(g), b)
 		p := &gp[parent]
 		p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
 		p.seen = true
@@ -718,25 +719,44 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	}
 	v := lay.view_make(l, size, scroll, cull = false)
 	screen := lay.Rect{origin, origin + size}
-	shift := lay.Matrix{1, 0, 0, 1, origin.x, origin.y}
+	e := Effects{l = l, v = &v, dc = dc, origin = origin, page_origin = origin, xform = lay.NONE, clip = -2, group = -2,
+		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator),
+		pending = make([dynamic]Pending_Plane, 0, 4, context.temp_allocator)}
 	composite_stats.chunks = len(c.chunks)
+	in_planes := false
 	for &ch in c.chunks {
 		ch.visible = false
 		first := true
 		for b in ch.bounds {
 			if v.singular[b.space] { continue }
-			r := lay.mat_bounds(lay.mat_mul(shift, lay.space_world(&v, b.space)), b.r)
+			o := fo(&e, b.space)
+			r := lay.mat_bounds(lay.mat_mul(lay.Matrix{1, 0, 0, 1, o.x, o.y}, lay.space_world(&v, b.space)), b.r)
 			ch.screen = first ? r : lay.rect_union(ch.screen, r)
 			first = false
 		}
 		// filters of the groups around it spread what it paints (blur, drop shadows): it may show from further away
 		reach: f32 = ch.group != lay.NONE ? l.groups[ch.group].reach : 0
-		ch.visible = !first && !lay.rect_empty(lay.rect_intersect(lay.Rect{ch.screen.min - reach, ch.screen.max + reach}, screen))
-		if ch.visible { composite_stats.visible += 1 }
+		// (inside a plane the bounds are in its own frame: whether it shows is decided with the plane, below)
+		in_plane := !first && l.spaces[l.items[ch.first].space].plane != lay.NONE
+		in_planes ||= in_plane
+		ch.visible = !first && (in_plane || !lay.rect_empty(lay.rect_intersect(lay.Rect{ch.screen.min - reach, ch.screen.max + reach}, screen)))
 	}
-	e := Effects{l = l, v = &v, dc = dc, origin = origin, xform = lay.NONE, clip = -2, group = -2,
-		chain = make([dynamic]i32, 0, 8, context.temp_allocator), open = make([dynamic]Open_Group, 0, 4, context.temp_allocator)}
 	e.groups = plan(c, &e)
+	if in_planes {
+		// planes whose projection misses the page: their chunks are not drawn (and do not size the layers around them)
+		culled := false
+		show := make([]bool, len(l.groups), context.temp_allocator)
+		for g in 0 ..< len(l.groups) {
+			show[g] = true
+			if p := l.groups[g].parent; p != lay.NONE { show[g] = show[p] }
+			if show[g] && .Plane in l.groups[g].effects && e.groups[g].seen && !plane_group_on_screen(&e, i32(g), e.groups[g].bounds, screen) { show[g] = false }
+		}
+		for &ch in c.chunks {
+			if ch.visible && ch.group != lay.NONE && !show[ch.group] { ch.visible = false; culled = true }
+		}
+		if culled { e.groups = plan(c, &e) }
+	}
+	for &ch in c.chunks { if ch.visible { composite_stats.visible += 1 } }
 	// kept effect results: what the groups' layers and the backdrops would receive (effects_cache.odin)
 	fxc: Fx_Cache
 	fx_cache_begin(&fxc, c, &e, screen)
@@ -746,25 +766,26 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		if ch.immediate {
 			for i in ch.first ..< ch.end {
 				it := &l.items[i]
-				if lay.rect_empty(lay.rect_intersect(item_ink(&e, it), screen)) { continue }
+				if l.spaces[it.space].plane == lay.NONE && lay.rect_empty(lay.rect_intersect(item_ink(&e, it), screen)) { continue }
 				if !effects_for(&e, it) { continue }
 				fx_cache_under(&e, nil, item = i)
 				if fx_cache_skipping(&e) { continue }
-				off := v.offsets[it.space] + origin
-				paint_item(l, dc, d, &v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, origin)
+				off := v.offsets[it.space] + e.origin
+				paint_item(l, dc, d, &v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, e.origin)
 				composite_stats.immediate_items += 1
 			}
 			continue
 		}
 		root := lay.space_world(&v, ch.root)
-		m := draw.Affine{1, 0, 0, 1, root[4] + origin.x, root[5] + origin.y}
-		if !ch.recorded { record_chunk(c, l, dc, d, &v, &ch, 1) }
+		set_group(&e, ch.group)   // (may open a plane: e.origin is that of the target the chunk is replayed into)
+		m := draw.Affine{1, 0, 0, 1, root[4] + e.origin.x, root[5] + e.origin.y}
+		ras := draw.affine_scale_factor(draw.current_transform(dc))   // (a plane layer is rasterized denser or sparser than 1)
+		if !ch.recorded { record_chunk(c, l, dc, d, &v, &ch, ras) }
 		// the space matrices of this frame (scroll offsets, sticky shifts, transforms)
 		for b in ch.slots {
 			draw.picture_set_slot(ch.pic, b.slot, slot_matrix(&v, ch.root, b.space))
 			composite_stats.slots_set += 1
 		}
-		set_group(&e, ch.group)
 		pop_chain_to(&e, clip_floor(&e))
 		e.clip = -2   // the next item re-pushes its own clips
 		set_xform(&e, lay.NONE)
@@ -773,7 +794,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		res := draw.replay(dc, ch.pic, m)
 		if res == .Stale {
 			// glyphs at another size, or the atlas was reset: record again at this scale
-			record_chunk(c, l, dc, d, &v, &ch, math.sqrt(abs(root[0] * root[3] - root[1] * root[2])))
+			record_chunk(c, l, dc, d, &v, &ch, math.sqrt(abs(root[0] * root[3] - root[1] * root[2])) * ras)
 			res = draw.replay(dc, ch.pic, m)
 		}
 		if res == .Drawn { composite_stats.replayed += 1 }

@@ -105,8 +105,10 @@ fx_filters :: proc(h: u64, fs: []draw.Filter) -> u64 {
 @(private = "file")
 group_anchor :: proc(e: ^Effects, g: i32) -> draw.Vec2 {
 	b := &e.l.boxes[e.l.groups[g].box]
+	// (inside a plane everything is keyed in the plane's own frame: positions there do not move with the plane)
+	if e.l.spaces[b.space].plane != lay.NONE { return {} }
 	w := lay.space_world(e.v, b.space)
-	return {w[4] + e.origin.x, w[5] + e.origin.y}
+	return {w[4] + e.page_origin.x, w[5] + e.page_origin.y}
 }
 
 // The identity of a group's kept results (stable across layout passes: its element).
@@ -130,8 +132,9 @@ page_of :: proc(l: ^Layout) -> ^page.Page {
 @(private = "file")
 chunk_sig_at :: proc(e: ^Effects, ch: ^Comp_Chunk, anchor: draw.Vec2) -> u64 {
 	root := lay.space_world(e.v, ch.root)
+	o := fo(e, e.l.items[ch.first].space)
 	h := fx_mix(0x6368756e6b, ch.sig)
-	h = fx_pos(h, draw.Vec2{root[4] + e.origin.x, root[5] + e.origin.y} - anchor)
+	h = fx_pos(h, draw.Vec2{root[4] + o.x, root[5] + o.y} - anchor)
 	h = fx_f32(fx_f32(fx_f32(fx_f32(h, root[0]), root[1]), root[2]), root[3])
 	for b in ch.slots {
 		m := slot_matrix(e.v, ch.root, b.space)
@@ -147,7 +150,7 @@ chunk_sig_at :: proc(e: ^Effects, ch: ^Comp_Chunk, anchor: draw.Vec2) -> u64 {
 item_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, c: ^Comp, idx: i32, anchor: draw.Vec2) -> (h: u64, ok: bool) {
 	it := &e.l.items[idx]
 	h = fx_mix(0x6974656d, idx < i32(len(c.item_hash)) ? c.item_hash[idx] : 0)
-	off := e.v.offsets[it.space] + e.origin
+	off := e.v.offsets[it.space] + fo(e, it.space)
 	h = fx_pos(h, off - anchor)
 	if !lay.space_plain(e.l, it.space) {
 		m := e.v.mats[it.space]
@@ -198,7 +201,7 @@ group_sig_at :: proc(e: ^Effects, c: ^Comp, g: i32, anchor: draw.Vec2) -> u64 {
 	gr := &l.groups[g]
 	b := &l.boxes[gr.box]
 	cs := b.cs
-	off := e.v.offsets[b.space] + e.origin
+	off := e.v.offsets[b.space] + fo(e, b.space)
 	h := fx_mix(0x67726f7570, u64(transmute(u8)gr.effects))
 	h = fx_f32(h, gr.alpha)
 	if cs != nil {
@@ -221,10 +224,14 @@ group_sig_at :: proc(e: ^Effects, c: ^Comp, g: i32, anchor: draw.Vec2) -> u64 {
 			h = fx_bytes(h, &radii, size_of(radii))
 		}
 	}
-	if !lay.space_plain(l, b.space) {
+	if .Plane in gr.effects {
+		// a plane shows in its parent as the projection of its layer: the matrix (moving it redraws what it is flattened into)
+		pm := plane_matrix(e, b.space)
+		for k in 0 ..< 16 { h = fx_f32(h, k == 12 ? pm[k] - anchor.x : (k == 13 ? pm[k] - anchor.y : pm[k])) }
+	} else if !lay.space_plain(l, b.space) {
 		m := e.v.mats[b.space]
 		h = fx_f32(fx_f32(fx_f32(fx_f32(h, m[0]), m[1]), m[2]), m[3])
-		h = fx_pos(h, {m[4], m[5]} + e.origin - anchor)
+		h = fx_pos(h, {m[4], m[5]} + fo(e, b.space) - anchor)
 	}
 	if int(g) < len(c.floors) {
 		for ci in c.floors[g] {
@@ -234,7 +241,7 @@ group_sig_at :: proc(e: ^Effects, c: ^Comp, g: i32, anchor: draw.Vec2) -> u64 {
 			h = fx_mix(h, u64(e.l.spaces[cl.space].xform != lay.NONE))
 		}
 	}
-	if gp := &e.groups[g]; gp.seen { h = fx_rect(h, gp.bounds, anchor) }
+	if gp := &e.groups[g]; gp.seen && .Plane not_in gr.effects { h = fx_rect(h, gp.bounds, anchor) }
 	return h
 }
 
@@ -281,7 +288,7 @@ mask_sig_at :: proc(e: ^Effects, x: ^Fx_Cache, g: i32, anchor: draw.Vec2) -> (h:
 // Item `idx` will be drawn this frame (the compositor's tests, in the same order).
 @(private = "file")
 item_drawn :: proc(e: ^Effects, it: ^lay.Display_Item, screen: lay.Rect) -> bool {
-	if lay.rect_empty(lay.rect_intersect(item_ink(e, it), screen)) { return false }
+	if e.l.spaces[it.space].plane == lay.NONE && lay.rect_empty(lay.rect_intersect(item_ink(e, it), screen)) { return false }
 	if it.clip >= 0 && lay.rect_empty(e.v.clips[it.clip]) { return false }
 	xf := e.l.spaces[it.space].xform
 	return !(xf != lay.NONE && e.v.singular[it.space])
@@ -333,7 +340,7 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 			for i in ch.first ..< ch.end {
 				it := &l.items[i]
 				if !item_drawn(e, it, screen) { continue }
-				for g := it.group; g != lay.NONE; g = l.groups[g].parent {
+				for g := it.group; g != lay.NONE; g = l.groups[g].dest {
 					h, ok := item_sig_at(e, x, c, i, x.anchor[g])
 					x.key[g] = fx_mix(x.key[g], h)
 					if !ok { x.ok[g] = false }
@@ -341,13 +348,13 @@ fx_cache_begin :: proc(x: ^Fx_Cache, c: ^Comp, e: ^Effects, screen: lay.Rect) {
 			}
 			continue
 		}
-		for g := ch.group; g != lay.NONE; g = l.groups[g].parent {
+		for g := ch.group; g != lay.NONE; g = l.groups[g].dest {
 			x.key[g] = fx_mix(x.key[g], chunk_sig_at(e, &ch, x.anchor[g]))
 		}
 	}
 	for g in 0 ..< n {
 		if !e.groups[g].seen { continue }
-		for p := l.groups[g].parent; p != lay.NONE; p = l.groups[p].parent {
+		for p := l.groups[g].dest; p != lay.NONE; p = l.groups[p].dest {
 			x.key[p] = fx_mix(x.key[p], group_sig_at(e, c, i32(g), x.anchor[p]))
 		}
 		// a mask is drawn in its group's layer: in its key and in those of the groups around it
@@ -401,7 +408,7 @@ fx_cache_under :: proc(e: ^Effects, ch: ^Comp_Chunk, item: i32 = -1, group: i32 
 
 // Content of open groups is not drawn: a kept result stands for it.
 @(private)
-fx_cache_skipping :: proc(e: ^Effects) -> bool { return e.fxc != nil && e.fxc.skip > 0 }
+fx_cache_skipping :: proc(e: ^Effects) -> bool { return e.hide > 0 || (e.fxc != nil && e.fxc.skip > 0) }
 
 // The cache parameters of group g's layer (zero: not kept).
 @(private)
@@ -426,6 +433,16 @@ fx_cache_layer :: proc(e: ^Effects, g: i32, fx: ^draw.Layer_Effects) {
 	fx.cache_id = group_id(x, e.l, g, 0x6c61796572)
 	fx.cache_key = key
 	fx.cache_anchor = x.anchor[g]
+}
+
+// The cache parameters of plane group g's layer: kept while what is drawn in it (in its own frame) is the same, whatever the
+// matrix that projects it does.
+@(private)
+fx_cache_plane :: proc(e: ^Effects, g: i32, fx: ^draw.Plane_Fx) {
+	x := e.fxc
+	if x == nil || int(g) >= len(x.ok) || !x.ok[g] || !fx_settings.enabled { return }
+	fx.cache_id = group_id(x, e.l, g, 0x706c616e65)
+	fx.cache_key = x.key[g]
 }
 
 // The cache parameters of group g's backdrop (zero id: not kept). Ends what is watched for it.

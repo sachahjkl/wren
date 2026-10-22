@@ -419,3 +419,31 @@ multilingual_text :: proc(t: ^testing.T) {
 	n := cx_same(t, f, "after the glyph atlas was cleared", 31, 2)
 	testing.expectf(t, n > 0, "pictures with text recorded again (%d)", n)
 }
+////////////////////////////////
+// 3D planes: the same pixels composited and drawn directly, and what is on screen where it should be.
+
+@(private = "file")
+cx_px :: proc(img: []u8, x, y: int) -> [4]int {
+	o := (y * COMP_SIZE.x + x) * 4
+	return {int(img[o]), int(img[o + 1]), int(img[o + 2]), int(img[o + 3])}
+}
+
+@(test)
+planes_paint_members_of_a_3d_context :: proc(t: ^testing.T) {
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 700px; width: 340px; height: 280px; position: relative }
+		.root { position: absolute; left: 40px; top: 30px; width: 120px; height: 120px; transform-style: preserve-3d }
+		.m { position: absolute; inset: 0; background: rgb(255, 0, 0) }
+		.n { position: absolute; left: 150px; top: 0; width: 60px; height: 60px; background: rgb(0, 0, 255); transform: translateZ(10px) }
+		</style></head><body><div class=stage><div class=root><div class=m style="transform:translateZ(1px)"></div><div class=n></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		testing.expectf(t, cx_px(img, 100, 90) == {255, 0, 0, 255}, "composited %v: the member plane shows: %v", composited, cx_px(img, 100, 90))
+		testing.expectf(t, cx_px(img, 220, 50) == {0, 0, 255, 255}, "composited %v: the second member (outside its root's own box) shows: %v", composited, cx_px(img, 220, 50))
+	}
+}
