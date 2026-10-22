@@ -44,6 +44,8 @@ PLANE_PREFS := [?]config.Def{
 		description = "GPU memory one plane's layer may use. A plane that would need more at the scale its projection asks for is rasterized for the part of it that shows, and then at a lower scale if that is still too much."},
 	{name = "paint.planes.motion_tolerance", kind = .Float, default = {f = 2}, bounded = true, min = 1, max = 16,
 		description = "While a plane moves (an animation, a drag) its layer keeps the scale it has, so that it is not rasterized again at every frame, until the scale it needs is this many times larger (the plane then looks that much softer). It is rasterized again at the right scale a moment after it stops."},
+	{name = "paint.planes.detach_children", kind = .Bool, default = {b = true},
+		description = "Composite a flat 3D-transformed child of a plain 3D-transformed element on its own, projected once with its parent, instead of drawing it into the parent's layer: animating the child then does not rasterize the parent again every frame, and the child is resampled once. Off: the child is drawn into the parent's layer."},
 	{name = "paint.planes.settle_ms", kind = .Float, default = {f = 120}, bounded = true, min = 0, max = 5000, unit = "ms",
 		description = "How long after a plane stopped moving it is rasterized again at the scale it needs, when it kept a smaller one while moving."},
 }
@@ -56,9 +58,10 @@ Plane_Settings :: struct {
 	layer_bytes:          int,
 	tolerance:            f32,
 	settle_ms:            f64,
+	detach:               bool,
 }
 
-@(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120}
+@(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120, detach = true}
 @(private) planes_watch: int
 
 register_plane_prefs :: proc(p: ^config.Prefs) { config.register(p, PLANE_PREFS[:]) }
@@ -73,6 +76,7 @@ plane_settings_from_prefs :: proc(p: ^config.Prefs) -> Plane_Settings {
 		layer_bytes = int(config.int_of(p, "paint.planes.layer_mb")) << 20,
 		tolerance = f32(config.float_of(p, "paint.planes.motion_tolerance")),
 		settle_ms = config.float_of(p, "paint.planes.settle_ms"),
+		detach = config.bool_of(p, "paint.planes.detach_children"),
 	}
 }
 
@@ -132,6 +136,10 @@ plane_dest_bounds :: proc(e: ^Effects, s: i32, r: lay.Rect, huge: lay.Rect) -> l
 	}
 	return out
 }
+
+// Is plane group g composited on its own, not into its parent plane's layer (layout.plane_detachable, and the preference)?
+@(private)
+plane_detach :: proc(l: ^Layout, g: i32) -> bool { return plane_settings.detach && lay.plane_detachable(l, g) }
 
 // Plane frame (offsets taken out) -> the page's draw space, through the planes that receive it.
 @(private)
@@ -324,40 +332,134 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 		og.member, og.saved_skip = true, e.fxc.skip
 		e.fxc.skip = 0
 	}
-	fx := draw.Plane_Fx{}
-	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx) }
-	plan := plane_plan(e, c, s, bounds)
-	fx.mips = plane_settings.mips
+	og.plan = plane_plan(e, c, s, bounds)
 	og.saved_origin = e.origin
-	drawn := draw.push_plane(e.dc, draw.Rect{plan.bounds.min, plan.bounds.max}, plan.scale, fx)
-	e.origin = -e.v.offsets[s]
 	og.plane = true
+	if !plane_segment_empty(e, c, 0) { plane_push_segment(e, og, c, s) }
+	e.origin = -e.v.offsets[s]
+	return true
+}
+
+// The cache parameters of segment `seg` of plane group `c`'s layer (see Fx_Cache.segs).
+@(private)
+plane_fx :: proc(e: ^Effects, c: i32, seg: int) -> draw.Plane_Fx {
+	fx := draw.Plane_Fx{mips = plane_settings.mips}
+	if !fx_cache_skipping(e) { fx_cache_plane(e, c, &fx, seg) }
+	return fx
+}
+
+// Is segment `seg` of the plane's layer without any content (the plane has detached children and nothing is drawn in it)?
+@(private)
+plane_segment_empty :: proc(e: ^Effects, c: i32, seg: int) -> bool {
+	_, items, known := fx_seg(e.fxc, c, seg)
+	return known && items == 0 && len(e.fxc.segs[c]) > 0
+}
+
+@(private)
+plane_push_segment :: proc(e: ^Effects, og: ^Open_Group, c, s: i32) {
+	fx := plane_fx(e, c, og.seg)
+	drawn := draw.push_plane(e.dc, draw.Rect{og.plan.bounds.min, og.plan.bounds.max}, og.plan.scale, fx)
+	og.layer_open = true
 	if !drawn {
 		og.skip = true
 		e.fxc.skip += 1
 	}
-	return true
 }
 
-// Closes a plane group's layer: composited now, or kept for its context's root.
+// A flat child plane is about to open on the plane at e.open[pi] and will be composited on its own: the parent's layer so far is
+// closed (its content before the child) and kept as the first part of what the parent composites; plane_resume opens the
+// next one when the child is done.
+@(private)
+plane_pause :: proc(e: ^Effects, pi: int) {
+	pg := &e.open[pi]
+	pop_chain_to(e, pg.floor)
+	set_xform(e, lay.NONE)
+	if pg.layer_open {
+		pl := draw.pop_plane(e.dc)
+		s := e.l.groups[pg.g].space
+		if pg.parts == nil { pg.parts = make([dynamic]draw.Plane_Part, 0, 4, context.temp_allocator) }
+		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(plane_matrix(e, s)), alpha = plane_alpha(e.l, &e.l.groups[pg.g]), o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+		pg.layer_open = false
+	}
+	if pg.skip { e.fxc.skip -= 1; pg.skip = false }
+	if pg.member { e.fxc.skip = pg.saved_skip }
+	e.origin = pg.saved_origin
+}
+
+@(private)
+plane_resume :: proc(e: ^Effects, pi: int) {
+	pg := &e.open[pi]
+	pg.seg += 1
+	s := e.l.groups[pg.g].space
+	if pg.member && e.fxc != nil { pg.saved_skip = e.fxc.skip; e.fxc.skip = 0 }
+	if !plane_segment_empty(e, pg.g, pg.seg) { plane_push_segment(e, pg, pg.g, s) }
+	e.origin = -e.v.offsets[s]
+}
+
+// The matrix of `m` (plane frame -> the frame of the plane that receives it) with the plane that receives it flattened: the
+// result of m is taken as a point of the receiving plane, z dropped after the perspective divide. For a point of the plane
+// itself that is the 3x3 homography of m, as a 4x4 acting on (x, y, 0, 1).
+@(private)
+flatten4 :: proc(m: style.Matrix4) -> style.Matrix4 {
+	return {m[0], m[1], 0, m[3], m[4], m[5], 0, m[7], 0, 0, 1, 0, m[12], m[13], 0, m[15]}
+}
+
+// Closes a plane group's layer: composited now, or kept for its context's root, or (a flat child of a plain plane) set among the
+// parts its parent composites.
 @(private)
 close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 	l := e.l
 	g := &l.groups[og.g]
 	s := g.space
+	defer if og.detach_to > 0 { plane_resume(e, og.detach_to - 1) }
 	set_xform(e, lay.NONE)   // (the transform of the last item drawn in the layer goes, then the layer's own)
-	pl := draw.pop_plane(e.dc)
+	pl: draw.Plane_Layer
+	if og.layer_open { pl = draw.pop_plane(e.dc) }
 	e.origin = og.saved_origin
 	if og.member { e.fxc.skip = og.saved_skip }
-	if pl.img.tex == 0 || pl.direct { return }
 	sp := &l.spaces[s]
 	acc := e.v.accs[s]
 	m := plane_matrix(e, s)
 	alpha := plane_alpha(l, g)
 	cull := sp.back_hidden && style.m4_back_facing(acc)
 	o := draw.Plane_Draw{max_taps = plane_settings.taps, blend = og.blend, backdrop = og.backdrop}
+	if og.detach_to > 0 {
+		// composited on its own: flattened onto the parent's plane, then projected with it, in the parent's z-order position
+		if pl.img.tex == 0 || pl.direct { return }
+		pg := &e.open[og.detach_to - 1]
+		mp := plane_matrix(e, l.groups[pg.g].space)
+		if len(og.backdrop) > 0 { o.shape = plane_shape(e, og.g, pl) }
+		o.cull_back = sp.back_hidden
+		append(&pg.parts, draw.Plane_Part{layer = pl, m = to_mat4(style.m4_mul(mp, flatten4(m))), alpha = alpha, o = o})
+		return
+	}
+	if len(og.parts) > 0 {
+		// a plane with children composited on their own: its segments and its children, in order
+		if og.layer_open {
+			append(&og.parts, draw.Plane_Part{layer = pl, m = to_mat4(m), alpha = alpha, o = draw.Plane_Draw{max_taps = plane_settings.taps}})
+		}
+		// (the plane the parts lie on: its rect as its layers cover it)
+		sc := og.plan.scale
+		o0 := draw.Vec2{math.floor(og.plan.bounds.min.x * sc) / sc, math.floor(og.plan.bounds.min.y * sc) / sc}
+		geom := draw.Plane_Layer{origin = o0, scale = sc, size = {int(math.ceil((og.plan.bounds.max.x - o0.x) * sc)), int(math.ceil((og.plan.bounds.max.y - o0.y) * sc))}}
+		item := draw.Plane_Item{parts = og.parts[:], geom = geom, geom_m = to_mat4(m), skip = cull}
+		finish_plane_item(e, sp, s, item)
+		return
+	}
+	if pl.img.tex == 0 || pl.direct { return }
 	if len(og.backdrop) > 0 && !cull { o.shape = plane_shape(e, og.g, pl) }
 	item := draw.plane_item(pl, to_mat4(m), alpha, o, cull)
+	if sp.ctx == s && !sp.preserve {
+		if cull { draw.discard_plane(e.dc, pl); draw.discard_plane(e.dc, o.shape); return }
+		draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
+		return
+	}
+	finish_plane_item(e, sp, s, item)
+}
+
+// Where a plane's composite goes: kept for its 3D context's root (a member), or the root draws its context now, or alone.
+@(private)
+finish_plane_item :: proc(e: ^Effects, sp: ^lay.Space, s: i32, item: draw.Plane_Item) {
 	if sp.ctx != s {
 		// a member of a 3D context: drawn with its whole context, sorted
 		append(&e.pending, Pending_Plane{item = item, ctx = sp.ctx})
@@ -368,8 +470,7 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 		flush_context(e, item, s)
 		return
 	}
-	if cull { draw.discard_plane(e.dc, pl); return }
-	draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
+	draw.draw_planes(e.dc, []draw.Plane_Item{item})
 }
 
 // The opacity a plane is composited with: its group's, unless the group also has a layer of its own for it.

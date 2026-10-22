@@ -128,6 +128,12 @@ Open_Group :: struct {
 	saved_origin: draw.Vec2,   // e.origin outside the plane
 	blend:    draw.Blend_Mode,   // plane: its mix-blend-mode, applied to the projected quad
 	backdrop: []draw.Filter,     // plane: its backdrop-filter, applied to what lies under the projected quad
+	// planes with flat child planes composited on their own (layout.plane_detachable, see plane_pause):
+	plan:      Plane_Plan,       // how the layer is rasterized (the same for every segment)
+	layer_open: bool,            // the current segment has a layer open
+	seg:       int,              // the current segment: the content before the first child is 0, after it 1...
+	parts:     [dynamic]draw.Plane_Part,   // the layers to composite for the plane so far, in order: segments and children
+	detach_to: int,              // this plane is composited on its own into the parts of e.open[detach_to - 1] (0: not)
 }
 
 @(private)
@@ -301,6 +307,19 @@ plan_groups :: proc(e: ^Effects) -> []Group_Paint {
 		o := group_outset(e, i32(g))
 		b := lay.Rect{gp[g].bounds.min - {o[0], o[1]}, gp[g].bounds.max + {o[2], o[3]}}
 		b = group_bounds_in_dest(e, i32(g), b)
+		if plane_detach(e.l, i32(g)) {
+			// composited on its own: its parent's layer holds nothing of it (and does not grow or move with it); what receives
+			// the parent receives it. (A parent with no content of its own is only there to carry the child: any bounds do.)
+			if !gp[parent].seen { gp[parent].bounds, gp[parent].seen = b, true }
+			grand := e.l.groups[parent].dest
+			if grand == lay.NONE { continue }
+			b = group_bounds_in_dest(e, parent, b)
+			p := &gp[grand]
+			p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
+			p.seen = true
+			p.units += 1
+			continue
+		}
 		p := &gp[parent]
 		p.bounds = p.seen ? lay.rect_union(p.bounds, b) : b
 		p.seen = true
@@ -365,6 +384,19 @@ open_group :: proc(e: ^Effects, c: i32) {
 	cs := b.cs
 	gp := &e.groups[c]
 	og := Open_Group{g = c}
+	// a flat plane on a plain plane is composited on its own: the parent's layer so far is set aside, its content after this
+	// goes in the next one (so animating this plane does not draw the parent again)
+	if .Plane in g.effects && g.parent != lay.NONE && plane_detach(l, c) {
+		for i := len(e.open) - 1; i >= 0; i -= 1 {
+			if e.open[i].g == g.parent {
+				if e.open[i].plane && !e.open[i].hidden {
+					plane_pause(e, i)
+					og.detach_to = i + 1
+				}
+				break
+			}
+		}
+	}
 	// the clips around the group's box: they cut its composite
 	set_clip(e, b.clip)
 	og.floor = len(e.chain)
@@ -444,7 +476,12 @@ open_group :: proc(e: ^Effects, c: i32) {
 @(private)
 close_group :: proc(e: ^Effects) {
 	og := pop(&e.open)
-	if og.hidden { e.hide -= 1; pop_chain_to(e, og.floor); return }
+	if og.hidden {
+		e.hide -= 1
+		pop_chain_to(e, og.floor)
+		if og.detach_to > 0 { plane_resume(e, og.detach_to - 1) }
+		return
+	}
 	if og.skip { e.fxc.skip -= 1 }
 	pop_chain_to(e, og.floor)
 	if og.mask && !og.skip && !fx_cache_skipping(e) {
