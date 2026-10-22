@@ -537,3 +537,70 @@ planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
 		testing.expectf(t, q[2] > 200 && q[0] < 60, "composited %v: the lifted layer is over its base at %v: %v", composited, mid, q)
 	}
 }
+
+// Planes that cut through each other: two members of a preserve-3d context in an X (rotateY +45 and -45 about the same axis)
+// are split along their line of intersection, each in front on its own side.
+@(test)
+planes_cutting_through_each_other_are_split :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 600px; width: 340px; height: 280px; position: relative }
+		.root { position: absolute; left: 100px; top: 60px; width: 120px; height: 120px; transform-style: preserve-3d }
+		.a, .b { position: absolute; inset: 0 }
+		.a { background: rgb(255, 0, 0); transform: rotateY(45deg) }
+		.b { background: rgb(0, 0, 255); transform: rotateY(-45deg) }
+		</style></head><body><div class=stage><div class=root><div class=a></div><div class=b></div></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		testing.expectf(t, cx_px(img, 140, 120)[0] > 240 && cx_px(img, 140, 120)[2] < 20, "composited %v: left of the crossing is the first plane: %v", composited, cx_px(img, 140, 120))
+		testing.expectf(t, cx_px(img, 180, 120)[2] > 240 && cx_px(img, 180, 120)[0] < 20, "composited %v: right of the crossing is the second plane: %v", composited, cx_px(img, 180, 120))
+	}
+}
+
+// mix-blend-mode and backdrop-filter on a plane act on the projected quad.
+@(test)
+planes_blend_and_backdrop_filter :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	f: Cx
+	if !cx_open(&f, `<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+		.stage { perspective: 600px; width: 340px; height: 280px; position: relative; background: repeating-linear-gradient(90deg, #000 0 4px, #fff 4px 8px) }
+		.m { position: absolute; left: 20px; top: 20px; width: 120px; height: 100px; background: rgb(128, 128, 128); mix-blend-mode: multiply; transform: rotateY(25deg) }
+		.g { position: absolute; left: 200px; top: 20px; width: 120px; height: 100px; border-radius: 20px; backdrop-filter: blur(8px); transform: rotateY(25deg) }
+		</style></head><body><div class=stage><div class=m></div><div class=g></div></div></body></html>`) {
+		cx_close(&f)
+		testing.fail_now(t, "no device")
+	}
+	defer cx_close(&f)
+	for composited in ([]bool{true, false}) {
+		img := cx_paint(&f, composited)
+		// multiply: black stripes stay black, white ones become the gray of the plane
+		whites, blacks, grays := 0, 0, 0
+		for x in 60 ..< 100 {
+			p := cx_px(img, x, 70)
+			if p[0] < 8 { blacks += 1 }
+			if p[0] > 110 && p[0] < 145 { grays += 1 }
+			if p[0] > 245 { whites += 1 }
+		}
+		testing.expectf(t, blacks > 12 && grays > 12 && whites == 0, "composited %v: multiply on the turned plane: %d black, %d gray, %d white", composited, blacks, grays, whites)
+		// backdrop blur: inside the glass the stripes are gone, outside they stay
+		lo, hi := 255, 0
+		for x in 235 ..< 275 {
+			v := cx_px(img, x, 70)[0]
+			lo, hi = min(lo, v), max(hi, v)
+		}
+		testing.expectf(t, hi - lo < 90, "composited %v: the glass blurs what is under it (levels %d..%d)", composited, lo, hi)
+		lo, hi = 255, 0
+		for x in 160 ..< 180 {
+			v := cx_px(img, x, 70)[0]
+			lo, hi = min(lo, v), max(hi, v)
+		}
+		testing.expectf(t, hi - lo > 240, "composited %v: outside the glass the stripes stay (levels %d..%d)", composited, lo, hi)
+	}
+}
