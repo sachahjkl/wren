@@ -23,3 +23,8 @@ src/browser/wren_dev.res
 private.key
 *.private.key
 *.wrenlicense
+
+# SOPS: a decrypted copy of secrets/ never stays (secrets/README.md)
+secrets/*.plain.yaml
+secrets/*.plain.json
+secrets/*.plain.env
