@@ -229,6 +229,19 @@ windows_removal_leaves_what_is_not_the_programs :: proc(t: ^testing.T) {
 	testing.expect(t, reg_key_exists(fmt.tprintf("%s\\Clients\\StartMenuInternet\\Other", s.root)), "another browser's entry stays")
 }
 
+// The windows of the process carry the AppUserModelID the shortcut has: what makes pinning and grouping work.
+@(test)
+windows_process_identity_is_the_shortcuts :: proc(t: ^testing.T) {
+	id := Identity{name = "Wren", key = "Wren", slug = "wren", aumid = "FromentSoftware.Wren.ProcessTest"}
+	set_process_identity(id)
+	got: cstring16
+	testing.expect(t, GetCurrentProcessExplicitAppUserModelID(&got) >= 0 && got != nil, "the process has an explicit AppUserModelID")
+	if got == nil { return }
+	defer win.CoTaskMemFree(rawptr(got))
+	s, _ := win.wstring_to_utf8(got, -1, context.temp_allocator)
+	testing.expect_value(t, s, id.aumid)
+}
+
 @(test)
 windows_command_program :: proc(t: ^testing.T) {
 	testing.expect_value(t, command_program(`"C:\a b\wren.exe" "%1"`), `C:\a b\wren.exe`)

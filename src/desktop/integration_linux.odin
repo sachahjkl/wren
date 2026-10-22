@@ -126,11 +126,11 @@ linux_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 linux_install :: proc(o: ^Options) -> Result {
 	l, ok := layout_of(o)
 	if !ok { return {.System, "neither $XDG_DATA_HOME nor the home directory is known"} }
-	if err := os.make_directory_all(l.applications); err != nil { return {.Io, strings.concatenate({"cannot create ", l.applications}, context.temp_allocator)} }
+	if !ensure_dir(l.applications) { return {.Io, strings.concatenate({"cannot create ", l.applications}, context.temp_allocator)} }
 
 	for ic in o.icons {
 		path := icon_path(l, o.identity.slug, ic.size)
-		if err := os.make_directory_all(filepath.dir(path)); err != nil { return {.Io, strings.concatenate({"cannot create the directory of ", path}, context.temp_allocator)} }
+		if !ensure_dir(filepath.dir(path)) { return {.Io, strings.concatenate({"cannot create the directory of ", path}, context.temp_allocator)} }
 		if r := write_atomic(path, ic.png); r.error != .None { return r }
 	}
 	if r := write_atomic(l.entry, transmute([]byte)desktop_entry_text(o)); r.error != .None { return r }

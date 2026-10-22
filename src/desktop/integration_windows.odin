@@ -171,7 +171,7 @@ read_shortcut :: proc(path: string) -> (target, aumid: string, read: bool) {
 windows_install :: proc(o: ^Options) -> Result {
 	l, ok := layout_of(o)
 	if !ok { return {.System, "the Start menu folder is unknown"} }
-	if err := os.make_directory_all(l.menu_dir); err != nil { return {.Io, strings.concatenate({"cannot create ", l.menu_dir}, context.temp_allocator)} }
+	if !ensure_dir(l.menu_dir) { return {.Io, strings.concatenate({"cannot create ", l.menu_dir}, context.temp_allocator)} }
 	com := com_enter()
 	defer com_leave(com)
 
