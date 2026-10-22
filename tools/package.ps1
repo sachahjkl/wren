@@ -122,7 +122,10 @@ index.html, else the list of its files; files and folders dropped on the window 
 Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE,
 --desktop-integration=install|remove|status (the Start menu shortcut and the entry in Settings > Apps > Default apps:
 the same as the box in about:config; run it with `start /wait` or Start-Process -Wait to get the exit code: 0 done or
-installed, 1 failed or absent, 2 to repair). Wren adds them itself at the first start; remove them before deleting wren.exe.
+installed, 1 failed or absent, 2 to repair), --setup (the Setup dialog: install Wren into %LOCALAPPDATA%\Programs\Wren, repair,
+replace or uninstall it; the first start of a copy that is not installed offers it, "Use standalone" keeps it as it is),
+--new-window (a window of its own: by default a second start with the same profile opens a tab in the running Wren).
+A file wren.portable beside wren.exe makes a portable copy: its profile is the folder data beside it.
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address, Ctrl+F find, Ctrl+U view source, Ctrl+B status bar,
 Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom, F11 full screen.
 

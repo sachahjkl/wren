@@ -43,11 +43,16 @@ parse_cli :: proc(args: []string, allocator := context.temp_allocator) -> (mode:
 // The roots a test (or a script that wants a dry run in a scratch place) sets in the environment. Any of them given
 // also turns the system notification off: nothing outside the scratch roots is told anything.
 //     WREN_DESKTOP_MENU_DIR          WREN_DESKTOP_REGISTRY_ROOT     (Windows)
+//     WREN_DESKTOP_DESKTOP_DIR       WREN_DESKTOP_ENVIRONMENT_ROOT  (Windows: the Desktop folder; the key that stands for HKCU\Environment)
 //     WREN_DESKTOP_APPLICATIONS_DIR  WREN_DESKTOP_ICONS_DIR         (Linux)
+//     WREN_DESKTOP_INSTALL_DIR                                      (where Setup proposes to install, and finds the installed copy)
 roots_from_env :: proc(o: ^Options, lookup: proc(name: string) -> string) {
 	scratch := false
 	set :: proc(dst: ^string, v: string, scratch: ^bool) { if v != "" { dst^ = v; scratch^ = true } }
 	set(&o.menu_dir, lookup("WREN_DESKTOP_MENU_DIR"), &scratch)
+	set(&o.desktop_dir, lookup("WREN_DESKTOP_DESKTOP_DIR"), &scratch)
+	set(&o.environment_root, lookup("WREN_DESKTOP_ENVIRONMENT_ROOT"), &scratch)
+	set(&o.install_dir, lookup("WREN_DESKTOP_INSTALL_DIR"), &scratch)
 	set(&o.registry_root, lookup("WREN_DESKTOP_REGISTRY_ROOT"), &scratch)
 	set(&o.applications_dir, lookup("WREN_DESKTOP_APPLICATIONS_DIR"), &scratch)
 	set(&o.icons_dir, lookup("WREN_DESKTOP_ICONS_DIR"), &scratch)
