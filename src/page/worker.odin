@@ -337,7 +337,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	copy(g.image, image)
 	link_retain(h.link)
 	h.state = .Running
-	h.thread = host.thread_start(worker_main, g, p.settings.workers.thread_stack_bytes, p.settings.workers.priority)
+	h.thread = host.thread_start(worker_main, g, p.settings.workers.thread_stack_bytes, p.settings.workers.priority, "wren-js-worker")
 	if h.thread == nil {
 		worker_global_free(g)
 		link_release(h.link)
