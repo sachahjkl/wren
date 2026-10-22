@@ -459,5 +459,6 @@ Wren is released under the [MIT license](LICENSE). It stands on:
 - [Slug](https://github.com/EricLengyel/Slug) by Eric Lengyel (MIT; the patent is in the public domain): the shaders and the
   algorithm of the optional `text.renderer = slug` (glyphs drawn from their outlines on the GPU), through gui_toolkit.
 
-Fonts used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
+- [Noto Color Emoji](https://github.com/googlefonts/noto-emoji) (COLR v1, Google; SIL OFL 1.1), the built-in emoji font (	ext.emoji = builtin), shipped in `emoji\`; and Unicode's `emoji-data.txt` (Unicode License v3), which tells emoji characters from the others.
+ used by the demo pages and tests come with their licenses next to them (`examples/site/fonts`,
 `native/media/tests/fonts`). [THIRD_PARTY.md](THIRD_PARTY.md) lists every component linked into `wren.exe`.
