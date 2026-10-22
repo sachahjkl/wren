@@ -213,6 +213,12 @@ Content_Visibility :: enum u8 { Visible, Auto, Hidden }
 Scroll_Behavior :: enum u8 { Auto, Smooth }
 Overscroll :: enum u8 { Auto, Contain, None }
 Auto_Color :: struct { auto: bool, color: css.Color }
+
+// SVG paint (CSS Fill and Stroke 3 §7): none, currentColor (resolved against the element's `color` when used), or a colour.
+Svg_Paint_Kind :: enum u8 { None, Current_Color, Color }
+Svg_Paint :: struct { kind: Svg_Paint_Kind, color: css.Color }
+Stroke_Linecap :: enum u8 { Butt, Round, Square }
+Stroke_Linejoin :: enum u8 { Miter, Round, Bevel }
 Appearance :: enum u8 { None, Auto, Menulist_Button, Textfield, Base }
 Resize :: enum u8 { None, Both, Horizontal, Vertical, Block, Inline }
 

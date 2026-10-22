@@ -198,7 +198,7 @@ credential_create :: proc(p: ^Page, cer: ^webauthn.Ceremony, owner: u32) -> u64 
 ////////////////////////////////
 // Ceremonies
 
-@(private="file")
+@(private)
 reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 	R :: struct { pr: u64, code: i64, msg: string }
 	r := new(R, base.process_allocator())
@@ -210,7 +210,7 @@ reject_later :: proc(p: ^Page, pr: u64, code: i64, message: string) {
 	}, r)
 }
 
-@(private="file")
+@(private)
 resolve_later :: proc(p: ^Page, pr: u64, value: i64, text := "") {
 	R :: struct { pr: u64, value: i64, text: string }
 	r := new(R, base.process_allocator())
@@ -341,7 +341,7 @@ webauthn_start :: proc(c: ^Call, kind: webauthn.Ceremony_Kind, options: string, 
 		op := (^Webauthn_Op)(data)
 		webauthn.run(op.c, op.platform)
 		host.post(op.loop, webauthn_finished, op)
-	}, op)
+	}, op, name = "wren-webauthn")
 	if op.thread == nil {
 		// no thread: finish at once as a failure (the op is in the registry: webauthn_finished removes it)
 		op.c.status = webauthn.fail(.Not_Allowed, "NotAllowedError: the browser could not start the request")

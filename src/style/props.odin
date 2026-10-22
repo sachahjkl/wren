@@ -312,6 +312,11 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Mask_Clip: return fa(&c.mask_clips), NO_FIELD
 	case .Mask_Composite: return fa(&c.mask_composites), NO_FIELD
 	case .Text_Fill_Color: return fa(&c.text_fill_color), NO_FIELD
+	case .Fill: return fa(&c.svg_fill), NO_FIELD
+	case .Stroke: return fa(&c.svg_stroke), NO_FIELD
+	case .Stroke_Width: return fa(&c.stroke_width), NO_FIELD
+	case .Stroke_Linecap: return fa(&c.stroke_linecap), NO_FIELD
+	case .Stroke_Linejoin: return fa(&c.stroke_linejoin), NO_FIELD
 	}
 	return NO_FIELD, NO_FIELD
 }

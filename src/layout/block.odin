@@ -331,7 +331,7 @@ layout_contents :: proc(c: ^Ctx, bi: i32, w, cb_h_in, forced_h: f32, fc_in: ^Flo
 		if !ct { cfc.open = nil }
 		through := false
 		if .Ifc in b.flags {
-			h, empty, trail := layout_ifc(c, bi, cw, &cfc)
+			h, empty, trail := layout_ifc(c, bi, cw, &cfc, ch_def)
 			content_h = h
 			through = empty
 			// a block-in-inline ends the context: its bottom margin collapses with this box's, or counts here
@@ -494,6 +494,8 @@ flow_children :: proc(c: ^Ctx, bi: i32, cw, ch_def: f32, fc: ^Flow_Ctx, collapse
 				for tries := 0; tries <= len(fc.bfc.floats) + 1; tries += 1 {
 					l, r := bfc_band(fc.bfc, t, t + 1, fc.x, fc.x + cw)
 					if r - l < cw - 0.01 {
+						// (the first block_width gave the end margin what was left over: start again from the margins the box has)
+						k.margin[3], k.margin[1] = k.auto_l ? 0 : ml0, k.auto_r ? 0 : mr0
 						block_width(c, ch, cw, r - l)
 						k = &c.l.boxes[ch]
 						w = k.size.x

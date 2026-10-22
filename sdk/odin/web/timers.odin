@@ -29,6 +29,7 @@ foreign import _m_timers "timers"
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_timers {
 	@(link_name = "IntersectionObservers_schedule") _IntersectionObservers_schedule :: proc(observing: i32) ---
+	@(link_name = "ResizeObservers_schedule") _ResizeObservers_schedule :: proc(observing: i32) ---
 	@(link_name = "Timers_setTimeout") _Timers_setTimeout :: proc(callback: TimerHandler, user: i32, delay_ms: f64) -> Timer ---
 	@(link_name = "Timers_setInterval") _Timers_setInterval :: proc(callback: TimerHandler, user: i32, delay_ms: f64) -> Timer ---
 	@(link_name = "Timers_setTimeout64") _Timers_setTimeout64 :: proc(callback: TimerHandler64, user: i64, delay_ms: f64) -> Timer ---
@@ -46,6 +47,13 @@ foreign _m_timers {
 // the animation frame callbacks of every rendering update, and asks for one frame at once.
 IntersectionObservers_schedule :: proc "contextless" (observing: bool) {
 	_IntersectionObservers_schedule(i32(1 if observing else 0))
+}
+
+// Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
+// observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
+// and asks for one frame at once.
+ResizeObservers_schedule :: proc "contextless" (observing: bool) {
+	_ResizeObservers_schedule(i32(1 if observing else 0))
 }
 
 // setTimeout(callback, delay_ms)

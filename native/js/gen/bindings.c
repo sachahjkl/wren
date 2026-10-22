@@ -82,6 +82,8 @@ JSValue wjr_CSS_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValu
 JSValue wjr_ChildNode_after(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ChildNode_before(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ChildNode_replaceWith(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Clipboard_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Clipboard_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CloseEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CloseEvent_get_code(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CloseEvent_get_reason(JSContext *ctx, JSValueConst this_val);
@@ -693,6 +695,7 @@ JSValue wjr_NavigatorPlugins_get_mimeTypes(JSContext *ctx, JSValueConst this_val
 JSValue wjr_NavigatorPlugins_get_pdfViewerEnabled(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigatorPlugins_get_plugins(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigatorPlugins_javaEnabled(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigator_get_clipboard(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Navigator_get_credentials(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Navigator_get_maxTouchPoints(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Navigator_sendBeacon(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1284,6 +1287,40 @@ static JSValue wjg_BroadcastChannel_get_onmessage(JSContext *ctx, JSValueConst t
 static JSValue wjg_BroadcastChannel_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 203, "message", v, 0); }
 static JSValue wjg_BroadcastChannel_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 203, "messageerror"); }
 static JSValue wjg_BroadcastChannel_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 203, "messageerror", v, 0); }
+/* Clipboard.readText() -> navigator.Clipboard_readText */
+static JSValue wjg_Clipboard_readText_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 204);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Clipboard_readText();
+    return wj_promise_from_host(ctx, r, WJ_HOST_TEXT, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Clipboard_readText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Clipboard_readText_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
+/* Clipboard.writeText() -> navigator.Clipboard_writeText */
+static JSValue wjg_Clipboard_writeText_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 204);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Clipboard.writeText", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = wr_Clipboard_writeText((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Clipboard_writeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Clipboard_writeText_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
 static JSValue wjg_CloseWatcher_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 205, "cancel"); }
 static JSValue wjg_CloseWatcher_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 205, "cancel", v, 0); }
 static JSValue wjg_CloseWatcher_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 205, "close"); }
@@ -9643,10 +9680,10 @@ static const wj_member wj_m_BroadcastChannel[] = {
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_BroadcastChannel_get_onmessageerror, wjg_BroadcastChannel_set_onmessageerror, 0 },
 };
 static const wj_member wj_m_Clipboard[] = {
-    { "read", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
-    { "readText", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
-    { "write", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
-    { "writeText", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
+    { "read", WJ_M_METHOD, WJ_F_SECURE, 0, wjr_Clipboard_read, NULL, NULL, 0 },
+    { "readText", WJ_M_METHOD, WJ_F_SECURE, 0, wjg_Clipboard_readText, NULL, NULL, 0 },
+    { "write", WJ_M_METHOD, WJ_F_SECURE, 1, wjr_Clipboard_write, NULL, NULL, 0 },
+    { "writeText", WJ_M_METHOD, WJ_F_SECURE, 1, wjg_Clipboard_writeText, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CloseWatcher[] = {
     { "requestClose", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -12828,7 +12865,7 @@ static const wj_member wj_m_NavigationTransition[] = {
 };
 static const wj_member wj_m_Navigator[] = {
     { "sendBeacon", WJ_M_METHOD, 0, 1, wjr_Navigator_sendBeacon, NULL, NULL, 0 },
-    { "clipboard", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 225, NULL, NULL, NULL, 0 },
+    { "clipboard", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 225, NULL, wjr_Navigator_get_clipboard, NULL, 0 },
     { "credentials", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 226, NULL, wjr_Navigator_get_credentials, NULL, 0 },
     { "getGamepads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "userActivation", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 227, NULL, NULL, NULL, 0 },
@@ -14784,7 +14821,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_BroadcastChannel, .n_members = 5, .subtree_end = 204,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Clipboard", .parent = 170, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Clipboard", .parent = 170, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Clipboard, .n_members = 4, .subtree_end = 205,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

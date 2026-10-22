@@ -265,9 +265,10 @@ shell_preempt :: proc(user: rawptr) {
 	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !app.presented || platform.is_closed(app.win) { return }
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(chrome_frames.phase_start, now)) < chrome_frames.cfg.after_ms { return }
-	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest
+	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
+	// has no such rate: the chrome must show at the new size before the composer stretches the last frame)
 	since := time.duration_milliseconds(time.tick_diff(chrome_frames.last_present, now))
-	if since < pacer.period_ms * 0.75 { return }
+	if !pacer.resizing && since < pacer.period_ms * 0.75 { return }
 	// and only when the chrome has something new to show: input (or a message: a resize, a repaint), an animation of its
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
@@ -277,7 +278,6 @@ shell_preempt :: proc(user: rawptr) {
 }
 
 // Messages wait in the thread's queue (input, posted or sent messages, a repaint), without taking them.
-@(private = "file")
 shell_input_pending :: proc() -> bool {
 	QS_KEY :: 0x0001; QS_MOUSEMOVE :: 0x0002; QS_MOUSEBUTTON :: 0x0004; QS_POSTMESSAGE :: 0x0008
 	QS_PAINT :: 0x0020; QS_SENDMESSAGE :: 0x0040
@@ -294,8 +294,9 @@ foreign user32_shell {
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
-	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it)
-	if !pacer.slot_held {
+	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
+	// resize step skips it: its frame is presented at once, whatever the screen is doing
+	if !pacer.slot_held && !pacer.resizing {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
 		pacer.slot_held = true
 	}
@@ -337,7 +338,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(&app.ui_state, &app.dc)
 	draw.end_frame(&app.dc)
-	render.frame_end(&app.r)
+	render.frame_end(&app.r, !(pacer.resizing || pacer.input_frame))   // a resize step or an input frame is shown at once
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too
@@ -468,9 +469,13 @@ shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	return nil
 }
 
+// Whether the page's pixels are worth keeping this frame: scripts ran, a layout is behind the document, or animations
+// are on (set by the frame); a scroll alone changes no pixel.
+page_snapshot_wanted: bool
+
 // After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames.
 shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, canvas: draw.Color) {
-	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt { return }
+	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt || !page_snapshot_wanted { return }
 	bd := draw.backdrop_capture(dc, rect, nil)
 	if bd.image.tex == 0 { return }
 	if !render.keep_target(dc.renderer, bd.image.tex) { render.release_target(dc.renderer, bd.image.tex); return }

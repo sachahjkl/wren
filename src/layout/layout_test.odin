@@ -594,3 +594,29 @@ spatial_index_is_linear :: proc(t: ^testing.T) {
 	h := hit_test(&f.l, {8.5, 300}, f.vp, 0)
 	testing.expect(t, h.item != NONE, "still hit")
 }
+// reCAPTCHA's anchor: an inline-block with `height: 100%` in a box with a length height is that tall (a percentage of a
+// definite containing block's height), so the table `height: 100%` inside it fills it and its cell centers its content.
+@(test)
+inline_block_percent_height_fills_a_fixed_height_parent :: proc(t: ^testing.T) {
+	f := load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div id=card style="height:74px;width:300px"><div id=ib style="display:inline-block;height:100%">
+<div id=tb style="display:table;height:100%"><div id=cell style="display:table-cell;vertical-align:middle"><span id=sq style="display:inline-block;width:28px;height:28px;vertical-align:text-bottom"></span></div></div></div></div>
+<div id=img style="height:40px"><img id=im style="display:inline-block;height:100%;width:10px"></div>
+</body>`)
+	defer unload(f)
+	expect_rect(t, f, "ib", 0, 0, 28, 74)
+	expect_rect(t, f, "tb", 0, 0, 28, 74)
+	r := rect(f, "sq")
+	testing.expectf(t, r.min.y > 20 && r.max.y < 54, "the square is centered in the 74px card: y %v-%v", r.min.y, r.max.y)
+}
+
+// A table (a block formatting context root) beside a float takes its content's width up to the room left, not its
+// minimum width.
+@(test)
+table_beside_a_float_keeps_its_content_width :: proc(t: ^testing.T) {
+	f := load(`<body style="margin:0;font-size:10px;line-height:10px">
+<div id=card style="width:300px"><div style="float:right;width:70px;height:60px"></div><div id=tb style="display:table"><div style="display:table-cell">aaaa bbbb cccc</div></div></div>
+</body>`)
+	defer unload(f)
+	expect_rect(t, f, "tb", 0, 0, 70, 10)   // 14 characters of 5px: one line
+}

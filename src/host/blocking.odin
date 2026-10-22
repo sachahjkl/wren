@@ -4,6 +4,7 @@ package host
 // `work` runs on a worker; `done` runs on the loop thread afterwards, with the same data pointer. The data must stay
 // valid until `done` has run (heap or loop-owned), and is never touched by the submitter in between.
 
+import "core:fmt"
 import "core:sync"
 import "wb:base"
 
@@ -29,8 +30,8 @@ blocking_init :: proc(p: ^Blocking_Pool, loop: ^Loop, workers := 4) {
 	p.queue = make([dynamic]Blocking_Job, base.process_allocator())
 	p.threads = make([dynamic]^Thread)
 	// (thread_start: the caller's context, and a temporary allocator of the worker's own, destroyed when it ends)
-	for _ in 0 ..< workers {
-		if t := thread_start(blocking_worker, p); t != nil { append(&p.threads, t) }
+	for i in 0 ..< workers {
+		if t := thread_start(blocking_worker, p, name = fmt.tprintf("wren-blocking-%d", i)); t != nil { append(&p.threads, t) }
 	}
 }
 

@@ -203,6 +203,11 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 	c.object_position = {Length{kind = .Percent, v = 50}, Length{kind = .Percent, v = 50}}
 	c.caret_color = Auto_Color{auto = true}
 	c.accent_color = Auto_Color{auto = true}
+	c.svg_fill = Svg_Paint{kind = .Color, color = {0, 0, 0, 1}}   // SVG's initial fill: black
+	c.svg_stroke = Svg_Paint{kind = .None}                       // SVG's initial stroke: none
+	c.stroke_width = 1
+	c.stroke_linecap = .Butt
+	c.stroke_linejoin = .Miter
 	c.scrollbar_color = Scrollbar_Colors{auto = true}
 	c.column_width = auto_length
 	c.transform_box = .View_Box
@@ -256,6 +261,23 @@ initial_computed :: proc(s: ^Settings) -> Computed {
 
 ////////////////////////////////
 // Applying one longhand
+
+// `fill` / `stroke`: none, currentColor (resolved against the element's `color` where it is used), or a colour.
+@(private)
+apply_paint :: proc(cx: ^Cx, vs: []css.Value, dst: ^Svg_Paint) -> bool {
+	if id, ok := ident_raw(vs); ok {
+		switch css.lower_temp(id) {
+		case "none": dst^ = Svg_Paint{kind = .None}; return true
+		case "currentcolor": dst^ = Svg_Paint{kind = .Current_Color}; return true
+		}
+	}
+	cv, ok := css.parse_color(vs, &cx.cenv)
+	if !ok { return false }
+	if cv.kind == .Current_Color { dst^ = Svg_Paint{kind = .Current_Color}; return true }
+	if cv.kind != .Rgba { return false }
+	dst^ = Svg_Paint{kind = .Color, color = cv.rgba}
+	return true
+}
 
 @(private)
 ABSOLUTE_SIZES := [?]struct { name: string, factor: f32 }{
@@ -434,6 +456,14 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		if !ok { return false }
 		c.color_scheme = v
 	case .Color: return apply_color(cx, vs)
+	case .Fill: return apply_paint(cx, vs, &c.svg_fill)
+	case .Stroke: return apply_paint(cx, vs, &c.svg_stroke)
+	case .Stroke_Width:
+		l, ok := parse_length(cx, vs, {})
+		if !ok || l.kind != .Px { return false }
+		c.stroke_width = l.v
+	case .Stroke_Linecap: return set_enum(vs, &c.stroke_linecap)
+	case .Stroke_Linejoin: return set_enum(vs, &c.stroke_linejoin)
 	case .Font_Family:
 		fam, ok := parse_font_family(cx, vs)
 		if !ok { return false }

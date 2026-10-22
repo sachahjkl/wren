@@ -1,6 +1,6 @@
 package browser
 
-// The console's "run JavaScript" line: under the console strip of the tab (View > Console), a field whose text runs
+// The console's "run JavaScript" line: at the bottom of the developer tools' Console tab (devtools_console.odin), a field whose text runs
 // in the page's realm when Enter is pressed (page.js_console_eval, preference javascript.console_eval); the result is
 // shown in the console like any message. Up / Down walk the lines run before (cfg.console_max_lines of them).
 
@@ -22,7 +22,7 @@ console_js: Console_Js
 console_eval_row :: proc(app: ^App, t: ^Tab, em: f32) {
 	if t == nil || t.page == nil || !app.page_settings.js.console_eval { return }
 	c := &console_js
-	// flush with the console strip and the status bar: their edges already frame it (a field border doubled them)
+	// flush with the console's list and the status bar: their edges already frame it (a field border doubled them)
 	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.9)), border = ui.Color{}, radius = 0})
 	res := ui.line_edit("###console_js", &c.field, "Run JavaScript in this page (Enter)")
 	if res.focused {
