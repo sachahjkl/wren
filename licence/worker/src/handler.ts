@@ -46,13 +46,13 @@ export async function handle(request: Request, env: Env, _waiter: Waiter, deps: 
 		if (path === "/paddle/webhook") res = request.method === "POST" ? await webhook(request, env, deps) : json(405, { error: "POST only" }, { Allow: "POST" });
 		else if (path === "/licence") res = request.method === "GET" ? await licenceJson(url, env) : json(405, { error: "GET only" }, { Allow: "GET" });
 		else if (path.startsWith("/licence/") && path.endsWith(".wrenlicense")) res = request.method === "GET" ? await licenceFile(path, env) : json(405, { error: "GET only" }, { Allow: "GET" });
-		else if (path === "/resend") res = request.method === "POST" ? await resend(request, env, deps) : json(405, { error: "POST only" }, { Allow: "POST" });
+		else if (path === "/resend") res = request.method === "POST" ? await resend(request, env) : json(405, { error: "POST only" }, { Allow: "POST" });
 		else if (path === "/health") { const missing = missingSettings(env); res = json(missing.length ? 503 : 200, { ok: missing.length === 0, missing }); }
 		else res = json(404, { error: "not found" });
 		for (const [k, v] of Object.entries(headers)) res.headers.set(k, v);
 		return res;
 	} catch (e) {
-		// a Transient failure (the Paddle API or Resend down) is worth a retry; Paddle redelivers on any non-2xx
+		// a Transient failure (the Paddle API down, or Email Service refusing for now) is worth a retry; Paddle redelivers on any non-2xx
 		log("error", { transient: e instanceof Transient, message: e instanceof Error ? e.message : "?" });
 		return json(500, { error: "retry later" }, headers);
 	}
@@ -114,7 +114,7 @@ async function licenceFile(path: string, env: Env): Promise<Response> {
 // Same answer whether or not the address bought anything (nobody can find out who did), at most RESEND_MAX_PER_HOUR
 // mails per address and hour, and KV is only written for an address that has a purchase (an attacker cannot use up the
 // day's write quota with made-up addresses).
-async function resend(request: Request, env: Env, deps: Deps): Promise<Response> {
+async function resend(request: Request, env: Env): Promise<Response> {
 	if (env.RESEND_ENABLED !== "true") return json(404, { error: "not found" });
 	const text = await request.text();
 	if (text.length > MAX_RESEND_BYTES) return json(413, { error: "too large" });
@@ -132,11 +132,10 @@ async function resend(request: Request, env: Env, deps: Deps): Promise<Response>
 	if (ids.length === 0) return answer;
 	if (!(await takeResendSlot(env.LICENSES, email, intSetting(env.RESEND_MAX_PER_HOUR, 3, 1, 100)))) return answer;
 
-	const hour = Math.floor(deps.now() / 3_600_000);
 	for (const id of ids) {
 		const s = await getTxn(env.LICENSES, id);
 		if (!s) continue;
-		const result = await sendLicenceMail(env, deps, s, `wren-resend-${id}-${hour}`);
+		const result = await sendLicenceMail(env, s);
 		log("resend", { txn: id, state: result });
 	}
 	return answer;

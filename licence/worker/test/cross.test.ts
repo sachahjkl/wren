@@ -34,7 +34,7 @@ function tool(...args: string[]) {
 // Runs the whole webhook, as Paddle would, and returns the licence the Worker made.
 async function workerLicence(body: string, customerJson: string) {
 	const env = makeEnv();
-	const net = fakeNetwork({ "https://sandbox-api.paddle.com/customers/": () => jsonResponse(customerJson), "https://api.resend.com/emails": () => jsonResponse("{}") });
+	const net = fakeNetwork({ "https://sandbox-api.paddle.com/customers/": () => jsonResponse(customerJson) });
 	const res = await handle(webhookRequest(body), env, waiter, net.deps);
 	assert.equal(res.status, 200);
 	return JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!) as { licence: string; file: string; name: string; order: string };

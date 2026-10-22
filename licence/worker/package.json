@@ -2,7 +2,7 @@
 	"name": "wren-licence-worker",
 	"private": true,
 	"version": "1.0.0",
-	"description": "Signs Wren supporter licences when Paddle reports a paid transaction, keeps them in KV and mails them with Resend.",
+	"description": "Signs Wren supporter licences when Paddle reports a paid transaction, keeps them in KV and mails them with Cloudflare Email Service.",
 	"type": "module",
 	"license": "MIT",
 	"scripts": {

@@ -2,7 +2,7 @@
 
 A Cloudflare Worker (TypeScript, no runtime dependency) that turns a paid Paddle transaction into a Wren supporter
 licence: it verifies the `Paddle-Signature` of the webhook, reads the customer from the Paddle API, signs the licence
-(Ed25519, the format of `src/license/license.odin`), keeps it in KV, mails it with Resend and serves it to the thank-you
+(Ed25519, the format of `src/license/license.odin`), keeps it in KV, mails it with Cloudflare Email Service (the `send_email` binding) and serves it to the thank-you
 page.
 
 The whole procedure (keys, deploy with `cf`, Paddle sandbox then production, secrets, tests) is in

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { b64urlEncode } from "../src/encoding.ts";
-import type { Deps, Env, KVNamespace } from "../src/env.ts";
+import type { Deps, Env, KVNamespace, OutgoingMail, SendEmail } from "../src/env.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(here, "..", "..", "..");
@@ -47,28 +47,49 @@ export class FakeKV implements KVNamespace {
 	}
 }
 
+// A fake `send_email` binding: keeps every message it was asked to send; `fail` is called before each one and may
+// throw (an Error with a `code`, as Email Service does) or return nothing to let the send succeed.
+export class FakeEmail implements SendEmail {
+	sent: OutgoingMail[] = [];
+	attempts = 0;
+	fail: ((n: number) => void | Promise<void>) | null = null;
+	async send(message: OutgoingMail): Promise<{ messageId: string }> {
+		this.attempts++;
+		await this.fail?.(this.attempts);
+		this.sent.push(message);
+		return { messageId: `msg_${this.sent.length}` };
+	}
+}
+
+export function emailError(code: string, message = "refused"): Error {
+	return Object.assign(new Error(message), { code });
+}
+
 export const WEBHOOK_SECRET = "pdl_ntfset_01hv8x0000000000000000test_AbCdEfGh";
 export const PRICE_SUPPORTER = "pri_01hsxyh9a1fnwv3xbg2zykm4sj";
 export const PRICE_PATRON = "pri_01hsxyk2m7c4e8r5t3w9q6z1pd";
 export const TXN = "txn_01hv8wptq8987qeep44cyrewp9";
 export const NOW = Date.parse("2026-10-22T09:15:32Z");
 
-export function makeEnv(extra: Partial<Env> = {}): Env & { LICENSES: FakeKV } {
+export type TestEnv = Env & { LICENSES: FakeKV; EMAIL: FakeEmail };
+
+// `makeEnv({ EMAIL: undefined })` is a Worker with no mail binding.
+export function makeEnv(extra: Partial<Env> = {}): TestEnv {
 	return {
 		LICENSES: new FakeKV(),
+		EMAIL: new FakeEmail(),
 		LICENSE_PRIVATE_KEY: b64urlEncode(DEV_SEED),
 		LICENSE_PUBLIC_KEY: DEV_PUBLIC_KEY,
 		PADDLE_WEBHOOK_SECRET: WEBHOOK_SECRET,
 		PADDLE_API_KEY: "pdl_sdbx_apikey_test",
 		PADDLE_API_BASE: "https://sandbox-api.paddle.com",
-		RESEND_API_KEY: "re_test_key",
 		MAIL_FROM: "Wren <licences@example.org>",
 		PRICE_SUPPORTER,
 		PRICE_PATRON,
 		ALLOWED_ORIGIN: "https://sachahjkl.github.io",
 		RESEND_ENABLED: "false",
 		...extra,
-	} as Env & { LICENSES: FakeKV };
+	} as TestEnv;
 }
 
 export function paddleSignature(body: string, secret = WEBHOOK_SECRET, ts = Math.floor(NOW / 1000)): string {
