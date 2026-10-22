@@ -86,7 +86,9 @@ video_shell_after_paint :: proc(app: ^App) {
 		vshell.wake = host.set_timer(&app.loop, delay_ms, 0, proc(data: rawptr) {
 			vshell.wake = base.NIL_HANDLE
 			a := (^App)(data)
-			a.frames_requested = max(a.frames_requested, 2)
+			// exactly the frame this picture needs: the timer is the one that asked, the loop does not add its own two
+			host.quiet_note(&a.loop)
+			a.frames_requested = max(a.frames_requested, 1)
 		}, app)
 	}
 	for k, t in vshell.targets {
