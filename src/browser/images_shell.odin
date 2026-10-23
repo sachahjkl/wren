@@ -27,6 +27,7 @@ import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
 import "wb:base"
+import "wb:canvas2d"
 import "wb:dom"
 import "wb:host"
 import lay "wb:layout"
@@ -186,9 +187,10 @@ release_texture :: proc(id: u64) {
 // Once per frame, after the loop ran: every tab's images follow its document (downloads start in background tabs too),
 // textures of evicted images go.
 images_shell_frame :: proc(app: ^App) {
-	for tab in app.tabs { if tab.page != nil && tab.kind == .Web { page.images_sync(tab.page) } }
+	for tab in app.tabs { if tab.page != nil && tab.kind == .Web { page.images_sync(tab.page); page.canvas_frame(tab.page) } }
 	clear(&shell.evicted)
 	page.images_drain_evicted(&shell.evicted)
+	page.canvas_drain_released(&shell.evicted)   // (canvases of closed pages and freed elements: their textures)
 	for id in shell.evicted { release_texture(id) }
 }
 
@@ -394,6 +396,10 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		return true
 	}
 	if n.name == "video" { return video_paint_content(dc, p, node, content, border, cs, scale) }   // (video_shell.odin)
+	if n.name == "canvas" {
+		paint_canvas(dc, node, content, border, cs, scale)
+		return true
+	}
 	if n.name != "img" {
 		if n.name != "input" { return false }
 		t, _ := dom.get_attribute(d, node, "type")
@@ -424,6 +430,56 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		if clip { draw.pop_clip(dc) }
 	}
 	return true
+}
+
+// A <canvas>: the bitmap its 2D context draws into, as a texture that is refreshed only with what changed since the
+// last frame (a canvas nobody draws on costs a draw call and nothing else). Nothing until a script asked for a context.
+@(private = "file")
+paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) {
+	v := page.canvas_view(shell.page, node)
+	if !v.ok { return }
+	tex, ok := canvas_texture_for(v)
+	if !ok { return }
+	// object-fit and border-radius apply to a canvas like to any replaced element
+	nat := [2]f32{f32(v.bmp.w), f32(v.bmp.h)}
+	dst := fit_rect(content, nat, cs, scale)
+	radii := content_radii(cs, border, content, scale)
+	clip := dst.min.x < content.min.x || dst.min.y < content.min.y || dst.max.x > content.max.x || dst.max.y > content.max.y || radii != {}
+	if clip { draw.push_clip_rounded(dc, content, radii) }
+	shell.api.draw(shell.api.user, dc, tex, dst, {}, WHITE_TINT, {})
+	if clip { draw.pop_clip(dc) }
+}
+
+// The texture of a canvas bitmap. Created at the bitmap's size; the changed rectangle is converted to straight alpha and
+// uploaded (all of it for a new texture). The bitmap's dirty rectangle is cleared by the upload.
+@(private = "file")
+canvas_texture_for :: proc(v: page.Canvas_View) -> (Image_Texture, bool) {
+	bmp := v.bmp
+	st := shell.textures[v.id]
+	if st != nil && (st.w != bmp.w || st.h != bmp.h) { release_texture(v.id); st = nil }
+	fresh := false
+	if st == nil {
+		tex := shell.api.create(shell.api.user, bmp.w, bmp.h)
+		if tex == 0 { return 0, false }
+		st = new(Shell_Texture)
+		st.tex, st.w, st.h = tex, bmp.w, bmp.h
+		st.bytes = bmp.w * bmp.h * 4 * 4 / 3
+		shell.bytes += st.bytes
+		shell.textures[v.id] = st
+		fresh = true
+	}
+	if fresh || st.generation != bmp.version {
+		x0, y0, x1, y1 := 0, 0, bmp.w, bmp.h
+		if !fresh && canvas2d.bitmap_has_dirty(bmp) { x0, y0, x1, y1 = bmp.dirty_min.x, bmp.dirty_min.y, bmp.dirty_max.x, bmp.dirty_max.y }
+		w, h := x1 - x0, y1 - y0
+		scratch := make([]u8, w * h * 4, context.temp_allocator)
+		canvas2d.bitmap_read_straight(bmp, x0, y0, w, h, scratch)
+		shell.api.update(shell.api.user, st.tex, x0, y0, w, h, scratch, w * 4)
+		canvas2d.bitmap_clean(bmp)
+		st.generation = bmp.version
+	}
+	st.epoch = shell.epoch
+	return st.tex, true
 }
 
 // An inline <svg>: its markup rendered at the content box's device size (nothing while it is being rendered, nothing

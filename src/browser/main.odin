@@ -1215,6 +1215,7 @@ main :: proc() {
 	interaction_init(app)
 	fonts_preload_adopt(&page_render.fonts, preload)
 	images_shell_init(app)
+	canvas_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
@@ -1297,6 +1298,7 @@ main :: proc() {
 	favicons_destroy(app)
 	host.shutdown_step("images_shell_destroy")
 	images_shell_destroy(app)
+	canvas_shell_destroy()
 	host.shutdown_step("page.storage_manager_destroy")
 	page.storage_manager_destroy(&app.storage)   // writes what is not saved yet
 	host.shutdown_step("page.shutdown_threads")

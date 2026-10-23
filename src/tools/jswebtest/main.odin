@@ -187,6 +187,7 @@ main :: proc() {
 	if selected("perf_crypto") { run("perf_crypto") }
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
+	if selected("canvas") { run("canvas") }
 
 	if selected("navigator") {
 		fmt.println("-- navigator")
@@ -254,6 +255,20 @@ main :: proc() {
 
 	if selected("htmlmedia") { run("htmlmedia", seconds = 120) }
 	if selected("mse") { run("mse", seconds = 120) }
+	if selected("canvas_gc") {
+		fmt.println("-- lifetime: the bitmaps of dropped canvases are freed")
+		r := open("canvas_gc")
+		wait(r)
+		before := page.canvas_bytes(r.p)
+		js.collect(r.p.js.inst)
+		drain()
+		page.canvas_frame(r.p)   // (what the shell does each frame: the elements the document freed)
+		after := page.canvas_bytes(r.p)
+		fmt.printf("  canvas bytes before collection %d, after %d\n", before, after)
+		// what stays: the canvas kept (500 x 500 x 4 = 1 MB) and the copies cached for drawing
+		if before > 100_000_000 && after < 8_000_000 { passes += 1 } else { fmt.printf("FAIL [canvas_gc] the bitmaps of collected canvases are freed (%d -> %d)\n", before, after); failures += 1 }
+		close(r)
+	}
 
 	if selected("bench") { run("bench", seconds = 120) }
 

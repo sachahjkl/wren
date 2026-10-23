@@ -1436,7 +1436,7 @@ image_intrinsic :: proc(p: ^Page, node: base.Handle) -> (w, h: f32, ok: bool) {
 images_sizes_generation :: proc(p: ^Page) -> u64 { return p.images.ready ? p.images.sizes : 0 }
 
 // Changes whenever pixels or states of the page's images change: something to repaint.
-images_pixels_generation :: proc(p: ^Page) -> u64 { return p.images.ready ? p.images.pixels : 0 }
+images_pixels_generation :: proc(p: ^Page) -> u64 { return (p.images.ready ? p.images.pixels : 0) + canvas_generation(p) }
 
 // Pixels of the frame to show now.
 Frame_Pixels :: struct {
@@ -1520,4 +1520,78 @@ element_decode :: proc(p: ^Page, el: ^Img_Element, owner: u32) -> u64 {
 	append(&el.decodes, pr)
 	element_settle(p, el)
 	return pr
+}
+
+////////////////////////////////
+// Canvas: pixels at the natural size, now
+
+Canvas_Pixels :: struct {
+	status:     enum u8 { Ready, Pending, Broken },
+	pixels:     []u8,       // RGBA8, straight alpha, sRGB; valid until the next call into this package
+	width, height, stride: int,
+	natural:    [2]f32,     // CSS px, density applied
+	id:         u64,        // the cache entry (a key for what the canvas derives from these pixels)
+	generation: u64,        // changes when the pixels do
+	opaque:     bool,       // a cross-origin answer the page may not read: it taints what it is drawn on
+}
+
+// The pixels of the image an element shows, at its natural size, for drawImage, createPattern and createImageBitmap.
+// A script draws as soon as `load` fires, before the painter asked for pixels: they are decoded here, on the calling
+// thread, and kept in the cache like any decode (the painter shows them at once). An SVG is rasterized at its natural
+// size.
+canvas_image_pixels :: proc(p: ^Page, node: base.Handle) -> Canvas_Pixels {
+	v := image_view(p, node)
+	switch v.state {
+	case .None, .Loading: return Canvas_Pixels{status = .Pending}
+	case .Broken: return Canvas_Pixels{status = .Broken}
+	case .Ready:
+	}
+	e, found := cache.by_id[v.id]
+	if !found || e.blob == nil { return Canvas_Pixels{status = .Pending} }
+	e.last_shown = cache.epoch
+	s := &cache.settings
+	r := Canvas_Pixels{natural = v.natural, id = e.id, opaque = e.opaque}
+	if entry_is_svg(e) {
+		w := clamp(int(v.natural[0] + 0.999), 1, s.limits.max_dimension)
+		h := clamp(int(v.natural[1] + 0.999), 1, s.limits.max_dimension)
+		for &ras in e.rasters {
+			if ras.w == w && ras.h == h && ras.image != nil && len(ras.image.frames) > 0 {
+				ras.last_shown = cache.epoch
+				r.pixels, r.width, r.height, r.stride, r.generation = ras.image.frames[0].pixels, ras.image.width, ras.image.height, ras.image.stride, ras.id
+				return r
+			}
+		}
+		o := decode_options(s, e)
+		o.target_w, o.target_h, o.first_frame_only = w, h, true
+		img, _, err := images.decode_now(e.blob.bytes, o)
+		if err != .None || img == nil || len(img.frames) == 0 { images.image_destroy(img); return Canvas_Pixels{status = .Broken} }
+		cache.next_id += 1
+		append(&e.rasters, Svg_Raster{id = cache.next_id, w = img.width, h = img.height, image = img, last_shown = cache.epoch})
+		for len(e.rasters) > max(s.svg_max_rasters, 1) {
+			oldest := 0
+			for ras, i in e.rasters { if ras.last_shown < e.rasters[oldest].last_shown { oldest = i } }
+			append(&cache.evicted, e.rasters[oldest].id)
+			images.image_destroy(e.rasters[oldest].image)
+			ordered_remove(&e.rasters, oldest)
+		}
+		entry_account(e)
+		cache_enforce()
+		if len(e.rasters) == 0 { return Canvas_Pixels{status = .Pending} }
+		ras := e.rasters[len(e.rasters) - 1]
+		r.pixels, r.width, r.height, r.stride, r.generation = ras.image.frames[0].pixels, ras.image.width, ras.image.height, ras.image.stride, ras.id
+		return r
+	}
+	if e.image == nil || e.image.reduced || e.image.width < e.info.width || len(e.image.frames) == 0 {
+		o := decode_options(s, e)
+		o.target_w, o.target_h, o.downscale_below, o.first_frame_only = 0, 0, 0, true
+		img, _, err := images.decode_now(e.blob.bytes, o)
+		if err != .None || img == nil || len(img.frames) == 0 { images.image_destroy(img); return Canvas_Pixels{status = .Broken} }
+		images.image_destroy(e.image)
+		e.image = img
+		e.generation += 1
+		entry_account(e)
+	}
+	img := e.image
+	r.pixels, r.width, r.height, r.stride, r.generation = img.frames[0].pixels, img.width, img.height, img.stride, e.generation
+	return r
 }

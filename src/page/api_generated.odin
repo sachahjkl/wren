@@ -56,6 +56,69 @@ Api_PromiseState :: enum i32 {
 	Rejected = 2,
 }
 
+// A live HTMLCanvasElement: its handle and what lookup_HTMLCanvasElement found.
+Api_HTMLCanvasElement :: struct {
+	handle: u64,
+	data:   ^dom.Node,
+}
+
+// A CanvasRenderingContext2D or an OffscreenCanvasRenderingContext2D.
+// A live CanvasRenderingContext2D: its handle and what lookup_CanvasRenderingContext2D found.
+Api_CanvasRenderingContext2D :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// The target of the CanvasPath members: a context (its current path) or a Path2D.
+// A live CanvasPathTarget: its handle and what lookup_CanvasPathTarget found.
+Api_CanvasPathTarget :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live CanvasGradient: its handle and what lookup_CanvasGradient found.
+Api_CanvasGradient :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live CanvasPattern: its handle and what lookup_CanvasPattern found.
+Api_CanvasPattern :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live Path2D: its handle and what lookup_Path2D found.
+Api_Path2D :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live TextMetrics: its handle and what lookup_TextMetrics found.
+Api_TextMetrics :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live OffscreenCanvas: its handle and what lookup_OffscreenCanvas found.
+Api_OffscreenCanvas :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// A live ImageBitmap: its handle and what lookup_ImageBitmap found.
+Api_ImageBitmap :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
+// What a fill or stroke style currently is.
+Api_StyleKind :: enum i32 {
+	Color = 0,
+	Gradient = 1,
+	Pattern = 2,
+}
+
 // A PublicKeyCredential: the authenticator's answer, with its response (attestation or assertion).
 // A live PublicKeyCredential: its handle and what lookup_PublicKeyCredential found.
 Api_PublicKeyCredential :: struct {
@@ -522,6 +585,9 @@ Api_WebSocketState :: enum i32 {
 
 @(private = "file")
 _valid_PromiseState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
+_valid_StyleKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_CredentialMediation :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -1278,6 +1344,3139 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	_p1 := a[1].i64
 	_p2 := a[2].i64
 	_r, _err := Buffer_slice(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLCanvasElement_width :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> u32
+@(private = "file")
+_t_canvas_HTMLCanvasElement_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_width: argument canvas is not a live HTMLCanvasElement") }
+		return wasm.trap_new("canvas.HTMLCanvasElement_width: argument canvas is not a live HTMLCanvasElement")
+	}
+	_r := HTMLCanvasElement_width(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// HTMLCanvasElement_set_width :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32)
+@(private = "file")
+_t_canvas_HTMLCanvasElement_set_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_set_width: argument canvas is not a live HTMLCanvasElement") }
+		return wasm.trap_new("canvas.HTMLCanvasElement_set_width: argument canvas is not a live HTMLCanvasElement")
+	}
+	_p1 := u32(a[1].i32)
+	HTMLCanvasElement_set_width(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLCanvasElement_height :: proc(c: ^Call, canvas: Api_HTMLCanvasElement) -> u32
+@(private = "file")
+_t_canvas_HTMLCanvasElement_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_height: argument canvas is not a live HTMLCanvasElement") }
+		return wasm.trap_new("canvas.HTMLCanvasElement_height: argument canvas is not a live HTMLCanvasElement")
+	}
+	_r := HTMLCanvasElement_height(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// HTMLCanvasElement_set_height :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, value: u32)
+@(private = "file")
+_t_canvas_HTMLCanvasElement_set_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_set_height: argument canvas is not a live HTMLCanvasElement") }
+		return wasm.trap_new("canvas.HTMLCanvasElement_set_height: argument canvas is not a live HTMLCanvasElement")
+	}
+	_p1 := u32(a[1].i32)
+	HTMLCanvasElement_set_height(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLCanvasElement_context2d :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, alpha: bool, will_read_frequently: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_HTMLCanvasElement_context2d :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_context2d", "result pointer") }
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_context2d: argument canvas is not a live HTMLCanvasElement")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := a[2].i32 != 0
+	_r, _err := HTMLCanvasElement_context2d(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Canvas_encode :: proc(c: ^Call, canvas: u64, type: string, quality: f64) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_Canvas_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.Canvas_encode", "type") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_encode", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "canvas.Canvas_encode: argument type is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p2 := a[3].f64
+	_r, _err := Canvas_encode(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasRenderingContext2D_canvas :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> u64
+@(private = "file")
+_t_canvas_CanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasRenderingContext2D_canvas: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasRenderingContext2D_canvas: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasRenderingContext2D_canvas(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// OffscreenCanvasRenderingContext2D_canvas :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> u64
+@(private = "file")
+_t_canvas_OffscreenCanvasRenderingContext2D_canvas :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.OffscreenCanvasRenderingContext2D_canvas: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.OffscreenCanvasRenderingContext2D_canvas: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := OffscreenCanvasRenderingContext2D_canvas(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CanvasSettings_alpha :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> bool
+@(private = "file")
+_t_canvas_CanvasSettings_alpha :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasSettings_alpha: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasSettings_alpha: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasSettings_alpha(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasSettings_willReadFrequently :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> bool
+@(private = "file")
+_t_canvas_CanvasSettings_willReadFrequently :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasSettings_willReadFrequently: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasSettings_willReadFrequently: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasSettings_willReadFrequently(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasState_save :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D)
+@(private = "file")
+_t_canvas_CanvasState_save :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasState_save: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasState_save: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasState_save(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasState_restore :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D)
+@(private = "file")
+_t_canvas_CanvasState_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasState_restore: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasState_restore: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasState_restore(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasState_reset :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D)
+@(private = "file")
+_t_canvas_CanvasState_reset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasState_reset: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasState_reset: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasState_reset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasState_isContextLost :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> bool
+@(private = "file")
+_t_canvas_CanvasState_isContextLost :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasState_isContextLost: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasState_isContextLost: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasState_isContextLost(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasTransform_scale :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasTransform_scale :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_scale: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_scale: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	CanvasTransform_scale(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_rotate :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, angle: f64)
+@(private = "file")
+_t_canvas_CanvasTransform_rotate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_rotate: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_rotate: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasTransform_rotate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_translate :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasTransform_translate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_translate: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_translate: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	CanvasTransform_translate(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_transform :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)
+@(private = "file")
+_t_canvas_CanvasTransform_transform :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_transform: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_transform: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	CanvasTransform_transform(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_setTransform :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)
+@(private = "file")
+_t_canvas_CanvasTransform_setTransform :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_setTransform: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_setTransform: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	CanvasTransform_setTransform(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_resetTransform :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D)
+@(private = "file")
+_t_canvas_CanvasTransform_resetTransform :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_resetTransform: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_resetTransform: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTransform_resetTransform(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTransform_matrixElement :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, index: i32) -> f64
+@(private = "file")
+_t_canvas_CanvasTransform_matrixElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTransform_matrixElement: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTransform_matrixElement: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32
+	_r := CanvasTransform_matrixElement(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasCompositing_globalAlpha :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasCompositing_globalAlpha :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasCompositing_globalAlpha: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasCompositing_globalAlpha: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasCompositing_globalAlpha(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasCompositing_set_globalAlpha :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasCompositing_set_globalAlpha :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasCompositing_set_globalAlpha: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasCompositing_set_globalAlpha: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasCompositing_set_globalAlpha(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasCompositing_globalCompositeOperation :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasCompositing_globalCompositeOperation :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasCompositing_globalCompositeOperation", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasCompositing_globalCompositeOperation: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasCompositing_globalCompositeOperation: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasCompositing_globalCompositeOperation(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasCompositing_set_globalCompositeOperation :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasCompositing_set_globalCompositeOperation :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasCompositing_set_globalCompositeOperation", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasCompositing_set_globalCompositeOperation: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasCompositing_set_globalCompositeOperation: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasCompositing_set_globalCompositeOperation: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasCompositing_set_globalCompositeOperation: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasCompositing_set_globalCompositeOperation(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasImageSmoothing_imageSmoothingEnabled :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> bool
+@(private = "file")
+_t_canvas_CanvasImageSmoothing_imageSmoothingEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasImageSmoothing_imageSmoothingEnabled: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasImageSmoothing_imageSmoothingEnabled: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasImageSmoothing_imageSmoothingEnabled(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasImageSmoothing_set_imageSmoothingEnabled :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: bool)
+@(private = "file")
+_t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasImageSmoothing_set_imageSmoothingEnabled: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasImageSmoothing_set_imageSmoothingEnabled: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	CanvasImageSmoothing_set_imageSmoothingEnabled(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasImageSmoothing_imageSmoothingQuality :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasImageSmoothing_imageSmoothingQuality :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasImageSmoothing_imageSmoothingQuality", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasImageSmoothing_imageSmoothingQuality: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasImageSmoothing_imageSmoothingQuality: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasImageSmoothing_imageSmoothingQuality(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasImageSmoothing_set_imageSmoothingQuality :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasImageSmoothing_set_imageSmoothingQuality", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasImageSmoothing_set_imageSmoothingQuality: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasImageSmoothing_set_imageSmoothingQuality(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasStyle_kind :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, stroke: bool) -> Api_StyleKind
+@(private = "file")
+_t_canvas_CanvasStyle_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasStyle_kind: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasStyle_kind: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	_r := CanvasStyle_kind(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// CanvasStyle_color :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, stroke: bool) -> string
+@(private = "file")
+_t_canvas_CanvasStyle_color :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasStyle_color", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasStyle_color: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasStyle_color: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	_r := CanvasStyle_color(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasStyle_object :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, stroke: bool) -> u64
+@(private = "file")
+_t_canvas_CanvasStyle_object :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasStyle_object: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasStyle_object: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	_r := CanvasStyle_object(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CanvasStyle_setColor :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, stroke: bool, color: string) -> bool
+@(private = "file")
+_t_canvas_CanvasStyle_setColor :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasStyle_setColor", "color") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasStyle_setColor: argument color is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasStyle_setColor: argument color is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasStyle_setColor: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasStyle_setColor: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	_r := CanvasStyle_setColor(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasStyle_setObject :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, stroke: bool, object: u64)
+@(private = "file")
+_t_canvas_CanvasStyle_setObject :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasStyle_setObject: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasStyle_setObject: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := u64(a[2].i64)
+	CanvasStyle_setObject(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasFillStrokeStyles_createLinearGradient :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x0: f64, y0: f64, x1: f64, y1: f64) -> u64
+@(private = "file")
+_t_canvas_CanvasFillStrokeStyles_createLinearGradient :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasFillStrokeStyles_createLinearGradient: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasFillStrokeStyles_createLinearGradient: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_r := CanvasFillStrokeStyles_createLinearGradient(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CanvasFillStrokeStyles_createRadialGradient :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x0: f64, y0: f64, r0: f64, x1: f64, y1: f64, r1: f64) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_CanvasFillStrokeStyles_createRadialGradient :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.CanvasFillStrokeStyles_createRadialGradient", "result pointer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasFillStrokeStyles_createRadialGradient: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	_r, _err := CanvasFillStrokeStyles_createRadialGradient(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasFillStrokeStyles_createConicGradient :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, start_angle: f64, x: f64, y: f64) -> u64
+@(private = "file")
+_t_canvas_CanvasFillStrokeStyles_createConicGradient :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasFillStrokeStyles_createConicGradient: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasFillStrokeStyles_createConicGradient: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_r := CanvasFillStrokeStyles_createConicGradient(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Canvas_createPattern :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, source: u64, repetition: string) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_Canvas_createPattern :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "canvas.Canvas_createPattern", "repetition") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_createPattern", "result pointer") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "canvas.Canvas_createPattern: argument repetition is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.Canvas_createPattern: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	_r, _err := Canvas_createPattern(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasGradient_addColorStop :: proc(c: ^Call, gradient: Api_CanvasGradient, offset: f64, color: string) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasGradient_addColorStop :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasGradient_addColorStop", "color") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "canvas.CanvasGradient_addColorStop: argument color is not valid UTF-8")
+	}
+	_p0 := Api_CanvasGradient{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasGradient(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasGradient_addColorStop: argument gradient is not a live CanvasGradient")
+	}
+	_p1 := a[1].f64
+	_err := CanvasGradient_addColorStop(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasPattern_setTransformMatrix :: proc(c: ^Call, pattern: Api_CanvasPattern, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)
+@(private = "file")
+_t_canvas_CanvasPattern_setTransformMatrix :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPattern_setTransformMatrix: argument pattern is not a live CanvasPattern") }
+		return wasm.trap_new("canvas.CanvasPattern_setTransformMatrix: argument pattern is not a live CanvasPattern")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	CanvasPattern_setTransformMatrix(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasShadowStyles_shadowOffsetX :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasShadowStyles_shadowOffsetX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_shadowOffsetX: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_shadowOffsetX: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasShadowStyles_shadowOffsetX(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasShadowStyles_set_shadowOffsetX :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasShadowStyles_set_shadowOffsetX :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_set_shadowOffsetX: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowOffsetX: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasShadowStyles_set_shadowOffsetX(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasShadowStyles_shadowOffsetY :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasShadowStyles_shadowOffsetY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_shadowOffsetY: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_shadowOffsetY: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasShadowStyles_shadowOffsetY(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasShadowStyles_set_shadowOffsetY :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasShadowStyles_set_shadowOffsetY :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_set_shadowOffsetY: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowOffsetY: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasShadowStyles_set_shadowOffsetY(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasShadowStyles_shadowBlur :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasShadowStyles_shadowBlur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_shadowBlur: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_shadowBlur: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasShadowStyles_shadowBlur(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasShadowStyles_set_shadowBlur :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasShadowStyles_set_shadowBlur :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_set_shadowBlur: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowBlur: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasShadowStyles_set_shadowBlur(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasShadowStyles_shadowColor :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasShadowStyles_shadowColor :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasShadowStyles_shadowColor", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_shadowColor: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_shadowColor: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasShadowStyles_shadowColor(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasShadowStyles_set_shadowColor :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasShadowStyles_set_shadowColor :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasShadowStyles_set_shadowColor", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasShadowStyles_set_shadowColor: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowColor: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasShadowStyles_set_shadowColor: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasShadowStyles_set_shadowColor: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasShadowStyles_set_shadowColor(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasFilters_filter :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasFilters_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasFilters_filter", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasFilters_filter: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasFilters_filter: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasFilters_filter(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasFilters_set_filter :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasFilters_set_filter :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasFilters_set_filter", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasFilters_set_filter: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasFilters_set_filter: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasFilters_set_filter: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasFilters_set_filter: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasFilters_set_filter(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasRect_clearRect :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: f64, y: f64, w: f64, h: f64)
+@(private = "file")
+_t_canvas_CanvasRect_clearRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasRect_clearRect: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasRect_clearRect: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	CanvasRect_clearRect(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasRect_fillRect :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: f64, y: f64, w: f64, h: f64)
+@(private = "file")
+_t_canvas_CanvasRect_fillRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasRect_fillRect: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasRect_fillRect: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	CanvasRect_fillRect(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasRect_strokeRect :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: f64, y: f64, w: f64, h: f64)
+@(private = "file")
+_t_canvas_CanvasRect_strokeRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasRect_strokeRect: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasRect_strokeRect: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	CanvasRect_strokeRect(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasDrawPath_beginPath :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D)
+@(private = "file")
+_t_canvas_CanvasDrawPath_beginPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_beginPath: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_beginPath: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasDrawPath_beginPath(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasDrawPath_fill :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, path: u64, rule: string)
+@(private = "file")
+_t_canvas_CanvasDrawPath_fill :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_fill", "rule") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_fill: argument rule is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasDrawPath_fill: argument rule is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_fill: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_fill: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	CanvasDrawPath_fill(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasDrawPath_stroke :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, path: u64)
+@(private = "file")
+_t_canvas_CanvasDrawPath_stroke :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_stroke: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_stroke: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	CanvasDrawPath_stroke(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasDrawPath_clip :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, path: u64, rule: string)
+@(private = "file")
+_t_canvas_CanvasDrawPath_clip :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_clip", "rule") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_clip: argument rule is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasDrawPath_clip: argument rule is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_clip: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_clip: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	CanvasDrawPath_clip(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasDrawPath_isPointInPath :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, path: u64, x: f64, y: f64, rule: string) -> bool
+@(private = "file")
+_t_canvas_CanvasDrawPath_isPointInPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n4 := wasm.addr(&f, a[5])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[4]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "canvas.CanvasDrawPath_isPointInPath", "rule") }
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasDrawPath_isPointInPath: argument rule is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasDrawPath_isPointInPath: argument rule is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_isPointInPath: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_isPointInPath: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_r := CanvasDrawPath_isPointInPath(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasDrawPath_isPointInStroke :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, path: u64, x: f64, y: f64) -> bool
+@(private = "file")
+_t_canvas_CanvasDrawPath_isPointInStroke :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasDrawPath_isPointInStroke: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasDrawPath_isPointInStroke: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_r := CanvasDrawPath_isPointInStroke(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CanvasText_fillText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string, x: f64, y: f64, max_width: f64, has_max: bool)
+@(private = "file")
+_t_canvas_CanvasText_fillText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_fillText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_fillText: argument text is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasText_fillText: argument text is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasText_fillText: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasText_fillText: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p2 := a[3].f64
+	_p3 := a[4].f64
+	_p4 := a[5].f64
+	_p5 := a[6].i32 != 0
+	CanvasText_fillText(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasText_strokeText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string, x: f64, y: f64, max_width: f64, has_max: bool)
+@(private = "file")
+_t_canvas_CanvasText_strokeText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_strokeText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_strokeText: argument text is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasText_strokeText: argument text is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasText_strokeText: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasText_strokeText: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p2 := a[3].f64
+	_p3 := a[4].f64
+	_p4 := a[5].f64
+	_p5 := a[6].i32 != 0
+	CanvasText_strokeText(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasText_measureText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string) -> u64
+@(private = "file")
+_t_canvas_CanvasText_measureText :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasText_measureText", "text") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasText_measureText: argument text is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasText_measureText: argument text is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasText_measureText: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasText_measureText: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasText_measureText(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// TextMetrics_width :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_width: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_width: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_width(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_actualBoundingBoxLeft :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_actualBoundingBoxLeft :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_actualBoundingBoxLeft: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_actualBoundingBoxLeft: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_actualBoundingBoxLeft(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_actualBoundingBoxRight :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_actualBoundingBoxRight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_actualBoundingBoxRight: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_actualBoundingBoxRight: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_actualBoundingBoxRight(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_fontBoundingBoxAscent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_fontBoundingBoxAscent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_fontBoundingBoxAscent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_fontBoundingBoxAscent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_fontBoundingBoxAscent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_fontBoundingBoxDescent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_fontBoundingBoxDescent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_fontBoundingBoxDescent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_fontBoundingBoxDescent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_fontBoundingBoxDescent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_actualBoundingBoxAscent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_actualBoundingBoxAscent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_actualBoundingBoxAscent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_actualBoundingBoxAscent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_actualBoundingBoxAscent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_actualBoundingBoxDescent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_actualBoundingBoxDescent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_actualBoundingBoxDescent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_actualBoundingBoxDescent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_actualBoundingBoxDescent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_emHeightAscent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_emHeightAscent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_emHeightAscent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_emHeightAscent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_emHeightAscent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_emHeightDescent :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_emHeightDescent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_emHeightDescent: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_emHeightDescent: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_emHeightDescent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_hangingBaseline :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_hangingBaseline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_hangingBaseline: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_hangingBaseline: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_hangingBaseline(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_alphabeticBaseline :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_alphabeticBaseline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_alphabeticBaseline: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_alphabeticBaseline: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_alphabeticBaseline(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextMetrics_ideographicBaseline :: proc(c: ^Call, m: Api_TextMetrics) -> f64
+@(private = "file")
+_t_canvas_TextMetrics_ideographicBaseline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextMetrics{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextMetrics(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.TextMetrics_ideographicBaseline: argument m is not a live TextMetrics") }
+		return wasm.trap_new("canvas.TextMetrics_ideographicBaseline: argument m is not a live TextMetrics")
+	}
+	_r := TextMetrics_ideographicBaseline(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasDrawImage_drawImage :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, dx: f64, dy: f64, dw: f64, dh: f64) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasDrawImage_drawImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasDrawImage_drawImage: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := u64(a[1].i64)
+	_p2 := a[2].i32
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	_p7 := a[7].f64
+	_p8 := a[8].f64
+	_p9 := a[9].f64
+	_p10 := a[10].f64
+	_err := CanvasDrawImage_drawImage(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasImageData_maxBytes :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_canvas_CanvasImageData_maxBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := CanvasImageData_maxBytes(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CanvasImageData_get :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: i32, y: i32, w: i32, h: i32, data: []u8) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasImageData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "canvas.CanvasImageData_get", "data") }
+	_p5 := _s5[:_n5]
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasImageData_get: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	_p4 := a[4].i32
+	_err := CanvasImageData_get(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasImageData_put :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, data: []u8, data_w: i32, data_h: i32, dx: i32, dy: i32, dirty_x: i32, dirty_y: i32, dirty_w: i32, dirty_h: i32)
+@(private = "file")
+_t_canvas_CanvasImageData_put :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasImageData_put", "data") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasImageData_put: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasImageData_put: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p2 := a[3].i32
+	_p3 := a[4].i32
+	_p4 := a[5].i32
+	_p5 := a[6].i32
+	_p6 := a[7].i32
+	_p7 := a[8].i32
+	_p8 := a[9].i32
+	_p9 := a[10].i32
+	CanvasImageData_put(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineWidth :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineWidth: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineWidth: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_lineWidth(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasPathDrawingStyles_set_lineWidth :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_set_lineWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_set_lineWidth: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineWidth: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasPathDrawingStyles_set_lineWidth(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineCap :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineCap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_lineCap", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineCap: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineCap: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_lineCap(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasPathDrawingStyles_set_lineCap :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_set_lineCap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_set_lineCap", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasPathDrawingStyles_set_lineCap: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineCap: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_set_lineCap: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineCap: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasPathDrawingStyles_set_lineCap(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineJoin :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineJoin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_lineJoin", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineJoin: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineJoin: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_lineJoin(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasPathDrawingStyles_set_lineJoin :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_set_lineJoin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_set_lineJoin", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasPathDrawingStyles_set_lineJoin: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineJoin: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_set_lineJoin: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineJoin: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasPathDrawingStyles_set_lineJoin(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_miterLimit :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_miterLimit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_miterLimit: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_miterLimit: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_miterLimit(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasPathDrawingStyles_set_miterLimit :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_set_miterLimit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_set_miterLimit: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_miterLimit: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasPathDrawingStyles_set_miterLimit(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineDashOffset :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> f64
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineDashOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineDashOffset: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineDashOffset: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_lineDashOffset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasPathDrawingStyles_set_lineDashOffset :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: f64)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_set_lineDashOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_set_lineDashOffset: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_set_lineDashOffset: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].f64
+	CanvasPathDrawingStyles_set_lineDashOffset(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_setLineDash :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, segments: []f64)
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_setLineDash :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1, 8)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasPathDrawingStyles_setLineDash", "segments") }
+	_p1 := ([^]f64)(_s1)[:_n1]
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_setLineDash: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_setLineDash: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasPathDrawingStyles_setLineDash(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineDashCount :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> i32
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineDashCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineDashCount: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineDashCount: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasPathDrawingStyles_lineDashCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// CanvasPathDrawingStyles_lineDashAt :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, index: i32) -> f64
+@(private = "file")
+_t_canvas_CanvasPathDrawingStyles_lineDashAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPathDrawingStyles_lineDashAt: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasPathDrawingStyles_lineDashAt: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_p1 := a[1].i32
+	_r := CanvasPathDrawingStyles_lineDashAt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// CanvasTextDrawingStyles_lang :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_lang :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_lang", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_lang: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_lang: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_lang(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_lang :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_lang :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_lang", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_lang: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_lang: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_lang: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_lang: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_lang(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_font :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_font :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_font", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_font: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_font: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_font(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_font :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_font :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_font", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_font: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_font: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_font: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_font: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_font(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_textAlign :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_textAlign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textAlign", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_textAlign: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_textAlign: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_textAlign(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_textAlign :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_textAlign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textAlign", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textAlign: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textAlign: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_textAlign: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textAlign: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_textAlign(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_textBaseline :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_textBaseline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textBaseline", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_textBaseline: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_textBaseline: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_textBaseline(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_textBaseline :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_textBaseline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textBaseline", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textBaseline: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textBaseline: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_textBaseline: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textBaseline: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_textBaseline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_direction :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_direction :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_direction", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_direction: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_direction: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_direction(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_direction :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_direction :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_direction", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_direction: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_direction: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_direction: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_direction: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_direction(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_letterSpacing :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_letterSpacing :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_letterSpacing", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_letterSpacing: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_letterSpacing: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_letterSpacing(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_letterSpacing :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_letterSpacing :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_letterSpacing", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_letterSpacing: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_letterSpacing: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_letterSpacing: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_letterSpacing: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_letterSpacing(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_wordSpacing :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_wordSpacing :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_wordSpacing", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_wordSpacing: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_wordSpacing: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_wordSpacing(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_wordSpacing :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_wordSpacing :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_wordSpacing", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_wordSpacing: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_wordSpacing: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_wordSpacing: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_wordSpacing: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_wordSpacing(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_fontKerning :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_fontKerning :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontKerning", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_fontKerning: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_fontKerning: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_fontKerning(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_fontKerning :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_fontKerning :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontKerning", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontKerning: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontKerning: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_fontKerning: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontKerning: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_fontKerning(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_fontStretch :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_fontStretch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontStretch", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_fontStretch: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_fontStretch: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_fontStretch(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_fontStretch :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_fontStretch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontStretch", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontStretch: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontStretch: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_fontStretch: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontStretch: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_fontStretch(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_fontVariantCaps :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_fontVariantCaps :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_fontVariantCaps", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_fontVariantCaps: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_fontVariantCaps: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_fontVariantCaps(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_fontVariantCaps :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_fontVariantCaps", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_fontVariantCaps: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_fontVariantCaps(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasTextDrawingStyles_textRendering :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D) -> string
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_textRendering :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_textRendering", "result buffer") }
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_textRendering: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_textRendering: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	_r := CanvasTextDrawingStyles_textRendering(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CanvasTextDrawingStyles_set_textRendering :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, value: string)
+@(private = "file")
+_t_canvas_CanvasTextDrawingStyles_set_textRendering :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.CanvasTextDrawingStyles_set_textRendering", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.CanvasTextDrawingStyles_set_textRendering: argument value is not valid UTF-8") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textRendering: argument value is not valid UTF-8")
+	}
+	_p0 := Api_CanvasRenderingContext2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasRenderingContext2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasTextDrawingStyles_set_textRendering: argument ctx is not a live CanvasRenderingContext2D") }
+		return wasm.trap_new("canvas.CanvasTextDrawingStyles_set_textRendering: argument ctx is not a live CanvasRenderingContext2D")
+	}
+	CanvasTextDrawingStyles_set_textRendering(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_closePath :: proc(c: ^Call, p: Api_CanvasPathTarget)
+@(private = "file")
+_t_canvas_CanvasPath_closePath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_closePath: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_closePath: argument p is not a live CanvasPathTarget")
+	}
+	CanvasPath_closePath(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_moveTo :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasPath_moveTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_moveTo: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_moveTo: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	CanvasPath_moveTo(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_lineTo :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasPath_lineTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_lineTo: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_lineTo: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	CanvasPath_lineTo(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_quadraticCurveTo :: proc(c: ^Call, p: Api_CanvasPathTarget, cpx: f64, cpy: f64, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasPath_quadraticCurveTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_quadraticCurveTo: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_quadraticCurveTo: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	CanvasPath_quadraticCurveTo(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_bezierCurveTo :: proc(c: ^Call, p: Api_CanvasPathTarget, cp1x: f64, cp1y: f64, cp2x: f64, cp2y: f64, x: f64, y: f64)
+@(private = "file")
+_t_canvas_CanvasPath_bezierCurveTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_bezierCurveTo: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_bezierCurveTo: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	CanvasPath_bezierCurveTo(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_arcTo :: proc(c: ^Call, p: Api_CanvasPathTarget, x1: f64, y1: f64, x2: f64, y2: f64, radius: f64) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasPath_arcTo :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasPath_arcTo: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_err := CanvasPath_arcTo(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasPath_rect :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64, w: f64, h: f64)
+@(private = "file")
+_t_canvas_CanvasPath_rect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.CanvasPath_rect: argument p is not a live CanvasPathTarget") }
+		return wasm.trap_new("canvas.CanvasPath_rect: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	CanvasPath_rect(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// CanvasPath_roundRect :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64, w: f64, h: f64, radii: []f64) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasPath_roundRect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n5 := wasm.addr(&f, a[6])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[5]), _n5, 8)
+	if !_k5 { return wasm.trap_bounds(&f, "canvas.CanvasPath_roundRect", "radii") }
+	_p5 := ([^]f64)(_s5)[:_n5]
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasPath_roundRect: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_err := CanvasPath_roundRect(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasPath_arc :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64, radius: f64, start_angle: f64, end_angle: f64, counterclockwise: bool) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasPath_arc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasPath_arc: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].i32 != 0
+	_err := CanvasPath_arc(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CanvasPath_ellipse :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64, radius_x: f64, radius_y: f64, rotation: f64, start_angle: f64, end_angle: f64, counterclockwise: bool) -> Api_Error
+@(private = "file")
+_t_canvas_CanvasPath_ellipse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_CanvasPathTarget{handle = u64(a[0].i64)}
+	_p0.data = lookup_CanvasPathTarget(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.CanvasPath_ellipse: argument p is not a live CanvasPathTarget")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	_p7 := a[7].f64
+	_p8 := a[8].i32 != 0
+	_err := CanvasPath_ellipse(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Path2D_create :: proc(c: ^Call, from: u64, svg: string) -> u64
+@(private = "file")
+_t_canvas_Path2D_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "canvas.Path2D_create", "svg") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "canvas.Path2D_create: argument svg is not valid UTF-8") }
+		return wasm.trap_new("canvas.Path2D_create: argument svg is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r := Path2D_create(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Path2D_addPath :: proc(c: ^Call, target: Api_Path2D, path: Api_Path2D, m11: f64, m12: f64, m21: f64, m22: f64, m41: f64, m42: f64)
+@(private = "file")
+_t_canvas_Path2D_addPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Path2D{handle = u64(a[0].i64)}
+	_p0.data = lookup_Path2D(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.Path2D_addPath: argument target is not a live Path2D") }
+		return wasm.trap_new("canvas.Path2D_addPath: argument target is not a live Path2D")
+	}
+	_p1 := Api_Path2D{handle = u64(a[1].i64)}
+	_p1.data = lookup_Path2D(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.Path2D_addPath: argument path is not a live Path2D") }
+		return wasm.trap_new("canvas.Path2D_addPath: argument path is not a live Path2D")
+	}
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].f64
+	_p7 := a[7].f64
+	Path2D_addPath(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// OffscreenCanvas_create :: proc(c: ^Call, width: u64, height: u64) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_create", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_p1 := u64(a[1].i64)
+	_r, _err := OffscreenCanvas_create(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_width :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -> u64
+@(private = "file")
+_t_canvas_OffscreenCanvas_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_width: argument canvas is not a live OffscreenCanvas") }
+		return wasm.trap_new("canvas.OffscreenCanvas_width: argument canvas is not a live OffscreenCanvas")
+	}
+	_r := OffscreenCanvas_width(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// OffscreenCanvas_height :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -> u64
+@(private = "file")
+_t_canvas_OffscreenCanvas_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_height: argument canvas is not a live OffscreenCanvas") }
+		return wasm.trap_new("canvas.OffscreenCanvas_height: argument canvas is not a live OffscreenCanvas")
+	}
+	_r := OffscreenCanvas_height(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// OffscreenCanvas_set_width :: proc(c: ^Call, canvas: Api_OffscreenCanvas, value: u64) -> Api_Error
+@(private = "file")
+_t_canvas_OffscreenCanvas_set_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_set_width: argument canvas is not a live OffscreenCanvas")
+	}
+	_p1 := u64(a[1].i64)
+	_err := OffscreenCanvas_set_width(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_set_height :: proc(c: ^Call, canvas: Api_OffscreenCanvas, value: u64) -> Api_Error
+@(private = "file")
+_t_canvas_OffscreenCanvas_set_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_set_height: argument canvas is not a live OffscreenCanvas")
+	}
+	_p1 := u64(a[1].i64)
+	_err := OffscreenCanvas_set_height(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_context2d :: proc(c: ^Call, canvas: Api_OffscreenCanvas, alpha: bool, will_read_frequently: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_context2d :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_context2d", "result pointer") }
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_context2d: argument canvas is not a live OffscreenCanvas")
+	}
+	_p1 := a[1].i32 != 0
+	_p2 := a[2].i32 != 0
+	_r, _err := OffscreenCanvas_context2d(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_transferToImageBitmap :: proc(c: ^Call, canvas: Api_OffscreenCanvas) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_transferToImageBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_transferToImageBitmap", "result pointer") }
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_transferToImageBitmap: argument canvas is not a live OffscreenCanvas")
+	}
+	_r, _err := OffscreenCanvas_transferToImageBitmap(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ImageBitmap_width :: proc(c: ^Call, bitmap: Api_ImageBitmap) -> u32
+@(private = "file")
+_t_canvas_ImageBitmap_width :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmap_width: argument bitmap is not a live ImageBitmap") }
+		return wasm.trap_new("canvas.ImageBitmap_width: argument bitmap is not a live ImageBitmap")
+	}
+	_r := ImageBitmap_width(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ImageBitmap_height :: proc(c: ^Call, bitmap: Api_ImageBitmap) -> u32
+@(private = "file")
+_t_canvas_ImageBitmap_height :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmap_height: argument bitmap is not a live ImageBitmap") }
+		return wasm.trap_new("canvas.ImageBitmap_height: argument bitmap is not a live ImageBitmap")
+	}
+	_r := ImageBitmap_height(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ImageBitmap_close :: proc(c: ^Call, bitmap: Api_ImageBitmap)
+@(private = "file")
+_t_canvas_ImageBitmap_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageBitmap{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageBitmap(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmap_close: argument bitmap is not a live ImageBitmap") }
+		return wasm.trap_new("canvas.ImageBitmap_close: argument bitmap is not a live ImageBitmap")
+	}
+	ImageBitmap_close(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_createBitmap", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_p2 := a[2].f64
+	_p3 := a[3].f64
+	_p4 := a[4].f64
+	_p5 := a[5].f64
+	_p6 := a[6].i32 != 0
+	_r, _err := Canvas_createBitmap(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, flip_y: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "canvas.Canvas_bitmapFromPixels", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_bitmapFromPixels", "result pointer") }
+	_p0 := _s0[:_n0]
+	_p1 := a[2].i32
+	_p2 := a[3].i32
+	_p3 := a[4].i32 != 0
+	_r, _err := Canvas_bitmapFromPixels(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -18745,6 +21944,143 @@ api_imports := [?]wasm.Import{
 	{module = "async", name = "Buffer_read", fn = _t_async_Buffer_read, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_write", fn = _t_async_Buffer_write, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_slice", fn = _t_async_Buffer_slice, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_width", fn = _t_canvas_HTMLCanvasElement_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_set_width", fn = _t_canvas_HTMLCanvasElement_set_width, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "HTMLCanvasElement_height", fn = _t_canvas_HTMLCanvasElement_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_set_height", fn = _t_canvas_HTMLCanvasElement_set_height, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "HTMLCanvasElement_context2d", fn = _t_canvas_HTMLCanvasElement_context2d, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_encode", fn = _t_canvas_Canvas_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasRenderingContext2D_canvas", fn = _t_canvas_CanvasRenderingContext2D_canvas, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvasRenderingContext2D_canvas", fn = _t_canvas_OffscreenCanvasRenderingContext2D_canvas, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasSettings_alpha", fn = _t_canvas_CanvasSettings_alpha, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasSettings_willReadFrequently", fn = _t_canvas_CanvasSettings_willReadFrequently, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasState_save", fn = _t_canvas_CanvasState_save, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_restore", fn = _t_canvas_CanvasState_restore, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_reset", fn = _t_canvas_CanvasState_reset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_isContextLost", fn = _t_canvas_CanvasState_isContextLost, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasTransform_scale", fn = _t_canvas_CanvasTransform_scale, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_rotate", fn = _t_canvas_CanvasTransform_rotate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_translate", fn = _t_canvas_CanvasTransform_translate, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_transform", fn = _t_canvas_CanvasTransform_transform, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_setTransform", fn = _t_canvas_CanvasTransform_setTransform, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_resetTransform", fn = _t_canvas_CanvasTransform_resetTransform, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_matrixElement", fn = _t_canvas_CanvasTransform_matrixElement, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasCompositing_globalAlpha", fn = _t_canvas_CanvasCompositing_globalAlpha, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasCompositing_set_globalAlpha", fn = _t_canvas_CanvasCompositing_set_globalAlpha, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasCompositing_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_globalCompositeOperation, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasCompositing_set_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_set_globalCompositeOperation, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasStyle_kind", fn = _t_canvas_CanvasStyle_kind, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasStyle_color", fn = _t_canvas_CanvasStyle_color, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasStyle_object", fn = _t_canvas_CanvasStyle_object, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasStyle_setColor", fn = _t_canvas_CanvasStyle_setColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasStyle_setObject", fn = _t_canvas_CanvasStyle_setObject, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createLinearGradient", fn = _t_canvas_CanvasFillStrokeStyles_createLinearGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createRadialGradient", fn = _t_canvas_CanvasFillStrokeStyles_createRadialGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createConicGradient", fn = _t_canvas_CanvasFillStrokeStyles_createConicGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "Canvas_createPattern", fn = _t_canvas_Canvas_createPattern, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasGradient_addColorStop", fn = _t_canvas_CanvasGradient_addColorStop, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPattern_setTransformMatrix", fn = _t_canvas_CanvasPattern_setTransformMatrix, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_shadowOffsetX, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetX, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_shadowOffsetY, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetY, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowBlur", fn = _t_canvas_CanvasShadowStyles_shadowBlur, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowBlur", fn = _t_canvas_CanvasShadowStyles_set_shadowBlur, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowColor", fn = _t_canvas_CanvasShadowStyles_shadowColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowColor", fn = _t_canvas_CanvasShadowStyles_set_shadowColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasFilters_filter", fn = _t_canvas_CanvasFilters_filter, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasFilters_set_filter", fn = _t_canvas_CanvasFilters_set_filter, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_clearRect", fn = _t_canvas_CanvasRect_clearRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_fillRect", fn = _t_canvas_CanvasRect_fillRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_strokeRect", fn = _t_canvas_CanvasRect_strokeRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_beginPath", fn = _t_canvas_CanvasDrawPath_beginPath, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_fill", fn = _t_canvas_CanvasDrawPath_fill, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_stroke", fn = _t_canvas_CanvasDrawPath_stroke, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_clip", fn = _t_canvas_CanvasDrawPath_clip, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_isPointInPath", fn = _t_canvas_CanvasDrawPath_isPointInPath, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasDrawPath_isPointInStroke", fn = _t_canvas_CanvasDrawPath_isPointInStroke, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasText_fillText", fn = _t_canvas_CanvasText_fillText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasText_strokeText", fn = _t_canvas_CanvasText_strokeText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasText_measureText", fn = _t_canvas_CanvasText_measureText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "TextMetrics_width", fn = _t_canvas_TextMetrics_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxLeft", fn = _t_canvas_TextMetrics_actualBoundingBoxLeft, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxRight", fn = _t_canvas_TextMetrics_actualBoundingBoxRight, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_fontBoundingBoxAscent", fn = _t_canvas_TextMetrics_fontBoundingBoxAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_fontBoundingBoxDescent", fn = _t_canvas_TextMetrics_fontBoundingBoxDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxAscent", fn = _t_canvas_TextMetrics_actualBoundingBoxAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxDescent", fn = _t_canvas_TextMetrics_actualBoundingBoxDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_emHeightAscent", fn = _t_canvas_TextMetrics_emHeightAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_emHeightDescent", fn = _t_canvas_TextMetrics_emHeightDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_hangingBaseline", fn = _t_canvas_TextMetrics_hangingBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_alphabeticBaseline", fn = _t_canvas_TextMetrics_alphabeticBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_ideographicBaseline", fn = _t_canvas_TextMetrics_ideographicBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasDrawImage_drawImage", fn = _t_canvas_CanvasDrawImage_drawImage, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageData_maxBytes", fn = _t_canvas_CanvasImageData_maxBytes, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasImageData_get", fn = _t_canvas_CanvasImageData_get, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageData_put", fn = _t_canvas_CanvasImageData_put, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_set_lineWidth, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_lineCap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_set_lineCap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_lineJoin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_set_lineJoin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_miterLimit, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_set_miterLimit, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_lineDashOffset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_setLineDash", fn = _t_canvas_CanvasPathDrawingStyles_setLineDash, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashCount", fn = _t_canvas_CanvasPathDrawingStyles_lineDashCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashAt", fn = _t_canvas_CanvasPathDrawingStyles_lineDashAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_lang", fn = _t_canvas_CanvasTextDrawingStyles_lang, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_lang", fn = _t_canvas_CanvasTextDrawingStyles_set_lang, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_font", fn = _t_canvas_CanvasTextDrawingStyles_font, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_font", fn = _t_canvas_CanvasTextDrawingStyles_set_font, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_textAlign, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_set_textAlign, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_textBaseline, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_set_textBaseline, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_direction", fn = _t_canvas_CanvasTextDrawingStyles_direction, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_direction", fn = _t_canvas_CanvasTextDrawingStyles_set_direction, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_letterSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_letterSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_wordSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_wordSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_fontKerning, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_set_fontKerning, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_fontStretch, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_set_fontStretch, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_fontVariantCaps, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_textRendering, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_set_textRendering, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_closePath", fn = _t_canvas_CanvasPath_closePath, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_moveTo", fn = _t_canvas_CanvasPath_moveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_lineTo", fn = _t_canvas_CanvasPath_lineTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_quadraticCurveTo", fn = _t_canvas_CanvasPath_quadraticCurveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_bezierCurveTo", fn = _t_canvas_CanvasPath_bezierCurveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_arcTo", fn = _t_canvas_CanvasPath_arcTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_rect", fn = _t_canvas_CanvasPath_rect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_roundRect", fn = _t_canvas_CanvasPath_roundRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_arc", fn = _t_canvas_CanvasPath_arc, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_ellipse", fn = _t_canvas_CanvasPath_ellipse, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Path2D_create", fn = _t_canvas_Path2D_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "Path2D_addPath", fn = _t_canvas_Path2D_addPath, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "OffscreenCanvas_create", fn = _t_canvas_OffscreenCanvas_create, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_width", fn = _t_canvas_OffscreenCanvas_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvas_height", fn = _t_canvas_OffscreenCanvas_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvas_set_width", fn = _t_canvas_OffscreenCanvas_set_width, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_set_height", fn = _t_canvas_OffscreenCanvas_set_height, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_context2d", fn = _t_canvas_OffscreenCanvas_context2d, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_transferToImageBitmap", fn = _t_canvas_OffscreenCanvas_transferToImageBitmap, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_width", fn = _t_canvas_ImageBitmap_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_height", fn = _t_canvas_ImageBitmap_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "console", name = "console_log", fn = _t_console_console_log, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_warn", fn = _t_console_console_warn, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_error", fn = _t_console_console_error, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},

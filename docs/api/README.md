@@ -50,6 +50,7 @@ function not exposed to workers is not instantiated.
 |---|---:|---|---|
 | [`abort`](abort.md) | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
+| [`canvas`](canvas.md) | 137 | Window | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
 | [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
 | [`crypto`](crypto.md) | 4 | Window | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
@@ -79,4 +80,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-879 imports in 780 functions.
+1016 imports in 917 functions.

@@ -419,7 +419,7 @@ replace one. Known limits:
   engine compiled natively and about 1/55 of Edge. A simple DOM call costs about ten times what it costs in Edge
   (`node.nodeType`: 65 ns against 5). Pages that run a lot of script are slow.
 - **Part of the web platform is missing**: about half of the members of the specifications' Web IDL are implemented
-  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: no `<canvas>` drawing, no IndexedDB, no
+  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: Canvas 2D is software-drawn and partial (no workers, no video frames, no color emoji in `fillText`), no IndexedDB, no
   `ResizeObserver`, no Web Animations API, no service workers; `Intl` follows English conventions whatever the
   locale; `<iframe>` content is not loaded. Single-page applications that rely on these show little or nothing.
 - **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.

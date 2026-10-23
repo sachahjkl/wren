@@ -27,6 +27,25 @@ typedef void (*wr_MicrotaskCallback)(int32_t user);
 // A reaction: read the result with Promise_value / Promise_text.
 typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state);
 
+/* module canvas: types */
+typedef uint64_t wr_HTMLCanvasElement;
+// A CanvasRenderingContext2D or an OffscreenCanvasRenderingContext2D.
+typedef uint64_t wr_CanvasRenderingContext2D;
+// The target of the CanvasPath members: a context (its current path) or a Path2D.
+typedef uint64_t wr_CanvasPathTarget;
+typedef uint64_t wr_CanvasGradient;
+typedef uint64_t wr_CanvasPattern;
+typedef uint64_t wr_Path2D;
+typedef uint64_t wr_TextMetrics;
+typedef uint64_t wr_OffscreenCanvas;
+typedef uint64_t wr_ImageBitmap;
+// What a fill or stroke style currently is.
+enum wr_StyleKind {
+    wr_StyleKind_Color = 0,
+    wr_StyleKind_Gradient = 1,
+    wr_StyleKind_Pattern = 2,
+};
+
 /* module console: types */
 
 /* module credentials: types */
@@ -566,6 +585,214 @@ WR_IMPORT("async", "Buffer_read") int32_t wr_Buffer_read(uint64_t buffer, int64_
 WR_IMPORT("async", "Buffer_write") int32_t wr_Buffer_write(uint64_t buffer, int64_t offset, const uint8_t *source, uint32_t source_len);
 // buffer.slice(start, end): a copy; negative positions count from the end. Quota past the page's memory limit.
 WR_IMPORT("async", "Buffer_slice") int32_t wr_Buffer_slice(uint64_t buffer, int64_t start, int64_t end, uint64_t *_ret);
+
+/* module canvas */
+// /////////////////////////////
+// canvas.width: the `width` attribute as HTML parses it (a non-negative integer, 300 when absent or invalid).
+WR_IMPORT("canvas", "HTMLCanvasElement_width") uint32_t wr_HTMLCanvasElement_width(uint64_t canvas);
+// canvas.width = n: sets the attribute and resets the canvas (cleared, context state back to the default).
+WR_IMPORT("canvas", "HTMLCanvasElement_set_width") void wr_HTMLCanvasElement_set_width(uint64_t canvas, uint32_t value);
+// canvas.height: 150 when absent or invalid.
+WR_IMPORT("canvas", "HTMLCanvasElement_height") uint32_t wr_HTMLCanvasElement_height(uint64_t canvas);
+WR_IMPORT("canvas", "HTMLCanvasElement_set_height") void wr_HTMLCanvasElement_set_height(uint64_t canvas, uint32_t value);
+// getContext("2d", { alpha, willReadFrequently }): the canvas's 2D context, made on the first call (the bitmap is
+// allocated then) and the same object afterwards. `alpha` false: an opaque canvas (black until drawn on). Quota when
+// the size is over canvas.max_dimension / canvas.max_pixels or the page's canvas memory (canvas.max_page_bytes).
+WR_IMPORT("canvas", "HTMLCanvasElement_context2d") int32_t wr_HTMLCanvasElement_context2d(uint64_t canvas, int32_t alpha, int32_t will_read_frequently, uint64_t *_ret);
+// The canvas (an element, or an OffscreenCanvas handle) encoded as `type`: "image/png", or "image/jpeg" at `quality`
+// (0 to 1; outside it the default, canvas.encode.jpeg_quality). Security when the canvas is tainted. An empty buffer
+// for a canvas with no pixels (width or height 0).
+WR_IMPORT("canvas", "Canvas_encode") int32_t wr_Canvas_encode(uint64_t canvas, const uint8_t *type, uint32_t type_len, double quality, uint64_t *_ret);
+// /////////////////////////////
+// context.canvas
+WR_IMPORT("canvas", "CanvasRenderingContext2D_canvas") uint64_t wr_CanvasRenderingContext2D_canvas(uint64_t ctx);
+// OffscreenCanvasRenderingContext2D.canvas
+WR_IMPORT("canvas", "OffscreenCanvasRenderingContext2D_canvas") uint64_t wr_OffscreenCanvasRenderingContext2D_canvas(uint64_t ctx);
+// getContextAttributes().alpha / .willReadFrequently
+WR_IMPORT("canvas", "CanvasSettings_alpha") int32_t wr_CanvasSettings_alpha(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasSettings_willReadFrequently") int32_t wr_CanvasSettings_willReadFrequently(uint64_t ctx);
+// save(): ignored once canvas.max_save_depth states are saved.
+WR_IMPORT("canvas", "CanvasState_save") void wr_CanvasState_save(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasState_restore") void wr_CanvasState_restore(uint64_t ctx);
+// reset(): clears the canvas and puts every attribute back.
+WR_IMPORT("canvas", "CanvasState_reset") void wr_CanvasState_reset(uint64_t ctx);
+// Always false: the software canvas is not lost.
+WR_IMPORT("canvas", "CanvasState_isContextLost") int32_t wr_CanvasState_isContextLost(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasTransform_scale") void wr_CanvasTransform_scale(uint64_t ctx, double x, double y);
+WR_IMPORT("canvas", "CanvasTransform_rotate") void wr_CanvasTransform_rotate(uint64_t ctx, double angle);
+WR_IMPORT("canvas", "CanvasTransform_translate") void wr_CanvasTransform_translate(uint64_t ctx, double x, double y);
+WR_IMPORT("canvas", "CanvasTransform_transform") void wr_CanvasTransform_transform(uint64_t ctx, double m11, double m12, double m21, double m22, double m41, double m42);
+WR_IMPORT("canvas", "CanvasTransform_setTransform") void wr_CanvasTransform_setTransform(uint64_t ctx, double m11, double m12, double m21, double m22, double m41, double m42);
+WR_IMPORT("canvas", "CanvasTransform_resetTransform") void wr_CanvasTransform_resetTransform(uint64_t ctx);
+// One element of the current transform: 0 to 5 are a, b, c, d, e, f.
+WR_IMPORT("canvas", "CanvasTransform_matrixElement") double wr_CanvasTransform_matrixElement(uint64_t ctx, int32_t index);
+WR_IMPORT("canvas", "CanvasCompositing_globalAlpha") double wr_CanvasCompositing_globalAlpha(uint64_t ctx);
+// Outside 0 to 1, or NaN: ignored.
+WR_IMPORT("canvas", "CanvasCompositing_set_globalAlpha") void wr_CanvasCompositing_set_globalAlpha(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasCompositing_globalCompositeOperation") int32_t wr_CanvasCompositing_globalCompositeOperation(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+// source-over, source-in, source-out, source-atop, destination-over / -in / -out / -atop, lighter, copy, xor, and the
+// blend modes multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference,
+// exclusion, hue, saturation, color, luminosity. Anything else is ignored.
+WR_IMPORT("canvas", "CanvasCompositing_set_globalCompositeOperation") void wr_CanvasCompositing_set_globalCompositeOperation(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasImageSmoothing_imageSmoothingEnabled") int32_t wr_CanvasImageSmoothing_imageSmoothingEnabled(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasImageSmoothing_set_imageSmoothingEnabled") void wr_CanvasImageSmoothing_set_imageSmoothingEnabled(uint64_t ctx, int32_t value);
+WR_IMPORT("canvas", "CanvasImageSmoothing_imageSmoothingQuality") int32_t wr_CanvasImageSmoothing_imageSmoothingQuality(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasImageSmoothing_set_imageSmoothingQuality") void wr_CanvasImageSmoothing_set_imageSmoothingQuality(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+// Which kind of style fillStyle (`stroke` false) or strokeStyle currently is.
+WR_IMPORT("canvas", "CanvasStyle_kind") int32_t wr_CanvasStyle_kind(uint64_t ctx, int32_t stroke);
+// The color style as `#rrggbb` or `rgba(...)`.
+WR_IMPORT("canvas", "CanvasStyle_color") int32_t wr_CanvasStyle_color(uint64_t ctx, int32_t stroke, uint8_t *_buf, uint32_t _cap);
+// The script object of a gradient or pattern style: the one it was set from while that is alive, else a new one the
+// caller owns (0 for a color style).
+WR_IMPORT("canvas", "CanvasStyle_object") uint64_t wr_CanvasStyle_object(uint64_t ctx, int32_t stroke);
+// fillStyle = "color": false (and nothing changes) when it is not a color.
+WR_IMPORT("canvas", "CanvasStyle_setColor") int32_t wr_CanvasStyle_setColor(uint64_t ctx, int32_t stroke, const uint8_t *color, uint32_t color_len);
+// fillStyle = gradient or pattern object.
+WR_IMPORT("canvas", "CanvasStyle_setObject") void wr_CanvasStyle_setObject(uint64_t ctx, int32_t stroke, uint64_t object);
+// createLinearGradient (the arguments are finite: the binding refuses others).
+WR_IMPORT("canvas", "CanvasFillStrokeStyles_createLinearGradient") uint64_t wr_CanvasFillStrokeStyles_createLinearGradient(uint64_t ctx, double x0, double y0, double x1, double y1);
+// createRadialGradient: a negative radius raises Index_Size.
+WR_IMPORT("canvas", "CanvasFillStrokeStyles_createRadialGradient") int32_t wr_CanvasFillStrokeStyles_createRadialGradient(uint64_t ctx, double x0, double y0, double r0, double x1, double y1, double r1, uint64_t *_ret);
+WR_IMPORT("canvas", "CanvasFillStrokeStyles_createConicGradient") uint64_t wr_CanvasFillStrokeStyles_createConicGradient(uint64_t ctx, double start_angle, double x, double y);
+// createPattern(image, repetition): `source` is an element handle (img, canvas) or an object handle (ImageBitmap,
+// OffscreenCanvas); repetition "repeat", "repeat-x", "repeat-y", "no-repeat". Not_Found: no pattern (an image that is
+// not available yet); Syntax: bad repetition; Invalid_State: a canvas with no pixels.
+WR_IMPORT("canvas", "Canvas_createPattern") int32_t wr_Canvas_createPattern(uint64_t ctx, uint64_t source, const uint8_t *repetition, uint32_t repetition_len, uint64_t *_ret);
+// addColorStop(offset, color): Index_Size outside 0 to 1, Syntax for a color that does not parse.
+WR_IMPORT("canvas", "CanvasGradient_addColorStop") int32_t wr_CanvasGradient_addColorStop(uint64_t gradient, double offset, const uint8_t *color, uint32_t color_len);
+// pattern.setTransform(matrix): the six elements a b c d e f as m11 m12 m21 m22 m41 m42.
+WR_IMPORT("canvas", "CanvasPattern_setTransformMatrix") void wr_CanvasPattern_setTransformMatrix(uint64_t pattern, double m11, double m12, double m21, double m22, double m41, double m42);
+WR_IMPORT("canvas", "CanvasShadowStyles_shadowOffsetX") double wr_CanvasShadowStyles_shadowOffsetX(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasShadowStyles_set_shadowOffsetX") void wr_CanvasShadowStyles_set_shadowOffsetX(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasShadowStyles_shadowOffsetY") double wr_CanvasShadowStyles_shadowOffsetY(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasShadowStyles_set_shadowOffsetY") void wr_CanvasShadowStyles_set_shadowOffsetY(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasShadowStyles_shadowBlur") double wr_CanvasShadowStyles_shadowBlur(uint64_t ctx);
+// Negative or non-finite: ignored.
+WR_IMPORT("canvas", "CanvasShadowStyles_set_shadowBlur") void wr_CanvasShadowStyles_set_shadowBlur(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasShadowStyles_shadowColor") int32_t wr_CanvasShadowStyles_shadowColor(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasShadowStyles_set_shadowColor") void wr_CanvasShadowStyles_set_shadowColor(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasFilters_filter") int32_t wr_CanvasFilters_filter(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+// "none" or a list of CSS filter functions (blur, brightness, contrast, grayscale, hue-rotate, invert, opacity,
+// saturate, sepia, drop-shadow); anything that does not parse is ignored.
+WR_IMPORT("canvas", "CanvasFilters_set_filter") void wr_CanvasFilters_set_filter(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasRect_clearRect") void wr_CanvasRect_clearRect(uint64_t ctx, double x, double y, double w, double h);
+WR_IMPORT("canvas", "CanvasRect_fillRect") void wr_CanvasRect_fillRect(uint64_t ctx, double x, double y, double w, double h);
+WR_IMPORT("canvas", "CanvasRect_strokeRect") void wr_CanvasRect_strokeRect(uint64_t ctx, double x, double y, double w, double h);
+WR_IMPORT("canvas", "CanvasDrawPath_beginPath") void wr_CanvasDrawPath_beginPath(uint64_t ctx);
+// fill(path?, rule): `path` is a Path2D handle, 0 for the current path; rule "nonzero" or "evenodd".
+WR_IMPORT("canvas", "CanvasDrawPath_fill") void wr_CanvasDrawPath_fill(uint64_t ctx, uint64_t path, const uint8_t *rule, uint32_t rule_len);
+WR_IMPORT("canvas", "CanvasDrawPath_stroke") void wr_CanvasDrawPath_stroke(uint64_t ctx, uint64_t path);
+WR_IMPORT("canvas", "CanvasDrawPath_clip") void wr_CanvasDrawPath_clip(uint64_t ctx, uint64_t path, const uint8_t *rule, uint32_t rule_len);
+WR_IMPORT("canvas", "CanvasDrawPath_isPointInPath") int32_t wr_CanvasDrawPath_isPointInPath(uint64_t ctx, uint64_t path, double x, double y, const uint8_t *rule, uint32_t rule_len);
+WR_IMPORT("canvas", "CanvasDrawPath_isPointInStroke") int32_t wr_CanvasDrawPath_isPointInStroke(uint64_t ctx, uint64_t path, double x, double y);
+// fillText(text, x, y, maxWidth): `has_max` false when maxWidth was not given.
+WR_IMPORT("canvas", "CanvasText_fillText") void wr_CanvasText_fillText(uint64_t ctx, const uint8_t *text, uint32_t text_len, double x, double y, double max_width, int32_t has_max);
+WR_IMPORT("canvas", "CanvasText_strokeText") void wr_CanvasText_strokeText(uint64_t ctx, const uint8_t *text, uint32_t text_len, double x, double y, double max_width, int32_t has_max);
+WR_IMPORT("canvas", "CanvasText_measureText") uint64_t wr_CanvasText_measureText(uint64_t ctx, const uint8_t *text, uint32_t text_len);
+WR_IMPORT("canvas", "TextMetrics_width") double wr_TextMetrics_width(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_actualBoundingBoxLeft") double wr_TextMetrics_actualBoundingBoxLeft(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_actualBoundingBoxRight") double wr_TextMetrics_actualBoundingBoxRight(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_fontBoundingBoxAscent") double wr_TextMetrics_fontBoundingBoxAscent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_fontBoundingBoxDescent") double wr_TextMetrics_fontBoundingBoxDescent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_actualBoundingBoxAscent") double wr_TextMetrics_actualBoundingBoxAscent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_actualBoundingBoxDescent") double wr_TextMetrics_actualBoundingBoxDescent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_emHeightAscent") double wr_TextMetrics_emHeightAscent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_emHeightDescent") double wr_TextMetrics_emHeightDescent(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_hangingBaseline") double wr_TextMetrics_hangingBaseline(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_alphabeticBaseline") double wr_TextMetrics_alphabeticBaseline(uint64_t m);
+WR_IMPORT("canvas", "TextMetrics_ideographicBaseline") double wr_TextMetrics_ideographicBaseline(uint64_t m);
+// drawImage: `source` is an element handle (img, canvas, video) or an object handle (ImageBitmap, OffscreenCanvas);
+// `form` is the number of arguments after the image, 2 (dx, dy), 4 (dx, dy, dw, dh) or 8 (sx, sy, sw, sh, dx, dy, dw,
+// dh); the unused ones are 0. An image that is not available yet draws nothing; a broken one, or a canvas with no
+// pixels, raises Invalid_State.
+WR_IMPORT("canvas", "CanvasDrawImage_drawImage") int32_t wr_CanvasDrawImage_drawImage(uint64_t ctx, uint64_t source, int32_t form, double sx, double sy, double sw, double sh, double dx, double dy, double dw, double dh);
+// The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+WR_IMPORT("canvas", "CanvasImageData_maxBytes") uint64_t wr_CanvasImageData_maxBytes(void);
+// getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
+// canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+// asks CanvasImageData_maxBytes first and throws a RangeError).
+WR_IMPORT("canvas", "CanvasImageData_get") int32_t wr_CanvasImageData_get(uint64_t ctx, int32_t x, int32_t y, int32_t w, int32_t h, uint8_t *data, uint32_t data_cap);
+// putImageData: the dirty rectangle of `data` (data_w x data_h straight RGBA8) at (dx, dy).
+WR_IMPORT("canvas", "CanvasImageData_put") void wr_CanvasImageData_put(uint64_t ctx, const uint8_t *data, uint32_t data_len, int32_t data_w, int32_t data_h, int32_t dx, int32_t dy, int32_t dirty_x, int32_t dirty_y, int32_t dirty_w, int32_t dirty_h);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineWidth") double wr_CanvasPathDrawingStyles_lineWidth(uint64_t ctx);
+// Zero, negative or non-finite: ignored.
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_set_lineWidth") void wr_CanvasPathDrawingStyles_set_lineWidth(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineCap") int32_t wr_CanvasPathDrawingStyles_lineCap(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_set_lineCap") void wr_CanvasPathDrawingStyles_set_lineCap(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineJoin") int32_t wr_CanvasPathDrawingStyles_lineJoin(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_set_lineJoin") void wr_CanvasPathDrawingStyles_set_lineJoin(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_miterLimit") double wr_CanvasPathDrawingStyles_miterLimit(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_set_miterLimit") void wr_CanvasPathDrawingStyles_set_miterLimit(uint64_t ctx, double value);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineDashOffset") double wr_CanvasPathDrawingStyles_lineDashOffset(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_set_lineDashOffset") void wr_CanvasPathDrawingStyles_set_lineDashOffset(uint64_t ctx, double value);
+// setLineDash(segments): ignored when an entry is negative or not finite; an odd count is repeated.
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_setLineDash") void wr_CanvasPathDrawingStyles_setLineDash(uint64_t ctx, const double *segments, uint32_t segments_len);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineDashCount") int32_t wr_CanvasPathDrawingStyles_lineDashCount(uint64_t ctx);
+WR_IMPORT("canvas", "CanvasPathDrawingStyles_lineDashAt") double wr_CanvasPathDrawingStyles_lineDashAt(uint64_t ctx, int32_t index);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_lang") int32_t wr_CanvasTextDrawingStyles_lang(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_lang") void wr_CanvasTextDrawingStyles_set_lang(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+// The CSS font shorthand; one that does not parse is ignored. Relative units (em, %) are relative to the canvas
+// element's font size.
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_font") int32_t wr_CanvasTextDrawingStyles_font(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_font") void wr_CanvasTextDrawingStyles_set_font(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_textAlign") int32_t wr_CanvasTextDrawingStyles_textAlign(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_textAlign") void wr_CanvasTextDrawingStyles_set_textAlign(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_textBaseline") int32_t wr_CanvasTextDrawingStyles_textBaseline(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_textBaseline") void wr_CanvasTextDrawingStyles_set_textBaseline(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_direction") int32_t wr_CanvasTextDrawingStyles_direction(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_direction") void wr_CanvasTextDrawingStyles_set_direction(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_letterSpacing") int32_t wr_CanvasTextDrawingStyles_letterSpacing(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_letterSpacing") void wr_CanvasTextDrawingStyles_set_letterSpacing(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_wordSpacing") int32_t wr_CanvasTextDrawingStyles_wordSpacing(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_wordSpacing") void wr_CanvasTextDrawingStyles_set_wordSpacing(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_fontKerning") int32_t wr_CanvasTextDrawingStyles_fontKerning(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_fontKerning") void wr_CanvasTextDrawingStyles_set_fontKerning(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_fontStretch") int32_t wr_CanvasTextDrawingStyles_fontStretch(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_fontStretch") void wr_CanvasTextDrawingStyles_set_fontStretch(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_fontVariantCaps") int32_t wr_CanvasTextDrawingStyles_fontVariantCaps(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_fontVariantCaps") void wr_CanvasTextDrawingStyles_set_fontVariantCaps(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_textRendering") int32_t wr_CanvasTextDrawingStyles_textRendering(uint64_t ctx, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("canvas", "CanvasTextDrawingStyles_set_textRendering") void wr_CanvasTextDrawingStyles_set_textRendering(uint64_t ctx, const uint8_t *value, uint32_t value_len);
+// /////////////////////////////
+WR_IMPORT("canvas", "CanvasPath_closePath") void wr_CanvasPath_closePath(uint64_t p);
+WR_IMPORT("canvas", "CanvasPath_moveTo") void wr_CanvasPath_moveTo(uint64_t p, double x, double y);
+WR_IMPORT("canvas", "CanvasPath_lineTo") void wr_CanvasPath_lineTo(uint64_t p, double x, double y);
+WR_IMPORT("canvas", "CanvasPath_quadraticCurveTo") void wr_CanvasPath_quadraticCurveTo(uint64_t p, double cpx, double cpy, double x, double y);
+WR_IMPORT("canvas", "CanvasPath_bezierCurveTo") void wr_CanvasPath_bezierCurveTo(uint64_t p, double cp1x, double cp1y, double cp2x, double cp2y, double x, double y);
+// A negative radius raises Index_Size.
+WR_IMPORT("canvas", "CanvasPath_arcTo") int32_t wr_CanvasPath_arcTo(uint64_t p, double x1, double y1, double x2, double y2, double radius);
+WR_IMPORT("canvas", "CanvasPath_rect") void wr_CanvasPath_rect(uint64_t p, double x, double y, double w, double h);
+// roundRect: `radii` are the 8 numbers of the four corners (upper-left, upper-right, lower-right, lower-left), x
+// then y radius each. A negative radius raises Range.
+WR_IMPORT("canvas", "CanvasPath_roundRect") int32_t wr_CanvasPath_roundRect(uint64_t p, double x, double y, double w, double h, const double *radii, uint32_t radii_len);
+WR_IMPORT("canvas", "CanvasPath_arc") int32_t wr_CanvasPath_arc(uint64_t p, double x, double y, double radius, double start_angle, double end_angle, int32_t counterclockwise);
+WR_IMPORT("canvas", "CanvasPath_ellipse") int32_t wr_CanvasPath_ellipse(uint64_t p, double x, double y, double radius_x, double radius_y, double rotation, double start_angle, double end_angle, int32_t counterclockwise);
+// new Path2D(): empty; `from` a Path2D handle to copy (0 for none); `svg` path data (M, L, H, V, C, S, Q, T, A, Z and
+// their relative forms) appended when not empty (an invalid string leaves what parsed before the error).
+WR_IMPORT("canvas", "Path2D_create") uint64_t wr_Path2D_create(uint64_t from, const uint8_t *svg, uint32_t svg_len);
+// addPath(path, matrix).
+WR_IMPORT("canvas", "Path2D_addPath") void wr_Path2D_addPath(uint64_t target, uint64_t path, double m11, double m12, double m21, double m22, double m41, double m42);
+// /////////////////////////////
+// new OffscreenCanvas(width, height): Quota over the limits.
+WR_IMPORT("canvas", "OffscreenCanvas_create") int32_t wr_OffscreenCanvas_create(uint64_t width, uint64_t height, uint64_t *_ret);
+WR_IMPORT("canvas", "OffscreenCanvas_width") uint64_t wr_OffscreenCanvas_width(uint64_t canvas);
+WR_IMPORT("canvas", "OffscreenCanvas_height") uint64_t wr_OffscreenCanvas_height(uint64_t canvas);
+// Sets the size: the canvas is cleared and its context reset. Quota over the limits.
+WR_IMPORT("canvas", "OffscreenCanvas_set_width") int32_t wr_OffscreenCanvas_set_width(uint64_t canvas, uint64_t value);
+WR_IMPORT("canvas", "OffscreenCanvas_set_height") int32_t wr_OffscreenCanvas_set_height(uint64_t canvas, uint64_t value);
+WR_IMPORT("canvas", "OffscreenCanvas_context2d") int32_t wr_OffscreenCanvas_context2d(uint64_t canvas, int32_t alpha, int32_t will_read_frequently, uint64_t *_ret);
+// transferToImageBitmap(): the pixels move to a new ImageBitmap and the canvas is cleared.
+WR_IMPORT("canvas", "OffscreenCanvas_transferToImageBitmap") int32_t wr_OffscreenCanvas_transferToImageBitmap(uint64_t canvas, uint64_t *_ret);
+WR_IMPORT("canvas", "ImageBitmap_width") uint32_t wr_ImageBitmap_width(uint64_t bitmap);
+WR_IMPORT("canvas", "ImageBitmap_height") uint32_t wr_ImageBitmap_height(uint64_t bitmap);
+// bitmap.close(): the pixels are freed; the bitmap is 0 x 0 from then on.
+WR_IMPORT("canvas", "ImageBitmap_close") void wr_ImageBitmap_close(uint64_t bitmap);
+// createImageBitmap(image, sx, sy, sw, sh): `source` as for drawImage, `form` 0 (whole image) or 4 (a rectangle); the
+// bitmap is a copy of the pixels now. `flip_y` and `premultiply` follow ImageBitmapOptions. Not_Found: no pixels yet
+// (the image is not available); Invalid_State: broken or empty image; Index_Size: an empty rectangle.
+WR_IMPORT("canvas", "Canvas_createBitmap") int32_t wr_Canvas_createBitmap(uint64_t source, int32_t form, double sx, double sy, double sw, double sh, int32_t flip_y, uint64_t *_ret);
+// An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob).
+WR_IMPORT("canvas", "Canvas_bitmapFromPixels") int32_t wr_Canvas_bitmapFromPixels(const uint8_t *data, uint32_t data_len, int32_t width, int32_t height, int32_t flip_y, uint64_t *_ret);
 
 /* module console */
 // console.log(message)

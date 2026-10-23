@@ -1,0 +1,277 @@
+/// Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer
+/// (package canvas2d) into a premultiplied RGBA8 bitmap that the shell shows as a texture, updated only when the
+/// drawing changed. Members shared by CanvasRenderingContext2D and OffscreenCanvasRenderingContext2D are one function
+/// imported under their mixin's name (CanvasState_save...); those of CanvasPath work on a context's current path or on a
+/// Path2D alike (CanvasPathTarget). Arguments that are NaN or infinite make a drawing or path call do nothing (the
+/// specification's rule); an enum given an invalid string leaves the attribute as it was.
+///   * colors are CSS color strings, parsed by the browser's CSS parser (`currentcolor` is the canvas element's color);
+///     fillStyle / strokeStyle read back as `#rrggbb` or `rgba(r, g, b, a)`;
+///   * pixel data (ImageData) is straight-alpha RGBA8, rows top to bottom;
+///   * a canvas that drew an image the page may not read (cross-origin without CORS) is tainted: reading it back
+///     (getImageData, toDataURL, toBlob...) raises Security;
+///   * workers have no canvas yet (OffscreenCanvas is window-only for now).
+[Exposed=Window]
+module canvas {
+  handle HTMLCanvasElement : Element = dom.Node via lookup_HTMLCanvasElement;
+  /// A CanvasRenderingContext2D or an OffscreenCanvasRenderingContext2D.
+  handle CanvasRenderingContext2D : Object = Canvas_Obj via lookup_CanvasRenderingContext2D;
+  /// The target of the CanvasPath members: a context (its current path) or a Path2D.
+  handle CanvasPathTarget : Object = Canvas_Obj via lookup_CanvasPathTarget;
+  handle CanvasGradient : Object = Canvas_Obj via lookup_CanvasGradient;
+  handle CanvasPattern : Object = Canvas_Obj via lookup_CanvasPattern;
+  handle Path2D : Object = Canvas_Obj via lookup_Path2D;
+  handle TextMetrics : Object = Canvas_Obj via lookup_TextMetrics;
+  handle OffscreenCanvas : Object = Canvas_Obj via lookup_OffscreenCanvas;
+  handle ImageBitmap : Object = Canvas_Obj via lookup_ImageBitmap;
+
+  /// What a fill or stroke style currently is.
+  enum StyleKind : i32 { Color, Gradient, Pattern }
+
+  ////////////////////////////////
+  // HTMLCanvasElement
+
+  /// canvas.width: the `width` attribute as HTML parses it (a non-negative integer, 300 when absent or invalid).
+  u32 HTMLCanvasElement_width(HTMLCanvasElement canvas);
+  /// canvas.width = n: sets the attribute and resets the canvas (cleared, context state back to the default).
+  void HTMLCanvasElement_set_width(HTMLCanvasElement canvas, u32 value);
+  /// canvas.height: 150 when absent or invalid.
+  u32 HTMLCanvasElement_height(HTMLCanvasElement canvas);
+  void HTMLCanvasElement_set_height(HTMLCanvasElement canvas, u32 value);
+  /// getContext("2d", { alpha, willReadFrequently }): the canvas's 2D context, made on the first call (the bitmap is
+  /// allocated then) and the same object afterwards. `alpha` false: an opaque canvas (black until drawn on). Quota when
+  /// the size is over canvas.max_dimension / canvas.max_pixels or the page's canvas memory (canvas.max_page_bytes).
+  CanvasRenderingContext2D HTMLCanvasElement_context2d(HTMLCanvasElement canvas, bool alpha, bool will_read_frequently) raises;
+  /// The canvas (an element, or an OffscreenCanvas handle) encoded as `type`: "image/png", or "image/jpeg" at `quality`
+  /// (0 to 1; outside it the default, canvas.encode.jpeg_quality). Security when the canvas is tainted. An empty buffer
+  /// for a canvas with no pixels (width or height 0).
+  Buffer Canvas_encode(u64 canvas, string type, f64 quality) raises;
+
+  ////////////////////////////////
+  // CanvasRenderingContext2D
+
+  /// context.canvas
+  HTMLCanvasElement CanvasRenderingContext2D_canvas(CanvasRenderingContext2D ctx);
+  /// OffscreenCanvasRenderingContext2D.canvas
+  OffscreenCanvas OffscreenCanvasRenderingContext2D_canvas(CanvasRenderingContext2D ctx);
+  /// getContextAttributes().alpha / .willReadFrequently
+  bool CanvasSettings_alpha(CanvasRenderingContext2D ctx);
+  bool CanvasSettings_willReadFrequently(CanvasRenderingContext2D ctx);
+
+  // CanvasState
+  /// save(): ignored once canvas.max_save_depth states are saved.
+  void CanvasState_save(CanvasRenderingContext2D ctx);
+  void CanvasState_restore(CanvasRenderingContext2D ctx);
+  /// reset(): clears the canvas and puts every attribute back.
+  void CanvasState_reset(CanvasRenderingContext2D ctx);
+  /// Always false: the software canvas is not lost.
+  bool CanvasState_isContextLost(CanvasRenderingContext2D ctx);
+
+  // CanvasTransform
+  void CanvasTransform_scale(CanvasRenderingContext2D ctx, f64 x, f64 y);
+  void CanvasTransform_rotate(CanvasRenderingContext2D ctx, f64 angle);
+  void CanvasTransform_translate(CanvasRenderingContext2D ctx, f64 x, f64 y);
+  void CanvasTransform_transform(CanvasRenderingContext2D ctx, f64 m11, f64 m12, f64 m21, f64 m22, f64 m41, f64 m42);
+  void CanvasTransform_setTransform(CanvasRenderingContext2D ctx, f64 m11, f64 m12, f64 m21, f64 m22, f64 m41, f64 m42);
+  void CanvasTransform_resetTransform(CanvasRenderingContext2D ctx);
+  /// One element of the current transform: 0 to 5 are a, b, c, d, e, f.
+  f64 CanvasTransform_matrixElement(CanvasRenderingContext2D ctx, i32 index);
+
+  // CanvasCompositing
+  f64 CanvasCompositing_globalAlpha(CanvasRenderingContext2D ctx);
+  /// Outside 0 to 1, or NaN: ignored.
+  void CanvasCompositing_set_globalAlpha(CanvasRenderingContext2D ctx, f64 value);
+  string CanvasCompositing_globalCompositeOperation(CanvasRenderingContext2D ctx);
+  /// source-over, source-in, source-out, source-atop, destination-over / -in / -out / -atop, lighter, copy, xor, and the
+  /// blend modes multiply, screen, overlay, darken, lighten, color-dodge, color-burn, hard-light, soft-light, difference,
+  /// exclusion, hue, saturation, color, luminosity. Anything else is ignored.
+  void CanvasCompositing_set_globalCompositeOperation(CanvasRenderingContext2D ctx, string value);
+
+  // CanvasImageSmoothing
+  bool CanvasImageSmoothing_imageSmoothingEnabled(CanvasRenderingContext2D ctx);
+  void CanvasImageSmoothing_set_imageSmoothingEnabled(CanvasRenderingContext2D ctx, bool value);
+  string CanvasImageSmoothing_imageSmoothingQuality(CanvasRenderingContext2D ctx);
+  void CanvasImageSmoothing_set_imageSmoothingQuality(CanvasRenderingContext2D ctx, string value);
+
+  // CanvasFillStrokeStyles
+  /// Which kind of style fillStyle (`stroke` false) or strokeStyle currently is.
+  StyleKind CanvasStyle_kind(CanvasRenderingContext2D ctx, bool stroke);
+  /// The color style as `#rrggbb` or `rgba(...)`.
+  string CanvasStyle_color(CanvasRenderingContext2D ctx, bool stroke);
+  /// The script object of a gradient or pattern style: the one it was set from while that is alive, else a new one the
+  /// caller owns (0 for a color style).
+  u64 CanvasStyle_object(CanvasRenderingContext2D ctx, bool stroke);
+  /// fillStyle = "color": false (and nothing changes) when it is not a color.
+  bool CanvasStyle_setColor(CanvasRenderingContext2D ctx, bool stroke, string color);
+  /// fillStyle = gradient or pattern object.
+  void CanvasStyle_setObject(CanvasRenderingContext2D ctx, bool stroke, u64 object);
+  /// createLinearGradient (the arguments are finite: the binding refuses others).
+  [Owned] CanvasGradient CanvasFillStrokeStyles_createLinearGradient(CanvasRenderingContext2D ctx, f64 x0, f64 y0, f64 x1, f64 y1);
+  /// createRadialGradient: a negative radius raises Index_Size.
+  [Owned] CanvasGradient CanvasFillStrokeStyles_createRadialGradient(CanvasRenderingContext2D ctx, f64 x0, f64 y0, f64 r0, f64 x1, f64 y1, f64 r1) raises;
+  [Owned] CanvasGradient CanvasFillStrokeStyles_createConicGradient(CanvasRenderingContext2D ctx, f64 start_angle, f64 x, f64 y);
+  /// createPattern(image, repetition): `source` is an element handle (img, canvas) or an object handle (ImageBitmap,
+  /// OffscreenCanvas); repetition "repeat", "repeat-x", "repeat-y", "no-repeat". Not_Found: no pattern (an image that is
+  /// not available yet); Syntax: bad repetition; Invalid_State: a canvas with no pixels.
+  CanvasPattern Canvas_createPattern(CanvasRenderingContext2D ctx, u64 source, string repetition) raises;
+  /// addColorStop(offset, color): Index_Size outside 0 to 1, Syntax for a color that does not parse.
+  void CanvasGradient_addColorStop(CanvasGradient gradient, f64 offset, string color) raises;
+  /// pattern.setTransform(matrix): the six elements a b c d e f as m11 m12 m21 m22 m41 m42.
+  void CanvasPattern_setTransformMatrix(CanvasPattern pattern, f64 m11, f64 m12, f64 m21, f64 m22, f64 m41, f64 m42);
+
+  // CanvasShadowStyles
+  f64 CanvasShadowStyles_shadowOffsetX(CanvasRenderingContext2D ctx);
+  void CanvasShadowStyles_set_shadowOffsetX(CanvasRenderingContext2D ctx, f64 value);
+  f64 CanvasShadowStyles_shadowOffsetY(CanvasRenderingContext2D ctx);
+  void CanvasShadowStyles_set_shadowOffsetY(CanvasRenderingContext2D ctx, f64 value);
+  f64 CanvasShadowStyles_shadowBlur(CanvasRenderingContext2D ctx);
+  /// Negative or non-finite: ignored.
+  void CanvasShadowStyles_set_shadowBlur(CanvasRenderingContext2D ctx, f64 value);
+  string CanvasShadowStyles_shadowColor(CanvasRenderingContext2D ctx);
+  void CanvasShadowStyles_set_shadowColor(CanvasRenderingContext2D ctx, string value);
+
+  // CanvasFilters
+  string CanvasFilters_filter(CanvasRenderingContext2D ctx);
+  /// "none" or a list of CSS filter functions (blur, brightness, contrast, grayscale, hue-rotate, invert, opacity,
+  /// saturate, sepia, drop-shadow); anything that does not parse is ignored.
+  void CanvasFilters_set_filter(CanvasRenderingContext2D ctx, string value);
+
+  // CanvasRect
+  void CanvasRect_clearRect(CanvasRenderingContext2D ctx, f64 x, f64 y, f64 w, f64 h);
+  void CanvasRect_fillRect(CanvasRenderingContext2D ctx, f64 x, f64 y, f64 w, f64 h);
+  void CanvasRect_strokeRect(CanvasRenderingContext2D ctx, f64 x, f64 y, f64 w, f64 h);
+
+  // CanvasDrawPath
+  void CanvasDrawPath_beginPath(CanvasRenderingContext2D ctx);
+  /// fill(path?, rule): `path` is a Path2D handle, 0 for the current path; rule "nonzero" or "evenodd".
+  void CanvasDrawPath_fill(CanvasRenderingContext2D ctx, u64 path, string rule);
+  void CanvasDrawPath_stroke(CanvasRenderingContext2D ctx, u64 path);
+  void CanvasDrawPath_clip(CanvasRenderingContext2D ctx, u64 path, string rule);
+  bool CanvasDrawPath_isPointInPath(CanvasRenderingContext2D ctx, u64 path, f64 x, f64 y, string rule);
+  bool CanvasDrawPath_isPointInStroke(CanvasRenderingContext2D ctx, u64 path, f64 x, f64 y);
+
+  // CanvasText
+  /// fillText(text, x, y, maxWidth): `has_max` false when maxWidth was not given.
+  void CanvasText_fillText(CanvasRenderingContext2D ctx, string text, f64 x, f64 y, f64 max_width, bool has_max);
+  void CanvasText_strokeText(CanvasRenderingContext2D ctx, string text, f64 x, f64 y, f64 max_width, bool has_max);
+  [Owned] TextMetrics CanvasText_measureText(CanvasRenderingContext2D ctx, string text);
+  f64 TextMetrics_width(TextMetrics m);
+  f64 TextMetrics_actualBoundingBoxLeft(TextMetrics m);
+  f64 TextMetrics_actualBoundingBoxRight(TextMetrics m);
+  f64 TextMetrics_fontBoundingBoxAscent(TextMetrics m);
+  f64 TextMetrics_fontBoundingBoxDescent(TextMetrics m);
+  f64 TextMetrics_actualBoundingBoxAscent(TextMetrics m);
+  f64 TextMetrics_actualBoundingBoxDescent(TextMetrics m);
+  f64 TextMetrics_emHeightAscent(TextMetrics m);
+  f64 TextMetrics_emHeightDescent(TextMetrics m);
+  f64 TextMetrics_hangingBaseline(TextMetrics m);
+  f64 TextMetrics_alphabeticBaseline(TextMetrics m);
+  f64 TextMetrics_ideographicBaseline(TextMetrics m);
+
+  // CanvasDrawImage
+  /// drawImage: `source` is an element handle (img, canvas, video) or an object handle (ImageBitmap, OffscreenCanvas);
+  /// `form` is the number of arguments after the image, 2 (dx, dy), 4 (dx, dy, dw, dh) or 8 (sx, sy, sw, sh, dx, dy, dw,
+  /// dh); the unused ones are 0. An image that is not available yet draws nothing; a broken one, or a canvas with no
+  /// pixels, raises Invalid_State.
+  void CanvasDrawImage_drawImage(CanvasRenderingContext2D ctx, u64 source, i32 form, f64 sx, f64 sy, f64 sw, f64 sh, f64 dx, f64 dy, f64 dw, f64 dh) raises;
+
+  // CanvasImageData
+  /// The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+  u64 CanvasImageData_maxBytes();
+  /// getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
+  /// canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+  /// asks CanvasImageData_maxBytes first and throws a RangeError).
+  void CanvasImageData_get(CanvasRenderingContext2D ctx, i32 x, i32 y, i32 w, i32 h, out bytes data) raises;
+  /// putImageData: the dirty rectangle of `data` (data_w x data_h straight RGBA8) at (dx, dy).
+  void CanvasImageData_put(CanvasRenderingContext2D ctx, bytes data, i32 data_w, i32 data_h, i32 dx, i32 dy, i32 dirty_x, i32 dirty_y, i32 dirty_w, i32 dirty_h);
+
+  // CanvasPathDrawingStyles
+  f64 CanvasPathDrawingStyles_lineWidth(CanvasRenderingContext2D ctx);
+  /// Zero, negative or non-finite: ignored.
+  void CanvasPathDrawingStyles_set_lineWidth(CanvasRenderingContext2D ctx, f64 value);
+  string CanvasPathDrawingStyles_lineCap(CanvasRenderingContext2D ctx);
+  void CanvasPathDrawingStyles_set_lineCap(CanvasRenderingContext2D ctx, string value);
+  string CanvasPathDrawingStyles_lineJoin(CanvasRenderingContext2D ctx);
+  void CanvasPathDrawingStyles_set_lineJoin(CanvasRenderingContext2D ctx, string value);
+  f64 CanvasPathDrawingStyles_miterLimit(CanvasRenderingContext2D ctx);
+  void CanvasPathDrawingStyles_set_miterLimit(CanvasRenderingContext2D ctx, f64 value);
+  f64 CanvasPathDrawingStyles_lineDashOffset(CanvasRenderingContext2D ctx);
+  void CanvasPathDrawingStyles_set_lineDashOffset(CanvasRenderingContext2D ctx, f64 value);
+  /// setLineDash(segments): ignored when an entry is negative or not finite; an odd count is repeated.
+  void CanvasPathDrawingStyles_setLineDash(CanvasRenderingContext2D ctx, f64[] segments);
+  i32 CanvasPathDrawingStyles_lineDashCount(CanvasRenderingContext2D ctx);
+  f64 CanvasPathDrawingStyles_lineDashAt(CanvasRenderingContext2D ctx, i32 index);
+
+  // CanvasTextDrawingStyles
+  string CanvasTextDrawingStyles_lang(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_lang(CanvasRenderingContext2D ctx, string value);
+  /// The CSS font shorthand; one that does not parse is ignored. Relative units (em, %) are relative to the canvas
+  /// element's font size.
+  string CanvasTextDrawingStyles_font(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_font(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_textAlign(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_textAlign(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_textBaseline(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_textBaseline(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_direction(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_direction(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_letterSpacing(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_letterSpacing(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_wordSpacing(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_wordSpacing(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_fontKerning(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_fontKerning(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_fontStretch(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_fontStretch(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_fontVariantCaps(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_fontVariantCaps(CanvasRenderingContext2D ctx, string value);
+  string CanvasTextDrawingStyles_textRendering(CanvasRenderingContext2D ctx);
+  void CanvasTextDrawingStyles_set_textRendering(CanvasRenderingContext2D ctx, string value);
+
+  ////////////////////////////////
+  // CanvasPath (a context's current path, or a Path2D)
+
+  void CanvasPath_closePath(CanvasPathTarget p);
+  void CanvasPath_moveTo(CanvasPathTarget p, f64 x, f64 y);
+  void CanvasPath_lineTo(CanvasPathTarget p, f64 x, f64 y);
+  void CanvasPath_quadraticCurveTo(CanvasPathTarget p, f64 cpx, f64 cpy, f64 x, f64 y);
+  void CanvasPath_bezierCurveTo(CanvasPathTarget p, f64 cp1x, f64 cp1y, f64 cp2x, f64 cp2y, f64 x, f64 y);
+  /// A negative radius raises Index_Size.
+  void CanvasPath_arcTo(CanvasPathTarget p, f64 x1, f64 y1, f64 x2, f64 y2, f64 radius) raises;
+  void CanvasPath_rect(CanvasPathTarget p, f64 x, f64 y, f64 w, f64 h);
+  /// roundRect: `radii` are the 8 numbers of the four corners (upper-left, upper-right, lower-right, lower-left), x
+  /// then y radius each. A negative radius raises Range.
+  void CanvasPath_roundRect(CanvasPathTarget p, f64 x, f64 y, f64 w, f64 h, f64[] radii) raises;
+  void CanvasPath_arc(CanvasPathTarget p, f64 x, f64 y, f64 radius, f64 start_angle, f64 end_angle, bool counterclockwise = false) raises;
+  void CanvasPath_ellipse(CanvasPathTarget p, f64 x, f64 y, f64 radius_x, f64 radius_y, f64 rotation, f64 start_angle, f64 end_angle, bool counterclockwise = false) raises;
+
+  // Path2D
+  /// new Path2D(): empty; `from` a Path2D handle to copy (0 for none); `svg` path data (M, L, H, V, C, S, Q, T, A, Z and
+  /// their relative forms) appended when not empty (an invalid string leaves what parsed before the error).
+  Path2D Path2D_create(u64 from, string svg);
+  /// addPath(path, matrix).
+  void Path2D_addPath(Path2D target, Path2D path, f64 m11, f64 m12, f64 m21, f64 m22, f64 m41, f64 m42);
+
+  ////////////////////////////////
+  // OffscreenCanvas and ImageBitmap
+
+  /// new OffscreenCanvas(width, height): Quota over the limits.
+  OffscreenCanvas OffscreenCanvas_create(u64 width, u64 height) raises;
+  u64 OffscreenCanvas_width(OffscreenCanvas canvas);
+  u64 OffscreenCanvas_height(OffscreenCanvas canvas);
+  /// Sets the size: the canvas is cleared and its context reset. Quota over the limits.
+  void OffscreenCanvas_set_width(OffscreenCanvas canvas, u64 value) raises;
+  void OffscreenCanvas_set_height(OffscreenCanvas canvas, u64 value) raises;
+  CanvasRenderingContext2D OffscreenCanvas_context2d(OffscreenCanvas canvas, bool alpha, bool will_read_frequently) raises;
+  /// transferToImageBitmap(): the pixels move to a new ImageBitmap and the canvas is cleared.
+  [Owned] ImageBitmap OffscreenCanvas_transferToImageBitmap(OffscreenCanvas canvas) raises;
+  u32 ImageBitmap_width(ImageBitmap bitmap);
+  u32 ImageBitmap_height(ImageBitmap bitmap);
+  /// bitmap.close(): the pixels are freed; the bitmap is 0 x 0 from then on.
+  void ImageBitmap_close(ImageBitmap bitmap);
+  /// createImageBitmap(image, sx, sy, sw, sh): `source` as for drawImage, `form` 0 (whole image) or 4 (a rectangle); the
+  /// bitmap is a copy of the pixels now. `flip_y` and `premultiply` follow ImageBitmapOptions. Not_Found: no pixels yet
+  /// (the image is not available); Invalid_State: broken or empty image; Index_Size: an empty rectangle.
+  ImageBitmap Canvas_createBitmap(u64 source, i32 form, f64 sx, f64 sy, f64 sw, f64 sh, bool flip_y) raises;
+  /// An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob).
+  ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, bool flip_y) raises;
+}

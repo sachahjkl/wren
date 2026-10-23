@@ -92,6 +92,8 @@ DEMOS := [?]Demo{
 		"<code>mask-image</code> (gradients, luminance, <code>mask-composite</code>, repetition, under opacity), icons drawn as masks, <code>background-clip: text</code>, fieldset legends on the border, rounded images, <code>scrollbar-color</code>, and COLR v1, sbix, SVG and emoji color glyphs.", false, "", false},
 	{.Rendering, "Gradients and shadows", "gradients.html",
 		"Linear, radial, conic and repeating gradients, interpolation color spaces, background layers (size, position, repeat, origin, clip) and <code>box-shadow</code>.", false, "", false},
+	{.Rendering, "Canvas 2D", "canvas.html",
+		"<code>getContext(\"2d\")</code> drawn in software: antialiased paths and strokes (caps, joins, dashes), gradients, patterns, clips, shadows, <code>filter</code>, compositing operators, text from glyph outlines, <code>ImageData</code>, <code>drawImage</code>, <code>ImageBitmap</code>, <code>toDataURL</code> and a <code>requestAnimationFrame</code> animation that uploads one texture per frame.", false, "", false},
 	{.Rendering, "Transforms", "transforms.html",
 		"Rotated text and blocks, nested rounded clips with a rotated one inside, a form turned by 10 degrees whose clicks land on the right character, group opacity, a transformed scroll box, and 500 cards turning forever over 300 static paragraphs.", false, "", false},
 	{.Rendering, "3D transforms", "transforms-3d.html",
