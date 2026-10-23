@@ -482,7 +482,7 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if ui.ctx_menu(tkey, dt_px(210)) {
 			ui.menu_heading("Network speed")
 			for th in Net_Throttle {
-				if ui.menu_item(fmt.tprintf("%s###dt_th_%d", throttle_name(th), int(th)), checked = net_prefs.throttle == th).clicked {
+				if ui.menu_item(fmt.tprintf("%s###dt_th_%d", throttle_name(th), int(th)), checked = net_prefs.throttle == th, enabled = th == .None || th == .Offline).clicked {
 					dev_set_pref(app, "browser.devtools.network.throttle", throttle_pref(th))
 				}
 			}
