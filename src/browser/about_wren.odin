@@ -258,8 +258,8 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 	build_section(&sb, d)
 	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is open source under the MIT licence. It is built from the components below, whose licences require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT licence), credited as its licence requires.</p>\n")
 	third_party_table(&sb, false)
-	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">The other Rust libraries linked into the image decoders are listed with their licences in <code>licenses\\rust-crates.txt</code> next to <code>wren.exe</code> in the release package.</p>\n")
-	fmt.sbprintf(&sb, "<p class=\"foot\">&copy; 2026 sachahjkl &middot; <a href=\"%s\">Froment Software</a> &middot; <a href=\"about:licenses\">Licences</a> &middot; <a href=\"about:about\">Built-in pages</a></p>\n", FROMENT_URL)
+	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">The Rust libraries linked into the image decoders are listed with their licences in <a href=\"about:licenses#rust-crates\">about:licenses</a>.</p>\n")
+	fmt.sbprintf(&sb, "<p class=\"foot\">&copy; 2026 <a href=\"%s\">Froment Software</a> &middot; <a href=\"about:licenses\">Licences</a> &middot; <a href=\"about:about\">Built-in pages</a></p>\n", FROMENT_URL)
 	strings.write_string(&sb, "</div>\n</body>\n</html>\n")
 	return strings.to_string(sb)
 }
@@ -270,7 +270,7 @@ licenses_page_html :: proc(d: Wren_Page) -> string {
 	strings.write_string(&sb, "<h1>Licences</h1>\n<p class=\"weak\">The software Wren is built from, and the full text of each licence. <a href=\"about:wren\">Back to About Wren</a>.</p>\n")
 	strings.write_string(&sb, "<h2>Components</h2>\n")
 	third_party_table(&sb, true)
-	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">Rust libraries of the image decoders (resvg, image-webp, rav1d…): each one's licence is listed in <code>licenses\\rust-crates.txt</code> in the release package. The public suffix list is published under the MPL-2.0 by <a href=\"https://publicsuffix.org\">publicsuffix.org</a>.</p>\n")
+	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">Rust libraries of the image decoders (resvg, image-webp, rav1d…): each one's licence is listed in <a href=\"#rust-crates\">the text below</a>. The public suffix list is published under the MPL-2.0 by <a href=\"https://publicsuffix.org\">publicsuffix.org</a>.</p>\n")
 	strings.write_string(&sb, "<h2>Texts</h2>\n<div class=\"text\">\n")
 	for lt in LICENSE_TEXTS {
 		fmt.sbprintf(&sb, "<h3 id=\"%s\">%s</h3>\n", lt.id, escape_html(lt.title))

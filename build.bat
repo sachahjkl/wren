@@ -108,7 +108,9 @@ set "FLAGS=%FLAGS% -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
 if defined WREN_TOOLKIT set "FLAGS=-collection:toolkit=%WREN_TOOLKIT% -collection:wb=src -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"
 
 :: 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
-set "FLAGS=%FLAGS% -extra-linker-flags:/STACK:33554432"
+:: and the Visual C++ runtime (vcruntime) linked in, not loaded from vcruntime140.dll: the Windows 10/11 C runtime (ucrt) is part of
+:: the system, so wren.exe then needs no file beside it and no Visual C++ redistributable installed
+set FLAGS=%FLAGS% -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib"
 
 :: every thread's temporary allocator commits its first block at once: 1 MiB instead of Odin's 4 MiB (with the three
 :: dozen threads of the pools, 4 MiB each was over 100 MB of private bytes, mostly never touched)
