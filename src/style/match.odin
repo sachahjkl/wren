@@ -47,17 +47,25 @@ Match_Ctx :: struct {
 	// matching the rules of a shadow tree: its host, which they see featureless (only :host, :host(), :host-context()
 	// match it), reached as the parent of the tree's top elements (CSS Scoping §3.2); NIL for the document's rules
 	featureless: base.Handle,
+	// :has() answered in this pass: (anchor, argument list) -> matched. A rule such as `:not(:has(.x)) > .item .by` asks it of the
+	// same ancestor for every element under it, each time scanning the ancestor's whole subtree.
+	has_memo: map[Has_Key]bool,
 }
+
+@(private)
+Has_Key :: struct { anchor: base.Handle, list: rawptr }
 
 match_ctx_init :: proc(m: ^Match_Ctx, d: ^dom.Document, state: State, allocator := context.allocator) {
 	m.doc, m.state = d, state
 	m.sibs = make(map[base.Handle]Sib_Info, allocator)
 	m.filled = make(map[base.Handle]bool, allocator)
+	m.has_memo = make(map[Has_Key]bool, allocator)
 }
 
 match_ctx_destroy :: proc(m: ^Match_Ctx) {
 	delete(m.sibs)
 	delete(m.filled)
+	delete(m.has_memo)
 }
 
 @(private)
@@ -596,6 +604,17 @@ nth_of_selector :: proc(m: ^Match_Ctx, el: base.Handle, s: css.Simple) -> bool {
 
 @(private)
 matches_has :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List) -> bool {
+	// (not while answering "could it match" with the state ignored, nor for a shadow tree's host: other answers)
+	memo := !m.ignore_state && m.featureless == base.NIL_HANDLE && m.has_memo.allocator.procedure != nil && len(list) > 0
+	key := Has_Key{anchor, raw_data(list)}
+	if memo { if r, ok := m.has_memo[key]; ok { return r } }
+	r := matches_has_scan(m, anchor, list)
+	if memo { m.has_memo[key] = r }
+	return r
+}
+
+@(private)
+matches_has_scan :: proc(m: ^Match_Ctx, anchor: base.Handle, list: css.Selector_List) -> bool {
 	for &c in list {
 		switch c.leading {
 		case .Descendant, .Child:

@@ -1,3 +1,4 @@
+#+vet !unused-imports
 package browser
 
 // <video> in the shell: the current picture of a media element drawn into its box, and when the next one is due.
@@ -9,6 +10,9 @@ package browser
 // at its place in the already recorded page. While a video plays, a timer asks for a frame when the next picture is due,
 // so the browser composes once per video frame; a paused video asks for nothing.
 
+import "core:fmt"
+import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:render"
 import "wb:base"
@@ -41,6 +45,20 @@ Video_Shell :: struct {
 	gpu_set:   bool,
 	converted: int,              // statistics: pictures converted
 	painted:   int,
+	overlay_calls, overlay_draws: int,   // statistics: chrome frames that looked at the overlays, pictures they drew
+	stamps:    [dynamic]i64,     // profile build: when each picture was converted (qpc), for the cadence report
+	overlays:  [dynamic]Video_Overlay,   // the videos the last page paint drew, for chrome frames made while a script runs
+}
+
+// Where a video was painted by the last full frame (page_draw): what a chrome frame needs to draw its newer pictures.
+@(private = "file")
+Video_Overlay :: struct {
+	page:    u64,
+	node:    base.Handle,
+	content: draw.Rect,
+	dst:     draw.Rect,
+	radii:   [4]f32,
+	clip:    bool,
 }
 
 @(private = "file")
@@ -65,6 +83,8 @@ video_shell_destroy :: proc(app: ^App) {
 	delete(vshell.targets)
 	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake) }
 	if vshell.gpu_set { media.set_gpu_device(nil) }
+	delete(vshell.stamps)
+	delete(vshell.overlays)
 	vshell = {}
 }
 
@@ -76,6 +96,7 @@ video_shell_begin_frame :: proc(app: ^App) {
 	}
 	vshell.epoch += 1
 	vshell.next_ns = -1
+	clear(&vshell.overlays)
 }
 
 // After the page was painted: the wake-up for the next picture, and the targets nobody drew for a while released.
@@ -133,14 +154,10 @@ picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	return pic
 }
 
-// Paints the <video> element `node` into `content`. Always true: the video owns its box.
-video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
-	app := the_app
-	if app == nil { return true }
-	view, ok := page.media_view(p, node)
-	if !ok { return true }
-	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
-	key := Video_Key{page.page_id(p), node}
+// The GPU picture of a video for the frame being made: its target (made, or made again at another size) holding the
+// picture the player chose (converted when it is a new one). nil: nothing to show yet.
+@(private = "file")
+video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -> ^Video_Target {
 	t := vshell.targets[key]
 	if view.frame != nil {
 		pic := picture_of(view.frame)
@@ -160,9 +177,74 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 			}
 		}
 		if t != nil && (view.changed || t.frames == 0) {
-			if render.video_convert(&app.r, t.tex, pic) { t.frames += 1; vshell.converted += 1 }
+			if render.video_convert(&app.r, t.tex, pic) {
+				t.frames += 1
+				vshell.converted += 1
+				when PROFILE { append(&vshell.stamps, qpc()) }
+			}
 		}
 	}
+	return t
+}
+
+// A chrome frame made while the page's scripts run (shell_frames.odin) shows the page's last frame; the videos in it are
+// drawn again with the pictures that fell due since: a script that holds the thread for 90 ms no longer freezes the
+// picture. `shift` is where the last frame's pixels moved to (the wheel scrolled it), `area` the page area it is clipped to.
+video_shell_overlay :: proc(app: ^App, dc: ^draw.Context, area: draw.Rect, shift: draw.Vec2, p: ^page.Page) {
+	vshell.overlay_calls += 1
+	if p == nil { return }
+	pid := page.page_id(p)
+	for o in vshell.overlays {
+		if o.page != pid { continue }
+		view, ok := page.media_view(p, o.node, true, screen_ahead_ns())
+		if !ok { continue }
+		key := Video_Key{pid, o.node}
+		t := video_update_target(app, key, &view)
+		if t == nil || t.frames == 0 { continue }
+		t.epoch = vshell.epoch
+		content := draw.Rect{o.content.min + shift, o.content.max + shift}
+		dst := draw.Rect{o.dst.min + shift, o.dst.max + shift}
+		if content.max.x <= area.min.x || content.min.x >= area.max.x || content.max.y <= area.min.y || content.min.y >= area.max.y { continue }
+		if o.clip { draw.push_clip_rounded(dc, content, o.radii) }
+		draw.image(dc, t.tex, dst, {}, draw.Color{1, 1, 1, 1})
+		if o.clip { draw.pop_clip(dc) }
+		vshell.overlay_draws += 1
+	}
+}
+
+// Whether a picture of a video of the page's last frame is due now (the interface thread is busy with a script: a chrome
+// frame should show it).
+video_shell_due :: proc(p: ^page.Page) -> bool {
+	if p == nil || len(vshell.overlays) == 0 { return false }
+	pid := page.page_id(p)
+	for o in vshell.overlays {
+		if o.page != pid { continue }
+		view, ok := page.media_view(p, o.node, false, screen_ahead_ns())
+		if ok && view.next_due_ns == 0 { return true }
+	}
+	return false
+}
+// How long from now until the screen shows the frame being made: the next vblank after the one this frame started at
+// (pacing.odin's grid). The picture of a video is chosen for that moment, so the choice does not follow the jitter of when
+// the thread got to run.
+@(private = "file")
+screen_ahead_ns :: proc() -> i64 {
+	if !pacer.cfg.video_at_vblank { return 0 }
+	app := the_app
+	now_ms := loop_ms(app, time.tick_now())
+	show_ms := pacer.frame_ms + pacer.period_ms
+	return i64(clamp(show_ms - now_ms, 0, 2 * pacer.period_ms) * 1e6)
+}
+
+// Paints the <video> element `node` into `content`. Always true: the video owns its box.
+video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
+	app := the_app
+	if app == nil { return true }
+	view, ok := page.media_view(p, node, true, screen_ahead_ns())
+	if !ok { return true }
+	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
+	key := Video_Key{page.page_id(p), node}
+	t := video_update_target(app, key, &view)
 	if t != nil { t.epoch = vshell.epoch }
 	if view.ready { draw.rect(dc, content, draw.Color{0, 0, 0, 1}) }
 	if t != nil && t.frames > 0 {
@@ -173,6 +255,34 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		draw.image(dc, t.tex, dst, {}, draw.Color{1, 1, 1, 1})
 		if clip { draw.pop_clip(dc) }
 		vshell.painted += 1
+		append(&vshell.overlays, Video_Overlay{page = key.page, node = node, content = content, dst = dst, radii = radii, clip = clip})
 	}
 	return true
+}
+
+// Profile build: what the videos did, for the report (prof.odin). The cadence is the time between two pictures reaching
+// the screen's frame (converted into their texture) over the last seconds of the run: a 60 fps video at 60 Hz is a
+// picture every 16.7 ms, a stutter is an interval of 1.5 times the usual one or more.
+video_shell_report :: proc(sb: ^strings.Builder, freq: f64) {
+	when !PROFILE { return }
+	when PROFILE {
+	fmt.sbprintf(sb, "\n-- video: %d pictures converted, %d painted | chrome frames made under scripts %d, skipped %d | overlays seen %d, drawn %d\n", vshell.converted, vshell.painted, chrome_frames.frames, chrome_frames.skipped, vshell.overlay_calls, vshell.overlay_draws)
+	for key, t in vshell.targets {
+		p := page.page_by_id(key.page)
+		view, ok := page.media_view(p, key.node, false)
+		if !ok { continue }
+		fmt.sbprintf(sb, "  %dx%d %s%s | decoded %d dropped %d | position %.1f s of %.1f | stalled %v\n", t.size.x, t.size.y, view.decoder, view.hardware ? " (GPU)" : " (CPU)", view.decoded, view.dropped, view.position, view.duration, view.stalled)
+		fmt.sbprintf(sb, "    player: %s\n", page.media_debug(p, key.node))
+	}
+	n := len(vshell.stamps)
+	if n < 3 { return }
+	from := vshell.stamps[n - 1] - i64(10 * freq)
+	iv := make([dynamic]f64, 0, n, context.temp_allocator)
+	for i in 1 ..< n { if vshell.stamps[i - 1] >= from { append(&iv, f64(vshell.stamps[i] - vshell.stamps[i - 1]) * 1000 / freq) } }
+	if len(iv) == 0 { return }
+	s := stat_of(iv[:])
+	late15, late25 := 0, 0
+	for v in iv { if v > s.p50 * 1.5 { late15 += 1 }; if v > s.p50 * 2.5 { late25 += 1 } }
+	fmt.sbprintf(sb, "  cadence over the last 10 s: %d pictures (%.1f /s), interval mean %.2f p50 %.2f p95 %.2f p99 %.2f max %.2f ms | stutters (> 1.5 x p50) %d, (> 2.5 x p50) %d\n", len(iv) + 1, f64(len(iv)) * 1000 / max(s.sum, 1), s.mean, s.p50, s.p95, s.p99, s.max, late15, late25)
+	}
 }
