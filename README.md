@@ -193,11 +193,13 @@ Everything below exists in the code today and is covered by the tests of [`tools
 Download `wren-<version>-windows-x64.zip` from the [latest release](https://github.com/sachahjkl/wren/releases/latest),
 unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
 
-The start page links to `about:demos`, the index of every demo and test page. They come in the zip, in `demos\` next to
-`wren.exe`, and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
+The zip is the program and nothing else. The demo and test pages, the examples and the small test server are a separate
+download of the same release, `wren-<version>-windows-x64-extras.zip`: extract it into the folder of `wren.exe`.
+
+The start page links to `about:demos`, the index of every demo and test page. With the extras they are in `demos\` next
+to `wren.exe`, and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
 it). The few that need a server (network images, forms, CSP, workers, the script loading and web API demos) are
-marked; the small local test server is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765
-and opens `about:demos`), or start them yourself:
+marked; run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens `about:demos`), or start them yourself:
 
     testserver.exe                                   # http://127.0.0.1:8765, https://127.0.0.1:8766 (self-signed)
     wren.exe http://127.0.0.1:8765/site/effects.html

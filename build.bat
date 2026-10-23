@@ -98,6 +98,9 @@ if "%VARIANT%"=="release" (
     set "WREN_RC=src/browser/wren.rc"
 )
 
+:: the version resource of wren.exe (publisher, product, File version) takes its numbers from APP_VERSION
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\make_version_h.ps1 || exit /b 1
+
 :: collections: "toolkit:<package>" and "wb:<package>"
 set "FLAGS=-collection:toolkit=ext/gui_toolkit -collection:wb=src"
 set "FLAGS=%FLAGS% -resource:%WREN_RC% -define:WREN_CHANNEL=%WREN_CHANNEL%"

@@ -76,9 +76,9 @@ there by hand is never taken out (except the folder of a copy that is being unin
   Program Files or ProgramData, not too long, and a file can be written in the nearest folder that exists (probe, nothing is
   created). On Linux: `$XDG_DATA_HOME/wren`.
 - **What**: the executable and what `tools\package.ps1` puts beside it (`vcruntime140.dll`, `LICENSE.txt`, `THIRD_PARTY.md`,
-  `README.txt`, `licenses\`, `demos\`, `examples\`, `testserver.exe`, `demo.bat`: `SETUP_PAYLOAD`; a name that is not there
-  is skipped, so a development build installs just `wren.exe`), then the manifest `wren_install.txt` (version, channel,
-  every file).
+  `README.txt`, `licenses\`: `SETUP_PAYLOAD`; a name that is not there is skipped, so a development build installs just
+  `wren.exe`), then the manifest `wren_install.txt` (version, channel, every file). The demos and the test server are the
+  separate extras archive: they are not installed.
 - **Where the installed copy is**: the Settings > Apps record, `Software\Microsoft\Windows\CurrentVersion\Uninstall\Wren`
   (name, version, publisher, `InstallLocation`, icon, `UninstallString` = `"<exe>" --setup`), else the default folder.
 - **Replacing a copy that runs**: Windows lets a running program's file be renamed, not overwritten: each file already

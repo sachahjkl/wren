@@ -30,7 +30,7 @@ import "wb:host"
 
 // What tools\package.ps1 puts next to wren.exe, copied beside the installed executable when it exists (a development
 // build, which has none of it, installs the executable alone).
-SETUP_PAYLOAD := [?]string{"vcruntime140.dll", "LICENSE.txt", "THIRD_PARTY.md", "README.txt", "licenses", "demos", "examples", "testserver.exe", "demo.bat"}
+SETUP_PAYLOAD := [?]string{"vcruntime140.dll", "LICENSE.txt", "THIRD_PARTY.md", "README.txt", "licenses"}
 
 SETUP_CHOICE_FILE :: "setup.txt"
 

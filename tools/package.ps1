@@ -1,15 +1,20 @@
-# Makes the release package of Wren from a finished build (build.bat release): build\dist\wren-<version>-windows-x64.zip and
-# its SHA-256 in build\dist\SHA256SUMS.txt.
+# Makes the release packages of Wren from a finished build (build.bat release) in build\dist: two archives and the
+# SHA-256 of both in SHA256SUMS.txt.
+#   wren-<version>-windows-x64.zip          the program: wren.exe, vcruntime140.dll, the licenses and a README. Nothing else:
+#                                           this is what to download, run, and what Setup installs.
+#   wren-<version>-windows-x64-extras.zip   the demo and test material, for whoever wants it: the demo pages (demos\), the
+#                                           script loading and web API demos (examples\), the test server (testserver.exe, a
+#                                           Go program) and demo.bat. Its files sit at the root of the archive: extract it
+#                                           into the folder of wren.exe, where about:demos looks for demos\ first
+#                                           (src\browser\demos.odin) and where testserver.exe serves /site/ from
+#                                           (tools\testserver\site.go).
 #   powershell -NoProfile -File tools\package.ps1 [-Version 0.2.0]
-# The demo pages go in demos\ next to wren.exe: that is where about:demos looks for them first (src\browser\demos.odin),
-# and where testserver.exe serves /site/ from when it runs outside the repository (tools\testserver\site.go).
 # The version defaults to APP_VERSION of src\browser\about.odin; a release tag vX.Y.Z must match it (release.yml checks).
-# Contents: wren.exe (build\wren.exe), vcruntime140.dll, demos\ (examples\site with every Wasm module its pages
-# load, built here), examples\jsload and examples\jsweb (served by the test server), testserver.exe and demo.bat
-# (starts the server and opens about:demos), README.txt, LICENSE, THIRD_PARTY.md and licenses\. The JavaScript engine
-# is not a file of its own: its pre-initialized image is embedded in wren.exe (src\js\image).
-# -Dev packages a development build (CI's smoke test) as wren-<version>-dev-windows-x64.zip; without it, the build must
-# be a release one (build.bat release, written in build\wren.channel).
+# The JavaScript engine is not a file of its own: its pre-initialized image is embedded in wren.exe (src\js\image).
+# -Dev packages a development build (CI's smoke test) as wren-<version>-dev-windows-x64[-extras].zip; without it, the build
+# must be a release one (build.bat release, written in build\wren.channel).
+# Signing: when SIGN_PFX or SIGN_SERVICE is set (see tools\sign.ps1), every executable (wren.exe, testserver.exe) is signed
+# before it is archived; otherwise the files are left as they are.
 param([string]$Version = '', [switch]$Dev)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -30,8 +35,9 @@ if ($Dev) {
 $name = if ($Dev) { "wren-$Version-dev-windows-x64" } else { "wren-$Version-windows-x64" }
 $dist = Join-Path $root 'build\dist'
 $out = Join-Path $dist $name
-if (Test-Path $out) { [IO.Directory]::Delete($out, $true) }   # build\dist holds only what this script makes (no junction)
-New-Item -ItemType Directory -Force $out, "$out\licenses" | Out-Null
+$extras = Join-Path $dist "$name-extras"
+foreach ($d in $out, $extras) { if (Test-Path $d) { [IO.Directory]::Delete($d, $true) } }   # build\dist holds only what this script makes (no junction)
+New-Item -ItemType Directory -Force $out, "$out\licenses", $extras | Out-Null
 
 # the Wasm modules the demo pages load (<script type="application/wasm">, workers), and the server for the others
 $guests = 'counter', 'formstest', 'mutation', 'mutation_class', 'workerstest_worker'
@@ -52,13 +58,18 @@ Push-Location tools\testserver
 try { go build -trimpath -o ..\..\build\testserver.exe .; if ($LASTEXITCODE -ne 0) { throw 'go build of the test server failed' } } finally { Pop-Location }
 
 Copy-Item build\wren.exe "$out\wren.exe"
-Copy-Item build\testserver.exe "$out\testserver.exe"
-Copy-Item -Recurse examples\site "$out\demos"
+Copy-Item build\testserver.exe "$extras\testserver.exe"
+# signed before they are archived (nothing happens unless a signing identity is configured: tools\sign.ps1)
+& (Join-Path $PSScriptRoot 'sign.ps1') -Files "$out\wren.exe", "$extras\testserver.exe"
+if ($LASTEXITCODE) { throw 'signing failed' }
+
+# the extras: demo pages, and the demos that need the test server
+Copy-Item -Recurse examples\site "$extras\demos"
 # the script loading and web API demos of about:demos: testserver.exe serves them from examples\ under its working
-# directory (tools\testserver\jsload.go, jsweb.go), which demo.bat makes the package's folder
-New-Item -ItemType Directory -Force "$out\examples\jsweb" | Out-Null
-Copy-Item -Recurse examples\jsload "$out\examples\jsload"
-Copy-Item examples\jsweb\demo.html "$out\examples\jsweb\demo.html"
+# directory (tools\testserver\jsload.go, jsweb.go), which demo.bat makes the folder of wren.exe
+New-Item -ItemType Directory -Force "$extras\examples\jsweb" | Out-Null
+Copy-Item -Recurse examples\jsload "$extras\examples\jsload"
+Copy-Item examples\jsweb\demo.html "$extras\examples\jsweb\demo.html"
 
 # vcruntime140.dll from the Visual C++ redistributable of the installed toolset
 $redist = $env:VCToolsRedistDir   # set in a developer prompt: the redistributable of the toolset that linked the exe
@@ -107,37 +118,48 @@ A small web browser where WebAssembly runs everything, JavaScript included.
 https://github.com/sachahjkl/wren
 
   wren.exe [URL]            the browser (needs Windows 10 or 11 x64 and a Direct3D 11 GPU)
-  demo.bat                  starts the demo server and opens about:demos
-  testserver.exe            the demo server: http://127.0.0.1:8765/site/ (serves demos\)
-  demos\                    the demo and test pages and their Wasm modules; demos\index.html lists them (so does
-                            about:demos, linked from the start page)
-  examples\                 the script loading and web API demos, served by testserver.exe
 
-about:demos and demos\index.html open the pages of demos\ directly; those marked "test server" need testserver.exe
-running from this folder, as demo.bat does (images, media, form submission, slow stylesheets, CSP, script loading,
-web APIs). browser.demos.path in about:config points about:demos
-to another folder. The address bar takes paths (C:\..., \\server\share) as well as URLs; a folder opens its
-index.html, else the list of its files; files and folders dropped on the window open.
+Run wren.exe from here, or open the Setup dialog to install it (wren.exe --setup: Start menu, desktop shortcut, PATH,
+the entry in Settings > Apps > Default apps, daily check for updates; "Use standalone" keeps it as it is). A file
+wren.portable beside wren.exe makes a portable copy: its profile is the folder data beside it.
+
+The demo and test pages, the examples and the test server are a separate download, wren-$Version-windows-x64-extras.zip
+(https://github.com/sachahjkl/wren/releases): extract it into this folder, then about:demos opens the pages and demo.bat
+starts the server for those that need it.
 
 Options: --profile DIR (default %APPDATA%\Wren), --pref name=value (any setting of about:config), --policy FILE,
 --desktop-integration=install|remove|status (the Start menu shortcut and the entry in Settings > Apps > Default apps:
 the same as the box in about:config; run it with `start /wait` or Start-Process -Wait to get the exit code: 0 done or
-installed, 1 failed or absent, 2 to repair), --setup (the Setup dialog: install Wren into %LOCALAPPDATA%\Programs\Wren, repair,
-replace or uninstall it; the first start of a copy that is not installed offers it, "Use standalone" keeps it as it is),
---new-window (a window of its own: by default a second start with the same profile opens a tab in the running Wren).
-A file wren.portable beside wren.exe makes a portable copy: its profile is the folder data beside it.
+installed, 1 failed or absent, 2 to repair), --setup, --new-window (a window of its own: by default a second start with
+the same profile opens a tab in the running Wren).
+The address bar takes paths (C:\..., \\server\share) as well as URLs; a folder opens its index.html, else the list of its
+files; files and folders dropped on the window open.
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address, Ctrl+F find, Ctrl+U view source, Ctrl+B status bar,
-Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom, F11 full screen.
+Ctrl+Shift+B frame statistics, Ctrl+Plus / Minus / 0 zoom, F11 full screen, F12 developer tools.
 
 JavaScript runs in QuickJS-ng compiled to WebAssembly, inside wren.exe (no separate file): javascript.enabled in
-about:config turns it off, javascript.sites.disabled / .enabled per site. Pages can also be WebAssembly modules
-(demos\counter.html).
+about:config turns it off, javascript.sites.disabled / .enabled per site. Pages can also be WebAssembly modules.
 
-Wren is a prototype: JavaScript is interpreted (no JIT) and part of the web platform is missing. MIT license
-(LICENSE.txt); the components it is built from are listed in THIRD_PARTY.md, their licenses are in licenses\.
-vcruntime140.dll is the Microsoft Visual C++ runtime.
+Wren is a prototype: part of the web platform is missing. MIT license (LICENSE.txt); the components it is built from are
+listed in THIRD_PARTY.md, their licenses are in licenses\. vcruntime140.dll is the Microsoft Visual C++ runtime.
 "@
 [IO.File]::WriteAllText("$out\README.txt", ($readme -replace "`r?`n", "`r`n"))
+
+$extrasReadme = @"
+Wren ${Version}: demos and test material ($commit)
+Extract this archive into the folder of wren.exe (the files here are meant to sit beside it).
+
+  demos\                    the demo and test pages and their Wasm modules; demos\index.html lists them (so does
+                            about:demos, linked from the start page)
+  examples\                 the script loading and web API demos, served by testserver.exe
+  testserver.exe            the demo server: http://127.0.0.1:8765/site/ (serves demos\)
+  demo.bat                  starts the demo server and opens about:demos
+
+The pages of demos\ open directly; those marked "test server" need testserver.exe running from this folder, as demo.bat
+does (images, media, form submission, slow stylesheets, CSP, script loading, web APIs). browser.demos.path in about:config
+points about:demos to another folder.
+"@
+[IO.File]::WriteAllText("$extras\README-extras.txt", ($extrasReadme -replace "`r?`n", "`r`n"))
 $demo = @"
 @echo off
 :: Serves the demo pages (demos\) on http://127.0.0.1:8765 and opens about:demos in Wren. Close the server window to stop it.
@@ -145,11 +167,14 @@ cd /D "%~dp0"
 start "Wren demo server" /min testserver.exe
 start "" wren.exe about:demos
 "@
-[IO.File]::WriteAllText("$out\demo.bat", ($demo -replace "`r?`n", "`r`n"))
+[IO.File]::WriteAllText("$extras\demo.bat", ($demo -replace "`r?`n", "`r`n"))
 
+# the program in a folder of its own name; the extras at the root of their archive (to extract beside wren.exe)
 $zip = Join-Path $dist "$name.zip"
-if (Test-Path $zip) { Remove-Item $zip -Force }
+$zipExtras = Join-Path $dist "$name-extras.zip"
+foreach ($z in $zip, $zipExtras) { if (Test-Path $z) { Remove-Item $z -Force } }
 Compress-Archive -Path $out -DestinationPath $zip -CompressionLevel Optimal
-$hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-[IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS.txt'), "$hash  $name.zip`n")
-"packaged $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB), sha256 $hash"
+Compress-Archive -Path "$extras\*" -DestinationPath $zipExtras -CompressionLevel Optimal
+$sums = foreach ($z in $zip, $zipExtras) { "$((Get-FileHash $z -Algorithm SHA256).Hash.ToLower())  $(Split-Path $z -Leaf)" }
+[IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS.txt'), (($sums -join "`n") + "`n"))
+foreach ($z in $zip, $zipExtras) { "packaged $z ($([math]::Round((Get-Item $z).Length / 1MB, 1)) MB)" }
