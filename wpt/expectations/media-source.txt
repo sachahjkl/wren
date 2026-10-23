@@ -1,0 +1,726 @@
+# web-platform-tests expectations of Wren for media-source, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/media-source/dedicated-worker/mediasource-worker-detach-element.html: OK
+	Test element detachment from worker MediaSource after at least 0 main thread setTimeouts, starting counting after receiving Finished Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 0 main thread setTimeouts, starting counting after receiving Started Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 0 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test element detachment from worker MediaSource after at least 1 main thread setTimeouts, starting counting after receiving Finished Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 1 main thread setTimeouts, starting counting after receiving Started Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 1 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test element detachment from worker MediaSource after at least 2 main thread setTimeouts, starting counting after receiving Finished Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 2 main thread setTimeouts, starting counting after receiving Started Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 2 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test element detachment from worker MediaSource after at least 3 main thread setTimeouts, starting counting after receiving Finished Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 3 main thread setTimeouts, starting counting after receiving Started Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 3 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test element detachment from worker MediaSource after at least 4 main thread setTimeouts, starting counting after receiving Finished Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 4 main thread setTimeouts, starting counting after receiving Started Buffering message from worker: FAIL
+	Test element detachment from worker MediaSource after at least 4 main thread setTimeouts, starting counting after setting srcObject: FAIL
+/media-source/dedicated-worker/mediasource-worker-duration.html: OK
+	Test worker MediaSource duration updates before and after HAVE_METADATA: FAIL
+/media-source/dedicated-worker/mediasource-worker-handle.html: OK
+	MediaSource construction in DedicatedWorker context must fail if Window context did not claim MSE supported in DedicatedWorker: FAIL
+	Test main context receipt of postMessage'd MediaSourceHandle from DedicatedWorker MediaSource: FAIL
+	Test main-thread has MediaSourceHandle defined: FAIL
+	Test main-thread MediaSource does not have handle getter: PASS
+/media-source/dedicated-worker/mediasource-worker-handle-transfer.html: OK
+	A detached (already transferred away) MediaSourceHandle cannot successfully load when assigned to srcObject: FAIL
+	Attempt to transfer detached MediaSourceHandle must fail, tested in window context: FAIL
+	MediaSourceHandle cannot be transferred, if it was srcObject when asynchronous load starts (loadstart), even if srcObject is then immediately reset to null: FAIL
+	MediaSourceHandle cannot be transferred, immediately after set as srcObject, even if srcObject immediately reset to null: FAIL
+	MediaSourceHandle serialization without transfer must fail, tested in window context: FAIL
+	MediaSourceHandle serialization without transfer must fail, tested in worker: FAIL
+	Precisely one load of the same MediaSourceHandle assigned synchronously to multiple media element srcObjects succeeds: FAIL
+	Same MediaSourceHandle transferred multiple times in single postMessage must fail, tested in window context: FAIL
+	Same MediaSourceHandle transferred multiple times in single postMessage must fail, tested in worker: FAIL
+/media-source/dedicated-worker/mediasource-worker-handle-transfer-to-shared-and-service-workers.https.html: OK
+	A plain object can be posted to a service worker: FAIL
+	A plain object can be posted to a shared worker: FAIL
+	MediaSourceHandle cannot be transferred to a service worker: FAIL
+	MediaSourceHandle cannot be transferred to a shared worker: FAIL
+/media-source/dedicated-worker/mediasource-worker-objecturl.html: OK
+	MediaSource construction in DedicatedWorker context must fail if Window context did not claim MSE supported in DedicatedWorker: FAIL
+	Test main context load of a DedicatedWorker MediaSource object URL should fail: FAIL
+/media-source/dedicated-worker/mediasource-worker-play.html: OK
+	Test worker MediaSource construction, attachment, buffering and basic playback: FAIL
+/media-source/dedicated-worker/mediasource-worker-play-terminate-worker.html: OK
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 0 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 1 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 2 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 3 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 4 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 5 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 6 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 7 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 8 main thread setTimeouts, starting counting before setting srcObject: FAIL
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after first ended event: FAIL
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting after setting srcObject: FAIL
+	Test worker MediaSource termination after at least 9 main thread setTimeouts, starting counting before setting srcObject: FAIL
+/media-source/idlharness.any.html: OK
+	AudioTrack interface: attribute sourceBuffer: FAIL
+	BufferedChangeEvent interface object length: FAIL
+	BufferedChangeEvent interface object name: FAIL
+	BufferedChangeEvent interface: attribute addedRanges: FAIL
+	BufferedChangeEvent interface: attribute removedRanges: FAIL
+	BufferedChangeEvent interface: existence and properties of interface object: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	idl_test setup: PASS
+	idl_test validation: PASS
+	ManagedMediaSource interface object length: FAIL
+	ManagedMediaSource interface object name: FAIL
+	ManagedMediaSource interface: attribute onendstreaming: FAIL
+	ManagedMediaSource interface: attribute onstartstreaming: FAIL
+	ManagedMediaSource interface: attribute streaming: FAIL
+	ManagedMediaSource interface: existence and properties of interface object: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ManagedSourceBuffer interface object length: FAIL
+	ManagedSourceBuffer interface object name: FAIL
+	ManagedSourceBuffer interface: attribute onbufferedchange: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface object: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	MediaSource interface object length: PASS
+	MediaSource interface object name: PASS
+	MediaSource interface: attribute activeSourceBuffers: PASS
+	MediaSource interface: attribute canConstructInDedicatedWorker: PASS
+	MediaSource interface: attribute duration: PASS
+	MediaSource interface: attribute onsourceclose: PASS
+	MediaSource interface: attribute onsourceended: PASS
+	MediaSource interface: attribute onsourceopen: PASS
+	MediaSource interface: attribute readyState: PASS
+	MediaSource interface: attribute sourceBuffers: PASS
+	MediaSource interface: calling addSourceBuffer(DOMString) on mediaSource with too few arguments must throw TypeError: PASS
+	MediaSource interface: calling endOfStream(optional EndOfStreamError) on mediaSource with too few arguments must throw TypeError: PASS
+	MediaSource interface: calling isTypeSupported(DOMString) on mediaSource with too few arguments must throw TypeError: PASS
+	MediaSource interface: calling removeSourceBuffer(SourceBuffer) on mediaSource with too few arguments must throw TypeError: PASS
+	MediaSource interface: calling setLiveSeekableRange(double, double) on mediaSource with too few arguments must throw TypeError: PASS
+	MediaSource interface: existence and properties of interface object: PASS
+	MediaSource interface: existence and properties of interface prototype object: PASS
+	MediaSource interface: existence and properties of interface prototype object's "constructor" property: PASS
+	MediaSource interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	MediaSource interface: mediaSource must inherit property "activeSourceBuffers" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "addSourceBuffer(DOMString)" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "canConstructInDedicatedWorker" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "clearLiveSeekableRange()" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "duration" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "endOfStream(optional EndOfStreamError)" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "isTypeSupported(DOMString)" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "onsourceclose" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "onsourceended" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "onsourceopen" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "readyState" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "removeSourceBuffer(SourceBuffer)" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "setLiveSeekableRange(double, double)" with the proper type: PASS
+	MediaSource interface: mediaSource must inherit property "sourceBuffers" with the proper type: PASS
+	MediaSource interface: mediaSource must not have property "handle": PASS
+	MediaSource interface: member handle: PASS
+	MediaSource interface: operation addSourceBuffer(DOMString): PASS
+	MediaSource interface: operation clearLiveSeekableRange(): PASS
+	MediaSource interface: operation endOfStream(optional EndOfStreamError): PASS
+	MediaSource interface: operation isTypeSupported(DOMString): PASS
+	MediaSource interface: operation removeSourceBuffer(SourceBuffer): PASS
+	MediaSource interface: operation setLiveSeekableRange(double, double): PASS
+	MediaSource must be primary interface of mediaSource: PASS
+	MediaSourceHandle interface object length: FAIL
+	MediaSourceHandle interface object name: FAIL
+	MediaSourceHandle interface: existence and properties of interface object: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	Partial interface AudioTrack: member names are unique: PASS
+	Partial interface AudioTrack: original interface defined: PASS
+	Partial interface AudioTrack: valid exposure set: PASS
+	Partial interface TextTrack: member names are unique: PASS
+	Partial interface TextTrack: original interface defined: PASS
+	Partial interface TextTrack: valid exposure set: PASS
+	Partial interface VideoTrack: member names are unique: PASS
+	Partial interface VideoTrack: original interface defined: PASS
+	Partial interface VideoTrack: valid exposure set: PASS
+	SourceBuffer interface object length: PASS
+	SourceBuffer interface object name: PASS
+	SourceBuffer interface: attribute appendWindowEnd: PASS
+	SourceBuffer interface: attribute appendWindowStart: PASS
+	SourceBuffer interface: attribute audioTracks: FAIL
+	SourceBuffer interface: attribute buffered: PASS
+	SourceBuffer interface: attribute mode: PASS
+	SourceBuffer interface: attribute onabort: PASS
+	SourceBuffer interface: attribute onerror: PASS
+	SourceBuffer interface: attribute onupdate: PASS
+	SourceBuffer interface: attribute onupdateend: PASS
+	SourceBuffer interface: attribute onupdatestart: PASS
+	SourceBuffer interface: attribute textTracks: FAIL
+	SourceBuffer interface: attribute timestampOffset: PASS
+	SourceBuffer interface: attribute updating: PASS
+	SourceBuffer interface: attribute videoTracks: FAIL
+	SourceBuffer interface: calling appendBuffer(BufferSource) on sourceBuffer with too few arguments must throw TypeError: PASS
+	SourceBuffer interface: calling changeType(DOMString) on sourceBuffer with too few arguments must throw TypeError: PASS
+	SourceBuffer interface: calling remove(double, unrestricted double) on sourceBuffer with too few arguments must throw TypeError: PASS
+	SourceBuffer interface: existence and properties of interface object: PASS
+	SourceBuffer interface: existence and properties of interface prototype object: PASS
+	SourceBuffer interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SourceBuffer interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	SourceBuffer interface: operation abort(): PASS
+	SourceBuffer interface: operation appendBuffer(BufferSource): PASS
+	SourceBuffer interface: operation changeType(DOMString): PASS
+	SourceBuffer interface: operation remove(double, unrestricted double): PASS
+	SourceBuffer interface: sourceBuffer must inherit property "abort()" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "appendBuffer(BufferSource)" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "appendWindowEnd" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "appendWindowStart" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "audioTracks" with the proper type: FAIL
+	SourceBuffer interface: sourceBuffer must inherit property "buffered" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "changeType(DOMString)" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "mode" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "onabort" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "onerror" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "onupdate" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "onupdateend" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "onupdatestart" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "remove(double, unrestricted double)" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "textTracks" with the proper type: FAIL
+	SourceBuffer interface: sourceBuffer must inherit property "timestampOffset" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "updating" with the proper type: PASS
+	SourceBuffer interface: sourceBuffer must inherit property "videoTracks" with the proper type: FAIL
+	SourceBuffer must be primary interface of sourceBuffer: PASS
+	SourceBufferList interface object length: PASS
+	SourceBufferList interface object name: PASS
+	SourceBufferList interface: attribute length: PASS
+	SourceBufferList interface: attribute onaddsourcebuffer: PASS
+	SourceBufferList interface: attribute onremovesourcebuffer: PASS
+	SourceBufferList interface: existence and properties of interface object: PASS
+	SourceBufferList interface: existence and properties of interface prototype object: PASS
+	SourceBufferList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SourceBufferList interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	SourceBufferList interface: mediaSource.sourceBuffers must inherit property "length" with the proper type: PASS
+	SourceBufferList interface: mediaSource.sourceBuffers must inherit property "onaddsourcebuffer" with the proper type: PASS
+	SourceBufferList interface: mediaSource.sourceBuffers must inherit property "onremovesourcebuffer" with the proper type: PASS
+	SourceBufferList must be primary interface of mediaSource.sourceBuffers: PASS
+	Stringification of mediaSource: PASS
+	Stringification of mediaSource.sourceBuffers: PASS
+	Stringification of sourceBuffer: PASS
+	TextTrack interface: attribute sourceBuffer: FAIL
+	VideoTrack interface: attribute sourceBuffer: FAIL
+/media-source/idlharness.any.worker.html: OK
+	BufferedChangeEvent interface object length: FAIL
+	BufferedChangeEvent interface object name: FAIL
+	BufferedChangeEvent interface: attribute addedRanges: FAIL
+	BufferedChangeEvent interface: attribute removedRanges: FAIL
+	BufferedChangeEvent interface: existence and properties of interface object: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	BufferedChangeEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	idl_test setup: PASS
+	idl_test validation: PASS
+	ManagedMediaSource interface object length: FAIL
+	ManagedMediaSource interface object name: FAIL
+	ManagedMediaSource interface: attribute onendstreaming: FAIL
+	ManagedMediaSource interface: attribute onstartstreaming: FAIL
+	ManagedMediaSource interface: attribute streaming: FAIL
+	ManagedMediaSource interface: existence and properties of interface object: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ManagedMediaSource interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ManagedSourceBuffer interface object length: FAIL
+	ManagedSourceBuffer interface object name: FAIL
+	ManagedSourceBuffer interface: attribute onbufferedchange: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface object: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	ManagedSourceBuffer interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	MediaSource interface object length: PASS
+	MediaSource interface object name: PASS
+	MediaSource interface: attribute activeSourceBuffers: PASS
+	MediaSource interface: attribute canConstructInDedicatedWorker: PASS
+	MediaSource interface: attribute duration: PASS
+	MediaSource interface: attribute handle: FAIL
+	MediaSource interface: attribute onsourceclose: PASS
+	MediaSource interface: attribute onsourceended: PASS
+	MediaSource interface: attribute onsourceopen: PASS
+	MediaSource interface: attribute readyState: PASS
+	MediaSource interface: attribute sourceBuffers: PASS
+	MediaSource interface: existence and properties of interface object: PASS
+	MediaSource interface: existence and properties of interface prototype object: PASS
+	MediaSource interface: existence and properties of interface prototype object's "constructor" property: PASS
+	MediaSource interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	MediaSource interface: operation addSourceBuffer(DOMString): PASS
+	MediaSource interface: operation clearLiveSeekableRange(): PASS
+	MediaSource interface: operation endOfStream(optional EndOfStreamError): PASS
+	MediaSource interface: operation isTypeSupported(DOMString): PASS
+	MediaSource interface: operation removeSourceBuffer(SourceBuffer): PASS
+	MediaSource interface: operation setLiveSeekableRange(double, double): PASS
+	MediaSourceHandle interface object length: FAIL
+	MediaSourceHandle interface object name: FAIL
+	MediaSourceHandle interface: existence and properties of interface object: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	MediaSourceHandle interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	Partial interface AudioTrack: member names are unique: PASS
+	Partial interface AudioTrack: original interface defined: PASS
+	Partial interface AudioTrack: valid exposure set: PASS
+	Partial interface TextTrack: member names are unique: PASS
+	Partial interface TextTrack: original interface defined: PASS
+	Partial interface TextTrack: valid exposure set: PASS
+	Partial interface VideoTrack: member names are unique: PASS
+	Partial interface VideoTrack: original interface defined: PASS
+	Partial interface VideoTrack: valid exposure set: PASS
+	SourceBuffer interface object length: PASS
+	SourceBuffer interface object name: PASS
+	SourceBuffer interface: attribute appendWindowEnd: PASS
+	SourceBuffer interface: attribute appendWindowStart: PASS
+	SourceBuffer interface: attribute buffered: PASS
+	SourceBuffer interface: attribute mode: PASS
+	SourceBuffer interface: attribute onabort: PASS
+	SourceBuffer interface: attribute onerror: PASS
+	SourceBuffer interface: attribute onupdate: PASS
+	SourceBuffer interface: attribute onupdateend: PASS
+	SourceBuffer interface: attribute onupdatestart: PASS
+	SourceBuffer interface: attribute timestampOffset: PASS
+	SourceBuffer interface: attribute updating: PASS
+	SourceBuffer interface: existence and properties of interface object: PASS
+	SourceBuffer interface: existence and properties of interface prototype object: PASS
+	SourceBuffer interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SourceBuffer interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	SourceBuffer interface: member audioTracks: PASS
+	SourceBuffer interface: member textTracks: PASS
+	SourceBuffer interface: member videoTracks: PASS
+	SourceBuffer interface: operation abort(): PASS
+	SourceBuffer interface: operation appendBuffer(BufferSource): PASS
+	SourceBuffer interface: operation changeType(DOMString): PASS
+	SourceBuffer interface: operation remove(double, unrestricted double): PASS
+	SourceBufferList interface object length: PASS
+	SourceBufferList interface object name: PASS
+	SourceBufferList interface: attribute length: PASS
+	SourceBufferList interface: attribute onaddsourcebuffer: PASS
+	SourceBufferList interface: attribute onremovesourcebuffer: PASS
+	SourceBufferList interface: existence and properties of interface object: PASS
+	SourceBufferList interface: existence and properties of interface prototype object: PASS
+	SourceBufferList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SourceBufferList interface: existence and properties of interface prototype object's @@unscopables property: PASS
+/media-source/invalid-third-block.html: OK
+	invalid-third-block: FAIL
+/media-source/last-frame-dimensions.html: OK
+	last frame dimensions: FAIL
+	setup: PASS
+/media-source/mediasource-activesourcebuffers.html: OK
+	Active SourceBuffers list ignores changes to selected audio/video tracks that do not affect the activation of the SourceBuffer.: FAIL
+	Active SourceBuffers list reflects changes to selected audio/video tracks associated with separate SourceBuffers.: FAIL
+	Active SourceBuffers must appear in the same order as they appear in the sourceBuffers attribute: audio is first sourceBuffer, audio media appended first: PASS
+	Active SourceBuffers must appear in the same order as they appear in the sourceBuffers attribute: audio is first sourceBuffer, video media appended first: PASS
+	Active SourceBuffers must appear in the same order as they appear in the sourceBuffers attribute: video is first sourceBuffer, audio media appended first: PASS
+	Active SourceBuffers must appear in the same order as they appear in the sourceBuffers attribute: video is first sourceBuffer, video media appended first: PASS
+	SourceBuffer added to activeSourceBuffers list when its only audio track gets loaded (and thus becomes enabled).: PASS
+	SourceBuffer added to activeSourceBuffers list when its only video track gets loaded (and thus becomes selected).: PASS
+/media-source/mediasource-addsourcebuffer.html: OK
+	Test addSourceBuffer() audio only: PASS
+	Test addSourceBuffer() in 'ended' state.: PASS
+	Test addSourceBuffer() video only: PASS
+	Test addSourceBuffer() with AAC and H.264: PASS
+	Test addSourceBuffer() with AAC and H.264 in separate SourceBuffers: PASS
+	Test addSourceBuffer() with empty type: PASS
+	Test addSourceBuffer() with null: PASS
+	Test addSourceBuffer() with unsupported type: PASS
+	Test addSourceBuffer() with Vorbis and VP8: FAIL
+	Test addSourceBuffer() with Vorbis and VP8 in separate SourceBuffers: FAIL
+/media-source/mediasource-addsourcebuffer-mode.html: OK
+	addSourceBuffer() sets SourceBuffer.mode to 'segments' when the generate timestamps flag is false: PASS
+	addSourceBuffer() sets SourceBuffer.mode to 'sequence' when the generate timestamps flag is true: FAIL
+/media-source/mediasource-append-buffer.html: TIMEOUT
+	Test abort after appendBuffer update ends.: PASS
+	Test abort after readyState is ended following init segment and media segment.: PASS
+	Test abort after removing sourcebuffer.: PASS
+	Test abort in the middle of an initialization segment.: TIMEOUT
+	Test appendBuffer events order.: FAIL
+	Test appendBuffer more Audio tracks than Video tracks: PASS
+	Test appendBuffer with partial init segments.: TIMEOUT
+	Test appendBuffer with partial media segments.: TIMEOUT
+	Test appending a neutered ArrayBuffer.: PASS
+	Test appending a neutered ArrayBufferView.: PASS
+	Test appending after removeSourceBuffer().: PASS
+	Test appending an empty ArrayBuffer.: PASS
+	Test appending an empty ArrayBufferView.: PASS
+	Test appending null.: PASS
+	Test MediaSource.endOfStream() during a pending appendBuffer() for one of its SourceBuffers.: PASS
+	Test MediaSource.removeSourceBuffer() call during a pending appendBuffer().: PASS
+	Test set MediaSource.duration during a pending appendBuffer() for one of its SourceBuffers.: PASS
+	Test set SourceBuffer.timestampOffset during a pending appendBuffer().: PASS
+	Test slow appending does not trigger stalled events.: PASS
+	Test SourceBuffer.abort() call during a pending appendBuffer().: PASS
+	Test SourceBuffer.appendBuffer() call during a pending appendBuffer().: PASS
+	Test SourceBuffer.appendBuffer() event dispatching.: PASS
+	Test SourceBuffer.appendBuffer() triggering an 'ended' to 'open' transition.: PASS
+	Test zero byte SourceBuffer.appendBuffer() call triggering an 'ended' to 'open' transition.: PASS
+/media-source/mediasource-appendbuffer-quota-exceeded.html: OK
+	Appending data repeatedly should fill up the buffer and throw a QuotaExceededError when buffer is full.: FAIL
+/media-source/mediasource-appendbuffer-sharedarraybuffer.window.html: ERROR
+/media-source/mediasource-appendwindow.html: OK
+	Test appendwindow throw error when mediasource object is not associated with a sourebuffer.: PASS
+	Test appendWindowStart and appendWindowEnd value after a sourceBuffer.abort().: PASS
+	Test correctly reset appendWindowStart and appendWindowEnd values: PASS
+	Test read appendWindowStart and appendWindowEnd initial values.: PASS
+	Test set appendWindowStart and appendWindowEnd when source buffer updating.: PASS
+	Test set correct values to appendWindowStart and appendWindowEnd.: PASS
+	Test set wrong values to appendWindowStart and appendWindowEnd.: PASS
+/media-source/mediasource-attach-stops-delaying-load-event.html: OK
+	MediaSource attachment should immediately stop delaying the load event: FAIL
+/media-source/mediasource-avtracks.html: OK
+	Check that media tracks and their properties are populated properly: FAIL
+	Media tracks must be removed when HTMLMediaElement.load() is called: FAIL
+	Media tracks must be removed when the HTMLMediaElement.src is changed: FAIL
+	Media tracks must be removed when the SourceBuffer is removed from the MediaSource: FAIL
+/media-source/mediasource-buffered.html: OK
+	buffered return the same object over multiple calls.: FAIL
+	Demuxed content with an empty buffered range on one SourceBuffer: PASS
+	Demuxed content with different lengths: PASS
+	Get buffered range after removing sourcebuffer.: PASS
+	Get buffered range when only init segment is appended.: PASS
+	Get buffered range when sourcebuffer is empty.: PASS
+	Muxed content empty buffered ranges.: PASS
+	Muxed content with different lengths: PASS
+/media-source/mediasource-buffered-seek.html: TIMEOUT
+	Test seeking to a buffered location.: TIMEOUT
+/media-source/mediasource-changetype.html: OK
+	Test changeType after SourceBuffer removed from mediaSource.: PASS
+	Test changeType retains previous mode when changing to type that doesn't generate timestamps: PASS
+	Test changeType sets mode to sequence for change to type that generates timestamps: FAIL
+	Test changeType transitioning readyState from 'ended' to 'open'.: PASS
+	Test changeType while update pending.: PASS
+	Test changeType with an empty type.: PASS
+	Test changeType with null type.: PASS
+	Test changeType with unsupported type.: PASS
+/media-source/mediasource-changetype-play.html: OK
+	Check if browser supports enough test media types: FAIL
+	Test audio-only changeType for audio/mp4; codecs="mp4a.40.2" <-> audio/mp4; codecs="mp4a.40.2": FAIL
+	Test video-only changeType for video/mp4; codecs="avc1.4D4001" <-> video/mp4; codecs="avc1.4D4001": FAIL
+/media-source/mediasource-changetype-play-implicit.html: OK
+	Check if browser supports enough test media types and pairs of audio-only or video-only media with same bytestream format: FAIL
+	Test audio-only implicit changeType for audio/mp4; codecs="mp4a.40.2" <-> audio/mp4; codecs="mp4a.40.2": FAIL
+	Test audio-only implicit changeType for audio/mp4; codecs="mp4a.40.2" <-> audio/mp4; codecs="mp4a.40.2" (using types without codecs parameters for addSourceBuffer): FAIL
+	Test video-only implicit changeType for video/mp4; codecs="avc1.4D4001" <-> video/mp4; codecs="avc1.4D4001": FAIL
+	Test video-only implicit changeType for video/mp4; codecs="avc1.4D4001" <-> video/mp4; codecs="avc1.4D4001" (using types without codecs parameters for addSourceBuffer): FAIL
+/media-source/mediasource-changetype-play-negative.html: TIMEOUT
+	Check if browser supports enough test media types across audio and video for changeType negative tests: PASS
+	Negative test audio<->video changeType for audio/mp4; codecs="mp4a.40.2" <-> video/mp4; codecs="avc1.4D4001": FAIL
+	Negative test audio<->video changeType for audio/mp4; codecs="mp4a.40.2" <-> video/mp4; codecs="avc1.4D4001" (using types without codecs parameters): FAIL
+	Negative test audio<->video implicit changeType for audio/mp4; codecs="mp4a.40.2" <-> video/mp4; codecs="avc1.4D4001": PASS
+	Negative test audio<->video implicit changeType for audio/mp4; codecs="mp4a.40.2" <-> video/mp4; codecs="avc1.4D4001" (without codecs parameters for addSourceBuffer): PASS
+	Negative test video<->audio changeType for video/mp4; codecs="avc1.4D4001" <-> audio/mp4; codecs="mp4a.40.2": TIMEOUT
+	Negative test video<->audio changeType for video/mp4; codecs="avc1.4D4001" <-> audio/mp4; codecs="mp4a.40.2" (using types without codecs parameters): TIMEOUT
+	Negative test video<->audio implicit changeType for video/mp4; codecs="avc1.4D4001" <-> audio/mp4; codecs="mp4a.40.2": PASS
+	Negative test video<->audio implicit changeType for video/mp4; codecs="avc1.4D4001" <-> audio/mp4; codecs="mp4a.40.2" (without codecs parameters for addSourceBuffer): TIMEOUT
+/media-source/mediasource-changetype-play-without-codecs-parameter.html: OK
+	Check if browser supports enough test media types: FAIL
+	Test audio-only changeType for audio/mp4; codecs="mp4a.40.2" <-> audio/mp4; codecs="mp4a.40.2" (using types without codecs parameters): FAIL
+	Test video-only changeType for video/mp4; codecs="avc1.4D4001" <-> video/mp4; codecs="avc1.4D4001" (using types without codecs parameters): FAIL
+/media-source/mediasource-closed.html: OK
+	Test addSourceBuffer() while closed.: PASS
+	Test attribute values on a closed MediaSource object.: PASS
+	Test endOfStream() while closed.: PASS
+	Test endOfStream(decode) while closed.: PASS
+	Test endOfStream(network) while closed.: PASS
+	Test getting duration while open->closed.: PASS
+	Test removeSourceBuffer() while closed.: PASS
+	Test setting duration while closed.: PASS
+	Test setting duration while open->closed.: PASS
+	Test sourcebuffer.abort when closed.: PASS
+/media-source/mediasource-config-change-mp4-a-bitrate.html: OK
+	Tests mp4 audio-only bitrate changes.: PASS
+/media-source/mediasource-config-change-mp4-av-audio-bitrate.html: OK
+	Tests mp4 audio bitrate changes in multiplexed content.: PASS
+/media-source/mediasource-config-change-mp4-av-framesize.html: OK
+	Tests mp4 frame size changes in multiplexed content.: FAIL
+/media-source/mediasource-config-change-mp4-av-video-bitrate.html: OK
+	Tests mp4 video bitrate changes in multiplexed content.: PASS
+/media-source/mediasource-config-change-mp4-v-bitrate.html: OK
+	Tests mp4 video-only bitrate changes.: FAIL
+/media-source/mediasource-config-change-mp4-v-framerate.html: OK
+	Tests mp4 video-only frame rate changes.: FAIL
+/media-source/mediasource-config-change-mp4-v-framesize.html: OK
+	Tests mp4 video-only frame size changes.: FAIL
+/media-source/mediasource-config-change-webm-a-bitrate.html: OK
+	Tests webm audio-only bitrate changes.: FAIL
+/media-source/mediasource-config-change-webm-av-audio-bitrate.html: OK
+	Tests webm audio bitrate changes in multiplexed content.: FAIL
+/media-source/mediasource-config-change-webm-av-framesize.html: OK
+	Tests webm frame size changes in multiplexed content.: FAIL
+/media-source/mediasource-config-change-webm-av-video-bitrate.html: OK
+	Tests webm video bitrate changes in multiplexed content.: FAIL
+/media-source/mediasource-config-change-webm-v-bitrate.html: OK
+	Tests webm video-only bitrate changes.: FAIL
+/media-source/mediasource-config-change-webm-v-framerate.html: OK
+	Tests webm video-only frame rate changes.: FAIL
+/media-source/mediasource-config-change-webm-v-framesize.html: OK
+	Tests webm video-only frame size changes.: FAIL
+/media-source/mediasource-correct-frames.html: ERROR
+	Test the expected frames are played at the expected times: TIMEOUT
+/media-source/mediasource-correct-frames-after-reappend.html: ERROR
+	Test the expected frames are played at the expected times, even in presence of reappends: TIMEOUT
+/media-source/mediasource-detach.html: OK
+	Test media.load() after appending data will trigger MediaSource detaching from a media element.: FAIL
+	Test media.load() before appending data will trigger MediaSource detaching from a media element.: FAIL
+/media-source/mediasource-duration.html: TIMEOUT
+	Increasing the duration does not trigger any SourceBuffer update: PASS
+	Increasing the duration during media playback does not trigger any SourceBuffer update: PASS
+	Test appendBuffer completes previous seek to truncated duration: FAIL
+	Test endOfStream completes previous seek to truncated duration: FAIL
+	Test seek starts on duration truncation below currentTime: FAIL
+	Test setting same duration multiple times does not fire duplicate durationchange: TIMEOUT
+	Test setting the duration to less than the highest starting presentation timestamp will throw: PASS
+	Truncating the duration throws an InvalidStateError exception when new duration is less than a buffered coded frame presentation time: PASS
+	Truncating the duration throws an InvalidStateError exception when new duration is less than the highest buffered range start time of one of the track buffers: PASS
+/media-source/mediasource-duration-boundaryconditions.html: OK
+	Set duration to 1: PASS
+	Set duration to 2^31 - 1: PASS
+	Set duration to a negative double.: PASS
+	Set duration to a positive double.: PASS
+	Set duration to lowest value.: PASS
+	Set duration to NaN: PASS
+	Set duration to Number.MAX_VALUE: PASS
+	Set duration to Number.MAX_VALUE - 1: PASS
+	Set duration to Number.MIN_VALUE: PASS
+	Set duration to Number.MIN_VALUE - 1: PASS
+	Set duration to Number.NEGATIVE_INFINITY: PASS
+	Set duration to Number.POSITIVE_INFINITY: PASS
+	Set duration to zero: PASS
+/media-source/mediasource-endofstream.html: OK
+	MediaSource.endOfStream(): duration and buffered range end time before and after endOfStream: PASS
+	MediaSource.endOfStream(): duration truncated to 0 when there are no buffered coded frames: FAIL
+	MediaSource.endOfStream(): media element notified that it now has all of the media data: PASS
+/media-source/mediasource-endofstream-invaliderror.html: OK
+	Test MediaSource.endOfStream() when readyState is ended.: PASS
+	Test MediaSource.endOfStream() with invalid empty error string.: FAIL
+	Test MediaSource.endOfStream() with invalid non-empty error string.: PASS
+	Test MediaSource.endOfStream() with invalid null error parameter.: PASS
+	Test MediaSource.endOfStream(decode) when readyState is ended.: PASS
+	Test MediaSource.endOfStream(network) when readyState is ended.: PASS
+/media-source/mediasource-errors.html: TIMEOUT
+	Appending media segment before the first initialization segment.: TIMEOUT
+	Signaling 'decode' error via endOfStream() after initialization segment has been appended and the HTMLMediaElement has reached HAVE_METADATA.: PASS
+	Signaling 'decode' error via endOfStream() before initialization segment has been appended.: TIMEOUT
+	Signaling 'decode' error via segment parser loop algorithm after initialization segment has been appended.: FAIL
+	Signaling 'decode' error via segment parser loop algorithm of append containing init plus corrupted media segment.: FAIL
+	Signaling 'network' error via endOfStream() after initialization segment has been appended and the HTMLMediaElement has reached HAVE_METADATA.: PASS
+	Signaling 'network' error via endOfStream() before initialization segment has been appended.: TIMEOUT
+/media-source/mediasource-getvideoplaybackquality.html: OK
+	Test HTMLVideoElement.getVideoPlaybackQuality() with MediaSource API: FAIL
+/media-source/mediasource-h264-play-starved.html: TIMEOUT
+	Enough frames are played when the decoder is starved.: TIMEOUT
+/media-source/mediasource-iamf-playback.html: OK
+	IAMF MSE audio playback advances currentTime: PRECONDITION_FAILED
+/media-source/mediasource-invalid-codec.html: OK
+	Test a WebM with an invalid codec results in an error.: FAIL
+	Test an MP4 with an invalid codec results in an error.: PASS
+/media-source/mediasource-is-type-supported.html: OK
+	Test invalid codec ID "audio/mp4;codecs="mp4a"": PASS
+	Test invalid codec ID "audio/mp4;codecs="mp4a.40"": PASS
+	Test invalid codec ID "audio/mp4;codecs="mp4a.40."": PASS
+	Test invalid codec ID "audio/mp4;codecs="mp4a.67.3"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/aac;codecs="aac"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/aac;codecs="adts"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/aac;codecs="mp4a.40"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/mpeg;codecs="mp3"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/mpeg;codecs="mp4a.69"": PASS
+	Test invalid inclusion of codecs parameter for mpeg audio types "audio/mpeg;codecs="mp4a.6B"": PASS
+	Test invalid MIME format "": PASS
+	Test invalid MIME format "audio/webm;aaacodecsbbb=opus": PASS
+	Test invalid MIME format "null": PASS
+	Test invalid MIME format "unsupported_mediatype": PASS
+	Test invalid MIME format "video": PASS
+	Test invalid MIME format "video/": PASS
+	Test invalid MIME format "video/webm": PASS
+	Test invalid MIME format "video/webm;": PASS
+	Test invalid MIME format "video/webm;codecs": PASS
+	Test invalid MIME format "video/webm;codecs=": PASS
+	Test invalid MIME format "video/webm;codecs="": PASS
+	Test invalid MIME format "video/webm;codecs=""": PASS
+	Test invalid MIME format "video/webm;codecs=","": PASS
+	Test invalid mismatch between MIME type and codec ID "audio/mp4;codecs="avc1.4d001e"": PASS
+	Test invalid mismatch between MIME type and codec ID "audio/mp4;codecs="vorbis"": PASS
+	Test invalid mismatch between MIME type and codec ID "audio/webm;codecs="mp4a.40.2"": PASS
+	Test invalid mismatch between MIME type and codec ID "audio/webm;codecs="vp8"": PASS
+	Test invalid mismatch between MIME type and codec ID "video/mp4;codecs="vorbis"": PASS
+	Test invalid mismatch between MIME type and codec ID "video/mp4;codecs="vp8"": PASS
+	Test invalid mismatch between MIME type and codec ID "video/webm;codecs="mp4a.40.2"": PASS
+	Test invalid MSE MIME media type "image/jpeg": PASS
+	Test invalid MSE MIME media type "text/html": PASS
+	Test invalid MSE MIME media type "xxx": PASS
+	Test valid MP4 type "audio/mp4;codecs="fLaC"": PASS
+	Test valid MP4 type "audio/mp4;codecs="mp4a.40.2"": PASS
+	Test valid MP4 type "audio/mp4;codecs="mp4a.40.5"": PASS
+	Test valid MP4 type "audio/mp4;codecs="mp4a.67"": PASS
+	Test valid MP4 type "audio/mp4;codecs="Opus"": PASS
+	Test valid MP4 type "video/mp4;codecs="avc1.42001e"": PASS
+	Test valid MP4 type "video/mp4;codecs="avc1.4d001e"": PASS
+	Test valid MP4 type "video/mp4;codecs="avc1.4d001e,mp4a.40.2"": PASS
+	Test valid MP4 type "video/mp4;codecs="avc1.4d001e,mp4a.40.5"": PASS
+	Test valid MP4 type "video/mp4;codecs="fLaC"": PASS
+	Test valid MP4 type "video/mp4;codecs="mp4a.40.2 , avc1.4d001e "": PASS
+	Test valid MP4 type "video/mp4;codecs="mp4a.40.2"": PASS
+	Test valid MP4 type "video/mp4;codecs="Opus"": PASS
+	Test valid WebM type "audio/webm;codecs="opus"": PASS
+	Test valid WebM type "audio/webm;codecs="vorbis"": FAIL
+	Test valid WebM type "audio/webm;codecs=vorbis;test="6"": FAIL
+	Test valid WebM type "video/webm;codecs="opus"": PASS
+	Test valid WebM type "video/webm;codecs="vorbis"": FAIL
+	Test valid WebM type "video/webm;codecs="vorbis, vp8"": FAIL
+	Test valid WebM type "video/webm;codecs="vp8"": FAIL
+	Test valid WebM type "video/webm;codecs="vp8,vorbis"": FAIL
+/media-source/mediasource-liveseekable.html: OK
+	clearLiveSeekableRange does not restrict to not currently updating: PASS
+	clearLiveSeekableRange returns with no error when conditions are correct: PASS
+	clearLiveSeekableRange throws an InvalidStateError exception if the readyState attribute is not 'open': PASS
+	HTMLMediaElement.seekable returns the live seekable range or an empty range if that range was cleared when nothing is buffered: FAIL
+	HTMLMediaElement.seekable returns the union of the buffered range and the live seekable range, when set: FAIL
+	setLiveSeekableRange does not restrict to not currently updating: PASS
+	setLiveSeekableRange returns with no error when conditions are correct: PASS
+	setLiveSeekableRange throws a TypeError if start is greater than end: PASS
+	setLiveSeekableRange throws a TypeError if start is negative: PASS
+	setLiveSeekableRange throws an InvalidStateError exception if the readyState attribute is not 'open': PASS
+/media-source/mediasource-multiple-attach.html: OK
+	Generate multiple unique URLs via URL.createObjectURL and revoke an URL: FAIL
+	Test exactly one succeeds when two MediaElements attach to same MediaSource: PASS
+	Test that MediaSource can reattach if closed first: FAIL
+/media-source/mediasource-play.html: OK
+	Test normal playback case with MediaSource API: PASS
+/media-source/mediasource-play-then-seek-back.html: TIMEOUT
+	Test playing then seeking back.: TIMEOUT
+/media-source/mediasource-preload.html: TIMEOUT
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=auto: PASS
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=metadata: PASS
+	error occurs with bogus blob URL (corrupted MediaSource object URL) and element preload=none: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=auto: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=metadata: PASS
+	error occurs with bogus blob URL (revoked MediaSource object URL) and element preload=none: PASS
+	sourceopen occurs with element preload=auto: TIMEOUT
+	sourceopen occurs with element preload=metadata: TIMEOUT
+	sourceopen occurs with element preload=none: TIMEOUT
+/media-source/mediasource-redundant-seek.html: OK
+	Test redundant fully prebuffered seek: PASS
+/media-source/mediasource-remove.html: OK
+	Test aborting a remove operation.: FAIL
+	Test remove after SourceBuffer removed from mediaSource.: PASS
+	Test remove transitioning readyState from 'ended' to 'open'.: PASS
+	Test remove while update pending.: PASS
+	Test remove with a NaN duration.: FAIL
+	Test remove with a NaN end.: PASS
+	Test remove with a nanosecond range.: PASS
+	Test remove with a NEGATIVE_INFINITY end.: PASS
+	Test remove with a start at the duration.: PASS
+	Test remove with a start beyond the duration.: PASS
+	Test remove with a start larger than the end.: PASS
+	Test remove with an negative start.: PASS
+	Test remove with non-finite start.: PASS
+	Test removing all appended data.: PASS
+	Test removing beginning of appended data.: PASS
+	Test removing the end of appended data.: PASS
+	Test removing the middle of appended data.: PASS
+/media-source/mediasource-removesourcebuffer.html: OK
+	Test abort event when removeSourceBuffer() called while SourceBuffer is updating: PASS
+	Test addSourceBuffer(), removeSourceBuffer(), addSourceBuffer() sequence.: PASS
+	Test calling removeSourceBuffer() for a sourceBuffer belonging to a different mediaSource instance.: PASS
+	Test calling removeSourceBuffer() in ended state.: PASS
+	Test calling removeSourceBuffer() twice with the same object.: PASS
+	Test removesourcebuffer event on activeSourceBuffers.: PASS
+	Test removeSourceBuffer() with null: PASS
+/media-source/mediasource-replay.html: OK
+	Test replaying video after 'ended': PASS
+/media-source/mediasource-seekable.html: OK
+	Get seekable time ranges after init segment received.: PASS
+	Get seekable time ranges on an infinite stream.: FAIL
+	Get seekable time ranges when the sourcebuffer is empty.: PASS
+/media-source/mediasource-seek-beyond-duration.html: TIMEOUT
+	Test seeking beyond media duration.: TIMEOUT
+	Test seeking beyond updated media duration.: TIMEOUT
+/media-source/mediasource-seek-during-pending-seek.html: TIMEOUT
+	Test seeking to a new location before transitioning beyond HAVE_METADATA.: PASS
+	Test seeking to a new location during a pending seek.: TIMEOUT
+/media-source/mediasource-sequencemode-append-buffer.html: OK
+	Test sequence AppendMode appendBuffer(first media segment): FAIL
+	Test sequence AppendMode appendBuffer(second media segment): FAIL
+	Test sequence AppendMode appendBuffer(second media segment, then first media segment): FAIL
+/media-source/mediasource-sourcebufferlist.html: OK
+	Test out-of-range SourceBufferList indexed property getter behavior: PASS
+	Test removesourcebuffer event firing on sourceBuffers and activeSourceBuffers when MediaSource closes.: PASS
+	Test SourceBufferList event dispatching.: PASS
+	Test SourceBufferList getter method: PASS
+	Test that only 1 removesourcebuffer event fires on each SourceBufferList when the MediaSource closes.: PASS
+/media-source/mediasource-sourcebuffer-mode.html: OK
+	Test initial value of SourceBuffer.mode is "segments": PASS
+	Test setting a removed SourceBuffer's mode: PASS
+	Test setting SourceBuffer.mode: FAIL
+	Test setting SourceBuffer.mode and SourceBuffer.timestampOffset while parsing media segment.: FAIL
+	Test setting SourceBuffer.mode triggers parent MediaSource 'ended' to 'open' transition.: PASS
+	Test setting SourceBuffer.mode while still updating: PASS
+/media-source/mediasource-sourcebuffer-mode-timestamps.html: OK
+	audio/aac : If generate timestamps flag equals true and new mode equals "segments", then throw a TypeError exception and abort these steps.: FAIL
+	audio/mpeg : If generate timestamps flag equals true and new mode equals "segments", then throw a TypeError exception and abort these steps.: FAIL
+/media-source/mediasource-timestamp-offset.html: OK
+	Test getting the initial value of timestampOffset.: PASS
+	Test setting SourceBuffer.timestampOffset to a negative number.: PASS
+	Test setting SourceBuffer.timestampOffset to a number string.: PASS
+	Test setting SourceBuffer.timestampOffset to a positive number.: PASS
+	Test setting SourceBuffer.timestampOffset to an empty string.: PASS
+	Test setting SourceBuffer.timestampOffset to false.: PASS
+	Test setting SourceBuffer.timestampOffset to NaN.: PASS
+	Test setting SourceBuffer.timestampOffset to negative infinity.: PASS
+	Test setting SourceBuffer.timestampOffset to null.: PASS
+	Test setting SourceBuffer.timestampOffset to positive infinity.: PASS
+	Test setting SourceBuffer.timestampOffset to true.: PASS
+	Test setting SourceBuffer.timestampOffset to undefined.: PASS
+	Test setting SourceBuffer.timestampOffset to zero.: PASS
+	Test setting timestampoffset after removing the sourcebuffer.: PASS
+	Test setting timestampOffset in 'ended' state causes a transition to 'open'.: PASS
+/media-source/mse-for-webcodecs/tentative/mediasource-encrypted-webcodecs-appendencodedchunks-play.https.html: ERROR
+/media-source/mse-for-webcodecs/tentative/mediasource-webcodecs-addsourcebuffer.html: ERROR
+/media-source/mse-for-webcodecs/tentative/mediasource-webcodecs-appendencodedchunks-play.html: ERROR
+/media-source/SourceBuffer-abort.html: OK
+	SourceBuffer#abort() (video/mp4): Check the values of appendWindowStart and appendWindowEnd.: PASS
+	SourceBuffer#abort() (video/webm; codecs="vorbis,vp8"): Check the values of appendWindowStart and appendWindowEnd.: FAIL
+/media-source/SourceBuffer-abort-readyState.html: OK
+	SourceBuffer#abort() (video/mp4) : If the readyState attribute of the parent media source is not in the "open" state then throw an INVALID_STATE_ERR exception and abort these steps.: PASS
+	SourceBuffer#abort() (video/webm; codecs="vorbis,vp8") : If the readyState attribute of the parent media source is not in the "open" state then throw an INVALID_STATE_ERR exception and abort these steps.: FAIL
+/media-source/SourceBuffer-abort-removed.html: OK
+	SourceBuffer#abort (video/mp4) : if this object has been removed from the sourceBuffers attribute of the parent media source, then throw an INVALID_STATE_ERR exception and abort these steps.: PASS
+	SourceBuffer#abort (video/webm; codecs="vorbis,vp8") : if this object has been removed from the sourceBuffers attribute of the parent media source, then throw an INVALID_STATE_ERR exception and abort these steps.: FAIL
+/media-source/SourceBuffer-abort-updating.html: OK
+	SourceBuffer#abort() (video/mp4) : Check the algorithm when the updating attribute is true.: PASS
+	SourceBuffer#abort() (video/webm; codecs="vorbis,vp8") : Check the algorithm when the updating attribute is true.: FAIL
+/media-source/SourceBuffer-appendWindowEnd-rounding.html: OK
+	last frame at 10: PASS
+	last frame at 22: PASS
+	setup: PASS
+/media-source/SourceBuffer-short-frame-endOfStream.html: OK
+	endOfStream() with short frame duration: FAIL
+	setup: PASS
+/media-source/URL-createObjectURL.html: OK
+	URL.createObjectURL(mediaSource) should return a unique Blob URI.: PASS
+/media-source/URL-createObjectURL-null.html: OK
+	URL.createObjectURL(null): PASS
+/media-source/URL-createObjectURL-revoke.html: OK
+	Check no auto-revoking behavior with URL.createObjectURL(MediaSource).: FAIL
+	Check referenced MediaSource can open after URL.revokeObjectURL(url).: PASS
+	Check revoking behavior of URL.revokeObjectURL(url).: FAIL
+/media-source/waiting-for-audio.html: OK
+	playback after waiting for audio: PASS
