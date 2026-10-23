@@ -1,0 +1,139 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Canvas 2D workloads</title>
+<!-- tools\perf.ps1 scenarios js_canvas_particles, js_canvas_paths, js_canvas_text, js_canvas_gradients, js_canvas_game,
+     js_canvas_trivial: one workload per ?mode=, redrawn every animation frame (a seeded generator: every run draws the same
+     things). The heavy ones are the ones a GPU canvas must make several times faster; trivial (a 300 x 150 canvas with a
+     rectangle and a word) must not get slower. ?size=small draws the heavy ones on 640 x 360 instead of the window. -->
+<style>
+  body { margin: 0; background: #10131a; overflow: hidden; }
+  canvas { display: block; }
+</style>
+<canvas id="c"></canvas>
+<script>
+(function () {
+  "use strict";
+  var q = location.search;
+  var mode = (q.match(/mode=(\w+)/) || [0, "particles"])[1];
+  var small = /size=small/.test(q);
+  var c = document.getElementById("c");
+  var W = mode === "trivial" ? 300 : small ? 640 : Math.max(window.innerWidth || 1200, 800);
+  var H = mode === "trivial" ? 150 : small ? 360 : Math.max(window.innerHeight || 700, 500);
+  c.width = W; c.height = H;
+  var g = c.getContext("2d");
+  var seed = 12345;
+  function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  var frames = 0, t0 = Date.now();
+
+  // a sprite: a soft ball on a transparent 64 x 64 canvas (drawn once)
+  function makeSprite(size, hue) {
+    var s = document.createElement("canvas"); s.width = s.height = size;
+    var sg = s.getContext("2d");
+    var gr = sg.createRadialGradient(size / 2, size / 2, 1, size / 2, size / 2, size / 2);
+    gr.addColorStop(0, "hsla(" + hue + ",100%,80%,1)"); gr.addColorStop(0.5, "hsla(" + hue + ",100%,55%,0.7)"); gr.addColorStop(1, "hsla(" + hue + ",100%,40%,0)");
+    sg.fillStyle = gr; sg.fillRect(0, 0, size, size);
+    return s;
+  }
+
+  var draw;
+  if (mode === "particles") {
+    // 10 000 sprites of four kinds, additive, moving
+    var kinds = [makeSprite(32, 20), makeSprite(32, 120), makeSprite(32, 200), makeSprite(32, 300)];
+    var N = 10000, px = [], py = [], vx = [], vy = [], kd = [];
+    for (var i = 0; i < N; i++) { px.push(rnd() * W); py.push(rnd() * H); vx.push((rnd() - 0.5) * 3); vy.push((rnd() - 0.5) * 3); kd.push(i & 3); }
+    draw = function (t) {
+      g.globalCompositeOperation = "source-over";
+      g.fillStyle = "#0a0c14"; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = "lighter";
+      for (var i = 0; i < N; i++) {
+        var x = px[i] += vx[i], y = py[i] += vy[i];
+        if (x < 0 || x > W) vx[i] = -vx[i];
+        if (y < 0 || y > H) vy[i] = -vy[i];
+        g.drawImage(kinds[kd[i]], x - 8, y - 8, 16, 16);
+      }
+    };
+  } else if (mode === "paths") {
+    // 3000 filled and stroked paths: polygons, curves, arcs
+    var P = [];
+    for (var i = 0; i < 3000; i++) P.push({ x: rnd() * W, y: rnd() * H, r: 8 + rnd() * 30, k: i % 4, hue: (i * 37) % 360, s: rnd() * 6, w: 0.5 + rnd() * 3 });
+    draw = function (t) {
+      g.fillStyle = "#101820"; g.fillRect(0, 0, W, H);
+      for (var i = 0; i < P.length; i++) {
+        var p = P[i], a = t * (0.3 + p.s * 0.1) + i;
+        g.beginPath();
+        if (p.k === 0) { g.arc(p.x, p.y, p.r * 0.5, 0, 6.2832); }
+        else if (p.k === 1) { for (var j = 0; j < 6; j++) { var b = a + j * 1.0472; var xx = p.x + Math.cos(b) * p.r, yy = p.y + Math.sin(b) * p.r; if (j) g.lineTo(xx, yy); else g.moveTo(xx, yy); } g.closePath(); }
+        else if (p.k === 2) { g.moveTo(p.x, p.y); g.bezierCurveTo(p.x + p.r, p.y - p.r, p.x + p.r * 2, p.y + p.r, p.x + p.r * 3 * Math.cos(a), p.y + p.r * 2 * Math.sin(a)); }
+        else { g.rect(p.x - p.r * 0.5, p.y - p.r * 0.3, p.r, p.r * 0.6); g.moveTo(p.x + p.r, p.y); g.arc(p.x, p.y, p.r, 0, 3.5 + Math.sin(a)); }
+        g.fillStyle = "hsla(" + p.hue + ",80%,60%,0.55)"; g.fill();
+        g.strokeStyle = "hsl(" + p.hue + ",90%,75%)"; g.lineWidth = p.w; g.stroke();
+      }
+    };
+  } else if (mode === "text") {
+    // 1500 short strings in six sizes, two colors
+    var words = ["canvas", "GPU", "sprite", "particle", "shader", "frame", "glyph", "vector", "paint", "layer"];
+    var items = [];
+    for (var i = 0; i < 1500; i++) items.push({ x: rnd() * (W - 80), y: 16 + rnd() * (H - 20), w: words[i % 10] + " " + (i % 97), s: 10 + (i % 6) * 2 });
+    draw = function (t) {
+      g.fillStyle = "#f4f1e8"; g.fillRect(0, 0, W, H);
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i];
+        g.font = it.s + "px sans-serif";
+        g.fillStyle = (i & 1) ? "#222" : "#a33";
+        g.fillText(it.w, it.x + Math.sin(t + i) * 2, it.y);
+      }
+    };
+  } else if (mode === "gradients") {
+    // full-window gradients, translucent overlays, a shadowed panel
+    draw = function (t) {
+      var a = g.createLinearGradient(0, 0, W * Math.cos(t * 0.3), H * Math.sin(t * 0.3) + H);
+      a.addColorStop(0, "#1b1464"); a.addColorStop(0.5, "#c33764"); a.addColorStop(1, "#f7b733");
+      g.fillStyle = a; g.fillRect(0, 0, W, H);
+      var r = g.createRadialGradient(W / 2 + Math.cos(t) * 200, H / 2, 20, W / 2, H / 2, Math.max(W, H) * 0.7);
+      r.addColorStop(0, "rgba(255,255,255,0.7)"); r.addColorStop(0.4, "rgba(0,200,255,0.25)"); r.addColorStop(1, "rgba(0,0,0,0.6)");
+      g.fillStyle = r; g.fillRect(0, 0, W, H);
+      if (g.createConicGradient) {
+        var k = g.createConicGradient(t, W * 0.75, H * 0.5);
+        k.addColorStop(0, "rgba(255,0,0,0.4)"); k.addColorStop(0.33, "rgba(0,255,0,0.4)"); k.addColorStop(0.66, "rgba(0,0,255,0.4)"); k.addColorStop(1, "rgba(255,0,0,0.4)");
+        g.fillStyle = k; g.fillRect(W * 0.5, 0, W * 0.5, H);
+      }
+      g.save(); g.shadowColor = "rgba(0,0,0,0.6)"; g.shadowBlur = 30; g.shadowOffsetY = 10;
+      g.fillStyle = "rgba(255,255,255,0.85)"; g.fillRect(W * 0.2, H * 0.25, W * 0.35, H * 0.4); g.restore();
+    };
+  } else if (mode === "game") {
+    // a typical 2D game: a tile map, rotated sprites, health bars, a HUD, a minimap
+    var tiles = document.createElement("canvas"); tiles.width = 128; tiles.height = 32;
+    var tg = tiles.getContext("2d");
+    for (var i = 0; i < 4; i++) { tg.fillStyle = ["#2d6a4f", "#40916c", "#52b788", "#74c69d"][i]; tg.fillRect(i * 32, 0, 32, 32); tg.strokeStyle = "rgba(0,0,0,0.25)"; tg.strokeRect(i * 32 + 0.5, 0.5, 31, 31); }
+    var hero = makeSprite(48, 40), foe = makeSprite(48, 0);
+    var E = []; for (var i = 0; i < 120; i++) E.push({ x: rnd() * W, y: rnd() * H, a: rnd() * 6.28, v: 0.5 + rnd() * 2, hp: rnd() });
+    var cols = Math.ceil(W / 32), rows = Math.ceil(H / 32), map = [];
+    for (var i = 0; i < cols * rows; i++) map.push((rnd() * 4) | 0);
+    draw = function (t) {
+      for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) g.drawImage(tiles, map[y * cols + x] * 32, 0, 32, 32, x * 32, y * 32, 32, 32);
+      for (var i = 0; i < E.length; i++) {
+        var e = E[i]; e.a += 0.02; e.x += Math.cos(e.a) * e.v; e.y += Math.sin(e.a) * e.v;
+        if (e.x < 0) e.x = W; if (e.x > W) e.x = 0; if (e.y < 0) e.y = H; if (e.y > H) e.y = 0;
+        g.save(); g.translate(e.x, e.y); g.rotate(e.a);
+        g.drawImage(i === 0 ? hero : foe, -24, -24);
+        g.restore();
+        g.fillStyle = "#300"; g.fillRect(e.x - 14, e.y - 30, 28, 4);
+        g.fillStyle = e.hp > 0.5 ? "#4c4" : "#e44"; g.fillRect(e.x - 14, e.y - 30, 28 * e.hp, 4);
+      }
+      g.fillStyle = "rgba(0,0,0,0.55)"; g.fillRect(8, 8, 260, 64);
+      g.fillStyle = "#fff"; g.font = "16px sans-serif"; g.fillText("score " + (frames * 10), 20, 32); g.fillText("enemies " + E.length, 20, 56);
+      g.strokeStyle = "#fff"; g.lineWidth = 2; g.beginPath(); g.arc(W - 70, 70, 50, 0, 6.2832); g.stroke();
+      g.fillStyle = "#f55"; for (var i = 0; i < 30; i++) { g.beginPath(); g.arc(W - 70 + (E[i].x / W - 0.5) * 90, 70 + (E[i].y / H - 0.5) * 90, 2, 0, 6.2832); g.fill(); }
+    };
+  } else {
+    // trivial: a small canvas, a rectangle and a word
+    draw = function (t) {
+      g.fillStyle = "#223"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "hsl(" + (t * 60 % 360) + ",80%,60%)"; g.fillRect(20 + Math.sin(t) * 10, 30, 120, 60);
+      g.fillStyle = "#fff"; g.font = "16px sans-serif"; g.fillText("frame " + frames, 20, 120);
+    };
+  }
+  function frame() { frames++; draw((Date.now() - t0) / 1000); requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+})();
+</script>
