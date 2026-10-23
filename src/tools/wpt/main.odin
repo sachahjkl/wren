@@ -727,12 +727,12 @@ got_result :: proc(d: ^headless.Doc) -> bool { return (^Child_State)(d.user).got
 
 FORCE_TIMEOUT :: `(function () { try { if (typeof timeout === "function") { timeout(); } } catch (e) {} console.log("WPTFORCED"); })();`
 
-// Whether the page can still do anything by itself: false once loaded with no timer, request, frame, worker or
-// background job.
+// Whether the page can still do anything by itself: false once loaded with no timer, request, frame, worker, background
+// job or media playing / loading.
 page_busy :: proc(p: ^page.Page) -> bool {
 	if p == nil || p.closed { return false }
 	if p.scripts != nil && p.scripts.ready_state != .Complete { return true }
-	return p.timers.count > 0 || p.fetches.count > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || len(p.offthread.jobs) > 0
+	return p.timers.count > 0 || p.fetches.count > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || len(p.offthread.jobs) > 0 || page.media_busy(p)
 }
 
 HARNESS_STATUS := [?]string{"OK", "ERROR", "TIMEOUT", "PRECONDITION_FAILED"}
