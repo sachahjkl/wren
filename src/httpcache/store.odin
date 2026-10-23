@@ -573,3 +573,57 @@ format_http_date :: proc(t: i64, allocator := context.temp_allocator) -> string 
 	strings.write_string(&sb, " GMT")
 	return strings.to_string(sb)
 }
+
+////////////////////////////////
+// By site (about:sites, "Clear site data")
+
+// The host of an absolute URL or site ("https://a.example:8443/x" -> "a.example").
+host_of_url :: proc(u: string) -> string {
+	s := u
+	if i := strings.index(s, "://"); i >= 0 { s = s[i + 3:] }
+	if i := strings.index_any(s, "/?#"); i >= 0 { s = s[:i] }
+	if i := strings.last_index_byte(s, '@'); i >= 0 { s = s[i + 1:] }
+	if strings.has_prefix(s, "[") {
+		if j := strings.index_byte(s, ']'); j >= 0 { return s[:j + 1] }
+	}
+	if i := strings.index_byte(s, ':'); i >= 0 { s = s[:i] }
+	return s
+}
+
+// Whether the entry belongs to `host`: its URL is there, or it is kept for a page of that top-level site (the key is
+// "1/<top-level site> <frame site> <credentials> <url>").
+entry_of_host :: proc(e: ^Entry, host: string) -> bool {
+	if host_of_url(e.url) == host { return true }
+	if strings.has_prefix(e.key, "1/") {
+		rest := e.key[2:]
+		if i := strings.index_byte(rest, ' '); i >= 0 { return host_of_url(rest[:i]) == host }
+	}
+	return false
+}
+
+// The entries and bytes the cache keeps for each host (temporary map; a host is counted for the URL's and the top-level site's).
+bytes_by_host :: proc(c: ^Cache, allocator := context.temp_allocator) -> map[string]i64 {
+	out := make(map[string]i64, allocator = allocator)
+	for e := c.head; e != nil; e = e.next {
+		n := e.file_size if e.file_size > 0 else e.body_size
+		h := host_of_url(e.url)
+		out[strings.clone(h, allocator)] += n
+		if strings.has_prefix(e.key, "1/") {
+			rest := e.key[2:]
+			if i := strings.index_byte(rest, ' '); i >= 0 {
+				if th := host_of_url(rest[:i]); th != h { out[strings.clone(th, allocator)] += n }
+			}
+		}
+	}
+	return out
+}
+
+// Removes the entries of a host; returns how many.
+delete_for_host :: proc(c: ^Cache, host: string) -> int {
+	keys := make([dynamic]string, context.temp_allocator)
+	for e := c.head; e != nil; e = e.next {
+		if entry_of_host(e, host) { append(&keys, strings.clone(e.key, context.temp_allocator)) }
+	}
+	for k in keys { remove_key(c, k) }
+	return len(keys)
+}
