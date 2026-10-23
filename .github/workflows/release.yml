@@ -53,5 +53,5 @@ jobs:
         run: |
           $v = '${{ steps.version.outputs.version }}'
           $tag = '${{ github.ref_name }}'
-          gh release create $tag "build/dist/wren-$v-windows-x64.zip" build/dist/SHA256SUMS.txt --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
+          gh release create $tag "build/dist/wren-$v-windows-x64.exe" build/dist/SHA256SUMS.txt --title "Wren $v" --notes-file build/dist/NOTES.md --verify-tag
           if ($LASTEXITCODE -ne 0) { exit 1 }
