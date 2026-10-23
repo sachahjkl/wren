@@ -372,6 +372,9 @@ site_flags :: proc(b: ^Blocker, host: string) -> Site_Flags {
 	return {}
 }
 
+effective_hard_of :: proc(b: ^Blocker, f: Site_Flags) -> bool { return effective_hard(b, f) }
+effective_fonts_of :: proc(b: ^Blocker, f: Site_Flags) -> bool { return effective_fonts(b, f) }
+
 @(private)
 effective_hard :: proc(b: ^Blocker, f: Site_Flags) -> bool { return .Hard in f || (b.cfg.hard_mode && .Soft not_in f) }
 @(private)

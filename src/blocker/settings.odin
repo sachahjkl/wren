@@ -28,6 +28,7 @@ Settings :: struct {
 	badge:            bool,
 	max_hosts_per_tab: int,
 	graph_points:     int,
+	console:          bool,
 }
 
 PREFS := [?]config.Def{
@@ -71,6 +72,8 @@ PREFS := [?]config.Def{
 		description = "Show the number of blocked requests on the blocker icon of the address row."},
 	{name = "blocker.matrix.max_hosts", kind = .Int, default = {i = 1500}, bounded = true, min = 50, max = 100_000,
 		description = "Most distinct hosts the matrix of a tab remembers."},
+	{name = "blocker.console.enabled", kind = .Bool, default = {b = true},
+		description = "Write a console line (net::ERR_BLOCKED_BY_CLIENT, with the filter) for each blocked request of a tab, as the DevTools of other browsers do."},
 	{name = "blocker.graph.points", kind = .Int, default = {i = 2048}, bounded = true, min = 64, max = 100_000,
 		description = "Blocked requests of a page kept for the time graph of the panel."},
 }
@@ -100,5 +103,6 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		badge = config.bool_of(p, "blocker.badge.enabled"),
 		max_hosts_per_tab = int(config.int_of(p, "blocker.matrix.max_hosts")),
 		graph_points = int(config.int_of(p, "blocker.graph.points")),
+		console = config.bool_of(p, "blocker.console.enabled"),
 	}
 }

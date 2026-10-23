@@ -355,7 +355,7 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 		return d
 	}
 	switch {
-	case t.kind == .Config: d.kind = .Gear
+	case t.kind == .Config || t.kind == .Blocker: d.kind = .Gear
 	case t.load != nil && t.load.failed != .None: d.kind = .Globe   // an error page is not the browser's own page
 	case t.page != nil && t.page.env.location.scheme == "about": d.kind = wchrome.icon_px > 0 ? .App : .Globe; d.tex = wchrome.icon
 	case t.page != nil && t.page.env.location.scheme == "file": d.kind = .File
