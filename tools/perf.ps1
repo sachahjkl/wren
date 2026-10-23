@@ -349,3 +349,26 @@ if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' -and $_ -ne
         Run 'video_play_sample' "$vb`?mode=play" { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $true
     } finally { Stop-WrenTestServer $srv }
 }
+
+# YouTube's watch page without the network (examples/site/yt-sim.html, files of tools\gen_perf_media.ps1, made on first use):
+# a player that toggles state classes under bare :has() rules, a progress bar moved every animation frame, MSE with separate
+# audio and video buffers, ~4 000 elements around it. The report's "video" section says how the pictures reached the screen
+# (pictures dropped, cadence, stutters). yt_*_task adds an 80 ms busy callback every 5 s (the player's periodic work), yt_*_wheel
+# scrolls the page meanwhile (comments, suggestions), yt_*_prog plays the file without MSE.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_*' })) {
+    if (-not (Test-Path (Join-Path $site 'media\video\perf_short_1080x1920_a.mp4'))) { & powershell -NoProfile -File (Join-Path $PSScriptRoot 'gen_perf_media.ps1') }
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $yt = "$($srv.Origin)/site/yt-sim.html"
+        $ytp = '--pref media.autoplay.policy=allow-all --pref browser.profile.persist=false'   # (nothing restored from, nor written to, a profile)
+        $play = { param($h) Start-Sleep 12; Mark; Start-Sleep 10 }
+        Run 'yt_h264_1080p60'      "$yt`?src=perf_h264_1080p60" $play $false $ytp
+        Run 'yt_h264_1080p60_prog' "$yt`?src=perf_h264_1080p60&mse=0" $play $false $ytp
+        Run 'yt_av1_1080p30'       "$yt`?src=perf_av1_1080p30&codecs=av01.0.08M.08" $play $false $ytp
+        Run 'yt_short'             "$yt`?src=perf_short_1080x1920" $play $false $ytp
+        Run 'yt_h264_1080p60_task' "$yt`?src=perf_h264_1080p60&task=80" $play $false $ytp
+        Run 'yt_h264_1080p60_wheel' "$yt`?src=perf_h264_1080p60" { param($h) Start-Sleep 12; Mark; WheelStream $h 10000 16 -360 } $false $ytp
+        Run 'yt_h264_1080p60_sample' "$yt`?src=perf_h264_1080p60" $play $true $ytp
+    } finally { Stop-WrenTestServer $srv }
+}

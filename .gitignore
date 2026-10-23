@@ -28,3 +28,6 @@ private.key
 secrets/*.plain.yaml
 secrets/*.plain.json
 secrets/*.plain.env
+
+# big media made by tools\gen_perf_media.ps1 (the yt_* scenarios of tools\perf.ps1)
+examples/site/media/video/perf_*

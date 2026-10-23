@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Player simulator</title>
+<style>
+  /* What a YouTube watch page costs a browser, without the network: a player with the classes and :has() rules the real
+     one toggles while it plays, a progress bar moved on every animation frame, a few thousand elements around it, and
+     MSE with separate audio and video buffers. tools\perf.ps1 (yt_*) drives it. */
+  html, body { margin: 0; background: #0f0f0f; color: #f1f1f1; font: 13px Roboto, Arial, sans-serif; }
+  #page { display: flex; gap: 24px; padding: 24px; }
+  #primary { flex: 1 1 auto; min-width: 0; }
+  #secondary { flex: 0 0 380px; }
+  #movie_player { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 12px; overflow: hidden; --ytp-progress: 0; }
+  #movie_player video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .ytp-chrome-bottom { position: absolute; left: 12px; right: 12px; bottom: 0; height: 48px; opacity: 1; transition: opacity .25s; }
+  .ytp-autohide .ytp-chrome-bottom { opacity: 0; }
+  .ytp-progress-bar { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: rgba(255,255,255,.2); }
+  .ytp-play-progress { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #f03; transform-origin: 0 0; transform: scaleX(var(--ytp-progress)); }
+  .ytp-load-progress { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.4); }
+  .ytp-time { position: absolute; left: 0; bottom: 8px; font-size: 13px; }
+  .ytp-spinner { display: none; }
+  .buffering-mode .ytp-spinner { display: block; }
+  .item { display: flex; gap: 8px; margin: 0 0 12px; padding: 4px; border-radius: 8px; }
+  .item .thumb { flex: 0 0 168px; height: 94px; background: #272727; border-radius: 8px; }
+  .item .meta { display: flex; flex-direction: column; gap: 4px; }
+  .item .title { font-weight: 500; font-size: 14px; }
+  .item .by { color: #aaa; }
+  .item.hot { background: #1f1f1f; }
+  .comment { display: flex; gap: 12px; margin: 0 0 16px; }
+  .comment .avatar { flex: 0 0 40px; height: 40px; border-radius: 50%; background: #3a3a3a; }
+  .comment .body { display: flex; flex-direction: column; gap: 4px; }
+  /* what real sheets do: bare :has() anchors and descendant rules under them */
+  :not(:has(.ytp-big-mode)) > .item .by { color: #aaa; }
+  :has(> .ytp-autohide) .ytp-time { opacity: .9; }
+  html:has(#movie_player.ytp-fullscreen) body { overflow: hidden; }
+  #movie_player:has(.ytp-spinner) .ytp-time { color: #ccc; }
+  .item:has(.thumb.loaded) .title { color: #fff; }
+</style>
+</head>
+<body>
+<!-- ?src=NAME      base name of the media under /video/f/ (default perf_h264_1080p60): NAME.mp4, or NAME_v.mp4 + NAME_a.mp4 with mse=2
+     ?mse=0|1|2     0: <video src=NAME.mp4>; 1: one SourceBuffer with NAME_frag.mp4; 2: audio and video buffers (DASH, what YouTube does)
+     ?codecs=...    the MIME type of the video buffer (default avc1.640032 for H.264; av01.0.08M.08 for AV1)
+     ?items=N       size of the surrounding page (default 1200 items, ~4000 elements)
+     ?task=MS       a busy loop of MS milliseconds every 5 s in a rAF callback (the player's periodic work)
+     ?size=WxH      the player box (default fills the column) -->
+<div id="page">
+  <div id="primary">
+    <div id="movie_player" class="html5-video-player ytp-transparent ytp-modern-caption paused-mode">
+      <video id="v" class="video-stream html5-main-video" playsinline></video>
+      <div class="ytp-spinner"></div>
+      <div class="ytp-chrome-bottom">
+        <div class="ytp-progress-bar"><div class="ytp-load-progress" id="load"></div><div class="ytp-play-progress" id="play"></div></div>
+        <div class="ytp-time" id="time">0:00 / 0:00</div>
+      </div>
+    </div>
+    <h2 id="title">Player simulator</h2>
+    <p id="s"></p>
+    <div id="comments"></div>
+  </div>
+  <div id="secondary"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  const name = q.get('src') || 'perf_h264_1080p60';
+  const mse = +(q.get('mse') ?? 2);
+  const vcodec = q.get('codecs') || (name.includes('av1') ? 'av01.0.08M.08' : 'avc1.640032');
+  const nItems = +(q.get('items') || 1200);
+  const taskMs = +(q.get('task') || 0);
+  const v = document.getElementById('v');
+  window.addEventListener('error', e => { document.getElementById('s').textContent = 'error: ' + e.message + ' ' + e.filename + ':' + e.lineno; });
+  window.addEventListener('unhandledrejection', e => { document.getElementById('s').textContent = 'rejection: ' + (e.reason && e.reason.message || e.reason); });
+  const player = document.getElementById('movie_player');
+  const play = document.getElementById('play');
+  const load = document.getElementById('load');
+  const time = document.getElementById('time');
+  const s = document.getElementById('s');
+  if (q.get('size')) { const [w, h] = q.get('size').split('x'); player.style.width = w + 'px'; player.style.aspectRatio = 'auto'; player.style.height = h + 'px'; }
+
+  // the page around the player
+  const sec = document.getElementById('secondary'), com = document.getElementById('comments');
+  for (let i = 0; i < nItems; i++) {
+    const d = document.createElement('div');
+    d.className = 'item';
+    d.innerHTML = '<div class="thumb ' + (i % 3 ? 'loaded' : '') + '"></div><div class="meta"><span class="title">Video title number ' + i + '</span><span class="by">Channel ' + (i % 40) + '</span><span class="views">' + (i * 137 % 9000) + 'K views</span></div>';
+    sec.appendChild(d);
+    if (i % 3 === 0) {
+      const c = document.createElement('div');
+      c.className = 'comment';
+      c.innerHTML = '<div class="avatar"></div><div class="body"><b>@user' + i + '</b><span>A comment about the video, number ' + i + ', long enough to wrap onto a second line in the column.</span></div>';
+      com.appendChild(c);
+    }
+  }
+
+  const fmt = t => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+  let frames = 0, hot = 0, playErr = '';
+  function raf(ts) {
+    frames++;
+    const d = v.duration || 1;
+    // the progress bar: a custom property on the player and a transform, as the real one does
+    player.style.setProperty('--ytp-progress', (v.currentTime / d).toFixed(5));
+    if (v.buffered.length) load.style.width = (100 * v.buffered.end(v.buffered.length - 1) / d) + '%';
+    // state classes toggled on the player and its children
+    if (frames % 12 === 0) player.classList.toggle('ytp-autohide');
+    if (frames % 7 === 0) player.classList.toggle('ytp-hide-info-bar');
+    if (frames % 30 === 0) { const e = sec.children[hot]; if (e) e.classList.remove('hot'); hot = (hot + 17) % nItems; sec.children[hot].classList.add('hot'); }
+    // layout reads, as the player's resize logic does
+    const r = player.getBoundingClientRect();
+    if (frames % 15 === 0) time.textContent = fmt(v.currentTime) + ' / ' + fmt(v.duration || 0) + (r.width ? '' : '!');
+    if (taskMs && ts - (raf.last || 0) > 5000) { raf.last = ts; const end = performance.now() + taskMs; while (performance.now() < end) {} }
+    requestAnimationFrame(raf);
+  }
+
+  function start() {
+    v.volume = 0.02;
+    v.play().catch(e => { playErr = String(e && e.message || e); });
+    requestAnimationFrame(raf);
+  }
+  v.addEventListener('playing', () => { player.classList.remove('paused-mode', 'buffering-mode'); player.classList.add('playing-mode'); });
+  v.addEventListener('waiting', () => player.classList.add('buffering-mode'));
+  v.addEventListener('loadeddata', () => { s.textContent = 'ready ' + name + ' mse=' + mse; });
+
+  async function bytes(file) { return new Uint8Array(await (await fetch('/video/f/' + file)).arrayBuffer()); }
+  function append(sb, data) {
+    return new Promise((ok) => {
+      let off = 0;
+      const next = () => {
+        if (off >= data.length) { ok(); return; }
+        const n = Math.min(512 * 1024, data.length - off);
+        sb.appendBuffer(data.subarray(off, off + n)); off += n;
+      };
+      sb.addEventListener('updateend', next);
+      next();
+    });
+  }
+  if (mse) {
+    const ms = new MediaSource();
+    v.src = URL.createObjectURL(ms);
+    ms.addEventListener('sourceopen', async () => {
+      if (mse === 1) {
+        const sb = ms.addSourceBuffer('video/mp4; codecs="' + vcodec + ', mp4a.40.2"');
+        await append(sb, await bytes(name + '_frag.mp4'));
+      } else {
+        const vb = ms.addSourceBuffer('video/mp4; codecs="' + vcodec + '"');
+        const ab = ms.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
+        const [vd, ad] = await Promise.all([bytes(name + '_v.mp4'), bytes(name + '_a.mp4')]);
+        await Promise.all([append(vb, vd), append(ab, ad)]);
+      }
+      if (ms.readyState === 'open') ms.endOfStream();
+    }, { once: true });
+  } else {
+    v.src = '/video/f/' + name + '.mp4';
+  }
+  v.loop = true;
+  start();
+  setInterval(() => { s.textContent = 'rs ' + v.readyState + ' t ' + v.currentTime.toFixed(2) + (v.paused ? ' PAUSED' : ' playing') + (playErr ? ' play(): ' + playErr : '') + (v.error ? ' error ' + v.error.code : '') + ' buf ' + (v.buffered.length ? v.buffered.end(0).toFixed(1) : '-'); }, 500);
+</script>
+</body>
+</html>
