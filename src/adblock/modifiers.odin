@@ -161,3 +161,8 @@ match_response_headers :: proc(e: ^Engine, req: ^Request, lookup: Header_Lookup,
 	}
 	return NO_FILTER
 }
+
+// Are there filters that look at responses (`$header`, `$csp`)? When not, the response hook has nothing to do.
+has_response_filters :: proc(e: ^Engine) -> bool {
+	return e != nil && (!class_empty(e, .Header) || !class_empty(e, .Csp))
+}

@@ -1,0 +1,1 @@
+(function(){var w=window;var noop=function(){};w.apstag={fetchBids:function(c,cb){if(typeof cb==="function"){setTimeout(function(){cb([]);},1);}},init:noop,setDisplayBids:noop,targetingKeys:function(){return [];},dpa:noop,rpa:noop,upa:noop,updateReg:noop};})();
