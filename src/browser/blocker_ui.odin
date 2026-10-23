@@ -20,75 +20,193 @@ import "wb:i18n"
 Shield_State :: enum u8 { Off, Site_Off, Active, Loading, Idle }
 
 Shield_Draw :: struct {
-	app:   ^App,
-	state: Shield_State,
-	count: int,
-	hot:   bool,
+	app:     ^App,
+	state:   Shield_State,
+	count:   int,
+	color:   draw.Color,   // the state's tone, from the theme
+	ink:     draw.Color,   // what is drawn on the filled shield (the window's background)
+	badge:   draw.Color,   // the badge's fill: the theme's accent (a count of what was stopped is good news, not an alert)
+	badge_ink: draw.Color,
+	focus:   draw.Color,
+	radius:  f32,
 }
 
-SHIELD_GREEN :: draw.Color{0.20, 0.66, 0.38, 1}
-SHIELD_AMBER :: draw.Color{0.93, 0.62, 0.12, 1}
-SHIELD_GREY  :: draw.Color{0.55, 0.57, 0.62, 1}
-BLOCK_RED    :: draw.Color{0.86, 0.25, 0.22, 1}
+// The tones of the blocker (the shield, the matrix, the journal) are the theme's own: the colors the security chip and the toasts
+// use for good, warn, bad and weak. Read once per frame, where the interface is built (tags are a build-time scope).
+SHIELD_GREEN := draw.Color{0.20, 0.66, 0.38, 1}
+SHIELD_AMBER := draw.Color{0.93, 0.62, 0.12, 1}
+SHIELD_GREY  := draw.Color{0.55, 0.57, 0.62, 1}
+BLOCK_RED    := draw.Color{0.86, 0.25, 0.22, 1}
+
+@(private = "file")
+tone_color :: proc(tag: string) -> draw.Color {
+	c := ui.color("text")
+	if ui.tags(tag) { c = ui.color("text") }
+	return c
+}
+
+blocker_theme :: proc() {
+	SHIELD_GREEN, SHIELD_AMBER, SHIELD_GREY, BLOCK_RED = tone_color("good"), tone_color("warn"), tone_color("weak"), tone_color("bad")
+}
+
+@(private = "file")
+luma :: proc(c: draw.Color) -> f32 { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b }
+
+@(private = "file")
+shield_look :: proc(d: ^Shield_Draw, app: ^App, state: Shield_State, count: int) {
+	d.app, d.state, d.count = app, state, count
+	switch state {
+	case .Active: d.color = SHIELD_GREEN
+	case .Loading: d.color = SHIELD_AMBER
+	case .Off, .Site_Off, .Idle: d.color = SHIELD_GREY
+	}
+	d.ink = ui.color("background")
+	d.ink.a = 1
+	d.badge = ui.color("accent")
+	d.badge.a = 1
+	light := ui.color("text")
+	light.a = 1
+	d.badge_ink = abs(luma(d.badge) - luma(d.ink)) > abs(luma(d.badge) - luma(light)) ? d.ink : light
+	d.focus = ui.color("accent")
+	d.radius = ui.font_size() * CHROME_BUTTON_RADIUS
+}
+
+// The outline of a shield in a box of `w` by `h` centered on `c`: a crest that falls to rounded shoulders, straight sides, and
+// two curves that meet in a sharp tip. Symmetric; 58 points, clockwise on the screen. Built from cubic curves in a unit box
+// (u across -1..1, v down 0..1).
+SHIELD_MAX :: 64
+
+@(private = "file")
+shield_points :: proc(pts: ^[SHIELD_MAX]draw.Vec2, c: draw.Vec2, w, h: f32) -> int {
+	half: [SHIELD_MAX / 2]draw.Vec2
+	n := 0
+	curve :: proc(out: []draw.Vec2, n: ^int, p0, p1, p2, p3: draw.Vec2, steps: int, first: bool) {
+		for i in (first ? 0 : 1) ..= steps {
+			t := f32(i) / f32(steps)
+			u := 1 - t
+			out[n^] = p0 * (u * u * u) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t * t * t)
+			n^ += 1
+		}
+	}
+	curve(half[:], &n, {0, 0}, {0.30, 0.10}, {0.62, 0.16}, {0.93, 0.16}, 10, true)    // the crest, falling to the shoulder
+	curve(half[:], &n, {0.93, 0.16}, {1, 0.16}, {1, 0.20}, {1, 0.27}, 4, false)       // the rounded shoulder
+	half[n] = {1, 0.50}; n += 1                                                       // the side
+	curve(half[:], &n, {1, 0.50}, {1, 0.73}, {0.46, 0.81}, {0, 1}, 14, false)          // down to the tip
+	top := c.y - h * 0.5
+	at :: proc(u, v: f32, c: draw.Vec2, w, h, top: f32) -> draw.Vec2 { return {c.x + u * w * 0.5, top + v * h} }
+	m := 0
+	for p in half[:n] { pts[m] = at(p.x, p.y, c, w, h, top); m += 1 }
+	for i := n - 2; i >= 1; i -= 1 { pts[m] = at(-half[i].x, half[i].y, c, w, h, top); m += 1 }
+	return m
+}
+
+// The same shape pulled in by `d` all round (the inner edge of the outline).
+@(private = "file")
+shield_inset :: proc(out, pts: []draw.Vec2, d: f32) {
+	n := len(pts)
+	for i in 0 ..< n {
+		p, a, b := pts[i], pts[(i + n - 1) % n], pts[(i + 1) % n]
+		e0, e1 := p - a, b - p
+		l0, l1 := max(math.sqrt(e0.x * e0.x + e0.y * e0.y), 1e-4), max(math.sqrt(e1.x * e1.x + e1.y * e1.y), 1e-4)
+		n0, n1 := draw.Vec2{-e0.y / l0, e0.x / l0}, draw.Vec2{-e1.y / l1, e1.x / l1}   // inward normals (clockwise outline)
+		s := n0 + n1
+		ls := max(math.sqrt(s.x * s.x + s.y * s.y), 1e-4)
+		s /= ls
+		k := d / max(s.x * n0.x + s.y * n0.y, 0.4)
+		out[i] = p + s * k
+	}
+}
+
+// A stroke of `thick` between two points with round ends.
+@(private = "file")
+stroke :: proc(dc: ^draw.Context, a, b: draw.Vec2, thick: f32, color: draw.Color) {
+	d := b - a
+	l := math.sqrt(d.x * d.x + d.y * d.y)
+	mid := (a + b) * 0.5
+	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.atan2(-d.x, d.y)), mid))
+	draw.rect(dc, {{mid.x - thick * 0.5, mid.y - l * 0.5 - thick * 0.5}, {mid.x + thick * 0.5, mid.y + l * 0.5 + thick * 0.5}}, color, thick * 0.5)
+	draw.pop_transform(dc)
+}
 
 @(private = "file")
 shield_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Shield_Draw)(user)
 	r := b.rect
-	c := draw.rect_center(r)
-	h := (r.max.y - r.min.y) * 0.60
-	w := h * 0.86
-	top := c.y - h * 0.52
-	col: draw.Color
-	switch d.state {
-	case .Active: col = SHIELD_GREEN
-	case .Loading: col = SHIELD_AMBER
-	case .Off, .Site_Off, .Idle: col = SHIELD_GREY
+	bh := r.max.y - r.min.y
+	c := draw.rect_center(r)     // the same center as the menu button's bars and the other icons of the row
+	sh := bh * 0.60               // the shield's height
+	sw := sh * 0.86
+	thick := max(2, bh * 0.075)   // the stroke of the menu button's bars
+	pts: [SHIELD_MAX]draw.Vec2
+	n := shield_points(&pts, c, sw, sh)
+	bounds := draw.Rect{{c.x - sw * 0.5 - 1, c.y - sh * 0.5 - 1}, {c.x + sw * 0.5 + 1, c.y + sh * 0.5 + 1}}
+
+	filled := d.state == .Active || d.state == .Off
+	col := d.color
+	if d.state == .Idle { col.a *= 0.6 }
+	if filled {
+		draw.push_clip_polygon(dc, pts[:n])
+		draw.rect(dc, bounds, col)
+		draw.pop_clip(dc)
+	} else {
+		ring: [2 * SHIELD_MAX + 4]draw.Vec2
+		inner: [SHIELD_MAX]draw.Vec2
+		shield_inset(inner[:n], pts[:n], thick)
+		k := 0
+		for i in 0 ..< n { ring[k] = pts[i]; k += 1 }
+		ring[k] = pts[0]; k += 1
+		ring[k] = inner[0]; k += 1
+		for i := n - 1; i >= 1; i -= 1 { ring[k] = inner[i]; k += 1 }
+		ring[k] = inner[0]; k += 1
+		draw.push_clip_polygon(dc, ring[:k], true)
+		draw.rect(dc, bounds, col)
+		draw.pop_clip(dc)
 	}
-	fill := col
-	if d.state == .Site_Off || d.state == .Off { fill.a = 0.55 }
-	// the body: a rectangle with rounded top corners over a diamond that makes the point
-	body_h := h * 0.58
-	draw.rect_corners(dc, {{c.x - w * 0.5, top}, {c.x + w * 0.5, top + body_h}}, {fill, fill, fill, fill}, {w * 0.16, w * 0.16, 0, 0})
-	side := w * 0.5 / 1.41421356
-	dc_pivot := draw.Vec2{c.x, top + body_h}
-	draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.PI / 4), dc_pivot))
-	draw.rect(dc, {{dc_pivot.x - side, dc_pivot.y - side}, {dc_pivot.x + side, dc_pivot.y + side}}, fill, side * 0.12)
-	draw.pop_transform(dc)
-	ink := ui.color("background")
-	ink.a = 1
-	stroke := max(w * 0.11, 1.5)
-	#partial switch d.state {
-	case .Active:
-		// a check mark
-		p := draw.Vec2{c.x - w * 0.02, top + h * 0.56}
-		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(math.PI / 4), p))
-		draw.rect(dc, {{p.x - stroke * 0.5, p.y - w * 0.22}, {p.x + stroke * 0.5, p.y + stroke * 0.5}}, ink, stroke * 0.3)
-		draw.pop_transform(dc)
-		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(-math.PI / 4), p))
-		draw.rect(dc, {{p.x - stroke * 0.5, p.y - w * 0.34}, {p.x + stroke * 0.5, p.y + stroke * 0.5}}, ink, stroke * 0.3)
-		draw.pop_transform(dc)
-	case .Site_Off, .Off:
-		// a slash across the shield
-		p := draw.Vec2{c.x, top + h * 0.5}
-		line := ui.color("text")
-		draw.push_transform(dc, draw.affine_around(draw.affine_rotate(-math.PI / 4), p))
-		draw.rect(dc, {{p.x - stroke * 0.5, p.y - h * 0.58}, {p.x + stroke * 0.5, p.y + h * 0.58}}, line, stroke * 0.4)
-		draw.pop_transform(dc)
+
+	// the glyph inside says the state
+	gy := c.y - sh * 0.02
+	show_glyph := !(d.count > 0 && bl.b.cfg.badge && bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading))
+	if show_glyph do switch d.state {
+	case .Active:   // a check mark, knocked out of the filled shield
+		stroke(dc, {c.x - sh * 0.17, gy + sh * 0.01}, {c.x - sh * 0.05, gy + sh * 0.13}, thick, d.ink)
+		stroke(dc, {c.x - sh * 0.05, gy + sh * 0.13}, {c.x + sh * 0.18, gy - sh * 0.12}, thick, d.ink)
+	case .Loading:   // the same check, in the outline's tone: the lists are not all there yet
+		stroke(dc, {c.x - sh * 0.15, gy + sh * 0.01}, {c.x - sh * 0.04, gy + sh * 0.12}, thick, col)
+		stroke(dc, {c.x - sh * 0.04, gy + sh * 0.12}, {c.x + sh * 0.16, gy - sh * 0.10}, thick, col)
+	case .Off:   // a pause sign on the grey shield: the blocker as a whole is off
+		stroke(dc, {c.x - sh * 0.10, gy - sh * 0.11}, {c.x - sh * 0.10, gy + sh * 0.11}, thick, d.ink)
+		stroke(dc, {c.x + sh * 0.10, gy - sh * 0.11}, {c.x + sh * 0.10, gy + sh * 0.11}, thick, d.ink)
+	case .Site_Off:   // a slash through the outline: off for this site
+		stroke(dc, {c.x - sw * 0.62, c.y - sh * 0.56}, {c.x + sw * 0.62, c.y + sh * 0.56}, thick, col)
+	case .Idle:
 	}
-	// the badge
-	if d.count > 0 && bl.b.cfg.badge {
-		text := d.count > 999 ? "999+" : fmt.tprintf("%d", d.count)
-		size := ui.font_size() * 0.68
-		m := font.metrics(&d.app.fonts, d.app.ui_font, size)
-		tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
-		pad := size * 0.32
-		bw, bh := tw + pad * 2, m.ascent - m.descent + pad * 0.6
-		right, bottom := r.max.x - 1, r.max.y - (r.max.y - r.min.y) * 0.08
-		br := draw.Rect{{right - bw, bottom - bh}, {right, bottom}}
-		draw.rect(dc, br, BLOCK_RED, bh * 0.5)
-		pen := draw.Vec2{br.min.x + pad, br.min.y + (bh - (m.ascent - m.descent)) * 0.5 + m.ascent}
-		draw.text(dc, d.app.ui_font, size, pen, draw.Color{1, 1, 1, 1}, text)
+
+	// the count of blocked requests: in a small badge hung on the shield's top right corner, or inside the shield (blocker.badge.style)
+	if d.count > 0 && bl.b.cfg.badge && d.state != .Off && d.state != .Idle {
+		text := d.count > 99 ? "99+" : fmt.tprintf("%d", d.count)
+		if bl.b.cfg.badge_inside && (d.state == .Active || d.state == .Loading) {
+			size := sh * (len(text) > 2 ? 0.40 : 0.50)
+			tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
+			ink := d.state == .Active ? d.ink : col
+			draw.text(dc, d.app.ui_font, size, {math.round(c.x - tw * 0.5), math.round(c.y + size * 0.36 + sh * 0.02)}, ink, text)
+		} else if !bl.b.cfg.badge_inside {
+			size := ui.font_size() * 0.57
+			tw := font.text_width(&d.app.fonts, d.app.ui_font, size, text)
+			bhh := math.round(size * 1.22)
+			bw := math.round(max(tw + size * 0.55, bhh))
+			edge := max(1, math.round(ui.scale()))
+			left := math.round(c.x + sw * 0.5 - sw * 0.22)    // over a fifth of the shield's width, no more
+			top := math.round(c.y - sh * 0.5 - sh * 0.16)
+			top = max(top, r.min.y + edge)
+			br := draw.Rect{{left, top}, {left + bw, top + bhh}}
+			draw.rect(dc, {{br.min.x - edge, br.min.y - edge}, {br.max.x + edge, br.max.y + edge}}, d.ink, bhh * 0.5 + edge)
+			draw.rect(dc, br, d.badge, bhh * 0.5)
+			draw.text(dc, d.app.ui_font, size, {math.round(br.min.x + (bw - tw) * 0.5), math.round(br.min.y + bhh * 0.5 + size * 0.36)}, d.badge_ink, text)
+		}
+	}
+	// keyboard focus, as a ring around the button
+	if ui.focus_key() == b.key {
+		draw.rect(dc, {{r.min.x + 1, r.min.y + 1}, {r.max.x - 1, r.max.y - 1}}, d.focus, d.radius, max(2, ui.scale() * 1.5))
 	}
 }
 
@@ -113,11 +231,12 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 		blocker.conf_save(&bl.b)
 		ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel"))
 	}
+	blocker_theme()
 	d := ui.frame_new(Shield_Draw)
-	d.app, d.state, d.count = app, state, count
+	shield_look(d, app, state, count)
 	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
 	ui.push_tags("icon_button")
-	b := ui.custom("###blocker_icon", shield_draw, d, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
+	b := ui.custom("###blocker_icon", shield_draw, d, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
 	ui.pop_tags()
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###blocker_panel")
@@ -344,10 +463,10 @@ panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 	if ui.row(.Center) {
 		ui.spacer(ui.px(em * 0.8))
 		pd := ui.frame_new(Shield_Draw)
-		pd.app, pd.state, pd.count = app, state, 0
+		shield_look(pd, app, state, 0)
 		ui.next({width = ui.px(em * 3), height = ui.px(ui.dense(em * 3)), radius = em * 1.5})
 		ui.push_tags("icon_button")
-		pb := ui.custom("###bl_power", shield_draw, pd, {.Clickable, .Draw_Background, .Draw_Hot_Effects})
+		pb := ui.custom("###bl_power", shield_draw, pd, {.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects})
 		ui.pop_tags()
 		psig := ui.signal(pb)
 		tip(psig, has_host ? (enabled_site ? i18n.tr("Turn the blocker off for this site (the page reloads)") : i18n.tr("Turn the blocker on for this site (the page reloads)")) : i18n.tr("Not applicable to this page"))
