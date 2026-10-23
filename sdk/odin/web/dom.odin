@@ -276,6 +276,7 @@ foreign _m_dom {
 	@(link_name = "Node_set_textContent") _Node_set_textContent :: proc(node: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Node_normalize") _Node_normalize :: proc(node: u64) ---
 	@(link_name = "Node_cloneNode") _Node_cloneNode :: proc(node: u64, deep: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_importNodeCopy") _Document_importNodeCopy :: proc(node: u64, deep: i32, _ret: ^Node) -> Error ---
 	@(link_name = "Node_isEqualNode") _Node_isEqualNode :: proc(node: u64, other: u64) -> i32 ---
 	@(link_name = "Node_isSameNode") _Node_isSameNode :: proc(node: u64, other: u64) -> i32 ---
 	@(link_name = "Node_compareDocumentPosition") _Node_compareDocumentPosition :: proc(node: u64, other: u64) -> u32 ---
@@ -3034,9 +3035,18 @@ Node_normalize :: proc "contextless" (node: $T_node) where intrinsics.type_is_in
 	_Node_normalize(u64(node))
 }
 
-// node.cloneNode(deep). Not_Supported for the document (one document per page).
+// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+// document: no definition applies there).
 Node_cloneNode :: proc "contextless" (node: $T_node, deep: bool = false) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
 	err = _Node_cloneNode(u64(node), i32(1 if deep else 0), &result)
+	return
+}
+
+// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+// contents included), so its elements of a defined name are upgraded before it returns.
+Document_importNodeCopy :: proc "contextless" (node: $T_node, deep: bool = false) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Document_importNodeCopy(u64(node), i32(1 if deep else 0), &result)
 	return
 }
 

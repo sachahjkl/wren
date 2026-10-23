@@ -15101,6 +15101,32 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
+// Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_importNodeCopy :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_importNodeCopy", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_importNodeCopy: argument node is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r, _err := Document_importNodeCopy(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Node_isEqualNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool
 @(private = "file")
 _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22874,6 +22900,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Node_set_textContent", fn = _t_dom_Node_set_textContent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_normalize", fn = _t_dom_Node_normalize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Node_cloneNode", fn = _t_dom_Node_cloneNode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_importNodeCopy", fn = _t_dom_Document_importNodeCopy, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_isEqualNode", fn = _t_dom_Node_isEqualNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_isSameNode", fn = _t_dom_Node_isSameNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_compareDocumentPosition", fn = _t_dom_Node_compareDocumentPosition, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},

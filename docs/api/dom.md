@@ -2592,11 +2592,26 @@ Host: `Node_normalize :: proc(c: ^Call, node: Api_Node)`
 Node Node_cloneNode(Node node, bool deep = false) raises
 ```
 
-node.cloneNode(deep). Not_Supported for the document (one document per page).
+node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+document: no definition applies there).
 
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)`
+
+### `Document_importNodeCopy`
+
+```
+Node Document_importNodeCopy(Node node, bool deep = false) raises
+```
+
+document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+contents included), so its elements of a defined name are upgraded before it returns.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)`
 
 ### `Node_isEqualNode`
 

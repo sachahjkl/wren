@@ -25,11 +25,13 @@ CE_ATTRIBUTE    :: u8(4)
 CE_STATE_CUSTOM :: u8(1)
 CE_STATE_FAILED :: u8(2)
 
+@(private) CE_MAX_DEPTH :: 64   // nested drains (reactions making reactions); deeper ones wait for the outer drain
+
 Custom_Elements :: struct {
 	defined: map[string]bool,           // owned keys
 	state:   map[base.Handle]u8,
 	queue:   [dynamic]Ce_Reaction,
-	flushing: bool,
+	depth:   int,                       // nested drains: a reaction's own DOM calls run what they queue before they return
 }
 
 @(private)
@@ -107,17 +109,18 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 // Runs the queued reactions in the engine ([CEReactions]: at the end of the browser call that queued them).
 custom_elements_flush :: proc(p: ^Page) {
 	ce := ce_of(p)
-	if ce == nil || len(ce.queue) == 0 || ce.flushing { return }
+	if ce == nil || len(ce.queue) == 0 || ce.depth >= CE_MAX_DEPTH { return }
 	r := p.js
 	if r == nil || r.failed || r.inst == nil || r.inst.dead || p.closed {
 		for &x in ce.queue { ce_reaction_free(p, &x) }
 		clear(&ce.queue)
 		return
 	}
-	// a reaction that queues more (a constructor appending children) is served by the same drain: the engine takes
-	// the queue until it is empty
-	ce.flushing = true
-	defer ce.flushing = false
+	// the engine takes the queue until it is empty. A reaction's own DOM calls (a connectedCallback appending a template's
+	// content) are [CEReactions] calls too: what they queue runs when they return (a nested drain: the specification's stack
+	// of element queues), so that the elements they made are upgraded before the callback goes on.
+	ce.depth += 1
+	defer ce.depth -= 1
 	js_call(p, r.inst, "wj_ce_process", nil)
 }
 
@@ -195,6 +198,14 @@ Element_setCustomState :: proc(c: ^Call, element: Api_Element, state: u32) {
 	h := H(element.handle)
 	if state == 0 { delete_key(&ce.state, h) } else { ce.state[h] = u8(state) }
 	dom.custom_element_set_defined(c.page.doc, h, state == u32(CE_STATE_CUSTOM))
+}
+
+// A clone made in the document's own realm (cloneNode of a node of the document, importNode): its elements of a defined
+// name are upgraded before the call returns, in tree order, as Polymer's template stamping (importNode) expects.
+custom_elements_cloned :: proc(p: ^Page, h: base.Handle) {
+	ce := ce_of(p)
+	if ce == nil || len(ce.defined) == 0 { return }
+	ce_walk(p, ce, p.doc, h, true, false)
 }
 
 // document.createElement(name) of a defined name: the element is upgraded before createElement returns.

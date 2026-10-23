@@ -578,7 +578,7 @@ JSValue wjr_Document_importNode(JSContext *ctx, JSValueConst this_val, int argc,
         deep = JS_ToBool(ctx, opt);
     }
     uint64_t h = 0;
-    int32_t st = wr_Node_cloneNode(node, deep, &h);
+    int32_t st = wr_Document_importNodeCopy(node, deep, &h);
     if (st < 0) { return wj_throw_status(ctx, st, "Document.importNode"); }
     return wj_wrap_node(ctx, h);
 }
