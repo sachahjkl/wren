@@ -110,7 +110,10 @@ append_file :: proc(path: string, offset: i64, data: []byte, flush: bool) -> boo
 		os.truncate(f, offset)
 		return false
 	}
-	if flush && os.sync(f) != nil { return false }
+	if flush && os.sync(f) != nil {
+		os.truncate(f, offset)   // (the transaction is rolled back: its record must not come back at the next load)
+		return false
+	}
 	return true
 }
 
