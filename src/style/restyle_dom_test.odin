@@ -229,6 +229,23 @@ restyle_dom_has_bare_anchor_unrelated_changes :: proc(t: ^testing.T) {
 	expect_partial(t, f, "attribute removed")
 }
 
+// `:has(> .k)` can only be an ancestor one level up: a class toggled deep in the tree restyles the parent's subtree, not
+// every ancestor's (html and body as whole subtrees), and the result is still a full pass's.
+@(test)
+restyle_dom_has_child_combinator_reaches_one_level :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(> .k) .w { color: red } :has(> .k > .j) { outline: 1px solid red } :has(+ .m) { margin: 1px }</style>
+		<div id=r><div id=a><div id=b><div id=c><div id=d><span class=w id=w1>x</span></div></div></div></div>
+		<div id=e><span class=w id=w2>y</span></div></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "d"), "class", "k")
+	expect_partial(t, f, "class on a deep element", 4)   // its parent (c) and what the rule reaches below it (not r, a, b)
+	testing.expect(t, style_of(f.st, by_id(f, "w1")).color == {1, 0, 0, 1})
+	dom.set_attribute(f.doc, by_id(f, "w1"), "class", "w j")
+	expect_partial(t, f, "second level")
+	dom.set_attribute(f.doc, by_id(f, "e"), "class", "m")
+	expect_partial(t, f, "sibling anchor", 3)
+}
+
 @(test)
 restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	f := rx_load(`<style>[data-x="y"] { color: red } [data-x] span { margin: 1px } #one { padding: 5px } #one > i { font-style: normal } a:link { color: green }</style>
