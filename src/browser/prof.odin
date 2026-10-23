@@ -322,6 +322,7 @@ prof_report :: proc() {
 	fmt.sbprintf(&sb, "\nlast frame: %d layout items, %d instances, %d batches, %d styled elements\n", last.items, last.insts, last.batches, last.elements)
 	report_startup(&sb)
 	report_layout_passes(&sb)
+	video_shell_report(&sb, prof.freq)
 
 	if prof.sampling && prof.n_samples > 0 { report_samples(&sb) }
 

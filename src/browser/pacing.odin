@@ -196,7 +196,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
 	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
-	input := shell_input_pending()
+	input := shell_user_input_pending()
 	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
