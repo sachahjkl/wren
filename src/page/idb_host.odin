@@ -17,7 +17,6 @@ package page
 // A page whose origin is opaque, or whose storage is off (indexeddb.enabled), gets a SecurityError. Workers have no
 // IndexedDB yet: the data lives on the page thread and a worker's realm runs on its own.
 
-import "core:fmt"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -120,7 +119,6 @@ idb_page_of :: proc(p: ^Page) -> (^Idb_Page, Api_Error) {
 // Manager -> page: the client has an event. A task of the page delivers it.
 @(private)
 idb_wake :: proc(c: ^idb.Client) {
-	fmt.eprintln("IDBDBG wake")
 	p := page_by_id(u64(uintptr(c.user)))
 	if p == nil || p.web.idb == nil { return }
 	idb_post_delivery(p)
@@ -142,7 +140,6 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 	ip.deliver_posted = false
 	if ip.client == nil { return }
 	ev, ok := idb.client_pop(ip.client)
-	fmt.eprintln("IDBDBG deliver", ok, ev.kind, ev.a, ev.tx)
 	if !ok { return }
 	w := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
 	idb.w_u8(&w, u8(ev.kind))
@@ -195,7 +192,6 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 	ip, err := idb_page_of(p)
 	if ip == nil { return nil, err }
 	cl := ip.client
-	fmt.eprintln("IDBDBG call", op)
 	if op & IDB_OP_AGAIN != 0 { return ip.last[:], .None }
 	r := idb.Reader{data = args}
 	out := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
