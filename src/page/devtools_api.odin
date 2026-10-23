@@ -36,7 +36,7 @@ computed_property :: proc(p: ^Page, h: base.Handle, name: string) -> string {
 // The style rules that match `h`, strongest first (`ua`: the browser's own included). Memory of the temporary allocator.
 dev_matched_rules :: proc(p: ^Page, h: base.Handle, ua := false) -> []style.Dev_Rule {
 	if p == nil || p.closed || p.engine == nil { return nil }
-	return style.dev_matched_rules(p.engine, p.doc, p.style_state, h, ua)
+	return style.dev_matched_rules(p.engine, p.doc, effective_state(p), h, ua)
 }
 
 // A rule's declarations replaced (an edit, a property switched off): the page restyles at its next frame.
@@ -188,7 +188,7 @@ dev_console_max: int
 // Turns the description of console arguments on (up to `max_bytes` per message) or off (0) in the page's realm, if it has one.
 dev_console_arm :: proc(p: ^Page, max_bytes: int) {
 	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
-	src := fmt.tprintf("{{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) {{ s.on = %v; s.max = %d; }} }}", max_bytes > 0, max(max_bytes, 1024))
+	src := fmt.tprintf("{{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) {{ s.on = %v; s.max = %d; if (!s.on) s.refs.clear(); }} }}", max_bytes > 0, max(max_bytes, 1024))
 	js_run(p, transmute([]byte)src, "devtools", 1)
 }
 
@@ -197,4 +197,90 @@ dev_console_complete :: proc(p: ^Page, path: string) {
 	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
 	src := strings.concatenate({"{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) s.complete(", js_quote(path), "); }"}, context.temp_allocator)
 	js_run(p, transmute([]byte)src, "devtools", 1)
+}
+////////////////////////////////
+// Forced element states
+
+// What the developer tools force on one element: it matches :hover (and so do its ancestors, as with a real pointer), :active,
+// :focus (and :focus-visible) or :visited whatever the pointer, the focus and the history say.
+Forced_State :: struct {
+	el:                            base.Handle,
+	hover, active, focus, visited: bool,
+}
+
+// The state the styles are computed from: the shell's own (pointer, focus, fragment) with the forced states over it.
+effective_state :: proc(p: ^Page) -> style.State {
+	s := p.style_state
+	f := p.forced
+	if f.el == base.NIL_HANDLE || dom.get(p.doc, f.el) == nil { return s }
+	if f.hover { s.hover = f.el }
+	if f.active { s.active = f.el }
+	if f.focus { s.focus, s.focus_visible = f.el, true }
+	if f.visited { s.visited = f.el }
+	return s
+}
+
+dev_forced :: proc(p: ^Page) -> Forced_State { return p == nil ? {} : p.forced }
+
+// Forces (or stops forcing) the states of `el`; the element that had some loses them. Restyled by the next styles pass.
+dev_force_state :: proc(p: ^Page, el: base.Handle, hover, active, focus, visited: bool) {
+	if p == nil || p.closed { return }
+	p.forced = {}
+	if hover || active || focus || visited { p.forced = Forced_State{el = el, hover = hover, active = active, focus = focus, visited = visited} }
+}
+
+// The objects of console messages (kept by the realm under the id their description carries): stored under a global name
+// (temp1, temp2...) and shown, or sent back as JSON text (a line the shell takes for the clipboard).
+dev_console_store :: proc(p: ^Page, ref: int) { dev_console_call(p, fmt.tprintf("s.store(%d)", ref)) }
+dev_console_copy :: proc(p: ^Page, ref: int) { dev_console_call(p, fmt.tprintf("s.copy(%d)", ref)) }
+
+@(private)
+dev_console_call :: proc(p: ^Page, call: string) {
+	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
+	src := strings.concatenate({"{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) ", call, "; }"}, context.temp_allocator)
+	js_run(p, transmute([]byte)src, "devtools", 1)
+}
+
+// A node of the document stored under a global name (temp1...): found again by its position among the children from the
+// document. False when it is not in the document's own tree (a shadow tree, a detached node).
+dev_store_node :: proc(p: ^Page, h: base.Handle) -> bool {
+	if p == nil || p.closed || p.doc == nil { return false }
+	path := make([dynamic]int, context.temp_allocator)
+	for cur := h; cur != p.doc.root; {
+		n := dom.get(p.doc, cur)
+		if n == nil || n.parent == base.NIL_HANDLE { return false }
+		i := 0
+		for s := n.prev; s != base.NIL_HANDLE; { sn := dom.get(p.doc, s); if sn == nil { break }; i += 1; s = sn.prev }
+		inject_at(&path, 0, i)
+		cur = n.parent
+	}
+	b := strings.builder_make(context.temp_allocator)
+	for v, i in path { fmt.sbprintf(&b, "%s%d", i > 0 ? "," : "", v) }
+	dev_console_call(p, fmt.tprintf("s.storeNode([%s])", strings.to_string(b)))
+	return true
+}
+
+// The nested documents of a page, outermost first (the contexts of the console's selector): their address and their page.
+Dev_Frame :: struct { href: string, page: ^Page, depth: int }
+
+dev_frames :: proc(p: ^Page) -> []Dev_Frame {
+	out := make([dynamic]Dev_Frame, context.temp_allocator)
+	dev_frames_walk(p, 1, &out)
+	return out[:]
+}
+
+@(private)
+dev_frames_walk :: proc(p: ^Page, depth: int, out: ^[dynamic]Dev_Frame) {
+	if p == nil || p.closed || p.frames == nil || len(out) >= 64 || depth > 6 { return }
+	for n in p.frames.children {
+		if n == nil || n.page == nil || n.page.closed { continue }
+		append(out, Dev_Frame{href = n.page.env.location.href, page = n.page, depth = depth})
+		dev_frames_walk(n.page, depth + 1, out)
+	}
+}
+
+// A script of the developer tools run in the page's realm (a request replayed as the page would make it).
+dev_run_script :: proc(p: ^Page, source: string) -> bool {
+	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return false }
+	return js_run(p, transmute([]byte)source, "devtools", 1) == .Ok
 }

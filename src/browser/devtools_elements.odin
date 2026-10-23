@@ -830,16 +830,40 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if ui.menu_item("Copy full XPath###dt_em_c_fxp", enabled = is_el).clicked { clip_set(xpath_of(t.page, h, true)) }
 	}
 	if ui.menu_submenu("Force state###dt_em_state") {
-		ui.menu_item(":active###dt_em_s_a", enabled = false)
-		ui.menu_item(":hover###dt_em_s_h", enabled = false)
-		ui.menu_item(":focus###dt_em_s_f", enabled = false)
-		ui.menu_item(":visited###dt_em_s_v", enabled = false)
+		f := page.dev_forced(t.page)
+		if f.el != h { f = {} }
+		toggle :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, h: base.Handle, f: page.Forced_State, which: int) {
+			g := f
+			switch which {
+			case 0: g.active = !g.active
+			case 1: g.hover = !g.hover
+			case 2: g.focus = !g.focus
+			case 3: g.visited = !g.visited
+			}
+			page.dev_force_state(t.page, h, g.hover, g.active, g.focus, g.visited)
+			e.version += 1
+			app.frames_requested = max(app.frames_requested, 3)
+		}
+		if ui.menu_item(":active###dt_em_s_a", checked = f.active, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 0) }
+		if ui.menu_item(":hover###dt_em_s_h", checked = f.hover, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 1) }
+		if ui.menu_item(":focus###dt_em_s_f", checked = f.focus, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 2) }
+		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
+		ui.menu_separator()
+		if ui.menu_item("Clear forced states###dt_em_s_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE).clicked {
+			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false)
+			e.version += 1
+			app.frames_requested = max(app.frames_requested, 3)
+		}
 	}
 	ui.menu_separator()
 	if ui.menu_item("Expand all underneath###dt_em_exp", enabled = r.expandable).clicked { budget := 5000; toggle_all(e, t.page.doc, h, true, &budget) }
 	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := 5000; toggle_all(e, t.page.doc, h, false, &budget) }
 	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el).clicked { scroll_into_view(app, t, h) }
-	ui.menu_item("Store as global variable###dt_em_store", enabled = false)
+	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype).clicked {
+		dev.con.evaluating = true
+		if page.dev_store_node(t.page, h) { ui.toast(.Info, "Stored as a global variable: see the Console") } else { ui.toast(.Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
+		dev.con.evaluating = false
+	}
 	if sp := e.menu_span; e.menu_has_span && sp.val_a >= 0 {
 		val := r.label[sp.val_a:sp.val_b]
 		name := r.label[sp.name_a:sp.name_b]

@@ -194,7 +194,9 @@
     (function () {
       const c = globalThis.console;
       if (!c || typeof c.log !== "function") return;
-      const state = { on: false, max: 262144 };
+      const state = { on: false, max: 262144, refs: new Map(), rid: 0, temps: 0 };
+      // the arguments of the last console calls stay reachable (by the id in their description) for "Store as global variable" and "Copy object"
+      const keep = (args) => { const id = ++state.rid; state.refs.set(id, args); if (state.refs.size > 300) state.refs.delete(state.refs.keys().next().value); return id; };
       hidden(c, Symbol.for("wren.devtools"), state);
       const orig = {};
       const names = ["log", "info", "warn", "error", "debug", "dir", "dirxml", "table", "assert", "trace"];
@@ -334,7 +336,7 @@
             if (state.on) {
               try {
                 const b = { n: 400 };
-                send("dt", '{"l":"' + (m === "dir" || m === "dirxml" ? "log" : m) + '","w":' + str(where()) + ',"a":[' + args.map((a) => node(a, 0, [], b)).join(",") + "]}");
+                send("dt", '{"l":"' + (m === "dir" || m === "dirxml" ? "log" : m) + '","r":' + keep(args) + ',"w":' + str(where()) + ',"a":[' + args.map((a) => node(a, 0, [], b)).join(",") + "]}");
               } catch (e) {}
             }
             return f.apply(this === undefined ? c : this, args);
@@ -345,17 +347,24 @@
       {
         const f = orig.table;
         hidden(c, "table", { table(data, cols) {
-          if (state.on) { try { const t = table(data, cols); if (t) send("dt", '{"l":"log","w":' + str(where()) + ',"tbl":' + t + "}"); } catch (e) {} }
+          if (state.on) { try { const t = table(data, cols); if (t) send("dt", '{"l":"log","r":' + keep([data]) + ',"w":' + str(where()) + ',"tbl":' + t + "}"); } catch (e) {} }
           return f.apply(this === undefined ? c : this, arguments);
         } }.table);
       }
       {
         const f = orig.assert;
         hidden(c, "assert", { assert(cond, ...args) {
-          if (state.on && !cond) { try { send("dt", '{"l":"error","w":' + str(where()) + ',"a":[' + ['Assertion failed'].concat(args).map((a) => node(a, 0, [], { n: 200 })).join(",") + "]}"); } catch (e) {} }
+          if (state.on && !cond) { try { send("dt", '{"l":"error","r":' + keep(args) + ',"w":' + str(where()) + ',"a":[' + ['Assertion failed'].concat(args).map((a) => node(a, 0, [], { n: 200 })).join(",") + "]}"); } catch (e) {} }
           return f.apply(this === undefined ? c : this, arguments);
         } }.assert);
       }
+      // a value shown like a console message: its description for the tree, then its text
+      const show = (val, err) => {
+        if (state.on) try { send("dt", '{"l":"' + (err ? "error" : "result") + '","r":' + keep([val]) + ',"a":[' + node(val, 0, [], { n: 600 }) + "]}"); } catch (e) {}
+        let text;
+        try { text = err ? String(val && val.stack || val) : (typeof val === "string" ? JSON.stringify(val) : (typeof val === "function" ? fdesc(val) : String(val))); } catch (e) { text = "[object]"; }
+        (err ? orig.error : orig.info).call(c, text);
+      };
       // a console expression: the value of `src` evaluated in the global scope, shown like a console message
       state.eval = function (src) {
         let r, thrown = false;
@@ -364,14 +373,56 @@
             try { r = (0, eval)("(async () => (" + src + "\n))()"); } catch (e2) { r = e; thrown = true; }
           } else { r = e; thrown = true; }
         }
-        const show = (val, err) => {
-          if (state.on) try { send("dt", '{"l":"' + (err ? "error" : "result") + '","a":[' + node(val, 0, [], { n: 600 }) + "]}"); } catch (e) {}
-          let text;
-          try { text = err ? String(val && val.stack || val) : (typeof val === "string" ? JSON.stringify(val) : (typeof val === "function" ? fdesc(val) : String(val))); } catch (e) { text = "[object]"; }
-          (err ? orig.error : orig.info).call(c, text);
-        };
         if (!thrown && r && typeof r.then === "function" && typeof r !== "function") { show(r, false); r.then((v) => show(v, false), (e) => show(e, true)); return; }
         show(r, thrown);
+      };
+      // a value kept under a global name (`temp1`, `temp2`...), as "Store as global variable" does, and shown as if it had been typed
+      const store = (v) => {
+        const name = "temp" + (++state.temps);
+        try { Object.defineProperty(globalThis, name, { value: v, writable: true, configurable: true, enumerable: false }); } catch (e) { return; }
+        orig.log.call(c, "> " + name);
+        show(v, false);
+      };
+      const pick = (id) => {
+        const a = state.refs.get(id);
+        if (!a || !a.length) return undefined;
+        for (const x of a) { if (x !== null && (typeof x === "object" || typeof x === "function")) return { v: x }; }
+        return { v: a[0] };
+      };
+      state.store = function (id) { const p = pick(id); if (p) store(p.v); };
+      state.storeNode = function (path) {
+        let n = document;
+        for (const i of path) n = n && n.childNodes[i];
+        if (n) store(n);
+      };
+      // the value as JSON text (cycles marked, Maps, Sets, errors and nodes in a readable form), sent to the shell for the clipboard
+      state.copy = function (id) {
+        const p = pick(id);
+        if (!p) return;
+        const v = p.v, stack = [];
+        const text = (function () {
+          if (typeof v === "string") return v;
+          if (typeof v === "undefined") return "undefined";
+          if (typeof v === "function") { try { return Function.prototype.toString.call(v); } catch (e) { return String(v); } }
+          try {
+            return JSON.stringify(v, function (k, x) {
+              while (stack.length && stack[stack.length - 1] !== this) stack.pop();
+              if (typeof x === "bigint") return x + "n";
+              if (typeof x === "function") return undefined;
+              if (typeof x === "symbol") return String(x);
+              if (x !== null && typeof x === "object") {
+                if (typeof Node !== "undefined" && x instanceof Node) return x.nodeType === 1 ? x.outerHTML : String(x.nodeValue !== null ? x.nodeValue : x.nodeName);
+                if (x instanceof Error) return { name: x.name, message: x.message, stack: x.stack };
+                if (stack.indexOf(x) >= 0) return "[Circular]";
+                stack.push(x);
+                if (x instanceof Map) return Array.from(x.entries());
+                if (x instanceof Set) return Array.from(x.values());
+              }
+              return x;
+            }, 2);
+          } catch (e) { return String(v); }
+        })();
+        orig.debug.call(c, "\u0001dtx:" + text);
       };
       // the names an expression offers: own and inherited, enumerable first
       state.complete = function (path) {

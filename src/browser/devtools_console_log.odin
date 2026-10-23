@@ -11,6 +11,7 @@ package browser
 import "core:fmt"
 import "core:strings"
 import win "core:sys/windows"
+import "toolkit:ui"
 import "wb:config"
 import "wb:page"
 
@@ -46,6 +47,8 @@ CONSOLE_PREFS := [?]config.Def{
 		description = "Suggest completions while typing in the console's evaluation line (Tab accepts)."},
 	{name = "browser.devtools.console.eager_eval", kind = .Bool, default = {b = true},
 		description = "Show the result of the expression being typed in the console without running anything that changes the page."},
+	{name = "browser.devtools.console.context_only", kind = .Bool, default = {b = false},
+		description = "Show only the messages of the JavaScript context chosen in the console's selector (the top document, or one of its nested documents)."},
 	{name = "browser.devtools.console.max_payload_kb", kind = .Int, default = {i = 256}, bounded = true, min = 8, max = 65536, unit = "kB",
 		description = "The most a console message may keep of the objects it was given (their structure, for the tree under the message); messages with more keep their text only."},
 }
@@ -61,6 +64,7 @@ Con_Prefs :: struct {
 	autocomplete:  bool,
 	eager_eval:    bool,
 	max_payload:   int,
+	context_only:  bool,
 }
 
 con_prefs: Con_Prefs
@@ -75,6 +79,7 @@ console_apply_prefs :: proc(p: ^config.Prefs) {
 		autocomplete = config.bool_of(p, "browser.devtools.console.autocomplete"),
 		eager_eval = config.bool_of(p, "browser.devtools.console.eager_eval"),
 		max_payload = int(config.int_of(p, "browser.devtools.console.max_payload_kb")) * 1024,
+		context_only = config.bool_of(p, "browser.devtools.console.context_only"),
 	}
 }
 
@@ -117,14 +122,21 @@ con_sync_meta :: proc(t: ^Tab) {
 // Called by tab_log for every line: the line, then what the panel keeps beside it.
 console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	// the page's console describes its arguments (prelude/compat.js) in a line of its own that is not a message: the next line takes it
-	if len(message) > 3 && message[0] == 1 {
+	// (a nested document's lines come with its "[frame address] " in front: the description is the same)
+	control := message
+	if strings.has_prefix(message, "[frame ") { if i := strings.index(message, "] \x01"); i >= 0 { control = message[i + 2:] } }
+	if len(control) > 3 && control[0] == 1 {
 		switch {
-		case strings.has_prefix(message, "\x01dt:"):
+		case strings.has_prefix(control, "\x01dt:"):
 			delete(dev.con.pending_payload)
-			dev.con.pending_payload = len(message) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(message[4:]) : ""
+			dev.con.pending_payload = len(control) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
 			return
-		case strings.has_prefix(message, "\x01dtc:"):
-			console_complete_reply(message[5:])
+		case strings.has_prefix(control, "\x01dtc:"):
+			console_complete_reply(control[5:])
+			return
+		case strings.has_prefix(control, "\x01dtx:"):
+			clip_set(control[5:])   // "Copy object": the object as JSON
+			ui.toast(.Info, "Object copied (%s)", dt_size_text(i64(len(control) - 5)))
 			return
 		}
 	}

@@ -448,6 +448,17 @@ save_as :: proc(app: ^App, address, suggested: string) {
 	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
 }
 
+// Asks where to save `data` (the system's Save dialog, on a worker thread), then writes it there: what the browser already
+// holds (a network log as HAR, a response body), with no download.
+save_data_as :: proc(app: ^App, suggested: string, data: []byte) {
+	job := new(Save_Job)
+	job.app = app
+	job.suggested = strings.clone(suggested)
+	job.bytes = make([]byte, len(data))
+	copy(job.bytes, data)
+	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
+}
+
 @(private = "file")
 save_job_free :: proc(job: ^Save_Job) {
 	delete(job.url); delete(job.suggested); delete(job.path); delete(job.bytes); delete(job.message)
@@ -490,6 +501,19 @@ save_dialog_done :: proc(data: rawptr) {
 	job := (^Save_Job)(data)
 	app := job.app
 	if job.path == "" { save_job_free(job); return }
+	if job.url == "" {
+		// data the browser holds: written without a download
+		host.run_blocking(&app.blocking, proc(data: rawptr) {
+			j := (^Save_Job)(data)
+			j.ok = os.write_entire_file(j.path, j.bytes) == nil
+		}, proc(data: rawptr) {
+			j := (^Save_Job)(data)
+			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			j.app.frames_requested = max(j.app.frames_requested, 3)
+			save_job_free(j)
+		}, job)
+		return
+	}
 	set_status_all(app, fmt.tprintf("Downloading %s…", job.url))
 	job.task = fetch.start(&app.loader, {
 		request = {url = job.url, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Empty},

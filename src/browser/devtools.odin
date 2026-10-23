@@ -446,8 +446,10 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 		if ui.menu_item("Comfortable###dt_m_dm", checked = dev.density == .Comfortable).clicked { dev_set_pref(app, "browser.devtools.density", "comfortable") }
 	}
 	if ui.menu_submenu("Theme###dt_m_theme") {
-		ui.menu_item("Same as the browser###dt_m_t0", checked = true)
-		ui.menu_item("The browser's theme is set in Settings > Appearance###dt_m_t1", enabled = false)
+		ui.menu_heading("The panel follows the browser's theme")
+		for np, i in ui.NAMED_PALETTES {
+			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", np.name, i), checked = strings.equal_fold(app.cfg.ui_theme, np.name)).clicked { dev_set_pref(app, "browser.ui.theme", np.name) }
+		}
 	}
 	ui.menu_separator()
 	#partial switch dev.panel {

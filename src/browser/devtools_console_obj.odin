@@ -52,6 +52,15 @@ con_payload_parse :: proc(payload: string) -> (json.Object, bool) {
 	return o, ok
 }
 
+// The id the page's realm keeps the message's arguments under (`"r":N` near the start of the description), 0: none.
+con_payload_ref :: proc(payload: string) -> int {
+	i := strings.index(payload, "\"r\":")
+	if i < 0 || i > 40 { return 0 }
+	n := 0
+	for c in transmute([]u8)payload[i + 4:] { if c < '0' || c > '9' { break }; n = n * 10 + int(c - '0'); if n > 1 << 40 { break } }
+	return n
+}
+
 con_payload_source :: proc(root: json.Object) -> string { return val_str(root, "w") }
 
 // Cheap tests of what a payload holds (no parse): an object with properties, or an error with a stack, can be unfolded.

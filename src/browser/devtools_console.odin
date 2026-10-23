@@ -61,6 +61,8 @@ Dev_Console :: struct {
 	eval:      Con_Eval,
 	// the levels of the console of the tab (the preference is the default)
 	menu_src:  Con_Source,
+	menu_file: string,                // owned: the file of menu_src
+	ctx:       string,                 // owned: the address of the nested document the console runs in ("" = the top document)
 }
 
 console_panel_destroy :: proc() {
@@ -72,6 +74,8 @@ console_panel_destroy :: proc() {
 	delete(c.expanded)
 	delete(c.folded)
 	delete(c.pending_payload)
+	delete(c.ctx)
+	delete(c.menu_file)
 	console_eval_destroy()
 	c^ = {}
 }
@@ -126,6 +130,7 @@ con_passes :: proc(c: ^Dev_Console, t: ^Tab, i: int, kind: Con_Kind, text: strin
 	if level_bit(kind) & con_prefs.levels == 0 { return false }
 	if kind == .Marker { return true }
 	if con_prefs.hide_network && kind == .Error && con_is_network(text) { return false }
+	if con_prefs.context_only && kind != .Input && !con_in_context(c, text) { return false }
 	if dt_filter_active(&c.filter) && !dt_filter_match(&c.filter, text) { return false }
 	return true
 }
@@ -191,6 +196,7 @@ con_next_depth :: proc(t: ^Tab, i: int) -> int {
 con_refresh :: proc(t: ^Tab, c: ^Dev_Console) {
 	ser := dt_filter_prepare(&c.filter)
 	ser = ser * 31 + u64(con_prefs.levels) * 7 + (con_prefs.hide_network ? 3 : 0) + (con_prefs.group_similar ? 5 : 0)
+	if con_prefs.context_only { ser = ser * 131 + 17; for ch in transmute([]u8)c.ctx { ser = ser * 31 + u64(ch) } }
 	stop := c.paused ? c.stop : 0
 	same := c.key_tab == t.id && c.key_ser == ser && c.key_exp == c.exp_ver && c.key_fs == dtm.row && c.key_stop == stop
 	first_abs := con_abs(t, 0)
@@ -506,7 +512,10 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			if sig.right_clicked {
 				if !con_selected(c, r.abs) { c.has_sel, c.sel_a, c.sel_b = true, r.abs, r.abs }
 				c.menu_abs = r.abs
+				delete(c.menu_file)
 				c.menu_src = src
+				c.menu_file = strings.clone(src.file)   // (the row's own is of the frame's temporary memory)
+				c.menu_src.file = c.menu_file
 				ui.ctx_menu_open(menu_key, ui.mouse_pos())
 			}
 		}
@@ -572,10 +581,16 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		clip_set(con_text(t, c, true, con_prefs.timestamps))
 	}
 	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c)).clicked { clip_set(row_stack_text(t, c)) }
-	ui.menu_item("Copy object###dt_con_copy_obj", enabled = false)
+	ref, rpage := row_object(t, c)
+	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil).clicked { page.dev_console_copy(rpage, ref); app.frames_requested = max(app.frames_requested, 3) }
 	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, con_prefs.timestamps)) }
 	ui.menu_separator()
-	ui.menu_item("Store as global variable###dt_con_store", enabled = false)
+	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
+		dev.con.evaluating = true
+		page.dev_console_store(rpage, ref)
+		dev.con.evaluating = false
+		app.frames_requested = max(app.frames_requested, 3)
+	}
 	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	ui.menu_separator()
 	row_text := row_message(t, c)
@@ -593,6 +608,21 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	}
 	ui.menu_separator()
 	if ui.menu_item("Clear console###dt_con_clear_menu", icon = "").clicked { console_clear(app, t) }
+}
+
+// The object a row's message was about: the id its description carries (the realm keeps the arguments under it) and the page
+// whose realm that is (the tab's, or the nested document the message came from).
+@(private = "file")
+row_object :: proc(t: ^Tab, c: ^Dev_Console) -> (ref: int, p: ^page.Page) {
+	for &r in c.rows {
+		if r.abs != c.menu_abs { continue }
+		if r.idx >= len(t.conlog.meta) { return 0, nil }
+		ref = con_payload_ref(t.conlog.meta[r.idx].payload)
+		_, text := con_split(t.console[r.idx])
+		_, body := con_depth(text)
+		return ref, console_page_of(t, body)
+	}
+	return 0, nil
 }
 
 @(private = "file")
@@ -631,6 +661,38 @@ row_stack_text :: proc(t: ^Tab, c: ^Dev_Console) -> string {
 	return ""
 }
 
+@(private = "file")
+con_ctx_changed :: proc(app: ^App, c: ^Dev_Console) {
+	c.key_ser = 0   // the rows are made again (Selected context only)
+	app.frames_requested = max(app.frames_requested, 3)
+}
+
+// Whether a line is of the selected context: a nested document's lines start with "[frame <address>] ".
+@(private = "file")
+con_in_context :: proc(c: ^Dev_Console, text: string) -> bool {
+	_, body := con_depth(text)
+	if !strings.has_prefix(body, "[frame ") { return c.ctx == "" }
+	if c.ctx == "" { return false }
+	return strings.has_prefix(body[7:], c.ctx) && strings.has_prefix(body[7 + len(c.ctx):], "] ")
+}
+
+// The page whose realm a message came from: the nested document its prefix names, else the tab's.
+console_page_of :: proc(t: ^Tab, body: string) -> ^page.Page {
+	if t.page == nil { return nil }
+	if !strings.has_prefix(body, "[frame ") { return t.page }
+	for f in page.dev_frames(t.page) {
+		if strings.has_prefix(body[7:], f.href) && strings.has_prefix(body[7 + len(f.href):], "] ") { return f.page }
+	}
+	return nil
+}
+
+// The page the evaluation line runs in: the selected nested document, else the tab's.
+console_target :: proc(t: ^Tab) -> ^page.Page {
+	if t.page == nil || dev.con.ctx == "" { return t.page }
+	for f in page.dev_frames(t.page) { if f.href == dev.con.ctx { return f.page } }
+	return t.page
+}
+
 // The switches of the console, in the panel's menu and in the console's own.
 console_settings_items :: proc(app: ^App, t: ^Tab) {
 	ui.menu_heading("Console")
@@ -640,7 +702,7 @@ console_settings_items :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_item("Hide network messages###dt_cs_net", checked = con_prefs.hide_network, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.hide_network") }
 	if ui.menu_item("Autocomplete from history###dt_cs_auto", checked = con_prefs.autocomplete, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.autocomplete") }
 	if ui.menu_item("Evaluate as you type###dt_cs_eager", checked = con_prefs.eager_eval, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.eager_eval") }
-	ui.menu_item("Selected context only###dt_cs_ctx", enabled = false, keep_open = true)
+	if ui.menu_item("Selected context only###dt_cs_ctx", checked = con_prefs.context_only, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.console.context_only") }
 }
 
 @(private = "file")
@@ -650,11 +712,20 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		if dt_btn("###dt_con_clear", .Clear, tooltip = "Clear the console", shortcut = "Ctrl+L", enabled = len(t.console) > 0).clicked { console_clear(app, t) }
 		dt_vsep("###dt_cb0")
 		// the context the expressions run in
-		ckey := dt_menu_btn("###dt_con_ctx", .None, "top", tooltip = "JavaScript context")
-		if ui.ctx_menu(ckey, dt_px(220)) {
+		frames := t.page != nil ? page.dev_frames(t.page) : nil
+		cur := -1
+		for f, i in frames { if f.href == c.ctx { cur = i } }
+		if cur < 0 && c.ctx != "" { delete(c.ctx); c.ctx = "" }   // the frame is gone: the top document again
+		ckey := dt_menu_btn("###dt_con_ctx", .None, cur < 0 ? "top" : dev_line(frames[cur].href, 32), tooltip = "JavaScript context: where the expressions run", on = cur >= 0)
+		if ui.ctx_menu(ckey, dt_px(320)) {
 			ui.menu_heading("JavaScript context")
-			ui.menu_item("top###dt_ctx_top", checked = true, keep_open = true)
-			ui.menu_item("Frames of the page: the console runs in the top document###dt_ctx_note", enabled = false)
+			if ui.menu_item("top###dt_ctx_top", checked = c.ctx == "").clicked { delete(c.ctx); c.ctx = ""; con_ctx_changed(app, c) }
+			for f, i in frames {
+				if ui.menu_item(fmt.tprintf("%s%s###dt_ctx_%d", strings.repeat("  ", f.depth, context.temp_allocator), dev_line(f.href, 60), i), checked = c.ctx == f.href).clicked {
+					delete(c.ctx); c.ctx = strings.clone(f.href); con_ctx_changed(app, c)
+				}
+			}
+			if len(frames) == 0 { ui.menu_item("This page has no nested documents###dt_ctx_note", enabled = false) }
 		}
 		dt_gap(3)
 		// the filter

@@ -66,7 +66,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			ui.field_clear(&c.field)
 			c.open = false
 			dev.con.evaluating = true
-			page.js_console_eval(t.page, source)
+			page.js_console_eval(console_target(t), source)
 			dev.con.evaluating = false
 			app.frames_requested = max(app.frames_requested, 3)
 		}
@@ -251,7 +251,7 @@ complete_names :: proc(c: ^Con_Eval, path, word: string) {
 	// the page's own realm knows better than any list: its answer comes back as a console line the shell recognizes
 	for s in c.dyn { delete(s) }
 	clear(&c.dyn)
-	if c.tab != nil && c.tab.page != nil { page.dev_console_complete(c.tab.page, path) }
+	if c.tab != nil && c.tab.page != nil { page.dev_console_complete(console_target(c.tab), path) }
 	for n in c.dyn { add(c, n, word) }
 	if path == "" {
 		for g in GLOBALS { add(c, g, word) }

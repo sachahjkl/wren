@@ -268,7 +268,7 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	h.script = fetch.start(p.loader, {
 		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env,
 			script = javascript ? .Classic : .Wasm},
-		on_event = worker_script_event, user = h, scope = nil, collect = true,
+		on_event = worker_script_event, user = h, scope = p.scope, collect = true,
 	})
 	return h.self
 }
@@ -482,7 +482,7 @@ relay_start :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	h.relays[m.id] = r
 	r.task = fetch.start(h.page.loader, {
 		request = guest_request(m.text, m.text2, m.text3, m.bytes, u32(m.code), &h.env),
-		on_event = relay_event, user = r, scope = nil, collect = false,
+		on_event = relay_event, user = r, scope = h.page.scope, collect = false,
 	})
 }
 
