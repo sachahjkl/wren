@@ -810,7 +810,7 @@
     const n = rd.uv();
     const stores = [];
     for (let i = 0; i < n; i++) {
-      const s = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), autoIncrement: !!(rd.u8() & 1), indexes: [], deleted: false };
+      const s = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), autoIncrement: !!(rd.u8() & 1), indexes: [], hostIndexes: [], deleted: false, ready: true };
       const m = rd.uv();
       for (let j = 0; j < m; j++) {
         const ix = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), unique: false, multiEntry: false, deleted: false, ready: true };
@@ -818,6 +818,7 @@
         ix.unique = !!(f & 1);
         ix.multiEntry = !!(f & 2);
         s.indexes.push(ix);
+        s.hostIndexes.push(ix);
       }
       stores.push(s);
     }
@@ -920,13 +921,18 @@
       if (keyPath !== null && !validKeyPath(keyPath)) throw dom("SyntaxError", "The keyPath option is not a valid key path.");
       if (c.stores.some((s) => s.name === n)) throw dom("ConstraintError", "An object store with the specified name already exists.");
       if (autoIncrement && (keyPath === "" || isArray(keyPath))) throw dom("InvalidAccessError", "The autoIncrement option was set but the keyPath option was empty or an array.");
-      const w = reqWriter(T, REQ.CREATE_STORE, 0);
-      w.str(n); w.bytes(packPath(keyPath)); w.u8(autoIncrement ? 1 : 0);
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0], "Failed to create the object store.");
-      const meta = { id: new Rd(rep, 1).uv(), name: n, keyPath: frozenPath(keyPath), autoIncrement, indexes: [], deleted: false };
+      // The store is there for the script at once; the browser makes it in its turn among the transaction's requests (those queued
+      // before a deletion of a store of that name still run on the old one).
+      const meta = { id: 0, name: n, keyPath: frozenPath(keyPath), autoIncrement, indexes: [], hostIndexes: [], deleted: false, ready: false };
       c.stores.push(meta);
       updateNames(c);
+      enqueueInternal(T, () => {
+        if (meta.deleted) return;
+        const w = reqWriter(T, REQ.CREATE_STORE, 0);
+        w.str(meta.name); w.bytes(packPath(keyPath)); w.u8(autoIncrement ? 1 : 0);
+        meta.id = expectOk(call(OP.EXEC, w.done())).uv();
+        meta.ready = true;
+      });
       return storeFor(T, meta);
     }
     deleteObjectStore(name) {
@@ -939,13 +945,14 @@
       const i = c.stores.findIndex((s) => s.name === n);
       if (i < 0) throw dom("NotFoundError", "The object store was not found.");
       const meta = c.stores[i];
-      const w = reqWriter(T, REQ.DELETE_STORE, meta.id);
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0]);
       c.stores.splice(i, 1);
       meta.deleted = true;
       for (const ix of meta.indexes) ix.deleted = true;
       updateNames(c);
+      enqueueInternal(T, () => {
+        if (!meta.ready) return;
+        expectOk(call(OP.EXEC, reqWriter(T, REQ.DELETE_STORE, meta.id).done()));
+      });
     }
     transaction(storeNames, mode = "readonly", options = undefined) {
       const c = sOf(dbState, this);
@@ -1204,8 +1211,8 @@
   function writeIndexKeys(w, S, snap, bytes) {
     const list = [];
     let clone = null;
-    for (const ix of S.meta.indexes) {
-      if (!ix.ready) continue;   // (not made yet: the request is ahead of its creation)
+    // (the indexes the browser has now: one made later, or one deleted later, is not for a request that is ahead of it)
+    for (const ix of S.meta.hostIndexes) {
       let keys = null;
       for (const e of snap) { if (e[0] === ix) { keys = e[1]; break; } }
       if (keys === null) { if (clone === null) clone = deserialize(bytes); keys = indexKeys(clone, ix); }
@@ -1373,12 +1380,15 @@
       if (T.state !== "active") throw dom("TransactionInactiveError", "The transaction is not active.");
       if (n === S.meta.name) return;
       if (T.conn.stores.some((s) => s !== S.meta && s.name === n)) throw dom("ConstraintError", "An object store with the specified name already exists.");
-      const w = reqWriter(T, REQ.RENAME_STORE, S.meta.id);
-      w.str(n);
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0]);
-      S.meta.name = n;
+      const meta = S.meta;
+      meta.name = n;
       updateNames(T.conn);
+      enqueueInternal(T, () => {   // (a store not made yet is made under its name then)
+        if (!meta.ready || meta.deleted) return;
+        const w = reqWriter(T, REQ.RENAME_STORE, meta.id);
+        w.str(meta.name);
+        expectOk(call(OP.EXEC, w.done()));
+      });
     }
     // (an array key path: the same frozen array each time for one object, another for another)
     get keyPath() { const S = sOf(storeState, this); return keyPathOf(S, S.meta.keyPath); }
@@ -1500,6 +1510,7 @@
         meta.id = expectOk(call(OP.EXEC, w.done())).uv();
         populateIndex(T, S, meta);
         meta.ready = true;
+        S.meta.hostIndexes.push(meta);
       });
       return indexFor(S, meta);
     }
@@ -1514,14 +1525,17 @@
       const i = S.meta.indexes.findIndex((x) => x.name === n);
       if (i < 0) throw dom("NotFoundError", "The specified index was not found.");
       const meta = S.meta.indexes[i];
-      if (meta.ready) {
-        const w = reqWriter(T, REQ.DELETE_INDEX, S.meta.id);
-        w.uv(meta.id);
-        const rep = call(OP.EXEC, w.done());
-        if (rep[0]) throw fail(rep[0]);
-      }
+      // gone for the script at once; the browser drops it in its turn (the requests queued before still fill it)
       S.meta.indexes.splice(i, 1);
       meta.deleted = true;
+      enqueueInternal(T, () => {
+        if (!meta.ready) return;
+        const w = reqWriter(T, REQ.DELETE_INDEX, S.meta.id);
+        w.uv(meta.id);
+        expectOk(call(OP.EXEC, w.done()));
+        const h = S.meta.hostIndexes.indexOf(meta);
+        if (h >= 0) S.meta.hostIndexes.splice(h, 1);
+      });
     }
   }
 
@@ -1586,12 +1600,14 @@
       if (T.state !== "active") throw dom("TransactionInactiveError", "The transaction is not active.");
       if (n === X.meta.name) return;
       if (S.meta.indexes.some((i) => i !== X.meta && i.name === n)) throw dom("ConstraintError", "An index with the specified name already exists.");
-      if (!X.meta.ready) { X.meta.name = n; return; }   // not made yet: it will be, under this name
-      const w = reqWriter(T, REQ.RENAME_INDEX, S.meta.id);
-      w.uv(X.meta.id); w.str(n);
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0]);
-      X.meta.name = n;
+      const meta = X.meta;
+      meta.name = n;
+      enqueueInternal(T, () => {   // (an index not made yet is made under its name then)
+        if (!meta.ready || meta.deleted || S.meta.deleted) return;
+        const w = reqWriter(T, REQ.RENAME_INDEX, S.meta.id);
+        w.uv(meta.id); w.str(meta.name);
+        expectOk(call(OP.EXEC, w.done()));
+      });
     }
     get objectStore() { return sOf(indexState, this).store.wrapper; }
     get keyPath() { const X = sOf(indexState, this); return keyPathOf(X, X.meta.keyPath); }
@@ -1819,6 +1835,7 @@
       x.meta.deleted = false;
       for (const ix of x.meta.indexes) { if (!x.indexes.includes(ix)) ix.deleted = true; }
       x.meta.indexes = x.indexes.slice();
+      x.meta.hostIndexes = x.indexes.filter((ix) => ix.ready);
       x.meta.indexes.forEach((ix, i) => { ix.name = x.names[i]; ix.deleted = false; });
     }
     updateNames(c);
@@ -1897,9 +1914,12 @@
         const c = conns.get(conn);
         if (c === undefined) break;
         dispatch(c.wrapper, versionEvent("versionchange", v1, v2 === 0 ? null : v2));
-        const w = new Wr();
-        w.uv(conn);
-        call(OP.VC_DONE, w.done());
+        // the handlers have run, and the microtasks they queued (a promise that closes the connection): next task
+        post(() => {
+          const w = new Wr();
+          w.uv(conn);
+          call(OP.VC_DONE, w.done());
+        });
         break;
       }
       case EV.DELETE_DONE: {
