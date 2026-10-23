@@ -82,8 +82,7 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	t.page, t.load, t.kind = nil, nil, .History
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)

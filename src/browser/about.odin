@@ -181,8 +181,7 @@ show_home :: proc(app: ^App, t: ^Tab) {
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	page.load_html(t.page, transmute([]byte)home_html())
 	delete(t.url); t.url = strings.clone(HOME_URL)
 	delete(t.title); t.title = strings.clone("New tab")

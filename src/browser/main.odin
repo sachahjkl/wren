@@ -92,7 +92,8 @@ Tab :: struct {
 	status:   string,
 	console:  [dynamic]string,
 	console_added: u64,         // lines ever added to console: line i of it is number console_added - len + i (devtools_console.odin)
-	net:      Net_Log,         // the document's requests, for the Network tab (devtools_network.odin)
+	net:      Net_Log,         // the document's requests, for the Network tab (devtools_net_model.odin)
+	conlog:   Con_Log,         // what the Console tab keeps beside the lines: their times, kinds, counts (devtools_console_log.odin)
 	layout:   Layout,
 	scroll:   f32,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
@@ -220,20 +221,13 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	for l in t.console { delete(l) }
 	delete(t.console)
 	net_log_destroy(&t.net)
+	console_log_destroy(t)
 	layout_destroy(&t.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
 }
 
-tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
-	prefix := level == .Error ? "error: " : level == .Warn ? "warn: " : ""
-	append(&t.console, fmt.aprintf("%s%s", prefix, message))
-	t.console_added += 1
-	for len(t.console) > the_app.cfg.console_max_lines {
-		delete(t.console[0])
-		ordered_remove(&t.console, 0)
-	}
-}
+tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
 	tab_log((^Tab)(user), level, message)
@@ -317,8 +311,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.scroll = 0
 	delete(t.fragment_seen)
 	t.fragment_seen = ""   // a new document scrolls to its fragment again
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url)
 	t.url = strings.clone(shown)
 	delete(t.title)
@@ -441,8 +434,7 @@ show_config :: proc(app: ^App, t: ^Tab) {
 	t.page, t.load, t.kind = nil, nil, .Config
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url); t.url = strings.clone("about:config")
 	delete(t.title); t.title = strings.clone("Configuration")
 	set_status(t, "about:config")
@@ -776,6 +768,14 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 					devtools_panel(app, t)
 				}
+			case dev_on && dock == .Left:
+				ui.next({width = ui.fill(), height = ui.fill()})
+				if ui.row(.Start, {}, "###devtools_and_page") {
+					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+					devtools_panel(app, t)
+					devtools_splitter(app, true)
+					page_view(app, t)
+				}
 			case dev_on && dock == .Bottom:
 				page_view(app, t)
 				devtools_splitter(app, false)
@@ -830,6 +830,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
+		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
@@ -1010,6 +1011,7 @@ frame :: proc(app: ^App, idled := false) {
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
+	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
