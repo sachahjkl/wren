@@ -6,6 +6,7 @@ import "toolkit:draw"
 import "toolkit:ui"
 import "wb:base"
 import "wb:blocker"
+import "wb:i18n"
 import "wb:dom"
 import lay "wb:layout"
 import "wb:page"
@@ -252,7 +253,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		if ui.row(.Center, {.Draw_Background, .Draw_Border}, "###bl_pick_hint") {
 			ui.spacer(ui.px(em * 0.7))
 			ui.next({width = ui.fill(), height = ui.pct(1)})
-			ui.label("Click the element to block · Esc: cancel###bl_pick_hint_l")
+			ui.label(tid(i18n.tr("Click the element to block · Esc: cancel"), "bl_pick_hint_l"))
 		}
 		return
 	}
@@ -269,14 +270,14 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
-			if ui.tags("weak") { ui.label("Selector###pk_l") }
+			if ui.tags("weak") { ui.label(tid(i18n.tr("Selector"), "pk_l")) }
 			ui.next({width = ui.fill(), height = ui.pct(1)})
-			res := ui.line_edit("###pk_sel", &pick.field, "CSS selector")
+			res := ui.line_edit("###pk_sel", &pick.field, i18n.tr("CSS selector"))
 			_ = res
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 9), height = ui.pct(1)})
 			count := len(pick.matches)
-			label := pick.valid ? fmt.tprintf("%d element%s###pk_n", count, count == 1 ? "" : "s") : "invalid selector###pk_n"
+			label := tid(pick.valid ? fmt.tprintf(i18n.tr(count, "%d element", "%d elements"), count) : i18n.tr("invalid selector"), "pk_n")
 			if ui.tags("weak") { ui.label(label) }
 			ui.spacer(ui.px(em * 0.6))
 		}
@@ -284,7 +285,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
 			ui.next({width = ui.px(em * 7), height = ui.pct(1)})
-			if ui.tags("weak") { ui.label("Precision###pk_pl") }
+			if ui.tags("weak") { ui.label(tid(i18n.tr("Precision"), "pk_pl")) }
 			if len(pick.cands) > 1 {
 				ui.next({width = ui.px(em * 14), height = ui.pct(1)})
 				before := pick.level
@@ -295,16 +296,16 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 				}
 			} else { ui.spacer(ui.px(em * 14)) }
 			ui.spacer(ui.px(em * 0.6))
-			if bar_button("Preview", "pk_prev", em * 6.5) { picker_preview(t) }
+			if bar_button(i18n.tr("Preview"), "pk_prev", em * 6.5) { picker_preview(t) }
 			ui.spacer(ui.px(em * 0.4))
 			host, _ := blocker_page_host(t)
 			if ui.disabled(!pick.valid || len(pick.matches) == 0) {
-				if bar_button("Create", "pk_create", em * 6.5) { picker_create(app, t, blocker_site_key(host)) }
+				if bar_button(i18n.tr("Create"), "pk_create", em * 6.5) { picker_create(app, t, blocker_site_key(host)) }
 			}
 			ui.spacer(ui.px(em * 0.4))
-			if bar_button("Pick again", "pk_again", em * 7.5) { picker_unpreview(t); pick.stage = 0; pick.hover = base.NIL_HANDLE }
+			if bar_button(i18n.tr("Pick again"), "pk_again", em * 7.5) { picker_unpreview(t); pick.stage = 0; pick.hover = base.NIL_HANDLE }
 			ui.spacer(ui.px(em * 0.4))
-			if bar_button("Cancel", "pk_cancel", em * 6) { blocker_picker_cancel(app); return }
+			if bar_button(i18n.tr("Cancel"), "pk_cancel", em * 6) { blocker_picker_cancel(app); return }
 		}
 	}
 	if ui.key_press(.Escape) && ui.focus_key() == 0 { blocker_picker_cancel(app) }

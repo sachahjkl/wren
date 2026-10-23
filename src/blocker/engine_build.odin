@@ -9,6 +9,7 @@ import win "core:sys/windows"
 import "wb:adblock"
 import "wb:base"
 import "wb:host"
+import "wb:i18n"
 
 // Compiling the lists. A job runs on a thread of its own (named, below normal priority): it reads the lists, validates
 // what was downloaded and stores it, builds the index, writes it to the profile's cache and loads it. The loop thread
@@ -164,7 +165,7 @@ engine_boot :: proc(b: ^Blocker) {
 	}
 	if b.cfg.engine_cache && b.persist && engine_load_cache(b) { cache_cleanup(b); return }
 	// the base list and the user's filters right now (a few hundred rules: well under a millisecond)
-	lists := [?]adblock.List_Text{{BASE_LIST_ID, "Wren base list", BASE_LIST_TEXT}, {MY_FILTERS_ID, "My filters", b.conf.my_filters}}
+	lists := [?]adblock.List_Text{{BASE_LIST_ID, i18n.tr("Wren base list"), BASE_LIST_TEXT}, {MY_FILTERS_ID, i18n.tr("My filters"), b.conf.my_filters}}
 	if blob := adblock.compile(lists[:], allocator = base.process_allocator()); blob != nil {
 		if e, err := adblock.engine_load(blob, true, false, base.process_allocator()); err == .None {
 			engine_install(b, make_ref(b, e, ""))
@@ -316,14 +317,14 @@ compile_thread :: proc(data: rawptr) {
 	builder: adblock.Builder
 	adblock.builder_init(&builder)
 	bodies := make([dynamic][]byte, context.temp_allocator)
-	adblock.builder_add(&builder, BASE_LIST_ID, "Wren base list", BASE_LIST_TEXT)
+	adblock.builder_add(&builder, BASE_LIST_ID, i18n.tr("Wren base list"), BASE_LIST_TEXT)
 	lists_ok := 0
 	for &l in j.lists {
 		text: string
 		if l.new_body != nil {
 			valid, _ := adblock.validate_list(string(l.new_body))
 			if valid == 0 {
-				l.error = strings.clone("the answer is not a filter list")
+				l.error = strings.clone(i18n.tr("the answer is not a filter list"))
 			} else {
 				l.accepted = true
 				text = string(l.new_body)
@@ -340,7 +341,7 @@ compile_thread :: proc(data: rawptr) {
 			lists_ok += 1
 		}
 	}
-	adblock.builder_add(&builder, MY_FILTERS_ID, "My filters", j.my_filters)
+	adblock.builder_add(&builder, MY_FILTERS_ID, i18n.tr("My filters"), j.my_filters)
 	blob := adblock.builder_build(&builder, base.process_allocator())
 
 	if j.persist && j.cache {
@@ -358,7 +359,7 @@ compile_thread :: proc(data: rawptr) {
 	}
 	adblock.builder_destroy(&builder)
 	e, err := adblock.engine_load(blob, true, false, base.process_allocator())
-	if err != .None { j.failed = fmt.aprintf("the compiled index could not be loaded (%v)", err, allocator = base.process_allocator()) } else { j.engine = e }
+	if err != .None { j.failed = fmt.aprintf(i18n.tr("the compiled index could not be loaded (%v)"), err, allocator = base.process_allocator()) } else { j.engine = e }
 	for d in bodies { delete(d) }
 	j.compile_ms = f64(time.tick_since(t0)) / 1e6
 	host.post(j.loop, compile_done, j)

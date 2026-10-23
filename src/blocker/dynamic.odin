@@ -1,9 +1,11 @@
 package blocker
 
+import "core:fmt"
 import "core:slice"
 import "core:strings"
 import "wb:adblock"
 import "wb:fetch"
+import "wb:i18n"
 
 // Dynamic rules: the matrix of the panel. A rule says what to do with the requests that a source (a site, or `*` for all)
 // makes to a destination (a host and its subdomains, or `*`) of a kind. They are evaluated before the filter lists and
@@ -163,7 +165,7 @@ dyn_eval :: proc(d: ^Dyn_Rules, src_host, dst_host: string, type: adblock.Resour
 			for si in 0 ..< src.n {
 				if _, ok := d.src_set[src.h[si]]; !ok { continue }
 				if a, ok := d.index[dyn_key(src.h[si], dst.h[di], kinds[ki])]; ok && a != .Noop {
-					note := strings.concatenate({"dynamic rule: ", src.s[si], " ", dst.s[di], " ", DYN_TYPE_NAMES[kinds[ki]], a == .Block ? " block" : " allow"}, context.temp_allocator)
+					note := fmt.tprintf(i18n.tr("rule source, destination, kind, action", "dynamic rule: %s %s %s %s"), src.s[si], dst.s[di], DYN_TYPE_NAMES[kinds[ki]], a == .Block ? i18n.tr("rule action", "block") : i18n.tr("rule action", "allow"))
 					return a == .Block ? .Block : .Allow, note
 				}
 			}
