@@ -9,6 +9,7 @@ import "wb:html"
 import "wb:httpcache"
 import "wb:net"
 import "wb:page"
+import "wb:remote"
 import "wb:wasm"
 
 // Preferences of the shell itself (about:config: `browser.*`). Every other package declares its own next to its code;
@@ -99,6 +100,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_devtools_prefs(p)   // devtools.odin
 	register_instance_prefs(p)   // instance_shell.odin
 	blocker.register_prefs(p)   // blocker/settings.odin
+	remote.register_prefs(p)   // src/remote
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

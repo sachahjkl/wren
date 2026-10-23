@@ -235,6 +235,10 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 	em := ui.font_size()
 	n := &hud.nums
 	c := hud.cfg.comma
+	if remote_indicator() {
+		tip(ui.status_item(fmt.tprintf("%s###sb_remote", remote_indicator_text()), tone = "warn"), remote_indicator_tip())
+		ui.spacer(ui.px(em * 0.3))
+	}
 	for m in hud.cfg.metrics {
 		switch m {
 		case .Graph:
