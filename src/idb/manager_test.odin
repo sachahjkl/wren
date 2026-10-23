@@ -610,3 +610,67 @@ a_page_closing_during_a_deletions_write_is_safe :: proc(t: ^testing.T) {
 	o := h.m.origins["http://a.test"]
 	testing.expect_value(t, len(o.data.dbs), 0)
 }
+@(test)
+databases_lists_what_was_committed :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, "list_committed")
+	defer harness_destroy(&h)
+	a := new_client(&h)
+	b := new_client(&h)
+	defer client_destroy(a)
+	defer client_destroy(b)
+	conn, _ := open_and_upgrade(&h, a, "old", 2, true, nil)
+	close_connection(a, conn)
+	// an upgrade of "old" and the creation of "new" are running, uncommitted
+	open_database(a, "old", 3, true)
+	open_database(a, "new", 1, true)
+	ups := drain(&h, a)
+	testing.expect_value(t, kinds(ups), "Open_Upgrade Open_Upgrade")
+	list_databases(b)
+	r := Reader{data = last_of(drain(&h, b), .List).data}
+	testing.expect_value(t, r_uv(&r), 1)
+	testing.expect_value(t, r_str(&r), "old")
+	testing.expect_value(t, r_uv(&r), 2)   // the version before the upgrade
+	for e in ups { tx_commit(a, e.tx) }
+	run_jobs()
+	drain(&h, a)
+	list_databases(b)
+	r2 := Reader{data = last_of(drain(&h, b), .List).data}
+	testing.expect_value(t, r_uv(&r2), 2)
+}
+@(test)
+a_failed_request_leaves_no_trace :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, "atomic_request")
+	defer harness_destroy(&h)
+	c := new_client(&h)
+	defer client_destroy(c)
+	two :: proc(c: ^Client, tx: u64) {
+		test_store = create_store(c, tx, "s", true)
+		w := rq(.Create_Index)
+		w_uv(&w, u64(test_store)); w_str(&w, "u"); w_bytes(&w, nil); w_u8(&w, 1)   // unique
+		call(c, tx, w)
+	}
+	conn, _ := open_and_upgrade(&h, c, "d", 1, true, two)
+	store := test_store
+	tx := txn(c, conn, {store}, .Read_Write)
+	drain(&h, c)
+	put_with_index :: proc(c: ^Client, tx: u64, store: u32, value: string, ikey: []byte) -> ([]byte, Error) {
+		w := rq(.Put)
+		w_uv(&w, u64(store)); w_u8(&w, 0); w_str(&w, value)
+		w_uv(&w, 1); w_uv(&w, 1); w_bytes(&w, ikey)   // index 1
+		return call(c, tx, w)
+	}
+	k1, e1 := put_with_index(c, tx, store, "a", str_key("x"))
+	testing.expect_value(t, e1, Error.None)
+	n1, _ := key_number(Reader{data = k1}.data[1:])
+	testing.expect_value(t, n1, 1)
+	// the key generator moved to 2 for this one, which fails on the unique index: the generator is back at 2
+	_, e2 := put_with_index(c, tx, store, "b", str_key("x"))
+	testing.expect_value(t, e2, Error.Constraint)
+	k3, e3 := put_with_index(c, tx, store, "c", str_key("y"))
+	testing.expect_value(t, e3, Error.None)
+	n3, _ := key_number(Reader{data = k3}.data[1:])
+	testing.expect_value(t, n3, 2)
+	tx_commit(c, tx)
+}
