@@ -27,6 +27,7 @@ Observed :: struct {
 	bytes:       int,               // Done: the body's size; Response / Failed: what arrived so far
 	error:       Error_Kind,        // Failed
 	detail:      string,            // Failed: valid during the call
+	blocked_by:  string,            // Failed with Blocked_By_Client: the filter that blocked it (same as detail), valid during the call
 }
 
 Observer :: struct {

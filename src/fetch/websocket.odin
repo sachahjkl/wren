@@ -128,6 +128,12 @@ http_origin_of :: proc(u: url.URL, allocator := context.temp_allocator) -> url.O
 websocket_policy_check :: proc(l: ^Loader, env: ^Environment, u: ^url.URL) -> (err: Error_Kind, detail: string) {
 	p := l.profile
 	if u.scheme != "ws" && u.scheme != "wss" { return .Bad_Scheme, "not a WebSocket URL" }
+	if l.interceptor.request != nil {
+		q := Intercept_Query{url = u.href, method = "GET", destination = .Empty, mode = .Cors, initiator = env, websocket = true}
+		r: Intercept_Result
+		l.interceptor.request(l.interceptor.user, &q, &r)
+		if r.action == .Block { return .Blocked_By_Client, r.reason != "" ? r.reason : "blocked by the content blocker" }
+	}
 	csp_on := env != nil && p.settings.csp && len(env.policies.policies) > 0
 	if u.scheme == "ws" && !url.is_potentially_trustworthy(u^) {
 		upgrade := csp_on && csp.has_directive(&env.policies, "upgrade-insecure-requests")
