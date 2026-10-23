@@ -279,7 +279,9 @@ texture_for :: proc(id: u64, fp: page.Frame_Pixels) -> (Image_Texture, bool) {
 	st := shell.textures[id]
 	if st != nil && (st.w != fp.width || st.h != fp.height) { release_texture(id); st = nil }
 	if st == nil {
+		prof_begin(.Tex_Create)
 		tex := shell.api.create(shell.api.user, fp.width, fp.height)
+		prof_end(.Tex_Create)
 		if tex == 0 { return 0, false }
 		st = new(Shell_Texture)
 		st.tex, st.w, st.h = tex, fp.width, fp.height
@@ -289,7 +291,9 @@ texture_for :: proc(id: u64, fp: page.Frame_Pixels) -> (Image_Texture, bool) {
 		shell.textures[id] = st
 	}
 	if st.generation != fp.generation || st.frame != fp.frame {
+		prof_begin(.Tex_Upload)
 		shell.api.update(shell.api.user, st.tex, 0, 0, fp.width, fp.height, fp.pixels, fp.stride)
+		prof_end(.Tex_Upload)
 		st.generation, st.frame = fp.generation, fp.frame
 	}
 	st.epoch = shell.epoch

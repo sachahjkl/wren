@@ -2,12 +2,14 @@
 #   powershell -File tools\perf.ps1 [-Only name,name] [-NoSample] [-Exe wren_prof.exe] [-Tag suffix] [-Prefs '--pref a=b ...']
 # -GpuSteps 1: the GPU time of each step of the frame too (a timestamp per step: totals grow a little; see the report's
 # "GPU steps" table and the gpu_*_ms CSV columns). -GpuSteps 2: every draw call timed, the slowest listed.
+# -SampleAll: the sampling profiler on every scenario (the report's "hottest functions"), not only those that ask for it.
+# -Only gpu_*: the GPU acceleration audit scenarios (tools\gpu_corpus.ps1 makes their pages).
 # -Prefs is added to every run (e.g. '--pref wasm.wasmtime.compiler=winch' with -Tag _winch to compare the Wasm compilers).
 # Scenarios ending in _full run with layout.incremental.enabled=false (the reference for incremental layout).
 # Writes build\perf\<run>.txt (per-phase statistics, CPU time, sampling profile) and <run>.csv (one row per frame).
 # Each scenario holds bench.lock (tools\test_env.ps1) while its browser runs: the measurements of several worktrees take
 # turns instead of skewing each other. Input is posted to the window: no desktop.lock.
-param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'wren_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0)
+param([string[]]$Only = @(), [switch]$NoSample, [string]$Exe = 'wren_prof.exe', [string]$Tag = '', [string]$Prefs = '', [int]$GpuSteps = 0, [switch]$SampleAll)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\perf'
@@ -110,7 +112,7 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
     if ($Only.Count -gt 0 -and $Only -notcontains $name) { return }
     $prefix = Join-Path $out "$name$Tag"
     $env:WREN_PROF = $prefix
-    $env:WREN_SAMPLE = if ($sample -and -not $NoSample) { '1' } else { '0' }
+    $env:WREN_SAMPLE = if (($sample -or $SampleAll) -and -not $NoSample) { '1' } else { '0' }
     $env:WREN_GPU_STEPS = "$GpuSteps"
     $argv = (@($Prefs, $extra, $url) | Where-Object { $_ }) -join ' '
     # one measurement at a time on the machine (tools\test_env.ps1): another run's would skew it; input is posted, so
@@ -337,6 +339,26 @@ Run 'nojs_anim'        (FileUrl (Join-Path $site 'animations.html')) { param($h)
 # the memory of the process after the load (<name>.mem)
 # a real site (network, only when named): YouTube's watch page, autoplaying with sound allowed (media.autoplay.policy)
 Run 'video_youtube' 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' { param($h) Start-Sleep 14; Mark; Start-Sleep 12 } $true '--pref media.autoplay.policy=allow-all'
+# GPU acceleration audit (tools\gpu_corpus.ps1 makes the pages): only when named with -Only gpu_* (the files are big)
+if ($Only | Where-Object { $_ -like 'gpu_*' }) {
+    & (Join-Path $PSScriptRoot 'gpu_corpus.ps1')
+    $gpu = Join-Path $out 'gpu'
+    function GpuUrl($n) { FileUrl (Join-Path $gpu $n) }
+    Run 'gpu_img_big_load'  (GpuUrl 'gallery_big.html')  { param($h) Start-Sleep 14 } $true
+    Run 'gpu_img_big_wheel' (GpuUrl 'gallery_big.html')  { param($h) Start-Sleep 14; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_img_alpha_load' (GpuUrl 'alpha_big.html')   { param($h) Start-Sleep 12 } $false
+    Run 'gpu_img_many_load' (GpuUrl 'gallery_many.html') { param($h) Start-Sleep 8 } $true
+    Run 'gpu_img_many_wheel' (GpuUrl 'gallery_many.html') { param($h) Start-Sleep 8; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_img_tall_wheel' (GpuUrl 'gallery_tall.html') { param($h) Start-Sleep 8; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_svg_load'      (GpuUrl 'svg_icons.html')    { param($h) Start-Sleep 8 } $true
+    Run 'gpu_svg_wheel'     (GpuUrl 'svg_icons.html')    { param($h) Start-Sleep 8; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_css_fx_load'   (GpuUrl 'css_fx.html')       { param($h) Start-Sleep 6 } $true
+    Run 'gpu_css_fx_wheel'  (GpuUrl 'css_fx.html')       { param($h) Start-Sleep 6; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_css_fx_nocomp' (GpuUrl 'css_fx.html')       { param($h) Start-Sleep 6; Mark; WheelStream $h 6000 4 -120 } $false '--pref render.compositor.enabled=false'
+    Run 'gpu_css_filters_wheel' (GpuUrl 'css_filters.html') { param($h) Start-Sleep 8; Mark; WheelStream $h 6000 4 -120 } $false
+    Run 'gpu_resize_fx'     (GpuUrl 'css_fx.html')       { param($h) Start-Sleep 6; Mark; Resize $h 5000 } $false
+}
+
 if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' -and $_ -ne 'video_youtube' })) {
     $srv = Start-WrenTestServer
     try {
