@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 560 |
 | exposed by default | 240 |
 | members | 5013 |
-| members implemented | 2959 (59.0 %) |
+| members implemented | 2965 (59.1 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (3) | 17 / 28 |
 | `cssom.idl` | 16 (5) | 37 / 149 |
-| `dom.idl` | 35 (31) | 569 / 699 |
+| `dom.idl` | 35 (31) | 575 / 699 |
 | `encoding.idl` | 4 (2) | 9 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (0) | 0 / 8 |
@@ -1108,7 +1108,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-180 / 225 members.
+184 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -1146,9 +1146,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createRange()`: C `wjr_Document_createRange`
 - `createNodeIterator()`: C `wjr_Document_createNodeIterator`
 - `createTreeWalker()`: C `wjr_Document_createTreeWalker`
-- `readonly fullscreenEnabled`: not supported
-- `readonly fullscreen`: not supported
-- `exitFullscreen()`: not supported
+- `readonly fullscreenEnabled`: import `fullscreen.Document_fullscreenEnabled`
+- `readonly fullscreen`: import `fullscreen.Document_fullscreen`
+- `exitFullscreen()`: import `fullscreen.Document_exitFullscreen`
 - `onfullscreenchange`: generic (event handler)
 - `onfullscreenerror`: generic (event handler)
 - `static parseHTMLUnsafe()`: C `wjr_Document_static_parseHTMLUnsafe`
@@ -1217,7 +1217,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly styleSheets` (DocumentOrShadowRoot): not supported
 - `adoptedStyleSheets` (DocumentOrShadowRoot): C `wjr_Document_get_adoptedStyleSheets`
 - `readonly customElementRegistry` (DocumentOrShadowRoot): not supported
-- `readonly fullscreenElement` (DocumentOrShadowRoot): not supported
+- `readonly fullscreenElement` (DocumentOrShadowRoot): import `fullscreen.Document_fullscreenElement`
 - `readonly activeElement` (DocumentOrShadowRoot): import `forms.Document_activeElement`
 - `getAnimations()` (DocumentOrShadowRoot): not supported
 - `readonly children` (ParentNode): C `wjr_ParentNode_get_children`
@@ -1360,7 +1360,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### ShadowRoot : DocumentFragment
 
-12 / 21 members.
+13 / 21 members.
 
 - `readonly mode`: import `dom.ShadowRoot_mode`
 - `readonly delegatesFocus`: import `dom.ShadowRoot_delegatesFocus`
@@ -1380,7 +1380,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly styleSheets` (DocumentOrShadowRoot): not supported
 - `adoptedStyleSheets` (DocumentOrShadowRoot): C `wjr_ShadowRoot_get_adoptedStyleSheets`
 - `readonly customElementRegistry` (DocumentOrShadowRoot): not supported
-- `readonly fullscreenElement` (DocumentOrShadowRoot): not supported
+- `readonly fullscreenElement` (DocumentOrShadowRoot): import `fullscreen.ShadowRoot_fullscreenElement`
 - `readonly activeElement` (DocumentOrShadowRoot): import `dom.ShadowRoot_activeElement`
 - `getAnimations()` (DocumentOrShadowRoot): not supported
 
@@ -1398,7 +1398,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Element : Node
 
-124 / 156 members.
+125 / 156 members.
 
 - `computedStyleMap()`: not supported
 - `startViewTransition()`: not supported
@@ -1458,7 +1458,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `getElementsByClassName()`: C `wjr_Element_getElementsByClassName`
 - `insertAdjacentElement()`: import `dom.Element_insertAdjacentElement`
 - `insertAdjacentText()`: import `dom.Element_insertAdjacentText`
-- `requestFullscreen()`: not supported
+- `requestFullscreen()`: C `wjr_Element_requestFullscreen`
 - `onfullscreenchange`: generic (event handler)
 - `onfullscreenerror`: generic (event handler)
 - `setHTML()`: not supported

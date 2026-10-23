@@ -399,6 +399,31 @@ dynamic_state :: proc(t: ^testing.T) {
 }
 
 @(test)
+fullscreen_state :: proc(t: ^testing.T) {
+	f := load(`<style>
+		#v:fullscreen { padding-left: 3px } #v:-webkit-full-screen { padding-right: 4px } div:fullscreen > #in { margin-top: 5px }
+		div:-webkit-full-screen { padding-bottom: 7px }
+		#w:not(:fullscreen) { margin-top: 6px }
+	</style><div id=v><span id=in>x</span></div><div id=w>y</div>`)
+	defer unload(&f)
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0), "no fullscreen element")
+	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), ":not(:fullscreen)")
+	v := dom.find_by_id(f.doc, "v")
+	restyle(&f, State{fullscreen = v})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 3), ":fullscreen matches the element")
+	testing.expect(t, near(at(&f, "v").padding[.Bottom].v, 7), ":-webkit-full-screen alone matches the element")
+	testing.expect(t, near(at(&f, "v").padding[.Right].v, 4), ":-webkit-full-screen matches the element")
+	testing.expect(t, at(&f, "v").position == .Fixed && !at(&f, "v").z_auto && near(at(&f, "v").margin[.Left].v, 0), "the UA rule: fixed over the viewport, above all")
+	testing.expect(t, at(&f, "in").position == .Static, "... for the fullscreen element only")
+	testing.expect(t, near(at(&f, "in").margin[.Top].v, 5), "a rule through :fullscreen reaches its child")
+	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), "the other element is not fullscreen")
+	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "w")})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0) && near(at(&f, "w").margin[.Top].v, 0), "another element: the old one is restyled, :not(:fullscreen) stops")
+	restyle(&f, State{})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "w").margin[.Top].v, 6), "leaving restores the styles")
+}
+
+@(test)
 media_and_supports :: proc(t: ^testing.T) {
 	f := load(`<style>
 		#a { margin-top: 1px }

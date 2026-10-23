@@ -107,6 +107,7 @@ Page :: struct {
 	link_sync_timer: base.Handle,       // a script inserted a <link>: the sheets are read again in this task (styles.odin)
 	frames:       ^Page_Frames,         // nested browsing contexts: its navigable, its frames (frames.odin)
 	media:        ^Page_Media,          // <video> / <audio> elements (media_element.odin)
+	fullscreen:   ^Page_Fullscreen,     // the document's fullscreen element, made on first use (fullscreen.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives

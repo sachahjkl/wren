@@ -258,6 +258,7 @@ JSValue wjr_Element_get_tagName(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Element_hasPointerCapture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_releasePointerCapture(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_removeAttributeNode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Element_requestFullscreen(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_scrollBy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Element_scrollIntoView(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -3192,6 +3193,39 @@ static JSValue wjg_Document_adoptNode(JSContext *ctx, JSValueConst this_val, int
     return wj_wrap_node(ctx, r);
 }
 
+/* Document.fullscreenEnabled -> fullscreen.Document_fullscreenEnabled */
+static JSValue wjg_Document_get_fullscreenEnabled(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 231);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Document_fullscreenEnabled();
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Document.fullscreen -> fullscreen.Document_fullscreen */
+static JSValue wjg_Document_get_fullscreen(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 231);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_Document_fullscreen();
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* Document.exitFullscreen() -> fullscreen.Document_exitFullscreen */
+static JSValue wjg_Document_exitFullscreen_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 231);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_exitFullscreen();
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Document_exitFullscreen(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Document_exitFullscreen_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
 static JSValue wjg_Document_get_onfullscreenchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 231, "fullscreenchange"); }
 static JSValue wjg_Document_set_onfullscreenchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 231, "fullscreenchange", v, 0); }
 static JSValue wjg_Document_get_onfullscreenerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 231, "fullscreenerror"); }
@@ -3353,6 +3387,15 @@ static JSValue wjg_Document_getElementById(JSContext *ctx, JSValueConst this_val
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     uint64_t r = wr_Document_getElementById((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
     wj_str_free(ctx, &a0);
+    return wj_wrap_node(ctx, r);
+}
+
+/* Document.fullscreenElement -> fullscreen.Document_fullscreenElement */
+static JSValue wjg_Document_get_fullscreenElement(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 231);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_fullscreenElement();
     return wj_wrap_node(ctx, r);
 }
 
@@ -3738,6 +3781,15 @@ static JSValue wjg_ShadowRoot_set_innerHTML(JSContext *ctx, JSValueConst this_va
     wj_str_free(ctx, &a0);
     if (st < 0) { return wj_throw_status(ctx, st, "ShadowRoot.innerHTML"); }
     return JS_UNDEFINED;
+}
+
+/* ShadowRoot.fullscreenElement -> fullscreen.ShadowRoot_fullscreenElement */
+static JSValue wjg_ShadowRoot_get_fullscreenElement(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 234);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_ShadowRoot_fullscreenElement(self->handle);
+    return wj_wrap_node(ctx, r);
 }
 
 /* ShadowRoot.activeElement -> dom.ShadowRoot_activeElement */
@@ -13045,9 +13097,9 @@ static const wj_member wj_m_Document[] = {
     { "createRange", WJ_M_METHOD, 0, 0, wjr_Document_createRange, NULL, NULL, 0 },
     { "createNodeIterator", WJ_M_METHOD, 0, 1, wjr_Document_createNodeIterator, NULL, NULL, 0 },
     { "createTreeWalker", WJ_M_METHOD, 0, 1, wjr_Document_createTreeWalker, NULL, NULL, 0 },
-    { "fullscreenEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
-    { "fullscreen", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
-    { "exitFullscreen", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "fullscreenEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_fullscreenEnabled, wj_lenient_setter, 0 },
+    { "fullscreen", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_fullscreen, wj_lenient_setter, 0 },
+    { "exitFullscreen", WJ_M_METHOD, 0, 0, wjg_Document_exitFullscreen, NULL, NULL, 0 },
     { "onfullscreenchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfullscreenchange, wjg_Document_set_onfullscreenchange, 0 },
     { "onfullscreenerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfullscreenerror, wjg_Document_set_onfullscreenerror, 0 },
     { "parseHTMLUnsafe", WJ_M_STATIC_METHOD, 0, 1, wjr_Document_static_parseHTMLUnsafe, NULL, NULL, 0 },
@@ -13115,7 +13167,7 @@ static const wj_member wj_m_Document[] = {
     { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 54, NULL, NULL, NULL, 0 },
     { "adoptedStyleSheets", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_adoptedStyleSheets, wjr_Document_set_adoptedStyleSheets, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
+    { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_fullscreenElement, wj_lenient_setter, 0 },
     { "activeElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_activeElement, NULL, 0 },
     { "getAnimations", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "children", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 55, NULL, wjr_ParentNode_get_children, NULL, 0 },
@@ -13269,7 +13321,7 @@ static const wj_member wj_m_ShadowRoot[] = {
     { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 57, NULL, NULL, NULL, 0 },
     { "adoptedStyleSheets", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ShadowRoot_get_adoptedStyleSheets, wjr_ShadowRoot_set_adoptedStyleSheets, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, wj_lenient_setter, 0 },
+    { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ShadowRoot_get_fullscreenElement, wj_lenient_setter, 0 },
     { "activeElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ShadowRoot_get_activeElement, NULL, 0 },
     { "getAnimations", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
@@ -13341,7 +13393,7 @@ static const wj_member wj_m_Element[] = {
     { "getElementsByClassName", WJ_M_METHOD, 0, 1, wjr_Element_getElementsByClassName, NULL, NULL, 0 },
     { "insertAdjacentElement", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentElement, NULL, NULL, 0 },
     { "insertAdjacentText", WJ_M_METHOD, 0, 2, wjg_Element_insertAdjacentText, NULL, NULL, 0 },
-    { "requestFullscreen", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "requestFullscreen", WJ_M_METHOD, 0, 0, wjr_Element_requestFullscreen, NULL, NULL, 0 },
     { "onfullscreenchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_onfullscreenchange, wjg_Element_set_onfullscreenchange, 0 },
     { "onfullscreenerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Element_get_onfullscreenerror, wjg_Element_set_onfullscreenerror, 0 },
     { "setHTML", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },

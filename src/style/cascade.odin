@@ -955,7 +955,7 @@ update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
 // Partial restyle after a change of dynamic state
 
 state_equal :: proc(a, b: State) -> bool {
-	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.focus_visible == b.focus_visible && a.target_id == b.target_id
+	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.focus_visible == b.focus_visible && a.target_id == b.target_id && a.fullscreen == b.fullscreen
 }
 
 @(private)
@@ -964,6 +964,7 @@ changed_kinds :: proc(old, new: State) -> (k: State_Kinds) {
 	if old.active != new.active { k += {.Active} }
 	if old.focus != new.focus || old.focus_visible != new.focus_visible { k += {.Focus} }
 	if old.target_id != new.target_id { k += {.Target} }
+	if old.fullscreen != new.fullscreen { k += {.Fullscreen} }
 	return
 }
 
@@ -1023,6 +1024,10 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 				}
 			}
 		}
+	}
+	if .Fullscreen in kinds {
+		if old.fullscreen != base.NIL_HANDLE { changed_els[old.fullscreen] = true }   // :fullscreen is exact
+		if new_state.fullscreen != base.NIL_HANDLE { changed_els[new_state.fullscreen] = true }
 	}
 	if .Target in kinds {
 		if old.target_id != "" { if h := dom.find_by_id(doc, old.target_id); h != base.NIL_HANDLE { changed_els[h] = true } }
