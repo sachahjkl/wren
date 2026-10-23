@@ -68,6 +68,7 @@ network_destroy :: proc() {
 	for b in v.blocked { delete(b) }
 	delete(v.blocked)
 	net_detail_destroy(&v.detail)
+	net_media_release()
 	net_prof_edit_destroy(&v.prof)
 	net_profiles_destroy()
 	delete(net_prefs.profile)

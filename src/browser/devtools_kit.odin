@@ -239,7 +239,7 @@ btn_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	if d.accent {
 		draw.rect(dc, r, d.down ? draw.mix(dtc.accent, dtc.text, 0.15) : (d.hot ? draw.mix(dtc.accent, dtc.text, 0.08) : dtc.accent), rad)
 	} else if d.on {
-		draw.rect(dc, r, dtc.accent_bg, rad)
+		draw.rect(dc, r, ui.tuned(with_alpha(d.on_col, 0.15)), rad)
 		if d.down { draw.rect(dc, r, dtc.press, rad) } else if d.hot { draw.rect(dc, r, dtc.hover, rad) }
 	} else if d.down {
 		draw.rect(dc, r, dtc.press, rad)
