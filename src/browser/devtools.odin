@@ -223,6 +223,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 				}
 			}
 		}
+		net_media_frame_end()   // a media that was not previewed this frame is closed
 	}
 }
 
@@ -230,6 +231,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 // (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called by main.odin's frame with the
 // events of the frame; returns the others.
 devtools_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
+	if !dev.visible && net_media_active() { net_media_release() }
 	if !dev.visible || dev.rect.max.x <= dev.rect.min.x || ui.ctx_menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -271,6 +273,7 @@ Tab_Draw :: struct {
 	tones:  [2]draw.Color,
 	badge_w: [2]f32,
 	label_w: f32,
+	warn:   bool,         // a dot on the icon: the tab is held to a network speed
 }
 
 @(private = "file")
@@ -296,6 +299,7 @@ tab_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	col := d.on ? dtc.text : (d.hot ? dtc.text : dtc.weak)
 	x := r.min.x + dt_px(8)
 	dt_icon(dc, d.icon, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, d.on ? dtc.accent : col, dtm.sc)
+	if d.warn { rr := dt_px(3); draw.rect(dc, {{x + dtm.icon - rr, cy - dtm.icon * 0.5 - rr * 0.3}, {x + dtm.icon + rr, cy - dtm.icon * 0.5 + rr * 1.7}}, draw.Color{0.93, 0.62, 0.10, 1}, rr) }
 	x += dtm.icon + dt_px(5)
 	x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, d.label) + dt_px(4)
 	for bt, i in d.badges {
@@ -371,6 +375,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 			d := ui.frame_new(Tab_Draw)
 			d.icon, d.label, d.on, d.hot, d.down, d.t = DEV_PANEL_ICONS[p], DEV_PANEL_TITLES[p], on, sig.hovering, sig.dragging && sig.hovering, grow
 			d.badges, d.tones, d.badge_w, d.label_w = bs, tones, bw, lw
+			d.warn = p == .Network && net_profile_active(net_profile_of(t))
 			tb.custom, tb.custom_user = tab_paint, d
 			if sig.clicked && !on {
 				dev.panel = p

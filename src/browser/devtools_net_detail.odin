@@ -46,12 +46,14 @@ Net_Detail :: struct {
 	msg_filter: Dt_Filter,
 	msg_sel:    int,                // the chosen message (index into msgs), -1 none
 	msg_menu:   int,
+	pv:         Preview_State,      // the decoded preview of the chosen request (devtools_net_preview.odin)
 }
 
 net_detail_destroy :: proc(d: ^Net_Detail) {
 	dt_list_destroy(&d.hdr)
 	dt_list_destroy(&d.txt)
 	dt_list_destroy(&d.jlist)
+	preview_release(&d.pv)
 	dt_list_destroy(&d.msg_list)
 	dt_list_destroy(&d.msg_pane)
 	dt_filter_destroy(&d.msg_filter)
@@ -86,6 +88,7 @@ detail_tabs :: proc(e: ^Net_Entry) -> []int {
 
 net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 	d := &v.detail
+	if d.pv.id != e.id && d.pv.id != 0 { preview_release(&d.pv) }
 	// the caches are of one request and one body
 	key := e.id * 0x9e3779b97f4a7c15 + u64(len(e.body)) * 31 + u64(d.pretty ? 1 : 0)
 	if d.cache_key != key { detail_reset(d, e, key) }
@@ -526,6 +529,7 @@ line_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 @(private = "file")
 detail_response :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
+	if len(e.body) > 0 && preview_kind_of(e) == .Image { response_image(app, d, e); return }
 	if len(e.body) == 0 {
 		why := "The response has no body."
 		hint := "A body appears here once the request is done."
@@ -591,7 +595,6 @@ text_view :: proc(d: ^Net_Detail, l: ^Dt_List, id: string, lang: Syn_Lang) {
 @(private = "file")
 Hex_Draw :: struct { off: int, bytes: []byte }
 
-@(private = "file")
 hex_view :: proc(d: ^Net_Detail, e: ^Net_Entry) {
 	n := (len(e.body) + 15) / 16
 	if rows, ok := dt_list("###dt_nd_hex", &d.txt, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
@@ -699,6 +702,7 @@ Json_Draw :: struct { row: Json_Row, hot: bool }
 
 @(private = "file")
 detail_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
+	if net_preview(app, d, e) { return }
 	if len(e.body) == 0 && e.type != .Img {
 		detail_response(app, d, e)
 		return
