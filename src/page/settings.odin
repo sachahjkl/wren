@@ -4,6 +4,7 @@ import "wb:canvas2d"
 import "wb:config"
 import "wb:forms"
 import "wb:html"
+import "wb:idb"
 import "wb:js"
 import "wb:media"
 import img "wb:images"
@@ -33,6 +34,7 @@ Settings :: struct {
 	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
 	media:           media.Settings,      // video and audio (media/settings.odin)
 	canvas:          canvas2d.Settings,   // the 2D canvas (canvas.odin)
+	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
 }
 
 PREFS := [?]config.Def{
@@ -62,6 +64,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, FRAME_PREFS[:])
 	media.register_prefs(p)
 	canvas2d.register_prefs(p)
+	idb.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -86,6 +89,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		frames = frame_settings_from_prefs(p),
 		media = media.settings_from_prefs(p),
 		canvas = canvas2d.settings_from_prefs(p),
+		idb = idb.settings_from_prefs(p),
 	}
 }
 

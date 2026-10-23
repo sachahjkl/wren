@@ -496,7 +496,7 @@ kick_writer :: proc(m: ^Manager, o: ^Origin) {
 		maybe_compact(m, o)
 	}
 	if m.submit != nil {
-		m.submit(run, finish, job)
+		m.submit(m.submit_user, run, finish, job)
 	} else {
 		run(job)
 		finish(job)

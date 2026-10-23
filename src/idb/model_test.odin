@@ -380,3 +380,22 @@ cursor_matches_a_naive_walk :: proc(t: ^testing.T) {
 		testing.expect_value(t, idx, -1)
 	}
 }
+
+@(test)
+a_committed_rename_frees_the_old_names :: proc(t: ^testing.T) {
+	f: Fixture
+	fixture_init(&f)
+	defer fixture_destroy(&f)
+	sid, _ := exec_create_store(&f.x, "before", nil, false)
+	iid, _ := exec_create_index(&f.x, sid, "ibefore", nil, false, false)
+	fixture_begin(&f, "db")
+	testing.expect_value(t, exec_rename_store(&f.x, sid, "after"), Error.None)
+	testing.expect_value(t, exec_rename_index(&f.x, sid, iid, "iafter"), Error.None)
+	testing.expect_value(t, exec_rename_store(&f.x, sid, "after"), Error.None)
+	fixture_begin(&f, "db")   // commits: the old names go (the test's tracker reports a leak otherwise)
+	s := find_store(f.x.db, sid)
+	testing.expect_value(t, s.name, "after")
+	testing.expect_value(t, find_index(s, iid).name, "iafter")
+	_, e := exec_create_store(&f.x, "after", nil, false)
+	testing.expect_value(t, e, Error.Constraint)
+}

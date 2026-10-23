@@ -14,7 +14,7 @@ jobs: [dynamic]Job
 clock: f64
 
 @(private)
-test_submit :: proc(work, done: proc(data: rawptr), data: rawptr) { append(&jobs, Job{work, done, data}) }
+test_submit :: proc(user: rawptr, work, done: proc(data: rawptr), data: rawptr) { append(&jobs, Job{work, done, data}) }
 
 @(private)
 run_jobs :: proc() -> int {
@@ -48,7 +48,7 @@ harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(
 	s, ok := settings.?
 	if !ok { s = settings_default() }
 	clear(&jobs)
-	manager_init(&h.m, s, h.dir, test_submit if async else nil, test_now, context.allocator)
+	manager_init(&h.m, s, h.dir, test_submit if async else nil, nil, test_now, context.allocator)
 	h.events = make(map[u64][dynamic]Event)
 }
 
