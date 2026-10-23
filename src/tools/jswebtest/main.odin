@@ -153,6 +153,50 @@ drain :: proc() {
 }
 
 listener_log: ^Page_Log
+other_log: ^Page_Log
+
+has_line :: proc(l: ^Page_Log, line: string) -> bool {
+	for x in l.lines { if x == line { return true } }
+	return false
+}
+
+// IndexedDB across pages and across a restart of the data manager: versionchange / blocked between two pages, the journal
+// read again after the manager was destroyed and made anew, the quota, and "Clear site data".
+idb_pages :: proc() {
+	fmt.println("-- idb_pages (two pages of one origin, restart, quota, clear site data)")
+	a := open("idb_pages_a")
+	pa := a.log
+	listener_log = pa
+	wait_until(proc() -> bool { return has_line(listener_log, "LISTENING") }, "page A listening")
+	b := open("idb_pages_b")
+	other_log = b.log
+	wait_until(proc() -> bool { return has_line(listener_log, "HEARD") && has_line(other_log, "BLOCKED") }, "page A hearing the version change, page B blocked")
+	page.js_run(a.p, transmute([]byte)string("__closeA()"), "jswebtest.js")
+	wait(b)
+	wait(a)
+	close(b)
+	close(a)
+
+	// restart: the manager goes (journals flushed), a new one reads the files
+	host.blocking_settle(&blocking)
+	page.storage_manager_destroy(&storage)
+	host.blocking_settle(&blocking)
+	page.storage_manager_init(&storage, &loop, &blocking, PROFILE_DIR)
+	run("idb_persist")
+
+	// quota: 1 MiB for the origin
+	saved := settings.idb.quota_bytes
+	settings.idb.quota_bytes = 1 << 20
+	run("idb_quota")
+	settings.idb.quota_bytes = saved
+
+	// clear site data while a connection is open
+	c := open("idb_clear")
+	actions := make(map[string]Action, context.temp_allocator)
+	actions["clear"] = proc(p: ^page.Page, l: ^Page_Log) { page.idb_clear_origin(&storage, page.storage_origin_key(p)) }
+	wait(c, actions)
+	close(c)
+}
 
 host_objects :: proc(p: ^page.Page) -> int { return p.objects.pool.count }
 
@@ -191,6 +235,7 @@ main :: proc() {
 	if selected("canvas") { run("canvas") }
 	if selected("idb_bench") { run("idb_bench", seconds = 120) }
 	if selected("idb") { run("idb", seconds = 60) }
+	if selected("idb_pages") { idb_pages() }
 
 	if selected("navigator") {
 		fmt.println("-- navigator")
