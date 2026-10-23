@@ -82,6 +82,7 @@ Screenshots show the whole window and are all taken in one pass by `tools\shots.
 Everything below exists in the code today and is covered by the tests of [`tools\test_all.ps1`](tools/test_all.ps1).
 
 **WebAssembly, the only execution engine**
+- **A content blocker, built in** ([docs/blocker.md](docs/blocker.md)): advertising, tracking and malware are stopped before the request leaves the machine, in a few microseconds each (a filter engine in Odin for the Adblock Plus / uBlock Origin / AdGuard syntax, compiled to a compact index that loads in milliseconds), the elements ads leave behind are hidden before the first paint, scriptlets defuse anti-blocker scripts, and the interface is native: a shield at the end of the address bar with its panel and bout:blocker. Lists are downloaded, never shipped; nothing is reported anywhere.
 - [Wasmtime](https://wasmtime.dev) 49 (official C API, statically linked; Cranelift, or Winch via
   `wasm.wasmtime.compiler`). Any number of modules per document, fetched concurrently, run in document order, each in
   its own instance sharing the DOM; memory64 modules supported.
