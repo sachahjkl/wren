@@ -405,12 +405,21 @@ typedef struct wr_FetchOptions {
 typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
 
 /* module performance: types */
-// The entries a query matches (Any: both).
+// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Any = 0,
     wr_PerformanceEntryType_Mark = 1,
     wr_PerformanceEntryType_Measure = 2,
+    wr_PerformanceEntryType_Navigation = 3,
+    wr_PerformanceEntryType_Resource = 4,
+    wr_PerformanceEntryType_Paint = 5,
+    wr_PerformanceEntryType_Event = 6,
+    wr_PerformanceEntryType_First_Input = 7,
 };
+// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
+typedef void (*wr_TimelineCallback)(int32_t user, int32_t kinds);
 
 /* module ports: types */
 
@@ -2293,6 +2302,20 @@ WR_IMPORT("performance", "Performance_entryType") int32_t wr_Performance_entryTy
 WR_IMPORT("performance", "Performance_clearMarks") void wr_Performance_clearMarks(const uint8_t *name, uint32_t name_len);
 // performance.clearMeasures(name): "" clears all.
 WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearMeasures(const uint8_t *name, uint32_t name_len);
+// The timeline entries of `entry_type` (Navigation, Resource, Paint, Event or First_Input) whose sequence number is at
+// least `from_seq`, in order, as a JSON array of objects with the members of the entry's interface (name, startTime,
+// duration, initiatorType, responseStart...) and `seq`. A kept entry never changes; the buffers drop their oldest
+// entries (performance.resource_timing_entries...).
+WR_IMPORT("performance", "Performance_timeline") int32_t wr_Performance_timeline(int32_t entry_type, uint64_t from_seq, uint8_t *_buf, uint32_t _cap);
+// The sequence number the next entry of this kind will have.
+WR_IMPORT("performance", "Performance_timelineNextSeq") uint64_t wr_Performance_timelineNextSeq(int32_t entry_type);
+// The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
+WR_IMPORT("performance", "Performance_timelineInterest") void wr_Performance_timelineInterest(uint32_t kinds);
+// Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
+WR_IMPORT("performance", "Performance_onTimeline") void wr_Performance_onTimeline(uint32_t callback, int32_t user);
+// performance.setResourceTimingBufferSize(n) / performance.clearResourceTimings().
+WR_IMPORT("performance", "Performance_setResourceTimingBufferSize") void wr_Performance_setResourceTimingBufferSize(uint32_t entries);
+WR_IMPORT("performance", "Performance_clearResourceTimings") void wr_Performance_clearResourceTimings(void);
 
 /* module ports */
 // A new pair of entangled port ends: the first end's id (the second is that id + 1), owned by nobody yet.

@@ -770,9 +770,27 @@ JSValue wjr_PerformanceEntry_get_name(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEntry_get_navigationId(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEntry_get_startTime(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceEventTiming_get_cancelable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEventTiming_get_interactionId(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEventTiming_get_processingEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEventTiming_get_processingStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEventTiming_get_target(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceEventTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceMark_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_criticalCHRestart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_domComplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_domContentLoadedEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_domContentLoadedEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_domInteractive(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_loadEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_loadEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_redirectCount(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_unloadEventEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_get_unloadEventStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceNavigationTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceNavigation_get_redirectCount(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceNavigation_get_type(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceObserverEntryList_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -783,6 +801,34 @@ JSValue wjr_PerformanceObserver_disconnect(JSContext *ctx, JSValueConst this_val
 JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceObserver_takeRecords(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformancePaintTiming_get_paintTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformancePaintTiming_get_presentationTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformancePaintTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceResourceTiming_get_connectEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_connectStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_contentEncoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_contentType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_decodedBodySize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_deliveryType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_domainLookupEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_domainLookupStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_encodedBodySize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_fetchStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_finalResponseHeadersStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_firstInterimResponseStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_initiatorType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_nextHopProtocol(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_redirectEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_redirectStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_renderBlockingStatus(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_requestStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_responseEnd(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_responseStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_responseStatus(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_secureConnectionStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_transferSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_get_workerStart(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceResourceTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceTiming_get_connectEnd(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceTiming_get_connectStart(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceTiming_get_domComplete(JSContext *ctx, JSValueConst this_val);
@@ -16146,13 +16192,13 @@ static const wj_member wj_m_LargestContentfulPaint[] = {
     { "presentationTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceEventTiming[] = {
-    { "processingStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "processingEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "cancelable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "processingStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEventTiming_get_processingStart, NULL, 0 },
+    { "processingEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEventTiming_get_processingEnd, NULL, 0 },
+    { "cancelable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEventTiming_get_cancelable, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEventTiming_get_target, NULL, 0 },
     { "targetSelector", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "interactionId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "interactionId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEventTiming_get_interactionId, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceEventTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceLongTaskTiming[] = {
     { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -16169,56 +16215,56 @@ static const wj_member wj_m_PerformanceMeasure[] = {
     { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceMeasure_get_detail, NULL, 0 },
 };
 static const wj_member wj_m_PerformancePaintTiming[] = {
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "paintTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "presentationTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformancePaintTiming_toJSON, NULL, NULL, 0 },
+    { "paintTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformancePaintTiming_get_paintTime, NULL, 0 },
+    { "presentationTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformancePaintTiming_get_presentationTime, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceResourceTiming[] = {
-    { "initiatorType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "deliveryType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "nextHopProtocol", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "workerStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fetchStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domainLookupStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domainLookupEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "connectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "connectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "secureConnectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "requestStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "finalResponseHeadersStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "firstInterimResponseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "initiatorType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_initiatorType, NULL, 0 },
+    { "deliveryType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_deliveryType, NULL, 0 },
+    { "nextHopProtocol", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_nextHopProtocol, NULL, 0 },
+    { "workerStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_workerStart, NULL, 0 },
+    { "redirectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_redirectStart, NULL, 0 },
+    { "redirectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_redirectEnd, NULL, 0 },
+    { "fetchStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_fetchStart, NULL, 0 },
+    { "domainLookupStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_domainLookupStart, NULL, 0 },
+    { "domainLookupEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_domainLookupEnd, NULL, 0 },
+    { "connectStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_connectStart, NULL, 0 },
+    { "connectEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_connectEnd, NULL, 0 },
+    { "secureConnectionStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_secureConnectionStart, NULL, 0 },
+    { "requestStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_requestStart, NULL, 0 },
+    { "finalResponseHeadersStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_finalResponseHeadersStart, NULL, 0 },
+    { "firstInterimResponseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_firstInterimResponseStart, NULL, 0 },
+    { "responseStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_responseStart, NULL, 0 },
+    { "responseEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_responseEnd, NULL, 0 },
     { "workerRouterEvaluationStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "workerCacheLookupStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "workerMatchedRouterSource", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "workerFinalRouterSource", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "transferSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "encodedBodySize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "decodedBodySize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "responseStatus", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "renderBlockingStatus", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "transferSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_transferSize, NULL, 0 },
+    { "encodedBodySize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_encodedBodySize, NULL, 0 },
+    { "decodedBodySize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_decodedBodySize, NULL, 0 },
+    { "responseStatus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_responseStatus, NULL, 0 },
+    { "renderBlockingStatus", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_renderBlockingStatus, NULL, 0 },
+    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_contentType, NULL, 0 },
+    { "contentEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceResourceTiming_get_contentEncoding, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceResourceTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceNavigationTiming[] = {
-    { "unloadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "unloadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domInteractive", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domContentLoadedEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domContentLoadedEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "domComplete", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "loadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "loadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "redirectCount", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "criticalCHRestart", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "unloadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_unloadEventStart, NULL, 0 },
+    { "unloadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_unloadEventEnd, NULL, 0 },
+    { "domInteractive", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_domInteractive, NULL, 0 },
+    { "domContentLoadedEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_domContentLoadedEventStart, NULL, 0 },
+    { "domContentLoadedEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_domContentLoadedEventEnd, NULL, 0 },
+    { "domComplete", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_domComplete, NULL, 0 },
+    { "loadEventStart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_loadEventStart, NULL, 0 },
+    { "loadEventEnd", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_loadEventEnd, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_type, NULL, 0 },
+    { "redirectCount", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_redirectCount, NULL, 0 },
+    { "criticalCHRestart", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceNavigationTiming_get_criticalCHRestart, NULL, 0 },
     { "notRestoredReasons", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "confidence", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceNavigationTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TaskAttributionTiming[] = {
     { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -18873,7 +18919,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_LargestContentfulPaint, .n_members = 9, .subtree_end = 450,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceEventTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceEventTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceEventTiming, .n_members = 7, .subtree_end = 451,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18889,15 +18935,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceMeasure, .n_members = 1, .subtree_end = 454,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformancePaintTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformancePaintTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformancePaintTiming, .n_members = 3, .subtree_end = 455,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceResourceTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceResourceTiming", .parent = 448, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceResourceTiming, .n_members = 29, .subtree_end = 457,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceNavigationTiming", .parent = 455, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceNavigationTiming", .parent = 455, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceNavigationTiming, .n_members = 14, .subtree_end = 457,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
