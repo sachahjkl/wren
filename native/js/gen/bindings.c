@@ -214,6 +214,7 @@ JSValue wjr_Document_getElementsByTagName(JSContext *ctx, JSValueConst this_val,
 JSValue wjr_Document_getElementsByTagNameNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getSelection(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_get_adoptedStyleSheets(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_all(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_anchors(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_body(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val);
@@ -13195,7 +13196,7 @@ static const wj_member wj_m_Document[] = {
     { "clear", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "captureEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "releaseEvents", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "all", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 52, NULL, NULL, NULL, 0 },
+    { "all", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 52, NULL, wjr_Document_get_all, NULL, 0 },
     { "onfreeze", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onfreeze, wjg_Document_set_onfreeze, 0 },
     { "onresume", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_onresume, wjg_Document_set_onresume, 0 },
     { "wasDiscarded", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },

@@ -498,6 +498,16 @@ static JSValue doc_collection(JSContext *ctx, JSValueConst this_val, int kind)
     return dom_live_list(ctx, this_val, h, kind, "", 0, WJ_IFACE_HTMLCollection);
 }
 
+/* document.all: the live collection of all elements, [IsHTMLDDA]: typeof "undefined", falsy and == null, but not ===
+   undefined (Polymer-Resin's sanitizer tells a value from document.all by `v === document.all`: with an undefined
+   document.all every undefined binding was taken for it, and YouTube's icons were hidden). */
+JSValue wjr_Document_get_all(JSContext *ctx, JSValueConst this_val)
+{
+    JSValue v = doc_collection(ctx, this_val, 12);
+    if (!JS_IsException(v) && JS_IsObject(v)) { JS_SetIsHTMLDDA(ctx, v); }
+    return v;
+}
+
 JSValue wjr_Document_get_forms(JSContext *ctx, JSValueConst this_val) { return doc_collection(ctx, this_val, 5); }
 JSValue wjr_Document_get_images(JSContext *ctx, JSValueConst this_val) { return doc_collection(ctx, this_val, 6); }
 JSValue wjr_Document_get_links(JSContext *ctx, JSValueConst this_val) { return doc_collection(ctx, this_val, 7); }

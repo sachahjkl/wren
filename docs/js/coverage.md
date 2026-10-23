@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 560 |
 | exposed by default | 244 |
 | members | 5013 |
-| members implemented | 3011 (60.1 %) |
+| members implemented | 3012 (60.1 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (3) | 17 / 28 |
 | `cssom.idl` | 16 (5) | 37 / 149 |
-| `dom.idl` | 35 (31) | 575 / 699 |
+| `dom.idl` | 35 (31) | 576 / 699 |
 | `encoding.idl` | 4 (2) | 9 / 19 |
 | `entries-api.idl` | 5 (0) | 0 / 13 |
 | `event-timing.idl` | 2 (1) | 6 / 8 |
@@ -1108,7 +1108,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-184 / 225 members.
+185 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -1199,7 +1199,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `clear()`: not supported
 - `captureEvents()`: not supported
 - `releaseEvents()`: not supported
-- `readonly all`: not supported
+- `readonly all`: C `wjr_Document_get_all`
 - `onfreeze`: generic (event handler)
 - `onresume`: generic (event handler)
 - `readonly wasDiscarded`: not supported
