@@ -594,3 +594,19 @@ clearing_site_data_closes_everything :: proc(t: ^testing.T) {
 	data, err := os.read_entire_file(path, context.temp_allocator)
 	testing.expect(t, err != nil || len(data) <= HEADER_SIZE, "the file is empty")
 }
+@(test)
+a_page_closing_during_a_deletions_write_is_safe :: proc(t: ^testing.T) {
+	h: Harness
+	harness_init(&h, "delete_write", async = true)
+	defer harness_destroy(&h)
+	c := new_client(&h)
+	run_jobs()   // the origin loads
+	conn, _ := open_and_upgrade(&h, c, "d", 1, true, make_store)
+	close_connection(c, conn)
+	delete_database(c, "d")     // no connection left: its record is written at once, asynchronously
+	testing.expect_value(t, len(jobs), 1)
+	client_destroy(c)           // the page is gone before the write finished
+	run_jobs()                  // the deletion completes for nobody (the tracker finds a double free or a leak)
+	o := h.m.origins["http://a.test"]
+	testing.expect_value(t, len(o.data.dbs), 0)
+}

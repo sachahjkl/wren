@@ -7,8 +7,8 @@ package idb
 //   range     flags (1 lower, 2 upper, 4 lower open, 8 upper open), then the bounds present
 //   GET       store, index (0: the store), range, key only        -> found; primary key; value (not for key only)
 //   COUNT     store, index, range                                  -> count
-//   GET_ALL   store, index, range, mode (1 keys, 2 values, 3 key, primary key and value), flags (1 backwards),
-//             limit (0: all)                                       -> count; per entry what the mode says
+//   GET_ALL   store, index, range, mode (1 keys, 2 values, 3 key, primary key and value), flags (1 backwards,
+//             2 one record per key), limit (0: all)                -> count; per entry what the mode says
 //   CURSOR    store, index, range, direction (0 next, 1 next unique, 2 prev, 3 prev unique), has current, key, primary
 //             key, has target, target, has target primary key, target primary key, count, key only
 //                                                                  -> found; key; primary key; value (not for key only)
@@ -119,14 +119,26 @@ tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
 		body: Writer
 		defer writer_destroy(&body)
 		ctx := Ctx{w = &body, mode = mode}
-		scan(src, rng, flags & 1 != 0, limit if limit > 0 else -1, proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool {
+		visit :: proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool {
 			c := (^Ctx)(user)
 			if c.mode == 3 { w_bytes(c.w, key) }
 			if c.mode != 2 { w_bytes(c.w, pk) }
 			if c.mode != 1 { w_bytes(c.w, rec.value) }
 			c.n += 1
 			return true
-		}, &ctx)
+		}
+		if flags & 2 != 0 {
+			// distinct keys only (the unique directions): one record per key, by cursor steps
+			q := Cursor_Request{range = rng, direction = .Prev_Unique if flags & 1 != 0 else .Next_Unique}
+			for limit <= 0 || ctx.n < limit {
+				hit, found := cursor_step(src, q)
+				if !found { break }
+				visit(&ctx, hit.key, hit.pk, hit.rec)
+				q.has_cur, q.cur_key, q.cur_pk = true, hit.key, hit.pk
+			}
+		} else {
+			scan(src, rng, flags & 1 != 0, limit if limit > 0 else -1, visit, &ctx)
+		}
 		w_uv(reply, u64(ctx.n))
 		append(&reply.data, ..body.data[:])
 	case .Cursor:
