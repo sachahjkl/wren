@@ -89,6 +89,7 @@ Has_Anchor :: struct {
 	compound: css.Compound,
 	reach:    Reach,
 	feat:     Has_Feat,
+	hops:     int,   // how many levels above a changed element the anchor can be (-1: any: the argument has a descendant combinator)
 }
 
 // The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
@@ -284,7 +285,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				ix.collect = &feat
 				analyze_list(ix, s.list, total, true, depth)
 				ix.collect = saved
-				append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total, feat = feat})
+				append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list)})
 			} else {
 				analyze_list(ix, s.list, total, true, depth)
 			}
@@ -320,4 +321,30 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		}
 	}
 	return false
+}
+
+// How far above the element that changed an anchor of this :has() argument can be: the number of child combinators the
+// longest relative selector has (`:has(> .a)` 1, `:has(> .a > .b)` 2, `:has(+ .a)` 0: a sibling is not a level), -1 when
+// any of them has a descendant combinator or a nested selector list (:is, :not...) whose own combinators are not read here.
+@(private = "file")
+has_hops :: proc(list: ^css.Selector_List) -> int {
+	if list == nil { return -1 }
+	most := 0
+	for &c in list^ {
+		n := 0
+		if c.relative && c.leading == .Descendant { return -1 }
+		if c.relative && c.leading == .Child { n += 1 }
+		for cb in c.combinators {
+			switch cb {
+			case .Descendant: return -1
+			case .Child: n += 1
+			case .Next_Sibling, .Subsequent_Sibling:
+			}
+		}
+		for comp in c.compounds {
+			for sp in comp.simples { if sp.list != nil || sp.kind == .Nesting { return -1 } }
+		}
+		most = max(most, n)
+	}
+	return most
 }

@@ -288,8 +288,9 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}) {
 	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
-	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change) {
+	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change, hop: int) {
 		for &ha in ix.has_anchors {
+			if ha.hops >= 0 && hop > ha.hops { continue }   // (`:has(> .a)`: only the parent of the changed element)
 			// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
 			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
 			if !has_tests(ha.feat, feat) { continue }
@@ -299,12 +300,21 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 	any := false
 	for &ha in ix.has_anchors { if has_tests(ha.feat, feat) { any = true; break } }
 	if !any { return }
-	if self { test(m, ix, x, feat) }
+	if self { test(m, ix, x, feat, 0) }
+	// the farthest level any anchor reaches: the walk up stops there
+	top := 0
+	for &ha in ix.has_anchors {
+		if ha.hops < 0 { top = -1; break }
+		top = max(top, ha.hops)
+	}
+	hop := 0
 	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
-		if cur != x { test(m, ix, cur, feat) }
+		if top >= 0 && hop > top { break }
+		if cur != x { test(m, ix, cur, feat, hop) }
 		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps, feat) }
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps, feat, hop) }
 		}
+		hop += 1
 	}
 }
 
