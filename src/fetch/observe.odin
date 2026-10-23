@@ -40,12 +40,14 @@ Observer :: struct {
 // Adds an observer besides the developer tools' one (a page's timeline). The same `user` is removed by observer_remove.
 observer_add :: proc(l: ^Loader, o: Observer) {
 	if o.event == nil { return }
-	if l.observers == nil { l.observers = make([dynamic]Observer, 0, 2) }
+	// (the process's allocator: a page's timeline observes a loader for the process's life, and not for a test's)
+	if l.observers == nil { l.observers = make([dynamic]Observer, 0, 2, base.process_allocator()) }
 	append(&l.observers, o)
 }
 
 observer_remove :: proc(l: ^Loader, user: rawptr) {
 	for i := len(l.observers) - 1; i >= 0; i -= 1 { if l.observers[i].user == user { ordered_remove(&l.observers, i) } }
+	if len(l.observers) == 0 { delete(l.observers); l.observers = nil }   // (a loader nobody observes holds nothing)
 }
 
 // Whether anything watches (the steps are only described to someone who looks).

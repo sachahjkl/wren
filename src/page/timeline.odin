@@ -148,7 +148,7 @@ Pending_Resource :: struct {
 }
 
 @(private) tl_pending: map[u64]Pending_Resource
-@(private) tl_loader: ^fetch.Loader
+@(private) tl_loader: u8   // (its address names the timelines' observer of a loader)
 
 @(private)
 tl_of :: proc(p: ^Page, create := true) -> ^Page_Timeline {
@@ -182,10 +182,9 @@ timeline_page_closing :: proc(data: rawptr) {
 // A page was made: its loader's requests are described to the timelines (once for a loader).
 @(private)
 timeline_attach :: proc(p: ^Page) {
-	if p.loader == nil || tl_loader == p.loader { return }
-	if tl_loader != nil { fetch.observer_remove(tl_loader, &tl_loader) }
-	tl_loader = p.loader
-	fetch.observer_add(p.loader, {user = &tl_loader, event = timeline_observe})
+	if p.loader == nil { return }
+	for o in p.loader.observers { if o.user == &tl_loader { return } }
+	fetch.observer_add(p.loader, {user = &tl_loader, event = timeline_observe})   // (the loader drops it with itself)
 }
 
 // Process end: the requests still described are forgotten.
@@ -193,8 +192,6 @@ timeline_shutdown :: proc() {
 	for _, pr in tl_pending { delete(pr.url, base.process_allocator()); delete(pr.mime, base.process_allocator()) }
 	delete(tl_pending)
 	tl_pending = nil
-	if tl_loader != nil { fetch.observer_remove(tl_loader, &tl_loader) }
-	tl_loader = nil
 }
 
 // The live page whose environment this is (the request's initiator), nil for none.
