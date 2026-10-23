@@ -140,6 +140,7 @@ Marker :: struct {
 	// walk of the children, not 2 500 (each over every child).
 	walked:  map[Walk_Key]bool,   // positional walks from an element, forward or backward, per index
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
+	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
 }
 
 @(private = "file")
@@ -223,23 +224,86 @@ next_element :: proc(m: ^Marker, h: base.Handle) -> base.Handle {
 	return base.NIL_HANDLE
 }
 
-// Marks what `r` reaches from element `h`.
+// Marks what `r` reaches from element `h`. A whole subtree (desc, sib_desc) is restyled whole, unless the reach names its
+// subject's keys (Reach.set): then only the elements of it that carry one are marked (`.a .b`: the `.b` under `.a`), which
+// is all a rule can change; the rest is looked at, not restyled.
 @(private = "file")
 apply :: proc(m: ^Marker, h: base.Handle, r: Reach) {
-	if r.desc { mark(m, h, true) } else if r.self { mark(m, h, false) }
+	if r.desc {
+		if r.set != 0 && !m.shadows {
+			if r.self { mark(m, h, false) }
+			mark_keyed(m, h, r.set)
+		} else {
+			mark(m, h, true)
+		}
+	} else if r.self {
+		mark(m, h, false)
+	}
+	sibs :: proc(m: ^Marker, x: base.Handle, r: Reach) {
+		if r.sib_desc && r.set != 0 && !m.shadows {
+			mark(m, x, false)
+			mark_keyed(m, x, r.set)
+		} else {
+			mark(m, x, r.sib_desc)
+		}
+	}
 	if r.next > 0 || r.all_next {
 		k := 0
 		for x := next_element(m, h); x != base.NIL_HANDLE; x = next_element(m, x) {
 			k += 1
 			if !r.all_next && k > r.next { break }
-			mark(m, x, r.sib_desc)
+			sibs(m, x, r)
 		}
 	}
 	if r.all_prev {
-		for x := prev_element(&m.mc, h); x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { mark(m, x, r.sib_desc) }
+		for x := prev_element(&m.mc, h); x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { sibs(m, x, r) }
 	}
 }
 
+// Marks the descendants of `h` that carry one of the keys of set `set` (their own marks only: what they pass on to their
+// children, the walk finds out). The scan is made once per element and set in a pass.
+@(private = "file")
+mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
+	if m.keyed == nil { m.keyed = make(map[[2]u64]bool, 16, context.temp_allocator) }
+	done := [2]u64{u64(h), u64(set)}
+	if done in m.keyed { return }
+	m.keyed[done] = true
+	keys := key_set_keys(set)
+	if len(keys) == 0 { mark(m, h, true); return }
+	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+	append(&stack, h)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
+			n := dom.get(m.doc, ch)
+			if n == nil || n.kind != .Element { continue }
+			if carries_key(n, keys) { mark(m, ch, false) }
+			append(&stack, ch)
+		}
+	}
+}
+
+@(private = "file")
+carries_key :: proc(n: ^dom.Node, keys: []Subject_Key) -> bool {
+	for k in keys {
+		switch k.kind {
+		case .Type: if strings.equal_fold(n.name, k.name) { return true }
+		case .Id: if v, ok := attr(n, "id"); ok && strings.equal_fold(v, k.name) { return true }
+		case .Class:
+			if v, ok := attr(n, "class"); ok {
+				rest := v
+				for len(rest) > 0 {
+					for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+					end := 0
+					for end < len(rest) && !is_space(rest[end]) { end += 1 }
+					if end > 0 && strings.equal_fold(rest[:end], k.name) { return true }
+					rest = rest[end:]
+				}
+			}
+		}
+	}
+	return false
+}
 @(private = "file")
 each_class :: proc(v: string, out: ^map[string]bool) {
 	rest := v
@@ -285,21 +349,56 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 // :has() anchors whose argument may have changed because something at or under `x` did: x's ancestors (and, when
 // :has() arguments use sibling combinators, the earlier siblings of x and of its ancestors). x itself when `self`.
 @(private = "file")
-has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool) {
+has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}) {
 	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
-	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle) {
+	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change, hop: int) {
 		for &ha in ix.has_anchors {
+			if ha.hops >= 0 && hop > ha.hops { continue }   // (`:has(> .a)`: only the parent of the changed element)
+			// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
+			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
+			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) { apply(m, a, ha.reach) }
 		}
 	}
-	if self { test(m, ix, x) }
-	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
-		if cur != x { test(m, ix, cur) }
-		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps) }
-		}
+	any := false
+	for &ha in ix.has_anchors { if has_tests(ha.feat, feat) { any = true; break } }
+	if !any { return }
+	if self { test(m, ix, x, feat, 0) }
+	// the farthest level any anchor reaches: the walk up stops there
+	top := 0
+	for &ha in ix.has_anchors {
+		if ha.hops < 0 { top = -1; break }
+		top = max(top, ha.hops)
 	}
+	hop := 0
+	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
+		if top >= 0 && hop > top { break }
+		if cur != x { test(m, ix, cur, feat, hop) }
+		if ix.has_sibling {
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps, feat, hop) }
+		}
+		hop += 1
+	}
+}
+
+// What changed on an element under an anchor: a class, an id or an attribute (kind None: a change of the tree itself,
+// or of anything: every anchor is concerned).
+@(private = "file")
+Has_Change :: struct {
+	kind: enum u8 { None, Class, Id, Attr },
+	name: string,
+}
+
+@(private = "file")
+has_tests :: proc(f: Has_Feat, c: Has_Change) -> bool {
+	switch c.kind {
+	case .None: return true
+	case .Class: return c.name in f.classes
+	case .Id: return c.name in f.ids
+	case .Attr: return c.name in f.attrs
+	}
+	return true
 }
 
 @(private = "file")
@@ -499,7 +598,7 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 		// custom states (:state()): no value to compare, the rules that test them say what they reach
 		for ix in ixs_for(m, h) {
 			if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-			if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+			if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
 		}
 		return
 	}
@@ -533,18 +632,18 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		for c in a {
 			if c in b { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
 		}
 		for c in b {
 			if c in a { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
 		}
 	case "id":
 		for v in ([2]string{ch.had_old ? ch.old : "", has_cur ? cur : ""}) {
 			if v == "" { continue }
 			if r, ok := ix.by_id[v]; ok { apply(m, h, r) }
-			if v in ix.has_ids { has_invalidate(m, h, false) }
+			if v in ix.has_ids { has_invalidate(m, h, false, Has_Change{.Id, v}) }
 		}
 	case "style":
 		mark(m, h, false)
@@ -554,7 +653,7 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		if m.s.counters_used { m.rewalk = true }   // quotes follow the language
 	}
 	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-	if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
 	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
 		for f in FORM_RELATED {
@@ -730,7 +829,7 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[h]; ok { old_base = b } }
 	if !counters_carry_over(s, w.doc, h, old_base, c, w.p.alloc) { w.rewalk = true }
 	if (old_base == nil || !s.counters_used) && box_feeds_counters(c) { w.rewalk = true }
-	if old_base != nil && computed_equal(old_base, c) { return old_base, false, old_base }
+	if old_base != nil && computed_equal(old_base, c) && !container_changed(old_base, c) { return old_base, false, old_base }
 	level := max(layout_level(old, c), Change_Level.Paint)
 	if level >= .Layout { w.layout_changed = true }
 	shown := old_base != nil && old_base.display == .None && c.display != .None
@@ -785,7 +884,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 			}
 			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
-				if old == nil || !inherited_equal(old, nc) { inh_changed = true } else { other_changed = true }
+				if old == nil || !inherited_equal(old, nc) || container_changed(old, nc) { inh_changed = true } else { other_changed = true }
 				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
@@ -1235,4 +1334,21 @@ custom_diff :: proc(a, b: ^Custom_Props) -> string {
 		if _, ok := a.values[k]; !ok { return fmt.tprintf("%s: missing, expected %q", k, w) }
 	}
 	return "(same values)"
+}
+
+// Whether what the children of an element see of its query containers differs (it became one, stopped being one, was
+// renamed, resized, shown or hidden, or an ancestor did): their styles then change without any rule or inherited value of
+// theirs changing.
+@(private = "file")
+container_changed :: proc(old, nc: ^Computed) -> bool {
+	a, b := old.containers, nc.containers
+	for a != nil || b != nil {
+		if a == nil || b == nil { return true }
+		if a != b {
+			if a.node != b.node || a.type != b.type || a.size != b.size || len(a.names) != len(b.names) { return true }
+			for n, i in a.names { if n != b.names[i] { return true } }
+		}
+		a, b = a.parent, b.parent
+	}
+	return false
 }
