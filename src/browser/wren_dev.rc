@@ -23,7 +23,7 @@ BEGIN
             VALUE "FileDescription", "Wren web browser (development build)"
             VALUE "FileVersion", WREN_VER_STRING
             VALUE "InternalName", "wren"
-            VALUE "LegalCopyright", "Copyright (c) 2026 Froment Software. MIT License."
+            VALUE "LegalCopyright", "Copyright (c) 2026 Sacha Froment (Froment Software). MIT License."
             VALUE "OriginalFilename", "wren.exe"
             VALUE "ProductName", "Wren"
             VALUE "ProductVersion", WREN_VER_STRING
