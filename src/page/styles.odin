@@ -391,13 +391,13 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 			}
 		}
 	}
-	if !full && !style.state_equal(p.style_state, p.styled.state) {
-		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true } else { partial = true }
+	if !full && !style.state_equal(effective_state(p), p.styled.state) {
+		if _, ok := style.restyle_state(e, p.doc, p.styled, effective_state(p)); !ok { full = true } else { partial = true }
 	}
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		old := p.styled
-		p.styled = style.compute_styles(e, p.doc, p.style_state, style_threads(p), p.settings.threads.style_min_nodes)
+		p.styled = style.compute_styles(e, p.doc, effective_state(p), style_threads(p), p.settings.threads.style_min_nodes)
 		// what changed for an incremental layout (only when one asked: set_layout_journal)
 		if old != nil && p.doc.nodes.count >= p.settings.threads.style_min_nodes {
 			style.journal_diff(old, p.styled, style_threads(p))

@@ -266,8 +266,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	e.fragment_seen, e.url, e.title = "", "", ""
 	e.layout = {}
 	tab_icon_destroy(&t.icon)
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	set_status(t, "Restored from the back/forward cache")
 	if current_tab(app) == t { ui.field_set(&app.address, t.url) }
 	bf_entry_free(e, close = false)

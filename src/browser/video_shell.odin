@@ -133,7 +133,6 @@ pixel_format :: proc(f: media.Pixel_Format) -> render.Video_Format {
 }
 
 // The picture a decoder made, as the renderer wants it described.
-@(private = "file")
 picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	pic := render.Video_Picture{
 		format = pixel_format(f.format), size = f.surface, crop_origin = f.crop, crop_size = {f.width, f.height},

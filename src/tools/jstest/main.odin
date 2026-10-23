@@ -100,6 +100,34 @@ main :: proc() {
 		page.page_close(p)
 	}
 
+	fmt.println("-- the developer tools: console arguments described while the panel is open")
+	{
+		p := load(process, `<!doctype html><body><div id=n class="c"></div><script>
+console.log("plain", {a: 1});
+</script></body>`)
+		check(len(logs) == 1 && logs[0] == "plain [object Object]" || len(logs) == 1 && strings.has_prefix(logs[0], "plain"), "closed: one line per call, nothing described")
+		page.dev_console_arm(p, 65536)
+		logs_clear()
+		page.js_console_eval(p, `console.log("hi %s", "Ada", {k: [1, 2]}, new Map([[1, 2]]), document.getElementById("n"))`)
+		described := false
+		for l in logs { if strings.has_prefix(l, "\x01dt:") && strings.contains(l, `"c":"Map"`) && strings.contains(l, `<div id=\"n\" class=\"c\">`) && strings.contains(l, `"k"`) { described = true } }
+		check(described, "armed: the call is described (object, Map, DOM node) in a private line before its own")
+		logs_clear()
+		page.js_console_eval(p, `1 + 1`)
+		check(logged("2"), "a console expression prints its value as a line")
+		check(len(logs) >= 2 && strings.has_prefix(logs[0], "\x01dt:") && strings.contains(logs[0], `"l":"result"`), "and describes it as a result")
+		logs_clear()
+		page.dev_console_complete(p, "Math")
+		check(len(logs) == 1 && strings.has_prefix(logs[0], "\x01dtc:") && strings.contains(logs[0], `"floor"`), "completion asks the realm for the members of an expression")
+		page.dev_console_arm(p, 0)
+		logs_clear()
+		page.js_console_eval(p, `console.log({z: 1})`)
+		described = false
+		for l in logs { if strings.has_prefix(l, "\x01") { described = true } }
+		check(!described && logged("{ z: 1 }"), "disarmed: no description, the line as it was")
+		page.page_close(p)
+	}
+
 	fmt.println("-- DOM bindings: tree, attributes, wrappers")
 	{
 		p := load(process, `<!doctype html><body><div id=a class=c></div><script>

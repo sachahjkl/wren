@@ -779,3 +779,17 @@ author_colors_and_fonts_off_revert :: proc(t: ^testing.T) {
 	testing.expect(t, same_color(at(&f, "h").color, at(&ref, "h").color) && same_color(at(&f, "p").color, at(&ref, "p").color), "no page colors")
 	testing.expect(t, at(&f, "p").text_fill_color == at(&ref, "p").text_fill_color, "-webkit-text-fill-color is a color too")
 }
+@(test)
+forced_visited_state :: proc(t: ^testing.T) {
+	f := load(`<style>
+		a:link { margin-top: 3px } a:visited { margin-top: 9px; color: red }
+	</style><a id=a href=x>l</a><a id=b href=y>m</a><span id=s>t</span>`)
+	defer unload(&f)
+	a_h := dom.find_by_id(f.doc, "a")
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3) && near(at(&f, "b").margin[.Top].v, 3), ":link matches an unvisited link")
+	restyle(&f, State{visited = a_h})
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 9) && same_color(at(&f, "a").color, RED), ":visited applies to the forced element")
+	testing.expect(t, near(at(&f, "b").margin[.Top].v, 3), "the other link stays unvisited")
+	restyle(&f, State{})
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3), "the forced state is dropped by the next state")
+}

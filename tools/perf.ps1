@@ -376,3 +376,28 @@ if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_*' })) {
         Run 'yt_h264_1080p60_sample' "$yt`?src=perf_h264_1080p60" $play $true $ytp
     } finally { Stop-WrenTestServer $srv }
 }
+# The developer tools (browser.devtools.*) open on each tab, left alone (frames per second must be 0 once the page has settled)
+# and, for the console, with 100 000 lines kept and scrolled. The page of the sockets, the stream, the worker and the media
+# (examples/site/devtools) gives the Network tab something to list; the console page logs lines in a loop.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'dt_*' })) {
+    $dtc = Join-Path $out 'dt_console.html'
+    [IO.File]::WriteAllText($dtc, "<!doctype html><meta charset=utf-8><title>dt_console</title><script>for (var i = 0; i < 100000; i++) console.log('line', i, {a: i, b: [1, 2, 3]});</script><p>100 000 console lines</p>")
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $dtp = "$($srv.Origin)/site/devtools/dt4.html"
+        Run 'dt_closed_idle' $dtp { param($h) Start-Sleep 6; Mark; Start-Sleep 8 } $false   # the same page, the panel closed: what the page itself costs
+        $dts = Join-Path $out 'dt_static.html'
+        [IO.File]::WriteAllText($dts, '<!doctype html><meta charset=utf-8><title>dt_static</title><h1>Nothing moves</h1><p>A static page for the panel at rest.</p>')
+        foreach ($tab in 'console', 'elements', 'network', 'application', 'performance', 'memory') {
+            Run "dt_static_${tab}_idle" (FileUrl $dts) { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $false "--pref browser.devtools.visible=true --pref browser.devtools.tab=$tab"
+        }
+        foreach ($tab in 'console', 'elements', 'network', 'application', 'performance', 'memory') {
+            Run "dt_${tab}_idle" $dtp { param($h) Start-Sleep 6; Mark; Start-Sleep 8 } $false "--pref browser.devtools.visible=true --pref browser.devtools.tab=$tab"
+        }
+        $cons = '--pref browser.devtools.visible=true --pref browser.devtools.tab=console --pref browser.console.max_lines=100000'
+        Run 'dt_console100k_idle' (FileUrl $dtc) { param($h) Start-Sleep 12; Mark; Start-Sleep 8 } $false $cons
+        Run 'dt_console100k_scroll' (FileUrl $dtc) { param($h) Start-Sleep 12; Mark; $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew(); while ($sw.ElapsedMilliseconds -lt 8000) { Wheel $h ($c.R / 2) ([int]($c.B * 0.85)) (-3); Start-Sleep -Milliseconds 16 } } $false $cons
+        Run 'dt_network_throttled' $dtp { param($h) Start-Sleep 4; Mark; Start-Sleep 10 } $false '--pref browser.devtools.visible=true --pref browser.devtools.tab=network --pref browser.devtools.network.throttle=slow_3g'
+    } finally { Stop-WrenTestServer $srv }
+}

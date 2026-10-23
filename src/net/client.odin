@@ -37,6 +37,20 @@ Event_Kind :: enum u8 {
 	Failed,    // `error` is a WinHTTP / ERROR_* code; see `error_text`
 }
 
+// Where a request spent its time, in ms from the moment it was queued (-1: the step did not happen: a connection that was
+// reused has no name lookup, a plain http request no secure handshake). Headers and Done events carry it.
+Timing :: struct {
+	started:      f32,   // left the queue: a connection slot was free (the time before it is "queued")
+	dns_start:    f32,
+	dns_end:      f32,
+	connect_start: f32,
+	connect_end:  f32,   // the connection is up (for https the handshake follows, up to `sending`)
+	sending:      f32,   // the request starts to go out
+	sent:         f32,   // the request is out
+	response:     f32,   // the first byte of the answer (its head)
+	done:         f32,   // the last byte of the body (Done)
+}
+
 // Pointers inside an Event are valid only during the callback.
 Event :: struct {
 	kind:         Event_Kind,
@@ -48,6 +62,18 @@ Event :: struct {
 	error:        u32,
 	secure_flags: u32,
 	job:          ^Job,   // internal
+	timing:       Timing,        // Headers, Done
+	protocol:     u8,            // Headers: 0 http/1.1, 1 h2, 2 h3
+	remote:       [48]u8,        // Headers: the address the connection is to ("ip:port"), remote_len bytes
+	remote_len:   u8,
+}
+
+// The moments (ticks, ns) WinHTTP's notifications came, written by its callback threads one after the other.
+@(private)
+Marks :: struct {
+	created, started, dns_start, dns_end, connect_start, connect_end, sending, sent, response, done: i64,
+	ip:     [48]u8,
+	ip_len: u8,
 }
 
 Event_Proc :: #type proc(user: rawptr, req: base.Handle, ev: ^Event)
@@ -63,6 +89,7 @@ Request_Desc :: struct {
 	collect:  bool,         // deliver one Done event with the entire body instead of Data chunks
 	max_body: int,          // 0 = the network.max_response_bytes setting
 	priority: Priority,
+	link:     ^Throttle_Link,   // throttle.odin: the answer's events are held back as such a link would (nil: no throttling)
 }
 
 // Requests wait in our own queues (per priority, FIFO) until a per-host and a global slot are free. Waiting for a
@@ -87,6 +114,7 @@ Job :: struct {
 	paused:       b32,   // atomic
 	terminal:     bool,
 	secure_flags: u32,
+	marks:        Marks,
 }
 
 Request :: struct {
@@ -103,7 +131,15 @@ Request :: struct {
 	state:    Request_State,
 	priority: Priority,
 	host_key: string,    // "host:port", counted in Client.active while Active; "" = never counted
+	link:     ^Throttle_Link,
+	delayed:  [dynamic]Delayed,   // events held back by the link, in order
+	timer:    base.Handle,       // the timer that starts the request or delivers the next delayed event
+	timer_owner: ^Owner,
+	begin_pending: bool,         // the timer starts the request (its latency and its upload time)
 }
+
+@(private)
+Delayed :: struct { ev: Event, due: f64 }
 
 Client :: struct {
 	loop:          ^host.Loop,
@@ -198,6 +234,7 @@ client_destroy :: proc(c: ^Client) {
 // Queues a request. Never calls back synchronously: failures arrive as a Failed event. Returns the request handle.
 fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
 	r := Request{on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect, priority = d.priority}
+	if link_active(d.link) { r.link = d.link }
 	h, rp := base.pool_insert(&c.requests, r)
 	if d.scope != nil {
 		rp.cleanup = base.on_close(d.scope, request_scope_closed, new_clone(Owner{c, h}))
@@ -245,9 +282,58 @@ activate :: proc(c: ^Client, h: base.Handle, r: ^Request) {
 	} else {
 		c.active[strings.clone(r.host_key, heap())] = 1   // the map owns its key: requests come and go
 	}
+	if r.link != nil {
+		// the request starts after its latency and the time its head and body need to go up
+		now := now_ms(c)
+		bytes := 300 + len(r.job.body) + len(r.job.headers_w)
+		due := link_schedule(r.link, now, bytes, true) + f64(r.link.latency_ms)
+		if due > now + 0.5 {
+			r.begin_pending = true
+			throttle_timer(c, h, r, due - now)
+			return
+		}
+	}
 	if code := begin(c, r); code != 0 {
 		push_event(c, Event{kind = .Failed, req = h, error = code})
 	}
+}
+
+@(private)
+now_ms :: proc(c: ^Client) -> f64 { return f64(host.now_ns(c.loop)) / 1e6 }
+
+@(private)
+throttle_timer :: proc(c: ^Client, h: base.Handle, r: ^Request, delay: f64) {
+	if r.timer != base.NIL_HANDLE { return }
+	r.timer_owner = new_clone(Owner{c, h}, heap())
+	r.timer = host.set_timer(c.loop, max(delay, 0), 0, throttle_fire, r.timer_owner)
+}
+
+// The request's timer: it starts the request, or delivers the events whose time has come.
+@(private)
+throttle_fire :: proc(data: rawptr) {
+	o := (^Owner)(data)
+	c, h := o.c, o.h
+	r := base.pool_get(&c.requests, h)
+	if r == nil { return }   // (release clears the timer: this does not happen)
+	r.timer = base.NIL_HANDLE
+	free(r.timer_owner, heap())
+	r.timer_owner = nil
+	if r.begin_pending {
+		r.begin_pending = false
+		if code := begin(c, r); code != 0 { push_event(c, Event{kind = .Failed, req = h, error = code}) }
+		return
+	}
+	now := now_ms(c)
+	for len(r.delayed) > 0 && r.delayed[0].due <= now + 0.5 {
+		d := r.delayed[0]
+		ordered_remove(&r.delayed, 0)
+		ev := d.ev
+		process_event(c, &ev)
+		free_event(&ev)
+		r = base.pool_get(&c.requests, h)   // (the event may have ended the request)
+		if r == nil { return }
+	}
+	if len(r.delayed) > 0 { throttle_timer(c, h, r, r.delayed[0].due - now) }
 }
 
 // Silent: the request's callbacks will not run again. False if it already finished or was cancelled.
@@ -299,6 +385,7 @@ prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key:
 	job = new(Job, heap())
 	job.client = c
 	job.req = h
+	job.marks.created = tick_ns()
 	job.port = u16(url.effective_port(u))
 	job.secure = u.scheme == "https"
 	job.max_body = d.max_body > 0 ? d.max_body : c.settings.max_body
@@ -327,6 +414,7 @@ begin :: proc(c: ^Client, r: ^Request) -> u32 {
 	r.hrequest = WinHttpOpenRequest(r.hconnect, cstring16(raw_data(job.verb_w)), cstring16(raw_data(job.target_w)), nil, nil, nil, flags)
 	if r.hrequest == nil { return u32(win.GetLastError()) }
 	ctx := win.DWORD_PTR(uintptr(job))
+	job.marks.started = tick_ns()
 	if !WinHttpSetOption(r.hrequest, WINHTTP_OPTION_CONTEXT_VALUE, &ctx, size_of(ctx)) {
 		// without a context WinHTTP's HANDLE_CLOSING cannot reach the job: free it here, once
 		WinHttpCloseHandle(r.hrequest); r.hrequest = nil
@@ -391,6 +479,9 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 		delete(r.host_key, heap())
 	}
 	delete(r.body)
+	if r.timer != base.NIL_HANDLE { host.clear_timer(c.loop, r.timer); free(r.timer_owner, heap()) }
+	for &d in r.delayed { free_event(&d.ev) }
+	delete(r.delayed)
 	if r.scope != nil { base.run_cleanup(r.scope, r.cleanup) }
 	if freed_slot { pump(c) }
 	return true
@@ -433,6 +524,29 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 		// cancelled or finished already: the bytes still count against nothing (the job is gone or going)
 		return
 	}
+	if r.link != nil {
+		// through the link: a piece leaves when the bytes before it are through, and a later event never passes an earlier one
+		now := now_ms(c)
+		due := now
+		#partial switch ev.kind {
+		case .Data: due = link_schedule(r.link, now, len(ev.data), false)
+		}
+		if len(r.delayed) > 0 { due = max(due, r.delayed[len(r.delayed) - 1].due) }
+		if due > now + 0.5 || len(r.delayed) > 0 {
+			req := ev.req
+			append(&r.delayed, Delayed{ev = ev^, due = due})
+			ev^ = {}   // the delayed list owns what it holds
+			throttle_timer(c, req, r, r.delayed[0].due - now)
+			return
+		}
+	}
+	process_event(c, ev)
+}
+
+@(private)
+process_event :: proc(c: ^Client, ev: ^Event) {
+	r := base.pool_get(&c.requests, ev.req)
+	if r == nil { return }
 	switch ev.kind {
 	case .Headers:
 		r.status = ev.status
@@ -492,7 +606,44 @@ fail :: proc(job: ^Job, code: u32) {
 finish :: proc(job: ^Job) {
 	if job.terminal { return }
 	job.terminal = true
-	push_from_job(job, Event{kind = .Done})
+	job.marks.done = tick_ns()
+	push_from_job(job, Event{kind = .Done, timing = timing_of(&job.marks)})
+}
+
+@(private)
+tick_ns :: proc() -> i64 { return i64(time.tick_now()._nsec) }
+
+// The marks as milliseconds from the moment the request was made (-1: that step did not happen).
+@(private)
+timing_of :: proc(m: ^Marks) -> Timing {
+	at :: proc(m: ^Marks, v: i64) -> f32 { return v == 0 || v < m.created ? -1 : f32(f64(v - m.created) / 1e6) }
+	return Timing{
+		started = at(m, m.started), dns_start = at(m, m.dns_start), dns_end = at(m, m.dns_end), connect_start = at(m, m.connect_start),
+		connect_end = at(m, m.connect_end), sending = at(m, m.sending), sent = at(m, m.sent), response = at(m, m.response), done = at(m, m.done),
+	}
+}
+
+// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte).
+@(private)
+remember_address :: proc(m: ^Marks, info: rawptr, info_len: win.DWORD) {
+	b := ([^]u8)(info)
+	n := 0
+	if info_len >= 2 && b[1] == 0 && b[0] != 0 {
+		w := ([^]u16)(info)
+		for i in 0 ..< int(info_len) / 2 {
+			if w[i] == 0 || n >= len(m.ip) - 8 { break }
+			if w[i] > 127 { n = 0; break }
+			m.ip[n] = u8(w[i])
+			n += 1
+		}
+	} else {
+		for i in 0 ..< int(info_len) {
+			if b[i] == 0 || n >= len(m.ip) - 8 { break }
+			m.ip[n] = b[i]
+			n += 1
+		}
+	}
+	m.ip_len = u8(n)
 }
 
 @(private)
@@ -512,8 +663,21 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 	if ctx == 0 { return }
 	context = base.process_context()
 	job := (^Job)(uintptr(ctx))
+	m := &job.marks
 
 	switch status {
+	case WINHTTP_CALLBACK_STATUS_RESOLVING_NAME:        m.dns_start = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_NAME_RESOLVED:
+		m.dns_end = tick_ns()
+		if info != nil && info_len > 0 { remember_address(m, info, info_len) }
+	case WINHTTP_CALLBACK_STATUS_CONNECTING_TO_SERVER:
+		m.connect_start = tick_ns()
+		if m.ip_len == 0 && info != nil && info_len > 0 { remember_address(m, info, info_len) }
+	case WINHTTP_CALLBACK_STATUS_CONNECTED_TO_SERVER:   m.connect_end = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_SENDING_REQUEST:       m.sending = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_REQUEST_SENT:          m.sent = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:     m.response = tick_ns()
+
 	case WINHTTP_CALLBACK_STATUS_SENDREQUEST_COMPLETE:
 		if !WinHttpReceiveResponse(h, nil) { fail(job, u32(win.GetLastError())) }
 
@@ -521,7 +685,33 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 		code: win.DWORD
 		size: win.DWORD = size_of(code)
 		WinHttpQueryHeaders(h, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nil, &code, &size, nil)
-		ev := Event{kind = .Headers, status = int(code)}
+		if m.response == 0 { m.response = tick_ns() }
+		ev := Event{kind = .Headers, status = int(code), timing = timing_of(m)}
+		used: win.DWORD
+		usize_p: win.DWORD = size_of(used)
+		if WinHttpQueryOption(h, WINHTTP_OPTION_HTTP_PROTOCOL_USED, &used, &usize_p) {
+			ev.protocol = used & WINHTTP_PROTOCOL_FLAG_HTTP3 != 0 ? 2 : (used & WINHTTP_PROTOCOL_FLAG_HTTP2 != 0 ? 1 : 0)
+		}
+		if m.ip_len > 0 {
+			ev.remote = m.ip
+			ev.remote_len = m.ip_len
+			// ":port" follows the address
+			digits: [6]u8
+			nd := 0
+			for p := int(job.port); ; p /= 10 {
+				digits[nd] = u8('0' + p % 10)
+				nd += 1
+				if p < 10 { break }
+			}
+			if int(ev.remote_len) + nd + 1 <= len(ev.remote) {
+				ev.remote[ev.remote_len] = ':'
+				ev.remote_len += 1
+				for i := nd - 1; i >= 0; i -= 1 {
+					ev.remote[ev.remote_len] = digits[i]
+					ev.remote_len += 1
+				}
+			}
+		}
 		ev.headers = query_wide(h, WINHTTP_QUERY_RAW_HEADERS_CRLF)
 		usize: win.DWORD
 		WinHttpQueryOption(h, WINHTTP_OPTION_URL, nil, &usize)

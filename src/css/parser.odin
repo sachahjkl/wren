@@ -30,6 +30,8 @@ Rule :: struct {
 	selectors:    Selector_List,
 	declarations: []Declaration,
 	nested:       []^Rule,
+	pos:          u32,          // Style: where the selector starts in the sheet's source (code points: see line_of)
+	selector_text: string,      // Style: the selector list as written, serialized
 	// Media / Supports / Container / Layer_Block: the rules inside
 	rules:        []^Rule,
 	media:        Media_Query_List,
@@ -259,10 +261,28 @@ finish_style_rule :: proc(p: ^Parser, prelude, body: []Value, parent: ^Rule) -> 
 		return nil
 	}
 	r.selectors = sel
+	if pre := trim_values(prelude); len(pre) > 0 {
+		r.selector_text = serialize_values(pre, p.a)
+		r.pos = first_pos(pre)
+	}
 	decls, nested := parse_block_contents(p, body, r)
 	r.declarations = decls
 	r.nested = nested
 	return r
+}
+
+// The code point offset of the first token of a list of component values.
+@(private)
+first_pos :: proc(vs: []Value) -> u32 {
+	if len(vs) == 0 { return 0 }
+	return vs[0].tok.pos
+}
+
+// The line (from 1) of a code point offset in the sheet's source.
+line_of :: proc(s: ^Stylesheet, pos: u32) -> int {
+	line := 1
+	for i in 0 ..< min(int(pos), len(s.runes)) { if s.runes[i] == '\n' { line += 1 } }
+	return line
 }
 
 // Splits a { } block into declarations and nested rules (CSS Nesting).
@@ -437,6 +457,7 @@ build_at_rule :: proc(p: ^Parser, name: string, prelude: []Value, blk: Value, pa
 		if !has_block { return nil }
 		r.kind = .Media
 		r.media = parse_media_query_list(prelude, p.a)
+		r.prelude = prelude
 		r.rules = parse_rules_in_block_or_nested(p, blk, parent)
 	case "supports":
 		if !has_block { return nil }
