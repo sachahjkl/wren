@@ -399,3 +399,32 @@ a_committed_rename_frees_the_old_names :: proc(t: ^testing.T) {
 	_, e := exec_create_store(&f.x, "after", nil, false)
 	testing.expect_value(t, e, Error.Constraint)
 }
+
+@(test)
+replaying_a_journal_keeps_nothing_it_does_not_own :: proc(t: ^testing.T) {
+	d: Data
+	data_init(&d, context.allocator)
+	defer data_destroy(&d)
+	ik := []Index_Key{{1, str_key("x")}}
+	ops := []Op{
+		{kind = .Db_Version, db = "db", version = 1},
+		{kind = .Store_Create, db = "db", store = 1, name = "s", key_path = []byte{1, 2, 3, 4, 5}},
+		{kind = .Put, db = "db", store = 1, key = str_key("a"), value = []byte{1, 2}},
+		{kind = .Index_Create, db = "db", store = 1, index = 1, name = "i", key_path = []byte{9, 9}},
+		{kind = .Index_Put, db = "db", store = 1, key = str_key("a"), ikeys = ik},
+		{kind = .Key_Gen, db = "db", store = 1, gen = 5},
+		{kind = .Store_Rename, db = "db", store = 1, name = "t"},
+		{kind = .Index_Rename, db = "db", store = 1, index = 1, name = "j"},
+		{kind = .Delete, db = "db", store = 1, key = str_key("a")},
+		{kind = .Put, db = "db", store = 1, key = str_key("b"), value = []byte{1, 2}, ikeys = ik},
+		{kind = .Store_Clear, db = "db", store = 1},
+		{kind = .Index_Delete, db = "db", store = 1, index = 1},
+		{kind = .Store_Delete, db = "db", store = 1},
+		{kind = .Db_Version, db = "db", version = 2},
+		{kind = .Db_Delete, db = "db"},
+		{kind = .Db_Version, db = "keep", version = 1},
+		{kind = .Store_Create, db = "keep", store = 1, name = "s"},
+	}
+	for op in ops { testing.expect_value(t, apply(&d, op, nil), Error.None) }
+	testing.expect_value(t, len(d.dbs), 1)
+}
