@@ -197,7 +197,7 @@ is_comment_line :: proc(l: string) -> bool {
 // Building
 
 @(private)
-Pair :: struct { key, id: u32 }
+Pair :: struct { key, id, meta: u32 }
 
 @(private)
 Out :: struct {
@@ -217,7 +217,7 @@ out_put :: proc(o: ^Out, s: []$T) -> Sec {
 
 // Builds the open-addressed table of the grouped pairs; the lists go to `items`.
 @(private)
-build_multi :: proc(pairs: []Pair, items: ^[dynamic]u32) -> []Slot {
+build_multi :: proc(pairs: []Pair, items: ^[dynamic]Item) -> []Slot {
 	if len(pairs) == 0 { return nil }
 	slice.sort_by(pairs, proc(a, b: Pair) -> bool { return a.key != b.key ? a.key < b.key : a.id < b.id })
 	groups := 0
@@ -234,17 +234,35 @@ build_multi :: proc(pairs: []Pair, items: ^[dynamic]u32) -> []Slot {
 			// (the same filter twice under one key would only cost time)
 			if j == i || pairs[j].id != pairs[j - 1].id {
 				id := pairs[j].id
-				append(items, id)
+				append(items, Item{id, pairs[j].meta})
 			}
 			j += 1
 		}
-		items[len(items^) - 1] |= LAST_BIT
+		items[len(items^) - 1].id |= LAST_BIT
 		k := slot_index(pairs[i].key, mask)
 		for tab[k].key != 0 { k = (k + 1) & mask }
 		tab[k] = Slot{pairs[i].key, start}
 		i = j
 	}
 	return tab
+}
+
+// What an Item remembers of a filter: the types it applies to and the party it needs.
+@(private)
+filter_meta :: proc(f: Filter) -> u32 {
+	m := transmute(u32)f.types & 0x1FFFFF
+	if .Third_Party in f.flags { m |= META_THIRD_PARTY }
+	if .First_Party in f.flags { m |= META_FIRST_PARTY }
+	return m
+}
+
+// The 4-byte windows (as little-endian words) of a literal run, lower-cased.
+@(private)
+add_run_grams :: proc(run: string, out: ^[dynamic]u32) {
+	for i in 0 ..< max(len(run) - 3, 0) {
+		w := u32(lower_byte(run[i])) | u32(lower_byte(run[i + 1])) << 8 | u32(lower_byte(run[i + 2])) << 16 | u32(lower_byte(run[i + 3])) << 24
+		append(out, w)
+	}
 }
 
 @(private)
@@ -422,20 +440,24 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 
 	idx_host: [CLASS_COUNT][dynamic]Pair
 	idx_tok:  [CLASS_COUNT][dynamic]Pair
+	idx_gram: [CLASS_COUNT][dynamic]Pair
 	idx_src:  [CLASS_COUNT][dynamic]Pair
-	idx_none: [CLASS_COUNT][dynamic]u32
+	idx_none: [CLASS_COUNT][dynamic]Item
 	for c in 0 ..< CLASS_COUNT {
 		idx_host[c] = make([dynamic]Pair, 0, 64, tmp)
 		idx_tok[c] = make([dynamic]Pair, 0, 64, tmp)
+		idx_gram[c] = make([dynamic]Pair, 0, 16, tmp)
 		idx_src[c] = make([dynamic]Pair, 0, 16, tmp)
-		idx_none[c] = make([dynamic]u32, 0, 16, tmp)
+		idx_none[c] = make([dynamic]Item, 0, 16, tmp)
 	}
+	tokenless := make([dynamic]u32, 0, 1024, tmp)
 	for f, i in filters {
 		c := int(fclass[i])
 		id := u32(i)
+		meta := filter_meta(f)
 		if .Host_Only in f.flags {
 			pat := string_at_n(pool.data[:], f.pat_off, int(f.pat_len))
-			append(&idx_host[c], Pair{hash_str(pat), id})
+			append(&idx_host[c], Pair{hash_str(pat), id, meta})
 			continue
 		}
 		best := Tok_Cand{}
@@ -454,18 +476,58 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 			}
 		}
 		if best.hash != 0 {
-			append(&idx_tok[c], Pair{best.hash, id})
+			append(&idx_tok[c], Pair{best.hash, id, meta})
 			continue
 		}
-		// no token: by source domain when it is restricted to some (plain names), else the always-checked list
+		append(&tokenless, id)
+	}
+
+	// Filters without a token are filed under the rarest 4-byte window of a literal part of their pattern; those
+	// without one (short patterns, nothing literal), under their source domains; the rest are checked every time.
+	gram_freq := make(map[u32]u32, len(tokenless) * 8, tmp)
+	grams := make([dynamic]u32, 0, 32, tmp)
+	filter_grams :: proc(f: Filter, pool: []u8, out: ^[dynamic]u32) {
+		clear(out)
+		if .Empty_Pattern in f.flags { return }
+		pat := string_at_n(pool, f.pat_off, int(f.pat_len))
+		if .Regex in f.flags {
+			re, ok := regex_compile(pat, .Match_Case not_in f.flags)
+			if !ok { return }
+			defer regex_destroy(&re)
+			add_run_grams(re.literal, out)
+			return
+		}
+		start := 0
+		for i in 0 ..= len(pat) {
+			if i == len(pat) || pat[i] == '*' || pat[i] == '^' {
+				add_run_grams(pat[start:i], out)
+				start = i + 1
+			}
+		}
+	}
+	for id in tokenless {
+		filter_grams(filters[id], pool.data[:], &grams)
+		for g in grams { gram_freq[g] += 1 }
+	}
+	for id in tokenless {
+		f := filters[id]
+		c := int(fclass[id])
+		meta := filter_meta(f)
+		filter_grams(f, pool.data[:], &grams)
+		if len(grams) > 0 {
+			best := grams[0]
+			for g in grams { if gram_freq[g] < gram_freq[best] { best = g } }
+			append(&idx_gram[c], Pair{best, id, meta})
+			continue
+		}
 		if f.src_off != 0 {
 			n_inc := int(doms.data[f.src_off] & 0xFFFF)
 			if n_inc > 0 {
-				for k in 0 ..< n_inc { append(&idx_src[c], Pair{doms.data[int(f.src_off) + 1 + k], id}) }
+				for k in 0 ..< n_inc { append(&idx_src[c], Pair{doms.data[int(f.src_off) + 1 + k], id, meta}) }
 				continue
 			}
 		}
-		append(&idx_none[c], id)
+		append(&idx_none[c], Item{id, meta})
 	}
 
 	////// 4. cosmetic filters
@@ -494,11 +556,11 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 		if len(d.src.inc) > 0 {
 			// specific: filed under each included domain; entity hashes (`google.*`) share the table, their key space
 			// cannot collide with a host name's (a host has no '*')
-			for v in d.src.inc { append(&cos_host_pairs, Pair{v, id}) }
+			for v in d.src.inc { append(&cos_host_pairs, Pair{v, id, 0}) }
 		} else if .Exception in d.flags {
 			append(&cos_generic_exc, id)
 		} else if .Keyed in d.flags {
-			append(&cos_key_pairs, Pair{d.key, id})
+			append(&cos_key_pairs, Pair{d.key, id, 0})
 		} else {
 			append(&cos_generic, id)
 		}
@@ -514,20 +576,20 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 	hdr.secs[SEC_DOMAINS] = out_put(&o, doms.data[:])
 	hdr.secs[SEC_COS] = out_put(&o, cos_records[:])
 
-	cos_items := make([dynamic]u32, 0, 1024, tmp)
+	cos_items := make([dynamic]Item, 0, 1024, tmp)
 	ck := build_multi(cos_key_pairs[:], &cos_items)
 	ch := build_multi(cos_host_pairs[:], &cos_items)
 	hdr.cos_generic = NO_LIST
 	if len(cos_generic) > 0 {
 		hdr.cos_generic = u32(len(cos_items))
-		append(&cos_items, ..cos_generic[:])
-		cos_items[len(cos_items) - 1] |= LAST_BIT
+		for g in cos_generic { append(&cos_items, Item{g, 0}) }
+		cos_items[len(cos_items) - 1].id |= LAST_BIT
 	}
 	hdr.cos_generic_exc = NO_LIST
 	if len(cos_generic_exc) > 0 {
 		hdr.cos_generic_exc = u32(len(cos_items))
-		append(&cos_items, ..cos_generic_exc[:])
-		cos_items[len(cos_items) - 1] |= LAST_BIT
+		for g in cos_generic_exc { append(&cos_items, Item{g, 0}) }
+		cos_items[len(cos_items) - 1].id |= LAST_BIT
 	}
 	hdr.secs[SEC_COS_KEY] = out_put(&o, ck)
 	hdr.secs[SEC_COS_HOST] = out_put(&o, ch)
@@ -544,22 +606,24 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 	hdr.secs[SEC_SOURCE_NAMES] = out_put(&o, name_blob[:])
 
 	for c in 0 ..< CLASS_COUNT {
-		items := make([dynamic]u32, 0, 1024, tmp)
+		items := make([dynamic]Item, 0, 1024, tmp)
 		th := build_multi(idx_host[c][:], &items)
 		tt := build_multi(idx_tok[c][:], &items)
 		ts := build_multi(idx_src[c][:], &items)
+		tg := build_multi(idx_gram[c][:], &items)
 		hdr.notoken[c] = NO_LIST
 		if len(idx_none[c]) > 0 {
 			hdr.notoken[c] = u32(len(items))
 			append(&items, ..idx_none[c][:])
-			items[len(items) - 1] |= LAST_BIT
+			items[len(items) - 1].id |= LAST_BIT
 		}
-		base_s := SEC_CLASS_BASE + c * 4
+		base_s := SEC_CLASS_BASE + c * SEC_CLASS_SECS
 		hdr.secs[base_s + 0] = out_put(&o, th)
 		hdr.secs[base_s + 1] = out_put(&o, tt)
 		hdr.secs[base_s + 2] = out_put(&o, ts)
-		hdr.secs[base_s + 3] = out_put(&o, items[:])
-		delete(th); delete(tt); delete(ts)
+		hdr.secs[base_s + 3] = out_put(&o, tg)
+		hdr.secs[base_s + 4] = out_put(&o, items[:])
+		delete(th); delete(tt); delete(ts); delete(tg)
 	}
 	delete(ck); delete(ch)
 
