@@ -246,6 +246,26 @@ restyle_dom_has_child_combinator_reaches_one_level :: proc(t: ^testing.T) {
 	expect_partial(t, f, "sibling anchor", 3)
 }
 
+// `.a .b`: a class toggled on the ancestor restyles the `.b` elements under it, not its whole subtree (the reach names its
+// subject's key); unions of rules with other subjects keep every key; a subject with no key restyles the subtree.
+@(test)
+restyle_dom_subject_keys :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.a .b { color: red } .a > .c { padding: 2px } #only { margin: 1px } .a em { outline: 1px solid red } .k * { margin: 3px }</style><div id=x>`)
+	for i in 0 ..< 40 { fmt.sbprintf(&sb, "<p><i>t%d</i><span class=b>u</span></p>", i) }
+	strings.write_string(&sb, `<em id=e>z</em><u id=only>w</u><div class=c id=c>q</div></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "x"), "class", "a")
+	expect_partial(t, f, ".a toggled", 44)   // 40 .b, the em, the .c: not the 40 p and 40 i
+	testing.expect(t, style_of(f.st, by_id(f, "e")).outline_width > 0)
+	dom.remove_attribute(f.doc, by_id(f, "x"), "class")
+	expect_partial(t, f, ".a removed", 44)
+	dom.set_attribute(f.doc, by_id(f, "x"), "class", "k")
+	expect_partial(t, f, ".k * (no key): the subtree")
+	testing.expect(t, f.eng.last_restyle.marked > 100)
+}
+
 @(test)
 restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	f := rx_load(`<style>[data-x="y"] { color: red } [data-x] span { margin: 1px } #one { padding: 5px } #one > i { font-style: normal } a:link { color: green }</style>
@@ -482,12 +502,12 @@ restyle_dom_journal_and_records :: proc(t: ^testing.T) {
 	testing.expect_value(t, f.st.arena.total_used, used)
 }
 
-// A class on <body> that every section's descendants depend on: the forced subtree is shared out between threads, with
-// the result of a full pass.
+// A class on <body> that every section's descendants depend on (a rule whose subject has no class, id or tag to look for:
+// .wide :not(.nz)): the forced subtree is shared out between threads, with the result of a full pass.
 @(test)
 restyle_dom_parallel :: proc(t: ^testing.T) {
 	sb := strings.builder_make(context.temp_allocator)
-	strings.write_string(&sb, `<style>.wide section p { margin-left: 3px } .wide b::before { content: "x" counter(sec) } section { counter-increment: sec } .wide { font-size: 18px } p + p { color: red }</style><body>`)
+	strings.write_string(&sb, `<style>.wide section p { margin-left: 3px } .wide :not(.nz) { padding-top: 1px } .wide b::before { content: "x" counter(sec) } section { counter-increment: sec } .wide { font-size: 18px } p + p { color: red }</style><body>`)
 	for i in 0 ..< 400 { fmt.sbprintf(&sb, "<section class=k%d><p><b>t</b></p><p>u</p><ol><li>a</li><li>b</li></ol></section>", i % 5) }
 	f := rx_load(strings.to_string(sb))
 	defer rx_unload(f)

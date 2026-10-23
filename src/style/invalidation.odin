@@ -1,6 +1,10 @@
 package style
 
+import "base:runtime"
+import "core:mem/virtual"
+import "core:slice"
 import "core:strings"
+import "core:sync"
 import "wb:css"
 import "wb:dom"
 
@@ -23,6 +27,7 @@ Reach :: struct {
 	all_next: bool,   // all of E's following element siblings
 	all_prev: bool,   // all of E's preceding element siblings
 	sib_desc: bool,   // the siblings above with their descendants
+	set:      u32,    // desc and sib_desc: only the elements the key set (subject_keys) names can be affected (0: any)
 }
 
 @(private)
@@ -30,10 +35,17 @@ reach_any :: proc(r: Reach) -> bool { return r.self || r.desc || r.next > 0 || r
 
 @(private)
 reach_union :: proc(a, b: Reach) -> Reach {
-	return Reach{
+	r := Reach{
 		self = a.self || b.self, desc = a.desc || b.desc, next = max(a.next, b.next), all_next = a.all_next || b.all_next,
 		all_prev = a.all_prev || b.all_prev, sib_desc = a.sib_desc || b.sib_desc,
 	}
+	sa, sb := a.desc || a.sib_desc, b.desc || b.sib_desc
+	switch {
+	case sa && sb: r.set = key_sets_union(a.set, b.set)
+	case sa: r.set = a.set
+	case sb: r.set = b.set
+	}
+	return r
 }
 
 // Reach of `outer` (from an element X to the final subject) applied to every element `inner` reaches from E (X).
@@ -60,6 +72,7 @@ reach_compose :: proc(inner, outer: Reach) -> Reach {
 	}
 	if inner.sib_desc { out.sib_desc = true }
 	if out.next > 64 { out.next, out.all_next = 0, true }
+	if out.desc || out.sib_desc { out.set = outer.set }   // (whatever it reaches, the subject is the outer selector's)
 	return out
 }
 
@@ -183,7 +196,7 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	ix.ready = true
 	ix.has_anchors = make([dynamic]Has_Anchor)
 	visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
-		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true}, false, 0) }
+		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ent.complex)}, false, 0) }
 	}
 	for _, l in rs.index.by_id { visit(ix, l) }
 	for _, l in rs.index.by_class { visit(ix, l) }
@@ -347,4 +360,121 @@ has_hops :: proc(list: ^css.Selector_List) -> int {
 		most = max(most, n)
 	}
 	return most
+}
+////////////////////////////////
+// Subject keys
+
+// An element that can be a rule's subject has the subject compound's class, id or type: a change that reaches a whole
+// subtree (`.a .b`: .a changed) only needs the elements of it that carry the subject's key looked at, not every one
+// restyled. A key set is an interned list of such keys (class, id or type names), the Reach holds its number; unions of
+// reaches union their sets. Process-wide and never freed (bounded by the names the sheets use; interned, so a rebuild
+// of the same rules adds nothing); a lock because pages' engines run on their own threads.
+Subject_Key_Kind :: enum u8 { Class, Id, Type }
+Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
+
+@(private = "file")
+Key_Sets :: struct {
+	mu:    sync.Mutex,
+	arena: virtual.Arena,
+	ready: bool,
+	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
+	index: map[string]u32,           // canonical text -> number
+}
+
+@(private = "file")
+key_sets: Key_Sets
+
+@(private = "file")
+key_sets_init :: proc() {
+	if key_sets.ready { return }
+	_ = virtual.arena_init_growing(&key_sets.arena)
+	a := virtual.arena_allocator(&key_sets.arena)
+	key_sets.sets = make([dynamic][]Subject_Key, a)
+	key_sets.index = make(map[string]u32, 64, a)
+	key_sets.ready = true
+}
+
+@(private = "file")
+key_text :: proc(keys: []Subject_Key, a: runtime.Allocator) -> string {
+	sb := strings.builder_make(a)
+	for k in keys { strings.write_byte(&sb, u8(k.kind) + '0'); strings.write_string(&sb, k.name); strings.write_byte(&sb, 0) }
+	return strings.to_string(sb)
+}
+
+// The number of the (sorted, distinct) key list, made when new.
+@(private = "file")
+key_sets_intern :: proc(keys: []Subject_Key) -> u32 {
+	key_sets_init()
+	text := key_text(keys, context.temp_allocator)
+	if n, ok := key_sets.index[text]; ok { return n }
+	a := virtual.arena_allocator(&key_sets.arena)
+	own := make([]Subject_Key, len(keys), a)
+	for k, i in keys { own[i] = Subject_Key{k.kind, strings.clone(k.name, a)} }
+	append(&key_sets.sets, own)
+	n := u32(len(key_sets.sets))
+	key_sets.index[strings.clone(text, a)] = n
+	return n
+}
+
+@(private)
+key_sets_union :: proc(x, y: u32) -> u32 {
+	if x == 0 || y == 0 { return 0 }   // (one of them is unrestricted)
+	if x == y { return x }
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	a, b := key_sets.sets[x - 1], key_sets.sets[y - 1]
+	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
+	for k in a { append(&all, k) }
+	for k in b {
+		dup := false
+		for e in all { if e.kind == k.kind && e.name == k.name { dup = true; break } }
+		if !dup { append(&all, k) }
+	}
+	slice.sort_by(all[:], proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name })
+	if len(all) > 64 { return 0 }   // (a set that large filters little)
+	return key_sets_intern(all[:])
+}
+
+// The keys of a set (valid for the process' life).
+@(private)
+key_set_keys :: proc(n: u32) -> []Subject_Key {
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	if n == 0 || int(n) > len(key_sets.sets) { return nil }
+	return key_sets.sets[n - 1]
+}
+
+@(private = "file")
+key_rank :: proc(k: Subject_Key_Kind) -> int {
+	switch k {
+	case .Id: return 0
+	case .Class: return 1
+	case .Type: return 2
+	}
+	return 3
+}
+
+// The key set of a selector's subject: one required class, id or type of its last compound (an id, else a class, else a
+// type). 0 when there is none (`*`, only attributes or pseudo-classes).
+@(private)
+subject_keys :: proc(c: ^css.Complex) -> u32 {
+	if len(c.compounds) == 0 { return 0 }
+	comp := c.compounds[len(c.compounds) - 1]
+	best: Subject_Key
+	have := false
+	for s in comp.simples {
+		k: Subject_Key
+		switch s.kind {
+		case .Id: k = {.Id, s.name}
+		case .Class: k = {.Class, s.name}
+		case .Type: k = {.Type, s.name}
+		case .Universal, .Attribute, .Pseudo_Class, .Nesting: continue
+		}
+		// the rarest first: an id, then a class, then a tag
+		if !have || key_rank(k.kind) < key_rank(best.kind) { best, have = k, true }
+	}
+	if !have { return 0 }
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	return key_sets_intern([]Subject_Key{best})
 }
