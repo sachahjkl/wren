@@ -1,5 +1,6 @@
-﻿package browser
+package browser
 
+import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
@@ -7,6 +8,7 @@ import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:blocker"
 import "wb:host"
+import "wb:i18n"
 
 // The system's Open and Save dialogs for the dashboard (export and import of the configuration and of the user's
 // filters). The dialog runs on a worker thread; what it chose is read or written back on the interface thread.
@@ -44,7 +46,7 @@ dialog_work :: proc(data: rawptr) {
 		dlg = cast(^win.IFileDialog)od
 	}
 	defer dlg->Release()
-	types := [2]win.COMDLG_FILTERSPEC{{win.L("Text files"), win.L("*.txt")}, {win.L("All files"), win.L("*.*")}}
+	types := [2]win.COMDLG_FILTERSPEC{{win.utf8_to_wstring(i18n.tr("Text files"), context.temp_allocator), win.L("*.txt")}, {win.utf8_to_wstring(i18n.tr("All files"), context.temp_allocator), win.L("*.*")}}
 	dlg->SetFileTypes(2, &types[0])
 	dlg->SetDefaultExtension(win.L("txt"))
 	if dlg->Show(j.app.win.hwnd) < 0 { free_all(context.temp_allocator); return }
@@ -73,14 +75,14 @@ dialog_done :: proc(data: rawptr) {
 	case j.save && j.kind == 0:
 		text := blocker.conf_text(b, false)
 		defer delete(text)
-		if os.write_entire_file(j.path, text) == nil { ui.toast(.Good, "Configuration saved to %s", name) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+		if os.write_entire_file(j.path, text) == nil { ui.toast(.Good, i18n.tr("Configuration saved to %s"), name) } else { ui.toast(.Bad, i18n.tr("Could not write %s"), j.path) }
 	case j.save:
-		if os.write_entire_file(j.path, b.conf.my_filters) == nil { ui.toast(.Good, "Filters saved to %s", name) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+		if os.write_entire_file(j.path, b.conf.my_filters) == nil { ui.toast(.Good, i18n.tr("Filters saved to %s"), name) } else { ui.toast(.Bad, i18n.tr("Could not write %s"), j.path) }
 	case:
 		data, err := os.read_entire_file(j.path, context.allocator)
-		if err != nil { ui.toast(.Bad, "Could not read %s", j.path); return }
+		if err != nil { ui.toast(.Bad, i18n.tr("Could not read %s"), j.path); return }
 		defer delete(data)
-		if len(data) > 64 << 20 { ui.toast(.Bad, "%s is too large", name); return }
+		if len(data) > 64 << 20 { ui.toast(.Bad, i18n.tr("%s is too large"), name); return }
 		if j.kind == 0 {
 			ok, bad := blocker.conf_parse(b, string(data), true)
 			blocker.conf_save(b)
@@ -88,8 +90,8 @@ dialog_done :: proc(data: rawptr) {
 			blocker.updater_round(b, false)
 			dash.my_loaded = false
 			delete(dash.status)
-			dash.status = strings.clone(strings.concatenate({"imported ", name}, context.temp_allocator))
-			ui.toast(ok > 0 ? .Good : .Bad, "%d settings imported from %s (%d lines ignored)", ok, name, bad)
+			dash.status = strings.clone(fmt.tprintf(i18n.tr("imported %s"), name))
+			ui.toast(ok > 0 ? .Good : .Bad, i18n.tr("settings count, file, ignored lines", "%d settings imported from %s (%d lines ignored)"), ok, name, bad)
 		} else {
 			dash_add_filter(app, strings.trim_space(string(data)))
 		}

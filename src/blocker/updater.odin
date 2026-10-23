@@ -5,6 +5,7 @@ import "core:strconv"
 import "core:strings"
 import "wb:base"
 import "wb:host"
+import "wb:i18n"
 import "wb:http"
 import "wb:net"
 
@@ -94,7 +95,7 @@ updater_round :: proc(b: ^Blocker, force: bool) {
 	b.upd.running = true
 	b.upd.forced = force
 	delete(b.upd.status)
-	b.upd.status = strings.clone("updating the lists...")
+	b.upd.status = strings.clone(i18n.tr("updating the lists..."))
 	updater_next(b)
 	touch(b)
 }
@@ -161,7 +162,7 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 			case b.upd.pending_status == 304:
 			case:
 				delete(l.error)
-				l.error = fmt.aprintf("the server answered %d", b.upd.pending_status)
+				l.error = fmt.aprintf(i18n.tr("the server answered %d"), b.upd.pending_status)
 				b.upd.errors += 1
 			}
 		}
@@ -172,7 +173,7 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		if l != nil {
 			l.state = .Idle
 			delete(l.error)
-			if ev.error == net.ERROR_BODY_TOO_LARGE { l.error = strings.clone("the list is larger than blocker.update.max_list_bytes") } else { l.error = strings.clone(net.error_text(ev.error, ev.secure_flags)) }
+			if ev.error == net.ERROR_BODY_TOO_LARGE { l.error = strings.clone(i18n.tr("the list is larger than blocker.update.max_list_bytes")) } else { l.error = strings.clone(net.error_text(ev.error, ev.secure_flags)) }
 			b.upd.errors += 1
 		}
 		finish_request(c)
@@ -192,7 +193,7 @@ updater_finish :: proc(b: ^Blocker) {
 	b.upd.running = false
 	b.upd.last_round = unix_ms() / 1000
 	delete(b.upd.status)
-	b.upd.status = fmt.aprintf("%d list(s) downloaded%s", len(b.upd.downloads), b.upd.errors > 0 ? fmt.tprintf(", %d error(s)", b.upd.errors) : "")
+	b.upd.status = b.upd.errors > 0 ? fmt.aprintf(i18n.tr("lists downloaded, errors", "%d lists downloaded, %d errors"), len(b.upd.downloads), b.upd.errors) : fmt.aprintf(i18n.tr(len(b.upd.downloads), "%d list downloaded", "%d lists downloaded"), len(b.upd.downloads))
 	b.upd.errors = 0
 	if len(b.upd.downloads) > 0 {
 		dl := make([]Download, len(b.upd.downloads), context.temp_allocator)

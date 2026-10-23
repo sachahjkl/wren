@@ -20,6 +20,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:forms"
 import "wb:host"
+import "wb:i18n"
 import lay "wb:layout"
 import "wb:page"
 import "wb:url"
@@ -280,10 +281,10 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 	}
 	if _, filtered := blocker_page_host(t); filtered && bl.started && bl.b.cfg.enabled {
 		sep(&groups)
-		if ui.menu_item("Block element…", "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
+		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
 		res := r.image != "" ? r.image : r.link
-		if ui.menu_item("Block this resource", enabled = res != "").clicked { blocker_block_resource(app, res) }
-		if ui.menu_item("Content blocker panel…").clicked { blocker_panel_request = true }
+		if ui.menu_item(i18n.tr("Block this resource"), enabled = res != "").clicked { blocker_block_resource(app, res) }
+		if ui.menu_item(i18n.tr("Content blocker panel…")).clicked { blocker_panel_request = true }
 	}
 	if r.target != base.NIL_HANDLE || groups == 0 {
 		ui.menu_separator()

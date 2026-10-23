@@ -20,6 +20,7 @@ import "wb:base"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
+import "wb:i18n"
 import "wb:http"
 import "wb:net"
 import "wb:page"
@@ -466,9 +467,9 @@ decide :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, r: ^fetch.Intercept_Resul
 		case .Noop:
 			switch {
 			case !nav && type == .Font && effective_fonts(b, site):
-				outcome, reason = .Policy, "remote fonts are blocked on this site"
+				outcome, reason = .Policy, i18n.tr("remote fonts are blocked on this site")
 			case !nav && req.third_party && effective_hard(b, site) && (type == .Script || type == .Subdocument):
-				outcome, reason = .Policy, "hard mode: third-party scripts and frames are blocked on this site"
+				outcome, reason = .Policy, i18n.tr("hard mode: third-party scripts and frames are blocked on this site")
 			case:
 				v := adblock.match(b.engine.engine, &req)
 				switch v.action {
@@ -603,7 +604,7 @@ response_hook :: proc(user: rawptr, q: ^fetch.Intercept_Query, headers: http.Hea
 			for c in transmute([]u8)v { if c >= '0' && c <= '9' && n < 1 << 50 { n = n * 10 + int(c - '0') } }
 			if n > b.cfg.large_media_kb * 1024 {
 				r.action = .Block
-				r.reason = "large media are blocked on this site"
+				r.reason = i18n.tr("large media are blocked on this site")
 				record(b, tab, q, &req, .Policy, adblock.NO_FILTER, r.reason, d.href)
 				return
 			}
