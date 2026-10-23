@@ -424,6 +424,26 @@ fullscreen_state :: proc(t: ^testing.T) {
 }
 
 @(test)
+fullscreen_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
+	f := load(`<style>
+		#a { transform: translateX(10px); z-index: 3; position: relative; opacity: .5; filter: blur(2px); contain: paint; will-change: transform }
+		#b { perspective: 100px; isolation: isolate; clip-path: circle(10px) }
+		#o { transform: scale(2); opacity: .5 }
+	</style><div id=a><div id=b><div id=v>x</div></div></div><div id=o>y</div>`)
+	defer unload(&f)
+	a, b := at(&f, "a"), at(&f, "b")
+	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5) && len(a.filter) == 1, "before: the ancestors make stacking contexts and containing blocks")
+	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "v")})
+	a, b = at(&f, "a"), at(&f, "b")
+	testing.expect(t, a.transform == nil && a.z_auto && near(a.opacity, 1) && a.filter == nil && a.contain == {} && a.will_change == nil, "in full screen: no transform, stacking context, opacity, filter or containment above it")
+	testing.expect(t, b.perspective == 0 && b.clip_path == nil, "... at any depth")
+	testing.expect(t, len(at(&f, "o").transform) == 1 && near(at(&f, "o").opacity, 0.5), "an element that is not above it keeps its style")
+	restyle(&f, State{})
+	a = at(&f, "a")
+	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5), "leaving gives them their style back")
+}
+
+@(test)
 media_and_supports :: proc(t: ^testing.T) {
 	f := load(`<style>
 		#a { margin-top: 1px }
