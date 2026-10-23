@@ -12,7 +12,6 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:cookies"
-import "wb:fetch"
 import lay "wb:layout"
 import "wb:page"
 import "wb:url"
@@ -178,9 +177,12 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 			short := p.env.location.host != "" && p.env.location.host != o ? p.env.location.host : ""
 			add(&items, {kind = item, text = o, short = short, id = "###sb_origin", tone = "weak", tip = o, priority = 80})
 		case .Requests:
-			n := fetch.in_flight(&app.loader)
-			add(&items, {kind = item, text = fmt.tprintf("%s request%s", fmt_count(n), n == 1 ? "" : "s"), short = fmt.tprintf("%s req.", fmt_count(n)),
-				id = "###sb_req", tone = n > 0 ? "" : "weak", tip = cache_requests_tip(t), priority = 60})
+			// the tab's own log (what the Network tab lists): its requests, sockets and streams, and those still going
+			n, pending := len(t.net.entries), t.net.pending
+			word := n == 1 ? "request" : "requests"
+			text := pending > 0 ? fmt.tprintf("%s %s, %d pending", fmt_count(n), word, pending) : fmt.tprintf("%s %s", fmt_count(n), word)
+			add(&items, {kind = item, text = text, short = fmt.tprintf("%s req.", fmt_count(n)),
+				id = "###sb_req", tone = pending > 0 ? "" : "weak", tip = cache_requests_tip(t), priority = 60})
 		case .Cookies:
 			if p == nil || p.env.location.host == "" { continue }
 			n := cookies.count_for_host(&app.profile.jar, p.env.location.host)

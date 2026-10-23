@@ -250,7 +250,7 @@ chart_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 @(private = "file")
 frame_tip :: proc(f: Perf_Frame, colors: [Hud_Series]draw.Color) {
-	if ui.tooltip() {
+	if ui.tooltip_beside() {
 		w := dt_px(200)
 		ui.next({width = ui.px(w), height = ui.px(dtm.row * 9 + dt_px(8)), axis = .Y})
 		if ui.column(.Start, {}, "###dt_perf_tip") {

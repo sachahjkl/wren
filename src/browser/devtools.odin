@@ -92,7 +92,7 @@ devtools_init :: proc(app: ^App) {
 	devtools_apply_prefs(&app.prefs)
 	if app.cfg.show_console && !dev.visible { dev.visible, dev.panel = true, .Console }   // browser.console.visible: the older way to ask for it
 	dev.watch = config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_apply_prefs(p) }, app)
-	app.loader.observer = {user = app, event = net_observe, block = net_blocked}   // devtools_net_model.odin, devtools_network.odin
+	app.loader.observer = {user = app, event = net_observe, block = net_blocked, throttle = net_link_for}   // devtools_net_model.odin, devtools_network.odin
 }
 
 devtools_destroy :: proc(app: ^App) {

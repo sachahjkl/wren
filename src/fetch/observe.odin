@@ -17,6 +17,10 @@ Observed_Kind :: enum u8 {
 	Body,       // a piece of the body (`data`, valid during the call); the whole body at once for a request that collects it
 	Done,       // the body is complete (bytes, timing)
 	Failed,     // the request failed or was blocked (error, detail), or was cancelled by its owner (Aborted)
+	Ws_Started,   // a WebSocket was made: url, initiator, scope, headers (the handshake request), detail (the subprotocols asked)
+	Ws_Response,  // the handshake was answered: status, headers, protocol (the subprotocol chosen)
+	Ws_Frame,     // a message: data, binary, outgoing; or the peer's close frame (detail: "close 1000 reason", no data)
+	Ws_Closed,    // the socket ended: status (the close code), detail (the reason), clean; a failure is Failed with the error
 }
 
 Observed :: struct {
@@ -45,6 +49,9 @@ Observed :: struct {
 	detail:      string,            // Failed: valid during the call; Redirect: the target
 	timing:      net.Timing,        // Response, Done
 	has_timing:  bool,
+	outgoing:    bool,              // Ws_Frame: sent by the page
+	binary:      bool,              // Ws_Frame
+	clean:       bool,              // Ws_Closed
 }
 
 Observer :: struct {
@@ -52,7 +59,8 @@ Observer :: struct {
 	event: proc(user: rawptr, ev: ^Observed),
 	no_cache: bool,      // requests that ask for the default cache mode go to the network and leave the cache alone (Disable cache)
 	body_limit: int,    // bytes of body the observer wants of a request (0: none: no piece of a body is passed on)
-	block: proc(user: rawptr, url: string) -> bool,   // true: the request for this URL is stopped before it is made (nil: none is)
+	block: proc(user: rawptr, scope: ^base.Scope, url: string) -> bool,   // true: the request for this URL is stopped before it is made (nil: none is)
+	throttle: proc(user: rawptr, scope: ^base.Scope) -> ^net.Throttle_Link,   // the link the requests (and sockets) of this scope go through (nil: none)
 }
 
 @(private)
@@ -62,6 +70,22 @@ observe :: proc(t: ^Task, ev: Observed) {
 	e := ev
 	e.id = t.obs_id
 	l.observer.event(l.observer.user, &e)
+}
+
+// The same for a WebSocket: id is the socket's.
+@(private)
+observe_id :: proc(l: ^Loader, id: u64, ev: Observed) {
+	if l == nil || l.observer.event == nil || id == 0 { return }
+	e := ev
+	e.id = id
+	l.observer.event(l.observer.user, &e)
+}
+
+// The link a request or socket of scope goes through.
+@(private)
+link_of :: proc(l: ^Loader, scope: ^base.Scope) -> ^net.Throttle_Link {
+	if l.observer.throttle == nil { return nil }
+	return l.observer.throttle(l.observer.user, scope)
 }
 
 @(private)
