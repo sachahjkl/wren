@@ -1026,6 +1026,7 @@ frame :: proc(app: ^App, idled := false) {
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
 	prof_end(.Input)
 
+	fullscreen_shell_settle(app)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }

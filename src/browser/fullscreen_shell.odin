@@ -70,8 +70,9 @@ fullscreen_settle_arm :: proc(app: ^App, top: ^page.Page, tab_id: u64, changes: 
 	settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(app.page_rect), changes = changes}
 }
 
-@(private = "file")
-fullscreen_settle_tick :: proc(app: ^App) {
+// Each frame, before the animation frames: once the page has been laid out for the window's new size, the change's events
+// and promise run (then the frame's resize event, which comes after them as in other browsers).
+fullscreen_shell_settle :: proc(app: ^App) {
 	if !settle.armed { return }
 	tab_of: ^Tab
 	for tab in app.tabs { if tab.id == settle.tab_id { tab_of = tab; break } }
@@ -169,7 +170,6 @@ fullscreen_shell_escape :: proc(app: ^App, ev: platform.Event) -> bool {
 // Each frame, before the build: the tab that went full screen must still be the shown one with the same document.
 fullscreen_shell_frame :: proc(app: ^App) {
 	fullscreen_scroll_tick(app)
-	fullscreen_settle_tick(app)
 	if fshell.page_id == 0 { return }
 	t := current_tab(app)
 	if t != nil && t.id == fshell.tab_id && t.page != nil && page.page_id(t.page) == fshell.page_id && page.fullscreen_active(t.page) { return }
