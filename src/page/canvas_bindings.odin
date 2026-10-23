@@ -831,8 +831,8 @@ CanvasDrawImage_drawImage :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, s
 	if src.tainted && b != nil { b.tainted = true }
 	// coordinates of the source rectangle are in the image's own units (CSS pixels for an <img>), those of the pixels
 	// differ for an image of another density
-	fx, fy := f64(src.bmp.w) / src.nat.x, f64(src.bmp.h) / src.nat.y
-	psx, psy, psw, psh := 0.0, 0.0, f64(src.bmp.w), f64(src.bmp.h)
+	fx, fy := f64(src.size.x) / src.nat.x, f64(src.size.y) / src.nat.y
+	psx, psy, psw, psh := 0.0, 0.0, f64(src.size.x), f64(src.size.y)
 	ddx, ddy, ddw, ddh := dx, dy, src.nat.x, src.nat.y
 	switch form {
 	case 2:
@@ -842,7 +842,11 @@ CanvasDrawImage_drawImage :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, s
 		ddw, ddh = dw, dh
 	case: return fail(c, .Invalid_Argument, "drawImage: 2, 4 or 8 arguments after the image")
 	}
-	canvas2d.ctx_draw_image(k, src.bmp, psx, psy, psw, psh, ddx, ddy, ddw, ddh)
+	if k.gpu != nil {
+		canvas2d.ctx_draw_image_gpu(k, canvas_gpu_source(c.page, &src), psx, psy, psw, psh, ddx, ddy, ddw, ddh)
+		return .None
+	}
+	if bm := canvas_source_bitmap(&src); bm != nil { canvas2d.ctx_draw_image(k, bm, psx, psy, psw, psh, ddx, ddy, ddw, ddh) }
 	return .None
 }
 

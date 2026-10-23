@@ -27,6 +27,7 @@ Clip :: struct {
 	refs:           int,
 	x0, y0, x1, y1: int,
 	mask:           []u8,   // (x1 - x0) x (y1 - y0), nil = fully covered
+	gmask:          ^Gpu_Mask,   // GPU canvas: the mask texture the region is cut to (nil: the rectangle alone), shared by clips made from it
 }
 
 // Everything save() keeps.
@@ -71,12 +72,13 @@ Options :: struct {
 	text_bytes:      int,    // longest text fillText draws (the rest is cut)
 	smooth_default:  bool,   // imageSmoothingEnabled of a new context
 	filters:         bool,   // the filter property does something
+	gpu:             Gpu_Options,
 }
 
 DEFAULT_OPTIONS :: Options{
 	samples = 16, flatness = 0.05, max_states = 4096, max_dashes = 100_000,
 	max_layer_bytes = 256 << 20, max_bytes = 256 << 20, smooth_default = true, filters = true,
-	max_path_points = 2_000_000, text_bytes = 1 << 20,
+	max_path_points = 2_000_000, text_bytes = 1 << 20, gpu = DEFAULT_GPU_OPTIONS,
 }
 
 Context :: struct {
@@ -91,6 +93,7 @@ Context :: struct {
 	r:       Raster,
 	flat:    Flat,
 	polys:   Polys,
+	gpu:     ^Gpu,             // non-nil: the canvas is drawn on the GPU (gpu.odin), `bmp` only gives its size
 }
 
 // Services of the page the context needs: parsing a CSS color (drop-shadow() in a filter).
@@ -123,6 +126,7 @@ context_destroy :: proc(c: ^Context) {
 	raster_destroy(&c.r)
 	flat_destroy(&c.flat)
 	polys_destroy(&c.polys)
+	gpu_destroy(c.gpu)
 	c^ = {}
 }
 
@@ -196,6 +200,7 @@ clip_release :: proc(c: ^Clip) {
 	c.refs -= 1
 	if c.refs <= 0 {
 		delete(c.mask)
+		gpu_mask_release(c.gmask)
 		free(c)
 	}
 }
@@ -222,7 +227,14 @@ context_reset :: proc(c: ^Context) {
 	c.state = state_default()
 	c.state.smoothing = c.opts.smooth_default
 	path_clear(&c.path)
+	if c.gpu != nil { gpu_reset(c.gpu); return }
 	if c.bmp != nil && len(c.bmp.pix) > 0 { bitmap_reset_contents(c.bmp) }
+}
+
+// Draws this canvas on the GPU from now on (call it right after context_init, on a canvas nothing was drawn on).
+context_enable_gpu :: proc(c: ^Context, host: ^Gpu_Host) {
+	if c.gpu != nil || c.bmp == nil || c.bmp.w <= 0 || c.bmp.h <= 0 { return }
+	c.gpu = gpu_create(host, c, c.opts.gpu, c.bmp.w, c.bmp.h, c.bmp.opaque)
 }
 
 ////////////////////////////////
@@ -410,6 +422,7 @@ make_paint :: proc(c: ^Context, s: ^Style, alpha_only := false) -> (p: Paint, ok
 // Fills the edges in c.r under the current state (operator, alpha, clip, shadow) with `paint`.
 @(private)
 paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
+	if c.gpu != nil { return }   // (a GPU canvas has no pixels here: its calls never come this way)
 	ex0, ey0, ex1, ey1, ok := raster_extent(&c.r)
 	if !ok { return }
 	paint_lut(paint, (ex1 - ex0) * (ey1 - ey0))
@@ -531,6 +544,7 @@ ctx_fill_rect :: proc(c: ^Context, x, y, w, h: f64) {
 
 @(private)
 fill_rect_with :: proc(c: ^Context, x, y, w, h: f64, paint: ^Paint) {
+	if c.gpu != nil { gpu_rect(c, x, y, w, h, paint); return }
 	m := c.state.ctm
 	raster_reset(&c.r)
 	if m.b == 0 && m.c == 0 && !shadow_active(c) && !filter_active(c) && !op_is_unbounded(c.state.op) {
@@ -554,6 +568,7 @@ fill_rect_with :: proc(c: ^Context, x, y, w, h: f64, paint: ^Paint) {
 
 ctx_clear_rect :: proc(c: ^Context, x, y, w, h: f64) {
 	if !all_finite(x, y, w, h) || w == 0 || h == 0 || c.bmp == nil || c.bmp.w == 0 { return }
+	if c.gpu != nil { gpu_clear_rect(c, x, y, w, h); return }
 	m := c.state.ctm
 	corners := [4][2]f64{
 		clamp_pt(matrix_apply(m, {x, y})), clamp_pt(matrix_apply(m, {x + w, y})),
@@ -609,8 +624,10 @@ ctx_fill :: proc(c: ^Context, rule: Fill_Rule, path: ^Path = nil) {
 @(private)
 fill_path_with :: proc(c: ^Context, p: ^Path, m: Matrix, rule: Fill_Rule, paint: ^Paint) {
 	if path_is_empty(p) { return }
+	if c.gpu != nil && gpu_fill_path(c, p, m, rule, paint) { return }
 	flat_clear(&c.flat)
 	path_flatten(p, m, c.opts.flatness, &c.flat)
+	if c.gpu != nil { gpu_fill_flat(c, rule, paint); return }
 	raster_reset(&c.r)
 	raster_add_flat(&c.r, &c.flat)
 	paint_edges(c, rule, paint)
@@ -633,6 +650,7 @@ stroke_path_with :: proc(c: ^Context, p: ^Path, m: Matrix) {
 	path_flatten(p, m, c.opts.flatness, &c.flat)
 	polys_clear(&c.polys)
 	polys_stroke(&c.flat, st.ctm, &style, c.opts.flatness, &c.polys)
+	if c.gpu != nil { gpu_fill_polys(c, &c.polys, &paint); return }
 	raster_reset(&c.r)
 	raster_add_polys(&c.r, &c.polys)
 	paint_edges(c, .Nonzero, &paint)
@@ -654,6 +672,7 @@ ctx_clip :: proc(c: ^Context, rule: Fill_Rule, path: ^Path = nil) {
 	m := path != nil ? c.state.ctm : IDENTITY
 	flat_clear(&c.flat)
 	path_flatten(p, m, c.opts.flatness, &c.flat)
+	if c.gpu != nil { gpu_clip(c, rule); return }
 	raster_reset(&c.r)
 	raster_add_flat(&c.r, &c.flat)
 	old := c.state.clip
@@ -750,9 +769,11 @@ ctx_is_point_in_stroke :: proc(c: ^Context, x, y: f64, path: ^Path = nil) -> boo
 // Images
 
 // drawImage: texels [sx, sx + sw) x [sy, sy + sh) of `src` into the rectangle (dx, dy, dw, dh) of user space.
-ctx_draw_image :: proc(c: ^Context, src: ^Bitmap, sx, sy, sw, sh, dx, dy, dw, dh: f64) {
-	if c.bmp == nil || c.bmp.w == 0 || src == nil || src.w == 0 || src.h == 0 { return }
-	if !all_finite(sx, sy, sw, sh, dx, dy, dw, dh) || sw == 0 || sh == 0 || dw == 0 || dh == 0 { return }
+// The rectangles of a drawImage call brought to the form both rasterizers want: positive sizes, the part of the source
+// outside the image dropped with the matching part of the destination. false: nothing to draw.
+@(private)
+normalize_image_rects :: proc(sx, sy, sw, sh, dx, dy, dw, dh: f64, iw, ih: int) -> (r: [8]f64, ok: bool) {
+	if iw <= 0 || ih <= 0 || !all_finite(sx, sy, sw, sh, dx, dy, dw, dh) || sw == 0 || sh == 0 || dw == 0 || dh == 0 { return }
 	sx, sy, sw, sh, dx, dy, dw, dh := sx, sy, sw, sh, dx, dy, dw, dh
 	// negative sizes name the rectangle by its other corner
 	if sw < 0 { sx += sw; sw = -sw }
@@ -763,9 +784,27 @@ ctx_draw_image :: proc(c: ^Context, src: ^Bitmap, sx, sy, sw, sh, dx, dy, dw, dh
 	kx, ky := dw / sw, dh / sh
 	if sx < 0 { dx -= sx * kx; dw += sx * kx; sw += sx; sx = 0 }
 	if sy < 0 { dy -= sy * ky; dh += sy * ky; sh += sy; sy = 0 }
-	if sx + sw > f64(src.w) { over := sx + sw - f64(src.w); dw -= over * kx; sw -= over }
-	if sy + sh > f64(src.h) { over := sy + sh - f64(src.h); dh -= over * ky; sh -= over }
+	if sx + sw > f64(iw) { over := sx + sw - f64(iw); dw -= over * kx; sw -= over }
+	if sy + sh > f64(ih) { over := sy + sh - f64(ih); dh -= over * ky; sh -= over }
 	if !(sw > 0) || !(sh > 0) || !(dw > 0) || !(dh > 0) { return }
+	return {sx, sy, sw, sh, dx, dy, dw, dh}, true
+}
+
+// drawImage on a GPU canvas: `src` names where the pixels come from (the texture is resolved when the draw is recorded).
+ctx_draw_image_gpu :: proc(c: ^Context, src: Gpu_Source, sx, sy, sw, sh, dx, dy, dw, dh: f64) {
+	if c.gpu == nil || c.bmp == nil || c.bmp.w == 0 { return }
+	r, ok := normalize_image_rects(sx, sy, sw, sh, dx, dy, dw, dh, src.w, src.h)
+	if !ok { return }
+	gpu_draw_image(c, src, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7])
+}
+
+ctx_draw_image :: proc(c: ^Context, src: ^Bitmap, sx, sy, sw, sh, dx, dy, dw, dh: f64) {
+	if c.bmp == nil || c.bmp.w == 0 || src == nil || src.w == 0 || src.h == 0 { return }
+	if c.gpu != nil { ctx_draw_image_gpu(c, Gpu_Source{kind = .Bitmap, bmp = src, w = src.w, h = src.h}, sx, sy, sw, sh, dx, dy, dw, dh); return }
+	r, norm_ok := normalize_image_rects(sx, sy, sw, sh, dx, dy, dw, dh, src.w, src.h)
+	if !norm_ok { return }
+	sx, sy, sw, sh, dx, dy, dw, dh := sx, sy, sw, sh, dx, dy, dw, dh
+	sx, sy, sw, sh, dx, dy, dw, dh = r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]
 
 	// the image to user space to device space
 	to_dev := matrix_mul(c.state.ctm, matrix_mul(matrix_translate(dx, dy), matrix_mul(matrix_scale(dw / sw, dh / sh), matrix_translate(-sx, -sy))))
@@ -820,6 +859,7 @@ ctx_draw_image :: proc(c: ^Context, src: ^Bitmap, sx, sy, sw, sh, dx, dy, dw, dh
 // getImageData: straight RGBA of a w x h block at (x, y), written to `out` (w * h * 4 bytes).
 ctx_get_image_data :: proc(c: ^Context, x, y, w, h: int, out: []u8) {
 	if c.bmp == nil { for i in 0 ..< min(len(out), w * h * 4) { out[i] = 0 }; return }
+	if c.gpu != nil && w > 0 && h > 0 && len(out) >= w * h * 4 { gpu_get_image_data(c, x, y, w, h, out); return }
 	bitmap_read_straight(c.bmp, x, y, w, h, out)
 }
 
@@ -832,6 +872,18 @@ ctx_put_image_data :: proc(c: ^Context, data: []u8, data_w, data_h: int, dx, dy,
 	if dirty_w < 0 { x0, x1 = max(dirty_x + dirty_w, 0), min(dirty_x, data_w) }
 	if dirty_h < 0 { y0, y1 = max(dirty_y + dirty_h, 0), min(dirty_y, data_h) }
 	if x0 >= x1 || y0 >= y1 { return }
+	if c.gpu != nil {
+		// the block (cut to the canvas) premultiplied on the CPU, uploaded in place
+		tx, ty := dx + x0, dy + y0
+		cx0, cy0 := max(tx, 0), max(ty, 0)
+		cx1, cy1 := min(tx + (x1 - x0), c.gpu.w), min(ty + (y1 - y0), c.gpu.h)
+		if cx0 >= cx1 || cy0 >= cy1 { return }
+		w, h := cx1 - cx0, cy1 - cy0
+		tmp := Bitmap{w = w, h = h, pix = make([]u8, w * h * 4, context.temp_allocator)}
+		bitmap_write_straight(&tmp, data, data_w, x0 + (cx0 - tx), y0 + (cy0 - ty), w, h, 0, 0)
+		gpu_put_pixels(c, tmp.pix, cx0, cy0, w, h)
+		return
+	}
 	bitmap_write_straight(c.bmp, data, data_w, x0, y0, x1 - x0, y1 - y0, dx + x0, dy + y0)
 }
 

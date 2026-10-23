@@ -21,7 +21,7 @@ Canvas_encode :: proc(c: ^Call, canvas: u64, type: string, quality: f64) -> (u64
 		b := o.backing
 		if b == nil { return buffer_create(p, nil, c.owner), .None }
 		w, h = b.width, b.height
-		var_bmp, tainted = &b.bmp, b.tainted
+		var_bmp, tainted = canvas_backing_bitmap(b), b.tainted
 		if b.ctx_obj == nil && w > 0 && h > 0 {
 			// no context yet: a transparent image of the canvas's size
 			bm, ok := canvas_bitmap(p, w, h)
@@ -34,7 +34,7 @@ Canvas_encode :: proc(c: ^Call, canvas: u64, type: string, quality: f64) -> (u64
 		if b != nil {
 			canvas_sync(b)
 			w, h = b.width, b.height
-			var_bmp, tainted = &b.bmp, b.tainted
+			var_bmp, tainted = canvas_backing_bitmap(b), b.tainted
 		} else {
 			w, h = canvas_dims(p.doc, node)
 		}

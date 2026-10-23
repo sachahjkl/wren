@@ -156,6 +156,7 @@ images_set_texture_api :: proc(api: Texture_Api) {
 }
 
 images_shell_destroy :: proc(app: ^App) {
+	canvas_gpu_destroy(app)
 	video_shell_destroy(app)
 	release_all_textures()
 	delete(shell.textures)
@@ -237,6 +238,7 @@ images_paint_begin_frame :: proc(app: ^App) {
 	}
 	page.images_paint_begin()
 	video_shell_begin_frame(app)
+	canvas_gpu_begin_frame(app)
 	shell.epoch += 1
 	shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
 	shell.next_ms = -1
@@ -438,7 +440,15 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 paint_canvas :: proc(dc: ^draw.Context, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) {
 	v := page.canvas_view(shell.page, node)
 	if !v.ok { return }
-	tex, ok := canvas_texture_for(v)
+	tex: Image_Texture
+	ok: bool
+	if v.gpu != nil {
+		// drawn on the GPU: what was recorded is drawn now, and the canvas's own texture is the picture (no copy)
+		t, tok := canvas_gpu_present(v.gpu)
+		tex, ok = Image_Texture(t), tok
+	} else {
+		tex, ok = canvas_texture_for(v)
+	}
 	if !ok { return }
 	// object-fit and border-radius apply to a canvas like to any replaced element
 	nat := [2]f32{f32(v.bmp.w), f32(v.bmp.h)}
