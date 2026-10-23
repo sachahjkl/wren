@@ -1,4 +1,4 @@
-﻿# The content blocker
+# The content blocker
 
 Wren blocks advertising, tracking and malware natively: the filter engine (`src/adblock`) is a portable Odin package, the
 policy layer (`src/blocker`) joins it to the loader and the pages, and the interface is native (the shield at the end of the
@@ -65,9 +65,7 @@ Network: `||host^`, `|`, `*`, `^`, `/regex/`; `$third-party` (`3p`, `1p`, `first
 xmlhttprequest subdocument media font websocket ping object other document popup webrtc csp_report`, `all`; `$domain=`
 (`from=`), `$to=`, `$denyallow=`, `$method=`, `$important`, `$match-case`, `$badfilter`, `$redirect=`, `$redirect-rule=`,
 `$rewrite=abp-resource:`, `$empty`, `$mp4`, `$removeparam=` (name or `/regex/`), `$csp=`, `$inline-script`, `$inline-font`,
-`$header=`, `$generichide`, `$elemhide`, `$specifichide`; exceptions `@@`. Options that are not supported (`$replace=`,
-`$cookie=`, `$ipaddress=`...) make the line count as not understood, like uBlock Origin does, and are shown in the
-dashboard (My filters shows the lines; Statistics shows the count per list).
+`$header=`, `$generichide`, `$elemhide`, `$specifichide`; exceptions `@@`. A line with an option the engine does not know ($replace=, $cookie=, $ipaddress=...) is not a filter: it is counted as "not understood", as uBlock Origin does, and the dashboard shows the lines (My filters) and the count per list (Statistics).
 
 Cosmetic: `##`, `#@#`, entities (`google.*`), `~domain` exclusions; procedural `:has() :has-text() :contains()
 :-abp-contains() :-abp-has() :matches-css() :matches-attr() :matches-path() :min-text-length() :not() :upward()
@@ -121,4 +119,27 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
 
 ## Results
 
-(see the table in the vault note and the section below once measured)
+Engine (real lists: EasyList, EasyPrivacy, uBlock filters, AdGuard Base, Peter Lowe, URLhaus; 182,000 network and 73,000 cosmetic
+filters): compile 290 ms, index 24 MB, cold load 13 ms, a request in about 4 us (p50 3 us, p99 21 us; 26 us before the gram
+index and the regex prefilter).
+
+Pages, in the real browser (`tools\blocker_perf.ps1`, cold HTTP cache, the same lists, one session per row; CPU is the process's
+user and kernel time over the 15 to 30 s the page was given; "paint" is the first paint, "complete" readyState complete):
+
+| site | blocker | requests (blocked) | MB | CPU s | memory MB | DOM nodes | paint ms | complete ms |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| allrecipes.com | off / on | 56 / 33 (3) | 6.57 / 3.08 | 63.3 / 27.0 | 485 / 364 | 5907 / 5880 | 2325 / 2010 | 2562 / 2477 |
+| weather.com | off / on | 254 / 186 (21) | 13.37 / 5.92 | 78.8 / 64.1 | 813 / 641 | 2416 / 2084 | 763 / 1617 | 3695 / 2298 |
+| dailymail.co.uk | off / on | 266 / 196 (7) | 27.4 / 18.5 | 106 / 73.5 | 1013 / 871 | 17047 / 13695 | 12189 / 2047 | n.a. |
+| edition.cnn.com | off / on | 81 / 68 (3) | 15.8 / 13.8 | 58 / 46 | n.a. | 10171 / 10121 | 940 / 18200 | 20000 / 26000 |
+| twitch.tv | off / on | 57 / 57 (1) | 3.6 / 3.6 | 43.5 / 29.6 | 365 / 363 | 281 / 281 | 450 / 780 | 2650 / 1540 |
+| youtube.com | off / on | 119 / 119 (7) | 15.9 / 15.9 | 73.0 / 72.8 | 1106 / 1004 | 3442 / 3513 | 2183 / 2137 | 5193 / 4773 |
+| old.reddit.com | off / on | 40 / 39 (4) | 3.2 / 3.2 | 36.3 / 33.5 | 753 / 799 | 817 / 861 | 772 / 802 | 4006 / 3535 |
+| theguardian.com | off / on | 93 / 92 (12) | 2.78 / 2.78 | 21.9 / 22.0 | 428 / 455 | 5822 / 5825 | 920 / 937 | 1900 / 2130 |
+| foxnews.com | off / on | 72 / 72 (0) | 9.6 / 9.8 | 33.4 / 33.5 | 396 / 415 | 12745 / 12745 | 760-1900 / 560-1830 | 2900 / 2960 |
+
+Blocking changes the order in which a page's JavaScript runs. When a blocked script is what kept a heavy page script waiting,
+that script starts earlier and can hold the main thread before the first frame (CNN with `cdn.optimizely.com`, Daily Mail's ad
+loader): the first paint is then later although the bytes, requests and CPU time fell. An exception for `optimizely.com`
+brought CNN's first paint back to 1.0 s. Where little is blocked (the Guardian's blocked requests are beacons, Fox News served
+none from the lists) the numbers are the same within noise.
