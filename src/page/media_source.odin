@@ -213,7 +213,22 @@ MediaSource_revokeObjectURL :: proc(c: ^Call, url: string) {
 
 MediaSource_isTypeSupported :: proc(c: ^Call, type: string) -> bool {
 	st := &c.page.settings.media
-	return st.enabled && st.mse_enabled && media.type_support(type, st^) != .No
+	return st.enabled && st.mse_enabled && mse_type_ok(type, st^)
+}
+
+// An MP4 type may leave the codecs out (the movie box names them); a WebM one must name them (WPT:
+// mediasource-is-type-supported.html), so a container alone is not enough there.
+@(private)
+mse_type_ok :: proc(type: string, st: media.Settings) -> bool {
+	switch media.type_support(type, st) {
+	case .Probably: return true
+	case .Maybe:
+		pt, ok := media.parse_type(type)
+		defer media.parsed_type_destroy(&pt)
+		return ok && pt.container == .MP4
+	case .No:
+	}
+	return false
 }
 
 MediaSource_sourceBuffers :: proc(c: ^Call, source: Api_MediaSource) -> u64 { return source.data.list_all }
@@ -250,8 +265,23 @@ MediaSource_set_duration :: proc(c: ^Call, source: Api_MediaSource, value: f64) 
 	if value < 0 || math.is_nan(value) { return fail(c, .Type, "The duration provided is negative or not a number.") }
 	if ms.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
 	if ms_updating(ms) { return fail(c, .Invalid_State, "A SourceBuffer is still updating.") }
+	// a duration below what is buffered is refused: the script removes that range first (SourceBuffer.remove)
+	if hi := ms_highest_pts(ms); value < hi { return fail(c, .Invalid_State, "The duration provided is less than the highest presentation timestamp of the buffered coded frames.") }
 	ms_set_duration(ms, value)
 	return .None
+}
+
+// The highest presentation time of a coded frame of any source buffer (seconds; the start of the last one).
+@(private)
+ms_highest_pts :: proc(ms: ^Media_Source_Object) -> f64 {
+	hi: f64
+	for sb in ms.buffers {
+		for s in ([2]^media.Track_Store{sb.vstore, sb.astore}) {
+			if s == nil { continue }
+			if v, ok := media.store_highest_pts(s); ok { hi = max(hi, media.time_seconds(v)) }
+		}
+	}
+	return hi
 }
 
 // duration changes: what lies past a shorter one is removed, the element is told.
@@ -278,7 +308,7 @@ MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: str
 	st := &p.settings.media
 	if type == "" { return 0, fail(c, .Type, "The type provided is empty.") }
 	if ms.state != .Open { return 0, fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
-	if media.type_support(type, st^) == .No { return 0, fail(c, .Not_Supported, fmt.tprintf("The type provided ('%s') is unsupported.", type)) }
+	if !mse_type_ok(type, st^) { return 0, fail(c, .Not_Supported, fmt.tprintf("The type provided ('%s') is unsupported.", type)) }
 	if len(ms.buffers) >= st.mse_max_buffers { return 0, fail(c, .Quota, "This MediaSource has reached the limit of SourceBuffer objects it can handle.") }
 	pt, _ := media.parse_type(type)
 	defer media.parsed_type_destroy(&pt)
@@ -294,7 +324,6 @@ MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: str
 	sb.self = h
 	append(&ms.buffers, sb)
 	mse_fire(p, ms.list_all, "addsourcebuffer")
-	mse_fire(p, ms.list_active, "addsourcebuffer")
 	return h, .None
 }
 
@@ -342,11 +371,12 @@ ms_remove_buffer :: proc(ms: ^Media_Source_Object, idx: int, events: bool) {
 		}
 	}
 	sb_free_resources(sb)
+	was_active := sb.init_received
 	sb.init_received = false
 	append(&ms.dead, sb)
 	if events {
 		mse_fire(p, ms.list_all, "removesourcebuffer")
-		mse_fire(p, ms.list_active, "removesourcebuffer")
+		if was_active { mse_fire(p, ms.list_active, "removesourcebuffer") }
 	}
 }
 
@@ -361,6 +391,7 @@ MediaSource_removeSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, buffer
 
 MediaSource_endOfStream :: proc(c: ^Call, source: Api_MediaSource, error: string) -> Api_Error {
 	ms := source.data
+	if error != "" && error != "network" && error != "decode" { return fail(c, .Type, "The provided value is not a valid enum value of type EndOfStreamError.") }
 	if ms.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
 	if ms_updating(ms) { return fail(c, .Invalid_State, "A SourceBuffer is still updating.") }
 	ms_end_of_stream(ms, error)
@@ -404,16 +435,28 @@ MediaSource_clearLiveSeekableRange :: proc(c: ^Call, source: Api_MediaSource) ->
 	return .None
 }
 
+// The buffers a list shows: every one, or for activeSourceBuffers those that had an initialization segment (their
+// tracks are the ones the element plays).
+@(private)
+sbl_nth :: proc(l: ^Source_Buffer_List_Object, index: int) -> (sb: ^Source_Buffer_Object, count: int) {
+	if l.ms == nil { return nil, 0 }
+	for b in l.ms.buffers {
+		if l.active && !b.init_received { continue }
+		if count == index { sb = b }
+		count += 1
+	}
+	return
+}
+
 SourceBufferList_length :: proc(c: ^Call, list: Api_SourceBufferList) -> u32 {
-	l := list.data
-	if l.ms == nil { return 0 }
-	return u32(len(l.ms.buffers))
+	_, n := sbl_nth(list.data, -1)
+	return u32(n)
 }
 
 SourceBufferList_item :: proc(c: ^Call, list: Api_SourceBufferList, index: u32) -> (u64, Api_Error) {
-	l := list.data
-	if l.ms == nil || int(index) >= len(l.ms.buffers) { return 0, .Not_Found }
-	return l.ms.buffers[index].self, .None
+	sb, _ := sbl_nth(list.data, int(index))
+	if sb == nil { return 0, .Not_Found }
+	return sb.self, .None
 }
 
 ////////////////////////////////
@@ -425,6 +468,7 @@ media_source_attach_url :: proc(el: ^Media_Element, href: string) -> bool {
 	p := el.page
 	if p.media == nil { return false }
 	h, ok := p.media.urls[href]
+	if !ok && el.blob_href == href && el.blob_ms != 0 { h, ok = el.blob_ms, true }   // (revoked since the src was set)
 	if !ok { return false }
 	ms := (^Media_Source_Object)(object_data(p, h, &media_source_vt))
 	if ms == nil { return false }
@@ -469,7 +513,15 @@ media_source_detach :: proc(el: ^Media_Element) {
 media_source_ended :: proc(el: ^Media_Element) -> bool { return el.ms != nil && el.ms.ms.state == .Ended }
 
 @(private)
-media_source_buffered :: proc(el: ^Media_Element) -> [][2]f64 { return media_buffered_ranges(el) }
+media_source_buffered :: proc(el: ^Media_Element) -> [][2]f64 {
+	r := media_buffered_ranges(el)
+	if el.ms.ms.state == .Ended && len(r) > 0 {
+		hi: f64
+		for sb in el.ms.ms.buffers { hi = max(hi, sb_highest_end(sb)) }
+		r[len(r) - 1][1] = max(r[len(r) - 1][1], hi)
+	}
+	return r
+}
 
 @(private)
 media_source_seekable :: proc(el: ^Media_Element) -> [][2]f64 {
@@ -594,6 +646,10 @@ sb_ranges :: proc(sb: ^Source_Buffer_Object) -> [][2]f64 {
 		} }
 	case sb.vstore != nil: for x in v { append(&out, [2]f64{media.time_seconds(x.start), media.time_seconds(x.end)}) }
 	case sb.astore != nil: for x in a { append(&out, [2]f64{media.time_seconds(x.start), media.time_seconds(x.end)}) }
+	}
+	// once the stream has ended its last range reaches the end of the longest track
+	if sb.ms != nil && sb.ms.state == .Ended && len(out) > 0 {
+		out[len(out) - 1][1] = max(out[len(out) - 1][1], sb_highest_end(sb))
 	}
 	return out[:]
 }
@@ -726,7 +782,7 @@ SourceBuffer_changeType :: proc(c: ^Call, b: Api_SourceBuffer, type: string) -> 
 	st := &c.page.settings.media
 	if type == "" { return fail(c, .Type, "The type provided is empty.") }
 	if e := sb_check_idle(c, sb); e != .None { return e }
-	if media.type_support(type, st^) == .No { return fail(c, .Not_Supported, fmt.tprintf("The type provided ('%s') is unsupported.", type)) }
+	if !mse_type_ok(type, st^) { return fail(c, .Not_Supported, fmt.tprintf("The type provided ('%s') is unsupported.", type)) }
 	pt, _ := media.parse_type(type)
 	defer media.parsed_type_destroy(&pt)
 	ms_reopen(sb.ms)
@@ -837,6 +893,7 @@ sb_sink_tracks :: proc(user: rawptr, tracks: []media.Track, duration: media.Time
 		sb.ainfo, sb.has_ainfo = media.track_clone(tracks[at]), true
 	}
 	if duration > 0 { sb.init_duration = media.time_seconds(duration) }
+	if !sb.init_received { mse_fire(p, sb.ms.list_active, "addsourcebuffer") }   // (its tracks are active now)
 	sb.init_received = true
 	sb.seq_first = true
 	if el := ms_element(sb.ms); el != nil {

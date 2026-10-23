@@ -205,3 +205,80 @@ mp4_garbage_is_an_error_not_a_crash :: proc(t: ^testing.T) {
 		collected_free(&c)
 	}
 }
+
+// ---- trex defaults when the mvex comes before the traks (DASH segmenters), sizes from the trex ----
+
+@(private = "file")
+put_be32 :: proc(b: ^[dynamic]u8, v: u32) { append(b, u8(v >> 24), u8(v >> 16), u8(v >> 8), u8(v)) }
+
+@(private = "file")
+box_end :: proc(d: []u8, pos: int) -> int {
+	return pos + int(u32(d[pos]) << 24 | u32(d[pos + 1]) << 16 | u32(d[pos + 2]) << 8 | u32(d[pos + 3]))
+}
+
+@(test)
+mp4_mvex_before_the_traks_and_default_sample_size :: proc(t: ^testing.T) {
+	src := fixture("clip_frag.mp4")
+	defer delete(src)
+	if !testing.expect(t, len(src) > 0, "clip_frag.mp4 missing") { return }
+	// the top-level boxes: ftyp, moov
+	moov := -1
+	for p := 0; p + 8 <= len(src); p = box_end(src, p) {
+		if string(src[p + 4:p + 8]) == "moov" { moov = p; break }
+	}
+	if !testing.expect(t, moov >= 0, "a moov box") { return }
+	moov_end := box_end(src, moov)
+	// moov with its mvex moved right after the mvhd, and the audio track's trex defaults: 6-byte samples of 1024 ticks
+	var_children: [dynamic][]u8
+	defer delete(var_children)
+	mvex: []u8
+	for p := moov + 8; p < moov_end; p = box_end(src, p) {
+		e := box_end(src, p)
+		if string(src[p + 4:p + 8]) == "mvex" { mvex = src[p:e] } else { append(&var_children, src[p:e]) }
+	}
+	if !testing.expect(t, len(mvex) > 0 && len(var_children) > 1, "mvex and the other children") { return }
+	out: [dynamic]u8
+	defer delete(out)
+	append(&out, ..src[:moov])
+	body: [dynamic]u8
+	defer delete(body)
+	append(&body, ..var_children[0])   // mvhd
+	mv := make([]u8, len(mvex))
+	defer delete(mv)
+	copy(mv, mvex)
+	for p := 8; p < len(mv); p = box_end(mv, p) {
+		if string(mv[p + 4:p + 8]) != "trex" { continue }
+		if u32(mv[p + 12]) << 24 | u32(mv[p + 13]) << 16 | u32(mv[p + 14]) << 8 | u32(mv[p + 15]) != 2 { continue }
+		mv[p + 20], mv[p + 21], mv[p + 22], mv[p + 23] = 0, 0, 0x04, 0x00   // default_sample_duration 1024
+		mv[p + 24], mv[p + 25], mv[p + 26], mv[p + 27] = 0, 0, 0, 6         // default_sample_size 6
+	}
+	append(&body, ..mv)
+	for c in var_children[1:] { append(&body, ..c) }
+	put_be32(&out, u32(8 + len(body)))
+	append(&out, 'm', 'o', 'o', 'v')
+	append(&out, ..body[:])
+	// a fragment of the audio track alone: tfhd with default-base-is-moof only, a trun with a data offset only
+	moof: [dynamic]u8
+	defer delete(moof)
+	put_be32(&moof, 84); append(&moof, 'm', 'o', 'o', 'f')
+	put_be32(&moof, 16); append(&moof, 'm', 'f', 'h', 'd'); put_be32(&moof, 0); put_be32(&moof, 1)
+	put_be32(&moof, 60); append(&moof, 't', 'r', 'a', 'f')
+	put_be32(&moof, 16); append(&moof, 't', 'f', 'h', 'd'); put_be32(&moof, 0x020000); put_be32(&moof, 2)
+	put_be32(&moof, 16); append(&moof, 't', 'f', 'd', 't'); put_be32(&moof, 0); put_be32(&moof, 0)
+	put_be32(&moof, 20); append(&moof, 't', 'r', 'u', 'n'); put_be32(&moof, 1); put_be32(&moof, 3); put_be32(&moof, 92)
+	append(&out, ..moof[:])
+	put_be32(&out, 8 + 18); append(&out, 'm', 'd', 'a', 't')
+	for i in 0 ..< 18 { append(&out, u8(i)) }
+
+	c: Collected
+	defer collected_free(&c)
+	testing.expect_value(t, parse_mp4(out[:], 0, &c), Parse_Error.None)
+	if !testing.expect_value(t, len(c.tracks), 2) { return }
+	ai := c.tracks[0].kind == .Audio ? 0 : 1
+	if !testing.expect_value(t, len(c.samples[ai]), 3) { return }
+	for s, i in c.samples[ai] {
+		testing.expect_value(t, len(s.data), 6)
+		testing.expect_value(t, s.data[0], u8(i * 6))
+		testing.expect_value(t, s.duration, time_from_ticks(1024, c.tracks[ai].timescale))
+	}
+}

@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 560 |
 | exposed by default | 230 |
 | members | 5013 |
-| members implemented | 2735 (54.6 %) |
+| members implemented | 2737 (54.6 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 160 (99) | 1179 / 1819 |
+| `html.idl` | 160 (99) | 1181 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -2142,19 +2142,19 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLMediaElement : HTMLElement
 
-35 / 45 members.
+37 / 45 members.
 
 - `readonly error`: C `wjr_HTMLMediaElement_get_error`
 - `src`: generic (reflects a content attribute)
 - `srcObject`: not supported
 - `readonly currentSrc`: import `htmlmedia.HTMLMediaElement_currentSrc`
-- `crossOrigin`: not supported
+- `crossOrigin`: C `wjr_HTMLMediaElement_get_crossOrigin`
 - `const NETWORK_EMPTY`: generic (constant)
 - `const NETWORK_IDLE`: generic (constant)
 - `const NETWORK_LOADING`: generic (constant)
 - `const NETWORK_NO_SOURCE`: generic (constant)
 - `readonly networkState`: import `htmlmedia.HTMLMediaElement_networkState`
-- `preload`: not supported
+- `preload`: C `wjr_HTMLMediaElement_get_preload`
 - `readonly buffered`: C `wjr_HTMLMediaElement_get_buffered`
 - `load()`: import `htmlmedia.HTMLMediaElement_load`
 - `canPlayType()`: import `htmlmedia.HTMLMediaElement_canPlayType`

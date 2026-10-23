@@ -295,12 +295,17 @@ mp4_moov :: proc(d: ^Mp4_Demuxer, buf: []u8) {
 		case "trak":
 			t: Mp4_Track
 			if mp4_trak(d, buf, b, &t) { append(&d.tracks, t) } else { mp4_track_free(&t) }
-		case "mvex":
-			mp4_mvex(d, buf, b)
 		}
 		pos = b.end
 	}
-	// trex defaults (mvex may follow the traks)
+	// trex defaults: the mvex comes before the traks as often as after them (DASH segmenters write it first), so it is
+	// read once all of them are known
+	for pos = root.payload; pos < root.end; {
+		b, bok := box_at(buf, pos, root.end)
+		if !bok { break }
+		if b.type == "mvex" { mp4_mvex(d, buf, b) }
+		pos = b.end
+	}
 	if d.error != .None { return }
 	infos := make([]Track, len(d.tracks), context.temp_allocator)
 	for &t, i in d.tracks { infos[i] = t.info }
@@ -329,6 +334,11 @@ mp4_mvex :: proc(d: ^Mp4_Demuxer, buf: []u8, mvex: Box) {
 	for pos < mvex.end {
 		b, ok := box_at(buf, pos, mvex.end)
 		if !ok { return }
+		// the total length of a fragmented movie, when the movie header has none (mvhd: 0 for a stream written as it goes)
+		if b.type == "mehd" && d.duration == 0 && d.movie_timescale > 0 {
+			fd := b8(buf, b.payload) == 1 ? be64(buf, b.payload + 4) : u64(be32(buf, b.payload + 4))
+			if fd != 0 && fd != max(u64) && fd != u64(max(u32)) { d.duration = time_from_ticks(i64(fd), d.movie_timescale) }
+		}
 		if b.type == "trex" {
 			id := be32(buf, b.payload + 4)
 			for &t in d.tracks {

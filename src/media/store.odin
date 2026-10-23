@@ -312,6 +312,14 @@ store_extent :: proc(s: ^Track_Store) -> (start, end: Time, ok: bool) {
 	return start, end, true
 }
 
+// The greatest presentation time at which a frame starts.
+store_highest_pts :: proc(s: ^Track_Store) -> (pts: Time, ok: bool) {
+	sync.mutex_lock(&s.mu)
+	defer sync.mutex_unlock(&s.mu)
+	for f in s.frames { if !ok || f.pts > pts { pts, ok = f.pts, true } }
+	return
+}
+
 // The sum of presentation time covered contiguously from `t` forward (how far playback can go from t without a gap).
 store_buffered_ahead :: proc(s: ^Track_Store, t: Time, tolerance: Time) -> Time {
 	r := store_ranges(s, tolerance, context.temp_allocator)

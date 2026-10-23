@@ -106,6 +106,8 @@ Media_Element :: struct {
 	unseen:        bool,       // media_update made a picture current that the shell has not seen
 	user_active_ms: f64,
 	notify_pending: b32,       // atomic: a notice of the player is waiting in the loop
+	blob_ms:       u64,        // the Media Source the src attribute named when it was set (0: none) ...
+	blob_href:     string,     // ... and the URL it did so by (owned)
 	timer_tok:     ^Media_Notice,   // the data of `timer` until it fires (freed with the element when it never does)
 }
 
@@ -152,6 +154,19 @@ is_media_node :: proc(n: ^dom.Node) -> (is_video: bool, ok: bool) {
 	case "audio": return false, true
 	}
 	return false, false
+}
+
+// The src attribute was set: the Media Source its blob: URL names now, if any.
+@(private)
+media_note_blob :: proc(el: ^Media_Element) {
+	p := el.page
+	el.blob_ms = 0
+	delete(el.blob_href); el.blob_href = ""
+	v, ok := dom.get_attribute(p.doc, el.node, "src")
+	if !ok || p.media == nil || !strings.has_prefix(strings.trim_space(v), "blob:") { return }
+	u, uok := url.parse(strings.trim_space(v), &p.env.location, context.temp_allocator)
+	if !uok { return }
+	if h, found := p.media.urls[u.href]; found { el.blob_ms, el.blob_href = h, strings.clone(u.href) }
 }
 
 // The state of a <video> / <audio> element, made on first use. nil: not a media element.
@@ -208,6 +223,7 @@ media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	delete(el.pending_play)
 	delete(el.played)
 	delete(el.current_src)
+	delete(el.blob_href)
 	delete(el.err_message)
 	if el.timer != base.NIL_HANDLE { host.clear_timer(p.loop, el.timer); free(el.timer_tok) }   // (a timer cleared before it fires does not free its data)
 	free(el)
@@ -259,11 +275,24 @@ media_note_inserted :: proc(p: ^Page, node: base.Handle) {
 }
 
 media_note_attribute :: proc(p: ^Page, node: base.Handle, name: string) {
-	if p.media == nil { return }
-	el, ok := p.media.elements[node]
-	if !ok { return }
+	if p.media == nil && !p.settings.media.enabled { return }
+	el: ^Media_Element
+	ok := false
+	if p.media != nil { el, ok = p.media.elements[node] }
+	if !ok {
+		// an element nothing touched yet (a script did createElement("video") and set src): its state is made now, which
+		// also starts its load
+		if name != "src" { return }
+		el = media_element(p, node)
+		if el != nil { media_note_blob(el) }
+		return
+	}
 	switch name {
-	case "src": media_schedule_load(el)
+	case "src":
+		// a blob: URL names its object when the attribute is set (the URL record keeps it): revoking it before the load runs
+		// does not stop the attach
+		media_note_blob(el)
+		media_schedule_load(el)
 	case "muted":
 		// defaultMuted only: the muted attribute changes nothing once the element has played or been set
 	case "loop", "controls", "preload", "autoplay", "poster", "width", "height":
@@ -1205,6 +1234,17 @@ media_control :: proc(p: ^Page, node: base.Handle, action: Media_Action, value: 
 }
 
 Media_Action :: enum u8 { Toggle_Play, Seek, Set_Volume, Toggle_Mute }
+
+// Whether a media element can still do something by itself: playing, seeking, downloading, or a Media Source operation
+// pending (a headless embedder that waits for a page to settle looks at this).
+media_busy :: proc(p: ^Page) -> bool {
+	if p == nil || p.media == nil { return false }
+	for _, el in p.media.elements {
+		if (!el.paused && !el.ended_flag) || el.seeking || el.task != base.NIL_HANDLE || el.timer != base.NIL_HANDLE { return true }
+		if el.ms != nil && el.ms.ms != nil && ms_updating(el.ms.ms) { return true }
+	}
+	return false
+}
 
 // Whether any media element is playing (the shell keeps the frame loop awake for its pictures).
 media_playing :: proc(p: ^Page) -> bool {

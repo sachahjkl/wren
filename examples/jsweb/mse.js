@@ -42,7 +42,10 @@ async function append(sb, data) {
 test("the API surface", () => {
   ok(typeof MediaSource === "function" && typeof SourceBuffer === "function" && typeof SourceBufferList === "function", "interfaces");
   eq(MediaSource.isTypeSupported(MP4), true, "isTypeSupported H.264 + AAC");
-  eq(MediaSource.isTypeSupported("video/mp4"), true, "isTypeSupported MP4");
+  eq(MediaSource.isTypeSupported("video/mp4"), true, "an MP4 may leave the codecs out");
+  eq(MediaSource.isTypeSupported("video/webm"), false, "a WebM type must name them");
+  eq(MediaSource.isTypeSupported("video/webm;codecs="), false, "an empty codecs parameter");
+  eq(MediaSource.isTypeSupported("video/webm;"), false, "no parameter");
   eq(MediaSource.isTypeSupported('video/webm; codecs="av01.0.00M.08, opus"'), true, "isTypeSupported AV1 + Opus in WebM");
   eq(MediaSource.isTypeSupported('video/ogg; codecs="theora"'), false, "Theora");
   eq(MediaSource.isTypeSupported(""), false, "empty");
@@ -72,6 +75,7 @@ test("attach, append, end of stream", async () => {
   const sb = ms.addSourceBuffer(MP4);
   ok(sb instanceof SourceBuffer, "a SourceBuffer");
   eq(ms.sourceBuffers.length, 1, "one source buffer");
+  eq(ms.activeSourceBuffers.length, 0, "not active before its initialization segment");
   ok(ms.sourceBuffers[0] === sb, "indexed getter");
   eq(ms.sourceBuffers[1], undefined, "past the end");
   eq(sb.mode, "segments", "mode");
@@ -95,6 +99,8 @@ test("attach, append, end of stream", async () => {
   eq(seen.join(","), "updatestart,update,updateend", "event order");
   await append(sb, data.subarray(40000));
   eq(added.length, 1, "addsourcebuffer fired once");
+  eq(ms.activeSourceBuffers.length, 1, "active once it had an initialization segment");
+  ok(ms.activeSourceBuffers[0] === sb, "the active list holds it");
   ok(await until(() => v.readyState >= 1, "metadata"), "the element has its metadata");
   eq(v.videoWidth, 320, "videoWidth");
   eq(v.videoHeight, 180, "videoHeight");
@@ -283,6 +289,9 @@ test("duration", async () => {
   await append(sb, data);
   throws(() => { ms.duration = -1; }, "TypeError", "a negative duration");
   throws(() => { ms.duration = NaN; }, "TypeError", "a NaN duration");
+  throws(() => { ms.duration = 2; }, "InvalidStateError", "a duration below what is buffered");
+  sb.remove(2, Infinity);
+  await once(sb, "updateend");
   ms.duration = 2;
   eq(ms.duration, 2, "duration set");
   ok(await until(() => v.duration === 2, "durationchange"), "the element follows");
