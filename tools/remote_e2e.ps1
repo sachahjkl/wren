@@ -37,7 +37,7 @@ if ($Check) {
     $env:WREN_MEMTRACK_FAIL = '1'
     $server = Start-WrenTestServer
     try {
-        $url = "$($server.Origin)/site/remote/fixture.html"
+        $url = "$($server.Origin)/site/remote/fixture.htm"
         $name = Start-Wren -Size 900x600 -ProfileDir $prof
         $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
         $pipe.Connect(2000)
@@ -109,7 +109,7 @@ try {
 # ---- 2. a driven Wren ---------------------------------------------------------------------------------------------------------
 $server = Start-WrenTestServer
 try {
-    $url = "$($server.Origin)/site/remote/fixture.html"
+    $url = "$($server.Origin)/site/remote/fixture.htm"
     $name = Start-Wren -Size 1000x700
     $pidOf = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
     Check 'start gives a name and the server answers' ($name -and $pidOf -gt 0)
@@ -139,7 +139,7 @@ try {
 
     $con = Wren-Ctl console
     Check 'console log' ($con -match 'fixture ready' -and $con -match 'warn: a warning')
-    Check 'network log has the document' ((Wren-Ctl network) -match 'fixture.html')
+    Check 'network log has the document' ((Wren-Ctl network) -match 'fixture.htm')
     $null = Wren-Ctl wait idle
     Check 'wait idle' ($global:WrenExit -eq 0)
     $null = Wren-Ctl wait selector '#nothing-here' --timeout 300
@@ -267,7 +267,7 @@ try {
 # ---- 3. `run`: the one-call form ------------------------------------------------------------------------------------------------
 $server = Start-WrenTestServer
 try {
-    $url = "$($server.Origin)/site/remote/fixture.html"
+    $url = "$($server.Origin)/site/remote/fixture.htm"
     $out = Join-Path $tmp 'run.png'
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $r = Wren-Run -Url $url -Shot $out -Size 1000x700 -Wait idle -Eval 'document.title'

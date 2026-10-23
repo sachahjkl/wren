@@ -21,7 +21,7 @@ function Time-Runs([scriptblock]$block) {
 $lines = @()
 $server = Start-WrenTestServer
 try {
-    $url = "$($server.Origin)/site/remote/fixture.html"
+    $url = "$($server.Origin)/site/remote/fixture.htm"
     $png = Join-Path $tmp 'b.png'
     $old = Time-Runs { powershell -NoProfile -File "$PSScriptRoot\screenshot.ps1" -Url $url -Out $png | Out-Null }
     $lines += "old, screenshot.ps1 as it is (WaitMs 1500, SettleMs 300): $old ms"

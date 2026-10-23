@@ -140,7 +140,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	if name == "" { name = remote.profile_name(app.profile_dir) }
 	r.cfg.name = ""
 	if err := remote.start(&app.loop, name, r.cfg.max_message, r.cfg.max_clients, remote_handle, remote_closed, nil); err != "" {
-		r.error = strings.clone(fmt.tprintf("remote control: %s (%s)", err, name))
+		r.error = strings.clone(fmt.tprintf(i18n.tr("Remote control: %[0]s (%[1]s)"), err, name))
 		desktop.console_error(strings.concatenate({r.error, "\n"}, context.temp_allocator))   // (a script that redirected stderr sees it)
 		return
 	}
@@ -150,7 +150,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	crypto.rand_bytes(nonce[:])
 	r.prefix = strings.clone(fmt.tprintf("\x01wren-remote:%x:", nonce[:]))
 	r.timer = base.NIL_HANDLE
-	if !remote.write_info(app.profile_dir, name, APP_VERSION) { r.error = strings.clone("remote control: cannot write remote.json in the profile") }
+	if !remote.write_info(app.profile_dir, name, APP_VERSION) { r.error = strings.clone(i18n.tr("Remote control: cannot write remote.json in the profile")) }
 }
 
 // The notice of a start that failed, once the interface exists.
