@@ -153,7 +153,16 @@ Panel_State :: struct {
 @(private = "file")
 panel: Panel_State
 
-tid :: proc(text, id: string) -> string { return fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator()) }
+// The toolkit reads "##" in a label as the start of a hidden part (ui/key.odin): a zero-width space keeps the text whole
+// (filters and URLs have them: example.com##.banner).
+label_text :: proc(s: string) -> string {
+	if !strings.contains(s, "##") { return s }
+	a, _ := strings.replace_all(s, "##", "#\u200b#", context.temp_allocator)
+	b, _ := strings.replace_all(a, "##", "#\u200b#", context.temp_allocator)
+	return b
+}
+
+tid :: proc(text, id: string) -> string { return fmt.aprintf("%s###%s", label_text(text), id, allocator = ui.frame_allocator()) }
 
 @(private = "file")
 stat_pair :: proc(value, label, id: string, w: f32) {
