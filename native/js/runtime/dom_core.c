@@ -538,8 +538,11 @@ JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int ar
     if (argc < 1) { return wj_throw_arity(ctx, "Document.createElement", 1, argc); }
     wj_str name;
     if (!wj_to_str(ctx, argv[0], &name, 0, "")) { return JS_EXCEPTION; }
-    uint64_t h = 0;
-    int32_t st = wr_Document_createElementChecked((const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, &h);
+    uint64_t h = 0, doc = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!doc) { wj_str_free(ctx, &name); return JS_EXCEPTION; }
+    const uint8_t *np = (const uint8_t *)(name.ptr ? name.ptr : "");
+    int32_t st = doc == wr_Window_document() ? wr_Document_createElementChecked(np, (uint32_t)name.len, &h)
+                                             : wr_Document_createElementInert(np, (uint32_t)name.len, &h);
     wj_str_free(ctx, &name);
     if (st < 0) { return wj_throw_status(ctx, st, "Document.createElement"); }
     return wj_wrap_node(ctx, h);

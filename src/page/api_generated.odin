@@ -16023,6 +16023,33 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 	return nil
 }
 
+// Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createElementInert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementInert", "local_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createElementInert", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createElementInert: argument local_name is not valid UTF-8")
+	}
+	_r, _err := Document_createElementInert(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> (u64, Api_Error)
 @(private = "file")
 _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22937,6 +22964,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DocumentType_publicId", fn = _t_dom_DocumentType_publicId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "DocumentType_systemId", fn = _t_dom_DocumentType_systemId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_createElementChecked", fn = _t_dom_Document_createElementChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createElementInert", fn = _t_dom_Document_createElementInert, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createElementNSChecked", fn = _t_dom_Document_createElementNSChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createDocumentFragment", fn = _t_dom_Document_createDocumentFragment, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createComment", fn = _t_dom_Document_createComment, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

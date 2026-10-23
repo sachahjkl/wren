@@ -174,7 +174,10 @@ parse_fragment_for :: proc(c: ^Call, context_el: base.Handle, markup: string, de
 		tag, ns = n.name, n.ns
 		if ns == .None || ns == .Other { tag, ns = "body", .HTML }   // foreign elements of unknown namespaces: as HTML
 	}
+	// (the parser's own insertions: the custom elements it makes are upgraded even in a tree that is not connected)
+	d.parser_inserting += 1
 	frag, res := html.parse_fragment(d, tag, ns, d.mode, transmute([]byte)markup, c.page.settings.dom.max_fragment_nodes, declarative_shadow)
+	d.parser_inserting -= 1
 	if !res.ok {
 		dom.destroy_unpinned(d, frag)
 		return base.NIL_HANDLE, fail(c, .Syntax, "the markup could not be parsed")
