@@ -254,7 +254,6 @@ con_time_text :: proc(at_ms: i64) -> string {
 }
 
 // The local time of day in ms.
-@(private = "file")
 local_time_ms :: proc() -> i64 {
 	ft: win.FILETIME
 	utc, st: win.SYSTEMTIME

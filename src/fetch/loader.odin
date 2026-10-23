@@ -20,6 +20,7 @@ Loader :: struct {
 	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
 	observer: Observer,   // the developer tools' view of every request (observe.odin)
 	next_obs: u64,
+	ws_ctx:   map[base.Handle]^Ws_Ctx,   // the open sockets, by handle (websocket.odin)
 }
 
 loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking: ^host.Blocking_Pool, profile: ^Profile) {
@@ -33,6 +34,8 @@ loader_destroy :: proc(l: ^Loader) {
 	for h in handles { release(l, h) }
 	base.pool_destroy(&l.tasks)
 	revalidations_destroy(l)
+	delete(l.ws_ctx)
+	l.ws_ctx = nil
 }
 
 in_flight :: proc(l: ^Loader) -> int { return l.tasks.count }
@@ -121,7 +124,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 
 	u, ok := url.parse_absolute(r.url)
 	if ok { t.target = u } else { t.early_error = .Bad_URL }
-	if ok && l.observer.block != nil && l.observer.block(l.observer.user, t.target.href) { t.early_error = .Blocked_By_Client }
+	if ok && l.observer.block != nil && l.observer.block(l.observer.user, t.scope, t.target.href) { t.early_error = .Blocked_By_Client }
 	if t.early_error == .None {
 		switch {
 		case !http.is_token(t.method) || http.is_forbidden_method(t.method): t.early_error = .Bad_Method
@@ -562,7 +565,7 @@ send_preflight :: proc(t: ^Task, unsafe: []string) {
 	t.net_user = pf
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = "OPTIONS", headers = join_headers(h), on_event = preflight_event, user = pf,
-		collect = true, max_body = 1 << 20, priority = .High,
+		collect = true, max_body = 1 << 20, priority = .High, link = link_of(l, t.scope),
 	})
 }
 
@@ -629,7 +632,7 @@ send_main :: proc(t: ^Task) {
 	t.net_user = k
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = t.method, headers = join_headers(h), body = t.body,
-		on_event = main_event, user = k, collect = false, max_body = t.max_body,
+		on_event = main_event, user = k, collect = false, max_body = t.max_body, link = link_of(l, t.scope),
 		priority = t.destination == .Document || t.destination == .Iframe || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
 }

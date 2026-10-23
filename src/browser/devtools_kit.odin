@@ -355,10 +355,10 @@ dt_tip :: proc(sig: ui.Signal, text: string, shortcut := "") {
 }
 
 // A button that opens a menu below it: the caller builds the menu's items under `if ui.ctx_menu(key, width)`.
-dt_menu_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", badge := "", badge_col := draw.Color{}, on := false, caret := true) -> ui.Key {
+dt_menu_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", badge := "", badge_col := draw.Color{}, on := false, caret := true, tone := draw.Color{}) -> ui.Key {
 	key := ui.key_from_u64(ui.key_from_string(ui.parent_box().key, id), 0xd0d0)
 	open := ui.ctx_menu_is_open(key)
-	sig := dt_btn(id, icon, label, open ? "" : tooltip, shortcut, on = on || open, badge = badge, badge_col = badge_col, caret = caret)
+	sig := dt_btn(id, icon, label, open ? "" : tooltip, shortcut, on = on || open, badge = badge, badge_col = badge_col, caret = caret, tone = tone)
 	if sig.clicked {
 		if open { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, sig.box.rect, sig.box.key) }
 	}

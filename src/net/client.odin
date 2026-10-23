@@ -89,6 +89,7 @@ Request_Desc :: struct {
 	collect:  bool,         // deliver one Done event with the entire body instead of Data chunks
 	max_body: int,          // 0 = the network.max_response_bytes setting
 	priority: Priority,
+	link:     ^Throttle_Link,   // throttle.odin: the answer's events are held back as such a link would (nil: no throttling)
 }
 
 // Requests wait in our own queues (per priority, FIFO) until a per-host and a global slot are free. Waiting for a
@@ -130,7 +131,15 @@ Request :: struct {
 	state:    Request_State,
 	priority: Priority,
 	host_key: string,    // "host:port", counted in Client.active while Active; "" = never counted
+	link:     ^Throttle_Link,
+	delayed:  [dynamic]Delayed,   // events held back by the link, in order
+	timer:    base.Handle,       // the timer that starts the request or delivers the next delayed event
+	timer_owner: ^Owner,
+	begin_pending: bool,         // the timer starts the request (its latency and its upload time)
 }
+
+@(private)
+Delayed :: struct { ev: Event, due: f64 }
 
 Client :: struct {
 	loop:          ^host.Loop,
@@ -225,6 +234,7 @@ client_destroy :: proc(c: ^Client) {
 // Queues a request. Never calls back synchronously: failures arrive as a Failed event. Returns the request handle.
 fetch :: proc(c: ^Client, d: Request_Desc) -> base.Handle {
 	r := Request{on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect, priority = d.priority}
+	if link_active(d.link) { r.link = d.link }
 	h, rp := base.pool_insert(&c.requests, r)
 	if d.scope != nil {
 		rp.cleanup = base.on_close(d.scope, request_scope_closed, new_clone(Owner{c, h}))
@@ -272,9 +282,58 @@ activate :: proc(c: ^Client, h: base.Handle, r: ^Request) {
 	} else {
 		c.active[strings.clone(r.host_key, heap())] = 1   // the map owns its key: requests come and go
 	}
+	if r.link != nil {
+		// the request starts after its latency and the time its head and body need to go up
+		now := now_ms(c)
+		bytes := 300 + len(r.job.body) + len(r.job.headers_w)
+		due := link_schedule(r.link, now, bytes, true) + f64(r.link.latency_ms)
+		if due > now + 0.5 {
+			r.begin_pending = true
+			throttle_timer(c, h, r, due - now)
+			return
+		}
+	}
 	if code := begin(c, r); code != 0 {
 		push_event(c, Event{kind = .Failed, req = h, error = code})
 	}
+}
+
+@(private)
+now_ms :: proc(c: ^Client) -> f64 { return f64(host.now_ns(c.loop)) / 1e6 }
+
+@(private)
+throttle_timer :: proc(c: ^Client, h: base.Handle, r: ^Request, delay: f64) {
+	if r.timer != base.NIL_HANDLE { return }
+	r.timer_owner = new_clone(Owner{c, h}, heap())
+	r.timer = host.set_timer(c.loop, max(delay, 0), 0, throttle_fire, r.timer_owner)
+}
+
+// The request's timer: it starts the request, or delivers the events whose time has come.
+@(private)
+throttle_fire :: proc(data: rawptr) {
+	o := (^Owner)(data)
+	c, h := o.c, o.h
+	r := base.pool_get(&c.requests, h)
+	if r == nil { return }   // (release clears the timer: this does not happen)
+	r.timer = base.NIL_HANDLE
+	free(r.timer_owner, heap())
+	r.timer_owner = nil
+	if r.begin_pending {
+		r.begin_pending = false
+		if code := begin(c, r); code != 0 { push_event(c, Event{kind = .Failed, req = h, error = code}) }
+		return
+	}
+	now := now_ms(c)
+	for len(r.delayed) > 0 && r.delayed[0].due <= now + 0.5 {
+		d := r.delayed[0]
+		ordered_remove(&r.delayed, 0)
+		ev := d.ev
+		process_event(c, &ev)
+		free_event(&ev)
+		r = base.pool_get(&c.requests, h)   // (the event may have ended the request)
+		if r == nil { return }
+	}
+	if len(r.delayed) > 0 { throttle_timer(c, h, r, r.delayed[0].due - now) }
 }
 
 // Silent: the request's callbacks will not run again. False if it already finished or was cancelled.
@@ -420,6 +479,9 @@ release :: proc(c: ^Client, h: base.Handle) -> bool {
 		delete(r.host_key, heap())
 	}
 	delete(r.body)
+	if r.timer != base.NIL_HANDLE { host.clear_timer(c.loop, r.timer); free(r.timer_owner, heap()) }
+	for &d in r.delayed { free_event(&d.ev) }
+	delete(r.delayed)
 	if r.scope != nil { base.run_cleanup(r.scope, r.cleanup) }
 	if freed_slot { pump(c) }
 	return true
@@ -462,6 +524,29 @@ handle_event :: proc(c: ^Client, ev: ^Event) {
 		// cancelled or finished already: the bytes still count against nothing (the job is gone or going)
 		return
 	}
+	if r.link != nil {
+		// through the link: a piece leaves when the bytes before it are through, and a later event never passes an earlier one
+		now := now_ms(c)
+		due := now
+		#partial switch ev.kind {
+		case .Data: due = link_schedule(r.link, now, len(ev.data), false)
+		}
+		if len(r.delayed) > 0 { due = max(due, r.delayed[len(r.delayed) - 1].due) }
+		if due > now + 0.5 || len(r.delayed) > 0 {
+			req := ev.req
+			append(&r.delayed, Delayed{ev = ev^, due = due})
+			ev^ = {}   // the delayed list owns what it holds
+			throttle_timer(c, req, r, r.delayed[0].due - now)
+			return
+		}
+	}
+	process_event(c, ev)
+}
+
+@(private)
+process_event :: proc(c: ^Client, ev: ^Event) {
+	r := base.pool_get(&c.requests, ev.req)
+	if r == nil { return }
 	switch ev.kind {
 	case .Headers:
 		r.status = ev.status

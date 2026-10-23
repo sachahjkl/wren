@@ -53,6 +53,7 @@ Dev_Network :: struct {
 	detail:    Net_Detail,
 	blocked:   [dynamic]string,       // URL patterns the user blocked (`*` is any run of characters)
 	split_drag: f32,
+	prof:      Net_Prof_Edit,   // the editor of a custom speed (devtools_net_throttle.odin)
 }
 
 Net_Col_Pos :: struct { col: Net_Col, x, w: f32 }
@@ -67,6 +68,9 @@ network_destroy :: proc() {
 	for b in v.blocked { delete(b) }
 	delete(v.blocked)
 	net_detail_destroy(&v.detail)
+	net_prof_edit_destroy(&v.prof)
+	net_profiles_destroy()
+	delete(net_prefs.profile)
 	net_destroy_owner()
 	v^ = {}
 }
@@ -389,6 +393,7 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 	net_tick(app, v)
 
 	net_toolbar(app, t, v)
+	net_prof_editor(app, t, v)
 	net_chips(app, t, v)
 
 	sel := net_entry_of_id(t, v)
@@ -478,15 +483,10 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if pres.clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
 		dc := dt_btn("###dt_net_cache", .None, "Disable cache", tooltip = "Do not use the HTTP cache while the developer tools are open", on = net_prefs.disable_cache)
 		if dc.clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
-		tkey := dt_menu_btn("###dt_net_throttle", .Throttle, throttle_label(), tooltip = "Network speed", on = net_prefs.throttle != .None)
-		if ui.ctx_menu(tkey, dt_px(210)) {
-			ui.menu_heading("Network speed")
-			for th in Net_Throttle {
-				if ui.menu_item(fmt.tprintf("%s###dt_th_%d", throttle_name(th), int(th)), checked = net_prefs.throttle == th, enabled = th == .None || th == .Offline).clicked {
-					dev_set_pref(app, "browser.devtools.network.throttle", throttle_pref(th))
-				}
-			}
-		}
+		prof := net_profile_of(t)
+		throttled := net_profile_active(prof)
+		tkey := dt_menu_btn("###dt_net_throttle", .Throttle, prof.name, tooltip = throttled ? fmt.tprintf("Network speed. Held to: %s", net_profile_text(prof)) : "Network speed", on = throttled, tone = throttled ? draw.Color{0.93, 0.62, 0.10, 1} : draw.Color{})
+		if ui.ctx_menu(tkey, dt_px(220)) { net_speed_menu(app, t, v) }
 		dt_vsep("###dt_nb2")
 		ek := dt_btn("###dt_net_export", .Download, tooltip = "Export the requests as HAR", enabled = len(t.net.entries) > 0)
 		if ek.clicked { net_export_har(app, t) }
@@ -495,29 +495,6 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		dt_gap(3)
 	}
 }
-
-throttle_name :: proc(t: Net_Throttle) -> string {
-	switch t {
-	case .None: return "No throttling"
-	case .Fast_3G: return "Fast 3G"
-	case .Slow_3G: return "Slow 3G"
-	case .Offline: return "Offline"
-	}
-	return ""
-}
-
-throttle_pref :: proc(t: Net_Throttle) -> string {
-	switch t {
-	case .None: return "none"
-	case .Fast_3G: return "fast_3g"
-	case .Slow_3G: return "slow_3g"
-	case .Offline: return "offline"
-	}
-	return "none"
-}
-
-@(private = "file")
-throttle_label :: proc() -> string { return net_prefs.throttle == .None ? "No throttling" : throttle_name(net_prefs.throttle) }
 
 // The switches of the Network tab, in the panel's menu and in its own.
 network_settings_items :: proc(app: ^App, t: ^Tab) {
@@ -662,7 +639,7 @@ net_type_label :: proc(e: ^Net_Entry) -> string {
 	case .JS: return "script"
 	case .CSS: return "stylesheet"
 	case .Font: return "font"
-	case .XHR: return "fetch"
+	case .XHR: return e.is_sse ? "eventsource" : "fetch"
 	case .Wasm: return "wasm"
 	case .WS: return "websocket"
 	case .Img, .Media, .Other:
@@ -720,7 +697,7 @@ net_type_color :: proc(t: Net_Type) -> draw.Color {
 @(private = "file")
 net_row_tip :: proc(sig: ui.Signal, e: ^Net_Entry) {
 	if ui.hovered_for(sig, 0.7) {
-		if ui.tooltip() {
+		if ui.tooltip_beside() {
 			text := e.failed ? fmt.tprintf("%s %s\n%s", e.method, e.url, e.error) : fmt.tprintf("%s %s", e.method, e.url)
 			w := min(dt_w(dtm.ui_font, dtm.fs, e.url) + dt_px(60), dt_px(620))
 			ui.next({width = ui.px(w), height = ui.px(dt_px(22) * (e.failed ? 2 : 1)), axis = .Y})
@@ -879,14 +856,6 @@ net_block :: proc(app: ^App, v: ^Dev_Network, pattern: string) {
 	for b in v.blocked { if b == pattern { return } }
 	append(&v.blocked, strings.clone(pattern))
 	ui.toast(.Info, "Blocking %s", pattern)
-}
-
-// fetch.Observer.block: whether the request for `url` is stopped (a pattern the user blocked, or offline).
-net_blocked :: proc(user: rawptr, url: string) -> bool {
-	if net_prefs.throttle == .Offline { return true }
-	v := &dev.net
-	for p in v.blocked { if net_glob(p, url) { return true } }
-	return false
 }
 
 // `pattern` matches `s`: `*` stands for any run of characters.

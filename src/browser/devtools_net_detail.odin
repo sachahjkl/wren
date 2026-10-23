@@ -37,12 +37,25 @@ Net_Detail :: struct {
 	menu_text:  string,             // owned: what the row menu copies
 	menu_name:  string,             // owned
 	copied_at:  f64,
+	// the messages of a socket or a stream
+	msg_list:   Dt_List,
+	msg_pane:   Dt_List,
+	msg_rows:   [dynamic]int,       // the messages the filters let through (indices into the entry's msgs)
+	msg_key:    [5]u64,             // what msg_rows was made for
+	msg_mode:   int,                // 0 all, 1 sent, 2 received
+	msg_filter: Dt_Filter,
+	msg_sel:    int,                // the chosen message (index into msgs), -1 none
+	msg_menu:   int,
 }
 
 net_detail_destroy :: proc(d: ^Net_Detail) {
 	dt_list_destroy(&d.hdr)
 	dt_list_destroy(&d.txt)
 	dt_list_destroy(&d.jlist)
+	dt_list_destroy(&d.msg_list)
+	dt_list_destroy(&d.msg_pane)
+	dt_filter_destroy(&d.msg_filter)
+	delete(d.msg_rows)
 	delete(d.starts)
 	if d.shown_owned { delete(d.shown) }
 	if d.json_ok { json.destroy_value(d.json_val) }
@@ -53,8 +66,20 @@ net_detail_destroy :: proc(d: ^Net_Detail) {
 	d^ = {}
 }
 
-DETAIL_TABS := [?]string{"Headers", "Payload", "Preview", "Response", "Timing", "Cookies"}
-DETAIL_PREFS := [?]string{"headers", "payload", "preview", "response", "timing", "cookies"}
+DETAIL_TABS := [?]string{"Headers", "Payload", "Preview", "Response", "Timing", "Cookies", "Messages"}
+DETAIL_PREFS := [?]string{"headers", "payload", "preview", "response", "timing", "cookies", "messages"}
+
+// The tabs a request has, in order: a socket or an event stream has its messages (and no body to preview).
+@(private = "file")
+detail_tabs :: proc(e: ^Net_Entry) -> []int {
+	if e.is_ws || e.is_sse { return TABS_STREAM[:] }
+	if len(e.req_body) == 0 && !strings.contains_rune(e.url, '?') { return TABS_PLAIN[:] }
+	return TABS_ALL[:]
+}
+
+@(private = "file") TABS_STREAM := [?]int{0, 6, 4, 5}
+@(private = "file") TABS_PLAIN := [?]int{0, 2, 3, 4, 5}
+@(private = "file") TABS_ALL := [?]int{0, 1, 2, 3, 4, 5}
 
 ////////////////////////////////
 // The pane
@@ -73,9 +98,12 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 		dt_gap(2)
 		if dt_btn("###dt_nd_close", .Close, tooltip = "Close the details", shortcut = "Esc").clicked { v.has_sel = false }
 		dt_vsep("###dt_nd_s0")
-		labels := DETAIL_TABS
-		for name, i in labels {
-			if i == 1 && len(e.req_body) == 0 && !strings.contains_rune(e.url, '?') { continue }   // nothing was sent
+		visible := false
+		for i in detail_tabs(e) { if i == d.tab { visible = true } }
+		if !visible { d.tab = 0 }
+		for i in detail_tabs(e) {
+			name := DETAIL_TABS[i]
+			if i == 6 && e.is_sse { name = "EventStream" }
 			if sub_tab(fmt.tprintf("###dt_ndt_%d", i), name, d.tab == i).clicked {
 				d.tab = i
 				dev_set_pref(app, "browser.devtools.network.detail_tab", DETAIL_PREFS[i])
@@ -91,6 +119,7 @@ net_detail_panel :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, e: ^Net_Entry) {
 		case 3: detail_response(app, d, e)
 		case 4: detail_timing(app, d, e)
 		case 5: detail_cookies(app, d, e)
+		case 6: detail_messages(app, d, e)
 		}
 	}
 }
@@ -324,6 +353,10 @@ detail_headers :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		if e.status == 0 && !e.failed { status = e.ms < 0 ? "(pending)" : "(opaque)" }
 		add_pair(&items, "Status Code", status, maxw, 0)
 		items[len(items) - 1].has_dot, items[len(items) - 1].dot = true, tone_color(net_tone(e))
+		if e.is_ws {
+			add_pair(&items, "Socket state", ws_state_text(e), maxw, 0)
+			if e.ws_sub != "" { add_pair(&items, "Subprotocol", e.ws_sub, maxw, 0) }
+		}
 		if e.remote != "" { add_pair(&items, "Remote Address", e.remote, maxw, 0) }
 		if e.protocol != "" { add_pair(&items, "Protocol", e.protocol, maxw, 0) }
 		if e.cache != .Network { add_pair(&items, "Cache", fmt.tprintf("%v", e.cache), maxw, 0) }
@@ -735,3 +768,225 @@ preview_image :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 }
 
 _ :: base
+
+////////////////////////////////
+// Messages: a socket's frames or a stream's events
+
+ws_state_text :: proc(e: ^Net_Entry) -> string {
+	switch e.ws_state {
+	case .Connecting: return "Connecting"
+	case .Open: return "Open"
+	case .Failed: return fmt.tprintf("Failed: %s", e.error)
+	case .Closed:
+		return fmt.tprintf("Closed, code %d%s%s", e.ws_code, e.ws_reason != "" ? fmt.tprintf(" (%s)", e.ws_reason) : "", e.ws_clean ? ", clean" : ", not clean")
+	}
+	return ""
+}
+
+@(private = "file")
+Pane_Line :: struct { text: string, lang: Syn_Lang }
+
+@(private = "file")
+Msg_Draw :: struct {
+	m:       ^Net_Msg,
+	text:    string,
+	size:    string,
+	clock:   string,
+	sel, hot, focused: bool,
+	sse:     bool,
+}
+
+@(private = "file")
+msg_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Msg_Draw)(user)
+	m := d.m
+	r := b.rect
+	cy := (r.min.y + r.max.y) * 0.5
+	tint: draw.Color
+	if !d.sse && m.out { tint = dtc.good_bg }
+	dt_row_back(dc, r, false, d.sel, d.hot, d.focused, tint)
+	draw.rect(dc, {{r.min.x, r.max.y - dtm.line}, {r.max.x, r.max.y}}, with_alpha(dtc.border_soft, 0.6))
+	x := r.min.x + dt_px(8)
+	if d.sse {
+		dt_icon(dc, .Event, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon * 0.9, dtc.accent, dtm.sc)
+	} else if m.control {
+		dt_icon(dc, .Info, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon * 0.9, dtc.weak, dtm.sc)
+	} else {
+		dt_icon(dc, m.out ? .Sort_Up : .Sort_Down, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, m.out ? dtc.good : dtc.bad, dtm.sc)
+	}
+	x += dtm.icon + dt_px(6)
+	right := r.max.x - dt_px(8)
+	tw := dt_w(dtm.ui_font, dtm.fs, d.clock)
+	dt_text_r(dc, dtm.mono, dtm.mono_fs * 0.92, right, cy, dtc.faint, d.clock)
+	right -= dt_w(dtm.mono, dtm.mono_fs * 0.92, d.clock) + dt_px(12)
+	_ = tw
+	sw := dt_w(dtm.ui_font, dtm.fs, d.size)
+	dt_text_r(dc, dtm.ui_font, dtm.fs, right, cy, dtc.weak, d.size)
+	right -= sw + dt_px(14)
+	if d.sse && m.name != "" {
+		x += dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, syn_color(.Keyword), m.name) + dt_px(8)
+	}
+	col := m.control ? dtc.weak : dtc.text
+	if m.binary {
+		x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, dtc.weak, "Binary Message") + dt_px(8)
+		dt_text(dc, dtm.mono, dtm.mono_fs, x, cy, dtc.faint, d.text, right - x)
+	} else if m.control {
+		dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, m.name, right - x)
+	} else {
+		dt_runs(dc, dtm.mono, dtm.mono_fs, x, cy, syn_runs(d.text, .JSON), right)
+	}
+}
+
+@(private = "file")
+msg_clock :: proc(ms: i64) -> string { return con_time_text(ms) }
+
+// The message at index `i` of the entry as text to copy.
+@(private = "file")
+msg_copy_text :: proc(m: ^Net_Msg) -> string { return m.control ? m.name : m.text }
+
+detail_messages :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
+	if e.sse == nil && !e.is_ws {
+		dt_empty("###dt_nm_none", .File_Socket, "No messages", "Only sockets and event streams have messages.")
+		return
+	}
+	// the toolbar: which direction, a filter, copy and clear, and the state
+	if dt_bar("###dt_nm_bar", dtm.bar - dt_px(4)) {
+		dt_gap(4)
+		if dt_btn("###dt_nm_clear", .Clear, tooltip = "Clear the messages", enabled = len(e.msgs) > 0).clicked {
+			for m in e.msgs { delete(m.text); delete(m.name); delete(m.id) }
+			clear(&e.msgs)
+			e.msgs_bytes, d.msg_sel = 0, -1
+		}
+		dt_vsep("###dt_nm_s0")
+		if e.is_ws {
+			if dt_chip("###dt_nm_all", "All", d.msg_mode == 0, "Sent and received messages").clicked { d.msg_mode = 0 }
+			if dt_chip("###dt_nm_out", "Sent", d.msg_mode == 1, "Messages the page sent").clicked { d.msg_mode = 1 }
+			if dt_chip("###dt_nm_in", "Received", d.msg_mode == 2, "Messages the server sent").clicked { d.msg_mode = 2 }
+			dt_vsep("###dt_nm_s1")
+		}
+		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		if ui.row(.Center, {}, "###dt_nm_fw") { dt_search("###dt_nm_filter", &d.msg_filter, "Filter  (-word excludes)", 0, false) }
+		if dt_btn("###dt_nm_copy", .Copy, tooltip = "Copy the messages shown", enabled = len(e.msgs) > 0).clicked {
+			b := strings.builder_make(context.temp_allocator)
+			for i in d.msg_rows { strings.write_string(&b, msg_copy_text(&e.msgs[i])); strings.write_byte(&b, '\n') }
+			clip_set(strings.to_string(b))
+		}
+		dt_gap(3)
+	}
+	// the state line
+	{
+		ui.next({width = ui.fill(), height = ui.px(dtm.row)})
+		sb := ui.build_box({}, "###dt_nm_state")
+		txt := e.is_ws ? ws_state_text(e) : (e.ms < 0 ? "Open" : "Ended")
+		col := dtc.weak
+		if e.is_ws {
+			switch e.ws_state {
+			case .Open: col = dtc.good
+			case .Failed: col = dtc.bad
+			case .Connecting, .Closed:
+			}
+		}
+		st := ui.frame_new(struct { text, count: string, col: draw.Color })
+		st.text, st.col = dt_frame_str(txt), col
+		st.count = dt_frame_str(fmt.tprintf("%d message%s, %s", e.msgs_total, e.msgs_total == 1 ? "" : "s", dt_size_text(e.msgs_bytes)))
+		sb.custom, sb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+			s := (^struct { text, count: string, col: draw.Color })(user)
+			cy := (b.rect.min.y + b.rect.max.y) * 0.5
+			rr := dtm.fs * 0.3
+			draw.rect(dc, {{b.rect.min.x + dt_px(10), cy - rr}, {b.rect.min.x + dt_px(10) + rr * 2, cy + rr}}, s.col, rr)
+			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x + dt_px(10) + rr * 2 + dt_px(6), cy, dtc.text, s.text, b.rect.max.x - b.rect.min.x - dt_px(180))
+			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), cy, dtc.weak, s.count)
+		}, st
+	}
+	// the rows
+	ser := dt_filter_prepare(&d.msg_filter)
+	key := [5]u64{e.id, u64(e.msgs_total), u64(len(e.msgs)), ser, u64(d.msg_mode)}
+	if d.msg_key != key {
+		d.msg_key = key
+		clear(&d.msg_rows)
+		active := dt_filter_active(&d.msg_filter)
+		for &m, i in e.msgs {
+			if d.msg_mode == 1 && !m.out { continue }
+			if d.msg_mode == 2 && m.out { continue }
+			if active && !dt_filter_match(&d.msg_filter, m.text) && !dt_filter_match(&d.msg_filter, m.name) { continue }
+			append(&d.msg_rows, i)
+		}
+	}
+	n := len(d.msg_rows)
+	if n == 0 {
+		dt_empty("###dt_nm_empty", .File_Socket, e.msgs_total > 0 ? "No message matches" : (e.is_ws ? "No messages yet" : "No events yet"),
+			e.msgs_total > 0 ? "Change the direction or clear the filter." : (e.is_ws ? "Frames sent and received on the socket are listed here." : "The events the server sends are listed here."))
+		return
+	}
+	pane_h := d.msg_sel >= 0 && d.msg_sel < len(e.msgs) ? dtm.row * 5 : 0
+	menu_key := ui.key_from_string(0, "###dt_nm_menu")
+	if rows, ok := dt_list("###dt_nm_list", &d.msg_list, n, dtm.row, nil, ui.fill(), ui.fill(), follow = true); ok {
+		for k in rows.first ..< rows.last {
+			i := d.msg_rows[k]
+			m := &e.msgs[i]
+			md := ui.frame_new(Msg_Draw)
+			md.m, md.sse = m, e.is_sse
+			first := m.text
+			if nl := strings.index_byte(first, '\n'); nl >= 0 { first = first[:nl] }
+			md.text = dt_frame_str(dev_line(first, 300))
+			md.size = dt_frame_str(dt_size_text(i64(m.size)))
+			md.clock = dt_frame_str(msg_clock(m.clock))
+			md.sel, md.focused = d.msg_sel == i, d.msg_list.focused
+			ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Arrow})
+			rb := ui.build_box({.Clickable}, fmt.tprintf("###nm%d_%d", e.id, m.clock * 1000 + i64(i)))
+			sig := ui.signal(rb)
+			md.hot = sig.hovering
+			rb.custom, rb.custom_user = msg_paint, md
+			if sig.pressed { d.msg_sel = d.msg_sel == i ? -1 : i; d.msg_list.sel = k; ui.set_focus(d.msg_list.key) }
+			if sig.right_clicked { d.msg_sel, d.msg_menu = i, i; ui.ctx_menu_open(menu_key, ui.mouse_pos()) }
+		}
+	}
+	if d.msg_list.focused && dt_list_keys(&d.msg_list, n, 8) { d.msg_sel = d.msg_rows[clamp(d.msg_list.sel, 0, n - 1)] }
+	// the chosen message in full
+	if pane_h > 0 {
+		m := &e.msgs[d.msg_sel]
+		ui.next({width = ui.fill(), height = ui.px(pane_h), axis = .Y, bg = dtc.bar, border = dtc.border})
+		pb := ui.build_box({.Draw_Background, .Draw_Side_Top}, "###dt_nm_pane")
+		if ui.parent(pb) {
+			text := m.control ? m.name : m.text
+			t0 := strings.trim_space(text)
+			lang := Syn_Lang.Plain
+			if len(t0) > 1 && (t0[0] == '{' || t0[0] == '[') { lang = .JSON }
+			if m.binary { lang = .Plain }
+			lines := strings.split_lines(text, context.temp_allocator)
+			nl := min(len(lines), 500)
+			if lst, lok := dt_list("###dt_nm_plist", &d.msg_pane, nl, dtm.row, nil, ui.fill(), ui.fill()); lok {
+				for k in lst.first ..< lst.last {
+					ld := ui.frame_new(Pane_Line)
+					ln := lines[k]
+					if len(ln) > 2000 { ln = ln[:2000] }
+					ld.text, ld.lang = dt_frame_str(ln), lang
+					ui.next({width = ui.fill(), height = ui.px(dtm.row), cursor = .Text})
+					lb := ui.build_box({}, fmt.tprintf("###nmp%d", k))
+					lb.custom, lb.custom_user = proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+						x := (^Pane_Line)(user)
+						dt_runs(dc, dtm.mono, dtm.mono_fs, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5, syn_runs(x.text, x.lang), b.rect.max.x - dt_px(6))
+					}, ld
+				}
+			}
+		}
+	}
+	if ui.ctx_menu(menu_key, dt_px(220)) {
+		if d.msg_menu >= 0 && d.msg_menu < len(e.msgs) {
+			m := &e.msgs[d.msg_menu]
+			if ui.menu_item("Copy message###dt_nm_cm").clicked { clip_set(msg_copy_text(m)) }
+			if ui.menu_item("Copy as hex###dt_nm_hex", enabled = m.binary).clicked { clip_set(m.text) }
+		}
+		if ui.menu_item("Copy all messages shown###dt_nm_ca").clicked {
+			b := strings.builder_make(context.temp_allocator)
+			for i in d.msg_rows { strings.write_string(&b, msg_copy_text(&e.msgs[i])); strings.write_byte(&b, '\n') }
+			clip_set(strings.to_string(b))
+		}
+		ui.menu_separator()
+		if ui.menu_item("Clear the messages###dt_nm_cl").clicked {
+			for m in e.msgs { delete(m.text); delete(m.name); delete(m.id) }
+			clear(&e.msgs)
+			e.msgs_bytes, d.msg_sel = 0, -1
+		}
+	}
+}

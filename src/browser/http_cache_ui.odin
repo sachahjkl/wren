@@ -105,9 +105,9 @@ cache_prof_leave :: proc(t: ^Tab) {
 
 // The status bar's tip: where this page's requests came from.
 cache_requests_tip :: proc(t: ^Tab) -> string {
-	if t == nil || t.page == nil { return "Requests in flight" }
+	if t == nil || t.page == nil { return "Requests of this tab" }
 	c := t.page.env.counts
-	return fmt.tprintf("Requests in flight. This page: %d from the network (%s), %d from the cache, %d revalidated (304)", c.network, size_text(c.network_bytes), c.cache, c.revalidated)
+	return fmt.tprintf("Requests of this tab (the Network tab's list), %d of them in flight. Subresources of this page: %d from the network (%s), %d from the cache, %d revalidated (304)", t.net.pending, c.network, size_text(c.network_bytes), c.cache, c.revalidated)
 }
 
 is_cache_address :: proc(a: string) -> bool { return a == CACHE_URL || strings.has_prefix(a, CACHE_URL + "?") }

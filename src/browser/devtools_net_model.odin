@@ -57,7 +57,35 @@ Net_Entry :: struct {
 	body_total: int,            // bytes the body had
 	body_cut: bool,             // `body` is not all of it
 	time_text: string,          // (cached label)
+	// a WebSocket or an event stream: its messages, in order
+	is_ws, is_sse: bool,
+	msgs:    [dynamic]Net_Msg,
+	msgs_total: int,            // all the messages there were (`msgs` keeps the first and last ones within a limit)
+	msgs_bytes: i64,            // the text the messages hold
+	ws_state: Net_Ws_State,
+	ws_code:  int,              // the close code (1005: none was sent)
+	ws_reason, ws_sub: string,  // owned: the close reason, the subprotocol chosen
+	ws_clean: bool,
+	sse:     ^fetch.Sse_Parser, // the stream's parser (an event stream)
 }
+
+Net_Ws_State :: enum u8 { Connecting, Open, Closed, Failed }
+
+// One message of a socket or an event of a stream.
+Net_Msg :: struct {
+	at:      f32,               // ms since the request began
+	clock:   i64,               // time of day, ms (what the panel prints)
+	out:     bool,              // sent by the page
+	binary:  bool,
+	control: bool,              // a close frame
+	size:    int,               // bytes (of the whole message, which `text` may only start)
+	text:    string,            // owned: the text, or the first bytes as hex for a binary message
+	name:    string,            // owned: an event stream's event name, or a control frame's text
+	id:      string,            // owned: an event stream's last event id
+}
+
+NET_MSG_KEEP :: 20000           // messages kept per socket or stream (the oldest go first)
+NET_MSG_TEXT :: 1 << 16         // bytes of one message's text kept
 
 Net_Log :: struct {
 	entries:  [dynamic]Net_Entry,
@@ -67,6 +95,10 @@ Net_Log :: struct {
 	next_seq: int,
 	t0_ms:    f64,               // the loop's clock when the first request of the navigation began
 	version:  u64,               // bumped whenever an entry changed (what the view's rows depend on)
+	pending:  int,               // requests that have not ended (the status bar's count)
+	profile:  string,            // owned: the network speed of this tab (a profile's id); "" = the default (the preference)
+	link:     net.Throttle_Link, // what the requests of this tab go through when it is throttled
+	link_id:  string,            // owned: the profile `link` was made for
 }
 
 NETWORK_PREFS := [?]config.Def{
@@ -76,8 +108,8 @@ NETWORK_PREFS := [?]config.Def{
 		description = "The most of one response the Network tab keeps for its Preview and Response views (0: no bodies are kept)."},
 	{name = "browser.devtools.network.max_body_mb", kind = .Int, default = {i = 256}, bounded = true, min = 1, max = 16384, unit = "MB",
 		description = "The most the Network tab keeps of the bodies of one tab in all; the oldest bodies are freed first. Closing the tab frees them all."},
-	{name = "browser.devtools.network.keep_media", kind = .Bool, default = {b = false},
-		description = "Keep the bodies of audio and video responses (large, streamed in pieces: off by default)."},
+	{name = "browser.devtools.network.keep_media", kind = .Bool, default = {b = true},
+		description = "Keep the bodies of audio and video responses, up to the limit of one body (for the player of the Preview tab)."},
 	{name = "browser.devtools.network.preserve", kind = .Bool, default = {b = false},
 		description = "Keep the requests of the Network tab when the page navigates."},
 	{name = "browser.devtools.network.disable_cache", kind = .Bool, default = {b = false},
@@ -90,12 +122,14 @@ NETWORK_PREFS := [?]config.Def{
 		description = "The request types the Network tab shows: a sum of bits (1 doc, 2 js, 4 css, 8 img, 16 media, 32 font, 64 fetch/xhr, 128 ws, 256 wasm, 512 other); 0 shows all."},
 	{name = "browser.devtools.network.split", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.15, max = 0.85,
 		description = "The share of the Network tab's width (or height) the request list keeps while a request's details are open."},
-	{name = "browser.devtools.network.detail_tab", kind = .String, default = {s = "headers"}, choices = {"headers", "payload", "preview", "response", "timing", "cookies"},
+	{name = "browser.devtools.network.detail_tab", kind = .String, default = {s = "headers"}, choices = {"headers", "payload", "preview", "response", "timing", "cookies", "messages"},
 		description = "The view of a request's details that is shown."},
 	{name = "browser.devtools.network.waterfall", kind = .Bool, default = {b = true},
 		description = "Show the waterfall of each request (its time split into queueing, connecting, waiting and receiving)."},
-	{name = "browser.devtools.network.throttle", kind = .String, default = {s = "none"}, choices = {"none", "fast_3g", "slow_3g", "offline"},
-		description = "A network speed the developer tools hold the page's requests to: none, fast 3G (1.6 Mbit/s, 150 ms), slow 3G (400 kbit/s, 400 ms) or offline."},
+	{name = "browser.devtools.network.throttle", kind = .String, default = {s = "none"},
+		description = "The network speed the developer tools hold the traffic of a tab to (while they are open): none, fast_3g (1.6 Mbit/s, 150 ms), slow_3g (400 kbit/s, 400 ms), flaky (5 Mbit/s, 3 % loss), offline, or the id of a custom profile. A tab that chose another speed keeps its own."},
+	{name = "browser.devtools.network.profiles", kind = .String, default = {s = ""},
+		description = "The custom network speeds, \"id|name|download kbit/s|upload kbit/s|latency ms|loss %\" separated by semicolons. The Network tab's speed menu edits them."},
 }
 
 network_register_prefs :: proc(p: ^config.Prefs) { config.register(p, NETWORK_PREFS[:]) }
@@ -108,14 +142,13 @@ Net_Prefs :: struct {
 	preserve:    bool,
 	disable_cache: bool,
 	waterfall:   bool,
-	throttle:    Net_Throttle,
+	profile:     string,   // owned: the id of the speed profile the tabs start from
 }
-
-Net_Throttle :: enum u8 { None, Fast_3G, Slow_3G, Offline }
 
 net_prefs: Net_Prefs
 
 network_apply_prefs :: proc(p: ^config.Prefs) {
+	old_profile := net_prefs.profile
 	net_prefs = {
 		max_entries = int(config.int_of(p, "browser.devtools.network.max_entries")),
 		max_body = int(config.int_of(p, "browser.devtools.network.max_body_kb")) * 1024,
@@ -125,11 +158,9 @@ network_apply_prefs :: proc(p: ^config.Prefs) {
 		disable_cache = config.bool_of(p, "browser.devtools.network.disable_cache"),
 		waterfall = config.bool_of(p, "browser.devtools.network.waterfall"),
 	}
-	switch config.string_of(p, "browser.devtools.network.throttle") {
-	case "fast_3g": net_prefs.throttle = .Fast_3G
-	case "slow_3g": net_prefs.throttle = .Slow_3G
-	case "offline": net_prefs.throttle = .Offline
-	}
+	delete(old_profile)
+	net_prefs.profile = strings.clone(config.string_of(p, "browser.devtools.network.throttle"))
+	net_profiles_load(config.string_of(p, "browser.devtools.network.profiles"))
 	network_sync_observer()
 }
 
@@ -150,26 +181,30 @@ net_free_entry :: proc(e: ^Net_Entry) {
 	for r in e.redirects { delete(r) }
 	delete(e.redirects)
 	delete(e.body)
+	for m in e.msgs { delete(m.text); delete(m.name); delete(m.id) }
+	delete(e.msgs)
+	delete(e.ws_reason); delete(e.ws_sub)
+	if e.sse != nil { fetch.sse_parser_destroy(e.sse); free(e.sse) }
 	e^ = {}
 }
 
 net_clear :: proc(l: ^Net_Log) {
 	for &e in l.entries { net_free_entry(&e) }
 	clear(&l.entries)
-	l.bytes, l.body_bytes, l.next_seq, l.t0_ms = 0, 0, 0, 0
+	l.bytes, l.body_bytes, l.next_seq, l.t0_ms, l.pending = 0, 0, 0, 0, 0
 	l.version += 1
 }
 
 net_log_destroy :: proc(l: ^Net_Log) {
 	net_clear(l)
 	delete(l.entries)
+	delete(l.profile); delete(l.link_id)
 	l^ = {}
 }
 
 @(private = "file") net_owner: map[u64]u64   // request id -> id of its tab
 
 // The tab a scope belongs to, and the scope of its navigation (the child of the tab's scope on the way up).
-@(private = "file")
 tab_of_scope :: proc(app: ^App, s: ^base.Scope) -> (t: ^Tab, nav: uintptr) {
 	for sc := s; sc != nil; sc = sc.parent {
 		for x in app.tabs {
@@ -203,6 +238,7 @@ net_trim :: proc(l: ^Net_Log) {
 	if len(l.entries) <= limit + max(limit / 8, 16) { return }
 	drop := len(l.entries) - limit
 	for &e in l.entries[:drop] {
+		if e.ms < 0 { l.pending = max(l.pending - 1, 0) }
 		l.body_bytes -= i64(len(e.body))
 		net_free_entry(&e)
 	}
@@ -223,13 +259,13 @@ net_enforce_total :: proc(l: ^Net_Log) {
 	}
 }
 
-// fetch.Observer.event: every step of every request.
+// fetch.Observer.event: every step of every request, socket and event stream.
 net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 	app := (^App)(user)
 	now_ms := f64(host.now_ns(&app.loop)) / 1e6
 	touched: ^Tab
-	switch ev.kind {
-	case .Started:
+	#partial switch ev.kind {
+	case .Started, .Ws_Started:
 		t, nav := tab_of_scope(app, ev.scope)
 		if t == nil { return }
 		touched = t
@@ -241,13 +277,19 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		net_trim(&t.net)
 		if len(t.net.entries) == 0 { t.net.t0_ms = now_ms }
 		t.net.next_seq += 1
+		t.net.pending += 1
 		append(&t.net.entries, Net_Entry{
 			id = ev.id, seq = t.net.next_seq, method = strings.clone(ev.method), url = strings.clone(ev.url), dest = ev.destination, mode = ev.mode,
 			start_ms = now_ms, ms = -1, navigate = ev.navigate, parser = ev.parser, initiator = strings.clone(ev.initiator),
 		})
 		e := &t.net.entries[len(t.net.entries) - 1]
-		e.type = net_type_of(e)
-	case .Request, .Redirect, .Response, .Body, .Done, .Failed:
+		if ev.kind == .Ws_Started {
+			e.is_ws, e.type = true, .WS
+			e.req_headers = strings.clone(ev.headers)
+		} else {
+			e.type = net_type_of(e)
+		}
+	case:
 		tid, found := net_owner[ev.id]
 		if !found { return }
 		t := tab_by_id(app, tid)
@@ -255,8 +297,8 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 		e := net_entry_of(&t.net, ev.id)
 		if e == nil { delete_key(&net_owner, ev.id); return }
 		touched = t
-		switch ev.kind {
-		case .Started:
+		was_pending := e.ms < 0
+		#partial switch ev.kind {
 		case .Request:
 			delete(e.req_headers)
 			e.req_headers = strings.clone(ev.headers)
@@ -277,9 +319,20 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			delete(e.remote); e.remote = strings.clone(ev.remote)
 			if ev.has_timing { e.timing, e.has_timing = ev.timing, true }
 			e.transfer = content_length_of(ev.headers)
+			if net_mime_base(ev.mime) == "text/event-stream" && e.sse == nil {
+				e.is_sse = true
+				e.sse = new(fetch.Sse_Parser)
+				fetch.sse_parser_init(e.sse, 1 << 20)
+			}
 			e.type = net_type_of(e)
 		case .Body:
-			if net_keep_body(e) {
+			if e.is_sse {
+				// an event stream keeps its events, not its bytes
+				events := make([dynamic]fetch.Sse_Event, context.temp_allocator)
+				fetch.sse_feed(e.sse, ev.data, &events)
+				for se in events { net_msg_push(e, now_ms, false, false, false, transmute([]byte)se.data, se.type, se.last_event_id) }
+				e.body_total += len(ev.data)
+			} else if net_keep_body(e) {
 				room := net_prefs.max_body - len(e.body)
 				take := min(room, len(ev.data))
 				if take > 0 {
@@ -300,21 +353,65 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 			if e.transfer <= 0 { e.transfer = ev.bytes }
 			if ev.has_timing { e.timing, e.has_timing = ev.timing, true }
 			t.net.bytes += i64(e.transfer)
+			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
 			delete_key(&net_owner, ev.id)
 		case .Failed:
-			e.failed, e.ms, e.bytes = true, f32(now_ms - e.start_ms), ev.bytes
+			e.failed, e.ms = true, f32(now_ms - e.start_ms)
+			if ev.bytes > e.bytes { e.bytes = ev.bytes }
 			delete(e.error)
 			e.error = strings.clone(ev.detail != "" ? ev.detail : "failed")
-			e.blocked = ev.error == .Blocked_Csp || ev.error == .Blocked_Cors || ev.error == .Blocked_Mixed_Content || ev.error == .Blocked_Same_Origin || ev.error == .Blocked_Preflight
+			e.blocked = ev.error == .Blocked_Csp || ev.error == .Blocked_Cors || ev.error == .Blocked_Mixed_Content || ev.error == .Blocked_Same_Origin || ev.error == .Blocked_Preflight || ev.error == .Blocked_By_Client
+			if e.is_ws { e.ws_state = .Failed }
 			t.net.bytes += i64(ev.bytes)
+			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
+			delete_key(&net_owner, ev.id)
+		case .Ws_Response:
+			e.status = ev.status
+			delete(e.res_headers); e.res_headers = strings.clone(ev.headers)
+			delete(e.status_text); e.status_text = strings.clone(ev.status == 101 ? "Switching Protocols" : ev.status_text)
+			delete(e.ws_sub); e.ws_sub = strings.clone(ev.protocol)
+			if ev.status == 101 { e.ws_state = .Open }
+		case .Ws_Frame:
+			data := ev.data
+			name := ev.detail
+			net_msg_push(e, now_ms, ev.outgoing, ev.binary, name != "" && len(data) == 0, data, name, "")
+			t.net.bytes += i64(len(data))
+			e.bytes += len(data)
+		case .Ws_Closed:
+			e.ws_state, e.ws_code, e.ws_clean = .Closed, ev.status, ev.clean
+			delete(e.ws_reason); e.ws_reason = strings.clone(ev.detail)
+			e.ms = f32(now_ms - e.start_ms)
+			if was_pending { t.net.pending = max(t.net.pending - 1, 0) }
 			delete_key(&net_owner, ev.id)
 		}
 	}
 	// whatever the event was, the rows of that tab are made again, and a frame shows it
 	if touched != nil { touched.net.version += 1 }
-	if dev.visible && (dev.panel == .Network || dev.panel == .Performance) { app.frames_requested = max(app.frames_requested, 2) }
+	if (dev.visible && (dev.panel == .Network || dev.panel == .Performance)) || (touched != nil && touched == current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }
 }
 
+// A message of a socket, or an event of a stream, into the entry's list.
+net_msg_push :: proc(e: ^Net_Entry, now_ms: f64, out, binary, control: bool, data: []byte, name, id: string) {
+	m := Net_Msg{at = f32(now_ms - e.start_ms), clock = local_time_ms(), out = out, binary = binary, control = control, size = len(data), name = strings.clone(name), id = strings.clone(id)}
+	n := min(len(data), binary ? 512 : NET_MSG_TEXT)
+	if binary {
+		b := strings.builder_make()
+		for byte, i in data[:n] { fmt.sbprintf(&b, "%s%02x", i > 0 ? " " : "", byte) }
+		m.text = strings.to_string(b)
+	} else {
+		end := n
+		for end > 0 && end < len(data) && (data[end] & 0xC0) == 0x80 { end -= 1 }   // not in the middle of a character
+		m.text = strings.clone(string(data[:end]))
+	}
+	e.msgs_bytes += i64(len(m.text))
+	e.msgs_total += 1
+	if len(e.msgs) >= NET_MSG_KEEP {
+		drop := NET_MSG_KEEP / 8
+		for &d in e.msgs[:drop] { e.msgs_bytes -= i64(len(d.text)); delete(d.text); delete(d.name); delete(d.id) }
+		remove_range(&e.msgs, 0, drop)
+	}
+	append(&e.msgs, m)
+}
 @(private = "file")
 net_keep_body :: proc(e: ^Net_Entry) -> bool {
 	if net_prefs.max_body <= 0 { return false }
@@ -375,6 +472,7 @@ net_mime_base :: proc(mime: string) -> string {
 }
 
 net_type_of :: proc(e: ^Net_Entry) -> Net_Type {
+	if e.is_ws { return .WS }
 	m := net_mime_base(e.mime)
 	switch e.dest {
 	case .Document, .Iframe: return .Doc
