@@ -273,8 +273,16 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
 	unseen := (chrome_frames.phase == .Loop || chrome_frames.phase == .Anim) && !chrome_frames.outer_taken && len(chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !ui.needs_frame(&app.ui_state) && !(ui.wake_ms(&app.ui_state) > 0 && since >= f64(ui.wake_ms(&app.ui_state))) { return }
+	video_due := page_visible_video_due(app)
+	if !unseen && !video_due && !shell_input_pending() && !ui.needs_frame(&app.ui_state) && !(ui.wake_ms(&app.ui_state) > 0 && since >= f64(ui.wake_ms(&app.ui_state))) { return }
 	shell_chrome_frame(app)
+}
+
+// A picture of a video in the current tab's last frame is due (video_shell.odin): the chrome frame shows it.
+@(private = "file")
+page_visible_video_due :: proc(app: ^App) -> bool {
+	t := current_tab(app)
+	return t != nil && t.kind == .Web && t.page != nil && video_shell_due(t.page)
 }
 
 // Messages wait in the thread's queue (input, posted or sent messages, a repaint), without taking them.
@@ -531,6 +539,7 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { return true }
 	draw.push_clip(dc, rect)
 	draw.backdrop_draw(dc, img, covered, {})
+	video_shell_overlay(app, dc, rect, shift, t.page)   // (video_shell.odin: the pictures that fell due since)
 	draw.pop_clip(dc)
 	return true
 }

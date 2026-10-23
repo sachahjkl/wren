@@ -146,6 +146,8 @@ DEMOS := [?]Demo{
 		"A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.", false, "", false},
 	{.Performance, "Video benchmark", "video-bench.html",
 		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
+	{.Performance, "Player simulator", "yt-sim.html",
+		"What a YouTube watch page costs, without the network (<code>tools\\perf.ps1 -Only yt_h264_1080p60,yt_av1_1080p30,yt_short</code>): a player with the state classes and bare <code>:has()</code> rules the real one toggles, a progress bar moved on every animation frame, MSE with separate audio and video buffers and ~4 000 elements around it. Needs the 1080p files of <code>tools\\gen_perf_media.ps1</code>.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",
 		"200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.", true, "", false},
 	{.Performance, "Slow stylesheet", "firstpaint-slow.html",
