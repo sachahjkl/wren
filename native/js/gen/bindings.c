@@ -416,9 +416,13 @@ JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_
 JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_buffered(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_preload(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_preload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
@@ -11471,13 +11475,13 @@ static const wj_member wj_m_HTMLMediaElement[] = {
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
     { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
     { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_currentSrc, NULL, 0 },
-    { "crossOrigin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_crossOrigin, wjr_HTMLMediaElement_set_crossOrigin, 0 },
     { "NETWORK_EMPTY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
     { "NETWORK_IDLE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "NETWORK_LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "NETWORK_NO_SOURCE", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
     { "networkState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_networkState, NULL, 0 },
-    { "preload", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "preload", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_preload, wjr_HTMLMediaElement_set_preload, 0 },
     { "buffered", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_buffered, NULL, 0 },
     { "load", WJ_M_METHOD, 0, 0, wjg_HTMLMediaElement_load, NULL, NULL, 0 },
     { "canPlayType", WJ_M_METHOD, 0, 1, wjg_HTMLMediaElement_canPlayType, NULL, NULL, 0 },
