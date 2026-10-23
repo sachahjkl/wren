@@ -12,6 +12,7 @@ package media
 // Nothing here knows the DOM: `notify` (any thread) tells the owner that tick() has something new to look at.
 
 import "wb:base"
+import "core:fmt"
 import "core:sync"
 import "core:thread"
 import "core:time"
@@ -297,12 +298,16 @@ player_tick :: proc(p: ^Player) {
 ////////////////////////////////
 // Presentation (interface thread)
 
-// The picture to show now, or nil when nothing is decoded yet. `changed` is whether it differs from what the last call
-// returned. The frame belongs to the player (valid until the next call).
-player_present :: proc(p: ^Player) -> (frame: ^Video_Frame, changed: bool) {
+// The picture to show, or nil when nothing is decoded yet. `changed` is whether it differs from what the last call
+// returned. The frame belongs to the player (valid until the next call). `ahead` is how long until the screen shows
+// what the caller is about to draw (the next vblank): the picture chosen is the one that is due then, not the one due
+// now, so that the choice does not depend on the jitter of the instant the frame happened to run (a 60 fps picture on a
+// 60 Hz screen is one picture per refresh, whatever the thread's wake-up time).
+player_present :: proc(p: ^Player, ahead: i64 = 0) -> (frame: ^Video_Frame, changed: bool) {
 	sync.mutex_lock(&p.mu)
 	defer sync.mutex_unlock(&p.mu)
 	t := clock_locked(p)
+	if p.started && ahead > 0 { t += Time(f64(ahead) * p.rate) }
 	took := false
 	// pictures that are late by more than the next one is early: skipped
 	for len(p.queue) >= 2 && p.queue[1].pts <= t - p.settings.late_drop {
@@ -326,11 +331,12 @@ player_present :: proc(p: ^Player) -> (frame: ^Video_Frame, changed: bool) {
 }
 
 // How long until the picture after the current one is due (0: now or nothing is waiting).
-player_next_due :: proc(p: ^Player) -> (in_ns: i64, ok: bool) {
+player_next_due :: proc(p: ^Player, ahead: i64 = 0) -> (in_ns: i64, ok: bool) {
 	sync.mutex_lock(&p.mu)
 	defer sync.mutex_unlock(&p.mu)
 	if !p.started || len(p.queue) == 0 { return 0, false }
 	t := clock_locked(p)
+	if ahead > 0 { t += Time(f64(ahead) * p.rate) }
 	d := p.queue[0].pts - t
 	return max(i64(f64(d) / p.rate), 0), true
 }
@@ -342,6 +348,15 @@ player_stats :: proc(p: ^Player) -> Player_Stats {
 	s.queued = len(p.queue)
 	s.width, s.height = p.vsize[0], p.vsize[1]
 	return s
+}
+
+// What the player is doing, for the profile report.
+player_debug :: proc(p: ^Player) -> string {
+	sync.mutex_lock(&p.mu)
+	defer sync.mutex_unlock(&p.mu)
+	queued := 0
+	if p.out != nil { queued = p.out.queued(p.out) }
+	return fmt.tprintf("started %v want_play %v queue %d cur %v need_cur %v v_starved %v v_eos %v a_starved %v a_written %d ring %d a_rate %d a_clock %v seek_gen %d v_done %d a_done %d err %v", p.started, p.want_play, len(p.queue), p.has_cur, p.need_cur, p.v_starved, p.v_eos, p.a_starved, p.a_written, queued, p.a_rate, p.a_clock, p.seek_gen, p.v_done_gen, p.a_done_gen, p.error)
 }
 
 player_state :: proc(p: ^Player) -> (playing, stalled, ended: bool, err: Player_Error) {

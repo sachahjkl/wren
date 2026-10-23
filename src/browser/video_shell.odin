@@ -12,6 +12,7 @@ package browser
 
 import "core:fmt"
 import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:render"
 import "wb:base"
@@ -138,11 +139,22 @@ picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	return pic
 }
 
+// How long from now until the screen shows the frame being made: the next vblank after the one this frame started at
+// (pacing.odin's grid). The picture of a video is chosen for that moment, so the choice does not follow the jitter of when
+// the thread got to run.
+@(private = "file")
+screen_ahead_ns :: proc() -> i64 {
+	app := the_app
+	now_ms := loop_ms(app, time.tick_now())
+	show_ms := pacer.frame_ms + pacer.period_ms
+	return i64(clamp(show_ms - now_ms, 0, 2 * pacer.period_ms) * 1e6)
+}
+
 // Paints the <video> element `node` into `content`. Always true: the video owns its box.
 video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
 	app := the_app
 	if app == nil { return true }
-	view, ok := page.media_view(p, node)
+	view, ok := page.media_view(p, node, true, screen_ahead_ns())
 	if !ok { return true }
 	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
 	key := Video_Key{page.page_id(p), node}
@@ -198,6 +210,7 @@ video_shell_report :: proc(sb: ^strings.Builder, freq: f64) {
 		view, ok := page.media_view(p, key.node, false)
 		if !ok { continue }
 		fmt.sbprintf(sb, "  %dx%d %s%s | decoded %d dropped %d | position %.1f s of %.1f | stalled %v\n", t.size.x, t.size.y, view.decoder, view.hardware ? " (GPU)" : " (CPU)", view.decoded, view.dropped, view.position, view.duration, view.stalled)
+		fmt.sbprintf(sb, "    player: %s\n", page.media_debug(p, key.node))
 	}
 	n := len(vshell.stamps)
 	if n < 3 { return }
