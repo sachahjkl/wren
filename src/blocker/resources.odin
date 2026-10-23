@@ -202,7 +202,7 @@ make_silent_mp3 :: proc(frames: int) -> []byte {
 @(private)
 make_empty_mp4 :: proc() -> []byte {
 	ftyp := []byte{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm', 0, 0, 2, 0, 'i', 's', 'o', 'm', 'm', 'p', '4', '1'}
-	mvhd := make([]byte, 108)
+	mvhd := make([]byte, 108, context.temp_allocator)
 	mvhd[3] = 108
 	copy(mvhd[4:8], "mvhd")
 	mvhd[20], mvhd[21], mvhd[22], mvhd[23] = 0, 0, 0x03, 0xe8   // timescale 1000
@@ -210,7 +210,7 @@ make_empty_mp4 :: proc() -> []byte {
 	mvhd[36] = 0x01                                              // volume 1.0
 	mvhd[40], mvhd[56], mvhd[72] = 0x00, 0x00, 0x00
 	mvhd[44], mvhd[60], mvhd[76], mvhd[92] = 0x01, 0x01, 0x40, 0x00
-	moov := make([]byte, 8 + len(mvhd))
+	moov := make([]byte, 8 + len(mvhd), context.temp_allocator)
 	moov[3] = byte(len(moov))
 	copy(moov[4:8], "moov")
 	copy(moov[8:], mvhd)
