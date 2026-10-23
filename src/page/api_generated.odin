@@ -263,6 +263,13 @@ Api_FormEnctype :: enum i32 {
 	Text_Plain = 2,
 }
 
+// FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
+Api_FullscreenNavigation :: enum i32 {
+	Auto = 0,
+	Show = 1,
+	Hide = 2,
+}
+
 // What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
 Api_ScrollRestoration :: enum i32 {
 	Auto = 0,
@@ -477,11 +484,17 @@ Api_FetchOptions :: struct {
 	cache: Api_RequestCache,
 }
 
-// The entries a query matches (Any: both).
+// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 Api_PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
 	Measure = 2,
+	Navigation = 3,
+	Resource = 4,
+	Paint = 5,
+	Event = 6,
+	First_Input = 7,
 }
 
 Api_StorageArea :: enum i32 {
@@ -620,6 +633,9 @@ _valid_SelectionMode :: #force_inline proc "contextless" (v: i32) -> bool { swit
 _valid_FormEnctype :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
+_valid_FullscreenNavigation :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
 _valid_ScrollRestoration :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
 
 @(private = "file")
@@ -662,7 +678,7 @@ _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { swi
 _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
-_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7: return true }; return false }
 
 @(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -731,6 +747,14 @@ invoke_EventListener :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i3
 invoke_FetchCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, request: u64, state: Api_FetchState) -> bool {
 	argv := [4]u32{u32(user), u32(u64(request)), u32(u64(request) >> 32), u32(state)}
 	return call_guest(ctx, inst, fn, argv[:4])
+}
+
+// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
+// Calls a guest's TimelineCallback (a function of its table) as a task of the realm; false when it trapped.
+invoke_TimelineCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, kinds: i32) -> bool {
+	argv := [2]u32{u32(user), u32(kinds)}
+	return call_guest(ctx, inst, fn, argv[:2])
 }
 
 // Calls a guest's TimerHandler (a function of its table) as a task of the realm; false when it trapped.
@@ -8998,6 +9022,108 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Element_requestFullscreen :: proc(c: ^Call, element: Api_Element, navigationUI: Api_FullscreenNavigation) -> u64
+@(private = "file")
+_t_fullscreen_Element_requestFullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "fullscreen.Element_requestFullscreen: argument element is not a live Element") }
+		return wasm.trap_new("fullscreen.Element_requestFullscreen: argument element is not a live Element")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_FullscreenNavigation(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "fullscreen.Element_requestFullscreen: argument navigationUI is not a FullscreenNavigation") }
+		return wasm.trap_new("fullscreen.Element_requestFullscreen: argument navigationUI is not a FullscreenNavigation")
+	}
+	_p1 := Api_FullscreenNavigation(_e1)
+	_r := Element_requestFullscreen(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_exitFullscreen :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_fullscreen_Document_exitFullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_exitFullscreen(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_fullscreenElement :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_fullscreen_Document_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreenElement(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ShadowRoot_fullscreenElement :: proc(c: ^Call, root: Api_Node) -> u64
+@(private = "file")
+_t_fullscreen_ShadowRoot_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "fullscreen.ShadowRoot_fullscreenElement: argument root is not a live Node") }
+		return wasm.trap_new("fullscreen.ShadowRoot_fullscreenElement: argument root is not a live Node")
+	}
+	_r := ShadowRoot_fullscreenElement(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_fullscreenEnabled :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_fullscreen_Document_fullscreenEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreenEnabled(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Document_fullscreen :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_fullscreen_Document_fullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreen(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Window_self :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -14975,6 +15101,32 @@ _t_dom_Node_cloneNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	return nil
 }
 
+// Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_importNodeCopy :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_importNodeCopy", "result pointer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_importNodeCopy: argument node is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r, _err := Document_importNodeCopy(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Node_isEqualNode :: proc(c: ^Call, node: Api_Node, other: Api_Node) -> bool
 @(private = "file")
 _t_dom_Node_isEqualNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -15871,6 +16023,33 @@ _t_dom_Document_createElementChecked :: proc "c" (env: rawptr, caller: wasm.Call
 	return nil
 }
 
+// Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createElementInert :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "dom.Document_createElementInert", "local_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createElementInert", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "dom.Document_createElementInert: argument local_name is not valid UTF-8")
+	}
+	_r, _err := Document_createElementInert(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string) -> (u64, Api_Error)
 @(private = "file")
 _t_dom_Document_createElementNSChecked :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -16515,6 +16694,26 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 		return wasm.trap_new("events.Event_cancelable: argument event is not a live Event")
 	}
 	_r := Event_cancelable(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Event_composed :: proc(c: ^Call, event: Api_Event) -> bool
+@(private = "file")
+_t_events_Event_composed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_composed: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_composed: argument event is not a live Event")
+	}
+	_r := Event_composed(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
@@ -20304,6 +20503,102 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
+// Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string
+@(private = "file")
+_t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "performance.Performance_timeline", "result buffer") }
+	_e0 := i32(a[0].i32)
+	if !_valid_PerformanceEntryType(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timeline: argument entry_type is not a PerformanceEntryType") }
+		return wasm.trap_new("performance.Performance_timeline: argument entry_type is not a PerformanceEntryType")
+	}
+	_p0 := Api_PerformanceEntryType(_e0)
+	_p1 := u64(a[1].i64)
+	_r := Performance_timeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64
+@(private = "file")
+_t_performance_Performance_timelineNextSeq :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_e0 := i32(a[0].i32)
+	if !_valid_PerformanceEntryType(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timelineNextSeq: argument entry_type is not a PerformanceEntryType") }
+		return wasm.trap_new("performance.Performance_timelineNextSeq: argument entry_type is not a PerformanceEntryType")
+	}
+	_p0 := Api_PerformanceEntryType(_e0)
+	_r := Performance_timelineNextSeq(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Performance_timelineInterest :: proc(c: ^Call, kinds: u32)
+@(private = "file")
+_t_performance_Performance_timelineInterest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	Performance_timelineInterest(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_onTimeline :: proc(c: ^Call, callback: u32, user: i32)
+@(private = "file")
+_t_performance_Performance_onTimeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	Performance_onTimeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_setResourceTimingBufferSize :: proc(c: ^Call, entries: u32)
+@(private = "file")
+_t_performance_Performance_setResourceTimingBufferSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	Performance_setResourceTimingBufferSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_clearResourceTimings :: proc(c: ^Call)
+@(private = "file")
+_t_performance_Performance_clearResourceTimings :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	Performance_clearResourceTimings(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Port_entangle :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_ports_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22374,6 +22669,12 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLIFrameElement_srcdoc", fn = _t_dom_HTMLIFrameElement_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLIFrameElement_set_srcdoc", fn = _t_dom_HTMLIFrameElement_set_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fullscreen", name = "Element_requestFullscreen", fn = _t_fullscreen_Element_requestFullscreen, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_exitFullscreen", fn = _t_fullscreen_Document_exitFullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_fullscreenElement", fn = _t_fullscreen_Document_fullscreenElement, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "ShadowRoot_fullscreenElement", fn = _t_fullscreen_ShadowRoot_fullscreenElement, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_fullscreenEnabled", fn = _t_fullscreen_Document_fullscreenEnabled, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "fullscreen", name = "Document_fullscreen", fn = _t_fullscreen_Document_fullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "history", name = "Window_self", fn = _t_history_Window_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Document_self", fn = _t_history_Document_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Location_get", fn = _t_history_Location_get, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -22626,6 +22927,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "Node_set_textContent", fn = _t_dom_Node_set_textContent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_normalize", fn = _t_dom_Node_normalize, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Node_cloneNode", fn = _t_dom_Node_cloneNode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_importNodeCopy", fn = _t_dom_Document_importNodeCopy, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_isEqualNode", fn = _t_dom_Node_isEqualNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_isSameNode", fn = _t_dom_Node_isSameNode, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Node_compareDocumentPosition", fn = _t_dom_Node_compareDocumentPosition, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
@@ -22662,6 +22964,7 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DocumentType_publicId", fn = _t_dom_DocumentType_publicId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "DocumentType_systemId", fn = _t_dom_DocumentType_systemId, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_createElementChecked", fn = _t_dom_Document_createElementChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "Document_createElementInert", fn = _t_dom_Document_createElementInert, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createElementNSChecked", fn = _t_dom_Document_createElementNSChecked, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createDocumentFragment", fn = _t_dom_Document_createDocumentFragment, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_createComment", fn = _t_dom_Document_createComment, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
@@ -22693,6 +22996,7 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_isLive", fn = _t_events_Event_isLive, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_bubbles", fn = _t_events_Event_bubbles, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_cancelable", fn = _t_events_Event_cancelable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "Event_composed", fn = _t_events_Event_composed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_eventPhase", fn = _t_events_Event_eventPhase, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_timeStamp", fn = _t_events_Event_timeStamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
 	{module = "events", name = "Event_isTrusted", fn = _t_events_Event_isTrusted, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -22865,6 +23169,12 @@ api_imports := [?]wasm.Import{
 	{module = "performance", name = "Performance_entryType", fn = _t_performance_Performance_entryType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "performance", name = "Performance_clearMarks", fn = _t_performance_Performance_clearMarks, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_clearMeasures", fn = _t_performance_Performance_clearMeasures, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_timeline", fn = _t_performance_Performance_timeline, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "performance", name = "Performance_timelineNextSeq", fn = _t_performance_Performance_timelineNextSeq, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "performance", name = "Performance_timelineInterest", fn = _t_performance_Performance_timelineInterest, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_onTimeline", fn = _t_performance_Performance_onTimeline, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_setResourceTimingBufferSize", fn = _t_performance_Performance_setResourceTimingBufferSize, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_clearResourceTimings", fn = _t_performance_Performance_clearResourceTimings, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "ports", name = "Port_entangle", fn = _t_ports_Port_entangle, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Port_bind", fn = _t_ports_Port_bind, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "Port_ship", fn = _t_ports_Port_ship, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
