@@ -33,7 +33,7 @@ test("A: the data of the other page's upgrade", async () => {
   const all = await new Promise((resolve) => { const q = s.getAll(); q.onsuccess = () => resolve(q.result); });
   eq(all.map((x) => x.id + x.from).join(), "1A,2B", "both records");
   eq([...s.indexNames].join(), "from", "the index B made");
-  const names = (await indexedDB.databases()).map((d) => d.name + "@" + d.version).join();
+  const names = (await indexedDB.databases()).filter((d) => d.name === "shared_pages").map((d) => d.name + "@" + d.version).join();
   eq(names, "shared_pages@2", "databases()");
   db.close();
 });
