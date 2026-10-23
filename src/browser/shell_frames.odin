@@ -314,6 +314,19 @@ foreign user32_shell {
 	PeekMessageW :: proc(msg: ^win.MSG, hwnd: win.HWND, filter_min, filter_max, remove: u32) -> win.BOOL ---
 }
 
+// The window asked for a frame (WM_PAINT inside a loop of the system: live resize, a menu). Normally a full frame. But the loop may have begun
+// inside a chrome frame (the mouse went down on the window's border while one was being made: its poll pumps the messages), that is
+// under a script or a layout pass of the page: a full frame there would run the page's world a second time, re-entrantly (the page
+// thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
+// there, at the size the window has now.
+window_frame :: proc(app: ^App) {
+	if !chrome_frames.nested { frame(app); return }
+	resized := app.win.size != pacer.size
+	pacer.size = app.win.size
+	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	shell_chrome_frame(app)
+}
+
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
@@ -323,8 +336,9 @@ shell_chrome_frame :: proc(app: ^App) {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
 		pacer.slot_held = true
 	}
+	was_nested := chrome_frames.nested   // (a modal loop of the system may have begun inside a chrome frame: window_frame)
 	chrome_frames.nested = true
-	defer chrome_frames.nested = false
+	defer chrome_frames.nested = was_nested
 	refused := wasm.refuse_calls(true)   // nothing of a page runs here (a guest call would be refused, not run)
 	defer wasm.refuse_calls(refused)
 	chrome_frames.frames += 1
