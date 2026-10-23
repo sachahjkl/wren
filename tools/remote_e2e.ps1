@@ -85,7 +85,58 @@ if ($Check) {
         Remove-Item Env:\WREN_MEMTRACK_FAIL -ErrorAction SilentlyContinue
         if ($env:WREN_REMOTE) { Stop-Wren }
     }
-    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    # ---- 4. a playing video is a plane of the page's paint order: the same picture every frame ------------------------------------
+# examples/site/remote/video-layers.htm: a video in a rounded overflow:hidden box, a fixed dialog (z-index) and a bar over it, a
+# rotated half-transparent rounded video, and a script that keeps the thread busy a few ms every frame (so that frames are made
+# under it, as under a player's). Forty captures in a row while it plays: in each the box's corners are rounded, the dialog and
+# the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
+    $null = Wren-Ctl wait idle
+    Start-Sleep 2
+    $n = 40
+    $shots = @()
+    for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    $badCorner = 0; $badDialog = 0; $badBar = 0
+    $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
+    $bmps = @()
+    foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
+    try {
+        foreach ($b in $bmps) {
+            $c = $b.GetPixel(45, 45); $d = $b.GetPixel(300, 150); $bar = $b.GetPixel(200, 255)
+            if (-not ($c.R -gt 200 -and $c.R -lt 240 -and [Math]::Abs($c.R - $c.G) -lt 4 -and [Math]::Abs($c.R - $c.B) -lt 4)) { $badCorner++ }
+            if (-not ($d.R -gt 190 -and $d.G -lt 70 -and $d.B -lt 70)) { $badDialog++ }
+            if (-not ($bar.B -gt 180 -and $bar.R -lt 60 -and $bar.G -lt 110)) { $badBar++ }
+        }
+        Check "video layers: $n captures, the box's corner is rounded in all (missing in $badCorner)" ($badCorner -eq 0)
+        Check "video layers: the dialog is above the video in all (hidden in $badDialog)" ($badDialog -eq 0)
+        Check "video layers: the bar is above the video in all (hidden in $badBar)" ($badBar -eq 0)
+        # frame to frame: regions that are not the video must not change at all (the dialog, the bar, the corners)
+        $regions = @(@(236, 96, 250, 108), @(60, 242, 360, 26), @(41, 41, 14, 14), @(425, 41, 14, 14), @(41, 265, 14, 14), @(425, 265, 14, 14))
+        $changed = 0
+        for ($i = 1; $i -lt $n; $i++) {
+            $diff = $false
+            foreach ($r in $regions) {
+                for ($y = $r[1]; $y -lt $r[1] + $r[3] -and -not $diff; $y += 3) {
+                    for ($x = $r[0]; $x -lt $r[0] + $r[2]; $x += 3) {
+                        $p = $bmps[$i - 1].GetPixel($x, $y); $q = $bmps[$i].GetPixel($x, $y)
+                        if ($p.ToArgb() -ne $q.ToArgb()) { $diff = $true; break }
+                    }
+                }
+                if ($diff) { break }
+            }
+            if ($diff) { $changed++ }
+        }
+        Check "video layers: nothing but the video changes between two captures (changed in $changed of $($n - 1))" ($changed -eq 0)
+        # the video moves at all (the test is of a playing video)
+        $moves = 0
+        for ($i = 1; $i -lt $n; $i++) { if ($bmps[$i - 1].GetPixel(120, 120).ToArgb() -ne $bmps[$i].GetPixel(120, 120).ToArgb() -or $bmps[$i - 1].GetPixel(330, 220).ToArgb() -ne $bmps[$i].GetPixel(330, 220).ToArgb()) { $moves++ } }
+        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
+    } finally { foreach ($b in $bmps) { $b.Dispose() } }
+} finally { Stop-Wren; Stop-WrenTestServer $server }
+Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
     if ($script:fail -gt 0) { exit 1 }
     'remote_e2e -Check: clean'
     exit 0
@@ -276,6 +327,57 @@ try {
     "      run took $runMs ms (start, load, wait idle, eval, capture, close)"
 } finally { Stop-WrenTestServer $server }
 
+# ---- 4. a playing video is a plane of the page's paint order: the same picture every frame ------------------------------------
+# examples/site/remote/video-layers.htm: a video in a rounded overflow:hidden box, a fixed dialog (z-index) and a bar over it, a
+# rotated half-transparent rounded video, and a script that keeps the thread busy a few ms every frame (so that frames are made
+# under it, as under a player's). Forty captures in a row while it plays: in each the box's corners are rounded, the dialog and
+# the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
+    $null = Wren-Ctl wait idle
+    Start-Sleep 2
+    $n = 40
+    $shots = @()
+    for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    $badCorner = 0; $badDialog = 0; $badBar = 0
+    $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
+    $bmps = @()
+    foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
+    try {
+        foreach ($b in $bmps) {
+            $c = $b.GetPixel(45, 45); $d = $b.GetPixel(300, 150); $bar = $b.GetPixel(200, 255)
+            if (-not ($c.R -gt 200 -and $c.R -lt 240 -and [Math]::Abs($c.R - $c.G) -lt 4 -and [Math]::Abs($c.R - $c.B) -lt 4)) { $badCorner++ }
+            if (-not ($d.R -gt 190 -and $d.G -lt 70 -and $d.B -lt 70)) { $badDialog++ }
+            if (-not ($bar.B -gt 180 -and $bar.R -lt 60 -and $bar.G -lt 110)) { $badBar++ }
+        }
+        Check "video layers: $n captures, the box's corner is rounded in all (missing in $badCorner)" ($badCorner -eq 0)
+        Check "video layers: the dialog is above the video in all (hidden in $badDialog)" ($badDialog -eq 0)
+        Check "video layers: the bar is above the video in all (hidden in $badBar)" ($badBar -eq 0)
+        # frame to frame: regions that are not the video must not change at all (the dialog, the bar, the corners)
+        $regions = @(@(236, 96, 250, 108), @(60, 242, 360, 26), @(41, 41, 14, 14), @(425, 41, 14, 14), @(41, 265, 14, 14), @(425, 265, 14, 14))
+        $changed = 0
+        for ($i = 1; $i -lt $n; $i++) {
+            $diff = $false
+            foreach ($r in $regions) {
+                for ($y = $r[1]; $y -lt $r[1] + $r[3] -and -not $diff; $y += 3) {
+                    for ($x = $r[0]; $x -lt $r[0] + $r[2]; $x += 3) {
+                        $p = $bmps[$i - 1].GetPixel($x, $y); $q = $bmps[$i].GetPixel($x, $y)
+                        if ($p.ToArgb() -ne $q.ToArgb()) { $diff = $true; break }
+                    }
+                }
+                if ($diff) { break }
+            }
+            if ($diff) { $changed++ }
+        }
+        Check "video layers: nothing but the video changes between two captures (changed in $changed of $($n - 1))" ($changed -eq 0)
+        # the video moves at all (the test is of a playing video)
+        $moves = 0
+        for ($i = 1; $i -lt $n; $i++) { if ($bmps[$i - 1].GetPixel(120, 120).ToArgb() -ne $bmps[$i].GetPixel(120, 120).ToArgb() -or $bmps[$i - 1].GetPixel(330, 220).ToArgb() -ne $bmps[$i].GetPixel(330, 220).ToArgb()) { $moves++ } }
+        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
+    } finally { foreach ($b in $bmps) { $b.Dispose() } }
+} finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
 'remote_e2e: all checks passed'
