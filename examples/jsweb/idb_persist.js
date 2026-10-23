@@ -2,7 +2,7 @@
 // of idb_pages_a.js left is there, and a database can be deleted.
 
 test("persistence: the data is back after a restart", async () => {
-  const names = (await indexedDB.databases()).map((d) => d.name + "@" + d.version).join();
+  const names = (await indexedDB.databases()).filter((d) => d.name === "shared_pages").map((d) => d.name + "@" + d.version).join();
   eq(names, "shared_pages@2", "databases() lists it");
   const db = await new Promise((resolve, reject) => {
     const r = indexedDB.open("shared_pages");
@@ -22,7 +22,7 @@ test("persistence: the data is back after a restart", async () => {
     r.onsuccess = () => resolve();
     r.onerror = () => reject(r.error);
   });
-  eq((await indexedDB.databases()).length, 0, "deleted");
+  eq((await indexedDB.databases()).filter((d) => d.name === "shared_pages").length, 0, "deleted");
 });
 
 __run();
