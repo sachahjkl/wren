@@ -56,8 +56,8 @@ parse_options :: proc(args: []string) -> (o: Options, err: string) {
 	only_positional := false
 	for i := 0; i < len(args); i += 1 {
 		a := args[i]
+		if !only_positional && a == "--" { only_positional = true; continue }
 		if only_positional || len(a) < 3 || !strings.has_prefix(a, "--") { append(&o.pos, a); continue }
-		if a == "--" { only_positional = true; continue }
 		name, value, has_value := a[2:], "", false
 		if eq := strings.index_byte(a, '='); eq > 2 { name, value, has_value = a[2:eq], a[eq + 1:], true }
 		if name == "pref" {
