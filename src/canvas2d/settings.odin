@@ -23,6 +23,10 @@ Settings :: struct {
 	glyph_cache_entries: int,
 	filters:             bool,
 	smooth_default:      bool,
+	gpu_enabled:         bool,
+	gpu_min_pixels:      int,
+	gpu_max_insts:       int,
+	gpu_read_penalty:    int,
 }
 
 PREFS := [?]config.Def{
@@ -60,6 +64,14 @@ PREFS := [?]config.Def{
 		description = "Honor the filter property of the 2D context (blur(), brightness()... and drop-shadow()). Off: the property reads and writes but changes nothing."},
 	{name = "canvas.image_smoothing", kind = .Bool, default = {b = true},
 		description = "Initial value of imageSmoothingEnabled for new contexts (browsers smooth by default)."},
+	{name = "canvas.gpu.enabled", kind = .Bool, default = {b = true},
+		description = "Draw canvases on the GPU: the drawing calls are recorded and replayed in a few draw calls into a texture the page shows as it is, with no copy. Off: every canvas is drawn by the software rasterizer. A context made with willReadFrequently always is."},
+	{name = "canvas.gpu.min_pixels", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 1 << 30, unit = "pixels",
+		description = "Canvases with fewer pixels (width x height) than this are drawn in software, where a handful of small shapes costs less than a GPU draw and the read-back of a tiny canvas is free."},
+	{name = "canvas.gpu.max_instances", kind = .Int, default = {i = 200_000}, bounded = true, min = 64, max = 1 << 26,
+		description = "Shapes, images and glyphs a GPU canvas records before it hands them to the GPU without waiting for the next frame (a canvas nobody shows would otherwise keep every call)."},
+	{name = "canvas.gpu.read_penalty", kind = .Int, default = {i = 10}, bounded = true, min = 0, max = 10_000,
+		description = "Each getImageData (or other read-back) that follows drawing on a GPU canvas adds 2 to its score and each frame shown takes 1 off; at this score the canvas goes back to software, where reading is free. 0: never."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -83,6 +95,10 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		glyph_cache_entries = int(config.int_of(p, "canvas.text.max_cached_glyphs")),
 		filters = config.bool_of(p, "canvas.filters"),
 		smooth_default = config.bool_of(p, "canvas.image_smoothing"),
+		gpu_enabled = config.bool_of(p, "canvas.gpu.enabled"),
+		gpu_min_pixels = int(config.int_of(p, "canvas.gpu.min_pixels")),
+		gpu_max_insts = int(config.int_of(p, "canvas.gpu.max_instances")),
+		gpu_read_penalty = int(config.int_of(p, "canvas.gpu.read_penalty")),
 	}
 }
 
@@ -93,5 +109,6 @@ options_of :: proc(s: ^Settings) -> Options {
 		max_layer_bytes = s.max_layer_bytes, max_bytes = s.max_layer_bytes, smooth_default = s.smooth_default,
 		max_path_points = s.max_path_points, text_bytes = s.max_text_bytes,
 		filters = s.filters,
+		gpu = Gpu_Options{max_insts = s.gpu_max_insts, max_shape_edges = s.max_path_points * 2, glyph_cache_entries = s.glyph_cache_entries, read_penalty = s.gpu_read_penalty},
 	}
 }
