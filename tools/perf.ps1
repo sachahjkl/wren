@@ -369,6 +369,10 @@ if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_*' })) {
         Run 'yt_short'             "$yt`?src=perf_short_1080x1920" $play $false $ytp
         Run 'yt_h264_1080p60_task' "$yt`?src=perf_h264_1080p60&task=80" $play $false $ytp
         Run 'yt_h264_1080p60_wheel' "$yt`?src=perf_h264_1080p60" { param($h) Start-Sleep 12; Mark; WheelStream $h 10000 16 -360 } $false $ytp
+        # the player over the whole window, the window itself fullscreen (F11): the video alone is visible
+        Run 'yt_h264_1080p60_fs' "$yt`?src=perf_h264_1080p60&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $false $ytp
+        Run 'yt_av1_1080p30_fs' "$yt`?src=perf_av1_1080p30&codecs=av01.0.08M.08&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $false $ytp
+        Run 'yt_h264_1080p60_fs_sample' "$yt`?src=perf_h264_1080p60&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $true $ytp
         Run 'yt_h264_1080p60_sample' "$yt`?src=perf_h264_1080p60" $play $true $ytp
     } finally { Stop-WrenTestServer $srv }
 }
