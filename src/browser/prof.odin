@@ -20,6 +20,7 @@ PROFILE :: #config(PROFILE, false)
 import "core:fmt"
 import "core:os"
 import "core:slice"
+import "core:strconv"
 import "core:strings"
 import "core:sync"
 import "core:thread"
@@ -34,9 +35,12 @@ foreign import kernel32_prof "system:Kernel32.lib"
 @(default_calling_convention = "system")
 foreign kernel32_prof {
 	GetModuleHandleExW :: proc(flags: u32, address: rawptr, out: ^win.HMODULE) -> win.BOOL ---
+	RtlLookupFunctionEntry :: proc(pc: u64, image_base: ^u64, history: rawptr) -> rawptr ---
+	RtlVirtualUnwind :: proc(kind: u32, image_base: u64, pc: u64, entry: rawptr, ctx: ^win.CONTEXT, handler_data: ^rawptr, establisher: ^u64, pointers: rawptr) -> rawptr ---
 }
 
 CONTEXT_CONTROL_AMD64 :: 0x100001
+CONTEXT_FULL_AMD64 :: 0x10000B
 
 // (Styles, Layout and Paint_Items run inside UI_Draw: the page is a custom box of the UI tree. Animation: the page's
 // animation frame callbacks.)
@@ -146,7 +150,7 @@ foreign dbghelp {
 	SymFromAddr :: proc(process: win.HANDLE, address: u64, displacement: ^u64, symbol: ^SYMBOL_INFO) -> win.BOOL ---
 }
 
-Sample :: struct { rip: u64, phase: Phase }
+Sample :: struct { rip: u64, phase: Phase, t: i64, from: [2]u64 }   // from: the first two callers inside the executable (WREN_SAMPLE_STACK=1)
 
 Prof :: struct {
 	on:        bool,
@@ -162,6 +166,8 @@ Prof :: struct {
 	stop:      bool,
 	target:    win.HANDLE,
 	sampler:   ^thread.Thread,
+	stacks:    bool,             // the sampler also unwinds the stack (WREN_SAMPLE_STACK=1)
+	exe_lo, exe_hi: u64,
 	cpu0_user, cpu0_kernel: u64,
 	wall0:     i64,
 	cur_lay:   Frame_Rec,         // the layout pass of the frame being measured (lay_* fields)
@@ -222,11 +228,46 @@ prof_init :: proc(app: ^App) {
 		h: win.HANDLE
 		win.DuplicateHandle(win.GetCurrentProcess(), win.GetCurrentThread(), win.GetCurrentProcess(), &h, 0, false, win.DUPLICATE_SAME_ACCESS)
 		prof.target = h
-		prof.samples = make([]Sample, 4_000_000)
+		prof.samples = make([]Sample, 2_000_000)
+		if os.get_env("WREN_SAMPLE_STACK", context.temp_allocator) == "1" {
+			prof.stacks = true
+			m := win.GetModuleHandleW(nil)
+			prof.exe_lo = u64(uintptr(m))
+			nt := uintptr(m) + uintptr((^u32)(uintptr(m) + 0x3c)^)
+			prof.exe_hi = prof.exe_lo + u64((^u32)(nt + 0x50)^)
+		}
 		prof.sampling = true
 		prof.sampler = thread.create(sampler_proc)
 		thread.start(prof.sampler)
 	}
+}
+
+// The first two return addresses of the suspended thread that lie in the executable (the system's frames between are
+// skipped; the unwind uses the unwind tables the system knows, JIT code's included).
+callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [2]u64) {
+	n := 0
+	for depth in 0 ..< 48 {
+		pc := ctx.Rip
+		if pc >= prof.exe_lo && pc < prof.exe_hi && depth > 0 || (depth == 0 && pc >= prof.exe_lo && pc < prof.exe_hi) {
+			out[n] = pc
+			n += 1
+			if n == 2 { return }
+		}
+		base: u64
+		entry := RtlLookupFunctionEntry(pc, &base, nil)
+		if entry == nil {
+			// a leaf without tables: the return address is at the top of the stack
+			if ctx.Rsp == 0 { return }
+			ctx.Rip = (^u64)(uintptr(ctx.Rsp))^
+			ctx.Rsp += 8
+		} else {
+			handler: rawptr
+			establisher: u64
+			RtlVirtualUnwind(0, base, pc, entry, ctx, &handler, &establisher, nil)
+		}
+		if ctx.Rip == 0 { return }
+	}
+	return
 }
 
 sampler_proc :: proc(_: ^thread.Thread) {
@@ -234,9 +275,11 @@ sampler_proc :: proc(_: ^thread.Thread) {
 		win.Sleep(1)
 		if win.SuspendThread(prof.target) == ~u32(0) { continue }
 		ctx: win.CONTEXT
-		ctx.ContextFlags = CONTEXT_CONTROL_AMD64
+		ctx.ContextFlags = prof.stacks ? CONTEXT_FULL_AMD64 : CONTEXT_CONTROL_AMD64
 		if win.GetThreadContext(prof.target, &ctx) && prof.n_samples < len(prof.samples) {
-			prof.samples[prof.n_samples] = Sample{u64(ctx.Rip), phase_clock.cur}
+			sm := Sample{u64(ctx.Rip), phase_clock.cur, qpc(), {}}
+			if prof.stacks { sm.from = callers_in_exe(&ctx) }
+			prof.samples[prof.n_samples] = sm
 			prof.n_samples += 1
 		}
 		win.ResumeThread(prof.target)
@@ -511,6 +554,46 @@ report_samples :: proc(sb: ^strings.Builder) {
 		if p == .Idle || p == .None || by_phase[p] < 20 { continue }
 		fmt.sbprintf(sb, "\n-- hottest functions in phase %v (%d samples)\n", p, by_phase[p])
 		top(sb, by_phase_symbol[p], 15, by_phase[p], "  ")
+	}
+
+	// the frames whose CPU work (without the wait for the screen) ran past WREN_SLOW_MS (30): what they spent it in. The
+	// averages above bury a script that takes 85 ms once in 5 s.
+	slow_ms := 30.0
+	if v := os.get_env("WREN_SLOW_MS", context.temp_allocator); v != "" { if f, ok := strconv.parse_f64(v); ok { slow_ms = f } }
+	from_ms := 0.0   // (WREN_SLOW_FROM_MS: not the load)
+	if v := os.get_env("WREN_SLOW_FROM_MS", context.temp_allocator); v != "" { if f, ok := strconv.parse_f64(v); ok { from_ms = f } }
+	slow := make(map[string]int, context.temp_allocator)
+	slow_total, slow_frames := 0, 0
+	next := 0
+	for f in prof.frames {
+		work := f64(f.dur[.Frame] - f.dur[.Wait] - f.dur[.Present])
+		if work <= slow_ms || f64(f.t_ms) < from_ms { continue }
+		slow_frames += 1
+		end := f64(f.t_ms)
+		start := end - f64(f.dur[.Frame])
+		for next < prof.n_samples && f64(prof.samples[next].t - prof.t0) * 1000 / prof.freq < start { next += 1 }
+		for j := next; j < prof.n_samples; j += 1 {
+			s := prof.samples[j]
+			ms := f64(s.t - prof.t0) * 1000 / prof.freq
+			if ms > end { break }
+			if s.phase == .Wait || s.phase == .Idle || s.phase == .Present { continue }
+			sym := cache[s.rip]
+			key := fmt.tprintf("%s!%s [%v]", sym.module, sym.name, s.phase)
+			if s.from[0] != 0 {
+				for a in s.from {
+					if a == 0 { break }
+					cs, ok := cache[a]
+					if !ok { cs = resolve(a, proc_h, buf[:]); cache[a] = cs }
+					key = fmt.tprintf("%s <- %s", key, cs.name)
+				}
+			}
+			slow[key] += 1
+			slow_total += 1
+		}
+	}
+	if slow_frames > 0 {
+		fmt.sbprintf(sb, "\n-- hottest functions in the %d frames with more than %.0f ms of CPU work (%d samples)\n", slow_frames, slow_ms, slow_total)
+		top(sb, slow, 25, slow_total, "  ")
 	}
 }
 
