@@ -2,6 +2,8 @@ package blocker
 
 import "core:encoding/json"
 import "core:fmt"
+import "core:os"
+import "core:time"
 import "core:strings"
 import "wb:adblock"
 import "wb:base"
@@ -142,6 +144,7 @@ hook_adopted :: proc(user: rawptr, p: ^page.Page) {
 	b := (^Blocker)(user)
 	d := doc_of_page(b, p)
 	if d == nil { return }
+	t_start := time.tick_now()
 	hs := hooks_of(d)
 	hooks_reset(hs)
 	hs.page = p
@@ -163,11 +166,14 @@ hook_adopted :: proc(user: rawptr, p: ^page.Page) {
 		hs.rules += 1
 		if hs.rules >= b.cfg.max_selectors { break }
 	}
+	t_css := time.tick_now()
 	add_sheet(p, strings.to_string(sb))
 	scan_dom(b, d, hs, p)
+	t_scan := time.tick_now()
 	run_procedurals(b, d, hs, p)
 	hs.last_mut = p.doc.mutations
 	hs.last_run = now_ms()
+	trace("adopted %s: %d rules, css %.1f ms, scan %.1f ms, procedural (%d) %.1f ms", d.host, hs.rules, f64(time.tick_diff(t_start, t_css)) / 1e6, f64(time.tick_diff(t_css, t_scan)) / 1e6, len(hs.procs), f64(time.tick_since(t_scan)) / 1e6)
 	if d.tab != nil && d.top { d.tab.hidden = hs.rules; d.tab.version += 1 }
 }
 
@@ -264,8 +270,11 @@ hook_before_styles :: proc(user: rawptr, p: ^page.Page) {
 	}
 	hs.last_mut = p.doc.mutations
 	hs.last_run = now_ms()
+	t0 := time.tick_now()
 	scan_dom(b, d, hs, p)
+	t1 := time.tick_now()
 	run_procedurals(b, d, hs, p)
+	if ms := f64(time.tick_since(t0)) / 1e6; ms > 3 { trace("pass on %s: %.1f ms (scan %.1f, procedural %d: %.1f)", d.host, ms, f64(time.tick_diff(t0, t1)) / 1e6, len(hs.procs), f64(time.tick_since(t1)) / 1e6) }
 	if d.tab != nil && d.top { d.tab.hidden = hs.rules + len(hs.hidden); d.tab.version += 1 }
 }
 
@@ -367,3 +376,15 @@ json_rules :: proc(sb: ^strings.Builder, rules: [][]string) {
 }
 
 _ :: fmt
+
+// WREN_BLOCKER_TRACE=<file>: what the page hooks cost, one line per pass (for measuring).
+@(private)
+trace :: proc(format: string, args: ..any) {
+	path := os.get_env("WREN_BLOCKER_TRACE", context.temp_allocator)
+	if path == "" { return }
+	if f, err := os.open(path, {.Write, .Create, .Append}, os.Permissions_Default_File); err == nil {
+		os.write_string(f, fmt.tprintf(format, ..args))
+		os.write_string(f, "\n")
+		os.close(f)
+	}
+}
