@@ -10,6 +10,7 @@ import "wb:dom"
 
 State :: struct {
 	hover, active, focus: base.Handle,
+	visited:              base.Handle,   // an element the developer tools force to :visited (no history is kept: nothing else is)
 	focus_visible:        bool,         // the focus should be visible (:focus-visible): it came from the keyboard, or is in a text field
 	target_id:            string,       // the fragment of the document URL, for :target
 	controls:             Control_Provider,
@@ -498,8 +499,8 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Link, .Any_Link:
 		if n.name != "a" && n.name != "area" { return false }
 		_, ok := attr(n, "href")
-		return ok
-	case .Visited: return false
+		return ok && !(m.state.visited != base.NIL_HANDLE && el == m.state.visited)
+	case .Visited: return m.state.visited != base.NIL_HANDLE && el == m.state.visited
 	case .Target:
 		v, ok := attr(n, "id")
 		return ok && m.state.target_id != "" && v == m.state.target_id

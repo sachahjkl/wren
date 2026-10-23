@@ -86,6 +86,7 @@ Page :: struct {
 	engine:       ^style.Engine,
 	styled:       ^style.Styled,
 	style_state:  style.State,
+	forced:       Forced_State,   // :hover / :active / :focus / :visited the developer tools force on an element (devtools_api.odin)
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,

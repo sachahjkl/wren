@@ -15,6 +15,7 @@ import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
+import "wb:page"
 import "wb:base"
 import "wb:host"
 
@@ -846,9 +847,12 @@ net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if ui.menu_item(fmt.tprintf("Unblock all  (%d patterns)###dt_nm_unblock", len(v.blocked))).clicked { for b in v.blocked { delete(b) }; clear(&v.blocked) }
 	}
 	ui.menu_separator()
-	if ui.menu_item("Replay XHR###dt_nm_replay", enabled = false).clicked { }
-	if ui.menu_item("Save all as HAR###dt_nm_savehar", enabled = len(t.net.entries) > 0).clicked { net_export_har(app, t) }
-	ui.menu_separator()
+	replayable := e.type == .XHR && !e.is_ws && !e.is_sse && t.page != nil
+	if ui.menu_item("Replay XHR###dt_nm_replay", enabled = replayable).clicked {
+		if page.dev_run_script(t.page, net_fetch_code(e)) { ui.toast(.Info, "Replaying %s %s", e.method, net_name_of(e.url)) } else { ui.toast(.Warn, "The page cannot run the request (JavaScript is off for it)") }
+	}
+	if ui.menu_item("Save response as\u2026###dt_nm_savebody", enabled = len(e.body) > 0).clicked { save_data_as(app, suggested_name(e.url, "response"), e.body[:]) }
+	if ui.menu_item("Save all as HAR\u2026###dt_nm_savehar", enabled = len(t.net.entries) > 0).clicked { net_export_har(app, t) }	ui.menu_separator()
 	if ui.menu_item("Clear the log###dt_nm_clear").clicked { net_clear(&t.net); v.has_sel = false }
 }
 
@@ -877,6 +881,6 @@ net_glob :: proc(pattern, s: string) -> bool {
 
 @(private = "file")
 net_export_har :: proc(app: ^App, t: ^Tab) {
-	clip_set(net_har(t))
-	ui.toast(.Good, "%d requests copied to the clipboard as HAR", len(t.net.entries))
+	host, _ := strings.replace_all(net_host_of(t.url), ":", "_", context.temp_allocator)
+	save_data_as(app, strings.concatenate({host != "" ? host : "network", ".har"}, context.temp_allocator), transmute([]byte)net_har(t))
 }
