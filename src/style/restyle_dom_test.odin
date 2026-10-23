@@ -266,6 +266,18 @@ restyle_dom_subject_keys :: proc(t: ^testing.T) {
 	testing.expect(t, f.eng.last_restyle.marked > 100)
 }
 
+// An element that becomes a query container changes what its descendants see (their `containers`) though no rule of theirs
+// matches differently: the walk must go down (it used to, by luck, through a descendant rule of the demo page).
+@(test)
+restyle_dom_becomes_container :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.k { container: box / inline-size } @container box (width >= 0px) { i { color: red } }</style><div id=d><p><i id=i>t</i></p></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "d"), "class", "k")
+	_ = rx_step(t, f, "container made")   // (compared with a full pass)
+	dom.remove_attribute(f.doc, by_id(f, "d"), "class")
+	_ = rx_step(t, f, "container removed")
+}
+
 @(test)
 restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	f := rx_load(`<style>[data-x="y"] { color: red } [data-x] span { margin: 1px } #one { padding: 5px } #one > i { font-style: normal } a:link { color: green }</style>

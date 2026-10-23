@@ -884,7 +884,7 @@ walk :: proc(w: ^Walker, start: []Frame) {
 			}
 			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
-				if old == nil || !inherited_equal(old, nc) { inh_changed = true } else { other_changed = true }
+				if old == nil || !inherited_equal(old, nc) || container_changed(old, nc) { inh_changed = true } else { other_changed = true }
 				if f.parent == nil && (nc.font_size != s.root_font_size || used_line_height(nc, s.line_height_normal) != s.root_line_height) { w.root_font = true }
 			}
 			cur = nc
@@ -1336,3 +1336,11 @@ custom_diff :: proc(a, b: ^Custom_Props) -> string {
 	return "(same values)"
 }
 
+// Whether what the children of an element see of its query containers differs (it became one, stopped being one, was renamed,
+// or was shown or hidden): the children's styles then change without any rule or inherited value of theirs changing.
+@(private = "file")
+container_changed :: proc(old, nc: ^Computed) -> bool {
+	if old.container_type != nc.container_type || len(old.container_name) != len(nc.container_name) { return true }
+	for n, i in old.container_name { if n != nc.container_name[i] { return true } }
+	return (old.display == .None) != (nc.display == .None) && nc.container_type != .Normal
+}
