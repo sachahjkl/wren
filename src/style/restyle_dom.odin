@@ -285,21 +285,46 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 // :has() anchors whose argument may have changed because something at or under `x` did: x's ancestors (and, when
 // :has() arguments use sibling combinators, the earlier siblings of x and of its ancestors). x itself when `self`.
 @(private = "file")
-has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool) {
+has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}) {
 	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
-	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle) {
+	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change) {
 		for &ha in ix.has_anchors {
+			// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
+			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
+			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) { apply(m, a, ha.reach) }
 		}
 	}
-	if self { test(m, ix, x) }
+	any := false
+	for &ha in ix.has_anchors { if has_tests(ha.feat, feat) { any = true; break } }
+	if !any { return }
+	if self { test(m, ix, x, feat) }
 	for cur := x; cur != base.NIL_HANDLE; cur = parent_element(&m.mc, cur) {
-		if cur != x { test(m, ix, cur) }
+		if cur != x { test(m, ix, cur, feat) }
 		if ix.has_sibling {
-			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps) }
+			for ps := prev_element(&m.mc, cur); ps != base.NIL_HANDLE; ps = prev_element(&m.mc, ps) { test(m, ix, ps, feat) }
 		}
 	}
+}
+
+// What changed on an element under an anchor: a class, an id or an attribute (kind None: a change of the tree itself,
+// or of anything: every anchor is concerned).
+@(private = "file")
+Has_Change :: struct {
+	kind: enum u8 { None, Class, Id, Attr },
+	name: string,
+}
+
+@(private = "file")
+has_tests :: proc(f: Has_Feat, c: Has_Change) -> bool {
+	switch c.kind {
+	case .None: return true
+	case .Class: return c.name in f.classes
+	case .Id: return c.name in f.ids
+	case .Attr: return c.name in f.attrs
+	}
+	return true
 }
 
 @(private = "file")
@@ -499,7 +524,7 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 		// custom states (:state()): no value to compare, the rules that test them say what they reach
 		for ix in ixs_for(m, h) {
 			if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-			if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+			if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
 		}
 		return
 	}
@@ -533,18 +558,18 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		for c in a {
 			if c in b { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
 		}
 		for c in b {
 			if c in a { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
 		}
 	case "id":
 		for v in ([2]string{ch.had_old ? ch.old : "", has_cur ? cur : ""}) {
 			if v == "" { continue }
 			if r, ok := ix.by_id[v]; ok { apply(m, h, r) }
-			if v in ix.has_ids { has_invalidate(m, h, false) }
+			if v in ix.has_ids { has_invalidate(m, h, false, Has_Change{.Id, v}) }
 		}
 	case "style":
 		mark(m, h, false)
@@ -554,7 +579,7 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		if m.s.counters_used { m.rewalk = true }   // quotes follow the language
 	}
 	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-	if ch.name in ix.has_attrs { has_invalidate(m, h, false) }
+	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
 	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
 		for f in FORM_RELATED {
@@ -1236,3 +1261,4 @@ custom_diff :: proc(a, b: ^Custom_Props) -> string {
 	}
 	return "(same values)"
 }
+
