@@ -84,8 +84,8 @@ gradient_color :: proc(g: ^Gradient, t: f64) -> [4]f32 {
 	return g.stops[n - 1].color
 }
 
-// Position along the gradient of device-space... no: of a point of the gradient's own (user) space; ok = false where
-// nothing is painted (a radial gradient has no circle through the point, a degenerate line).
+// Position along the gradient of a point of the gradient's own (user) space; ok = false where nothing is painted (a
+// radial gradient has no circle through the point, a degenerate line).
 gradient_t :: proc(g: ^Gradient, p: [2]f64) -> (t: f64, ok: bool) {
 	switch g.kind {
 	case .Linear:
@@ -215,14 +215,19 @@ Paint :: struct {
 	kind:    Paint_Kind,
 	color:   [4]f32,        // straight (Solid)
 	premul:  [4]f32,        // premultiplied (Solid)
+	s8:      [4]u32,        // the same on 0..255 (Solid)
+	lut:     [][4]u8,       // Gradient: premultiplied colors along 0..1 (paint_lut), nil: evaluated per pixel
 	grad:    ^Gradient,
 	pat:     ^Pattern,
 	img:     Image_Source,  // Image: the source rectangle; Pattern keeps its own
 	inv:     Matrix,        // device space -> the space of the gradient / pattern / image's texels
 }
 
+LUT_SIZE :: 1024
+
 paint_solid :: proc(c: [4]f32) -> Paint {
-	return Paint{kind = .Solid, color = c, premul = premultiply(c)}
+	pm := premultiply(c)
+	return Paint{kind = .Solid, color = c, premul = pm, s8 = {u32(pm.r * 255 + 0.5), u32(pm.g * 255 + 0.5), u32(pm.b * 255 + 0.5), u32(pm.a * 255 + 0.5)}}
 }
 
 // The premultiplied color at device pixel (x, y) (its center is sampled).

@@ -312,6 +312,13 @@ Run 'js_anim1000_sample' (FileUrl (Join-Path $jsb 'anim1000.html')) { param($h) 
 # 1000 custom elements with shadow roots (adopted and own sheets, :host, ::slotted(), ::part(), :state()), 50 hosts'
 # state and 20 slotted texts changed each frame: the scoped cascade and its partial restyle
 Run 'js_shadow1000' (FileUrl (Join-Path $jsb 'shadow1000.html')) { param($h) Start-Sleep 4; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+# the 2D canvas (examples/jsbench/canvas_anim.html): 200 circles and a gradient redrawn each frame on a 640 x 400 canvas
+# (script + software rasterization + one texture update per frame), the same on a window-sized canvas, and a canvas drawn
+# once (nothing must cost anything: no frames)
+Run 'js_canvas_anim' ('{0}?mode=anim' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_canvas_big'  ('{0}?mode=big' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+Run 'js_canvas_idle' ('{0}?mode=idle' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
+Run 'js_canvas_anim_sample' ('{0}?mode=anim' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
 # real sites with JavaScript (network: figures depend on the connection; the style and layout phases do not)
 Run 'site_sacha'   'https://sacha.house/' { param($h) Start-Sleep 10 } $false
 Run 'site_clockin' 'https://clockin.sacha.house/' { param($h) Start-Sleep 10 } $false
