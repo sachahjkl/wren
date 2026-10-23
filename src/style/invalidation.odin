@@ -88,6 +88,13 @@ reach_from :: proc(c: ^css.Complex, k: int) -> Reach {
 Has_Anchor :: struct {
 	compound: css.Compound,
 	reach:    Reach,
+	feat:     Has_Feat,
+}
+
+// The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
+// cannot change whether the anchor matches.
+Has_Feat :: struct {
+	classes, ids, attrs: map[string]bool,
 }
 
 Inv_Index :: struct {
@@ -111,6 +118,7 @@ Inv_Index :: struct {
 	uses_control_groups: bool,
 	uses_has:   bool,
 	has_anchors: [dynamic]Has_Anchor,
+	collect:    ^Has_Feat,          // while an anchor's :has() argument is analyzed: where its features are noted too
 	has_classes, has_ids, has_attrs: map[string]bool,   // features tested inside :has()
 	has_sibling: bool,              // :has() arguments reach siblings (anchors include earlier siblings)
 	has_empty:  bool,               // :empty or :placeholder-shown inside :has()
@@ -128,6 +136,12 @@ inv_free :: proc(ix: ^Inv_Index) {
 	for k in ix.has_attrs { delete(k) }
 	delete(ix.by_class); delete(ix.by_id); delete(ix.by_attr); delete(ix.by_tag)
 	delete(ix.has_classes); delete(ix.has_ids); delete(ix.has_attrs)
+	for &ha in ix.has_anchors {
+		for k in ha.feat.classes { delete(k) }
+		for k in ha.feat.ids { delete(k) }
+		for k in ha.feat.attrs { delete(k) }
+		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs)
+	}
 	delete(ix.has_anchors)
 	ix^ = {}
 }
@@ -226,7 +240,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 @(private = "file")
 analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total: Reach, in_has: bool, depth: int) -> bool {
 	attr_dep :: proc(ix: ^Inv_Index, name: string, r: Reach, in_has: bool) {
-		if in_has { flag(&ix.has_attrs, name) } else { merge(&ix.by_attr, name, r) }
+		if in_has { flag(&ix.has_attrs, name); if ix.collect != nil { flag(&ix.collect.attrs, name) } } else { merge(&ix.by_attr, name, r) }
 	}
 	subtree := reach_compose(Reach{self = true, desc = true}, total)   // read on an ancestor too (lang, dir, fieldset)
 	switch s.kind {
@@ -235,10 +249,10 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		return true
 	case .Universal:
 	case .Id:
-		if in_has { flag(&ix.has_ids, s.name) } else { merge(&ix.by_id, s.name, total) }
+		if in_has { flag(&ix.has_ids, s.name); if ix.collect != nil { flag(&ix.collect.ids, s.name) } } else { merge(&ix.by_id, s.name, total) }
 		return true
 	case .Class:
-		if in_has { flag(&ix.has_classes, s.name) } else { merge(&ix.by_class, s.name, total) }
+		if in_has { flag(&ix.has_classes, s.name); if ix.collect != nil { flag(&ix.collect.classes, s.name) } } else { merge(&ix.by_class, s.name, total) }
 		return true
 	case .Attribute:
 		attr_dep(ix, s.name, total, in_has)
@@ -264,8 +278,16 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			analyze_list(ix, s.list, total, in_has, depth)
 		case .Has:
 			ix.uses_has = true
-			if !in_has { append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total}) }
-			analyze_list(ix, s.list, total, true, depth)
+			if !in_has {
+				feat: Has_Feat
+				saved := ix.collect
+				ix.collect = &feat
+				analyze_list(ix, s.list, total, true, depth)
+				ix.collect = saved
+				append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total, feat = feat})
+			} else {
+				analyze_list(ix, s.list, total, true, depth)
+			}
 		case .Host: analyze_list(ix, s.list, total, in_has, depth)
 		case .Host_Context: analyze_list(ix, s.list, subtree, in_has, depth)
 		case .State, .Defined: attr_dep(ix, STATE_ATTRIBUTE, total, in_has)

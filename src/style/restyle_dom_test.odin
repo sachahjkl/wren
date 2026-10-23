@@ -206,6 +206,29 @@ restyle_dom_has :: proc(t: ^testing.T) {
 	dom.release(f.doc, n)
 }
 
+// A :has() anchor with nothing else in its compound (`:not(:has(.flag)) .t`, as YouTube's sheets have) is every
+// ancestor's candidate: a class change that no :has() argument tests must not mark them (and through them the whole
+// document); one the argument tests must, and the result stays what a full pass gives.
+@(test)
+restyle_dom_has_bare_anchor_unrelated_changes :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:not(:has(.flag)) > .t { color: red } .z { margin: 1px } [data-k] { padding: 2px }
+		:has([data-w]) > .u { color: blue } .card:has(.q) { outline: 1px solid red }</style>
+		<div id=root><div id=a><div id=b><span class=t id=t1>x</span><span class=u id=u1>y</span></div></div><div id=c><p id=p>t</p></div></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "z")
+	expect_partial(t, f, "class no :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "q")   // tested by another anchor's :has(): the bare ones are not concerned
+	expect_partial(t, f, "class another :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "data-k", "1")
+	expect_partial(t, f, "attribute no :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "flag")
+	expect_partial(t, f, "class a :has() tests")
+	dom.set_attribute(f.doc, by_id(f, "p"), "data-w", "1")
+	expect_partial(t, f, "attribute a :has() tests")
+	dom.remove_attribute(f.doc, by_id(f, "p"), "data-w")
+	expect_partial(t, f, "attribute removed")
+}
+
 @(test)
 restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	f := rx_load(`<style>[data-x="y"] { color: red } [data-x] span { margin: 1px } #one { padding: 5px } #one > i { font-style: normal } a:link { color: green }</style>
