@@ -2592,11 +2592,26 @@ Host: `Node_normalize :: proc(c: ^Call, node: Api_Node)`
 Node Node_cloneNode(Node node, bool deep = false) raises
 ```
 
-node.cloneNode(deep). Not_Supported for the document (one document per page).
+node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+document: no definition applies there).
 
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)`
+
+### `Document_importNodeCopy`
+
+```
+Node Document_importNodeCopy(Node node, bool deep = false) raises
+```
+
+document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+contents included), so its elements of a defined name are upgraded before it returns.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)`
 
 ### `Node_isEqualNode`
 
@@ -2984,6 +2999,19 @@ document.createElement(localName): Invalid_Character for a name that is not a va
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)`
+
+### `Document_createElementInert`
+
+```
+Element Document_createElementInert(string local_name) raises
+```
+
+createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)`
 
 ### `Document_createElementNSChecked`
 

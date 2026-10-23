@@ -399,6 +399,51 @@ dynamic_state :: proc(t: ^testing.T) {
 }
 
 @(test)
+fullscreen_state :: proc(t: ^testing.T) {
+	f := load(`<style>
+		#v:fullscreen { padding-left: 3px } #v:-webkit-full-screen { padding-right: 4px } div:fullscreen > #in { margin-top: 5px }
+		div:-webkit-full-screen { padding-bottom: 7px }
+		#w:not(:fullscreen) { margin-top: 6px }
+	</style><div id=v><span id=in>x</span></div><div id=w>y</div>`)
+	defer unload(&f)
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0), "no fullscreen element")
+	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), ":not(:fullscreen)")
+	v := dom.find_by_id(f.doc, "v")
+	restyle(&f, State{fullscreen = v})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 3), ":fullscreen matches the element")
+	testing.expect(t, near(at(&f, "v").padding[.Bottom].v, 7), ":-webkit-full-screen alone matches the element")
+	testing.expect(t, near(at(&f, "v").padding[.Right].v, 4), ":-webkit-full-screen matches the element")
+	testing.expect(t, at(&f, "v").position == .Fixed && !at(&f, "v").z_auto && near(at(&f, "v").margin[.Left].v, 0), "the UA rule: fixed over the viewport, above all")
+	testing.expect(t, at(&f, "in").position == .Static, "... for the fullscreen element only")
+	testing.expect(t, near(at(&f, "in").margin[.Top].v, 5), "a rule through :fullscreen reaches its child")
+	testing.expect(t, near(at(&f, "w").margin[.Top].v, 6), "the other element is not fullscreen")
+	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "w")})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "in").margin[.Top].v, 0) && near(at(&f, "w").margin[.Top].v, 0), "another element: the old one is restyled, :not(:fullscreen) stops")
+	restyle(&f, State{})
+	testing.expect(t, near(at(&f, "v").padding[.Left].v, 0) && near(at(&f, "w").margin[.Top].v, 6), "leaving restores the styles")
+}
+
+@(test)
+fullscreen_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
+	f := load(`<style>
+		#a { transform: translateX(10px); z-index: 3; position: relative; opacity: .5; filter: blur(2px); contain: paint; will-change: transform }
+		#b { perspective: 100px; isolation: isolate; clip-path: circle(10px) }
+		#o { transform: scale(2); opacity: .5 }
+	</style><div id=a><div id=b><div id=v>x</div></div></div><div id=o>y</div>`)
+	defer unload(&f)
+	a, b := at(&f, "a"), at(&f, "b")
+	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5) && len(a.filter) == 1, "before: the ancestors make stacking contexts and containing blocks")
+	restyle(&f, State{fullscreen = dom.find_by_id(f.doc, "v")})
+	a, b = at(&f, "a"), at(&f, "b")
+	testing.expect(t, a.transform == nil && a.z_auto && near(a.opacity, 1) && a.filter == nil && a.contain == {} && a.will_change == nil, "in full screen: no transform, stacking context, opacity, filter or containment above it")
+	testing.expect(t, b.perspective == 0 && b.clip_path == nil, "... at any depth")
+	testing.expect(t, len(at(&f, "o").transform) == 1 && near(at(&f, "o").opacity, 0.5), "an element that is not above it keeps its style")
+	restyle(&f, State{})
+	a = at(&f, "a")
+	testing.expect(t, len(a.transform) == 1 && !a.z_auto && near(a.opacity, 0.5), "leaving gives them their style back")
+}
+
+@(test)
 media_and_supports :: proc(t: ^testing.T) {
 	f := load(`<style>
 		#a { margin-top: 1px }

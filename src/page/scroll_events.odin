@@ -1,5 +1,7 @@
 package page
 
+// (The window's "resize" event is here too: the resize steps of update the rendering, one per frame whose viewport size
+// differs from the frame before.)
 // Scroll events (HTML "run the scroll steps" of update the rendering; CSSOM View §13.1): once per rendered frame,
 // before the animation frame callbacks, every scroll container whose offset changed since the last frame gets a
 // `scroll` event (not bubbling), and the document a bubbling one at the Document (it reaches the Window) when the page
@@ -17,6 +19,8 @@ Scroll_Events :: struct {
 	elements:   map[base.Handle][2]f32,   // device px, the containers' offsets at the last frame (absent: 0, 0)
 	doc:        [2]f64,                   // CSS px
 	doc_known:  bool,
+	size:       [2]f64,                   // CSS px, the viewport at the last frame (the window's "resize" event)
+	size_known: bool,
 	doc_handle: ^dom.Document,            // the document they belong to (a navigation starts over)
 }
 
@@ -51,7 +55,7 @@ run_scroll_steps :: proc(p: ^Page) {
 	if se.doc_handle != p.doc {
 		// a new document: what it shows first is no scroll
 		clear(&se.elements)
-		se.doc_known = false
+		se.doc_known, se.size_known = false, false
 		se.doc_handle = p.doc
 	}
 	targets := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
@@ -72,6 +76,14 @@ run_scroll_steps :: proc(p: ^Page) {
 
 	doc_scrolled := se.doc_known && (se.doc[0] != vp.scroll_x || se.doc[1] != vp.scroll_y)
 	se.doc, se.doc_known = {vp.scroll_x, vp.scroll_y}, true
+
+	// the resize steps come first: the window's size (a resized window, full screen, zoom) changed since the last frame
+	size := [2]f64{vp.width, vp.height}
+	if se.size_known && se.size != size {
+		fire_window_event(p, dom.Event{type = "resize"})
+		if p.closed { return }
+	}
+	se.size, se.size_known = size, true
 
 	// document order of the targets is not required; one event per target per frame is
 	for node in targets {

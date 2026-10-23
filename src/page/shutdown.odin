@@ -10,6 +10,7 @@ import "wb:wasm"
 // (browser/main.odin) runs the same steps in its own order. Everything starts again on demand afterwards.
 process_shutdown :: proc() {
 	webauthn_shutdown()
+	timeline_shutdown()
 	shutdown_threads()
 	lay.shutdown_threads()
 	images_shutdown()

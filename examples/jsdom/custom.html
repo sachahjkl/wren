@@ -42,6 +42,48 @@ tpl.innerHTML = "<x-item id=inert></x-item>";
 const detached = document.createElement("div");
 detached.innerHTML = "<x-later></x-later>";
 
+// document.importNode and cloneNode make elements of the document's realm: a defined name is upgraded before they
+// return (Polymer stamps its templates with importNode); the contents of a template stay inert
+{
+  const t2 = document.createElement("template");
+  t2.innerHTML = "<x-item id=imp class=c></x-item><div><x-item id=imp-nested></x-item></div>";
+  const imp = document.importNode(t2.content, true);
+  t("importNode upgrades the elements of the clone (also nested ones), before it returns", imp.firstChild instanceof XItem && imp.querySelector("#imp-nested") instanceof XItem);
+  t("... in tree order, with their attributes", imp.firstChild.className === "c");
+  t("importNode of one element", document.importNode(t2.content.firstChild, true) instanceof XItem);
+  t("cloneNode of a template's contents stays inert", !(t2.content.cloneNode(true).firstChild instanceof XItem));
+  const live = document.createElement("div");
+  live.innerHTML = "<x-item></x-item>";
+  t("cloneNode of an element of the document upgrades the clone", live.cloneNode(true).firstChild instanceof XItem);
+  t("a shallow clone of a custom element is upgraded", document.createElement("x-item").cloneNode(false) instanceof XItem);
+}
+
+// a reaction that calls the DOM runs what that queued before it returns (the specification's stack of element queues):
+// a connectedCallback that stamps a template finds its content upgraded
+{
+  const order = [];
+  class XChild extends HTMLElement { constructor() { super(); order.push("child constructed"); this.ready = true; } }
+  customElements.define("x-child", XChild);
+  class XParent extends HTMLElement {
+    connectedCallback() {
+      const tp = document.createElement("template");
+      tp.innerHTML = "<x-child id=stamped></x-child>";
+      this.appendChild(document.importNode(tp.content, true));
+      order.push("stamped, child ready=" + (this.querySelector("#stamped").ready === true));
+      const frag = document.createDocumentFragment();
+      const raw = document.createElement("div");
+      raw.innerHTML = "<x-child id=late-child></x-child>";
+      frag.append(raw);
+      this.appendChild(frag);
+      order.push("appended, child ready=" + (this.querySelector("#late-child").ready === true));
+    }
+  }
+  customElements.define("x-parent", XParent);
+  document.body.appendChild(document.createElement("x-parent"));
+  eq("a connectedCallback sees what its own DOM calls made, upgraded", order.join(" | "),
+    "child constructed | stamped, child ready=true | child constructed | appended, child ready=true");
+}
+
 throws("a name defined twice", () => customElements.define("x-item", class extends HTMLElement {}), "NotSupportedError");
 throws("a constructor defined twice", () => customElements.define("x-other", XItem), "NotSupportedError");
 throws("an invalid name", () => customElements.define("nodash", class extends HTMLElement {}), "SyntaxError");

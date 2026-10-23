@@ -57,7 +57,14 @@ JSValue wjr_WindowOrWorkerGlobalScope_get_performance(JSContext *ctx, JSValueCon
 
 /* ---- entries ---- */
 
-typedef struct perf_entry { JSValue name, detail; int type; double start, duration; } perf_entry;
+/* `data` is the browser's own entry (navigation, resource, paint, event): the object its JSON parsed to, whose members
+ * the attributes read; undefined for marks and measures. */
+typedef struct perf_entry { JSValue name, detail, data; int type; double start, duration; } perf_entry;
+
+/* the values of PerformanceEntryType (api/performance.widl) */
+enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_END };
+#define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT))
+static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input" };
 
 static void entry_free(void *p)
 {
@@ -65,6 +72,7 @@ static void entry_free(void *p)
     JSRuntime *rt = web_rt();
     JS_FreeValueRT(rt, e->name);
     JS_FreeValueRT(rt, e->detail);
+    JS_FreeValueRT(rt, e->data);
     free(e);
 }
 
@@ -73,6 +81,7 @@ static void entry_mark(void *rt, void *p, void *mark_func)
     perf_entry *e = p;
     wj_mark(rt, e->name, mark_func);
     wj_mark(rt, e->detail, mark_func);
+    wj_mark(rt, e->data, mark_func);
 }
 
 /* takes name and detail */
@@ -82,6 +91,7 @@ static JSValue entry_new(JSContext *ctx, JSValueConst new_target, int type, JSVa
     if (!e) { JS_FreeValue(ctx, name); JS_FreeValue(ctx, detail); return JS_ThrowOutOfMemory(ctx); }
     e->name = name;
     e->detail = detail;
+    e->data = JS_UNDEFINED;
     e->type = type;
     e->start = start;
     e->duration = duration;
@@ -94,7 +104,7 @@ static JSValue entry_new(JSContext *ctx, JSValueConst new_target, int type, JSVa
 static perf_entry *entry_this(JSContext *ctx, JSValueConst this_val) { return web_this_impl(ctx, this_val, WJ_IFACE_PerformanceEntry); }
 
 JSValue wjr_PerformanceEntry_get_name(JSContext *ctx, JSValueConst this_val) { perf_entry *e = entry_this(ctx, this_val); return e ? JS_DupValue(ctx, e->name) : JS_EXCEPTION; }
-JSValue wjr_PerformanceEntry_get_entryType(JSContext *ctx, JSValueConst this_val) { perf_entry *e = entry_this(ctx, this_val); return e ? JS_NewString(ctx, e->type == wr_PerformanceEntryType_Mark ? "mark" : "measure") : JS_EXCEPTION; }
+JSValue wjr_PerformanceEntry_get_entryType(JSContext *ctx, JSValueConst this_val) { perf_entry *e = entry_this(ctx, this_val); return e ? JS_NewString(ctx, kind_names[e->type]) : JS_EXCEPTION; }
 JSValue wjr_PerformanceEntry_get_startTime(JSContext *ctx, JSValueConst this_val) { perf_entry *e = entry_this(ctx, this_val); return e ? JS_NewFloat64(ctx, e->start) : JS_EXCEPTION; }
 JSValue wjr_PerformanceEntry_get_duration(JSContext *ctx, JSValueConst this_val) { perf_entry *e = entry_this(ctx, this_val); return e ? JS_NewFloat64(ctx, e->duration) : JS_EXCEPTION; }
 JSValue wjr_PerformanceEntry_get_id(JSContext *ctx, JSValueConst this_val) { return entry_this(ctx, this_val) ? JS_NewInt32(ctx, 0) : JS_EXCEPTION; }
@@ -102,19 +112,195 @@ JSValue wjr_PerformanceEntry_get_navigationId(JSContext *ctx, JSValueConst this_
 JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val) { perf_entry *e = web_this_impl(ctx, this_val, WJ_IFACE_PerformanceMark); return e ? JS_DupValue(ctx, e->detail) : JS_EXCEPTION; }
 JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val) { perf_entry *e = web_this_impl(ctx, this_val, WJ_IFACE_PerformanceMeasure); return e ? JS_DupValue(ctx, e->detail) : JS_EXCEPTION; }
 
+/* the members of a browser entry (data) as a plain object, which is what toJSON() gives */
+static JSValue timeline_json(JSContext *ctx, perf_entry *e)
+{
+    static const char src[] = "((d, t) => { const o = {}; for (const k in d) if (k !== 'seq') o[k] = d[k]; o.entryType = t; return o; })";
+    JSValue f = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsException(f)) { return f; }
+    JSValue args[2] = { e->data, JS_NewString(ctx, kind_names[e->type]) };
+    JSValue r = JS_Call(ctx, f, JS_UNDEFINED, 2, (JSValueConst *)args);
+    JS_FreeValue(ctx, args[1]);
+    JS_FreeValue(ctx, f);
+    return r;
+}
+
 JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     perf_entry *e = entry_this(ctx, this_val);
     if (!e) { return JS_EXCEPTION; }
+    if (!JS_IsUndefined(e->data)) { return timeline_json(ctx, e); }
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "name", JS_DupValue(ctx, e->name));
-    JS_SetPropertyStr(ctx, o, "entryType", JS_NewString(ctx, e->type == wr_PerformanceEntryType_Mark ? "mark" : "measure"));
+    JS_SetPropertyStr(ctx, o, "entryType", JS_NewString(ctx, kind_names[e->type]));
     JS_SetPropertyStr(ctx, o, "startTime", JS_NewFloat64(ctx, e->start));
     JS_SetPropertyStr(ctx, o, "duration", JS_NewFloat64(ctx, e->duration));
     JS_SetPropertyStr(ctx, o, "detail", JS_DupValue(ctx, e->detail));
     return o;
 }
+
+/* ---- the browser's own entries: navigation, resource, paint, event timing (api/performance.widl, src/page/timeline.odin) ----
+ * The browser gives them as JSON (Performance_timeline); each parsed object is the data of an entry, whose attributes read
+ * its members, 0 or "" when it has none. */
+
+static JSValue timeline_entry_new(JSContext *ctx, int kind, JSValue data)
+{
+    static const int ifaces[KIND_END] = { 0, 0, 0, WJ_IFACE_PerformanceNavigationTiming, WJ_IFACE_PerformanceResourceTiming,
+        WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming };
+    perf_entry *e = malloc(sizeof *e);
+    if (!e) { JS_FreeValue(ctx, data); return JS_ThrowOutOfMemory(ctx); }
+    JSValue nm = JS_GetPropertyStr(ctx, data, "name");
+    JSValue st = JS_GetPropertyStr(ctx, data, "startTime");
+    JSValue du = JS_GetPropertyStr(ctx, data, "duration");
+    e->name = JS_IsString(nm) ? nm : (JS_FreeValue(ctx, nm), JS_NewString(ctx, ""));
+    e->detail = JS_NULL;
+    e->data = data;
+    e->type = kind;
+    e->start = 0;
+    e->duration = 0;
+    if (JS_IsNumber(st)) { JS_ToFloat64(ctx, &e->start, st); }
+    if (JS_IsNumber(du)) { JS_ToFloat64(ctx, &e->duration, du); }
+    JS_FreeValue(ctx, st);
+    JS_FreeValue(ctx, du);
+    JSValue obj = wj_new_object_for(ctx, ifaces[kind], JS_UNDEFINED, NULL, NULL);
+    if (JS_IsException(obj)) { entry_free(e); return obj; }
+    web_set_impl(obj, e, entry_free, entry_mark);
+    return obj;
+}
+
+/* the entries of `kind` from sequence number `from` as the objects of the browser's JSON (an array); *next gets the number
+ * after the last of them */
+static JSValue timeline_data(JSContext *ctx, int kind, uint64_t from, uint64_t *next)
+{
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Performance_timeline(kind, from, wj_scratch.data, wj_scratch.cap));
+    if (n <= 0) { return JS_NewArray(ctx); }
+    char *text = malloc((size_t)n + 1);
+    if (!text) { return JS_ThrowOutOfMemory(ctx); }
+    memcpy(text, wj_scratch.data, (size_t)n);
+    text[n] = 0;
+    JSValue arr = JS_ParseJSON(ctx, text, (size_t)n, "<timeline>");
+    free(text);
+    if (JS_IsException(arr)) { return arr; }
+    if (next) {
+        int64_t len = 0;
+        JS_GetLength(ctx, arr, &len);
+        if (len > 0) {
+            JSValue last = JS_GetPropertyInt64(ctx, arr, len - 1);
+            JSValue seq = JS_GetPropertyStr(ctx, last, "seq");
+            double d = 0;
+            if (JS_IsNumber(seq) && JS_ToFloat64(ctx, &d, seq) == 0) { *next = (uint64_t)d + 1; }
+            JS_FreeValue(ctx, seq);
+            JS_FreeValue(ctx, last);
+        }
+    }
+    return arr;
+}
+
+/* the entries of `kind` as objects */
+static JSValue timeline_entries(JSContext *ctx, int kind, uint64_t from, uint64_t *next)
+{
+    JSValue data = timeline_data(ctx, kind, from, next);
+    if (JS_IsException(data)) { return data; }
+    JSValue out = JS_NewArray(ctx);
+    int64_t len = 0;
+    JS_GetLength(ctx, data, &len);
+    for (int64_t i = 0; i < len; i++) {
+        JSValue e = timeline_entry_new(ctx, kind, JS_GetPropertyInt64(ctx, data, i));
+        if (JS_IsException(e)) { JS_FreeValue(ctx, data); JS_FreeValue(ctx, out); return e; }
+        wj_array_set(ctx, out, (uint32_t)i, e);
+    }
+    JS_FreeValue(ctx, data);
+    return out;
+}
+
+static JSValue tl_num(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    perf_entry *e = entry_this(ctx, this_val);
+    if (!e) { return JS_EXCEPTION; }
+    JSValue v = JS_IsUndefined(e->data) ? JS_UNDEFINED : JS_GetPropertyStr(ctx, e->data, key);
+    if (JS_IsNumber(v)) { return v; }
+    JS_FreeValue(ctx, v);
+    return JS_NewFloat64(ctx, 0);
+}
+
+static JSValue tl_str(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    perf_entry *e = entry_this(ctx, this_val);
+    if (!e) { return JS_EXCEPTION; }
+    JSValue v = JS_IsUndefined(e->data) ? JS_UNDEFINED : JS_GetPropertyStr(ctx, e->data, key);
+    if (JS_IsString(v)) { return v; }
+    JS_FreeValue(ctx, v);
+    return JS_NewString(ctx, "");
+}
+
+static JSValue tl_bool(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    perf_entry *e = entry_this(ctx, this_val);
+    if (!e) { return JS_EXCEPTION; }
+    JSValue v = JS_IsUndefined(e->data) ? JS_UNDEFINED : JS_GetPropertyStr(ctx, e->data, key);
+    JSValue r = JS_NewBool(ctx, JS_ToBool(ctx, v));
+    JS_FreeValue(ctx, v);
+    return r;
+}
+
+static JSValue tl_to_json(JSContext *ctx, JSValueConst this_val)
+{
+    perf_entry *e = entry_this(ctx, this_val);
+    if (!e) { return JS_EXCEPTION; }
+    return JS_IsUndefined(e->data) ? JS_NewObject(ctx) : timeline_json(ctx, e);
+}
+
+JSValue wjr_PerformanceResourceTiming_get_initiatorType(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "initiatorType"); }
+JSValue wjr_PerformanceResourceTiming_get_deliveryType(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "deliveryType"); }
+JSValue wjr_PerformanceResourceTiming_get_nextHopProtocol(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "nextHopProtocol"); }
+JSValue wjr_PerformanceResourceTiming_get_workerStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "workerStart"); }
+JSValue wjr_PerformanceResourceTiming_get_redirectStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "redirectStart"); }
+JSValue wjr_PerformanceResourceTiming_get_redirectEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "redirectEnd"); }
+JSValue wjr_PerformanceResourceTiming_get_fetchStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "fetchStart"); }
+JSValue wjr_PerformanceResourceTiming_get_domainLookupStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domainLookupStart"); }
+JSValue wjr_PerformanceResourceTiming_get_domainLookupEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domainLookupEnd"); }
+JSValue wjr_PerformanceResourceTiming_get_connectStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "connectStart"); }
+JSValue wjr_PerformanceResourceTiming_get_connectEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "connectEnd"); }
+JSValue wjr_PerformanceResourceTiming_get_secureConnectionStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "secureConnectionStart"); }
+JSValue wjr_PerformanceResourceTiming_get_requestStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "requestStart"); }
+JSValue wjr_PerformanceResourceTiming_get_finalResponseHeadersStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "responseStart"); }
+JSValue wjr_PerformanceResourceTiming_get_firstInterimResponseStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "firstInterimResponseStart"); }
+JSValue wjr_PerformanceResourceTiming_get_responseStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "responseStart"); }
+JSValue wjr_PerformanceResourceTiming_get_responseEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "responseEnd"); }
+JSValue wjr_PerformanceResourceTiming_get_transferSize(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "transferSize"); }
+JSValue wjr_PerformanceResourceTiming_get_encodedBodySize(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "encodedBodySize"); }
+JSValue wjr_PerformanceResourceTiming_get_decodedBodySize(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "decodedBodySize"); }
+JSValue wjr_PerformanceResourceTiming_get_responseStatus(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "responseStatus"); }
+JSValue wjr_PerformanceResourceTiming_get_renderBlockingStatus(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "renderBlockingStatus"); }
+JSValue wjr_PerformanceResourceTiming_get_contentType(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "contentType"); }
+JSValue wjr_PerformanceResourceTiming_get_contentEncoding(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "contentEncoding"); }
+JSValue wjr_PerformanceResourceTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformanceNavigationTiming_get_unloadEventStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "unloadEventStart"); }
+JSValue wjr_PerformanceNavigationTiming_get_unloadEventEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "unloadEventEnd"); }
+JSValue wjr_PerformanceNavigationTiming_get_domInteractive(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domInteractive"); }
+JSValue wjr_PerformanceNavigationTiming_get_domContentLoadedEventStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domContentLoadedEventStart"); }
+JSValue wjr_PerformanceNavigationTiming_get_domContentLoadedEventEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domContentLoadedEventEnd"); }
+JSValue wjr_PerformanceNavigationTiming_get_domComplete(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "domComplete"); }
+JSValue wjr_PerformanceNavigationTiming_get_loadEventStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "loadEventStart"); }
+JSValue wjr_PerformanceNavigationTiming_get_loadEventEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "loadEventEnd"); }
+JSValue wjr_PerformanceNavigationTiming_get_type(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "type"); }
+JSValue wjr_PerformanceNavigationTiming_get_redirectCount(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "redirectCount"); }
+JSValue wjr_PerformanceNavigationTiming_get_criticalCHRestart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "criticalCHRestart"); }
+JSValue wjr_PerformanceNavigationTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformanceEventTiming_get_processingStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "processingStart"); }
+JSValue wjr_PerformanceEventTiming_get_processingEnd(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "processingEnd"); }
+JSValue wjr_PerformanceEventTiming_get_cancelable(JSContext *ctx, JSValueConst this_val) { return tl_bool(ctx, this_val, "cancelable"); }
+JSValue wjr_PerformanceEventTiming_get_target(JSContext *ctx, JSValueConst this_val) { return entry_this(ctx, this_val) ? JS_NULL : JS_EXCEPTION; }
+JSValue wjr_PerformanceEventTiming_get_interactionId(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "interactionId"); }
+JSValue wjr_PerformanceEventTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformancePaintTiming_get_paintTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "startTime"); }
+JSValue wjr_PerformancePaintTiming_get_presentationTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "startTime"); }
+JSValue wjr_PerformancePaintTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
 
 /* the structured clone of a detail (null when absent) */
 static bool clone_detail(JSContext *ctx, JSValueConst opt, JSValue *out)
@@ -298,16 +484,57 @@ static JSValue entries(JSContext *ctx, const char *name, size_t nlen, int type)
 
 static int type_of(const char *s, size_t n)
 {
-    if (n == 4 && memcmp(s, "mark", 4) == 0) { return wr_PerformanceEntryType_Mark; }
-    if (n == 7 && memcmp(s, "measure", 7) == 0) { return wr_PerformanceEntryType_Measure; }
+    for (int k = KIND_MARK; k < KIND_END; k++) {
+        if (strlen(kind_names[k]) == n && memcmp(s, kind_names[k], n) == 0) { return k; }
+    }
     return -1;
+}
+
+/* stable sort by start time (the arrays are in time order each: entries of several kinds are merged) */
+static void sort_by_start(JSContext *ctx, JSValue arr)
+{
+    static const char sort_src[] = "(a => a.sort((x, y) => x.startTime - y.startTime))";
+    JSValue sorter = JS_Eval(ctx, sort_src, sizeof sort_src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
+    if (!JS_IsException(sorter)) {
+        JSValue r = JS_Call(ctx, sorter, JS_UNDEFINED, 1, (JSValueConst *)&arr);
+        JS_FreeValue(ctx, r);
+    }
+    JS_FreeValue(ctx, sorter);
+}
+
+/* what the timeline buffer holds of `type`: marks and measures from the browser's list, navigation / resource / paint
+ * entries from its timeline; slow-event entries are only for observers (as in Chromium) */
+static JSValue buffered_entries(JSContext *ctx, int type)
+{
+    if (type == KIND_EVENT || type == KIND_FIRST_INPUT) { return JS_NewArray(ctx); }
+    if (type >= KIND_NAVIGATION) { return timeline_entries(ctx, type, 0, NULL); }
+    return entries(ctx, "", 0, type);
+}
+
+/* every entry of the buffer, in start time order */
+static JSValue all_entries(JSContext *ctx)
+{
+    JSValue arr = entries(ctx, "", 0, wr_PerformanceEntryType_Any);
+    if (JS_IsException(arr)) { return arr; }
+    int64_t len = 0;
+    JS_GetLength(ctx, arr, &len);
+    for (int k = KIND_NAVIGATION; k <= KIND_PAINT; k++) {
+        JSValue more = timeline_entries(ctx, k, 0, NULL);
+        if (JS_IsException(more)) { JS_FreeValue(ctx, arr); return more; }
+        int64_t n = 0;
+        JS_GetLength(ctx, more, &n);
+        for (int64_t i = 0; i < n; i++) { wj_array_set64(ctx, arr, len++, JS_GetPropertyInt64(ctx, more, i)); }
+        JS_FreeValue(ctx, more);
+    }
+    sort_by_start(ctx, arr);
+    return arr;
 }
 
 JSValue wjr_Performance_getEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
-    return entries(ctx, "", 0, wr_PerformanceEntryType_Any);
+    return all_entries(ctx);
 }
 
 JSValue wjr_Performance_getEntriesByType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -319,7 +546,7 @@ JSValue wjr_Performance_getEntriesByType(JSContext *ctx, JSValueConst this_val, 
     int type = type_of(t.ptr, t.len);
     wj_str_free(ctx, &t);
     if (type < 0) { return JS_NewArray(ctx); }
-    return entries(ctx, "", 0, type);
+    return buffered_entries(ctx, type);
 }
 
 JSValue wjr_Performance_getEntriesByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -337,7 +564,22 @@ JSValue wjr_Performance_getEntriesByName(JSContext *ctx, JSValueConst this_val, 
         if (type < 0) { wj_str_free(ctx, &n); return JS_NewArray(ctx); }
     }
     /* "" means any name for the browser: an empty name matches no entry (names are not empty) */
-    JSValue r = n.len == 0 ? JS_NewArray(ctx) : entries(ctx, n.ptr, n.len, type);
+    if (n.len == 0) { wj_str_free(ctx, &n); return JS_NewArray(ctx); }
+    JSValue r;
+    if (type == wr_PerformanceEntryType_Mark || type == wr_PerformanceEntryType_Measure) {
+        r = entries(ctx, n.ptr, n.len, type);
+    } else {
+        /* the buffer (of one kind, or all of them) then the entries with this name */
+        JSValue all = type == wr_PerformanceEntryType_Any ? all_entries(ctx) : buffered_entries(ctx, type);
+        if (JS_IsException(all)) { wj_str_free(ctx, &n); return all; }
+        static const char src[] = "((a, n) => a.filter((e) => e.name === n))";
+        JSValue f = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
+        JSValue args[2] = { all, JS_NewStringLen(ctx, n.ptr, n.len) };
+        r = JS_IsException(f) ? f : JS_Call(ctx, f, JS_UNDEFINED, 2, (JSValueConst *)args);
+        JS_FreeValue(ctx, args[0]);
+        JS_FreeValue(ctx, args[1]);
+        if (!JS_IsException(f)) { JS_FreeValue(ctx, f); }
+    }
     wj_str_free(ctx, &n);
     return r;
 }
@@ -375,11 +617,13 @@ static JSValue clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueCon
 JSValue wjr_Performance_clearMarks(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return clear(ctx, this_val, argc, argv, wr_PerformanceEntryType_Mark); }
 JSValue wjr_Performance_clearMeasures(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { return clear(ctx, this_val, argc, argv, wr_PerformanceEntryType_Measure); }
 
-/* Resource Timing: this browser records no resource entries, so there is nothing to clear and no buffer to size */
+/* Resource Timing: the browser keeps the resource entries (performance.resource_timing_entries) */
 JSValue wjr_Performance_clearResourceTimings(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
-    return perf_this(ctx, this_val) ? JS_UNDEFINED : JS_EXCEPTION;
+    if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
+    wr_Performance_clearResourceTimings();
+    return JS_UNDEFINED;
 }
 
 JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -387,7 +631,9 @@ JSValue wjr_Performance_setResourceTimingBufferSize(JSContext *ctx, JSValueConst
     if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "Performance.setResourceTimingBufferSize", 1, argc); }
     uint32_t n;
-    return wj_to_uint32(ctx, argv[0], &n, 32, 0) ? JS_UNDEFINED : JS_EXCEPTION;
+    if (!wj_to_uint32(ctx, argv[0], &n, 32, 0)) { return JS_EXCEPTION; }
+    wr_Performance_setResourceTimingBufferSize(n);
+    return JS_UNDEFINED;
 }
 
 JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -408,9 +654,19 @@ typedef struct perf_observer {
     JSValue  callback;
     JSValue  buffer;     /* Array of the entries not delivered yet */
     uint32_t types;      /* 1 << entry type, for each type observed */
+    double   threshold;  /* event timing: the shortest duration it hears of (durationThreshold) */
     int      mode;       /* how observe() was first called: entryTypes (multiple) or type (single) */
     bool     registered;
 } perf_observer;
+
+static uint64_t seen_seq[KIND_END];   /* the timeline entries of each kind the observers have been given up to here */
+static uint32_t interest;                /* the kinds of the browser's timeline some observer wants (1 << kind) */
+static bool listener_set;
+
+void wj_cb_timeline(int32_t user, int32_t kinds);
+
+/* what the observers want of the browser's timeline: only those kinds announce new entries to the realm */
+static void update_interest(void);
 
 static JSValue *registered;      /* counted: the registered observers */
 static uint32_t n_registered, cap_registered;
@@ -445,8 +701,31 @@ static void unregister(JSContext *ctx, perf_observer *o)
         JSValue v = registered[i];
         registered[i] = registered[--n_registered];
         JS_FreeValue(ctx, v);   /* may free the observer: last */
+        update_interest();
         return;
     }
+}
+
+static void update_interest(void)
+{
+    uint32_t want = 0;
+    for (uint32_t i = 0; i < n_registered; i++) {
+        wj_obj *wo = wj_obj_of(registered[i]);
+        perf_observer *o = wo ? wo->impl : NULL;
+        if (o) { want |= o->types; }
+    }
+    want &= TIMELINE_KINDS;
+    /* a kind nobody heard of until now starts at its next entry */
+    for (int k = KIND_NAVIGATION; k < KIND_END; k++) {
+        if ((want & (1u << k)) && !(interest & (1u << k))) { seen_seq[k] = wr_Performance_timelineNextSeq(k); }
+    }
+    if (want == interest) { return; }
+    interest = want;
+    if (want && !listener_set) {
+        listener_set = true;
+        wr_Performance_onTimeline((uint32_t)(uintptr_t)&wj_cb_timeline, 0);
+    }
+    wr_Performance_timelineInterest(want);
 }
 
 static bool register_observer(JSContext *ctx, perf_observer *o)
@@ -509,13 +788,7 @@ static JSValue filtered(JSContext *ctx, JSValueConst this_val, const char *name,
         if (keep) { wj_array_set(ctx, out, k++, e); } else { JS_FreeValue(ctx, e); }
     }
     /* stable sort by start time: entries arrive in time order already, except buffered ones before new ones */
-    static const char sort_src[] = "(a => a.sort((x, y) => x.startTime - y.startTime))";
-    JSValue sorter = JS_Eval(ctx, sort_src, sizeof sort_src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
-    if (!JS_IsException(sorter)) {
-        JSValue r = JS_Call(ctx, sorter, JS_UNDEFINED, 1, (JSValueConst *)&out);
-        JS_FreeValue(ctx, r);
-    }
-    JS_FreeValue(ctx, sorter);
+    sort_by_start(ctx, out);
     return out;
 }
 
@@ -597,6 +870,10 @@ static void perf_queue_entry(JSContext *ctx, int type, JSValueConst entry)
         wj_obj *wo = wj_obj_of(registered[i]);
         perf_observer *o = wo ? wo->impl : NULL;
         if (!o || !(o->types & (1u << type))) { continue; }
+        if (type == KIND_EVENT) {
+            perf_entry *pe = wj_obj_of(entry) ? wj_obj_of(entry)->impl : NULL;
+            if (pe && pe->duration < o->threshold) { continue; }
+        }
         int64_t len = 0;
         JS_GetLength(ctx, o->buffer, &len);
         wj_array_set64(ctx, o->buffer, len, JS_DupValue(ctx, entry));
@@ -613,6 +890,7 @@ JSValue wjr_PerformanceObserver_constructor(JSContext *ctx, JSValueConst new_tar
     if (!o) { return JS_ThrowOutOfMemory(ctx); }
     o->callback = JS_DupValue(ctx, argv[0]);
     o->buffer = JS_NewArray(ctx);
+    o->threshold = 104;
     JSValue obj = wj_new_object_for(ctx, WJ_IFACE_PerformanceObserver, new_target, NULL, NULL);
     if (JS_IsException(obj)) { observer_free(o); return obj; }
     o->self = obj;
@@ -627,6 +905,24 @@ static void warn_unsupported(const char *type, size_t n)
     wj_console_text(wr_ConsoleLevel_Warn, msg, (size_t)(k > 0 ? k : 0));
 }
 
+/* the entries already in the timeline of `t`, put in the observer's buffer (a "buffered" observe) */
+static void buffer_old_entries(JSContext *ctx, perf_observer *o, int t)
+{
+    JSValue old = t >= KIND_NAVIGATION ? timeline_entries(ctx, t, 0, NULL) : entries(ctx, "", 0, t);
+    if (JS_IsException(old)) { wj_report_pending(ctx); return; }
+    int64_t n = 0, len = 0;
+    JS_GetLength(ctx, old, &n);
+    JS_GetLength(ctx, o->buffer, &len);
+    for (int64_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyInt64(ctx, old, i);
+        perf_entry *pe = wj_obj_of(e) ? wj_obj_of(e)->impl : NULL;
+        if (t == KIND_EVENT && pe && pe->duration < o->threshold) { JS_FreeValue(ctx, e); continue; }
+        wj_array_set64(ctx, o->buffer, len++, e);
+    }
+    JS_FreeValue(ctx, old);
+    if (len > 0) { queue_delivery(ctx); }
+}
+
 /* observe(options) (Performance Timeline §3.3.1) */
 JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -634,14 +930,23 @@ JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, i
     if (!o) { return JS_EXCEPTION; }
     JSValueConst opt = wj_arg(argc, (JSValue *)argv, 0);
     if (!web_dict_check(ctx, opt, "PerformanceObserverInit")) { return JS_EXCEPTION; }
-    JSValue entry_types, type, buffered;
+    JSValue entry_types, type, buffered, dthreshold;
     if (!web_dict_get(ctx, opt, "entryTypes", &entry_types)) { return JS_EXCEPTION; }
     if (!web_dict_get(ctx, opt, "type", &type)) { JS_FreeValue(ctx, entry_types); return JS_EXCEPTION; }
     if (!web_dict_get(ctx, opt, "buffered", &buffered)) { JS_FreeValue(ctx, entry_types); JS_FreeValue(ctx, type); return JS_EXCEPTION; }
+    if (!web_dict_get(ctx, opt, "durationThreshold", &dthreshold)) { JS_FreeValue(ctx, entry_types); JS_FreeValue(ctx, type); JS_FreeValue(ctx, buffered); return JS_EXCEPTION; }
     bool has_types = !JS_IsUndefined(entry_types), has_type = !JS_IsUndefined(type);
     bool want_buffered = JS_ToBool(ctx, buffered);
     JSValue result = JS_UNDEFINED;
-    if (!has_types && !has_type) {
+    double threshold = o->threshold;
+    if (!JS_IsUndefined(dthreshold)) {
+        /* durationThreshold: the events it hears of last at least this long, 16 ms or more */
+        if (!wj_to_double(ctx, dthreshold, &threshold, true)) { result = JS_EXCEPTION; }
+        else { threshold = threshold < 16 ? 16 : threshold; }
+    }
+    if (JS_IsException(result)) {
+        /* (the exception is pending) */
+    } else if (!has_types && !has_type) {
         result = JS_ThrowTypeError(ctx, "Failed to execute 'observe' on 'PerformanceObserver': An observe() call must include either entryTypes or type arguments.");
     } else if (has_types && (has_type || !JS_IsUndefined(buffered))) {
         result = JS_ThrowTypeError(ctx, "Failed to execute 'observe' on 'PerformanceObserver': An observe() call must not include both entryTypes and type arguments.");
@@ -666,7 +971,7 @@ JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, i
             if (!JS_IsException(result) && types != 0) {
                 o->mode = OBS_MULTIPLE;
                 o->types = types;
-                if (!register_observer(ctx, o)) { result = JS_EXCEPTION; }
+                if (!register_observer(ctx, o)) { result = JS_EXCEPTION; } else { update_interest(); }
             }
         }
     } else {
@@ -679,27 +984,23 @@ JSValue wjr_PerformanceObserver_observe(JSContext *ctx, JSValueConst this_val, i
             } else {
                 o->mode = OBS_SINGLE;
                 o->types |= 1u << t;
+                if (t == KIND_EVENT) { o->threshold = threshold; }
                 if (!register_observer(ctx, o)) { result = JS_EXCEPTION; }
-                else if (want_buffered) {
-                    /* the entries already in the timeline, then the task delivers them */
-                    JSValue old = entries(ctx, "", 0, t);
-                    int64_t n = 0, len = 0;
-                    JS_GetLength(ctx, old, &n);
-                    JS_GetLength(ctx, o->buffer, &len);
-                    for (int64_t i = 0; i < n; i++) { wj_array_set64(ctx, o->buffer, len + i, JS_GetPropertyInt64(ctx, old, i)); }
-                    JS_FreeValue(ctx, old);
-                    if (n > 0) { queue_delivery(ctx); }
+                else {
+                    update_interest();
+                    if (want_buffered) { buffer_old_entries(ctx, o, t); }
                 }
             }
             wj_str_free(ctx, &s);
         }
     }
+    if (!JS_IsException(result) && has_types && !JS_IsUndefined(dthreshold)) { o->threshold = threshold; }
     JS_FreeValue(ctx, entry_types);
     JS_FreeValue(ctx, type);
     JS_FreeValue(ctx, buffered);
+    JS_FreeValue(ctx, dthreshold);
     return result;
 }
-
 JSValue wjr_PerformanceObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
@@ -723,11 +1024,35 @@ JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, J
 {
     WJ_UNUSED(this_val);
     if (!supported_made) {
-        static const char src[] = "Object.freeze(['mark', 'measure'])";
+        static const char src[] = "Object.freeze(['event', 'first-input', 'mark', 'measure', 'navigation', 'paint', 'resource'])";
         JSValue v = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
         if (JS_IsException(v)) { return v; }
         supported_types = v;
         supported_made = true;
     }
     return JS_DupValue(ctx, supported_types);
+}
+
+/* The browser announces new timeline entries of the kinds the observers asked for: each goes to the observers of its kind,
+ * and one task delivers them (a callback of the browser: a task of the page, then the microtask checkpoint). */
+WJ_EXPORT("wj_cb_timeline") void wj_cb_timeline(int32_t user, int32_t kinds)
+{
+    WJ_UNUSED(user);
+    JSContext *ctx = wj_the_realm.ctx;
+    wj_stack_enter(ctx);
+    for (int k = KIND_NAVIGATION; k < KIND_END; k++) {
+        if (!(kinds & (1 << k)) || !(interest & (1u << k))) { continue; }
+        uint64_t next = seen_seq[k];
+        JSValue list = timeline_entries(ctx, k, seen_seq[k], &next);
+        if (JS_IsException(list)) { wj_report_pending(ctx); continue; }
+        seen_seq[k] = next;
+        int64_t n = 0;
+        JS_GetLength(ctx, list, &n);
+        for (int64_t i = 0; i < n; i++) {
+            JSValue e = JS_GetPropertyInt64(ctx, list, i);
+            perf_queue_entry(ctx, k, e);
+            JS_FreeValue(ctx, e);
+        }
+        JS_FreeValue(ctx, list);
+    }
 }

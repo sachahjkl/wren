@@ -164,6 +164,14 @@ enum wr_FormEnctype {
 
 /* module dom (partial): types */
 
+/* module fullscreen: types */
+// FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
+enum wr_FullscreenNavigation {
+    wr_FullscreenNavigation_Auto = 0,
+    wr_FullscreenNavigation_Show = 1,
+    wr_FullscreenNavigation_Hide = 2,
+};
+
 /* module history: types */
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 typedef uint64_t wr_Window;
@@ -397,12 +405,21 @@ typedef struct wr_FetchOptions {
 typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
 
 /* module performance: types */
-// The entries a query matches (Any: both).
+// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Any = 0,
     wr_PerformanceEntryType_Mark = 1,
     wr_PerformanceEntryType_Measure = 2,
+    wr_PerformanceEntryType_Navigation = 3,
+    wr_PerformanceEntryType_Resource = 4,
+    wr_PerformanceEntryType_Paint = 5,
+    wr_PerformanceEntryType_Event = 6,
+    wr_PerformanceEntryType_First_Input = 7,
 };
+// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
+typedef void (*wr_TimelineCallback)(int32_t user, int32_t kinds);
 
 /* module ports: types */
 
@@ -1333,8 +1350,13 @@ WR_IMPORT("dom", "Node_textContent") int32_t wr_Node_textContent(uint64_t node, 
 WR_IMPORT("dom", "Node_set_textContent") int32_t wr_Node_set_textContent(uint64_t node, const uint8_t *value, uint32_t value_len);
 // node.normalize()
 WR_IMPORT("dom", "Node_normalize") void wr_Node_normalize(uint64_t node);
-// node.cloneNode(deep). Not_Supported for the document (one document per page).
+// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+// document: no definition applies there).
 WR_IMPORT("dom", "Node_cloneNode") int32_t wr_Node_cloneNode(uint64_t node, int32_t deep, uint64_t *_ret);
+// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+// contents included), so its elements of a defined name are upgraded before it returns.
+WR_IMPORT("dom", "Document_importNodeCopy") int32_t wr_Document_importNodeCopy(uint64_t node, int32_t deep, uint64_t *_ret);
 // node.isEqualNode(other)
 WR_IMPORT("dom", "Node_isEqualNode") int32_t wr_Node_isEqualNode(uint64_t node, uint64_t other);
 // node.isSameNode(other)
@@ -1410,6 +1432,9 @@ WR_IMPORT("dom", "DocumentType_publicId") int32_t wr_DocumentType_publicId(uint6
 WR_IMPORT("dom", "DocumentType_systemId") int32_t wr_DocumentType_systemId(uint64_t node, uint8_t *_buf, uint32_t _cap);
 // document.createElement(localName): Invalid_Character for a name that is not a valid element name.
 WR_IMPORT("dom", "Document_createElementChecked") int32_t wr_Document_createElementChecked(const uint8_t *local_name, uint32_t local_name_len, uint64_t *_ret);
+// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+WR_IMPORT("dom", "Document_createElementInert") int32_t wr_Document_createElementInert(const uint8_t *local_name, uint32_t local_name_len, uint64_t *_ret);
 // document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
 WR_IMPORT("dom", "Document_createElementNSChecked") int32_t wr_Document_createElementNSChecked(const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, uint64_t *_ret);
 // document.createDocumentFragment()
@@ -1628,6 +1653,8 @@ WR_IMPORT("events", "Event_isLive") int32_t wr_Event_isLive(uint64_t event);
 WR_IMPORT("events", "Event_bubbles") int32_t wr_Event_bubbles(uint64_t event);
 // event.cancelable
 WR_IMPORT("events", "Event_cancelable") int32_t wr_Event_cancelable(uint64_t event);
+// event.composed: whether the event crosses shadow boundaries (the browser's UI events, fullscreenchange...).
+WR_IMPORT("events", "Event_composed") int32_t wr_Event_composed(uint64_t event);
 // event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
 WR_IMPORT("events", "Event_eventPhase") int32_t wr_Event_eventPhase(uint64_t event);
 // event.timeStamp, on the performance.now() timeline of the page.
@@ -1959,6 +1986,23 @@ WR_IMPORT("frames", "Window_get_name") int32_t wr_Window_get_name(uint8_t *_buf,
 // window.name = value
 WR_IMPORT("frames", "Window_set_name") void wr_Window_set_name(const uint8_t *value, uint32_t value_len);
 
+/* module fullscreen */
+// element.requestFullscreen(options): settled once the window is in full screen. Rejected with TypeError when the
+// element cannot go (not connected, not an element that may, the document is not allowed by the permissions policy or
+// has no recent click or key press, the tab is not shown, full screen is turned off); "fullscreenerror" is fired too.
+WR_IMPORT("fullscreen", "Element_requestFullscreen") uint64_t wr_Element_requestFullscreen(uint64_t element, int32_t navigationUI);
+// document.exitFullscreen(): settled once the window is back. Rejected with TypeError when the document has no
+// fullscreen element.
+WR_IMPORT("fullscreen", "Document_exitFullscreen") uint64_t wr_Document_exitFullscreen(void);
+// document.fullscreenElement: the fullscreen element, retargeted against the document; null when there is none.
+WR_IMPORT("fullscreen", "Document_fullscreenElement") uint64_t wr_Document_fullscreenElement(void);
+// shadowRoot.fullscreenElement: the fullscreen element retargeted against the root (null when not in its tree).
+WR_IMPORT("fullscreen", "ShadowRoot_fullscreenElement") uint64_t wr_ShadowRoot_fullscreenElement(uint64_t root);
+// document.fullscreenEnabled: the document may request full screen (turned on, permissions policy "fullscreen").
+WR_IMPORT("fullscreen", "Document_fullscreenEnabled") int32_t wr_Document_fullscreenEnabled(void);
+// document.fullscreen (legacy): the document has a fullscreen element.
+WR_IMPORT("fullscreen", "Document_fullscreen") int32_t wr_Document_fullscreen(void);
+
 /* module history */
 // window (the same object every time).
 WR_IMPORT("history", "Window_self") uint64_t wr_Window_self(void);
@@ -2266,6 +2310,20 @@ WR_IMPORT("performance", "Performance_entryType") int32_t wr_Performance_entryTy
 WR_IMPORT("performance", "Performance_clearMarks") void wr_Performance_clearMarks(const uint8_t *name, uint32_t name_len);
 // performance.clearMeasures(name): "" clears all.
 WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearMeasures(const uint8_t *name, uint32_t name_len);
+// The timeline entries of `entry_type` (Navigation, Resource, Paint, Event or First_Input) whose sequence number is at
+// least `from_seq`, in order, as a JSON array of objects with the members of the entry's interface (name, startTime,
+// duration, initiatorType, responseStart...) and `seq`. A kept entry never changes; the buffers drop their oldest
+// entries (performance.resource_timing_entries...).
+WR_IMPORT("performance", "Performance_timeline") int32_t wr_Performance_timeline(int32_t entry_type, uint64_t from_seq, uint8_t *_buf, uint32_t _cap);
+// The sequence number the next entry of this kind will have.
+WR_IMPORT("performance", "Performance_timelineNextSeq") uint64_t wr_Performance_timelineNextSeq(int32_t entry_type);
+// The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
+WR_IMPORT("performance", "Performance_timelineInterest") void wr_Performance_timelineInterest(uint32_t kinds);
+// Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
+WR_IMPORT("performance", "Performance_onTimeline") void wr_Performance_onTimeline(uint32_t callback, int32_t user);
+// performance.setResourceTimingBufferSize(n) / performance.clearResourceTimings().
+WR_IMPORT("performance", "Performance_setResourceTimingBufferSize") void wr_Performance_setResourceTimingBufferSize(uint32_t entries);
+WR_IMPORT("performance", "Performance_clearResourceTimings") void wr_Performance_clearResourceTimings(void);
 
 /* module ports */
 // A new pair of entangled port ends: the first end's id (the second is that id + 1), owned by nobody yet.

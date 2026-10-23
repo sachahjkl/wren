@@ -389,6 +389,16 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 		}
 	}
 	roots = prune_roots(l, roots)
+	// a box made again alone (a plan) takes what is inside it with it: a root in there would be rebuilt dead
+	if len(plans) > 0 && len(roots) > 0 {
+		kept := make([dynamic]i32, 0, len(roots), context.temp_allocator)
+		for r in roots {
+			inside := false
+			for pl in plans { if pl.old != NONE && box_inside(l, r, pl.old) { inside = true; break } }
+			if !inside { append(&kept, r) }
+		}
+		roots = kept
+	}
 	if (len(roots) > 0 || len(plans) > 0) && l.inc.quotes { return bail(l, "generated quotes") }
 	rebuilt := 0
 	for r in roots { rebuilt += subtree_size(l, r) }
@@ -415,6 +425,8 @@ run_incremental :: proc(l: ^Layout, input: Input) -> bool {
 	if len(roots) > 0 || len(plans) > 0 { l.tree_order = false; l.tree_gen += 1 }
 	for r in roots { kill_contents(&c, r) }
 	drop_planned(&c, plans[:])
+	// (a root that a plan took with it is dead now: its content is made again by that plan; nothing is left to rebuild)
+	for i := len(roots) - 1; i >= 0; i -= 1 { if .Dead in l.boxes[roots[i]].flags { ordered_remove(&roots, i) } }
 	// before the styles are re-read: anonymous children follow them
 	for bi in styled_dirty { if .Dead not_in l.boxes[bi].flags { mark_dirty(l, bi) } }
 	if !same_pass || !remap_journaled(&c, style_changes) {
