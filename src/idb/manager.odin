@@ -112,6 +112,7 @@ Request :: struct {
 	waiting_ack: [dynamic]^Connection,   // connections whose versionchange handlers have not run yet
 	waiting:    bool,                    // versionchange sent: waiting for the others to close
 	blocked_sent: bool,
+	writing:    bool,                    // a deletion whose journal record is being written (its transaction points back here)
 	conn:       ^Connection,
 	tx:         ^Tx,
 	cancelled:  bool,                    // its client is gone

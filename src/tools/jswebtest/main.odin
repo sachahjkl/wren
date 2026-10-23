@@ -189,6 +189,7 @@ main :: proc() {
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }
+	if selected("idb_bench") { run("idb_bench", seconds = 120) }
 	if selected("idb") { run("idb", seconds = 60) }
 
 	if selected("navigator") {

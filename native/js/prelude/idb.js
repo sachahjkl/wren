@@ -30,7 +30,7 @@
   const MAX_UV = 9007199254740991;
 
   const call = host.call, serialize = host.serialize, deserialize = host.deserialize;
-  const DOMEx = DOMException;
+  let DOMEx = null;   // the realm's DOMException (its interface objects exist from start on: the ones of pre-initialization are not the page's)
   const hasOwn = Object.prototype.hasOwnProperty;
   const isArray = Array.isArray;
   const isView = ArrayBuffer.isView;
@@ -1211,24 +1211,48 @@
     }
     const range = rangeArg(query, true);
     const limit = count === undefined ? 0 : enforceUnsignedLong(count, "count");
-    return { range, limit, backwards: direction === "prev" || direction === "prevunique" };
+    return { range, limit, backwards: direction === "prev" || direction === "prevunique", unique: direction === "nextunique" || direction === "prevunique" };
   }
 
-  function getAllRequest(S, src, T, srcWrapper, mode, queryOrOptions, count) {
-    const a = listArgs(queryOrOptions, count);
+  // getAllRecords' dictionary { query, count, direction }
+  function optionsArgs(opt) {
+    if (opt === undefined || opt === null) opt = {};
+    else if (typeof opt !== "object" && typeof opt !== "function") throw new TypeError("The options argument is not of type 'IDBGetAllOptions'.");
+    const direction = opt.direction === undefined ? "next" : checkEnum(opt.direction, ["next", "nextunique", "prev", "prevunique"], "IDBCursorDirection");
+    const range = rangeArg(opt.query, true);
+    const limit = opt.count === undefined ? 0 : enforceUnsignedLong(opt.count, "count");
+    return { range, limit, backwards: direction === "prev" || direction === "prevunique", unique: direction === "nextunique" || direction === "prevunique" };
+  }
+
+  const recordState = new WeakMap();
+  class IDBRecord {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get key() { return sOf(recordState, this).key; }
+    get primaryKey() { return sOf(recordState, this).primaryKey; }
+    get value() { return sOf(recordState, this).value; }
+  }
+  function makeRecord(key, primaryKey, value) {
+    const r = Object.create(IDBRecord.prototype);
+    recordState.set(r, { key, primaryKey, value });
+    return r;
+  }
+
+  function getAllRequest(S, src, T, srcWrapper, mode, queryOrOptions, count, preset) {
+    const a = preset || listArgs(queryOrOptions, count);
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     enqueue(T, R, () => {
       const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
       w.uv(src.index ? src.index.id : 0);
       putRange(w, a.range);
-      w.u8(mode); w.u8(a.backwards ? 1 : 0); w.uv(a.limit);
+      w.u8(mode); w.u8((a.backwards ? 1 : 0) | (a.unique ? 2 : 0)); w.uv(a.limit);
       const rd = expectOk(call(OP.EXEC, w.done()));
       const n = rd.uv();
       const out = [];
       for (let i = 0; i < n; i++) {
         if (mode === 1) out.push(decodeKey(rd.bytes()));
-        else out.push(valueOf(rd));
+        else if (mode === 2) out.push(valueOf(rd));
+        else { const k = decodeKey(rd.bytes()), pk = decodeKey(rd.bytes()); out.push(makeRecord(k, pk, valueOf(rd))); }
       }
       return out;
     });
@@ -1339,6 +1363,12 @@
       const S = sOf(storeState, this);
       const T = checkStore(S, false);
       return getAllRequest(S, {}, T, this, 1, queryOrOptions, count);
+    }
+    getAllRecords(options = undefined) {
+      const S = sOf(storeState, this);
+      const a = optionsArgs(options);
+      const T = checkStore(S, false);
+      return getAllRequest(S, {}, T, this, 3, undefined, undefined, a);
     }
     count(query = undefined) {
       const S = sOf(storeState, this);
@@ -1510,6 +1540,12 @@
       const X = sOf(indexState, this);
       const T = checkIndex(X);
       return getAllRequest(X.store, { index: X.meta }, T, this, 1, queryOrOptions, count);
+    }
+    getAllRecords(options = undefined) {
+      const X = sOf(indexState, this);
+      const a = optionsArgs(options);
+      const T = checkIndex(X);
+      return getAllRequest(X.store, { index: X.meta }, T, this, 3, undefined, undefined, a);
     }
     count(query = undefined) {
       const X = sOf(indexState, this);
@@ -1863,7 +1899,7 @@
   }
 
   const all = [IDBRequest, IDBOpenDBRequest, IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex, IDBCursor, IDBCursorWithValue,
-    IDBKeyRange, IDBVersionChangeEvent, DOMStringList];
+    IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList];
   for (const cls of all) {
     exposeMembers(cls);
     Object.defineProperty(globalThis, cls.name, { value: cls, writable: true, configurable: true, enumerable: false });
@@ -1876,6 +1912,7 @@
   // A window's realm starts: the interfaces exist, ours are linked to them.
   function start() {
     NativeEvent = Event;
+    DOMEx = DOMException;
     Object.setPrototypeOf(IDBEventTarget.prototype, EventTarget.prototype);
     Object.setPrototypeOf(IDBEventTarget, EventTarget);
     Object.setPrototypeOf(IDBVersionChangeEvent.prototype, Event.prototype);

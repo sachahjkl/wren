@@ -166,7 +166,8 @@ check_active :: proc(o: ^Origin, ds: ^Db_State) {
 	req := ds.active
 	if req == nil { return }
 	m := o.m
-	if req.cancelled && req.tx == nil { request_done(ds, req); return }
+	// (a cancelled deletion that is being written stays: its transaction ends it)
+	if req.cancelled && req.tx == nil && !req.writing { request_done(ds, req); return }
 	if !req.waiting { return }
 	// connections that closed need no answer
 	for i := len(req.waiting_ack) - 1; i >= 0; i -= 1 {
@@ -251,6 +252,7 @@ finish_delete :: proc(o: ^Origin, ds: ^Db_State, req: ^Request) {
 	tx := tx_new(m, nil, .Version_Change, nil, false)
 	tx.ds = ds
 	tx.system = req
+	req.writing = true
 	tx.state = .Active
 	tx.client = nil
 	op := Op{kind = .Db_Delete, db = req.name}

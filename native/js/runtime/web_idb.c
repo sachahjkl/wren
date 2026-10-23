@@ -135,7 +135,7 @@ int web_idb_start(JSContext *ctx, int kind)
     }
     static const char *const names[] = {
         "IDBFactory", "IDBDatabase", "IDBTransaction", "IDBObjectStore", "IDBIndex", "IDBCursor", "IDBCursorWithValue",
-        "IDBKeyRange", "IDBRequest", "IDBOpenDBRequest", "IDBVersionChangeEvent", "indexedDB",
+        "IDBKeyRange", "IDBRequest", "IDBOpenDBRequest", "IDBVersionChangeEvent", "IDBRecord", "indexedDB",
     };
     for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
         JSAtom a = JS_NewAtom(ctx, names[i]);
