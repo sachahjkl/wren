@@ -732,7 +732,7 @@ FORCE_TIMEOUT :: `(function () { try { if (typeof timeout === "function") { time
 page_busy :: proc(p: ^page.Page) -> bool {
 	if p == nil || p.closed { return false }
 	if p.scripts != nil && p.scripts.ready_state != .Complete { return true }
-	return p.timers.count > 0 || p.fetches.count > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || len(p.offthread.jobs) > 0 || page.media_busy(p)
+	return p.timers.count > 0 || p.fetches.count > 0 || page.wants_animation_frame(p) || len(p.workers.hosts) > 0 || len(p.offthread.jobs) > 0 || page.media_busy(p) || page.idb_busy(p)
 }
 
 HARNESS_STATUS := [?]string{"OK", "ERROR", "TIMEOUT", "PRECONDITION_FAILED"}

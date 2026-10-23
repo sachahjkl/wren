@@ -1,0 +1,3314 @@
+# web-platform-tests expectations of Wren for IndexedDB, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/IndexedDB/abort-in-initial-upgradeneeded.any.html: OK
+	An abort() in the initial onupgradeneeded sets version back to 0: PASS
+/IndexedDB/abort-in-initial-upgradeneeded.any.worker.html: OK
+	An abort() in the initial onupgradeneeded sets version back to 0: FAIL
+/IndexedDB/back-forward-cache-open-connection.window.html: OK
+	Testing BFCache support for page with open IndexedDB connection, and eviction behavior when receiving versionchange event.: FAIL
+/IndexedDB/back-forward-cache-open-transaction.window.html: OK
+	BFCache support test for page with open IndexedDB transaction: FAIL
+/IndexedDB/bindings-inject-keys-bypass.any.html: OK
+	Returning keys to script should bypass prototype setters: PASS
+/IndexedDB/bindings-inject-keys-bypass.any.worker.html: OK
+	Returning keys to script should bypass prototype setters: FAIL
+/IndexedDB/bindings-inject-values-bypass.any.html: OK
+	Returning values to script should bypass prototype chain: PASS
+	Returning values to script should bypass prototype setters: PASS
+/IndexedDB/bindings-inject-values-bypass.any.worker.html: OK
+	Returning values to script should bypass prototype chain: FAIL
+	Returning values to script should bypass prototype setters: FAIL
+/IndexedDB/blob-composite-blob-reads.any.html: OK
+	Composite Blob Handling: Many blobs: direct: PASS
+	Composite Blob Handling: Many blobs: fetch-blob-url: PASS
+/IndexedDB/blob-composite-blob-reads.any.worker.html: OK
+	Composite Blob Handling: Many blobs: direct: FAIL
+	Composite Blob Handling: Many blobs: fetch-blob-url: FAIL
+/IndexedDB/blob-contenttype.any.html: TIMEOUT
+	Ensure that content type round trips when reading blob data: TIMEOUT
+/IndexedDB/blob-contenttype.any.worker.html: OK
+	Ensure that content type round trips when reading blob data: FAIL
+/IndexedDB/blob-delete-objectstore-db.any.html: OK
+	Deleting an object store and a database containing blobs doesn't crash.: PASS
+/IndexedDB/blob-delete-objectstore-db.any.worker.html: OK
+	Deleting an object store and a database containing blobs doesn't crash.: FAIL
+/IndexedDB/blob-valid-after-abort.any.html: OK
+	A blob can be read back after the transaction that added it was aborted.: PASS
+/IndexedDB/blob-valid-after-abort.any.worker.html: OK
+	A blob can be read back after the transaction that added it was aborted.: FAIL
+/IndexedDB/blob-valid-after-deletion.any.html: OK
+	Blobs stay alive after their records are deleted.: PASS
+/IndexedDB/blob-valid-after-deletion.any.worker.html: OK
+	Blobs stay alive after their records are deleted.: FAIL
+/IndexedDB/blob-valid-before-commit.any.html: OK
+	Blobs can be read back before their records are committed.: PASS
+/IndexedDB/blob-valid-before-commit.any.worker.html: OK
+	Blobs can be read back before their records are committed.: FAIL
+/IndexedDB/clone-before-keypath-eval.any.html: OK
+	Blob expando properties are stripped in the clone used for index key path evaluation: FAIL
+	Cursor update checks and keypath evaluations operate on a clone: FAIL
+	Failing key path validity check operates on a clone: FAIL
+	Index key path evaluations operate on a clone: FAIL
+	Key generator and key path validity check operates on a clone: FAIL
+	Store and index key path evaluations operate on the same clone: FAIL
+/IndexedDB/clone-before-keypath-eval.any.worker.html: OK
+	Blob expando properties are stripped in the clone used for index key path evaluation: FAIL
+	Cursor update checks and keypath evaluations operate on a clone: FAIL
+	Failing key path validity check operates on a clone: FAIL
+	Index key path evaluations operate on a clone: FAIL
+	Key generator and key path validity check operates on a clone: FAIL
+	Store and index key path evaluations operate on the same clone: FAIL
+/IndexedDB/close-in-upgradeneeded.any.html: OK
+	When db.close() is called in onupgradeneeded, the db is cleaned up on refresh: PASS
+/IndexedDB/close-in-upgradeneeded.any.worker.html: OK
+	When db.close() is called in onupgradeneeded, the db is cleaned up on refresh: FAIL
+/IndexedDB/cursor-overloads.any.html: OK
+	Validate the overloads of IDBObjectStore.openCursor(), IDBIndex.openCursor() and IDBIndex.openKeyCursor(): PASS
+/IndexedDB/cursor-overloads.any.worker.html: OK
+	Validate the overloads of IDBObjectStore.openCursor(), IDBIndex.openCursor() and IDBIndex.openKeyCursor(): FAIL
+/IndexedDB/database-names-by-origin.html: TIMEOUT
+	closed database names don't leak to cross-origin iframe: NOTRUN
+	closed database names don't leak to cross-origin window: NOTRUN
+	open database names don't leak to cross-origin iframe: TIMEOUT
+	open database names don't leak to cross-origin window: NOTRUN
+/IndexedDB/delete-range.any.html: OK
+	Delete range: PASS
+	Delete range 1: PASS
+	Delete range 2: PASS
+	Delete range 3: PASS
+/IndexedDB/delete-range.any.worker.html: OK
+	delete-range: FAIL
+	delete-range 1: FAIL
+	delete-range 2: FAIL
+	delete-range 3: FAIL
+/IndexedDB/delete-request-queue.any.html: OK
+	Deletes are processed as a FIFO queue: PASS
+/IndexedDB/delete-request-queue.any.worker.html: OK
+	Deletes are processed as a FIFO queue: FAIL
+/IndexedDB/error-attributes.any.html: OK
+	IDBRequest and IDBTransaction error properties should be DOMExceptions: PASS
+/IndexedDB/error-attributes.any.worker.html: OK
+	IDBRequest and IDBTransaction error properties should be DOMExceptions: FAIL
+/IndexedDB/event-dispatch-active-flag.any.html: OK
+	Active during error handlers: PASS
+	Active during error listeners: PASS
+	Active during success handlers: PASS
+	Active during success listeners: PASS
+/IndexedDB/event-dispatch-active-flag.any.worker.html: OK
+	Active during error handlers: FAIL
+	Active during error listeners: FAIL
+	Active during success handlers: FAIL
+	Active during success listeners: FAIL
+/IndexedDB/file_support.sub.html: TIMEOUT
+	Composed slices of a file can be stored and retrieved from IndexedDB: NOTRUN
+	Saves and loads back File objects from IndexedDB: TIMEOUT
+	Sliced file can be stored and retrieved from IndexedDB: NOTRUN
+/IndexedDB/fire-error-event-exception.any.html: OK
+	Exception in error event handler on connection: PASS
+	Exception in error event handler on connection, with preventDefault: PASS
+	Exception in error event handler on request: PASS
+	Exception in error event handler on request, with preventDefault: PASS
+	Exception in error event handler on transaction: PASS
+	Exception in error event handler on transaction, with preventDefault: PASS
+	Exception in error event listener ("handleEvent" lookup) on request: PASS
+	Exception in error event listener (non-callable "handleEvent") on request: PASS
+	Exception in error event listener on connection: PASS
+	Exception in error event listener on request: PASS
+	Exception in error event listener on transaction: PASS
+	Exception in first error event listener on connection, transaction active in second: PASS
+	Exception in first error event listener on request, transaction active in second: PASS
+	Exception in first error event listener on transaction, transaction active in second: PASS
+	Exception in second error event listener on connection: PASS
+	Exception in second error event listener on request: PASS
+	Exception in second error event listener on transaction: PASS
+/IndexedDB/fire-error-event-exception.any.worker.html: OK
+	Exception in error event handler on connection: FAIL
+	Exception in error event handler on connection, with preventDefault: FAIL
+	Exception in error event handler on request: FAIL
+	Exception in error event handler on request, with preventDefault: FAIL
+	Exception in error event handler on transaction: FAIL
+	Exception in error event handler on transaction, with preventDefault: FAIL
+	Exception in error event listener ("handleEvent" lookup) on request: FAIL
+	Exception in error event listener (non-callable "handleEvent") on request: FAIL
+	Exception in error event listener on connection: FAIL
+	Exception in error event listener on request: FAIL
+	Exception in error event listener on transaction: FAIL
+	Exception in first error event listener on connection, transaction active in second: FAIL
+	Exception in first error event listener on request, transaction active in second: FAIL
+	Exception in first error event listener on transaction, transaction active in second: FAIL
+	Exception in second error event listener on connection: FAIL
+	Exception in second error event listener on request: FAIL
+	Exception in second error event listener on transaction: FAIL
+/IndexedDB/fire-success-event-exception.any.html: OK
+	Exception in first success event listener, tx active in second: PASS
+	Exception in second success event listener on request: PASS
+	Exception in success event handler on request: PASS
+	Exception in success event listener ("handleEvent" lookup) on request: PASS
+	Exception in success event listener (non-callable "handleEvent") on request: PASS
+	Exception in success event listener on request: PASS
+/IndexedDB/fire-success-event-exception.any.worker.html: OK
+	Exception in first success event listener, tx active in second: FAIL
+	Exception in second success event listener on request: FAIL
+	Exception in success event handler on request: FAIL
+	Exception in success event listener ("handleEvent" lookup) on request: FAIL
+	Exception in success event listener (non-callable "handleEvent") on request: FAIL
+	Exception in success event listener on request: FAIL
+/IndexedDB/fire-upgradeneeded-event-exception.any.html: OK
+	Exception in first upgradeneeded listener, tx active in second: PASS
+	Exception in second upgradeneeded listener: PASS
+	Exception in upgradeneeded "handleEvent" lookup: PASS
+	Exception in upgradeneeded due to non-callable "handleEvent": PASS
+	Exception in upgradeneeded handler: PASS
+	Exception in upgradeneeded listener: PASS
+/IndexedDB/fire-upgradeneeded-event-exception.any.worker.html: OK
+	Exception in first upgradeneeded listener, tx active in second: FAIL
+	Exception in second upgradeneeded listener: FAIL
+	Exception in upgradeneeded "handleEvent" lookup: FAIL
+	Exception in upgradeneeded due to non-callable "handleEvent": FAIL
+	Exception in upgradeneeded handler: FAIL
+	Exception in upgradeneeded listener: FAIL
+/IndexedDB/get-databases.any.html: OK
+	Ensure that databases() doesn't pick up changes that haven't commited.: PASS
+	Ensure that databases() returns a promise.: PASS
+	Enumerate multiple databases.: PASS
+	Enumerate one database.: PASS
+	Make sure an empty list is returned for the case of no databases.: PASS
+/IndexedDB/get-databases.any.worker.html: OK
+	Ensure that databases() doesn't pick up changes that haven't commited.: FAIL
+	Ensure that databases() returns a promise.: FAIL
+	Enumerate multiple databases.: FAIL
+	Enumerate one database.: FAIL
+	Make sure an empty list is returned for the case of no databases.: FAIL
+/IndexedDB/globalscope-indexedDB-SameObject.any.html: OK
+	indexedDB is [SameObject]: PASS
+/IndexedDB/globalscope-indexedDB-SameObject.any.worker.html: OK
+	indexedDB is [SameObject]: PASS
+/IndexedDB/historical.any.html: OK
+	"DONE" should not be supported on IDBRequest.: PASS
+	"IDBFileHandle" should not be supported: PASS
+	"IDBFileRequest" should not be supported: PASS
+	"IDBMutableFile" should not be supported: PASS
+	"LOADING" should not be supported on IDBRequest.: PASS
+	"NEXT" should not be supported on IDBCursor.: PASS
+	"NEXT_NO_DUPLICATE" should not be supported on IDBCursor.: PASS
+	"PREV" should not be supported on IDBCursor.: PASS
+	"PREV_NO_DUPLICATE" should not be supported on IDBCursor.: PASS
+	"READ_ONLY" should not be supported on IDBTransaction.: PASS
+	"READ_WRITE" should not be supported on IDBTransaction.: PASS
+	"VERSION_CHANGE" should not be supported on IDBTransaction.: PASS
+	"errorCode" should not be supported on IDBRequest.: PASS
+	"setVersion" should not be supported on IDBDatabase.: PASS
+	"version" should not be supported on IDBVersionChangeEvent.: PASS
+/IndexedDB/historical.any.worker.html: OK
+	"DONE" should not be supported on IDBRequest.: FAIL
+	"IDBFileHandle" should not be supported: PASS
+	"IDBFileRequest" should not be supported: PASS
+	"IDBMutableFile" should not be supported: PASS
+	"LOADING" should not be supported on IDBRequest.: FAIL
+	"NEXT" should not be supported on IDBCursor.: FAIL
+	"NEXT_NO_DUPLICATE" should not be supported on IDBCursor.: FAIL
+	"PREV" should not be supported on IDBCursor.: FAIL
+	"PREV_NO_DUPLICATE" should not be supported on IDBCursor.: FAIL
+	"READ_ONLY" should not be supported on IDBTransaction.: FAIL
+	"READ_WRITE" should not be supported on IDBTransaction.: FAIL
+	"VERSION_CHANGE" should not be supported on IDBTransaction.: FAIL
+	"errorCode" should not be supported on IDBRequest.: FAIL
+	"setVersion" should not be supported on IDBDatabase.: FAIL
+	"version" should not be supported on IDBVersionChangeEvent.: FAIL
+/IndexedDB/idb-binary-key-detached.any.html: OK
+	Detached ArrayBuffers must throw DataError when used as a key: PASS
+	Detached TypedArrays must throw DataError when used as a key: PASS
+/IndexedDB/idb-binary-key-detached.any.worker.html: OK
+	Detached ArrayBuffers must throw DataError when used as a key: FAIL
+	Detached TypedArrays must throw DataError when used as a key: FAIL
+/IndexedDB/idb-binary-key-roundtrip.any.html: OK
+	ArrayBuffer can be used to supply a binary key: PASS
+	Binary keys can be supplied using the view type Float16Array: PASS
+	Binary keys can be supplied using the view type Float32Array: PASS
+	Binary keys can be supplied using the view type Float64Array: PASS
+	Binary keys can be supplied using the view type Int16Array: PASS
+	Binary keys can be supplied using the view type Int32Array: PASS
+	Binary keys can be supplied using the view type Int8Array: PASS
+	Binary keys can be supplied using the view type Uint16Array: PASS
+	Binary keys can be supplied using the view type Uint32Array: PASS
+	Binary keys can be supplied using the view type Uint8Array: PASS
+	Binary keys can be supplied using the view type Uint8ClampedArray: PASS
+	DataView can be used to supply a binary key: PASS
+	DataView with explicit offset and length can be used to supply a binary key: PASS
+	DataView with explicit offset can be used to supply a binary key: PASS
+	Uint8Array with explicit offset and length can be used to supply a binary key: PASS
+	Uint8Array with explicit offset can be used to supply a binary key: PASS
+/IndexedDB/idb-binary-key-roundtrip.any.worker.html: OK
+	ArrayBuffer can be used to supply a binary key: FAIL
+	Binary keys can be supplied using the view type Float16Array: FAIL
+	Binary keys can be supplied using the view type Float32Array: FAIL
+	Binary keys can be supplied using the view type Float64Array: FAIL
+	Binary keys can be supplied using the view type Int16Array: FAIL
+	Binary keys can be supplied using the view type Int32Array: FAIL
+	Binary keys can be supplied using the view type Int8Array: FAIL
+	Binary keys can be supplied using the view type Uint16Array: FAIL
+	Binary keys can be supplied using the view type Uint32Array: FAIL
+	Binary keys can be supplied using the view type Uint8Array: FAIL
+	Binary keys can be supplied using the view type Uint8ClampedArray: FAIL
+	DataView can be used to supply a binary key: FAIL
+	DataView with explicit offset and length can be used to supply a binary key: FAIL
+	DataView with explicit offset can be used to supply a binary key: FAIL
+	Uint8Array with explicit offset and length can be used to supply a binary key: FAIL
+	Uint8Array with explicit offset can be used to supply a binary key: FAIL
+/IndexedDB/idb-explicit-commit-throw.any.html: OK
+	Any errors in callbacks that run after an explicit commit will not stop the commit from being processed.: PASS
+/IndexedDB/idb-explicit-commit-throw.any.worker.html: OK
+	Any errors in callbacks that run after an explicit commit will not stop the commit from being processed.: FAIL
+/IndexedDB/idb-explicit-commit.any.html: OK
+	A committed transaction becomes inactive immediately.: PASS
+	A committed transaction is inactive in future request callbacks.: PASS
+	Calling abort on a committed transaction throws and does not prevent persisting the data.: PASS
+	Calling commit on a committed transaction throws.: PASS
+	Calling commit on an aborted transaction throws.: PASS
+	Calling txn.commit() when txn is inactive should throw.: PASS
+	Explicitly committed data can be read back out.: PASS
+	Puts issued after commit are not fulfilled.: PASS
+	Transactions that explicitly commit and have errors should abort.: PASS
+	Transactions that handle all errors properly should behave as expected when an explicit commit is called in an onerror handler.: PASS
+	Transactions with same scope should stay in program order, even if one calls commit.: PASS
+	commit() on a version change transaction does not cause errors.: PASS
+/IndexedDB/idb-explicit-commit.any.worker.html: OK
+	A committed transaction becomes inactive immediately.: FAIL
+	A committed transaction is inactive in future request callbacks.: FAIL
+	Calling abort on a committed transaction throws and does not prevent persisting the data.: FAIL
+	Calling commit on a committed transaction throws.: FAIL
+	Calling commit on an aborted transaction throws.: FAIL
+	Calling txn.commit() when txn is inactive should throw.: FAIL
+	Explicitly committed data can be read back out.: FAIL
+	Puts issued after commit are not fulfilled.: FAIL
+	Transactions that explicitly commit and have errors should abort.: FAIL
+	Transactions that handle all errors properly should behave as expected when an explicit commit is called in an onerror handler.: FAIL
+	Transactions with same scope should stay in program order, even if one calls commit.: FAIL
+	commit() on a version change transaction does not cause errors.: FAIL
+/IndexedDB/idb-partitioned-basic.sub.html: TIMEOUT
+	Simple test for partitioned IndexedDB: TIMEOUT
+/IndexedDB/idb-partitioned-coverage.sub.html: TIMEOUT
+	 - advance: TIMEOUT
+	 - continue: TIMEOUT
+	 - fresh advance still async: TIMEOUT
+	 - fresh continue still async: TIMEOUT
+	 - request gotten by the handler: PASS
+	 - request returned by open(): PASS
+	Deletes are processed in order: PASS
+	Empty object store: PASS
+	Get all: TIMEOUT
+	Get all values with invalid query keys: TIMEOUT
+	Get all with generated keys: TIMEOUT
+	Get all with large values: TIMEOUT
+	Get bound range: TIMEOUT
+	Get bound range (generated) with maxCount: TIMEOUT
+	Get bound range with maxCount: TIMEOUT
+	Get lower excluded: TIMEOUT
+	Get upper excluded: TIMEOUT
+	IDBObjectStore.openKeyCursor() - forward iteration: TIMEOUT
+	IDBObjectStore.openKeyCursor() - forward iteration with range: TIMEOUT
+	IDBObjectStore.openKeyCursor() - invalid inputs: TIMEOUT
+	IDBObjectStore.openKeyCursor() - reverse iteration: TIMEOUT
+	IDBObjectStore.openKeyCursor() - reverse iteration with range: TIMEOUT
+	Max value count: TIMEOUT
+	Non existent key: TIMEOUT
+	Query with empty range where  first key < upperBound: TIMEOUT
+	Query with empty range where lowerBound < last key: TIMEOUT
+	Retrieve multiEntry key: TIMEOUT
+	Retrieve one key multiple values: TIMEOUT
+	Single item get: TIMEOUT
+	maxCount=0: TIMEOUT
+	maxCount=10: TIMEOUT
+/IndexedDB/idb-partitioned-persistence.sub.html: OK
+	Persistence test for partitioned IndexedDB: PASS
+/IndexedDB/idb_binary_key_conversion.any.html: OK
+	Array of TypedArray(Int8Array): PASS
+	ArrayBuffer: PASS
+	DataView: PASS
+	Empty ArrayBuffer: PASS
+	TypedArray(Int8Array): PASS
+/IndexedDB/idb_binary_key_conversion.any.worker.html: OK
+	Array of TypedArray(Int8Array): FAIL
+	ArrayBuffer: FAIL
+	DataView: FAIL
+	Empty ArrayBuffer: FAIL
+	TypedArray(Int8Array): FAIL
+/IndexedDB/idb_webworkers.htm: OK
+	IndexedDB inside of a WebWorker : FAIL
+/IndexedDB/idbcursor-advance-continue-async.any.html: OK
+	IDBCursor asyncness - advance: PASS
+	IDBCursor asyncness - continue: PASS
+	IDBCursor asyncness - fresh advance still async: PASS
+	IDBCursor asyncness - fresh continue still async: PASS
+/IndexedDB/idbcursor-advance-continue-async.any.worker.html: OK
+	IDBCursor asyncness - advance: FAIL
+	IDBCursor asyncness - continue: FAIL
+	IDBCursor asyncness - fresh advance still async: FAIL
+	IDBCursor asyncness - fresh continue still async: FAIL
+/IndexedDB/idbcursor-advance-exception-order.any.html: OK
+	IDBCursor.advance exception order: TransactionInactiveError vs. InvalidStateError #1: PASS
+	IDBCursor.advance exception order: TransactionInactiveError vs. InvalidStateError #2: PASS
+	IDBCursor.advance exception order: TypeError vs. TransactionInactiveError: PASS
+/IndexedDB/idbcursor-advance-exception-order.any.worker.html: OK
+	IDBCursor.advance exception order: TransactionInactiveError vs. InvalidStateError #1: FAIL
+	IDBCursor.advance exception order: TransactionInactiveError vs. InvalidStateError #2: FAIL
+	IDBCursor.advance exception order: TypeError vs. TransactionInactiveError: FAIL
+/IndexedDB/idbcursor-advance-invalid.any.html: OK
+	IDBCursor.advance() - invalid - attempt to call advance twice: PASS
+	IDBCursor.advance() - invalid - got value not set on exception: PASS
+	IDBCursor.advance() - invalid - missing argument: PASS
+	IDBCursor.advance() - invalid - pass negative numbers: PASS
+	IDBCursor.advance() - invalid - pass null/undefined: PASS
+	IDBCursor.advance() - invalid - pass something other than number: PASS
+/IndexedDB/idbcursor-advance-invalid.any.worker.html: OK
+	IDBCursor.advance() - invalid - attempt to call advance twice: FAIL
+	IDBCursor.advance() - invalid - got value not set on exception: FAIL
+	IDBCursor.advance() - invalid - missing argument: FAIL
+	IDBCursor.advance() - invalid - pass negative numbers: FAIL
+	IDBCursor.advance() - invalid - pass null/undefined: FAIL
+	IDBCursor.advance() - invalid - pass something other than number: FAIL
+/IndexedDB/idbcursor-advance.any.html: OK
+	IDBCursor.advance() - advances: PASS
+	IDBCursor.advance() - advances backwards: PASS
+	IDBCursor.advance() - skip far forward: PASS
+	IDBCursor.advance() - within range: PASS
+	IDBCursor.advance() - within single key range: PASS
+	IDBCursor.advance() - within single key range, with several results: PASS
+/IndexedDB/idbcursor-advance.any.worker.html: OK
+	IDBCursor.advance() - advances: FAIL
+	IDBCursor.advance() - advances backwards: FAIL
+	IDBCursor.advance() - skip far forward: FAIL
+	IDBCursor.advance() - within range: FAIL
+	IDBCursor.advance() - within single key range: FAIL
+	IDBCursor.advance() - within single key range, with several results: FAIL
+/IndexedDB/idbcursor-continue-exception-order.any.html: OK
+	IDBCursor.continue exception order: InvalidStateError vs. DataError: PASS
+	IDBCursor.continue exception order: TransactionInactiveError vs. DataError: PASS
+	IDBCursor.continue exception order: TransactionInactiveError vs. InvalidStateError: PASS
+/IndexedDB/idbcursor-continue-exception-order.any.worker.html: OK
+	IDBCursor.continue exception order: InvalidStateError vs. DataError: FAIL
+	IDBCursor.continue exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBCursor.continue exception order: TransactionInactiveError vs. InvalidStateError: FAIL
+/IndexedDB/idbcursor-continue.any.html: OK
+	IDBCursor.continue() - continues: PASS
+	IDBCursor.continue() - continues in prev direction: PASS
+	IDBCursor.continue() - skip far forward: PASS
+	IDBCursor.continue() - with given key: PASS
+	IDBCursor.continue() - with given key in prev direction: PASS
+	IDBCursor.continue() - within range: PASS
+	IDBCursor.continue() - within single key range: PASS
+	IDBCursor.continue() - within single key range, with several results: PASS
+/IndexedDB/idbcursor-continue.any.worker.html: OK
+	IDBCursor.continue() - continues: FAIL
+	IDBCursor.continue() - continues in prev direction: FAIL
+	IDBCursor.continue() - skip far forward: FAIL
+	IDBCursor.continue() - with given key: FAIL
+	IDBCursor.continue() - with given key in prev direction: FAIL
+	IDBCursor.continue() - within range: FAIL
+	IDBCursor.continue() - within single key range: FAIL
+	IDBCursor.continue() - within single key range, with several results: FAIL
+/IndexedDB/idbcursor-continuePrimaryKey-exception-order.any.html: OK
+	DataError(keys are larger then current one) in 'prev' direction: PASS
+	DataError(keys are lower then current one) in 'next' direction: PASS
+	DataError(unset key): PASS
+	DataError(unset primary key): PASS
+	InvalidAccessError(incorrect direction) v.s. InvalidStateError(iteration complete): PASS
+	InvalidAccessError(incorrect direction) v.s. InvalidStateError(iteration ongoing): PASS
+	InvalidAccessError(incorrect source) v.s. InvalidStateError(iteration complete): PASS
+	InvalidAccessError(incorrect source) v.s. InvalidStateError(iteration ongoing): PASS
+	InvalidStateError(deleted source) v.s. InvalidAccessError(incorrect direction): PASS
+	InvalidStateError(deleted source) v.s. InvalidAccessError(incorrect source): PASS
+	InvalidStateError(iteration complete) v.s. DataError(unset key): PASS
+	InvalidStateError(iteration ongoing) v.s. DataError(unset key): PASS
+	TransactionInactiveError v.s. InvalidStateError(deleted index): PASS
+/IndexedDB/idbcursor-continuePrimaryKey-exception-order.any.worker.html: OK
+	DataError(keys are larger then current one) in 'prev' direction: FAIL
+	DataError(keys are lower then current one) in 'next' direction: FAIL
+	DataError(unset key): FAIL
+	DataError(unset primary key): FAIL
+	InvalidAccessError(incorrect direction) v.s. InvalidStateError(iteration complete): FAIL
+	InvalidAccessError(incorrect direction) v.s. InvalidStateError(iteration ongoing): FAIL
+	InvalidAccessError(incorrect source) v.s. InvalidStateError(iteration complete): FAIL
+	InvalidAccessError(incorrect source) v.s. InvalidStateError(iteration ongoing): FAIL
+	InvalidStateError(deleted source) v.s. InvalidAccessError(incorrect direction): FAIL
+	InvalidStateError(deleted source) v.s. InvalidAccessError(incorrect source): FAIL
+	InvalidStateError(iteration complete) v.s. DataError(unset key): FAIL
+	InvalidStateError(iteration ongoing) v.s. DataError(unset key): FAIL
+	TransactionInactiveError v.s. InvalidStateError(deleted index): FAIL
+/IndexedDB/idbcursor-continuePrimaryKey-exceptions.any.html: OK
+	IDBCursor continuePrimaryKey() on "nextunique" cursor: PASS
+	IDBCursor continuePrimaryKey() on "prevunique" cursor: PASS
+	IDBCursor continuePrimaryKey() on object store cursor: PASS
+/IndexedDB/idbcursor-continuePrimaryKey-exceptions.any.worker.html: OK
+	IDBCursor continuePrimaryKey() on "nextunique" cursor: FAIL
+	IDBCursor continuePrimaryKey() on "prevunique" cursor: FAIL
+	IDBCursor continuePrimaryKey() on object store cursor: FAIL
+/IndexedDB/idbcursor-continuePrimaryKey.any.html: OK
+	IDBCursor.continuePrimaryKey() with "prev" direction: PASS
+	IndexedDB: IDBCursor method continuePrimaryKey(): PASS
+/IndexedDB/idbcursor-continuePrimaryKey.any.worker.html: OK
+	IDBCursor.continuePrimaryKey() with "prev" direction: FAIL
+	idbcursor-continuePrimaryKey: FAIL
+/IndexedDB/idbcursor-delete-exception-order.any.html: OK
+	IDBCursor.delete exception order: ReadOnlyError vs. InvalidStateError #1: PASS
+	IDBCursor.delete exception order: ReadOnlyError vs. InvalidStateError #2: PASS
+	IDBCursor.delete exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+/IndexedDB/idbcursor-delete-exception-order.any.worker.html: OK
+	IDBCursor.delete exception order: ReadOnlyError vs. InvalidStateError #1: FAIL
+	IDBCursor.delete exception order: ReadOnlyError vs. InvalidStateError #2: FAIL
+	IDBCursor.delete exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+/IndexedDB/idbcursor-direction-index-keyrange.any.html: OK
+	IDBCursor direction - index with keyrange - next: PASS
+	IDBCursor direction - index with keyrange - nextunique: PASS
+	IDBCursor direction - index with keyrange - prev: PASS
+	IDBCursor direction - index with keyrange - prevunique: PASS
+/IndexedDB/idbcursor-direction-index-keyrange.any.worker.html: OK
+	IDBCursor direction - index with keyrange - next: FAIL
+	IDBCursor direction - index with keyrange - nextunique: FAIL
+	IDBCursor direction - index with keyrange - prev: FAIL
+	IDBCursor direction - index with keyrange - prevunique: FAIL
+/IndexedDB/idbcursor-direction-index.any.html: OK
+	IDBCursor direction - index - next: PASS
+	IDBCursor direction - index - nextunique: PASS
+	IDBCursor direction - index - prev: PASS
+	IDBCursor direction - index - prevunique: PASS
+/IndexedDB/idbcursor-direction-index.any.worker.html: OK
+	IDBCursor direction - index - next: FAIL
+	IDBCursor direction - index - nextunique: FAIL
+	IDBCursor direction - index - prev: FAIL
+	IDBCursor direction - index - prevunique: FAIL
+/IndexedDB/idbcursor-direction-objectstore-keyrange.any.html: OK
+	IDBCursor direction - object store with keyrange - next: PASS
+	IDBCursor direction - object store with keyrange - nextunique: PASS
+	IDBCursor direction - object store with keyrange - prev: PASS
+	IDBCursor direction - object store with keyrange - prevunique: PASS
+/IndexedDB/idbcursor-direction-objectstore-keyrange.any.worker.html: OK
+	IDBCursor direction - object store with keyrange - next: FAIL
+	IDBCursor direction - object store with keyrange - nextunique: FAIL
+	IDBCursor direction - object store with keyrange - prev: FAIL
+	IDBCursor direction - object store with keyrange - prevunique: FAIL
+/IndexedDB/idbcursor-direction-objectstore.any.html: OK
+	IDBCursor direction - object store - next: PASS
+	IDBCursor direction - object store - nextunique: PASS
+	IDBCursor direction - object store - prev: PASS
+	IDBCursor direction - object store - prevunique: PASS
+/IndexedDB/idbcursor-direction-objectstore.any.worker.html: OK
+	IDBCursor direction - object store - next: FAIL
+	IDBCursor direction - object store - nextunique: FAIL
+	IDBCursor direction - object store - prev: FAIL
+	IDBCursor direction - object store - prevunique: FAIL
+/IndexedDB/idbcursor-direction.any.html: OK
+	IDBCursor.direction - next: PASS
+	IDBCursor.direction - nextunique: PASS
+	IDBCursor.direction - prev: PASS
+	IDBCursor.direction - prevunique: PASS
+	IDBCursor.direction - undefined: PASS
+/IndexedDB/idbcursor-direction.any.worker.html: ERROR
+	IDBCursor.direction - undefined: NOTRUN
+/IndexedDB/idbcursor-iterating-update.any.html: OK
+	Calling (cursor) => cursor.delete() doesn't affect index iteration: PASS
+	Calling (cursor) => cursor.update({}) doesn't affect index iteration: PASS
+/IndexedDB/idbcursor-iterating-update.any.worker.html: OK
+	Calling (cursor) => cursor.delete() doesn't affect index iteration: FAIL
+	Calling (cursor) => cursor.update({}) doesn't affect index iteration: FAIL
+/IndexedDB/idbcursor-key.any.html: OK
+	IDBCursor.key: PASS
+	IDBCursor.key 1: PASS
+	IDBCursor.key 2: PASS
+/IndexedDB/idbcursor-key.any.worker.html: OK
+	idbcursor-key: FAIL
+	idbcursor-key 1: FAIL
+	idbcursor-key 2: FAIL
+/IndexedDB/idbcursor-primarykey.any.html: OK
+	IDBCursor.primaryKey: PASS
+	IDBCursor.primaryKey 1: PASS
+	IDBCursor.primaryKey 2: PASS
+/IndexedDB/idbcursor-primarykey.any.worker.html: OK
+	idbcursor-primarykey: FAIL
+	idbcursor-primarykey 1: FAIL
+	idbcursor-primarykey 2: FAIL
+/IndexedDB/idbcursor-request-source.any.html: OK
+	IDBIndex::openCursor's request source must be the IDBIndex instance that opened the cursor: PASS
+	IDBIndex::openKeyCursor's request source must be the IDBIndex instance that opened the cursor: PASS
+	IDBObjectStore::openCursor's request source must be the IDBObjectStore instance that opened the cursor: PASS
+	IDBObjectStore::openKeyCursor's request source must be the IDBObjectStore instance that opened the cursor: PASS
+	The source of the request from IDBIndex::delete() is the cursor itself: PASS
+	The source of the request from IDBIndex::update() is the cursor itself: PASS
+	The source of the request from IDBObjectStore::delete() is the cursor itself: PASS
+	The source of the request from IDBObjectStore::update() is the cursor itself: PASS
+/IndexedDB/idbcursor-request-source.any.worker.html: OK
+	IDBIndex::openCursor's request source must be the IDBIndex instance that opened the cursor: FAIL
+	IDBIndex::openKeyCursor's request source must be the IDBIndex instance that opened the cursor: FAIL
+	IDBObjectStore::openCursor's request source must be the IDBObjectStore instance that opened the cursor: FAIL
+	IDBObjectStore::openKeyCursor's request source must be the IDBObjectStore instance that opened the cursor: FAIL
+	The source of the request from IDBIndex::delete() is the cursor itself: FAIL
+	The source of the request from IDBIndex::update() is the cursor itself: FAIL
+	The source of the request from IDBObjectStore::delete() is the cursor itself: FAIL
+	The source of the request from IDBObjectStore::update() is the cursor itself: FAIL
+/IndexedDB/idbcursor-request.any.html: OK
+	cursor.request from IDBIndex.openCursor: PASS
+	cursor.request from IDBIndex.openKeyCursor: PASS
+	cursor.request from IDBObjectStore.openCursor: PASS
+	cursor.request from IDBObjectStore.openKeyCursor: PASS
+/IndexedDB/idbcursor-request.any.worker.html: OK
+	cursor.request from IDBIndex.openCursor: FAIL
+	cursor.request from IDBIndex.openKeyCursor: FAIL
+	cursor.request from IDBObjectStore.openCursor: FAIL
+	cursor.request from IDBObjectStore.openKeyCursor: FAIL
+/IndexedDB/idbcursor-reused.any.html: OK
+	IDBCursor is reused: PASS
+/IndexedDB/idbcursor-reused.any.worker.html: OK
+	idbcursor-reused: FAIL
+/IndexedDB/idbcursor-source.any.html: OK
+	IDBCursor.source - IDBIndex: PASS
+	IDBCursor.source - IDBObjectStore: PASS
+/IndexedDB/idbcursor-source.any.worker.html: OK
+	IDBCursor.source - IDBIndex: FAIL
+	IDBCursor.source - IDBObjectStore: FAIL
+/IndexedDB/idbcursor-update-exception-order.any.html: OK
+	IDBCursor.update exception order: InvalidStateError vs. DataError: PASS
+	IDBCursor.update exception order: ReadOnlyError vs. InvalidStateError #1: PASS
+	IDBCursor.update exception order: ReadOnlyError vs. InvalidStateError #2: PASS
+	IDBCursor.update exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+/IndexedDB/idbcursor-update-exception-order.any.worker.html: OK
+	IDBCursor.update exception order: InvalidStateError vs. DataError: FAIL
+	IDBCursor.update exception order: ReadOnlyError vs. InvalidStateError #1: FAIL
+	IDBCursor.update exception order: ReadOnlyError vs. InvalidStateError #2: FAIL
+	IDBCursor.update exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+/IndexedDB/idbcursor_advance_index.any.html: OK
+	Calling advance() should throw DOMException when the cursor is currently being iterated.: PASS
+	Calling advance() should throws an exception TransactionInactiveError when the transaction is not active.: PASS
+	Calling advance() with count argument 0 should throw TypeError.: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	attempt to pass a count parameter that is not a number: PASS
+	index - attempt to advance backwards: PASS
+	index - iterate cursor number of times specified by count: PASS
+	index - iterate to the next record: PASS
+/IndexedDB/idbcursor_advance_index.any.worker.html: OK
+	Calling advance() should throw DOMException when the cursor is currently being iterated.: FAIL
+	Calling advance() should throws an exception TransactionInactiveError when the transaction is not active.: FAIL
+	Calling advance() with count argument 0 should throw TypeError.: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	attempt to pass a count parameter that is not a number: FAIL
+	index - attempt to advance backwards: FAIL
+	index - iterate cursor number of times specified by count: FAIL
+	index - iterate to the next record: FAIL
+/IndexedDB/idbcursor_advance_objectstore.any.html: OK
+	Calling advance() should throw DOMException when the cursor is currently being iterated.: PASS
+	Calling advance() should throws an exception TransactionInactiveError when the transaction is not active: PASS
+	Calling advance() with count argument 0 should throw TypeError.: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	object store - iterate cursor number of times specified by count: PASS
+/IndexedDB/idbcursor_advance_objectstore.any.worker.html: OK
+	Calling advance() should throw DOMException when the cursor is currently being iterated.: FAIL
+	Calling advance() should throws an exception TransactionInactiveError when the transaction is not active: FAIL
+	Calling advance() with count argument 0 should throw TypeError.: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	object store - iterate cursor number of times specified by count: FAIL
+/IndexedDB/idbcursor_continue_delete_objectstore.any.html: OK
+	Object store - remove a record from the object store while iterating cursor: PASS
+/IndexedDB/idbcursor_continue_delete_objectstore.any.worker.html: OK
+	Object store - remove a record from the object store while iterating cursor: FAIL
+/IndexedDB/idbcursor_continue_index.any.html: OK
+	Add next element, and iterate to it: PASS
+	Attempt to iterate to the next record when the direction is set for the previous record: PASS
+	Attempt to iterate to the previous record when the direction is set for the next record: PASS
+	Attempt to pass a key parameter that is not a valid key: PASS
+	Calling continue() should throw an exception TransactionInactiveError when the transaction is not active.: PASS
+	Delete next element, and iterate to it: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Iterate to the next record: PASS
+	Iterate using 'prevunique': PASS
+	Iterate using nextunique: PASS
+/IndexedDB/idbcursor_continue_index.any.worker.html: OK
+	Add next element, and iterate to it: FAIL
+	Attempt to iterate to the next record when the direction is set for the previous record: FAIL
+	Attempt to iterate to the previous record when the direction is set for the next record: FAIL
+	Attempt to pass a key parameter that is not a valid key: FAIL
+	Calling continue() should throw an exception TransactionInactiveError when the transaction is not active.: FAIL
+	Delete next element, and iterate to it: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Iterate to the next record: FAIL
+	Iterate using 'prevunique': FAIL
+	Iterate using nextunique: FAIL
+/IndexedDB/idbcursor_continue_invalid.any.html: OK
+	Attempt to call continue two times: PASS
+/IndexedDB/idbcursor_continue_invalid.any.worker.html: OK
+	Attempt to call continue two times: FAIL
+/IndexedDB/idbcursor_continue_objectstore.any.html: OK
+	Add next element, and iterate to it: PASS
+	Attempt to iterate to the next record when the direction is set for the next record: PASS
+	Attempt to iterate to the previous record when the direction is set for the next record: PASS
+	Attempt to pass a key parameter is not a valid key: PASS
+	Calling continue() should throws an exception TransactionInactiveError when the transaction is not active.: PASS
+	Delete next element, and iterate to it: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Iterate to the next record: PASS
+/IndexedDB/idbcursor_continue_objectstore.any.worker.html: OK
+	Add next element, and iterate to it: FAIL
+	Attempt to iterate to the next record when the direction is set for the next record: FAIL
+	Attempt to iterate to the previous record when the direction is set for the next record: FAIL
+	Attempt to pass a key parameter is not a valid key: FAIL
+	Calling continue() should throws an exception TransactionInactiveError when the transaction is not active.: FAIL
+	Delete next element, and iterate to it: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Iterate to the next record: FAIL
+/IndexedDB/idbcursor_delete_index.any.html: OK
+	Attempt to remove a record in a read-only transaction: PASS
+	Attempt to remove a record in an inactive transaction: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Remove a record from the object store: PASS
+	Throw InvalidStateError when the cursor is being iterated: PASS
+/IndexedDB/idbcursor_delete_index.any.worker.html: OK
+	Attempt to remove a record in a read-only transaction: FAIL
+	Attempt to remove a record in an inactive transaction: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Remove a record from the object store: FAIL
+	Throw InvalidStateError when the cursor is being iterated: FAIL
+/IndexedDB/idbcursor_delete_objectstore.any.html: OK
+	Attempt to remove a record in a read-only transaction: PASS
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Index - attempt to remove a record in an inactive transaction: PASS
+	Remove a record from the object store : PASS
+	Throw InvalidStateError when the cursor is being iterated: PASS
+/IndexedDB/idbcursor_delete_objectstore.any.worker.html: OK
+	Attempt to remove a record in a read-only transaction: FAIL
+	If the cursor's source or effective object store has been deleted, the implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Index - attempt to remove a record in an inactive transaction: FAIL
+	Remove a record from the object store : FAIL
+	Throw InvalidStateError when the cursor is being iterated: FAIL
+/IndexedDB/idbcursor_iterating.any.html: OK
+	Iterate and Delete elements: PASS
+/IndexedDB/idbcursor_iterating.any.worker.html: OK
+	Iterate and Delete elements: FAIL
+/IndexedDB/idbcursor_update_index.any.html: OK
+	Attempt to modify a record after the cursor's source or effective object store has been deleted. The implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Attempt to modify a record in a read-only transaction: PASS
+	Attempt to modify a record in an inactive transaction: PASS
+	Modify a record in the object store : PASS
+	Modify records during cursor iteration and verify updated records: PASS
+	No argument: PASS
+	Throw DataCloneError: PASS
+	Throw DataError: PASS
+	Throw InvalidStateError when the cursor is being iterated: PASS
+/IndexedDB/idbcursor_update_index.any.worker.html: OK
+	Attempt to modify a record after the cursor's source or effective object store has been deleted. The implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Attempt to modify a record in a read-only transaction: FAIL
+	Attempt to modify a record in an inactive transaction: FAIL
+	Modify a record in the object store : FAIL
+	Modify records during cursor iteration and verify updated records: FAIL
+	No argument: FAIL
+	Throw DataCloneError: FAIL
+	Throw DataError: FAIL
+	Throw InvalidStateError when the cursor is being iterated: FAIL
+/IndexedDB/idbcursor_update_objectstore.any.html: OK
+	Attempt to modify a record after the cursor's source or effective object store has been deleted. The implementation MUST throw a DOMException of type InvalidStateError: PASS
+	Attempt to modify a record in a read-only transaction: PASS
+	Index - modify a record in the object store : PASS
+	Modify a record in the object store : PASS
+	No argument: PASS
+	Object store - attempt to modify a record in an inactive transaction: PASS
+	Throw DataCloneError: PASS
+	Throw DataError: PASS
+	Throw InvalidStateError when the cursor is being iterated: PASS
+/IndexedDB/idbcursor_update_objectstore.any.worker.html: OK
+	Attempt to modify a record after the cursor's source or effective object store has been deleted. The implementation MUST throw a DOMException of type InvalidStateError: FAIL
+	Attempt to modify a record in a read-only transaction: FAIL
+	Index - modify a record in the object store : FAIL
+	Modify a record in the object store : FAIL
+	No argument: FAIL
+	Object store - attempt to modify a record in an inactive transaction: FAIL
+	Throw DataCloneError: FAIL
+	Throw DataError: FAIL
+	Throw InvalidStateError when the cursor is being iterated: FAIL
+/IndexedDB/idbdatabase-createObjectStore-exception-order.any.html: OK
+	IDBDatabase.createObjectStore exception order: ConstraintError vs. InvalidAccessError: PASS
+	IDBDatabase.createObjectStore exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBDatabase.createObjectStore exception order: SyntaxError vs. ConstraintError: PASS
+	IDBDatabase.createObjectStore exception order: TransactionInactiveError vs. SyntaxError: PASS
+/IndexedDB/idbdatabase-createObjectStore-exception-order.any.worker.html: OK
+	IDBDatabase.createObjectStore exception order: ConstraintError vs. InvalidAccessError: FAIL
+	IDBDatabase.createObjectStore exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBDatabase.createObjectStore exception order: SyntaxError vs. ConstraintError: FAIL
+	IDBDatabase.createObjectStore exception order: TransactionInactiveError vs. SyntaxError: FAIL
+/IndexedDB/idbdatabase-deleteObjectStore-exception-order.any.html: OK
+	IDBDatabase.deleteObjectStore exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBDatabase.deleteObjectStore exception order: TransactionInactiveError vs. NotFoundError: PASS
+/IndexedDB/idbdatabase-deleteObjectStore-exception-order.any.worker.html: OK
+	IDBDatabase.deleteObjectStore exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBDatabase.deleteObjectStore exception order: TransactionInactiveError vs. NotFoundError: FAIL
+/IndexedDB/idbdatabase-transaction-exception-order.any.html: OK
+	IDBDatabase.transaction exception order: InvalidStateError vs. InvalidAccessError: PASS
+	IDBDatabase.transaction exception order: InvalidStateError vs. NotFoundError: PASS
+	IDBDatabase.transaction exception order: NotFoundError vs. TypeError: PASS
+	IDBDatabase.transaction throws exception on invalid mode: PASS
+/IndexedDB/idbdatabase-transaction-exception-order.any.worker.html: OK
+	IDBDatabase.transaction exception order: InvalidStateError vs. InvalidAccessError: FAIL
+	IDBDatabase.transaction exception order: InvalidStateError vs. NotFoundError: FAIL
+	IDBDatabase.transaction exception order: NotFoundError vs. TypeError: FAIL
+	IDBDatabase.transaction throws exception on invalid mode: FAIL
+/IndexedDB/idbdatabase_close.any.html: OK
+	Unblock the delete database request.: PASS
+	Unblock the version change transaction created by an open database request: PASS
+/IndexedDB/idbdatabase_close.any.worker.html: OK
+	Unblock the delete database request.: FAIL
+	Unblock the version change transaction created by an open database request: FAIL
+/IndexedDB/idbdatabase_createObjectStore.any.html: OK
+	Attempt to create an object store outside of a version change transaction : PASS
+	Attempt to create an object store that already exists : PASS
+	Attempt to create an object store with an invalid key path : PASS
+	Attempting to create an existing object store with a different keyPath throw ConstraintError : PASS
+	Both with empty name: PASS
+	Create 1000 object stores, add one item and delete: PASS
+	Create an object store with an unknown optional parameter : PASS
+	Empty name: PASS
+	Object store 'name' and 'keyPath' properties are correctly set : PASS
+	Object store's name appears in database's list : PASS
+	Returns an instance of IDBObjectStore: PASS
+	autoInc and empty keyPath: PASS
+	autoInc and keyPath array: PASS
+	autoInc and keyPath array 2: PASS
+	autoInc and keyPath object: PASS
+	autoInc false, keyPath array: PASS
+	autoInc false, keyPath empty: PASS
+	autoInc false, keyPath string: PASS
+	autoInc true: PASS
+	autoInc true, keyPath null: PASS
+	autoInc true, keyPath string: PASS
+	autoInc true, keyPath undefined: PASS
+	keyPath array: PASS
+	keyPath empty: PASS
+	keyPath null: PASS
+	keyPath string: PASS
+	keyPath undefined: PASS
+/IndexedDB/idbdatabase_createObjectStore.any.worker.html: OK
+	Attempt to create an object store outside of a version change transaction : FAIL
+	Attempt to create an object store that already exists : FAIL
+	Attempt to create an object store with an invalid key path : FAIL
+	Attempting to create an existing object store with a different keyPath throw ConstraintError : FAIL
+	Both with empty name: FAIL
+	Create 1000 object stores, add one item and delete: FAIL
+	Create an object store with an unknown optional parameter : FAIL
+	Empty name: FAIL
+	Object store 'name' and 'keyPath' properties are correctly set : FAIL
+	Object store's name appears in database's list : FAIL
+	Returns an instance of IDBObjectStore: FAIL
+	autoInc and empty keyPath: FAIL
+	autoInc and keyPath array: FAIL
+	autoInc and keyPath array 2: FAIL
+	autoInc and keyPath object: FAIL
+	autoInc false, keyPath array: FAIL
+	autoInc false, keyPath empty: FAIL
+	autoInc false, keyPath string: FAIL
+	autoInc true: FAIL
+	autoInc true, keyPath null: FAIL
+	autoInc true, keyPath string: FAIL
+	autoInc true, keyPath undefined: FAIL
+	keyPath array: FAIL
+	keyPath empty: FAIL
+	keyPath null: FAIL
+	keyPath string: FAIL
+	keyPath undefined: FAIL
+/IndexedDB/idbdatabase_deleteObjectStore.any.html: OK
+	Attempting to access an index that was deleted as part of object store deletion and then recreated using the same object store name should throw a NotFoundError: PASS
+	Attempting to remove an object store that does not exist should throw a NotFoundError: PASS
+	Deleted object store's name should be removed from database's list. Attempting to use a deleted IDBObjectStore should throw an InvalidStateError: PASS
+/IndexedDB/idbdatabase_deleteObjectStore.any.worker.html: OK
+	Attempting to access an index that was deleted as part of object store deletion and then recreated using the same object store name should throw a NotFoundError: FAIL
+	Attempting to remove an object store that does not exist should throw a NotFoundError: FAIL
+	Deleted object store's name should be removed from database's list. Attempting to use a deleted IDBObjectStore should throw an InvalidStateError: FAIL
+/IndexedDB/idbdatabase_transaction.any.html: OK
+	Attempt to open a transaction from closed database connection: PASS
+	Attempt to open a transaction with invalid mode: PASS
+	Attempt to open a transaction with invalid scope: PASS
+	If storeNames is an empty list, the implementation must throw a DOMException of type InvalidAccessError: PASS
+	Opening a transaction defaults to a read-only mode: PASS
+/IndexedDB/idbdatabase_transaction.any.worker.html: OK
+	Attempt to open a transaction from closed database connection: FAIL
+	Attempt to open a transaction with invalid mode: FAIL
+	Attempt to open a transaction with invalid scope: FAIL
+	If storeNames is an empty list, the implementation must throw a DOMException of type InvalidAccessError: FAIL
+	Opening a transaction defaults to a read-only mode: FAIL
+/IndexedDB/idbfactory-databases-opaque-origin.html: OK
+	IDBFactory.databases() in data URL dedicated worker should throw SecurityError: FAIL
+	IDBFactory.databases() in data URL shared worker should throw SecurityError: FAIL
+	IDBFactory.databases() in non-sandboxed iframe should not reject: PASS
+	IDBFactory.databases() in sandboxed iframe should reject: PASS
+/IndexedDB/idbfactory-deleteDatabase-opaque-origin.html: OK
+	IDBFactory.deleteDatabase() in data URL dedicated worker should throw SecurityError: FAIL
+	IDBFactory.deleteDatabase() in data URL shared worker should throw SecurityError: FAIL
+	IDBFactory.deleteDatabase() in non-sandboxed iframe should not throw: PASS
+	IDBFactory.deleteDatabase() in sandboxed iframe should throw SecurityError: PASS
+/IndexedDB/idbfactory-deleteDatabase-request-success.any.html: OK
+	IDBFactory deleteDatabase() request properties on success: PASS
+/IndexedDB/idbfactory-deleteDatabase-request-success.any.worker.html: OK
+	IDBFactory deleteDatabase() request properties on success: FAIL
+/IndexedDB/idbfactory-open-error-properties.any.html: OK
+	Properties of error event from failed open(): PASS
+/IndexedDB/idbfactory-open-error-properties.any.worker.html: OK
+	Properties of error event from failed open(): FAIL
+/IndexedDB/idbfactory-open-opaque-origin.html: OK
+	IDBFactory.open() in data URL dedicated workers should throw SecurityError: FAIL
+	IDBFactory.open() in data URL shared workers should throw SecurityError: FAIL
+	IDBFactory.open() in non-sandboxed iframe should not throw: PASS
+	IDBFactory.open() in sandboxed iframe should throw SecurityError: PASS
+/IndexedDB/idbfactory-open-request-error.any.html: OK
+	Properties of IDBOpenDBRequest during failed IDBFactory open(): PASS
+/IndexedDB/idbfactory-open-request-error.any.worker.html: OK
+	Properties of IDBOpenDBRequest during failed IDBFactory open(): FAIL
+/IndexedDB/idbfactory-open-request-success.any.html: OK
+	Properties of IDBOpenDBRequest during successful IDBFactory open(): PASS
+/IndexedDB/idbfactory-open-request-success.any.worker.html: OK
+	Properties of IDBOpenDBRequest during successful IDBFactory open(): FAIL
+/IndexedDB/idbfactory-origin-isolation.html: TIMEOUT
+	Test to make sure that origins have separate locking schemes: TIMEOUT
+/IndexedDB/idbfactory_cmp.any.html: OK
+	Array vs. Binary: PASS
+	Binary vs. String: PASS
+	Compare in unsigned octet values (in the range [0, 255]): PASS
+	Compare values of different lengths: PASS
+	Compare values of the same length: PASS
+	Compare when values in the range of their minimal length are the same: PASS
+	Date vs. Number: PASS
+	IDBFactory.cmp() - NaN: PASS
+	IDBFactory.cmp() - compared keys return correct value: PASS
+	IDBFactory.cmp() - no argument: PASS
+	IDBFactory.cmp() - null: PASS
+	String vs. Date: PASS
+/IndexedDB/idbfactory_cmp.any.worker.html: OK
+	Array vs. Binary: FAIL
+	Binary vs. String: FAIL
+	Compare in unsigned octet values (in the range [0, 255]): FAIL
+	Compare values of different lengths: FAIL
+	Compare values of the same length: FAIL
+	Compare when values in the range of their minimal length are the same: FAIL
+	Date vs. Number: FAIL
+	IDBFactory.cmp() - NaN: FAIL
+	IDBFactory.cmp() - compared keys return correct value: FAIL
+	IDBFactory.cmp() - no argument: FAIL
+	IDBFactory.cmp() - null: FAIL
+	String vs. Date: FAIL
+/IndexedDB/idbfactory_deleteDatabase.any.html: OK
+	Delete an existing database - Test events opening a second database when one connection is open already: PASS
+	Result of the deleteDatabase() request is set to undefined.: PASS
+	The deleteDatabase() request's success event is an IDBVersionChangeEvent.: PASS
+	deleteDatabase() request should have no source, and deleting a non-existent database should succeed with oldVersion of 0.: PASS
+/IndexedDB/idbfactory_deleteDatabase.any.worker.html: OK
+	Delete an existing database - Test events opening a second database when one connection is open already: FAIL
+	Result of the deleteDatabase() request is set to undefined.: FAIL
+	The deleteDatabase() request's success event is an IDBVersionChangeEvent.: FAIL
+	deleteDatabase() request should have no source, and deleting a non-existent database should succeed with oldVersion of 0.: FAIL
+/IndexedDB/idbfactory_open.any.html: OK
+	Calling open() with version argument "foo" should throw TypeError.: PASS
+	Calling open() with version argument -0.5 should throw TypeError.: PASS
+	Calling open() with version argument -1 should throw TypeError.: PASS
+	Calling open() with version argument -Infinity should throw TypeError.: PASS
+	Calling open() with version argument 0 should throw TypeError.: PASS
+	Calling open() with version argument 0.5 should throw TypeError.: PASS
+	Calling open() with version argument 0.8 should throw TypeError.: PASS
+	Calling open() with version argument 1.5 should not throw.: PASS
+	Calling open() with version argument 9007199254740991 should not throw.: PASS
+	Calling open() with version argument 9007199254740992 should throw TypeError.: PASS
+	Calling open() with version argument Infinity should throw TypeError.: PASS
+	Calling open() with version argument NaN should throw TypeError.: PASS
+	Calling open() with version argument false should throw TypeError.: PASS
+	Calling open() with version argument null should throw TypeError.: PASS
+	Calling open() with version argument object (second) should throw TypeError.: PASS
+	Calling open() with version argument object (third) should throw TypeError.: PASS
+	Calling open() with version argument object should throw TypeError.: PASS
+	Calling open() with version argument undefined should not throw.: PASS
+	IDBFactory.open() - database 'name' and 'version' are correctly set: PASS
+	IDBFactory.open() - error in upgradeneeded resets db: PASS
+	IDBFactory.open() - error in version change transaction aborts open: PASS
+	IDBFactory.open() - new database has default version: PASS
+	IDBFactory.open() - new database is empty: PASS
+	IDBFactory.open() - no version opens current database: PASS
+	IDBFactory.open() - open database with a higher version than current: PASS
+	IDBFactory.open() - open database with a lower version than current: PASS
+	IDBFactory.open() - request has no source: PASS
+	IDBFactory.open() - second open's transaction is available to get objectStores: PASS
+	IDBFactory.open() - upgradeneeded gets VersionChangeEvent: PASS
+/IndexedDB/idbfactory_open.any.worker.html: OK
+	Calling open() with version argument "foo" should throw TypeError.: FAIL
+	Calling open() with version argument -0.5 should throw TypeError.: FAIL
+	Calling open() with version argument -1 should throw TypeError.: FAIL
+	Calling open() with version argument -Infinity should throw TypeError.: FAIL
+	Calling open() with version argument 0 should throw TypeError.: FAIL
+	Calling open() with version argument 0.5 should throw TypeError.: FAIL
+	Calling open() with version argument 0.8 should throw TypeError.: FAIL
+	Calling open() with version argument 1.5 should not throw.: FAIL
+	Calling open() with version argument 9007199254740991 should not throw.: FAIL
+	Calling open() with version argument 9007199254740992 should throw TypeError.: FAIL
+	Calling open() with version argument Infinity should throw TypeError.: FAIL
+	Calling open() with version argument NaN should throw TypeError.: FAIL
+	Calling open() with version argument false should throw TypeError.: FAIL
+	Calling open() with version argument null should throw TypeError.: FAIL
+	Calling open() with version argument object (second) should throw TypeError.: FAIL
+	Calling open() with version argument object (third) should throw TypeError.: FAIL
+	Calling open() with version argument object should throw TypeError.: FAIL
+	Calling open() with version argument undefined should not throw.: FAIL
+	IDBFactory.open() - database 'name' and 'version' are correctly set: FAIL
+	IDBFactory.open() - error in upgradeneeded resets db: FAIL
+	IDBFactory.open() - error in version change transaction aborts open: FAIL
+	IDBFactory.open() - new database has default version: FAIL
+	IDBFactory.open() - new database is empty: FAIL
+	IDBFactory.open() - no version opens current database: FAIL
+	IDBFactory.open() - open database with a higher version than current: FAIL
+	IDBFactory.open() - open database with a lower version than current: FAIL
+	IDBFactory.open() - request has no source: FAIL
+	IDBFactory.open() - second open's transaction is available to get objectStores: FAIL
+	IDBFactory.open() - upgradeneeded gets VersionChangeEvent: FAIL
+/IndexedDB/idbindex-cross-realm-methods.html: OK
+	Cross-realm IDBIndex::count() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::get() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::getAll() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::getAllKeys() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::getKey() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::openCursor() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBIndex::openKeyCursor() method from detached <iframe> works as expected: FAIL
+/IndexedDB/idbindex-getAll-enforcerange.any.html: OK
+	IDBIndex.getAll() should enforce valid range constraints.: PASS
+/IndexedDB/idbindex-getAll-enforcerange.any.worker.html: OK
+	IDBIndex.getAll() should enforce valid range constraints.: FAIL
+/IndexedDB/idbindex-getAllKeys-enforcerange.any.html: OK
+	IDBIndex.getAllKeys() should enforce valid range constraints.: PASS
+/IndexedDB/idbindex-getAllKeys-enforcerange.any.worker.html: OK
+	IDBIndex.getAllKeys() should enforce valid range constraints.: FAIL
+/IndexedDB/idbindex-multientry.any.html: OK
+	A 1000 entry multiEntry array: PASS
+	Adding keys: PASS
+	Array keyPath with multiEntry: PASS
+/IndexedDB/idbindex-multientry.any.worker.html: OK
+	A 1000 entry multiEntry array: FAIL
+	Adding keys: FAIL
+	Array keyPath with multiEntry: FAIL
+/IndexedDB/idbindex-objectStore-SameObject.any.html: OK
+	IDBIndex.objectStore should return same object each time.: PASS
+/IndexedDB/idbindex-objectStore-SameObject.any.worker.html: OK
+	IDBIndex.objectStore should return same object each time.: FAIL
+/IndexedDB/idbindex-query-exception-order.any.html: OK
+	IDBIndex.count exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.count exception order: TransactionInactiveError vs. DataError: PASS
+	IDBIndex.get exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.get exception order: TransactionInactiveError vs. DataError: PASS
+	IDBIndex.getAll exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.getAll exception order: TransactionInactiveError vs. DataError: PASS
+	IDBIndex.getAllKeys exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.getAllKeys exception order: TransactionInactiveError vs. DataError: PASS
+	IDBIndex.openCursor exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.openCursor exception order: TransactionInactiveError vs. DataError: PASS
+	IDBIndex.openKeyCursor exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBIndex.openKeyCursor exception order: TransactionInactiveError vs. DataError: PASS
+/IndexedDB/idbindex-query-exception-order.any.worker.html: OK
+	IDBIndex.count exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.count exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBIndex.get exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.get exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBIndex.getAll exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.getAll exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBIndex.getAllKeys exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.getAllKeys exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBIndex.openCursor exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.openCursor exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBIndex.openKeyCursor exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBIndex.openKeyCursor exception order: TransactionInactiveError vs. DataError: FAIL
+/IndexedDB/idbindex-rename-abort.any.html: OK
+	IndexedDB index creation and rename in an aborted transaction: PASS
+	IndexedDB index rename in aborted transaction: PASS
+/IndexedDB/idbindex-rename-abort.any.worker.html: OK
+	IndexedDB index creation and rename in an aborted transaction: FAIL
+	IndexedDB index rename in aborted transaction: FAIL
+/IndexedDB/idbindex-rename-errors.any.html: OK
+	IndexedDB deleted index rename throws: PASS
+	IndexedDB index rename handles exceptions when stringifying names: PASS
+	IndexedDB index rename throws in a readonly transaction: PASS
+	IndexedDB index rename throws in a readwrite transaction: PASS
+	IndexedDB index rename throws in an inactive transaction: PASS
+	IndexedDB index rename to the name of another index throws: PASS
+/IndexedDB/idbindex-rename-errors.any.worker.html: OK
+	IndexedDB deleted index rename throws: FAIL
+	IndexedDB index rename handles exceptions when stringifying names: FAIL
+	IndexedDB index rename throws in a readonly transaction: FAIL
+	IndexedDB index rename throws in a readwrite transaction: FAIL
+	IndexedDB index rename throws in an inactive transaction: FAIL
+	IndexedDB index rename to the name of another index throws: FAIL
+/IndexedDB/idbindex-rename.any.html: OK
+	IndexedDB index can be renamed to "": PASS
+	IndexedDB index can be renamed to "\\u0000": PASS
+	IndexedDB index can be renamed to "\\uDC00\\uD800": PASS
+	IndexedDB index rename in new transaction: PASS
+	IndexedDB index rename in the transaction where it is created: PASS
+	IndexedDB index rename stringifies non-string names: PASS
+	IndexedDB index rename to the name of a deleted index succeeds: PASS
+	IndexedDB index rename to the same name succeeds: PASS
+	IndexedDB index swapping via renames succeeds: PASS
+/IndexedDB/idbindex-rename.any.worker.html: OK
+	IndexedDB index can be renamed to "": FAIL
+	IndexedDB index can be renamed to "\\u0000": FAIL
+	IndexedDB index can be renamed to "\\uDC00\\uD800": FAIL
+	IndexedDB index rename in new transaction: FAIL
+	IndexedDB index rename in the transaction where it is created: FAIL
+	IndexedDB index rename stringifies non-string names: FAIL
+	IndexedDB index rename to the name of a deleted index succeeds: FAIL
+	IndexedDB index rename to the same name succeeds: FAIL
+	IndexedDB index swapping via renames succeeds: FAIL
+/IndexedDB/idbindex-request-source.any.html: OK
+	The source of the request from index => index.count() is the index itself: PASS
+	The source of the request from index => index.get(0) is the index itself: PASS
+	The source of the request from index => index.getAll() is the index itself: PASS
+	The source of the request from index => index.getAllKeys() is the index itself: PASS
+	The source of the request from index => index.getKey(0) is the index itself: PASS
+	The source of the request from index => index.openCursor() is the index itself: PASS
+	The source of the request from index => index.openKeyCursor() is the index itself: PASS
+/IndexedDB/idbindex-request-source.any.worker.html: OK
+	The source of the request from index => index.count() is the index itself: FAIL
+	The source of the request from index => index.get(0) is the index itself: FAIL
+	The source of the request from index => index.getAll() is the index itself: FAIL
+	The source of the request from index => index.getAllKeys() is the index itself: FAIL
+	The source of the request from index => index.getKey(0) is the index itself: FAIL
+	The source of the request from index => index.openCursor() is the index itself: FAIL
+	The source of the request from index => index.openKeyCursor() is the index itself: FAIL
+/IndexedDB/idbindex_count.any.html: OK
+	count() returns the number of records in the index: PASS
+	count() returns the number of records that have keys with the key: PASS
+	count() returns the number of records that have keys within the range: PASS
+	count() throws DataError when using invalid key: PASS
+/IndexedDB/idbindex_count.any.worker.html: OK
+	count() returns the number of records in the index: FAIL
+	count() returns the number of records that have keys with the key: FAIL
+	count() returns the number of records that have keys within the range: FAIL
+	count() throws DataError when using invalid key: FAIL
+/IndexedDB/idbindex_get.any.html: OK
+	get() attempts to retrieve a record that does not exist: PASS
+	get() returns the record: PASS
+	get() returns the record where the index contains duplicate values: PASS
+	get() returns the record with the first key in the range: PASS
+	get() throws DataError when using invalid key: PASS
+	get() throws InvalidStateError on index deleted by aborted upgrade: PASS
+	get() throws InvalidStateError when the index is deleted: PASS
+	get() throws TransactionInactiveError on aborted transaction: PASS
+/IndexedDB/idbindex_get.any.worker.html: OK
+	get() attempts to retrieve a record that does not exist: FAIL
+	get() returns the record: FAIL
+	get() returns the record where the index contains duplicate values: FAIL
+	get() returns the record with the first key in the range: FAIL
+	get() throws DataError when using invalid key: FAIL
+	get() throws InvalidStateError on index deleted by aborted upgrade: FAIL
+	get() throws InvalidStateError when the index is deleted: FAIL
+	get() throws TransactionInactiveError on aborted transaction: FAIL
+/IndexedDB/idbindex_getAll-options.any.html: OK
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: nextunique with duplicate index keys: PASS
+	Direction: nextunique with multi-entry index: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Direction: prevunique with duplicate index keys: PASS
+	Direction: prevunique with multi-entry index: PASS
+	Empty object store: PASS
+	Get all: PASS
+	Get all values with both options and count: PASS
+	Get all values with invalid query keys: PASS
+	Get all with generated keys: PASS
+	Get all with large values: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Retrieve multiEntry key: PASS
+	Retrieve one key multiple values: PASS
+	Single item get: PASS
+	maxCount=0: PASS
+	maxCount=10: PASS
+/IndexedDB/idbindex_getAll-options.any.worker.html: ERROR
+	Empty object store: FAIL
+	Get all: FAIL
+	Get all with generated keys: FAIL
+	Get all with large values: FAIL
+	Single item get: FAIL
+	maxCount=10: FAIL
+/IndexedDB/idbindex_getAll.any.html: OK
+	Empty object store: PASS
+	Get all: PASS
+	Get all values with invalid query keys: PASS
+	Get all with generated keys: PASS
+	Get all with large values: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Retrieve multiEntry key: PASS
+	Retrieve one key multiple values: PASS
+	Single item get: PASS
+	maxCount=0: PASS
+	maxCount=10: PASS
+/IndexedDB/idbindex_getAll.any.worker.html: ERROR
+	Empty object store: FAIL
+	Get all: FAIL
+	Get all with generated keys: FAIL
+	Get all with large values: FAIL
+	Single item get: FAIL
+	maxCount=10: FAIL
+/IndexedDB/idbindex_getAllKeys-options.any.html: OK
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: nextunique with duplicate index keys: PASS
+	Direction: nextunique with multi-entry index: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Direction: prevunique with duplicate index keys: PASS
+	Direction: prevunique with multi-entry index: PASS
+	Empty object store: PASS
+	Get all generated keys: PASS
+	Get all keys: PASS
+	Get all keys with both options and count: PASS
+	Get all keys with invalid query keys: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Retrieve multiEntry key: PASS
+	Retrieve one key multiple values: PASS
+	Single item get: PASS
+	maxCount=0: PASS
+	maxCount=10: PASS
+/IndexedDB/idbindex_getAllKeys-options.any.worker.html: ERROR
+	Empty object store: FAIL
+	Get all generated keys: FAIL
+	Get all keys: FAIL
+	Single item get: FAIL
+	maxCount=10: FAIL
+/IndexedDB/idbindex_getAllKeys.any.html: OK
+	Empty object store: PASS
+	Get all generated keys: PASS
+	Get all keys: PASS
+	Get all keys with invalid query keys: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Retrieve multiEntry key: PASS
+	Retrieve one key multiple values: PASS
+	Single item get: PASS
+	maxCount=0: PASS
+	maxCount=10: PASS
+/IndexedDB/idbindex_getAllKeys.any.worker.html: ERROR
+	Empty object store: FAIL
+	Get all generated keys: FAIL
+	Get all keys: FAIL
+	Single item get: FAIL
+	maxCount=10: FAIL
+/IndexedDB/idbindex_getAllRecords.any.html: OK
+	Count: PASS
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: nextunique with duplicate index keys: PASS
+	Direction: nextunique with multi-entry index: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Direction: prevunique with duplicate index keys: PASS
+	Direction: prevunique with multi-entry index: PASS
+	Empty index: PASS
+	Get all records: PASS
+	Get all records with empty options: PASS
+	Get all records with invalid query keys: PASS
+	Get all records with large value: PASS
+	Max value count: PASS
+	Query index key that matches multiple records: PASS
+	Query with Nonexistent key: PASS
+	Query with bound range: PASS
+	Query with bound range and count: PASS
+	Query with bound range and count for generated keys: PASS
+	Query with empty range where first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Query with lower excluded bound range: PASS
+	Query with multiEntry index: PASS
+	Query with upper excluded bound range: PASS
+	Single item: PASS
+	Zero count: PASS
+/IndexedDB/idbindex_getAllRecords.any.worker.html: ERROR
+	Count: FAIL
+	Empty index: FAIL
+	Get all records: FAIL
+	Get all records with empty options: FAIL
+	Get all records with large value: FAIL
+	Single item: FAIL
+/IndexedDB/idbindex_getKey.any.html: OK
+	getKey() attempt to retrieve the primary key of a record that doesn't exist: PASS
+	getKey() returns the key of the first record within the range: PASS
+	getKey() returns the record's primary key: PASS
+	getKey() returns the record's primary key where the index contains duplicate values: PASS
+	getKey() throws DataError when using invalid key: PASS
+	getKey() throws InvalidStateError on index deleted by aborted upgrade: PASS
+	getKey() throws InvalidStateError when the index is deleted: PASS
+	getKey() throws TransactionInactiveError on aborted transaction: PASS
+/IndexedDB/idbindex_getKey.any.worker.html: OK
+	getKey() attempt to retrieve the primary key of a record that doesn't exist: FAIL
+	getKey() returns the key of the first record within the range: FAIL
+	getKey() returns the record's primary key: FAIL
+	getKey() returns the record's primary key where the index contains duplicate values: FAIL
+	getKey() throws DataError when using invalid key: FAIL
+	getKey() throws InvalidStateError on index deleted by aborted upgrade: FAIL
+	getKey() throws InvalidStateError when the index is deleted: FAIL
+	getKey() throws TransactionInactiveError on aborted transaction: FAIL
+/IndexedDB/idbindex_indexNames.any.html: OK
+	Verify IDBObjectStore.indexNames property: PASS
+/IndexedDB/idbindex_indexNames.any.worker.html: OK
+	Verify IDBObjectStore.indexNames property: FAIL
+/IndexedDB/idbindex_keyPath.any.html: OK
+	IDBIndex's keyPath array with a single value: PASS
+	IDBIndex's keyPath array with multiple values: PASS
+	IDBIndex's keyPath attribute returns the same object.: PASS
+/IndexedDB/idbindex_keyPath.any.worker.html: OK
+	IDBIndex's keyPath array with a single value: FAIL
+	IDBIndex's keyPath array with multiple values: FAIL
+	IDBIndex's keyPath attribute returns the same object.: FAIL
+/IndexedDB/idbindex_openCursor.any.html: OK
+	If the index is deleted by an aborted upgrade, throw InvalidStateError: PASS
+	If the index is deleted, throw InvalidStateError: PASS
+	If the transaction has been aborted, throw TransactionInactiveError: PASS
+/IndexedDB/idbindex_openCursor.any.worker.html: OK
+	If the index is deleted by an aborted upgrade, throw InvalidStateError: FAIL
+	If the index is deleted, throw InvalidStateError: FAIL
+	If the transaction has been aborted, throw TransactionInactiveError: FAIL
+/IndexedDB/idbindex_openKeyCursor.any.html: OK
+	Throw DataError when using a invalid key: PASS
+	Throw InvalidStateError on index deleted by aborted upgrade: PASS
+	Throw InvalidStateError when the index is deleted: PASS
+	Throw TransactionInactiveError on aborted transaction: PASS
+/IndexedDB/idbindex_openKeyCursor.any.worker.html: OK
+	Throw DataError when using a invalid key: FAIL
+	Throw InvalidStateError on index deleted by aborted upgrade: FAIL
+	Throw InvalidStateError when the index is deleted: FAIL
+	Throw TransactionInactiveError on aborted transaction: FAIL
+/IndexedDB/idbindex_reverse_cursor.any.html: OK
+	Reverse cursor sees in-transaction update.: PASS
+	Reverse cursor sees update from separate transactions.: PASS
+/IndexedDB/idbindex_reverse_cursor.any.worker.html: OK
+	Reverse cursor sees in-transaction update.: FAIL
+	Reverse cursor sees update from separate transactions.: FAIL
+/IndexedDB/idbindex_tombstones.any.html: OK
+	Backward iteration over an index in a readonly transaction: PASS
+	Backward iteration over an index in a readwrite transaction: PASS
+	Forward iteration over an index in a readonly transaction: PASS
+	Forward iteration over an index in a readwrite transaction: PASS
+/IndexedDB/idbindex_tombstones.any.worker.html: OK
+	Backward iteration over an index in a readonly transaction: FAIL
+	Backward iteration over an index in a readwrite transaction: FAIL
+	Forward iteration over an index in a readonly transaction: FAIL
+	Forward iteration over an index in a readwrite transaction: FAIL
+/IndexedDB/idbkeyrange-includes.any.html: OK
+	IDBKeyRange.includes() with a closed range: PASS
+	IDBKeyRange.includes() with a lower-closed upper-open range: PASS
+	IDBKeyRange.includes() with a lower-open upper-closed range: PASS
+	IDBKeyRange.includes() with an closed lower-bounded range: PASS
+	IDBKeyRange.includes() with an closed upper-bounded range: PASS
+	IDBKeyRange.includes() with an only range: PASS
+	IDBKeyRange.includes() with an open lower-bounded range: PASS
+	IDBKeyRange.includes() with an open range: PASS
+	IDBKeyRange.includes() with an open upper-bounded range: PASS
+	IDBKeyRange.includes() with invalid input: PASS
+	IDBKeyRange.includes() with non-numeric keys: PASS
+/IndexedDB/idbkeyrange-includes.any.worker.html: OK
+	IDBKeyRange.includes() with a closed range: FAIL
+	IDBKeyRange.includes() with a lower-closed upper-open range: FAIL
+	IDBKeyRange.includes() with a lower-open upper-closed range: FAIL
+	IDBKeyRange.includes() with an closed lower-bounded range: FAIL
+	IDBKeyRange.includes() with an closed upper-bounded range: FAIL
+	IDBKeyRange.includes() with an only range: FAIL
+	IDBKeyRange.includes() with an open lower-bounded range: FAIL
+	IDBKeyRange.includes() with an open range: FAIL
+	IDBKeyRange.includes() with an open upper-bounded range: FAIL
+	IDBKeyRange.includes() with invalid input: FAIL
+	IDBKeyRange.includes() with non-numeric keys: FAIL
+/IndexedDB/idbkeyrange.any.html: OK
+	IDBKeyRange.bound() - 'lowerOpen' and 'upperOpen' parameters have correct defaults set: PASS
+	IDBKeyRange.bound() - returns an IDBKeyRange and the properties are set correctly: PASS
+	IDBKeyRange.lowerBound() - 'open' parameter has correct default set: PASS
+	IDBKeyRange.lowerBound() - returns an IDBKeyRange and the properties are set correctly: PASS
+	IDBKeyRange.lowerBound() - throws on invalid keys: PASS
+	IDBKeyRange.only() - returns an IDBKeyRange and the properties are set correctly: PASS
+	IDBKeyRange.only() - throws on invalid keys: PASS
+	IDBKeyRange.upperBound() - 'open' parameter has correct default set: PASS
+	IDBKeyRange.upperBound() - returns an IDBKeyRange and the properties are set correctly: PASS
+	IDBKeyRange.upperBound() - throws on invalid keys: PASS
+/IndexedDB/idbkeyrange.any.worker.html: OK
+	IDBKeyRange.bound() - 'lowerOpen' and 'upperOpen' parameters have correct defaults set: FAIL
+	IDBKeyRange.bound() - returns an IDBKeyRange and the properties are set correctly: FAIL
+	IDBKeyRange.lowerBound() - 'open' parameter has correct default set: FAIL
+	IDBKeyRange.lowerBound() - returns an IDBKeyRange and the properties are set correctly: FAIL
+	IDBKeyRange.lowerBound() - throws on invalid keys: FAIL
+	IDBKeyRange.only() - returns an IDBKeyRange and the properties are set correctly: FAIL
+	IDBKeyRange.only() - throws on invalid keys: FAIL
+	IDBKeyRange.upperBound() - 'open' parameter has correct default set: FAIL
+	IDBKeyRange.upperBound() - returns an IDBKeyRange and the properties are set correctly: FAIL
+	IDBKeyRange.upperBound() - throws on invalid keys: FAIL
+/IndexedDB/idbkeyrange_incorrect.any.html: OK
+	IDBKeyRange.bound() - bound requires more than 0 arguments.: PASS
+	IDBKeyRange.bound(1, null / null, 1) - null parameter is incorrect.: PASS
+	IDBKeyRange.bound(DOMString/Date/Array, 1) - A DOMString, Date and Array are greater than a float.: PASS
+	IDBKeyRange.bound(lower, upper / lower > upper) - lower' is greater than 'upper'.: PASS
+	IDBKeyRange.bound(noExistingVariable, 1 / goodVariable, noExistingVariable) -    noExistingVariable is not defined.: PASS
+	IDBKeyRange.bound(null, null) - null parameters are incorrect.: PASS
+	IDBKeyRange.bound(true, 1) - boolean is not a valid key type.: PASS
+/IndexedDB/idbkeyrange_incorrect.any.worker.html: OK
+	IDBKeyRange.bound() - bound requires more than 0 arguments.: FAIL
+	IDBKeyRange.bound(1, null / null, 1) - null parameter is incorrect.: FAIL
+	IDBKeyRange.bound(DOMString/Date/Array, 1) - A DOMString, Date and Array are greater than a float.: FAIL
+	IDBKeyRange.bound(lower, upper / lower > upper) - lower' is greater than 'upper'.: FAIL
+	IDBKeyRange.bound(noExistingVariable, 1 / goodVariable, noExistingVariable) -    noExistingVariable is not defined.: PASS
+	IDBKeyRange.bound(null, null) - null parameters are incorrect.: FAIL
+	IDBKeyRange.bound(true, 1) - boolean is not a valid key type.: FAIL
+/IndexedDB/idbobjectstore-add-put-exception-order.any.html: OK
+	IDBObjectStore.add exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.add exception order: ReadOnlyError vs. DataError: PASS
+	IDBObjectStore.add exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+	IDBObjectStore.put exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.put exception order: ReadOnlyError vs. DataError: PASS
+	IDBObjectStore.put exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+/IndexedDB/idbobjectstore-add-put-exception-order.any.worker.html: OK
+	IDBObjectStore.add exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.add exception order: ReadOnlyError vs. DataError: FAIL
+	IDBObjectStore.add exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+	IDBObjectStore.put exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.put exception order: ReadOnlyError vs. DataError: FAIL
+	IDBObjectStore.put exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+/IndexedDB/idbobjectstore-clear-exception-order.any.html: OK
+	IDBObjectStore.clear exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.clear exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+/IndexedDB/idbobjectstore-clear-exception-order.any.worker.html: OK
+	IDBObjectStore.clear exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.clear exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+/IndexedDB/idbobjectstore-cross-realm-methods.html: OK
+	Cross-realm IDBObjectStore::add() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::clear() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::count() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::delete() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::get() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::getAll() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::getAllKeys() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::getKey() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::openCursor() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::openKeyCursor() method from detached <iframe> works as expected: FAIL
+	Cross-realm IDBObjectStore::put() method from detached <iframe> works as expected: FAIL
+/IndexedDB/idbobjectstore-delete-exception-order.any.html: OK
+	IDBObjectStore.delete exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.delete exception order: ReadOnlyError vs. DataError: PASS
+	IDBObjectStore.delete exception order: TransactionInactiveError vs. ReadOnlyError: PASS
+/IndexedDB/idbobjectstore-delete-exception-order.any.worker.html: OK
+	IDBObjectStore.delete exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.delete exception order: ReadOnlyError vs. DataError: FAIL
+	IDBObjectStore.delete exception order: TransactionInactiveError vs. ReadOnlyError: FAIL
+/IndexedDB/idbobjectstore-deleteIndex-exception-order.any.html: OK
+	IDBObjectStore.deleteIndex exception order: InvalidStateError #1 vs. TransactionInactiveError: PASS
+	IDBObjectStore.deleteIndex exception order: InvalidStateError #2 vs. TransactionInactiveError: PASS
+	IDBObjectStore.deleteIndex exception order: TransactionInactiveError vs. NotFoundError: PASS
+/IndexedDB/idbobjectstore-deleteIndex-exception-order.any.worker.html: OK
+	IDBObjectStore.deleteIndex exception order: InvalidStateError #1 vs. TransactionInactiveError: FAIL
+	IDBObjectStore.deleteIndex exception order: InvalidStateError #2 vs. TransactionInactiveError: FAIL
+	IDBObjectStore.deleteIndex exception order: TransactionInactiveError vs. NotFoundError: FAIL
+/IndexedDB/idbobjectstore-getAll-enforcerange.any.html: OK
+	IDBObjectStore.getAll() uses [EnforceRange]: PASS
+/IndexedDB/idbobjectstore-getAll-enforcerange.any.worker.html: OK
+	IDBObjectStore.getAll() uses [EnforceRange]: FAIL
+/IndexedDB/idbobjectstore-getAllKeys-enforcerange.any.html: OK
+	IDBObjectStore.getAllKeys() uses [EnforceRange]: PASS
+/IndexedDB/idbobjectstore-getAllKeys-enforcerange.any.worker.html: OK
+	IDBObjectStore.getAllKeys() uses [EnforceRange]: FAIL
+/IndexedDB/idbobjectstore-index-finished.any.html: OK
+	IDBObjectStore index() behavior when transaction is finished: PASS
+/IndexedDB/idbobjectstore-index-finished.any.worker.html: OK
+	IDBObjectStore index() behavior when transaction is finished: FAIL
+/IndexedDB/idbobjectstore-put-unique-index-constraint-is-atomic.any.html: OK
+	A put() that fails a unique index constraint must not delete the record it would have overwritten: PASS
+/IndexedDB/idbobjectstore-put-unique-index-constraint-is-atomic.any.worker.html: OK
+	A put() that fails a unique index constraint must not delete the record it would have overwritten: FAIL
+/IndexedDB/idbobjectstore-query-exception-order.any.html: OK
+	IDBObjectStore.count exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.count exception order: TransactionInactiveError vs. DataError: PASS
+	IDBObjectStore.get exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.get exception order: TransactionInactiveError vs. DataError: PASS
+	IDBObjectStore.getAll exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.getAll exception order: TransactionInactiveError vs. DataError: PASS
+	IDBObjectStore.getAllKeys exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.getAllKeys exception order: TransactionInactiveError vs. DataError: PASS
+	IDBObjectStore.openCursor exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.openCursor exception order: TransactionInactiveError vs. DataError: PASS
+	IDBObjectStore.openKeyCursor exception order: InvalidStateError vs. TransactionInactiveError: PASS
+	IDBObjectStore.openKeyCursor exception order: TransactionInactiveError vs. DataError: PASS
+/IndexedDB/idbobjectstore-query-exception-order.any.worker.html: OK
+	IDBObjectStore.count exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.count exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBObjectStore.get exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.get exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBObjectStore.getAll exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.getAll exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBObjectStore.getAllKeys exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.getAllKeys exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBObjectStore.openCursor exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.openCursor exception order: TransactionInactiveError vs. DataError: FAIL
+	IDBObjectStore.openKeyCursor exception order: InvalidStateError vs. TransactionInactiveError: FAIL
+	IDBObjectStore.openKeyCursor exception order: TransactionInactiveError vs. DataError: FAIL
+/IndexedDB/idbobjectstore-rename-abort.any.html: OK
+	IndexedDB object store creation and rename in an aborted transaction: PASS
+	IndexedDB object store rename in aborted transaction: PASS
+/IndexedDB/idbobjectstore-rename-abort.any.worker.html: OK
+	IndexedDB object store creation and rename in an aborted transaction: FAIL
+	IndexedDB object store rename in aborted transaction: FAIL
+/IndexedDB/idbobjectstore-rename-errors.any.html: OK
+	IndexedDB deleted object store rename throws: PASS
+	IndexedDB object store rename handles exceptions when stringifying names: PASS
+	IndexedDB object store rename throws in a readonly transaction: PASS
+	IndexedDB object store rename throws in a readwrite transaction: PASS
+	IndexedDB object store rename throws in an inactive transaction: PASS
+	IndexedDB object store rename to the name of another store throws: PASS
+/IndexedDB/idbobjectstore-rename-errors.any.worker.html: OK
+	IndexedDB deleted object store rename throws: FAIL
+	IndexedDB object store rename handles exceptions when stringifying names: FAIL
+	IndexedDB object store rename throws in a readonly transaction: FAIL
+	IndexedDB object store rename throws in a readwrite transaction: FAIL
+	IndexedDB object store rename throws in an inactive transaction: FAIL
+	IndexedDB object store rename to the name of another store throws: FAIL
+/IndexedDB/idbobjectstore-rename-store.any.html: OK
+	IndexedDB object store can be renamed to "": PASS
+	IndexedDB object store can be renamed to "\\u0000": PASS
+	IndexedDB object store can be renamed to "\\uDC00\\uD800": PASS
+	IndexedDB object store rename covers index: PASS
+	IndexedDB object store rename covers key generator: PASS
+	IndexedDB object store rename in new transaction: PASS
+	IndexedDB object store rename in the transaction where it is created: PASS
+	IndexedDB object store rename stringifies non-string names: PASS
+	IndexedDB object store rename to the name of a deleted store succeeds: PASS
+	IndexedDB object store rename to the same name succeeds: PASS
+	IndexedDB object store swapping via renames succeeds: PASS
+/IndexedDB/idbobjectstore-rename-store.any.worker.html: OK
+	IndexedDB object store can be renamed to "": FAIL
+	IndexedDB object store can be renamed to "\\u0000": FAIL
+	IndexedDB object store can be renamed to "\\uDC00\\uD800": FAIL
+	IndexedDB object store rename covers index: FAIL
+	IndexedDB object store rename covers key generator: FAIL
+	IndexedDB object store rename in new transaction: FAIL
+	IndexedDB object store rename in the transaction where it is created: FAIL
+	IndexedDB object store rename stringifies non-string names: FAIL
+	IndexedDB object store rename to the name of a deleted store succeeds: FAIL
+	IndexedDB object store rename to the same name succeeds: FAIL
+	IndexedDB object store swapping via renames succeeds: FAIL
+/IndexedDB/idbobjectstore-request-source.any.html: OK
+	The source of the request from store => store.add(0) is the object store itself: PASS
+	The source of the request from store => store.clear() is the object store itself: PASS
+	The source of the request from store => store.count() is the object store itself: PASS
+	The source of the request from store => store.delete(0) is the object store itself: PASS
+	The source of the request from store => store.get(0) is the object store itself: PASS
+	The source of the request from store => store.getAll() is the object store itself: PASS
+	The source of the request from store => store.getAllKeys() is the object store itself: PASS
+	The source of the request from store => store.getKey(0) is the object store itself: PASS
+	The source of the request from store => store.openCursor() is the object store itself: PASS
+	The source of the request from store => store.openKeyCursor() is the object store itself: PASS
+	The source of the request from store => store.put(0) is the object store itself: PASS
+/IndexedDB/idbobjectstore-request-source.any.worker.html: OK
+	The source of the request from store => store.add(0) is the object store itself: FAIL
+	The source of the request from store => store.clear() is the object store itself: FAIL
+	The source of the request from store => store.count() is the object store itself: FAIL
+	The source of the request from store => store.delete(0) is the object store itself: FAIL
+	The source of the request from store => store.get(0) is the object store itself: FAIL
+	The source of the request from store => store.getAll() is the object store itself: FAIL
+	The source of the request from store => store.getAllKeys() is the object store itself: FAIL
+	The source of the request from store => store.getKey(0) is the object store itself: FAIL
+	The source of the request from store => store.openCursor() is the object store itself: FAIL
+	The source of the request from store => store.openKeyCursor() is the object store itself: FAIL
+	The source of the request from store => store.put(0) is the object store itself: FAIL
+/IndexedDB/idbobjectstore-transaction-SameObject.any.html: OK
+	IDBObjectStore.transaction [SameObject]: PASS
+/IndexedDB/idbobjectstore-transaction-SameObject.any.worker.html: OK
+	IDBObjectStore.transaction [SameObject]: FAIL
+/IndexedDB/idbobjectstore_add.any.html: OK
+	Attempt to 'add()' a record that does not meet the constraints of an   object store's inline key requirements: PASS
+	Attempt to 'add()' a record where the out of line key provided does not meet the constraints of a valid key: PASS
+	Attempt to 'add()' a record where the record's in-line key is not  defined: PASS
+	Attempt to 'add()' a record where the record's key does not meet the constraints of a valid key: PASS
+	Attempt to call 'add()' without a key parameter when the object store uses out-of-line keys: PASS
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: PASS
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: PASS
+	Object store has autoIncrement:true and the key path is an object attribute: PASS
+	add() a record where a value being indexed does not meet the constraints of a valid key: PASS
+	add() autoIncrement and inline keys: PASS
+	add() autoIncrement and out-of-line keys: PASS
+	add() object store's key path is an object attribute: PASS
+	add() record with same key already exists: PASS
+	add() where an index has unique:true specified: PASS
+	add() with an inline key: PASS
+	add() with an out-of-line key: PASS
+/IndexedDB/idbobjectstore_add.any.worker.html: OK
+	Attempt to 'add()' a record that does not meet the constraints of an   object store's inline key requirements: FAIL
+	Attempt to 'add()' a record where the out of line key provided does not meet the constraints of a valid key: FAIL
+	Attempt to 'add()' a record where the record's in-line key is not  defined: FAIL
+	Attempt to 'add()' a record where the record's key does not meet the constraints of a valid key: FAIL
+	Attempt to call 'add()' without a key parameter when the object store uses out-of-line keys: FAIL
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: FAIL
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: FAIL
+	Object store has autoIncrement:true and the key path is an object attribute: FAIL
+	add() a record where a value being indexed does not meet the constraints of a valid key: FAIL
+	add() autoIncrement and inline keys: FAIL
+	add() autoIncrement and out-of-line keys: FAIL
+	add() object store's key path is an object attribute: FAIL
+	add() record with same key already exists: FAIL
+	add() where an index has unique:true specified: FAIL
+	add() with an inline key: FAIL
+	add() with an out-of-line key: FAIL
+/IndexedDB/idbobjectstore_clear.any.html: OK
+	Clear removes all records from an index : PASS
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError : PASS
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError : PASS
+	Verify clear removes all records : PASS
+/IndexedDB/idbobjectstore_clear.any.worker.html: OK
+	Clear removes all records from an index : FAIL
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError : FAIL
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError : FAIL
+	Verify clear removes all records : FAIL
+/IndexedDB/idbobjectstore_count.any.html: OK
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError : PASS
+	Returns the number of records in the object store : PASS
+	Returns the number of records that have keys with the key: PASS
+	Returns the number of records that have keys within the range : PASS
+/IndexedDB/idbobjectstore_count.any.worker.html: OK
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError : FAIL
+	Returns the number of records in the object store : FAIL
+	Returns the number of records that have keys with the key: FAIL
+	Returns the number of records that have keys within the range : FAIL
+/IndexedDB/idbobjectstore_createIndex.any.html: OK
+	Attempt to create an index that requires unique values on an object store already contains duplicates: PASS
+	Auto-Increment Primary Key: PASS
+	Auto-Increment Primary Key - invalid key values elsewhere: PASS
+	Check index names need only be unique if they are in the same object store: PASS
+	ConstraintError vs. SyntaxError. Index name check should precede syntax check of the key path: PASS
+	Empty keyPath: PASS
+	Event order when unique constraint is triggered: PASS
+	Event ordering for ConstraintError on request: PASS
+	Event ordering for a later deleted index: PASS
+	Explicit Primary Key: PASS
+	IDBObjectStore.createIndex() - empty name: PASS
+	If an index with the name name already exists in this object store, the implementation must throw a DOMException of type ConstraintError: PASS
+	If keyPath is not a valid key path, the implementation must throw a DOMException of type SyntaxError: PASS
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: PASS
+	Index can be valid keys: PASS
+	InvalidStateError(Deleted ObjectStore) vs. TransactionInactiveError. Deletion check should precede transaction-state check.: PASS
+	InvalidStateError(Incorrect mode) vs. TransactionInactiveError. Mode check should precede state check of the transaction.: PASS
+	Operate out versionchange throw InvalidStateError: PASS
+	Returns an IDBIndex and the properties are set correctly: PASS
+	SyntaxError vs. InvalidAccessError. Syntax check should precede multiEntry check of the key path.: PASS
+	The index is usable right after being made: PASS
+	TransactionInactiveError vs. ConstraintError. Transaction-state check should precede index name check.: PASS
+/IndexedDB/idbobjectstore_createIndex.any.worker.html: OK
+	Attempt to create an index that requires unique values on an object store already contains duplicates: FAIL
+	Auto-Increment Primary Key: FAIL
+	Auto-Increment Primary Key - invalid key values elsewhere: FAIL
+	Check index names need only be unique if they are in the same object store: FAIL
+	ConstraintError vs. SyntaxError. Index name check should precede syntax check of the key path: FAIL
+	Empty keyPath: FAIL
+	Event order when unique constraint is triggered: FAIL
+	Event ordering for ConstraintError on request: FAIL
+	Event ordering for a later deleted index: FAIL
+	Explicit Primary Key: FAIL
+	IDBObjectStore.createIndex() - empty name: FAIL
+	If an index with the name name already exists in this object store, the implementation must throw a DOMException of type ConstraintError: FAIL
+	If keyPath is not a valid key path, the implementation must throw a DOMException of type SyntaxError: FAIL
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: FAIL
+	Index can be valid keys: FAIL
+	InvalidStateError(Deleted ObjectStore) vs. TransactionInactiveError. Deletion check should precede transaction-state check.: FAIL
+	InvalidStateError(Incorrect mode) vs. TransactionInactiveError. Mode check should precede state check of the transaction.: FAIL
+	Operate out versionchange throw InvalidStateError: FAIL
+	Returns an IDBIndex and the properties are set correctly: FAIL
+	SyntaxError vs. InvalidAccessError. Syntax check should precede multiEntry check of the key path.: FAIL
+	The index is usable right after being made: FAIL
+	TransactionInactiveError vs. ConstraintError. Transaction-state check should precede index name check.: FAIL
+/IndexedDB/idbobjectstore_delete.any.html: OK
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: PASS
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: PASS
+	Object store's key path is an object attribute: PASS
+	delete() key doesn't match any records: PASS
+	delete() removes all of the records in the range: PASS
+	delete() removes record (inline keys): PASS
+	delete() removes record (out-of-line keys): PASS
+/IndexedDB/idbobjectstore_delete.any.worker.html: OK
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: FAIL
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: FAIL
+	Object store's key path is an object attribute: FAIL
+	delete() key doesn't match any records: FAIL
+	delete() removes all of the records in the range: FAIL
+	delete() removes record (inline keys): FAIL
+	delete() removes record (out-of-line keys): FAIL
+/IndexedDB/idbobjectstore_deleteIndex.any.html: OK
+	IDBObjectStore.deleteIndex() removes the index: PASS
+/IndexedDB/idbobjectstore_deleteIndex.any.worker.html: OK
+	IDBObjectStore.deleteIndex() removes the index: FAIL
+/IndexedDB/idbobjectstore_get.any.html: OK
+	Attempts to retrieve a record that doesn't exist: PASS
+	Key is a date: PASS
+	Key is a number: PASS
+	Key is a string: PASS
+	Returns the record with the first key in the range: PASS
+	When a transaction is aborted, throw TransactionInactiveError: PASS
+	When an invalid key is used, throw DataError: PASS
+/IndexedDB/idbobjectstore_get.any.worker.html: OK
+	Attempts to retrieve a record that doesn't exist: FAIL
+	Key is a date: FAIL
+	Key is a number: FAIL
+	Key is a string: FAIL
+	Returns the record with the first key in the range: FAIL
+	When a transaction is aborted, throw TransactionInactiveError: FAIL
+	When an invalid key is used, throw DataError: FAIL
+/IndexedDB/idbobjectstore_getAll-options.any.html: OK
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Get all values: PASS
+	Get all values with both options and count: PASS
+	Get all values with invalid query keys: PASS
+	Get all with large values: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Single item get: PASS
+	Single item get (generated key): PASS
+	Test maxCount: PASS
+	getAll on empty object store: PASS
+	zero maxCount: PASS
+/IndexedDB/idbobjectstore_getAll-options.any.worker.html: ERROR
+	Get all values: FAIL
+	Get all with large values: FAIL
+	Single item get: FAIL
+	Single item get (generated key): FAIL
+	Test maxCount: FAIL
+	getAll on empty object store: FAIL
+/IndexedDB/idbobjectstore_getAll.any.html: OK
+	Get all values: PASS
+	Get all values with invalid query keys: PASS
+	Get all values with transaction.commit(): PASS
+	Get all with large values: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Single item get: PASS
+	Single item get (generated key): PASS
+	Test maxCount: PASS
+	getAll on empty object store: PASS
+	zero maxCount: PASS
+/IndexedDB/idbobjectstore_getAll.any.worker.html: ERROR
+	Get all values: FAIL
+	Get all with large values: FAIL
+	Single item get: FAIL
+	Single item get (generated key): FAIL
+	Test maxCount: FAIL
+	getAll on empty object store: FAIL
+/IndexedDB/idbobjectstore_getAllKeys-options.any.html: OK
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Get all keys: PASS
+	Get all keys with both options and count: PASS
+	Get all keys with invalid query keys: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Single item get: PASS
+	Single item get (generated key): PASS
+	Test maxCount: PASS
+	getAllKeys on empty object store: PASS
+	zero maxCount: PASS
+/IndexedDB/idbobjectstore_getAllKeys-options.any.worker.html: ERROR
+	Get all keys: FAIL
+	Single item get: FAIL
+	Single item get (generated key): FAIL
+	Test maxCount: FAIL
+	getAllKeys on empty object store: FAIL
+/IndexedDB/idbobjectstore_getAllKeys.any.html: OK
+	Get all keys: PASS
+	Get all keys with invalid query keys: PASS
+	Get bound range: PASS
+	Get bound range (generated) with maxCount: PASS
+	Get bound range with maxCount: PASS
+	Get lower excluded: PASS
+	Get upper excluded: PASS
+	Max value count: PASS
+	Non existent key: PASS
+	Query with empty range where  first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Single item get: PASS
+	Single item get (generated key): PASS
+	Test maxCount: PASS
+	getAllKeys on empty object store: PASS
+	zero maxCount: PASS
+/IndexedDB/idbobjectstore_getAllKeys.any.worker.html: ERROR
+	Get all keys: FAIL
+	Single item get: FAIL
+	Single item get (generated key): FAIL
+	Test maxCount: FAIL
+	getAllKeys on empty object store: FAIL
+/IndexedDB/idbobjectstore_getAllRecords.any.html: OK
+	Count: PASS
+	Direction and query: PASS
+	Direction, query and count: PASS
+	Direction: next: PASS
+	Direction: nextunique: PASS
+	Direction: prev: PASS
+	Direction: prevunique: PASS
+	Empty object store: PASS
+	Get all records: PASS
+	Get all records with empty options: PASS
+	Get all records with invalid query keys: PASS
+	Get all records with large values: PASS
+	Get all records with transaction.commit(): PASS
+	Max value count: PASS
+	Query with bound range: PASS
+	Query with bound range and count: PASS
+	Query with bound range and count for generated keys: PASS
+	Query with empty range where first key < upperBound: PASS
+	Query with empty range where lowerBound < last key: PASS
+	Query with lower excluded bound range: PASS
+	Query with nonexistent key: PASS
+	Query with upper excluded bound range: PASS
+	Single item: PASS
+	Single item with generated key: PASS
+	Zero count: PASS
+/IndexedDB/idbobjectstore_getAllRecords.any.worker.html: ERROR
+	Count: FAIL
+	Empty object store: FAIL
+	Get all records: FAIL
+	Get all records with empty options: FAIL
+	Get all records with large values: FAIL
+	Single item: FAIL
+	Single item with generated key: FAIL
+/IndexedDB/idbobjectstore_getKey.any.html: OK
+	IDBObjectStore.getKey() - basic - key: PASS
+	IDBObjectStore.getKey() - basic - key - no match: PASS
+	IDBObjectStore.getKey() - basic - range: PASS
+	IDBObjectStore.getKey() - basic - range - no match: PASS
+	IDBObjectStore.getKey() - invalid parameters: PASS
+	IDBObjectStore.getKey() - key generator - key: PASS
+	IDBObjectStore.getKey() - key generator - key - no match: PASS
+	IDBObjectStore.getKey() - key generator - range: PASS
+	IDBObjectStore.getKey() - key generator - range - no match: PASS
+	IDBObjectStore.getKey() - key generator and key path - key: PASS
+	IDBObjectStore.getKey() - key generator and key path - key - no match: PASS
+	IDBObjectStore.getKey() - key generator and key path - range: PASS
+	IDBObjectStore.getKey() - key generator and key path - range - no match: PASS
+	IDBObjectStore.getKey() - key path - key: PASS
+	IDBObjectStore.getKey() - key path - key - no match: PASS
+	IDBObjectStore.getKey() - key path - range: PASS
+	IDBObjectStore.getKey() - key path - range - no match: PASS
+/IndexedDB/idbobjectstore_getKey.any.worker.html: OK
+	IDBObjectStore.getKey() - basic - key: FAIL
+	IDBObjectStore.getKey() - basic - key - no match: FAIL
+	IDBObjectStore.getKey() - basic - range: FAIL
+	IDBObjectStore.getKey() - basic - range - no match: FAIL
+	IDBObjectStore.getKey() - invalid parameters: FAIL
+	IDBObjectStore.getKey() - key generator - key: FAIL
+	IDBObjectStore.getKey() - key generator - key - no match: FAIL
+	IDBObjectStore.getKey() - key generator - range: FAIL
+	IDBObjectStore.getKey() - key generator - range - no match: FAIL
+	IDBObjectStore.getKey() - key generator and key path - key: FAIL
+	IDBObjectStore.getKey() - key generator and key path - key - no match: FAIL
+	IDBObjectStore.getKey() - key generator and key path - range: FAIL
+	IDBObjectStore.getKey() - key generator and key path - range - no match: FAIL
+	IDBObjectStore.getKey() - key path - key: FAIL
+	IDBObjectStore.getKey() - key path - key - no match: FAIL
+	IDBObjectStore.getKey() - key path - range: FAIL
+	IDBObjectStore.getKey() - key path - range - no match: FAIL
+/IndexedDB/idbobjectstore_index.any.html: OK
+	IDBObjectStore.index() - returns an index: PASS
+/IndexedDB/idbobjectstore_index.any.worker.html: OK
+	idbobjectstore_index: FAIL
+/IndexedDB/idbobjectstore_keyPath.any.html: OK
+	IDBObjectStore's keyPath attribute returns the same object.: PASS
+/IndexedDB/idbobjectstore_keyPath.any.worker.html: OK
+	IDBObjectStore's keyPath attribute returns the same object.: FAIL
+/IndexedDB/idbobjectstore_openCursor.any.html: OK
+	IDBObjectStore.openCursor() - iterate through 100 objects: PASS
+/IndexedDB/idbobjectstore_openCursor.any.worker.html: OK
+	idbobjectstore_openCursor: FAIL
+/IndexedDB/idbobjectstore_openCursor_invalid.any.html: OK
+	IDBObjectStore.openCursor() - invalid - pass something other than number: PASS
+/IndexedDB/idbobjectstore_openCursor_invalid.any.worker.html: OK
+	IDBObjectStore.openCursor() - invalid - pass something other than number: FAIL
+/IndexedDB/idbobjectstore_openKeyCursor.any.html: OK
+	IDBObjectStore.openKeyCursor() - forward iteration: PASS
+	IDBObjectStore.openKeyCursor() - forward iteration with range: PASS
+	IDBObjectStore.openKeyCursor() - invalid inputs: PASS
+	IDBObjectStore.openKeyCursor() - reverse iteration: PASS
+	IDBObjectStore.openKeyCursor() - reverse iteration with range: PASS
+/IndexedDB/idbobjectstore_openKeyCursor.any.worker.html: OK
+	IDBObjectStore.openKeyCursor() - forward iteration: FAIL
+	IDBObjectStore.openKeyCursor() - forward iteration with range: FAIL
+	IDBObjectStore.openKeyCursor() - invalid inputs: FAIL
+	IDBObjectStore.openKeyCursor() - reverse iteration: FAIL
+	IDBObjectStore.openKeyCursor() - reverse iteration with range: FAIL
+/IndexedDB/idbobjectstore_put.any.html: OK
+	Attempt to call put() without an key parameter when the object store uses out-of-line keys: PASS
+	Attempt to put() a record that does not meet the constraints of an object store's inline key requirements: PASS
+	Attempt to put() a record where the out of line key provided does not meet the constraints of a valid key: PASS
+	Attempt to put() a record where the record's in-line key is not defined: PASS
+	Attempt to put() a record where the record's key does not meet the constraints of a valid key: PASS
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: PASS
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: PASS
+	Object store has autoIncrement:true and the key path is an object attribute: PASS
+	Object store's key path is an object attribute: PASS
+	autoIncrement and inline keys: PASS
+	autoIncrement and out-of-line keys: PASS
+	put() a record where a value being indexed does not meet the constraints of a valid key: PASS
+	put() record with key already exists: PASS
+	put() where an index has unique:true specified: PASS
+	put() with an inline key: PASS
+	put() with an out-of-line key: PASS
+/IndexedDB/idbobjectstore_put.any.worker.html: OK
+	Attempt to call put() without an key parameter when the object store uses out-of-line keys: FAIL
+	Attempt to put() a record that does not meet the constraints of an object store's inline key requirements: FAIL
+	Attempt to put() a record where the out of line key provided does not meet the constraints of a valid key: FAIL
+	Attempt to put() a record where the record's in-line key is not defined: FAIL
+	Attempt to put() a record where the record's key does not meet the constraints of a valid key: FAIL
+	If the object store has been deleted, the implementation must throw a DOMException of type InvalidStateError: FAIL
+	If the transaction this IDBObjectStore belongs to has its mode set to readonly, throw ReadOnlyError: FAIL
+	Object store has autoIncrement:true and the key path is an object attribute: FAIL
+	Object store's key path is an object attribute: FAIL
+	autoIncrement and inline keys: FAIL
+	autoIncrement and out-of-line keys: FAIL
+	put() a record where a value being indexed does not meet the constraints of a valid key: FAIL
+	put() record with key already exists: FAIL
+	put() where an index has unique:true specified: FAIL
+	put() with an inline key: FAIL
+	put() with an out-of-line key: FAIL
+/IndexedDB/idbrequest-onupgradeneeded.any.html: OK
+	Abort transaction after deleting database in upgradeneeded event handler: PASS
+	Abort transaction before deleting database in upgradeneeded handler: PASS
+	indexedDB.delete called from upgradeneeded handler: PASS
+	transaction oncomplete ordering relative to open request onsuccess: PASS
+/IndexedDB/idbrequest-onupgradeneeded.any.worker.html: OK
+	Abort transaction after deleting database in upgradeneeded event handler: FAIL
+	Abort transaction before deleting database in upgradeneeded handler: FAIL
+	indexedDB.delete called from upgradeneeded handler: FAIL
+	transaction oncomplete ordering relative to open request onsuccess: FAIL
+/IndexedDB/idbrequest_error.any.html: OK
+	IDBRequest.error throws if ready state is pending: PASS
+/IndexedDB/idbrequest_error.any.worker.html: OK
+	IDBRequest.error throws if ready state is pending: FAIL
+/IndexedDB/idbrequest_result.any.html: OK
+	IDBRequest.result throws if ready state is pending: PASS
+/IndexedDB/idbrequest_result.any.worker.html: OK
+	IDBRequest.result throws if ready state is pending: FAIL
+/IndexedDB/idbtransaction-db-SameObject.any.html: OK
+	IDBTransaction.db [SameObject]: PASS
+/IndexedDB/idbtransaction-db-SameObject.any.worker.html: OK
+	IDBTransaction.db [SameObject]: FAIL
+/IndexedDB/idbtransaction-objectStore-exception-order.any.html: OK
+	IDBTransaction.objectStore exception order: InvalidStateError vs. NotFoundError: PASS
+/IndexedDB/idbtransaction-objectStore-exception-order.any.worker.html: OK
+	IDBTransaction.objectStore exception order: InvalidStateError vs. NotFoundError: FAIL
+/IndexedDB/idbtransaction-objectStore-finished.any.html: OK
+	IDBTransaction objectStore() behavior when transaction is finished: PASS
+/IndexedDB/idbtransaction-objectStore-finished.any.worker.html: OK
+	IDBTransaction objectStore() behavior when transaction is finished: FAIL
+/IndexedDB/idbtransaction-oncomplete.any.html: OK
+	IDBTransaction - complete event: PASS
+/IndexedDB/idbtransaction-oncomplete.any.worker.html: OK
+	idbtransaction-oncomplete: FAIL
+/IndexedDB/idbtransaction.any.html: OK
+	IDBTransaction - request gotten by the handler: PASS
+	IDBTransaction - request returned by open(): PASS
+/IndexedDB/idbtransaction.any.worker.html: OK
+	IDBTransaction - request gotten by the handler: FAIL
+	IDBTransaction - request returned by open(): FAIL
+/IndexedDB/idbtransaction_abort.any.html: OK
+	Abort during auto-committing should throw InvalidStateError.: PASS
+	Abort event should fire during transaction: PASS
+	Abort on completed transaction should throw InvalidStateError.: PASS
+/IndexedDB/idbtransaction_abort.any.worker.html: OK
+	Abort during auto-committing should throw InvalidStateError.: FAIL
+	Abort event should fire during transaction: FAIL
+	Abort on completed transaction should throw InvalidStateError.: FAIL
+/IndexedDB/idbtransaction_objectStoreNames.any.html: OK
+	IDBTransaction.objectStoreNames - during upgrade transaction: PASS
+	IDBTransaction.objectStoreNames - no duplicates: PASS
+	IDBTransaction.objectStoreNames - sorting: PASS
+	IDBTransaction.objectStoreNames - transaction scope: PASS
+	IDBTransaction.objectStoreNames - unusual names: PASS
+	IDBTransaction.objectStoreNames - value after abort: PASS
+	IDBTransaction.objectStoreNames - value after close: PASS
+	IDBTransaction.objectStoreNames - value after commit: PASS
+/IndexedDB/idbtransaction_objectStoreNames.any.worker.html: OK
+	IDBTransaction.objectStoreNames - during upgrade transaction: FAIL
+	IDBTransaction.objectStoreNames - no duplicates: FAIL
+	IDBTransaction.objectStoreNames - sorting: FAIL
+	IDBTransaction.objectStoreNames - transaction scope: FAIL
+	IDBTransaction.objectStoreNames - unusual names: FAIL
+	IDBTransaction.objectStoreNames - value after abort: FAIL
+	IDBTransaction.objectStoreNames - value after close: FAIL
+	IDBTransaction.objectStoreNames - value after commit: FAIL
+/IndexedDB/idbversionchangeevent.any.html: OK
+	IDBVersionChangeEvent fired in upgradeneeded, versionchange and deleteDatabase: PASS
+/IndexedDB/idbversionchangeevent.any.worker.html: OK
+	IDBVersionChangeEvent fired in upgradeneeded, versionchange and deleteDatabase: FAIL
+/IndexedDB/idlharness.any.html: OK
+	IDBCursor interface object length: PASS
+	IDBCursor interface object name: PASS
+	IDBCursor interface: attribute direction: PASS
+	IDBCursor interface: attribute key: PASS
+	IDBCursor interface: attribute primaryKey: PASS
+	IDBCursor interface: attribute request: PASS
+	IDBCursor interface: attribute source: PASS
+	IDBCursor interface: existence and properties of interface object: PASS
+	IDBCursor interface: existence and properties of interface prototype object: PASS
+	IDBCursor interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBCursor interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBCursor interface: operation advance(unsigned long): PASS
+	IDBCursor interface: operation continue(optional any): PASS
+	IDBCursor interface: operation continuePrimaryKey(any, any): PASS
+	IDBCursor interface: operation delete(): PASS
+	IDBCursor interface: operation update(any): PASS
+	IDBCursorWithValue interface object length: PASS
+	IDBCursorWithValue interface object name: PASS
+	IDBCursorWithValue interface: attribute value: PASS
+	IDBCursorWithValue interface: existence and properties of interface object: PASS
+	IDBCursorWithValue interface: existence and properties of interface prototype object: PASS
+	IDBCursorWithValue interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBCursorWithValue interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBDatabase interface object length: PASS
+	IDBDatabase interface object name: PASS
+	IDBDatabase interface: attribute name: PASS
+	IDBDatabase interface: attribute objectStoreNames: PASS
+	IDBDatabase interface: attribute onabort: PASS
+	IDBDatabase interface: attribute onclose: PASS
+	IDBDatabase interface: attribute onerror: PASS
+	IDBDatabase interface: attribute onversionchange: PASS
+	IDBDatabase interface: attribute version: PASS
+	IDBDatabase interface: existence and properties of interface object: PASS
+	IDBDatabase interface: existence and properties of interface prototype object: PASS
+	IDBDatabase interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBDatabase interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBDatabase interface: operation close(): PASS
+	IDBDatabase interface: operation createObjectStore(DOMString, optional IDBObjectStoreParameters): PASS
+	IDBDatabase interface: operation deleteObjectStore(DOMString): PASS
+	IDBDatabase interface: operation transaction((DOMString or sequence<DOMString>), optional IDBTransactionMode, optional IDBTransactionOptions): PASS
+	IDBFactory interface object length: PASS
+	IDBFactory interface object name: PASS
+	IDBFactory interface: [object IDBFactory] must inherit property "cmp(any, any)" with the proper type: PASS
+	IDBFactory interface: [object IDBFactory] must inherit property "databases()" with the proper type: PASS
+	IDBFactory interface: [object IDBFactory] must inherit property "deleteDatabase(DOMString)" with the proper type: PASS
+	IDBFactory interface: [object IDBFactory] must inherit property "open(DOMString, optional unsigned long long)" with the proper type: PASS
+	IDBFactory interface: calling cmp(any, any) on [object IDBFactory] with too few arguments must throw TypeError: PASS
+	IDBFactory interface: calling deleteDatabase(DOMString) on [object IDBFactory] with too few arguments must throw TypeError: PASS
+	IDBFactory interface: calling open(DOMString, optional unsigned long long) on [object IDBFactory] with too few arguments must throw TypeError: PASS
+	IDBFactory interface: existence and properties of interface object: PASS
+	IDBFactory interface: existence and properties of interface prototype object: PASS
+	IDBFactory interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBFactory interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBFactory interface: operation cmp(any, any): PASS
+	IDBFactory interface: operation databases(): PASS
+	IDBFactory interface: operation deleteDatabase(DOMString): PASS
+	IDBFactory interface: operation open(DOMString, optional unsigned long long): PASS
+	IDBFactory must be primary interface of [object IDBFactory]: PASS
+	IDBIndex interface object length: PASS
+	IDBIndex interface object name: PASS
+	IDBIndex interface: attribute keyPath: PASS
+	IDBIndex interface: attribute multiEntry: PASS
+	IDBIndex interface: attribute name: PASS
+	IDBIndex interface: attribute objectStore: PASS
+	IDBIndex interface: attribute unique: PASS
+	IDBIndex interface: existence and properties of interface object: PASS
+	IDBIndex interface: existence and properties of interface prototype object: PASS
+	IDBIndex interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBIndex interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBIndex interface: operation count(optional any): PASS
+	IDBIndex interface: operation get(any): PASS
+	IDBIndex interface: operation getAll(optional any, optional unsigned long): PASS
+	IDBIndex interface: operation getAllKeys(optional any, optional unsigned long): PASS
+	IDBIndex interface: operation getAllRecords(optional IDBGetAllOptions): PASS
+	IDBIndex interface: operation getKey(any): PASS
+	IDBIndex interface: operation openCursor(optional any, optional IDBCursorDirection): PASS
+	IDBIndex interface: operation openKeyCursor(optional any, optional IDBCursorDirection): PASS
+	IDBKeyRange interface object length: PASS
+	IDBKeyRange interface object name: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "bound(any, any, optional boolean, optional boolean)" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "includes(any)" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "lower" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "lowerBound(any, optional boolean)" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "lowerOpen" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "only(any)" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "upper" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "upperBound(any, optional boolean)" with the proper type: PASS
+	IDBKeyRange interface: [object IDBKeyRange] must inherit property "upperOpen" with the proper type: PASS
+	IDBKeyRange interface: attribute lower: PASS
+	IDBKeyRange interface: attribute lowerOpen: PASS
+	IDBKeyRange interface: attribute upper: PASS
+	IDBKeyRange interface: attribute upperOpen: PASS
+	IDBKeyRange interface: calling bound(any, any, optional boolean, optional boolean) on [object IDBKeyRange] with too few arguments must throw TypeError: PASS
+	IDBKeyRange interface: calling includes(any) on [object IDBKeyRange] with too few arguments must throw TypeError: PASS
+	IDBKeyRange interface: calling lowerBound(any, optional boolean) on [object IDBKeyRange] with too few arguments must throw TypeError: PASS
+	IDBKeyRange interface: calling only(any) on [object IDBKeyRange] with too few arguments must throw TypeError: PASS
+	IDBKeyRange interface: calling upperBound(any, optional boolean) on [object IDBKeyRange] with too few arguments must throw TypeError: PASS
+	IDBKeyRange interface: existence and properties of interface object: PASS
+	IDBKeyRange interface: existence and properties of interface prototype object: PASS
+	IDBKeyRange interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBKeyRange interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBKeyRange interface: operation bound(any, any, optional boolean, optional boolean): PASS
+	IDBKeyRange interface: operation includes(any): PASS
+	IDBKeyRange interface: operation lowerBound(any, optional boolean): PASS
+	IDBKeyRange interface: operation only(any): PASS
+	IDBKeyRange interface: operation upperBound(any, optional boolean): PASS
+	IDBKeyRange must be primary interface of [object IDBKeyRange]: PASS
+	IDBObjectStore interface object length: PASS
+	IDBObjectStore interface object name: PASS
+	IDBObjectStore interface: attribute autoIncrement: PASS
+	IDBObjectStore interface: attribute indexNames: PASS
+	IDBObjectStore interface: attribute keyPath: PASS
+	IDBObjectStore interface: attribute name: PASS
+	IDBObjectStore interface: attribute transaction: PASS
+	IDBObjectStore interface: existence and properties of interface object: PASS
+	IDBObjectStore interface: existence and properties of interface prototype object: PASS
+	IDBObjectStore interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBObjectStore interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBObjectStore interface: operation add(any, optional any): PASS
+	IDBObjectStore interface: operation clear(): PASS
+	IDBObjectStore interface: operation count(optional any): PASS
+	IDBObjectStore interface: operation createIndex(DOMString, (DOMString or sequence<DOMString>), optional IDBIndexParameters): PASS
+	IDBObjectStore interface: operation delete(any): PASS
+	IDBObjectStore interface: operation deleteIndex(DOMString): PASS
+	IDBObjectStore interface: operation get(any): PASS
+	IDBObjectStore interface: operation getAll(optional any, optional unsigned long): PASS
+	IDBObjectStore interface: operation getAllKeys(optional any, optional unsigned long): PASS
+	IDBObjectStore interface: operation getAllRecords(optional IDBGetAllOptions): PASS
+	IDBObjectStore interface: operation getKey(any): PASS
+	IDBObjectStore interface: operation index(DOMString): PASS
+	IDBObjectStore interface: operation openCursor(optional any, optional IDBCursorDirection): PASS
+	IDBObjectStore interface: operation openKeyCursor(optional any, optional IDBCursorDirection): PASS
+	IDBObjectStore interface: operation put(any, optional any): PASS
+	IDBOpenDBRequest interface object length: PASS
+	IDBOpenDBRequest interface object name: PASS
+	IDBOpenDBRequest interface: attribute onblocked: PASS
+	IDBOpenDBRequest interface: attribute onupgradeneeded: PASS
+	IDBOpenDBRequest interface: existence and properties of interface object: PASS
+	IDBOpenDBRequest interface: existence and properties of interface prototype object: PASS
+	IDBOpenDBRequest interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBOpenDBRequest interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBRecord interface object length: PASS
+	IDBRecord interface object name: PASS
+	IDBRecord interface: attribute key: PASS
+	IDBRecord interface: attribute primaryKey: PASS
+	IDBRecord interface: attribute value: PASS
+	IDBRecord interface: existence and properties of interface object: PASS
+	IDBRecord interface: existence and properties of interface prototype object: PASS
+	IDBRecord interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBRecord interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBRequest interface object length: PASS
+	IDBRequest interface object name: PASS
+	IDBRequest interface: attribute error: PASS
+	IDBRequest interface: attribute onerror: PASS
+	IDBRequest interface: attribute onsuccess: PASS
+	IDBRequest interface: attribute readyState: PASS
+	IDBRequest interface: attribute result: PASS
+	IDBRequest interface: attribute source: PASS
+	IDBRequest interface: attribute transaction: PASS
+	IDBRequest interface: existence and properties of interface object: PASS
+	IDBRequest interface: existence and properties of interface prototype object: PASS
+	IDBRequest interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBRequest interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBTransaction interface object length: PASS
+	IDBTransaction interface object name: PASS
+	IDBTransaction interface: attribute db: PASS
+	IDBTransaction interface: attribute durability: PASS
+	IDBTransaction interface: attribute error: PASS
+	IDBTransaction interface: attribute mode: PASS
+	IDBTransaction interface: attribute objectStoreNames: PASS
+	IDBTransaction interface: attribute onabort: PASS
+	IDBTransaction interface: attribute oncomplete: PASS
+	IDBTransaction interface: attribute onerror: PASS
+	IDBTransaction interface: existence and properties of interface object: PASS
+	IDBTransaction interface: existence and properties of interface prototype object: PASS
+	IDBTransaction interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBTransaction interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBTransaction interface: operation abort(): PASS
+	IDBTransaction interface: operation commit(): PASS
+	IDBTransaction interface: operation objectStore(DOMString): PASS
+	IDBVersionChangeEvent interface object length: PASS
+	IDBVersionChangeEvent interface object name: PASS
+	IDBVersionChangeEvent interface: attribute newVersion: PASS
+	IDBVersionChangeEvent interface: attribute oldVersion: PASS
+	IDBVersionChangeEvent interface: existence and properties of interface object: PASS
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object: PASS
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	IDBVersionChangeEvent interface: new IDBVersionChangeEvent("type") must inherit property "newVersion" with the proper type: PASS
+	IDBVersionChangeEvent interface: new IDBVersionChangeEvent("type") must inherit property "oldVersion" with the proper type: PASS
+	IDBVersionChangeEvent must be primary interface of new IDBVersionChangeEvent("type"): PASS
+	Partial interface Window: member names are unique: PASS
+	Partial interface mixin WindowOrWorkerGlobalScope: member names are unique: PASS
+	Partial interface mixin WindowOrWorkerGlobalScope: original interface mixin defined: PASS
+	Stringification of [object IDBFactory]: PASS
+	Stringification of [object IDBKeyRange]: PASS
+	Stringification of new IDBVersionChangeEvent("type"): PASS
+	Window includes AnimationFrameProvider: member names are unique: PASS
+	Window includes GlobalEventHandlers: member names are unique: PASS
+	Window includes WindowEventHandlers: member names are unique: PASS
+	Window includes WindowLocalStorage: member names are unique: PASS
+	Window includes WindowOrWorkerGlobalScope: member names are unique: PASS
+	Window includes WindowSessionStorage: member names are unique: PASS
+	Window interface: attribute indexedDB: PASS
+	WorkerGlobalScope includes WindowOrWorkerGlobalScope: member names are unique: PASS
+	idl_test setup: PASS
+	idl_test validation: PASS
+/IndexedDB/idlharness.any.worker.html: OK
+	IDBCursor interface object length: FAIL
+	IDBCursor interface object name: FAIL
+	IDBCursor interface: attribute direction: FAIL
+	IDBCursor interface: attribute key: FAIL
+	IDBCursor interface: attribute primaryKey: FAIL
+	IDBCursor interface: attribute request: FAIL
+	IDBCursor interface: attribute source: FAIL
+	IDBCursor interface: existence and properties of interface object: FAIL
+	IDBCursor interface: existence and properties of interface prototype object: FAIL
+	IDBCursor interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBCursor interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBCursor interface: operation advance(unsigned long): FAIL
+	IDBCursor interface: operation continue(optional any): FAIL
+	IDBCursor interface: operation continuePrimaryKey(any, any): FAIL
+	IDBCursor interface: operation delete(): FAIL
+	IDBCursor interface: operation update(any): FAIL
+	IDBCursorWithValue interface object length: FAIL
+	IDBCursorWithValue interface object name: FAIL
+	IDBCursorWithValue interface: attribute value: FAIL
+	IDBCursorWithValue interface: existence and properties of interface object: FAIL
+	IDBCursorWithValue interface: existence and properties of interface prototype object: FAIL
+	IDBCursorWithValue interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBCursorWithValue interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBDatabase interface object length: FAIL
+	IDBDatabase interface object name: FAIL
+	IDBDatabase interface: attribute name: FAIL
+	IDBDatabase interface: attribute objectStoreNames: FAIL
+	IDBDatabase interface: attribute onabort: FAIL
+	IDBDatabase interface: attribute onclose: FAIL
+	IDBDatabase interface: attribute onerror: FAIL
+	IDBDatabase interface: attribute onversionchange: FAIL
+	IDBDatabase interface: attribute version: FAIL
+	IDBDatabase interface: existence and properties of interface object: FAIL
+	IDBDatabase interface: existence and properties of interface prototype object: FAIL
+	IDBDatabase interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBDatabase interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBDatabase interface: operation close(): FAIL
+	IDBDatabase interface: operation createObjectStore(DOMString, optional IDBObjectStoreParameters): FAIL
+	IDBDatabase interface: operation deleteObjectStore(DOMString): FAIL
+	IDBDatabase interface: operation transaction((DOMString or sequence<DOMString>), optional IDBTransactionMode, optional IDBTransactionOptions): FAIL
+	IDBFactory interface object length: FAIL
+	IDBFactory interface object name: FAIL
+	IDBFactory interface: existence and properties of interface object: FAIL
+	IDBFactory interface: existence and properties of interface prototype object: FAIL
+	IDBFactory interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBFactory interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBFactory interface: operation cmp(any, any): FAIL
+	IDBFactory interface: operation databases(): FAIL
+	IDBFactory interface: operation deleteDatabase(DOMString): FAIL
+	IDBFactory interface: operation open(DOMString, optional unsigned long long): FAIL
+	IDBIndex interface object length: FAIL
+	IDBIndex interface object name: FAIL
+	IDBIndex interface: attribute keyPath: FAIL
+	IDBIndex interface: attribute multiEntry: FAIL
+	IDBIndex interface: attribute name: FAIL
+	IDBIndex interface: attribute objectStore: FAIL
+	IDBIndex interface: attribute unique: FAIL
+	IDBIndex interface: existence and properties of interface object: FAIL
+	IDBIndex interface: existence and properties of interface prototype object: FAIL
+	IDBIndex interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBIndex interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBIndex interface: operation count(optional any): FAIL
+	IDBIndex interface: operation get(any): FAIL
+	IDBIndex interface: operation getAll(optional any, optional unsigned long): FAIL
+	IDBIndex interface: operation getAllKeys(optional any, optional unsigned long): FAIL
+	IDBIndex interface: operation getAllRecords(optional IDBGetAllOptions): FAIL
+	IDBIndex interface: operation getKey(any): FAIL
+	IDBIndex interface: operation openCursor(optional any, optional IDBCursorDirection): FAIL
+	IDBIndex interface: operation openKeyCursor(optional any, optional IDBCursorDirection): FAIL
+	IDBKeyRange interface object length: FAIL
+	IDBKeyRange interface object name: FAIL
+	IDBKeyRange interface: attribute lower: FAIL
+	IDBKeyRange interface: attribute lowerOpen: FAIL
+	IDBKeyRange interface: attribute upper: FAIL
+	IDBKeyRange interface: attribute upperOpen: FAIL
+	IDBKeyRange interface: existence and properties of interface object: FAIL
+	IDBKeyRange interface: existence and properties of interface prototype object: FAIL
+	IDBKeyRange interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBKeyRange interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBKeyRange interface: operation bound(any, any, optional boolean, optional boolean): FAIL
+	IDBKeyRange interface: operation includes(any): FAIL
+	IDBKeyRange interface: operation lowerBound(any, optional boolean): FAIL
+	IDBKeyRange interface: operation only(any): FAIL
+	IDBKeyRange interface: operation upperBound(any, optional boolean): FAIL
+	IDBObjectStore interface object length: FAIL
+	IDBObjectStore interface object name: FAIL
+	IDBObjectStore interface: attribute autoIncrement: FAIL
+	IDBObjectStore interface: attribute indexNames: FAIL
+	IDBObjectStore interface: attribute keyPath: FAIL
+	IDBObjectStore interface: attribute name: FAIL
+	IDBObjectStore interface: attribute transaction: FAIL
+	IDBObjectStore interface: existence and properties of interface object: FAIL
+	IDBObjectStore interface: existence and properties of interface prototype object: FAIL
+	IDBObjectStore interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBObjectStore interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBObjectStore interface: operation add(any, optional any): FAIL
+	IDBObjectStore interface: operation clear(): FAIL
+	IDBObjectStore interface: operation count(optional any): FAIL
+	IDBObjectStore interface: operation createIndex(DOMString, (DOMString or sequence<DOMString>), optional IDBIndexParameters): FAIL
+	IDBObjectStore interface: operation delete(any): FAIL
+	IDBObjectStore interface: operation deleteIndex(DOMString): FAIL
+	IDBObjectStore interface: operation get(any): FAIL
+	IDBObjectStore interface: operation getAll(optional any, optional unsigned long): FAIL
+	IDBObjectStore interface: operation getAllKeys(optional any, optional unsigned long): FAIL
+	IDBObjectStore interface: operation getAllRecords(optional IDBGetAllOptions): FAIL
+	IDBObjectStore interface: operation getKey(any): FAIL
+	IDBObjectStore interface: operation index(DOMString): FAIL
+	IDBObjectStore interface: operation openCursor(optional any, optional IDBCursorDirection): FAIL
+	IDBObjectStore interface: operation openKeyCursor(optional any, optional IDBCursorDirection): FAIL
+	IDBObjectStore interface: operation put(any, optional any): FAIL
+	IDBOpenDBRequest interface object length: FAIL
+	IDBOpenDBRequest interface object name: FAIL
+	IDBOpenDBRequest interface: attribute onblocked: FAIL
+	IDBOpenDBRequest interface: attribute onupgradeneeded: FAIL
+	IDBOpenDBRequest interface: existence and properties of interface object: FAIL
+	IDBOpenDBRequest interface: existence and properties of interface prototype object: FAIL
+	IDBOpenDBRequest interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBOpenDBRequest interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBRecord interface object length: FAIL
+	IDBRecord interface object name: FAIL
+	IDBRecord interface: attribute key: FAIL
+	IDBRecord interface: attribute primaryKey: FAIL
+	IDBRecord interface: attribute value: FAIL
+	IDBRecord interface: existence and properties of interface object: FAIL
+	IDBRecord interface: existence and properties of interface prototype object: FAIL
+	IDBRecord interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBRecord interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBRequest interface object length: FAIL
+	IDBRequest interface object name: FAIL
+	IDBRequest interface: attribute error: FAIL
+	IDBRequest interface: attribute onerror: FAIL
+	IDBRequest interface: attribute onsuccess: FAIL
+	IDBRequest interface: attribute readyState: FAIL
+	IDBRequest interface: attribute result: FAIL
+	IDBRequest interface: attribute source: FAIL
+	IDBRequest interface: attribute transaction: FAIL
+	IDBRequest interface: existence and properties of interface object: FAIL
+	IDBRequest interface: existence and properties of interface prototype object: FAIL
+	IDBRequest interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBRequest interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBTransaction interface object length: FAIL
+	IDBTransaction interface object name: FAIL
+	IDBTransaction interface: attribute db: FAIL
+	IDBTransaction interface: attribute durability: FAIL
+	IDBTransaction interface: attribute error: FAIL
+	IDBTransaction interface: attribute mode: FAIL
+	IDBTransaction interface: attribute objectStoreNames: FAIL
+	IDBTransaction interface: attribute onabort: FAIL
+	IDBTransaction interface: attribute oncomplete: FAIL
+	IDBTransaction interface: attribute onerror: FAIL
+	IDBTransaction interface: existence and properties of interface object: FAIL
+	IDBTransaction interface: existence and properties of interface prototype object: FAIL
+	IDBTransaction interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBTransaction interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	IDBTransaction interface: operation abort(): FAIL
+	IDBTransaction interface: operation commit(): FAIL
+	IDBTransaction interface: operation objectStore(DOMString): FAIL
+	IDBVersionChangeEvent interface object length: FAIL
+	IDBVersionChangeEvent interface object name: FAIL
+	IDBVersionChangeEvent interface: attribute newVersion: FAIL
+	IDBVersionChangeEvent interface: attribute oldVersion: FAIL
+	IDBVersionChangeEvent interface: existence and properties of interface object: FAIL
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object: FAIL
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	IDBVersionChangeEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	Partial interface Window: member names are unique: PASS
+	Partial interface mixin WindowOrWorkerGlobalScope: member names are unique: PASS
+	Partial interface mixin WindowOrWorkerGlobalScope: original interface mixin defined: PASS
+	Window includes AnimationFrameProvider: member names are unique: PASS
+	Window includes GlobalEventHandlers: member names are unique: PASS
+	Window includes WindowEventHandlers: member names are unique: PASS
+	Window includes WindowLocalStorage: member names are unique: PASS
+	Window includes WindowOrWorkerGlobalScope: member names are unique: PASS
+	Window includes WindowSessionStorage: member names are unique: PASS
+	WorkerGlobalScope includes WindowOrWorkerGlobalScope: member names are unique: PASS
+	WorkerGlobalScope interface: attribute indexedDB: FAIL
+	idl_test setup: FAIL
+	idl_test validation: PASS
+/IndexedDB/index_sort_order.any.html: OK
+	Verify IDBIndex key sort order is 'number < Date < DOMString': PASS
+/IndexedDB/index_sort_order.any.worker.html: OK
+	Verify IDBIndex key sort order is 'number < Date < DOMString': FAIL
+/IndexedDB/interleaved-cursors-large.any.html: OK
+	250 cursors: PASS
+/IndexedDB/interleaved-cursors-large.any.worker.html: OK
+	250 cursors: FAIL
+/IndexedDB/interleaved-cursors-small.any.html: OK
+	1 cursors: PASS
+	10 cursors: PASS
+	100 cursors: PASS
+/IndexedDB/interleaved-cursors-small.any.worker.html: OK
+	1 cursors: FAIL
+	10 cursors: FAIL
+	100 cursors: FAIL
+/IndexedDB/key-conversion-exceptions.any.html: OK
+	IDBCursor continue() method with throwing/invalid keys: PASS
+	IDBCursor update() method with throwing/invalid keys: PASS
+	IDBFactory cmp() static with throwing/invalid keys: PASS
+	IDBIndex count() method with throwing/invalid keys: PASS
+	IDBIndex get() method with throwing/invalid keys: PASS
+	IDBIndex getAll() method with throwing/invalid keys: PASS
+	IDBIndex getAllKeys() method with throwing/invalid keys: PASS
+	IDBIndex getAllRecords() method with throwing/invalid keys: PASS
+	IDBIndex getKey() method with throwing/invalid keys: PASS
+	IDBIndex openCursor() method with throwing/invalid keys: PASS
+	IDBIndex openKeyCursor() method with throwing/invalid keys: PASS
+	IDBKeyRange bound() static with throwing/invalid keys: PASS
+	IDBKeyRange lowerBound() static with throwing/invalid keys: PASS
+	IDBKeyRange only() static with throwing/invalid keys: PASS
+	IDBKeyRange upperBound() static with throwing/invalid keys: PASS
+	IDBObjectStore add() method with throwing/invalid keys: PASS
+	IDBObjectStore count() method with throwing/invalid keys: PASS
+	IDBObjectStore delete() method with throwing/invalid keys: PASS
+	IDBObjectStore get() method with throwing/invalid keys: PASS
+	IDBObjectStore getAll() method with throwing/invalid keys: PASS
+	IDBObjectStore getAllKeys() method with throwing/invalid keys: PASS
+	IDBObjectStore getAllRecords() method with throwing/invalid keys: PASS
+	IDBObjectStore getKey() method with throwing/invalid keys: PASS
+	IDBObjectStore openCursor() method with throwing/invalid keys: PASS
+	IDBObjectStore openKeyCursor() method with throwing/invalid keys: PASS
+	IDBObjectStore put() method with throwing/invalid keys: PASS
+	IndexedDB: Exceptions thrown during key conversion: FAIL
+/IndexedDB/key-conversion-exceptions.any.worker.html: OK
+	IDBCursor continue() method with throwing/invalid keys: FAIL
+	IDBCursor update() method with throwing/invalid keys: FAIL
+	IDBFactory cmp() static with throwing/invalid keys: FAIL
+	IDBIndex count() method with throwing/invalid keys: FAIL
+	IDBIndex get() method with throwing/invalid keys: FAIL
+	IDBIndex getAll() method with throwing/invalid keys: FAIL
+	IDBIndex getAllKeys() method with throwing/invalid keys: FAIL
+	IDBIndex getAllRecords() method with throwing/invalid keys: FAIL
+	IDBIndex getKey() method with throwing/invalid keys: FAIL
+	IDBIndex openCursor() method with throwing/invalid keys: FAIL
+	IDBIndex openKeyCursor() method with throwing/invalid keys: FAIL
+	IDBKeyRange bound() static with throwing/invalid keys: FAIL
+	IDBKeyRange lowerBound() static with throwing/invalid keys: FAIL
+	IDBKeyRange only() static with throwing/invalid keys: FAIL
+	IDBKeyRange upperBound() static with throwing/invalid keys: FAIL
+	IDBObjectStore add() method with throwing/invalid keys: FAIL
+	IDBObjectStore count() method with throwing/invalid keys: FAIL
+	IDBObjectStore delete() method with throwing/invalid keys: FAIL
+	IDBObjectStore get() method with throwing/invalid keys: FAIL
+	IDBObjectStore getAll() method with throwing/invalid keys: FAIL
+	IDBObjectStore getAllKeys() method with throwing/invalid keys: FAIL
+	IDBObjectStore getAllRecords() method with throwing/invalid keys: FAIL
+	IDBObjectStore getKey() method with throwing/invalid keys: FAIL
+	IDBObjectStore openCursor() method with throwing/invalid keys: FAIL
+	IDBObjectStore openKeyCursor() method with throwing/invalid keys: FAIL
+	IDBObjectStore put() method with throwing/invalid keys: FAIL
+	key-conversion-exceptions: FAIL
+/IndexedDB/key_invalid.any.html: OK
+	Invalid key - /foo/: PASS
+	Invalid key - Array (object): PASS
+	Invalid key - Array clone’s instance: PASS
+	Invalid key - Math: PASS
+	Invalid key - NaN: PASS
+	Invalid key - String (object): PASS
+	Invalid key - [,1]: PASS
+	Invalid key - [1,2,3,,]: PASS
+	Invalid key - [[1], [3], [7], [[ sparse array ]]]: PASS
+	Invalid key - [[], [], [], [[ Date ]]]: PASS
+	Invalid key - [undefined]: PASS
+	Invalid key - [{}]: PASS
+	Invalid key - array directly contains self: PASS
+	Invalid key - array indirectly contains self: PASS
+	Invalid key - array member contains self: PASS
+	Invalid key - document.getElementsByTagName("script"): PASS
+	Invalid key - false: PASS
+	Invalid key - function() {}: PASS
+	Invalid key - new Boolean(): PASS
+	Invalid key - new Date(Infinity): PASS
+	Invalid key - new Date(NaN): PASS
+	Invalid key - new Number(): PASS
+	Invalid key - new RegExp(): PASS
+	Invalid key - new String(): PASS
+	Invalid key - null: PASS
+	Invalid key - proxy of an array: FAIL
+	Invalid key - self: PASS
+	Invalid key - sparse array: PASS
+	Invalid key - sparse array 2: PASS
+	Invalid key - true: PASS
+	Invalid key - undefined: PASS
+	Invalid key - undefined2: PASS
+	Invalid key - { obj: 1 }: PASS
+	Invalid key - {length:0,constructor:Array}: PASS
+	Invalid key - {}: PASS
+/IndexedDB/key_invalid.any.worker.html: OK
+	Invalid key - /foo/: FAIL
+	Invalid key - Array (object): FAIL
+	Invalid key - Array clone’s instance: FAIL
+	Invalid key - Math: FAIL
+	Invalid key - NaN: FAIL
+	Invalid key - String (object): FAIL
+	Invalid key - [,1]: FAIL
+	Invalid key - [1,2,3,,]: FAIL
+	Invalid key - [[1], [3], [7], [[ sparse array ]]]: FAIL
+	Invalid key - [[], [], [], [[ Date ]]]: FAIL
+	Invalid key - [undefined]: FAIL
+	Invalid key - [{}]: FAIL
+	Invalid key - array directly contains self: FAIL
+	Invalid key - array indirectly contains self: FAIL
+	Invalid key - array member contains self: FAIL
+	Invalid key - false: FAIL
+	Invalid key - function() {}: FAIL
+	Invalid key - new Boolean(): FAIL
+	Invalid key - new Date(Infinity): FAIL
+	Invalid key - new Date(NaN): FAIL
+	Invalid key - new Number(): FAIL
+	Invalid key - new RegExp(): FAIL
+	Invalid key - new String(): FAIL
+	Invalid key - null: FAIL
+	Invalid key - proxy of an array: FAIL
+	Invalid key - self: FAIL
+	Invalid key - sparse array: FAIL
+	Invalid key - sparse array 2: FAIL
+	Invalid key - true: FAIL
+	Invalid key - undefined: FAIL
+	Invalid key - undefined2: FAIL
+	Invalid key - { obj: 1 }: FAIL
+	Invalid key - {length:0,constructor:Array}: FAIL
+	Invalid key - {}: FAIL
+/IndexedDB/key_valid.any.html: OK
+	Valid key - "": PASS
+	Valid key - "NaN": PASS
+	Valid key - "\\"": PASS
+	Valid key - "\\n": PASS
+	Valid key - "\\u0000": PASS
+	Valid key - "\\u1234": PASS
+	Valid key - "foo": PASS
+	Valid key - -Infinity: PASS
+	Valid key - 0: PASS
+	Valid key - 1.5: PASS
+	Valid key - 3e-38: PASS
+	Valid key - 3e38: PASS
+	Valid key - Infinity: PASS
+	Valid key - ["undefined"]: PASS
+	Valid key - []: PASS
+	Valid key - new Array(): PASS
+	Valid key - new Date(): PASS
+	Valid key - new Date(0): PASS
+/IndexedDB/key_valid.any.worker.html: OK
+	Valid key - "": FAIL
+	Valid key - "NaN": FAIL
+	Valid key - "\\"": FAIL
+	Valid key - "\\n": FAIL
+	Valid key - "\\u0000": FAIL
+	Valid key - "\\u1234": FAIL
+	Valid key - "foo": FAIL
+	Valid key - -Infinity: FAIL
+	Valid key - 0: FAIL
+	Valid key - 1.5: FAIL
+	Valid key - 3e-38: FAIL
+	Valid key - 3e38: FAIL
+	Valid key - Infinity: FAIL
+	Valid key - ["undefined"]: FAIL
+	Valid key - []: FAIL
+	Valid key - new Array(): FAIL
+	Valid key - new Date(): FAIL
+	Valid key - new Date(0): FAIL
+/IndexedDB/keygenerator.any.html: OK
+	Key generator vs. explicit key 53 bits: PASS
+	Key generator vs. explicit key 63 bits: PASS
+	Key generator vs. explicit key 63 bits (negative): PASS
+	Key generator vs. explicit key 64 bits: PASS
+	Key generator vs. explicit key 64 bits (negative): PASS
+	Key generator vs. explicit key equal to -Infinity: PASS
+	Key generator vs. explicit key equal to Infinity: PASS
+	Key generator vs. explicit key greater than 53 bits, less than 64 bits: PASS
+	Key generator vs. explicit key greater than 53 bits, less than 64 bits (negative): PASS
+	Key generator vs. explicit key greater than 64 bits, but still finite: PASS
+	Key generator vs. explicit key greater than 64 bits, but still finite (negative): PASS
+	Key is injected into value - multi-segment path: PASS
+	Key is injected into value - multi-segment path, partially populated: PASS
+	Key is injected into value - single segment path: PASS
+	Keygenerator - don't increment when new key is not bigger than current: PASS
+	Keygenerator - increments by one from last set key: PASS
+	Keygenerator - starts at one, and increments by one: PASS
+	Keygenerator ConstraintError when using same id as already generated: PASS
+	Keygenerator overflow: PASS
+	put() throws if key cannot be injected - multi-segment path: PASS
+	put() throws if key cannot be injected - single segment path: PASS
+/IndexedDB/keygenerator.any.worker.html: ERROR
+	Keygenerator - starts at one, and increments by one: NOTRUN
+/IndexedDB/keyorder.any.html: OK
+	Database readback sort - "" < "a" < "ab" < "b" < "ba": PASS
+	Database readback sort - -1.1 < 1 < 1.01337 < 1.013373 < 2: PASS
+	Database readback sort - -Infinity < -0.01 < 0 < Infinity: PASS
+	Database readback sort - Array.length: 10,000 < Array.length: 10,001: PASS
+	Database readback sort - Arrays: PASS
+	Database readback sort - Date(1 sec ago) < Date(now) < Date(1 minute in future): PASS
+	Database readback sort - Infinity inside arrays: PASS
+	Database readback sort - String < Array: PASS
+	Database readback sort - Test different stuff at once: PASS
+	Database readback sort - float < Date: PASS
+	Database readback sort - float < Date < String < Array: PASS
+	Database readback sort - float < String: PASS
+	IDBKey.cmp sort - "" < "a" < "ab" < "b" < "ba": PASS
+	IDBKey.cmp sort - -1.1 < 1 < 1.01337 < 1.013373 < 2: PASS
+	IDBKey.cmp sort - -Infinity < -0.01 < 0 < Infinity: PASS
+	IDBKey.cmp sort - Array.length: 10,000 < Array.length: 10,001: PASS
+	IDBKey.cmp sort - Arrays: PASS
+	IDBKey.cmp sort - Date(1 sec ago) < Date(now) < Date(1 minute in future): PASS
+	IDBKey.cmp sort - Infinity inside arrays: PASS
+	IDBKey.cmp sort - String < Array: PASS
+	IDBKey.cmp sort - Test different stuff at once: PASS
+	IDBKey.cmp sort - float < Date: PASS
+	IDBKey.cmp sort - float < Date < String < Array: PASS
+	IDBKey.cmp sort - float < String: PASS
+/IndexedDB/keyorder.any.worker.html: ERROR
+/IndexedDB/keypath-exceptions.any.html: OK
+	Array key conversion should not invoke prototype getters: PASS
+	Key path evaluation: Exceptions from enumerable getters: PASS
+	Key path evaluation: Exceptions from enumerable getters on prototype: PASS
+	Key path evaluation: Exceptions from non-enumerable getters: FAIL
+	Key path evaluation: Exceptions from non-enumerable getters on prototype: PASS
+	The last element of keypath is validated: PASS
+/IndexedDB/keypath-exceptions.any.worker.html: OK
+	Array key conversion should not invoke prototype getters: FAIL
+	Key path evaluation: Exceptions from enumerable getters: FAIL
+	Key path evaluation: Exceptions from enumerable getters on prototype: FAIL
+	Key path evaluation: Exceptions from non-enumerable getters: FAIL
+	Key path evaluation: Exceptions from non-enumerable getters on prototype: FAIL
+	The last element of keypath is validated: FAIL
+/IndexedDB/keypath-special-identifiers.any.html: OK
+	Type: Array, identifier: length: PASS
+	Type: Blob, identifier: size: PASS
+	Type: Blob, identifier: type: PASS
+	Type: File, identifier: lastModified: PASS
+	Type: File, identifier: name: PASS
+	Type: String, identifier: length: PASS
+/IndexedDB/keypath-special-identifiers.any.worker.html: OK
+	Type: Array, identifier: length: FAIL
+	Type: Blob, identifier: size: FAIL
+	Type: Blob, identifier: type: FAIL
+	Type: File, identifier: lastModified: FAIL
+	Type: File, identifier: name: FAIL
+	Type: String, identifier: length: FAIL
+/IndexedDB/keypath.any.html: OK
+	undefined - '' uses value as key: PASS
+	undefined - [''] uses value as [key]: PASS
+	undefined - ['x', 'y']: PASS
+	undefined - ['x', {toString->'y'}] (stringifies): PASS
+	undefined - [['x'], 'y'] (stringifies): PASS
+	undefined - arr.length: PASS
+	undefined - array loop -> stringify becomes ['']: FAIL
+	undefined - delete.a7: PASS
+	undefined - length: PASS
+	undefined - list with 1 field: PASS
+	undefined - my._: PASS
+	undefined - my.key: PASS
+	undefined - my.key_ya: PASS
+	undefined - my.køi: PASS
+	undefined - name,type: PASS
+	undefined - name,type.name: PASS
+	undefined - p.p.p.p.p.p.p.p.p.p.p.p.p.p: PASS
+	undefined - public.key$ya: PASS
+	undefined - str.length: PASS
+	undefined - true.$: PASS
+/IndexedDB/keypath.any.worker.html: ERROR
+/IndexedDB/keypath_invalid.any.html: OK
+	Invalid keyPath - "*": PASS
+	Invalid keyPath - "*.*": PASS
+	Invalid keyPath - "..yo": PASS
+	Invalid keyPath - ".yo": PASS
+	Invalid keyPath - "/m/": PASS
+	Invalid keyPath - "3m": PASS
+	Invalid keyPath - "\\"m\\"": PASS
+	Invalid keyPath - "^m": PASS
+	Invalid keyPath - "j a": PASS
+	Invalid keyPath - "m!": PASS
+	Invalid keyPath - "m%": PASS
+	Invalid keyPath - "m&": PASS
+	Invalid keyPath - "m.*": PASS
+	Invalid keyPath - "m/": PASS
+	Invalid keyPath - "m/a": PASS
+	Invalid keyPath - "my.1337": PASS
+	Invalid keyPath - "y..o": PASS
+	Invalid keyPath - "y.o.": PASS
+	Invalid keyPath - "y.o..": PASS
+	Invalid keyPath - "yo,lo": PASS
+	Invalid keyPath - ["array with space"]: PASS
+	Invalid keyPath - []: PASS
+	Invalid keyPath - multidimensional array (invalid toString): PASS
+	Invalid keyPath - {toString->3m}: PASS
+/IndexedDB/keypath_invalid.any.worker.html: ERROR
+/IndexedDB/keypath_maxsize.any.html: OK
+	undefined - ~1050 chars: PASS
+	undefined - ~260 chars: PASS
+	undefined - ~530 chars: PASS
+/IndexedDB/keypath_maxsize.any.worker.html: ERROR
+	undefined - ~260 chars: NOTRUN
+/IndexedDB/large-requests-abort.any.html: OK
+	large value followed by small values: PASS
+	large values: PASS
+	large values mixed with small values: PASS
+	small values: PASS
+/IndexedDB/large-requests-abort.any.worker.html: OK
+	large value followed by small values: FAIL
+	large values: FAIL
+	large values mixed with small values: FAIL
+	small values: FAIL
+/IndexedDB/list_ordering.any.html: OK
+	Validate ObjectStoreNames and indexNames list order - lexigraphical string sort: PASS
+	Validate ObjectStoreNames and indexNames list order - numbers: PASS
+	Validate ObjectStoreNames and indexNames list order - numbers 'overflow': PASS
+/IndexedDB/list_ordering.any.worker.html: ERROR
+	Validate ObjectStoreNames and indexNames list order - numbers: NOTRUN
+/IndexedDB/name-scopes.any.html: OK
+	Non-unique index keys: PASS
+	Unique index keys: PASS
+/IndexedDB/name-scopes.any.worker.html: OK
+	Non-unique index keys: FAIL
+	Unique index keys: FAIL
+/IndexedDB/nested-cloning-basic.any.html: OK
+	blob: PASS
+	small typed array: PASS
+/IndexedDB/nested-cloning-basic.any.worker.html: OK
+	blob: FAIL
+	small typed array: FAIL
+/IndexedDB/nested-cloning-large-multiple.any.html: OK
+	multiple requests of objects with blobs and large typed arrays: PASS
+	multiple requests of objects with blobs and large typed arrays with key generator: PASS
+/IndexedDB/nested-cloning-large-multiple.any.worker.html: OK
+	multiple requests of objects with blobs and large typed arrays: FAIL
+	multiple requests of objects with blobs and large typed arrays with key generator: FAIL
+/IndexedDB/nested-cloning-large.any.html: OK
+	array of blobs and large typed arrays: PASS
+	array of blobs and large typed arrays with key generator: PASS
+	blob with large typed array: PASS
+	blob with large typed array with key generator: PASS
+	large typed array: PASS
+	object with blobs and large typed arrays: PASS
+	object with blobs and large typed arrays with key generator: PASS
+/IndexedDB/nested-cloning-large.any.worker.html: OK
+	array of blobs and large typed arrays: FAIL
+	array of blobs and large typed arrays with key generator: FAIL
+	blob with large typed array: FAIL
+	blob with large typed array with key generator: FAIL
+	large typed array: FAIL
+	object with blobs and large typed arrays: FAIL
+	object with blobs and large typed arrays with key generator: FAIL
+/IndexedDB/nested-cloning-small.any.html: OK
+	array of blobs and small typed arrays: PASS
+	array of blobs and small typed arrays with key generator: PASS
+	blob array: PASS
+	blob array with key generator: PASS
+	blob with small typed array: PASS
+	blob with small typed array with key generator: PASS
+/IndexedDB/nested-cloning-small.any.worker.html: OK
+	array of blobs and small typed arrays: FAIL
+	array of blobs and small typed arrays with key generator: FAIL
+	blob array: FAIL
+	blob array with key generator: FAIL
+	blob with small typed array: FAIL
+	blob with small typed array with key generator: FAIL
+/IndexedDB/objectstore_keyorder.any.html: OK
+	Verify key sort order in an object store is 'number < Date < DOMString' : PASS
+/IndexedDB/objectstore_keyorder.any.worker.html: OK
+	Verify key sort order in an object store is 'number < Date < DOMString' : FAIL
+/IndexedDB/open-request-queue.any.html: OK
+	IndexedDB: open and delete requests are processed as a FIFO queue: PASS
+/IndexedDB/open-request-queue.any.worker.html: OK
+	IndexedDB: open and delete requests are processed as a FIFO queue: FAIL
+/IndexedDB/parallel-cursors-upgrade.any.html: OK
+	2 cursors: PASS
+	20 cursors: PASS
+	200 cursors: PASS
+	2000 cursors: PASS
+/IndexedDB/parallel-cursors-upgrade.any.worker.html: OK
+	2 cursors: FAIL
+	20 cursors: FAIL
+	200 cursors: FAIL
+	2000 cursors: FAIL
+/IndexedDB/reading-autoincrement-indexes-cursors.any.html: OK
+	IDBIndex.openCursor() iterates over an index not covering the autoincrement key: PASS
+	IDBIndex.openCursor() iterates over an index on the autoincrement key: PASS
+	IDBIndex.openKeyCursor() iterates over an index not covering the autoincrement key: PASS
+	IDBIndex.openKeyCursor() iterates over an index on the autoincrement key: PASS
+/IndexedDB/reading-autoincrement-indexes-cursors.any.worker.html: OK
+	IDBIndex.openCursor() iterates over an index not covering the autoincrement key: FAIL
+	IDBIndex.openCursor() iterates over an index on the autoincrement key: FAIL
+	IDBIndex.openKeyCursor() iterates over an index not covering the autoincrement key: FAIL
+	IDBIndex.openKeyCursor() iterates over an index on the autoincrement key: FAIL
+/IndexedDB/reading-autoincrement-indexes.any.html: OK
+	IDBIndex.get() for an index not covering the autoincrement key: PASS
+	IDBIndex.get() for an index on the autoincrement key: PASS
+	IDBIndex.getAll() for an index not covering the autoincrement key: PASS
+	IDBIndex.getAll() for an index on the autoincrement key: PASS
+	IDBIndex.getAllKeys() for an index on the autoincrement key: PASS
+	IDBIndex.getAllKeys() returns correct result for an index not covering the autoincrement key: PASS
+/IndexedDB/reading-autoincrement-indexes.any.worker.html: OK
+	IDBIndex.get() for an index not covering the autoincrement key: FAIL
+	IDBIndex.get() for an index on the autoincrement key: FAIL
+	IDBIndex.getAll() for an index not covering the autoincrement key: FAIL
+	IDBIndex.getAll() for an index on the autoincrement key: FAIL
+	IDBIndex.getAllKeys() for an index on the autoincrement key: FAIL
+	IDBIndex.getAllKeys() returns correct result for an index not covering the autoincrement key: FAIL
+/IndexedDB/reading-autoincrement-store-cursors.any.html: OK
+	IDBObjectStore.openCursor() iterates over an autoincrement store: PASS
+	IDBObjectStore.openKeyCursor() iterates over an autoincrement store: PASS
+/IndexedDB/reading-autoincrement-store-cursors.any.worker.html: OK
+	IDBObjectStore.openCursor() iterates over an autoincrement store: FAIL
+	IDBObjectStore.openKeyCursor() iterates over an autoincrement store: FAIL
+/IndexedDB/reading-autoincrement-store.any.html: OK
+	IDBObjectStore.get() for an autoincrement store: PASS
+	IDBObjectStore.getAll() for an autoincrement store: PASS
+	IDBObjectStore.getAllKeys() for an autoincrement store: PASS
+/IndexedDB/reading-autoincrement-store.any.worker.html: OK
+	IDBObjectStore.get() for an autoincrement store: FAIL
+	IDBObjectStore.getAll() for an autoincrement store: FAIL
+	IDBObjectStore.getAllKeys() for an autoincrement store: FAIL
+/IndexedDB/ready-state-destroyed-execution-context.html: OK
+	readyState accessor is valid after execution context is destroyed: FAIL
+/IndexedDB/request-abort-ordering.any.html: OK
+	IndexedDB: request abort events are delivered in order: PASS
+/IndexedDB/request-abort-ordering.any.worker.html: OK
+	request-abort-ordering: FAIL
+/IndexedDB/request-event-ordering-large-mixed-with-small-values.any.html: OK
+	large values mixed with small values: PASS
+/IndexedDB/request-event-ordering-large-mixed-with-small-values.any.worker.html: OK
+	large values mixed with small values: FAIL
+/IndexedDB/request-event-ordering-large-then-small-values.any.html: OK
+	large value followed by small values: PASS
+/IndexedDB/request-event-ordering-large-then-small-values.any.worker.html: OK
+	large value followed by small values: FAIL
+/IndexedDB/request-event-ordering-large-values.any.html: OK
+	large values: PASS
+/IndexedDB/request-event-ordering-large-values.any.worker.html: OK
+	large values: FAIL
+/IndexedDB/request-event-ordering-small-values.any.html: OK
+	small values: PASS
+/IndexedDB/request-event-ordering-small-values.any.worker.html: OK
+	small values: FAIL
+/IndexedDB/request_bubble-and-capture.any.html: OK
+	IndexedDB Request Event Propagation: Bubbling and Capturing: PASS
+/IndexedDB/request_bubble-and-capture.any.worker.html: OK
+	IndexedDB Request Event Propagation: Bubbling and Capturing: FAIL
+/IndexedDB/serialize-sharedarraybuffer-throws.https.html: OK
+	IndexedDB: Attempting to serialize a SharedArrayBuffer should throw: FAIL
+/IndexedDB/sharedarraybuffer-key.https.html: OK
+	A SharedArrayBuffer can be used as an IndexedDB key: FAIL
+	A SharedArrayBuffer in an array can be used as an IndexedDB key: FAIL
+	A SharedArrayBuffer-backed view can be used as an IndexedDB key: FAIL
+/IndexedDB/storage-buckets.https.any.html: OK
+	Basic test that buckets create independent databases.: FAIL
+	Tests trying to use indexedDB in a deleted bucket.: FAIL
+/IndexedDB/storage-buckets.https.any.worker.html: ERROR
+/IndexedDB/string-list-ordering.any.html: OK
+	Test string list ordering in IndexedDB: PASS
+/IndexedDB/string-list-ordering.any.worker.html: OK
+	Test string list ordering in IndexedDB: FAIL
+/IndexedDB/structured-clone-transaction-state.any.html: OK
+	Transaction inactive during structured clone in IDBCursor.update(): PASS
+	Transaction inactive during structured clone in IDBObjectStore.add(): PASS
+	Transaction inactive during structured clone in IDBObjectStore.put(): PASS
+/IndexedDB/structured-clone-transaction-state.any.worker.html: OK
+	Transaction inactive during structured clone in IDBCursor.update(): FAIL
+	Transaction inactive during structured clone in IDBObjectStore.add(): FAIL
+	Transaction inactive during structured clone in IDBObjectStore.put(): FAIL
+/IndexedDB/structured-clone.any.html?1-20: OK
+	boolean: false: PASS
+	boolean: true: PASS
+	number: -0: PASS
+	number: -1: PASS
+	number: -1.7976931348623157e+308: PASS
+	number: -2147483647: PASS
+	number: -2147483648: PASS
+	number: -4294967295: PASS
+	number: -5e-324: PASS
+	number: -Infinity: PASS
+	number: 0: PASS
+	number: 1: PASS
+	number: 1.7976931348623157e+308: PASS
+	number: 2147483647: PASS
+	number: 2147483648: PASS
+	number: 4294967295: PASS
+	number: 5e-324: PASS
+	number: NaN: PASS
+	object: null: PASS
+	undefined: undefined: PASS
+/IndexedDB/structured-clone.any.html?101-last: OK
+	Array: : PASS
+	Array: 1,2,3: PASS
+	Array: foo,bar: PASS
+	Array: foo,bar,,,,,,,,,true,false,,,,,,,,,123,456,,,,,,,,,: PASS
+	Blob: [object Blob]: PASS
+	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): FAIL
+	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): FAIL
+	DOMPoint: [object DOMPoint]: FAIL
+	DOMPointReadOnly: [object DOMPointReadOnly]: FAIL
+	DOMRect: [object DOMRect]: FAIL
+	DOMRectReadOnly: [object DOMRectReadOnly]: FAIL
+	File: [object File]: PASS
+	ImageData: [object ImageData]: FAIL
+	Not serializable: Event: [object Event]: PASS
+	Not serializable: MessageChannel: [object MessageChannel]: PASS
+	Not serializable: Window: [object global]: PASS
+	Not serializable: function: function() {}: PASS
+	Not serializable: symbol: Symbol(desc): PASS
+	Object: [object Object]: PASS
+	SyntaxError: SyntaxError: ghi: PASS
+	TypeError: TypeError: PASS
+	TypeError: TypeError: ghi: PASS
+	URIError: URIError: PASS
+	URIError: URIError: ghi: PASS
+	undefined: undefined: FAIL
+/IndexedDB/structured-clone.any.html?21-40: OK
+	Boolean: false: PASS
+	Boolean: true: PASS
+	Number: -0: PASS
+	Number: -1: PASS
+	Number: -1.7976931348623157e+308: PASS
+	Number: -2147483647: PASS
+	Number: -2147483648: PASS
+	Number: -4294967295: PASS
+	Number: -5e-324: PASS
+	Number: -Infinity: PASS
+	Number: NaN: PASS
+	bigint: -1: PASS
+	bigint: -12345678901234567890: PASS
+	bigint: 0: PASS
+	bigint: 1: PASS
+	bigint: 12345678901234567890: PASS
+	number: Infinity: PASS
+	string: : PASS
+	string: null( ): PASS
+	string: this is a sample string: PASS
+/IndexedDB/structured-clone.any.html?41-60: OK
+	BigInt: -1: PASS
+	BigInt: -12345678901234567890: PASS
+	BigInt: 0: PASS
+	BigInt: 1: PASS
+	BigInt: 12345678901234567890: PASS
+	Date: Mon Apr 25 1938 00:13:20 GMT+0200: PASS
+	Date: Mon Feb 10 1653 07:13:20 GMT+0100: PASS
+	Date: Sat Dec 20 1969 11:13:20 GMT+0100: PASS
+	Date: Thu Jan 01 1970 00:43:20 GMT+0100: PASS
+	Number: 0: PASS
+	Number: 1: PASS
+	Number: 1.7976931348623157e+308: PASS
+	Number: 2147483647: PASS
+	Number: 2147483648: PASS
+	Number: 4294967295: PASS
+	Number: 5e-324: PASS
+	Number: Infinity: PASS
+	String: : PASS
+	String: null( ): PASS
+	String: this is a sample string: PASS
+/IndexedDB/structured-clone.any.html?61-80: OK
+	ArrayBuffer: [object ArrayBuffer]: PASS
+	Date: Mon Jan 12 1970 14:46:40 GMT+0100: PASS
+	Date: Sat Nov 20 2286 18:46:40 GMT+0100: PASS
+	Date: Sun Sep 09 2001 03:46:40 GMT+0200: PASS
+	Date: Thu Jan 01 1970 00:59:59 GMT+0100: PASS
+	Date: Thu Jan 01 1970 01:00:00 GMT+0100: PASS
+	Date: Thu Jan 01 1970 01:00:01 GMT+0100: PASS
+	Date: Thu Jan 01 1970 01:16:40 GMT+0100: PASS
+	RegExp: /(?:)/: PASS
+	RegExp: /abc/: PASS
+	RegExp: /abc/g: PASS
+	RegExp: /abc/gi: PASS
+	RegExp: /abc/gim: PASS
+	RegExp: /abc/gimsuy: PASS
+	RegExp: /abc/gm: PASS
+	RegExp: /abc/i: PASS
+	RegExp: /abc/im: PASS
+	RegExp: /abc/m: PASS
+	Uint8Array: : PASS
+	Uint8Array: 0,1,254,255: PASS
+/IndexedDB/structured-clone.any.html?81-100: OK
+	Error: Error: PASS
+	Error: Error: abc: PASS
+	EvalError: EvalError: PASS
+	EvalError: EvalError: ghi: PASS
+	Float16Array: -Infinity,-1.5,-1,-0.5,0,0.5,1,1.5,Infinity,NaN: PASS
+	Float32Array: -Infinity,-1.5,-1,-0.5,0,0.5,1,1.5,Infinity,NaN: PASS
+	Float64Array: -Infinity,-1.7976931348623157e+308,-5e-324,0,5e-324,1.7976931348623157e+308,Infinity,NaN: PASS
+	Int16Array: 0,1,-2,-1: PASS
+	Int32Array: 0,1,-2,-1: PASS
+	Int8Array: 0,1,-2,-1: PASS
+	Map: [object Map]: PASS
+	RangeError: RangeError: PASS
+	RangeError: RangeError: ghi: PASS
+	ReferenceError: ReferenceError: PASS
+	ReferenceError: ReferenceError: ghi: PASS
+	Set: [object Set]: PASS
+	SyntaxError: SyntaxError: PASS
+	Uint16Array: 0,1,65534,65535: PASS
+	Uint32Array: 0,1,4294967294,4294967295: PASS
+	Uint8ClampedArray: 0,1,254,255: PASS
+/IndexedDB/structured-clone.any.worker.html?1-20: OK
+	boolean: false: FAIL
+	boolean: true: FAIL
+	number: -0: FAIL
+	number: -1: FAIL
+	number: -1.7976931348623157e+308: FAIL
+	number: -2147483647: FAIL
+	number: -2147483648: FAIL
+	number: -4294967295: FAIL
+	number: -5e-324: FAIL
+	number: -Infinity: FAIL
+	number: 0: FAIL
+	number: 1: FAIL
+	number: 1.7976931348623157e+308: FAIL
+	number: 2147483647: FAIL
+	number: 2147483648: FAIL
+	number: 4294967295: FAIL
+	number: 5e-324: FAIL
+	number: NaN: FAIL
+	object: null: FAIL
+	undefined: undefined: FAIL
+/IndexedDB/structured-clone.any.worker.html?101-last: OK
+	Array: : FAIL
+	Array: 1,2,3: FAIL
+	Array: foo,bar: FAIL
+	Array: foo,bar,,,,,,,,,true,false,,,,,,,,,123,456,,,,,,,,,: FAIL
+	Blob: [object Blob]: FAIL
+	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): FAIL
+	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): FAIL
+	DOMPoint: [object DOMPoint]: FAIL
+	DOMPointReadOnly: [object DOMPointReadOnly]: FAIL
+	DOMRect: [object DOMRect]: FAIL
+	DOMRectReadOnly: [object DOMRectReadOnly]: FAIL
+	File: [object File]: FAIL
+	ImageData: [object ImageData]: FAIL
+	Not serializable: DedicatedWorkerGlobalScope: [object global]: FAIL
+	Not serializable: Event: [object Event]: FAIL
+	Not serializable: MessageChannel: [object MessageChannel]: FAIL
+	Not serializable: function: function() {}: FAIL
+	Not serializable: symbol: Symbol(desc): FAIL
+	Object: [object Object]: FAIL
+	SyntaxError: SyntaxError: ghi: FAIL
+	TypeError: TypeError: FAIL
+	TypeError: TypeError: ghi: FAIL
+	URIError: URIError: FAIL
+	URIError: URIError: ghi: FAIL
+/IndexedDB/structured-clone.any.worker.html?21-40: OK
+	Boolean: false: FAIL
+	Boolean: true: FAIL
+	Number: -0: FAIL
+	Number: -1: FAIL
+	Number: -1.7976931348623157e+308: FAIL
+	Number: -2147483647: FAIL
+	Number: -2147483648: FAIL
+	Number: -4294967295: FAIL
+	Number: -5e-324: FAIL
+	Number: -Infinity: FAIL
+	Number: NaN: FAIL
+	bigint: -1: FAIL
+	bigint: -12345678901234567890: FAIL
+	bigint: 0: FAIL
+	bigint: 1: FAIL
+	bigint: 12345678901234567890: FAIL
+	number: Infinity: FAIL
+	string: : FAIL
+	string: null( ): FAIL
+	string: this is a sample string: FAIL
+/IndexedDB/structured-clone.any.worker.html?41-60: OK
+	BigInt: -1: FAIL
+	BigInt: -12345678901234567890: FAIL
+	BigInt: 0: FAIL
+	BigInt: 1: FAIL
+	BigInt: 12345678901234567890: FAIL
+	Date: Mon Apr 25 1938 00:13:20 GMT+0200: FAIL
+	Date: Mon Feb 10 1653 07:13:20 GMT+0100: FAIL
+	Date: Sat Dec 20 1969 11:13:20 GMT+0100: FAIL
+	Date: Thu Jan 01 1970 00:43:20 GMT+0100: FAIL
+	Number: 0: FAIL
+	Number: 1: FAIL
+	Number: 1.7976931348623157e+308: FAIL
+	Number: 2147483647: FAIL
+	Number: 2147483648: FAIL
+	Number: 4294967295: FAIL
+	Number: 5e-324: FAIL
+	Number: Infinity: FAIL
+	String: : FAIL
+	String: null( ): FAIL
+	String: this is a sample string: FAIL
+/IndexedDB/structured-clone.any.worker.html?61-80: OK
+	ArrayBuffer: [object ArrayBuffer]: FAIL
+	Date: Mon Jan 12 1970 14:46:40 GMT+0100: FAIL
+	Date: Sat Nov 20 2286 18:46:40 GMT+0100: FAIL
+	Date: Sun Sep 09 2001 03:46:40 GMT+0200: FAIL
+	Date: Thu Jan 01 1970 00:59:59 GMT+0100: FAIL
+	Date: Thu Jan 01 1970 01:00:00 GMT+0100: FAIL
+	Date: Thu Jan 01 1970 01:00:01 GMT+0100: FAIL
+	Date: Thu Jan 01 1970 01:16:40 GMT+0100: FAIL
+	RegExp: /(?:)/: FAIL
+	RegExp: /abc/: FAIL
+	RegExp: /abc/g: FAIL
+	RegExp: /abc/gi: FAIL
+	RegExp: /abc/gim: FAIL
+	RegExp: /abc/gimsuy: FAIL
+	RegExp: /abc/gm: FAIL
+	RegExp: /abc/i: FAIL
+	RegExp: /abc/im: FAIL
+	RegExp: /abc/m: FAIL
+	Uint8Array: : FAIL
+	Uint8Array: 0,1,254,255: FAIL
+/IndexedDB/structured-clone.any.worker.html?81-100: OK
+	Error: Error: FAIL
+	Error: Error: abc: FAIL
+	EvalError: EvalError: FAIL
+	EvalError: EvalError: ghi: FAIL
+	Float16Array: -Infinity,-1.5,-1,-0.5,0,0.5,1,1.5,Infinity,NaN: FAIL
+	Float32Array: -Infinity,-1.5,-1,-0.5,0,0.5,1,1.5,Infinity,NaN: FAIL
+	Float64Array: -Infinity,-1.7976931348623157e+308,-5e-324,0,5e-324,1.7976931348623157e+308,Infinity,NaN: FAIL
+	Int16Array: 0,1,-2,-1: FAIL
+	Int32Array: 0,1,-2,-1: FAIL
+	Int8Array: 0,1,-2,-1: FAIL
+	Map: [object Map]: FAIL
+	RangeError: RangeError: FAIL
+	RangeError: RangeError: ghi: FAIL
+	ReferenceError: ReferenceError: FAIL
+	ReferenceError: ReferenceError: ghi: FAIL
+	Set: [object Set]: FAIL
+	SyntaxError: SyntaxError: FAIL
+	Uint16Array: 0,1,65534,65535: FAIL
+	Uint32Array: 0,1,4294967294,4294967295: FAIL
+	Uint8ClampedArray: 0,1,254,255: FAIL
+/IndexedDB/transaction-abort-generator-revert.any.html: OK
+	The current number of a key generator is reverted when a readwrite transaction aborts: PASS
+	The current number of a key generator is reverted when a versionchange transaction aborts: PASS
+/IndexedDB/transaction-abort-generator-revert.any.worker.html: OK
+	The current number of a key generator is reverted when a readwrite transaction aborts: FAIL
+	The current number of a key generator is reverted when a versionchange transaction aborts: FAIL
+/IndexedDB/transaction-abort-index-metadata-revert.any.html: OK
+	Created indexes get marked as deleted after their transaction aborts: PASS
+	Created stores get their indexes marked as deleted after the transaction that created them aborts: PASS
+	Created+deleted indexes are still marked as deleted after their transaction aborts: PASS
+	Created+deleted stores still have their indexes marked as deleted after the transaction aborts: PASS
+	Deleted indexes get marked as not-deleted after the transaction aborts: PASS
+	Deleted stores get their indexes marked as not-deleted after the transaction that deleted them aborts: PASS
+/IndexedDB/transaction-abort-index-metadata-revert.any.worker.html: OK
+	Created indexes get marked as deleted after their transaction aborts: FAIL
+	Created stores get their indexes marked as deleted after the transaction that created them aborts: FAIL
+	Created+deleted indexes are still marked as deleted after their transaction aborts: FAIL
+	Created+deleted stores still have their indexes marked as deleted after the transaction aborts: FAIL
+	Deleted indexes get marked as not-deleted after the transaction aborts: FAIL
+	Deleted stores get their indexes marked as not-deleted after the transaction that deleted them aborts: FAIL
+/IndexedDB/transaction-abort-multiple-metadata-revert.any.html: OK
+	Deleted indexes in created+deleted stores are still marked as deleted after their transaction aborts: PASS
+	Deleted indexes in deleted stores are still marked as not-deleted after the transaction aborts: PASS
+	Deleted indexes in newly created stores are still marked as deleted after the transaction aborts: PASS
+/IndexedDB/transaction-abort-multiple-metadata-revert.any.worker.html: OK
+	Deleted indexes in created+deleted stores are still marked as deleted after their transaction aborts: FAIL
+	Deleted indexes in deleted stores are still marked as not-deleted after the transaction aborts: FAIL
+	Deleted indexes in newly created stores are still marked as deleted after the transaction aborts: FAIL
+/IndexedDB/transaction-abort-object-store-metadata-revert.any.html: OK
+	Created stores get marked as deleted after their transaction aborts: PASS
+	Created+deleted stores are still marked as deleted after their transaction aborts: PASS
+	Deleted stores get marked as not-deleted after the transaction aborts: PASS
+	Un-instantiated deleted stores get marked as not-deleted after the transaction aborts: PASS
+/IndexedDB/transaction-abort-object-store-metadata-revert.any.worker.html: OK
+	Created stores get marked as deleted after their transaction aborts: FAIL
+	Created+deleted stores are still marked as deleted after their transaction aborts: FAIL
+	Deleted stores get marked as not-deleted after the transaction aborts: FAIL
+	Un-instantiated deleted stores get marked as not-deleted after the transaction aborts: FAIL
+/IndexedDB/transaction-abort-request-error.any.html: OK
+	Properties of error events fired at requests when aborting a transaction: PASS
+/IndexedDB/transaction-abort-request-error.any.worker.html: OK
+	Properties of error events fired at requests when aborting a transaction: FAIL
+/IndexedDB/transaction-create_in_versionchange.any.html: OK
+	Attempt to create new transactions inside a versionchange transaction: PASS
+/IndexedDB/transaction-create_in_versionchange.any.worker.html: OK
+	Attempt to create new transactions inside a versionchange transaction: FAIL
+/IndexedDB/transaction-deactivation-timing.any.html: OK
+	Deactivation of new transactions happens at end of invocation: FAIL
+	New transactions are deactivated before next task: PASS
+	New transactions are not deactivated until after the microtask checkpoint: PASS
+	New transactions from microtask are deactivated before next task: PASS
+	New transactions from microtask are still active through the microtask checkpoint: PASS
+/IndexedDB/transaction-deactivation-timing.any.worker.html: OK
+	Deactivation of new transactions happens at end of invocation: FAIL
+	New transactions are deactivated before next task: FAIL
+	New transactions are not deactivated until after the microtask checkpoint: FAIL
+	New transactions from microtask are deactivated before next task: FAIL
+	New transactions from microtask are still active through the microtask checkpoint: FAIL
+/IndexedDB/transaction-inflight-worker-terminate.window.html: OK
+	IndexedDB: terminating a worker with a readwrite and a readonly transaction in flight must not wedge the database: FAIL
+/IndexedDB/transaction-lifetime-empty.any.html: OK
+	Multiple transactions without requests complete in the expected order: PASS
+	Transactions without requests complete in the expected order: PASS
+/IndexedDB/transaction-lifetime-empty.any.worker.html: OK
+	Multiple transactions without requests complete in the expected order: FAIL
+	Transactions without requests complete in the expected order: FAIL
+/IndexedDB/transaction-lifetime.any.html: OK
+	Blocked event: PASS
+	No Blocked event: PASS
+/IndexedDB/transaction-lifetime.any.worker.html: OK
+	Blocked event: FAIL
+	No Blocked event: FAIL
+/IndexedDB/transaction-relaxed-durability.any.html: OK
+	Committed data can be read back out: case 0: PASS
+	Committed data can be read back out: case 1: PASS
+	Committed data can be read back out: case 2: PASS
+	Committed data can be read back out: case 3: PASS
+	Committed data can be read back out: case 4: PASS
+	Invalid durability option throws a TypeError: PASS
+/IndexedDB/transaction-relaxed-durability.any.worker.html: OK
+	Committed data can be read back out: case 0: FAIL
+	Committed data can be read back out: case 1: FAIL
+	Committed data can be read back out: case 2: FAIL
+	Committed data can be read back out: case 3: FAIL
+	Committed data can be read back out: case 4: FAIL
+	Invalid durability option throws a TypeError: FAIL
+/IndexedDB/transaction-requestqueue.any.html: OK
+	Transactions have a request queue: PASS
+/IndexedDB/transaction-requestqueue.any.worker.html: OK
+	Transactions have a request queue: FAIL
+/IndexedDB/transaction-scheduling-across-connections.any.html: OK
+	Check that readwrite transactions with overlapping scopes do not run in parallel.: PASS
+/IndexedDB/transaction-scheduling-across-connections.any.worker.html: OK
+	Check that readwrite transactions with overlapping scopes do not run in parallel.: FAIL
+/IndexedDB/transaction-scheduling-across-databases.any.html: OK
+	Check that transactions in different databases can run in parallel.: PASS
+/IndexedDB/transaction-scheduling-across-databases.any.worker.html: OK
+	Check that transactions in different databases can run in parallel.: FAIL
+/IndexedDB/transaction-scheduling-mixed-scopes.any.html: OK
+	Check that scope restrictions on mixed transactions are enforced.: PASS
+/IndexedDB/transaction-scheduling-mixed-scopes.any.worker.html: OK
+	Check that scope restrictions on mixed transactions are enforced.: FAIL
+/IndexedDB/transaction-scheduling-ordering.any.html: OK
+	Verify Indexed DB transactions are ordered per spec: PASS
+/IndexedDB/transaction-scheduling-ordering.any.worker.html: OK
+	Verify Indexed DB transactions are ordered per spec: FAIL
+/IndexedDB/transaction-scheduling-ro-waits-for-rw.any.html: OK
+	readonly transaction should see the result of a previous readwrite transaction: PASS
+/IndexedDB/transaction-scheduling-ro-waits-for-rw.any.worker.html: OK
+	readonly transaction should see the result of a previous readwrite transaction: FAIL
+/IndexedDB/transaction-scheduling-rw-scopes.any.html: OK
+	Check that scope restrictions on read-write transactions are enforced.: PASS
+/IndexedDB/transaction-scheduling-rw-scopes.any.worker.html: OK
+	Check that scope restrictions on read-write transactions are enforced.: FAIL
+/IndexedDB/transaction-scheduling-within-database.any.html: OK
+	Check that read-only transactions within a database can run in parallel.: PASS
+/IndexedDB/transaction-scheduling-within-database.any.worker.html: OK
+	Check that read-only transactions within a database can run in parallel.: FAIL
+/IndexedDB/transaction_bubble-and-capture.any.html: OK
+	Capture and bubble: PASS
+/IndexedDB/transaction_bubble-and-capture.any.worker.html: OK
+	Capture and bubble: FAIL
+/IndexedDB/upgrade-transaction-deactivation-timing.any.html: OK
+	Upgrade transactions are active in upgradeneeded callback: PASS
+	Upgrade transactions are active in upgradeneeded callback and microtasks: PASS
+	Upgrade transactions are deactivated before next task: PASS
+/IndexedDB/upgrade-transaction-deactivation-timing.any.worker.html: OK
+	Upgrade transactions are active in upgradeneeded callback: FAIL
+	Upgrade transactions are active in upgradeneeded callback and microtasks: FAIL
+	Upgrade transactions are deactivated before next task: FAIL
+/IndexedDB/upgrade-transaction-lifecycle-backend-aborted.any.html: OK
+	in a setTimeout(0) callback after the abort event is fired for a transaction aborted due to an unhandled request failure: PASS
+	in the abort event handler for a transaction aborted due to an unhandled request error: PASS
+/IndexedDB/upgrade-transaction-lifecycle-backend-aborted.any.worker.html: OK
+	in a setTimeout(0) callback after the abort event is fired for a transaction aborted due to an unhandled request failure: FAIL
+	in the abort event handler for a transaction aborted due to an unhandled request error: FAIL
+/IndexedDB/upgrade-transaction-lifecycle-committed.any.html: OK
+	in a setTimeout(0) callback after the complete event is fired for a committed transaction: PASS
+	in the complete event handler for a committed transaction: PASS
+/IndexedDB/upgrade-transaction-lifecycle-committed.any.worker.html: OK
+	in a setTimeout(0) callback after the complete event is fired for a committed transaction: FAIL
+	in the complete event handler for a committed transaction: FAIL
+/IndexedDB/upgrade-transaction-lifecycle-user-aborted.any.html: OK
+	in a promise microtask after abort() is called, before the transaction abort event is fired: PASS
+	in a setTimeout(0) callback after the abort event is fired for a transaction aborted due to an abort() call: PASS
+	in the abort event handler for a transaction aborted due to an abort() call: PASS
+	synchronously after abort() is called: PASS
+/IndexedDB/upgrade-transaction-lifecycle-user-aborted.any.worker.html: OK
+	in a promise microtask after abort() is called, before the transaction abort event is fired: FAIL
+	in a setTimeout(0) callback after the abort event is fired for a transaction aborted due to an abort() call: FAIL
+	in the abort event handler for a transaction aborted due to an abort() call: FAIL
+	synchronously after abort() is called: FAIL
+/IndexedDB/value-not-exposed-in-worker.tentative.html: ERROR
+	Reading the IDBCursorWithValue value in a worker where RTCCertificate is not exposed throws a DataCloneError: NOTRUN
+	Reading the get() result in a worker where RTCCertificate is not exposed throws a DataCloneError: NOTRUN
+	Reading the getAll() result in a worker where RTCCertificate is not exposed throws a DataCloneError: NOTRUN
+	Reading the getAllRecords() IDBRecord value in a worker where RTCCertificate is not exposed throws a DataCloneError: NOTRUN
+/IndexedDB/value.any.html: OK
+	BigInts as keys in IndexedDB - BigInt object: PASS
+	BigInts as keys in IndexedDB - primitive BigInt: PASS
+	BigInts as values in IndexedDB - BigInt object: PASS
+	BigInts as values in IndexedDB - BigInt object inside object: PASS
+	BigInts as values in IndexedDB - primitive BigInt: PASS
+	BigInts as values in IndexedDB - primitive BigInt inside object: PASS
+	Values - Array: PASS
+	Values - Date: PASS
+/IndexedDB/value.any.worker.html: OK
+	BigInts as keys in IndexedDB - BigInt object: FAIL
+	BigInts as keys in IndexedDB - primitive BigInt: FAIL
+	BigInts as values in IndexedDB - BigInt object: FAIL
+	BigInts as values in IndexedDB - BigInt object inside object: FAIL
+	BigInts as values in IndexedDB - primitive BigInt: FAIL
+	BigInts as values in IndexedDB - primitive BigInt inside object: FAIL
+	Values - Array: FAIL
+	Values - Date: FAIL
+/IndexedDB/value_recursive.any.html: OK
+	Recursive value - array directly contains self: PASS
+	Recursive value - array indirectly contains self: PASS
+	Recursive value - array member contains self: PASS
+/IndexedDB/value_recursive.any.worker.html: ERROR
+	Recursive value - array directly contains self: NOTRUN
+/IndexedDB/worker-termination-aborts-upgrade.window.html: TIMEOUT
+	Worker Termination Aborts a Pending Upgrade: TIMEOUT
+/IndexedDB/writer-starvation.any.html: OK
+	IDB read requests should not starve write requests: PASS
+/IndexedDB/writer-starvation.any.worker.html: OK
+	IDB read requests should not starve write requests: FAIL
