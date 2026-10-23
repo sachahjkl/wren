@@ -89,12 +89,20 @@ Remote :: struct {
 	stash_id:   int,        // an answer that came while its command was still starting
 	stash_text: string,
 	exit_code:  int,
+	fast_exit:  bool,
 	inputs:     int,        // events injected (macro and statistics)
 	rec:        Remote_Recording,
+	queued:     [dynamic]Remote_Queued,   // requests that came while a page held the thread (a chrome frame ran): taken after the frame
+}
+
+Remote_Queued :: struct {
+	conn: u64,
+	line: string,   // owned
 }
 
 the_remote: Remote
 remote_exit_code: int   // what Browser.close asked for: the process ends with it (main.odin)
+remote_fast_exit: bool  // Browser.close {fast}: the process ends at once, without the teardown (a throwaway profile has nothing to save)
 
 // `wren ctl ...` (src/remote/client): the profile folder a Wren without --profile uses decides the pipe's name there.
 ctl_main :: proc(args: []string) -> int {
@@ -163,6 +171,8 @@ remote_stop :: proc(app: ^App) {
 	}
 	if r.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, r.timer) }
 	for op in r.ops { op_free(op) }
+	for item in r.queued { delete(item.line) }
+	delete(r.queued)
 	delete(r.ops)
 	delete(r.subs)
 	delete(r.loaded)
@@ -170,6 +180,7 @@ remote_stop :: proc(app: ^App) {
 	delete(r.stash_text)
 	remote_recording_destroy(&r.rec)
 	remote_exit_code = r.exit_code
+	remote_fast_exit = r.fast_exit
 	r^ = {}
 }
 
@@ -215,6 +226,15 @@ fail :: proc(code: int, message: string, data := "") -> Reply { return Reply{cod
 remote_handle :: proc(user: rawptr, conn: u64, line: []byte) {
 	app := the_app
 	if app == nil { return }
+	// a chrome frame made while a page script holds the thread (shell_frames.odin) runs the loop too: nothing of a page may be
+	// touched from there (a script run in a realm that is running, a tab closed under its own task), so the request waits for the
+	// frame of the interface proper
+	if shell_nested() { append(&the_remote.queued, Remote_Queued{conn, strings.clone(string(line))}); return }
+	remote_run_line(app, conn, line)
+}
+
+@(private = "file")
+remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
@@ -270,7 +290,7 @@ op_finish :: proc(op: ^Remote_Op, rep: Reply) {
 // The pending ops are looked at (after a frame, when the timer fires, after a command that made one).
 remote_tick :: proc(app: ^App) {
 	r := &the_remote
-	if !r.active { return }
+	if !r.active || shell_nested() { return }   // (not from a chrome frame under a page's script: the frame of the interface looks again)
 	now := host.now_ns(&app.loop)
 	// (an op may finish, and finishing removes it: work from a copy of the list)
 	list := make([]^Remote_Op, len(r.ops), context.temp_allocator)
@@ -285,6 +305,12 @@ remote_after_frame :: proc(app: ^App) {
 	r := &the_remote
 	if !r.active { return }
 	r.frame_no += 1
+	if len(r.queued) > 0 {
+		q := r.queued
+		r.queued = nil
+		for item in q { remote_run_line(app, item.conn, transmute([]byte)item.line); delete(item.line) }
+		delete(q)
+	}
 	if len(r.ops) > 0 || len(r.subs) > 0 { remote_tick(app) }
 }
 

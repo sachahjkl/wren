@@ -114,7 +114,7 @@ connect_launched :: proc(ctx: ^Context, l: ^Launched, wait_ms: int) -> bool {
 @(private)
 finish_launched :: proc(ctx: ^Context, l: ^Launched, ask: bool) -> int {
 	code := 0
-	if ask && ctx.connected { _, _ = call(&ctx.conn, "Browser.close", `{"exitCode":0}`, 5000) }
+	if ask && ctx.connected { _, _ = call(&ctx.conn, "Browser.close", l.temp ? `{"exitCode":0,"fast":true}` : `{"exitCode":0}`, 5000) }
 	if ctx.connected { disconnect(&ctx.conn); ctx.connected = false }
 	if win.WaitForSingleObject(l.process, 15_000) != win.WAIT_OBJECT_0 {
 		errln("wren ctl: Wren did not close in time: ending it")
@@ -213,7 +213,7 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 	temp, _ := remote.param_bool(st, "temp")
 	if connect(&ctx.conn, name, 500) {
 		ctx.connected = true
-		_, _ = call(&ctx.conn, "Browser.close", `{"exitCode":0}`, 5000)
+		_, _ = call(&ctx.conn, "Browser.close", temp ? `{"exitCode":0,"fast":true}` : `{"exitCode":0}`, 5000)
 		disconnect(&ctx.conn)
 		ctx.connected = false
 	}
