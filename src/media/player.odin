@@ -101,8 +101,8 @@ player_create :: proc(video, audio: ^Track_Store, settings: Player_Settings, not
 	p.a_active = audio != nil
 	p.need_cur = true
 	p.clock_at = mono_ns()
-	if video != nil { p.vthread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { video_thread((^Player)(d)) }, context) }
-	if audio != nil { p.athread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { audio_thread((^Player)(d)) }, context) }
+	if video != nil { p.vthread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { video_thread((^Player)(d)) }, context, .High) }
+	if audio != nil { p.athread = thread.create_and_start_with_data(rawptr(p), proc(d: rawptr) { audio_thread((^Player)(d)) }, context, .High) }
 	return p
 }
 
