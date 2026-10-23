@@ -146,6 +146,8 @@ DEMOS := [?]Demo{
 		"A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.", false, "", false},
 	{.Performance, "Video benchmark", "video-bench.html",
 		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
+	{.Network, "Developer tools: sockets, streams, workers, media", "devtools/dt4.html",
+		"The page the developer tools' Network tab is shown with (<code>tools\\perf.ps1 -Only dt_network_idle</code>): a WebSocket echo with a subprotocol, a Server-Sent Events stream, a worker that fetches, images, a web font, a video and fetches. Open the panel (F12) on Network and choose a request: Messages, Preview, the speed profiles.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",
 		"200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.", true, "", false},
 	{.Performance, "Slow stylesheet", "firstpaint-slow.html",
