@@ -1,15 +1,21 @@
 package fetch
 
-// What the browser's developer tools see of the loader: one call per step of a request (started, answered, done,
-// failed), from the loop thread, whatever asked (the document, a script, an image, a font, a worker). The shell turns
-// them into the Network panel's rows. Nothing here changes what a request does; with no observer it costs a test.
+// What the browser's developer tools see of the loader: one call per step of a request (started, sent, redirected,
+// answered, a piece of the body, done, failed), from the loop thread, whatever asked (the document, a script, an image, a
+// font, a worker). The shell turns them into the Network panel's rows and details. Nothing here changes what a request does;
+// with no observer it costs a test, and the pieces of the body are only passed on while the observer asks for them
+// (`body_limit` > 0).
 
 import "wb:base"
+import "wb:net"
 
 Observed_Kind :: enum u8 {
-	Started,    // the request was made (method, URL, destination)
-	Response,   // the answer's head arrived (status, type, where it came from, the URL after redirects)
-	Done,       // the body is complete (bytes)
+	Started,    // the request was made (method, URL, destination, who made it)
+	Request,    // the request goes out: its header block and body (once per hop of a redirect chain)
+	Redirect,   // an answer that sends the request on (status, where it was, `detail`: where it goes)
+	Response,   // the answer's head arrived (status, type, headers, where it came from, the URL after redirects, timing)
+	Body,       // a piece of the body (`data`, valid during the call); the whole body at once for a request that collects it
+	Done,       // the body is complete (bytes, timing)
 	Failed,     // the request failed or was blocked (error, detail), or was cancelled by its owner (Aborted)
 }
 
@@ -20,18 +26,32 @@ Observed :: struct {
 	method:      string,            // Started
 	url:         string,            // the URL the request has now (the final one after redirects, on Response); valid during the call
 	destination: Destination,
-	status:      int,               // Response
+	mode:        Mode,              // Started
+	navigate:    bool,              // Started: a navigation (the document itself, a frame)
+	parser:      bool,              // Started: inserted by the HTML parser (a <script>, <link>, <img> of the markup)
+	initiator:   string,            // Started: the URL of the document that asked ("" for the address bar)
+	status:      int,               // Response, Redirect
+	status_text: string,            // Response: "OK", "Not Found" (what the server wrote)
 	mime:        string,            // Response: the essence of the Content-Type ("" when none); valid during the call
 	cache:       Cache_Outcome,     // Response
 	redirected:  bool,              // Response
+	protocol:    string,            // Response: "http/1.1", "h2", "h3" ("" when it did not come over the network)
+	remote:      string,            // Response: "ip:port" of the server
+	headers:     string,            // Request: the header block sent; Response: the one received (status line first)
+	request_body: []byte,           // Request
+	data:        []byte,            // Body
 	bytes:       int,               // Done: the body's size; Response / Failed: what arrived so far
 	error:       Error_Kind,        // Failed
-	detail:      string,            // Failed: valid during the call
+	detail:      string,            // Failed: valid during the call; Redirect: the target
+	timing:      net.Timing,        // Response, Done
+	has_timing:  bool,
 }
 
 Observer :: struct {
 	user:  rawptr,
 	event: proc(user: rawptr, ev: ^Observed),
+	body_limit: int,    // bytes of body the observer wants of a request (0: none: no piece of a body is passed on)
+	block: proc(user: rawptr, url: string) -> bool,   // true: the request for this URL is stopped before it is made (nil: none is)
 }
 
 @(private)
@@ -41,4 +61,30 @@ observe :: proc(t: ^Task, ev: Observed) {
 	e := ev
 	e.id = t.obs_id
 	l.observer.event(l.observer.user, &e)
+}
+
+@(private)
+observing :: proc(t: ^Task) -> bool { return t.loader != nil && t.loader.observer.event != nil }
+
+@(private)
+protocol_name :: proc(p: u8) -> string {
+	switch p {
+	case 1: return "h2"
+	case 2: return "h3"
+	}
+	return "http/1.1"
+}
+
+// The reason phrase of a raw header block ("HTTP/1.1 404 Not Found\r\n..." -> "Not Found").
+@(private)
+status_text_of :: proc(block: string) -> string {
+	end := len(block)
+	for i in 0 ..< len(block) { if block[i] == '\r' || block[i] == '\n' { end = i; break } }
+	line := block[:end]
+	sp := -1
+	for i in 0 ..< len(line) { if line[i] == ' ' { sp = i; break } }
+	if sp < 0 { return "" }
+	rest := line[sp + 1:]
+	for i in 0 ..< len(rest) { if rest[i] == ' ' { return rest[i + 1:] } }
+	return ""
 }

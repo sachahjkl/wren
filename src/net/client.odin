@@ -37,6 +37,20 @@ Event_Kind :: enum u8 {
 	Failed,    // `error` is a WinHTTP / ERROR_* code; see `error_text`
 }
 
+// Where a request spent its time, in ms from the moment it was queued (-1: the step did not happen: a connection that was
+// reused has no name lookup, a plain http request no secure handshake). Headers and Done events carry it.
+Timing :: struct {
+	started:      f32,   // left the queue: a connection slot was free (the time before it is "queued")
+	dns_start:    f32,
+	dns_end:      f32,
+	connect_start: f32,
+	connect_end:  f32,   // the connection is up (for https the handshake follows, up to `sending`)
+	sending:      f32,   // the request starts to go out
+	sent:         f32,   // the request is out
+	response:     f32,   // the first byte of the answer (its head)
+	done:         f32,   // the last byte of the body (Done)
+}
+
 // Pointers inside an Event are valid only during the callback.
 Event :: struct {
 	kind:         Event_Kind,
@@ -48,6 +62,18 @@ Event :: struct {
 	error:        u32,
 	secure_flags: u32,
 	job:          ^Job,   // internal
+	timing:       Timing,        // Headers, Done
+	protocol:     u8,            // Headers: 0 http/1.1, 1 h2, 2 h3
+	remote:       [48]u8,        // Headers: the address the connection is to ("ip:port"), remote_len bytes
+	remote_len:   u8,
+}
+
+// The moments (ticks, ns) WinHTTP's notifications came, written by its callback threads one after the other.
+@(private)
+Marks :: struct {
+	created, started, dns_start, dns_end, connect_start, connect_end, sending, sent, response, done: i64,
+	ip:     [48]u8,
+	ip_len: u8,
 }
 
 Event_Proc :: #type proc(user: rawptr, req: base.Handle, ev: ^Event)
@@ -87,6 +113,7 @@ Job :: struct {
 	paused:       b32,   // atomic
 	terminal:     bool,
 	secure_flags: u32,
+	marks:        Marks,
 }
 
 Request :: struct {
@@ -299,6 +326,7 @@ prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key:
 	job = new(Job, heap())
 	job.client = c
 	job.req = h
+	job.marks.created = tick_ns()
 	job.port = u16(url.effective_port(u))
 	job.secure = u.scheme == "https"
 	job.max_body = d.max_body > 0 ? d.max_body : c.settings.max_body
@@ -327,6 +355,7 @@ begin :: proc(c: ^Client, r: ^Request) -> u32 {
 	r.hrequest = WinHttpOpenRequest(r.hconnect, cstring16(raw_data(job.verb_w)), cstring16(raw_data(job.target_w)), nil, nil, nil, flags)
 	if r.hrequest == nil { return u32(win.GetLastError()) }
 	ctx := win.DWORD_PTR(uintptr(job))
+	job.marks.started = tick_ns()
 	if !WinHttpSetOption(r.hrequest, WINHTTP_OPTION_CONTEXT_VALUE, &ctx, size_of(ctx)) {
 		// without a context WinHTTP's HANDLE_CLOSING cannot reach the job: free it here, once
 		WinHttpCloseHandle(r.hrequest); r.hrequest = nil
@@ -492,7 +521,44 @@ fail :: proc(job: ^Job, code: u32) {
 finish :: proc(job: ^Job) {
 	if job.terminal { return }
 	job.terminal = true
-	push_from_job(job, Event{kind = .Done})
+	job.marks.done = tick_ns()
+	push_from_job(job, Event{kind = .Done, timing = timing_of(&job.marks)})
+}
+
+@(private)
+tick_ns :: proc() -> i64 { return i64(time.tick_now()._nsec) }
+
+// The marks as milliseconds from the moment the request was made (-1: that step did not happen).
+@(private)
+timing_of :: proc(m: ^Marks) -> Timing {
+	at :: proc(m: ^Marks, v: i64) -> f32 { return v == 0 || v < m.created ? -1 : f32(f64(v - m.created) / 1e6) }
+	return Timing{
+		started = at(m, m.started), dns_start = at(m, m.dns_start), dns_end = at(m, m.dns_end), connect_start = at(m, m.connect_start),
+		connect_end = at(m, m.connect_end), sending = at(m, m.sending), sent = at(m, m.sent), response = at(m, m.response), done = at(m, m.done),
+	}
+}
+
+// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte).
+@(private)
+remember_address :: proc(m: ^Marks, info: rawptr, info_len: win.DWORD) {
+	b := ([^]u8)(info)
+	n := 0
+	if info_len >= 2 && b[1] == 0 && b[0] != 0 {
+		w := ([^]u16)(info)
+		for i in 0 ..< int(info_len) / 2 {
+			if w[i] == 0 || n >= len(m.ip) - 8 { break }
+			if w[i] > 127 { n = 0; break }
+			m.ip[n] = u8(w[i])
+			n += 1
+		}
+	} else {
+		for i in 0 ..< int(info_len) {
+			if b[i] == 0 || n >= len(m.ip) - 8 { break }
+			m.ip[n] = b[i]
+			n += 1
+		}
+	}
+	m.ip_len = u8(n)
 }
 
 @(private)
@@ -512,8 +578,21 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 	if ctx == 0 { return }
 	context = base.process_context()
 	job := (^Job)(uintptr(ctx))
+	m := &job.marks
 
 	switch status {
+	case WINHTTP_CALLBACK_STATUS_RESOLVING_NAME:        m.dns_start = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_NAME_RESOLVED:
+		m.dns_end = tick_ns()
+		if info != nil && info_len > 0 { remember_address(m, info, info_len) }
+	case WINHTTP_CALLBACK_STATUS_CONNECTING_TO_SERVER:
+		m.connect_start = tick_ns()
+		if m.ip_len == 0 && info != nil && info_len > 0 { remember_address(m, info, info_len) }
+	case WINHTTP_CALLBACK_STATUS_CONNECTED_TO_SERVER:   m.connect_end = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_SENDING_REQUEST:       m.sending = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_REQUEST_SENT:          m.sent = tick_ns()
+	case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:     m.response = tick_ns()
+
 	case WINHTTP_CALLBACK_STATUS_SENDREQUEST_COMPLETE:
 		if !WinHttpReceiveResponse(h, nil) { fail(job, u32(win.GetLastError())) }
 
@@ -521,7 +600,33 @@ status_callback :: proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.
 		code: win.DWORD
 		size: win.DWORD = size_of(code)
 		WinHttpQueryHeaders(h, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, nil, &code, &size, nil)
-		ev := Event{kind = .Headers, status = int(code)}
+		if m.response == 0 { m.response = tick_ns() }
+		ev := Event{kind = .Headers, status = int(code), timing = timing_of(m)}
+		used: win.DWORD
+		usize_p: win.DWORD = size_of(used)
+		if WinHttpQueryOption(h, WINHTTP_OPTION_HTTP_PROTOCOL_USED, &used, &usize_p) {
+			ev.protocol = used & WINHTTP_PROTOCOL_FLAG_HTTP3 != 0 ? 2 : (used & WINHTTP_PROTOCOL_FLAG_HTTP2 != 0 ? 1 : 0)
+		}
+		if m.ip_len > 0 {
+			ev.remote = m.ip
+			ev.remote_len = m.ip_len
+			// ":port" follows the address
+			digits: [6]u8
+			nd := 0
+			for p := int(job.port); ; p /= 10 {
+				digits[nd] = u8('0' + p % 10)
+				nd += 1
+				if p < 10 { break }
+			}
+			if int(ev.remote_len) + nd + 1 <= len(ev.remote) {
+				ev.remote[ev.remote_len] = ':'
+				ev.remote_len += 1
+				for i := nd - 1; i >= 0; i -= 1 {
+					ev.remote[ev.remote_len] = digits[i]
+					ev.remote_len += 1
+				}
+			}
+		}
 		ev.headers = query_wide(h, WINHTTP_QUERY_RAW_HEADERS_CRLF)
 		usize: win.DWORD
 		WinHttpQueryOption(h, WINHTTP_OPTION_URL, nil, &usize)
