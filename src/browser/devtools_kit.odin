@@ -459,7 +459,8 @@ dt_filter_match :: proc(f: ^Dt_Filter, text: string) -> bool {
 			if err == nil { f.re = re }
 		}
 		if f.re_ok {
-			_, found := regex.match(f.re, text)
+			cap, found := regex.match(f.re, text)
+			regex.destroy_capture(cap)
 			ok = found
 		} else { ok = true }   // an invalid pattern shows everything (and the field is marked)
 	} else {
