@@ -25,8 +25,13 @@ partial module dom {
   void Node_set_textContent(Node node, string value) raises;
   /// node.normalize()
   void Node_normalize(Node node);
-  /// node.cloneNode(deep). Not_Supported for the document (one document per page).
+  /// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+  /// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+  /// document: no definition applies there).
   Node Node_cloneNode(Node node, bool deep = false) raises;
+  /// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+  /// contents included), so its elements of a defined name are upgraded before it returns.
+  Node Document_importNodeCopy(Node node, bool deep = false) raises;
   /// node.isEqualNode(other)
   bool Node_isEqualNode(Node node, optional Node other);
   /// node.isSameNode(other)

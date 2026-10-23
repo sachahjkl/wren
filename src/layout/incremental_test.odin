@@ -432,6 +432,32 @@ inc_attributes :: proc(t: ^testing.T) {
 	ix_check(t, f)
 }
 
+// An attribute that rebuilds an element's box (a list's start, a cell's span) beside boxes dropped or made again alone in
+// the same pass: what was killed with another box is not rebuilt as a root (on YouTube's pages one was, dead, from a
+// style record nothing kept up to date: a crash); the layout still equals a full pass.
+@(test)
+inc_rebuild_inside_a_dropped_box :: proc(t: ^testing.T) {
+	f := ix_load(page())
+	defer ix_unload(f)
+	body := dom.find_first_by_tag(f.doc, "body")
+	// the list itself is dropped, its start changed before
+	dom.set_attribute(f.doc, id(f, "ol"), "start", "7")
+	dom.remove_child(f.doc, body, id(f, "ol"))
+	ix_frame(f)
+	ix_check(t, f, .None)
+	// a table whose cell changes its span, dropped in the same pass
+	dom.set_attribute(f.doc, id(f, "c22"), "colspan", "2")
+	dom.remove_child(f.doc, body, id(f, "tab"))
+	ix_frame(f)
+	ix_check(t, f, .None)
+	// an item inserted in a flex container whose other items change and go
+	add_el(f, id(f, "flex"), "div", "", "new item", id(f, "f2"))
+	dom.set_attribute(f.doc, id(f, "f3"), "title", "x")
+	dom.remove_child(f.doc, id(f, "flex"), id(f, "f1"))
+	ix_frame(f)
+	ix_check(t, f, .None)
+}
+
 @(test)
 inc_disabled_and_garbage :: proc(t: ^testing.T) {
 	f := ix_load(page())

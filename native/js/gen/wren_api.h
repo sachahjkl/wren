@@ -1350,8 +1350,13 @@ WR_IMPORT("dom", "Node_textContent") int32_t wr_Node_textContent(uint64_t node, 
 WR_IMPORT("dom", "Node_set_textContent") int32_t wr_Node_set_textContent(uint64_t node, const uint8_t *value, uint32_t value_len);
 // node.normalize()
 WR_IMPORT("dom", "Node_normalize") void wr_Node_normalize(uint64_t node);
-// node.cloneNode(deep). Not_Supported for the document (one document per page).
+// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+// document: no definition applies there).
 WR_IMPORT("dom", "Node_cloneNode") int32_t wr_Node_cloneNode(uint64_t node, int32_t deep, uint64_t *_ret);
+// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+// contents included), so its elements of a defined name are upgraded before it returns.
+WR_IMPORT("dom", "Document_importNodeCopy") int32_t wr_Document_importNodeCopy(uint64_t node, int32_t deep, uint64_t *_ret);
 // node.isEqualNode(other)
 WR_IMPORT("dom", "Node_isEqualNode") int32_t wr_Node_isEqualNode(uint64_t node, uint64_t other);
 // node.isSameNode(other)
