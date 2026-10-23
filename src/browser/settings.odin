@@ -2,6 +2,7 @@ package browser
 
 import "core:strings"
 import "wb:config"
+import "wb:blocker"
 import "wb:cookies"
 import "wb:fetch"
 import "wb:html"
@@ -97,6 +98,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_desktop_shell_prefs(p)   // desktop_shell.odin, src/desktop
 	register_devtools_prefs(p)   // devtools.odin
 	register_instance_prefs(p)   // instance_shell.odin
+	blocker.register_prefs(p)   // blocker/settings.odin
 	_ = wasm.PREFS
 	_ = html.PREFS
 }

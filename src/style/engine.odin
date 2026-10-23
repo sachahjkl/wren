@@ -87,10 +87,12 @@ Sheet :: struct {
 	version: u64,                      // constructed: bumped by every change of its text
 	disabled: bool,                    // constructed: CSSStyleSheet.disabled
 	parent:  ^Sheet,                   // an imported sheet: the sheet that imports it
+	injected: bool,                    // added by the embedder (the content blocker's element hiding): kept when the built-in sheets are rebuilt
 }
 
 Engine :: struct {
 	settings:  Settings,               // owned copy
+	forced_hidden: map[base.Handle]struct{},   // elements the embedder hides (engine_set_hidden)
 	sheets:    [dynamic]^Sheet,        // browser, user, then document sheets
 	arena:     virtual.Arena,          // compiled rules and index entries
 	alloc:     runtime.Allocator,
@@ -164,6 +166,7 @@ engine_destroy :: proc(e: ^Engine) {
 	free(e.probe_base, base.process_allocator())
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
+	delete(e.forced_hidden)
 	rule_set_clear(&e.rules)
 	shadow_styles_destroy(e)
 	virtual.arena_destroy(&e.arena)
@@ -213,7 +216,7 @@ engine_configure :: proc(e: ^Engine, settings: Settings) {
 @(private)
 engine_reset_builtin_sheets :: proc(e: ^Engine) {
 	for i := len(e.sheets) - 1; i >= 0; i -= 1 {
-		if e.sheets[i].origin != .Author {
+		if e.sheets[i].origin != .Author && !e.sheets[i].injected {
 			sheet_free(e.sheets[i])
 			ordered_remove(&e.sheets, i)
 		}
@@ -316,6 +319,34 @@ sheet_changed :: proc(e: ^Engine, s: ^Sheet) {
 		return
 	}
 	if s.scope != base.NIL_HANDLE { e.shadow.dirty = true } else { e.dirty = true }
+}
+
+// A sheet the embedder adds with user priority (the content blocker's display: none !important rules): it applies to the
+// whole document, wins over author rules, and is kept across engine_configure. Remove it with engine_remove_sheet.
+engine_add_injected_sheet :: proc(e: ^Engine, text: string) -> ^Sheet {
+	s := add_sheet(e, text, .User, base.NIL_HANDLE, "", false, "")
+	if s != nil { s.injected = true }
+	return s
+}
+
+// Forces an element to display: none, whatever the cascade says (procedural cosmetic filters: the DOM evaluator
+// decides, not a selector). Takes effect at the next style computation.
+engine_set_hidden :: proc(e: ^Engine, h: base.Handle, hidden: bool) {
+	if hidden {
+		if e.forced_hidden == nil { e.forced_hidden = make(map[base.Handle]struct{}) }
+		if h in e.forced_hidden { return }
+		e.forced_hidden[h] = {}
+	} else {
+		if h not_in e.forced_hidden { return }
+		delete_key(&e.forced_hidden, h)
+	}
+	e.restyle_needed = true
+}
+
+engine_clear_hidden :: proc(e: ^Engine) {
+	if len(e.forced_hidden) == 0 { return }
+	clear(&e.forced_hidden)
+	e.restyle_needed = true
 }
 
 // Removes every sheet that came from the document (used when the page changes or its <style> elements do).

@@ -55,6 +55,7 @@ Page_State :: struct { text, tone, detail: string }
 page_state :: proc(t: ^Tab) -> Page_State {
 	if t == nil { return {} }
 	if t.kind == .Config { return {"Settings", "weak", t.status} }
+	if t.kind == .Blocker { return {"Blocker", "weak", t.status} }
 	load := t.load
 	if load != nil && load.task != base.NIL_HANDLE { return {t.page == nil ? "Connecting…" : "Loading…", "", t.status} }
 	if load != nil {

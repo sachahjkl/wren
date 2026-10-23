@@ -327,6 +327,7 @@ Img_Request :: struct {
 	opaque:     bool,
 	mime:       string,        // owned
 	nosniff:    bool,
+	blocked:    bool,          // the content blocker stopped it (embedder.odin)
 }
 
 // What an element shows: a request chosen by source selection, with the density of the candidate.
@@ -572,6 +573,7 @@ image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Failed:
 		r.task = base.NIL_HANDLE
 		p.images.loading -= 1
+		r.blocked = ev.error == .Blocked_By_Client
 		request_fail(r, ev.detail)
 		images_pump(p)
 	case .Done:
@@ -634,7 +636,10 @@ request_settled :: proc(r: ^Img_Request) {
 	p.images.pixels = next_serial()
 	if r.state == .Broken && r.entry != nil && r.error == "" { r.error = strings.clone(images.error_message(r.entry.err)) }
 	for _, el in p.images.elements {
-		if el.current == r || el.pending == r { element_settle(p, el) }
+		if el.current == r || el.pending == r {
+			if r.blocked && embedder.collapse_blocked && p.engine != nil { style.engine_set_hidden(p.engine, el.node, true) }   // no empty box (embedder.odin)
+			element_settle(p, el)
+		}
 	}
 }
 

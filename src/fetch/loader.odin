@@ -20,6 +20,7 @@ Loader :: struct {
 	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
 	observer: Observer,   // the developer tools' view of every request (observe.odin)
 	observers: [dynamic]Observer,   // more of them: the pages' timelines (observer_add)
+	interceptor: Interceptor,   // the content blocker (intercept.odin)
 	next_obs: u64,
 	ws_ctx:   map[base.Handle]^Ws_Ctx,   // the open sockets, by handle (websocket.odin)
 }
@@ -101,6 +102,8 @@ Task :: struct {
 	obs_status: [64]u8,        // the reason phrase of the answer
 	obs_status_len: u8,
 	obs_net:   bool,           // the answer came over the network (obs_timing and the others are set)
+	ping:      bool,
+	rewritten: bool,           // the interceptor changed the URL
 }
 
 ////////////////////////////////
@@ -117,7 +120,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		loader = l, mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
-		script = r.script, parser_inserted = r.parser_inserted,
+		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping,
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
@@ -250,7 +253,7 @@ deliver :: proc(t: ^Task, ev: ^Event) {
 			observe(t, Observed{kind = .Done, bytes = t.collect ? len(ev.data) : t.obs_bytes, timing = t.obs_timing, has_timing = t.obs_net})
 		case .Failed:
 			t.obs_done = true
-			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes})
+			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes, blocked_by = ev.error == .Blocked_By_Client ? ev.detail : ""})
 		}
 	}
 	if t.on_event != nil { t.on_event(t.user, t.self, ev) }
@@ -278,6 +281,7 @@ run_hop :: proc(t: ^Task) {
 		s := url.site_of(o, context.temp_allocator)
 		if !url.same_site(s, t.initiator.top_level_site) { t.cross_site_seen = true }
 	}
+	if !intercept_hop(t) { return }
 	if !content_security_check(t) { return }
 	switch t.target.scheme {
 	case "http", "https": http_hop(t)
@@ -727,6 +731,8 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 		}
 	}
 
+	if !intercept_response(t) { return false }
+	raw = t.raw_headers
 	m, has_mime := http.extract_mime(raw, context.temp_allocator)
 	nosniff := false
 	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = strings.equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }

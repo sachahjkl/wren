@@ -1,0 +1,1 @@
+(function(){var w=window;w.COMSCORE={beacon:function(){}};w.scorecardresearch={beacon:function(){}};})();

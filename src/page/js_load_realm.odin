@@ -17,6 +17,7 @@ import "wb:wasm"
 js_load_realm_started :: proc(p: ^Page, r: ^Js_Realm) {
 	argv := [1]u32{}
 	wasm.call_raw(r.inst, "wj_load_init", argv[:], 1)
+	if embedder.realm_started != nil && p.worker == nil { embedder.realm_started(embedder.user, p) }   // (embedder.odin)
 }
 
 // Copies of strings in the engine's memory for one call (freed together).

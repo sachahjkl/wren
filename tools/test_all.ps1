@@ -148,7 +148,7 @@ $script:watchdog = Start-Watchdog
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
 if ($Jobs -gt 1) { Flush-Steps }
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'media', 'canvas2d', 'idb', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'instance', 'i18n', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'media', 'canvas2d', 'idb', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'instance', 'adblock', 'blocker', 'i18n', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -266,6 +266,12 @@ try {
         $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pol.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+    }
+    Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' {
+        odin build src/tools/blockertest -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/blockertest.exe $Stack
+        if ($LASTEXITCODE -ne 0) { return }
+        $o = .\build\blockertest.exe | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
