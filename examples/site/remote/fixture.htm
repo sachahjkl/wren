@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Remote fixture</title>
+<style>
+  html, body { margin: 0; background: #ffffff; font: 16px sans-serif; }
+  #box { position: absolute; left: 100px; top: 60px; width: 200px; height: 100px; background: #ff0000; }
+  #go { position: absolute; left: 400px; top: 60px; width: 120px; height: 40px; }
+  #name { position: absolute; left: 400px; top: 120px; width: 200px; }
+  #count { position: absolute; left: 100px; top: 200px; }
+  #far { position: absolute; left: 100px; top: 2400px; width: 80px; height: 40px; background: #0000ff; }
+</style>
+</head>
+<body>
+<div id="box"></div>
+<button id="go" onclick="document.getElementById('count').textContent = String(++window.clicks)">Go</button>
+<input id="name" type="text">
+<p id="count">0</p>
+<div id="far" onclick="document.title = 'far clicked'"></div>
+<script>
+  window.clicks = 0;
+  console.log('fixture ready');
+  console.warn('a warning');
+</script>
+</body>
+</html>

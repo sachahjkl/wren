@@ -9,9 +9,24 @@
 # desktop.lock (tools\test_env.ps1) from the start of the browser to its end, waiting at most -LockTimeoutSec for it
 # (another run's capture: a few seconds). Callers take no lock. A page of the test server: start one with
 # Start-WrenTestServer (tools\test_env.ps1) and pass its origin, rather than relying on a server on 8765.
-param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @(), [string]$Exe = "", [int]$LockTimeoutSec = 600)
+param([string]$Url = "", [string]$Out = "shot.png", [string[]]$Click = @(), [int]$WaitMs = 1500, [string]$Out2 = "", [int]$ClickPauseMs = 400, [int]$SettleMs = 300, [int]$Width = 0, [int]$Height = 0, [string[]]$Keys = @(), [string[]]$Actions = @(), [string[]]$Extra = @(), [string]$Exe = "", [int]$LockTimeoutSec = 600, [switch]$Remote)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
+# -Remote (or WREN_SHOT_REMOTE=1): a load and a capture through `wren ctl run` (tools\wrenctl.ps1): no window on the screen, no
+# desktop.lock, nothing captured from the screen, so the monitor, the DPI and other windows do not matter. Clicks, keys, actions
+# and a second capture (-Click, -Keys, -Actions, -Out2) need the real window: those calls go on as before.
+if (($Remote -or $env:WREN_SHOT_REMOTE -eq '1') -and $Url -and -not ($Click.Count -or $Keys.Count -or $Actions.Count -or $Out2)) {
+    if ($Exe) { $env:WREN_EXE = (Resolve-Path $Exe).Path }
+    . "$PSScriptRoot\wrenctl.ps1"
+    $prefs = @(); for ($i = 0; $i -lt $Extra.Count; $i++) { if ($Extra[$i] -eq '--pref' -and $i + 1 -lt $Extra.Count) { $prefs += $Extra[$i + 1]; $i++ } }
+    $size = if ($Width -gt 0 -and $Height -gt 0) { "${Width}x${Height}" } else { '1280x800' }
+    $a = @('run', '--size', $size, '--wait', 'idle', '--shot', (Resolve-PathHere $Out))
+    foreach ($p in $prefs) { $a += @('--pref', $p) }
+    $a += $Url
+    $null = Wren-Ctl @a
+    if ($global:WrenExit -ne 0) { throw "screenshot -Remote failed ($global:WrenExit): $global:WrenErr" }
+    return
+}
 Add-Type @"
 using System; using System.Runtime.InteropServices;
 public class SH {
