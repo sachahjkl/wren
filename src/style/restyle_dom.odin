@@ -829,7 +829,7 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[h]; ok { old_base = b } }
 	if !counters_carry_over(s, w.doc, h, old_base, c, w.p.alloc) { w.rewalk = true }
 	if (old_base == nil || !s.counters_used) && box_feeds_counters(c) { w.rewalk = true }
-	if old_base != nil && computed_equal(old_base, c) { return old_base, false, old_base }
+	if old_base != nil && computed_equal(old_base, c) && !container_changed(old_base, c) { return old_base, false, old_base }
 	level := max(layout_level(old, c), Change_Level.Paint)
 	if level >= .Layout { w.layout_changed = true }
 	shown := old_base != nil && old_base.display == .None && c.display != .None
@@ -1336,11 +1336,19 @@ custom_diff :: proc(a, b: ^Custom_Props) -> string {
 	return "(same values)"
 }
 
-// Whether what the children of an element see of its query containers differs (it became one, stopped being one, was renamed,
-// or was shown or hidden): the children's styles then change without any rule or inherited value of theirs changing.
+// Whether what the children of an element see of its query containers differs (it became one, stopped being one, was
+// renamed, resized, shown or hidden, or an ancestor did): their styles then change without any rule or inherited value of
+// theirs changing.
 @(private = "file")
 container_changed :: proc(old, nc: ^Computed) -> bool {
-	if old.container_type != nc.container_type || len(old.container_name) != len(nc.container_name) { return true }
-	for n, i in old.container_name { if n != nc.container_name[i] { return true } }
-	return (old.display == .None) != (nc.display == .None) && nc.container_type != .Normal
+	a, b := old.containers, nc.containers
+	for a != nil || b != nil {
+		if a == nil || b == nil { return true }
+		if a != b {
+			if a.node != b.node || a.type != b.type || a.size != b.size || len(a.names) != len(b.names) { return true }
+			for n, i in a.names { if n != b.names[i] { return true } }
+		}
+		a, b = a.parent, b.parent
+	}
+	return false
 }
