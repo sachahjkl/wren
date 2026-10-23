@@ -57,7 +57,7 @@ realm_named :: proc(name: string) -> (Realm, bool) {
 }
 
 @(private)
-FUNCTION_ATTRS :: []string{"Exposed", "On", "Effects", "Host"}
+FUNCTION_ATTRS :: []string{"Exposed", "On", "Effects", "Host", "Owned"}
 
 @(private)
 check :: proc(api: ^Api) {

@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>A canvas animated by script</title>
+<!-- tools\perf.ps1 scenarios js_canvas_anim, js_canvas_big, js_canvas_idle. ?mode=anim (default): 200 circles, a gradient
+     background and a line of text on a 640 x 400 canvas, redrawn every animation frame. ?mode=big: the same on a canvas
+     as large as the window (full-window clear and fill each frame). ?mode=idle: drawn once, then nothing: a canvas
+     nobody draws on must cost nothing (the frame loop stops). Falls back to setTimeout without rAF. -->
+<style>
+  body { margin: 0; background: #10131a; overflow: hidden; }
+  canvas { display: block; }
+</style>
+<canvas id="c"></canvas>
+<script>
+(function () {
+  "use strict";
+  var mode = (location.search.match(/mode=(\w+)/) || [0, "anim"])[1];
+  var c = document.getElementById("c");
+  var W = mode === "big" ? Math.max(window.innerWidth || 1200, 800) : 640, H = mode === "big" ? Math.max(window.innerHeight || 700, 500) : 400;
+  c.width = W; c.height = H;
+  var g = c.getContext("2d");
+  var N = 200, t0 = Date.now(), frames = 0;
+  var grad = g.createLinearGradient(0, 0, W, H);
+  grad.addColorStop(0, "#0b132b"); grad.addColorStop(1, "#1c2541");
+  function draw(t) {
+    g.fillStyle = grad; g.fillRect(0, 0, W, H);
+    for (var i = 0; i < N; i++) {
+      var a = t * (0.5 + (i % 7) * 0.1) + i;
+      var x = W * (0.5 + 0.45 * Math.sin(a)), y = H * (0.5 + 0.45 * Math.cos(a * 1.3));
+      g.fillStyle = "hsl(" + ((i * 7 + t * 40) % 360) + " 90% 60%)";
+      g.beginPath(); g.arc(x, y, 6 + 4 * Math.sin(a * 2), 0, 6.2832); g.fill();
+    }
+    g.fillStyle = "#fff"; g.font = "14px sans-serif"; g.fillText("frame " + frames, 10, 20);
+  }
+  if (mode === "idle") { draw(0); return; }
+  var schedule = typeof requestAnimationFrame === "function" ? function (f) { requestAnimationFrame(f); } : function (f) { setTimeout(function () { f(Date.now()); }, 16); };
+  function frame() { frames++; draw((Date.now() - t0) / 1000); schedule(frame); }
+  schedule(frame);
+})();
+</script>

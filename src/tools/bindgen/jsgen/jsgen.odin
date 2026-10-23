@@ -676,6 +676,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 			append(&call, v)
 		}
 	}
+	_, owned := idl.attr_find(d.attrs, "Owned")
 	callee := fmt.tprintf("wr_%s", import_name)
 	callstr := strings.join(call[:], ", ", context.temp_allocator)
 	cl := strings.to_string(cleanup)
@@ -709,7 +710,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 		w(b, "%s", cl)
 		if result_nullable { wl(b, "    if (st == wr_Error_Not_Found) { return JS_NULL; }") }
 		wl(b, "    if (st < 0) {{ return wj_throw_status(ctx, st, %q); }}", qual)
-		wl(b, "    return %s;", c_result(g, result, result_iface, "r"))
+		wl(b, "    return %s;", c_result(g, result, result_iface, "r", owned))
 	case d.raises:
 		wl(b, "    int32_t st = %s(%s);", callee, callstr)
 		w(b, "%s", cl)
@@ -722,7 +723,7 @@ emit_import_glue :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, d: 
 	case:
 		wl(b, "    %s r = %s(%s);", c_ret_type(result), callee, callstr)
 		w(b, "%s", cl)
-		wl(b, "    return %s;", c_result(g, result, result_iface, "r"))
+		wl(b, "    return %s;", c_result(g, result, result_iface, "r", owned))
 	}
 	wl(b, "}")
 	wl(b, "")
@@ -780,7 +781,7 @@ c_ret_type :: proc(c: Conv) -> string {
 }
 
 @(private)
-c_result :: proc(g: ^Gen, c: Conv, iface: string, v: string) -> string {
+c_result :: proc(g: ^Gen, c: Conv, iface: string, v: string, owned := false) -> string {
 	#partial switch c {
 	case .Bool: return fmt.tprintf("JS_NewBool(ctx, %s != 0)", v)
 	case .I32: return fmt.tprintf("JS_NewInt32(ctx, %s)", v)
@@ -789,7 +790,10 @@ c_result :: proc(g: ^Gen, c: Conv, iface: string, v: string) -> string {
 	case .U64: return fmt.tprintf("JS_NewFloat64(ctx, (double)%s)", v)
 	case .F64, .F32: return fmt.tprintf("JS_NewFloat64(ctx, (double)%s)", v)
 	case .Node: return fmt.tprintf("wj_wrap_node(ctx, %s)", v)
-	case .Host: return fmt.tprintf("wj_wrap_host(ctx, %s, %d)", v, g.index_of[iface] or_else 0)
+	case .Host:
+		// [Owned]: the function makes a new browser object for the script, released with its wrapper
+		if owned { return fmt.tprintf("wj_wrap_owned(ctx, %s, %d, JS_UNDEFINED)", v, g.index_of[iface] or_else 0) }
+		return fmt.tprintf("wj_wrap_host(ctx, %s, %d)", v, g.index_of[iface] or_else 0)
 	case .Promise: return fmt.tprintf("wj_promise_from_host(ctx, %s, %s, NULL, JS_UNDEFINED)", v, iface)
 	}
 	return "JS_UNDEFINED"
@@ -835,6 +839,7 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 	wl(&head, "#include <string.h>")
 	wl(&head, "#include \"wj.h\"")
 	wl(&head, "#include \"bindings.h\"")
+	wl(&head, "wj_val wj_wrap_owned(wj_ctx *ctx, uint64_t handle, int iface, JSValueConst new_target);   /* qjs_platform.c */")
 	wl(&head, "")
 	// hand-written functions: declared here, defined in native/js/runtime
 	raws := make([dynamic]string, context.temp_allocator)
