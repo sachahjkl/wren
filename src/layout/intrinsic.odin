@@ -139,6 +139,23 @@ attr_px :: proc(c: ^Ctx, h: base.Handle, name: string) -> (f32, bool) {
 	return f32(min(n, f64(LAYOUT_MAX))), true   // (CSS px, scaled later: still far below an f32 overflow)
 }
 
+// The width or height of a <canvas>: an integer (0 allowed), `fallback` when absent or not a number.
+@(private)
+canvas_dim :: proc(c: ^Ctx, h: base.Handle, name: string, fallback: int) -> int {
+	v, ok := dom.get_attribute(c.d, h, name)
+	if !ok { return fallback }
+	i := 0
+	for i < len(v) && (v[i] == ' ' || v[i] == '\t' || v[i] == '\n' || v[i] == '\f' || v[i] == '\r') { i += 1 }
+	if i < len(v) && v[i] == '+' { i += 1 }
+	start, n := i, 0
+	for i < len(v) && v[i] >= '0' && v[i] <= '9' {
+		n = n * 10 + int(v[i] - '0')
+		if n > 2147483647 { return fallback }
+		i += 1
+	}
+	return i == start ? fallback : min(n, int(LAYOUT_MAX))
+}
+
 @(private)
 attr_int :: proc(c: ^Ctx, h: base.Handle, name: string, fallback: int) -> int {
 	v, ok := dom.get_attribute(c.d, h, name)
@@ -188,9 +205,8 @@ natural_size_of :: proc(c: ^Ctx, bi: i32) -> (w, h: f32, has_w, has_h: bool) {
 		// (its width / height attributes are presentational hints, CSS width / height and aspect-ratio: style's hints.odin)
 		return c.set.placeholder_w * s, c.set.placeholder_h * s, true, true
 	case "canvas":
-		aw, okw := attr_px(c, h_node, "width")
-		ah, okh := attr_px(c, h_node, "height")
-		return (okw ? aw : 300) * s, (okh ? ah : 150) * s, true, true
+		// HTML "rules for parsing non-negative integers": the digits at the start; 300 x 150 when there are none
+		return f32(canvas_dim(c, h_node, "width", 300)) * s, f32(canvas_dim(c, h_node, "height", 150)) * s, true, true
 	case "iframe", "embed", "object", "video":
 		if n.name == "video" && c.replaced.intrinsic != nil {
 			if iw, ih, ok := c.replaced.intrinsic(c.replaced.user, h_node); ok { return iw * s, ih * s, true, true }
