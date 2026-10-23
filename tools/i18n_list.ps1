@@ -1,4 +1,4 @@
-# Lists the texts the code passes to the i18n package (tr, trc, trn), and the strings of the user interface that do not go
+# Lists the texts the code passes to the i18n package (tr: a text, a context and a text, a count and two forms), and the strings of the user interface that do not go
 # through it yet.
 #   powershell -NoProfile -File tools\i18n_list.ps1            a summary and the texts per file
 #   powershell -NoProfile -File tools\i18n_list.ps1 -Missing   the user interface calls with a literal text that bypass tr
@@ -20,7 +20,7 @@ if ($Missing) {
         foreach ($line in [IO.File]::ReadLines($f.FullName)) {
             $i++
             $m = [regex]::Match($line, $pat)
-            if ($m.Success -and $line -notmatch 'i18n\.tr|\btr\(') { "{0}:{1}: {2}" -f $f.FullName.Replace("$root\", ''), $i, $m.Groups[2].Value; $n++ }
+            if ($m.Success -and $line -notmatch '(?<![A-Za-z0-9_])(i18n\.)?tr\(') { "{0}:{1}: {2}" -f $f.FullName.Replace("$root\", ''), $i, $m.Groups[2].Value; $n++ }
         }
     }
     "$n interface texts bypass tr"
@@ -31,9 +31,13 @@ $found = foreach ($f in $files) {
     $i = 0
     foreach ($line in [IO.File]::ReadLines($f.FullName)) {
         $i++
-        foreach ($m in [regex]::Matches($line, '(?<![A-Za-z0-9_])(?:i18n\.)?(tr|trc|trn)\(\s*(?:\d+\s*,\s*|"([^"]*)"\s*,\s*)?"([^"]*)"')) {
-            $kind = $m.Groups[1].Value
-            [pscustomobject]@{ text = $m.Groups[3].Value; context = $(if ($kind -eq 'trc') { $m.Groups[2].Value } else { '' }); file = $f.FullName.Replace("$root\", ''); line = $i }
+        # tr("text"), tr("context", "text"), tr(count, "one", "other")
+        foreach ($m in [regex]::Matches($line, '(?<![A-Za-z0-9_])(?:i18n\.)?tr\(\s*(?:([A-Za-z0-9_.]+)\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"|"([^"]*)"\s*,\s*"([^"]*)"|"([^"]*)")')) {
+            $g = $m.Groups
+            if ($g[1].Success) { $text = $g[2].Value; $ctx = ''; $plural = $g[3].Value }
+            elseif ($g[4].Success) { $text = $g[5].Value; $ctx = $g[4].Value; $plural = '' }
+            else { $text = $g[6].Value; $ctx = ''; $plural = '' }
+            [pscustomobject]@{ text = $text; context = $ctx; plural = $plural; file = $f.FullName.Replace("$root\", ''); line = $i }
         }
     }
 }
