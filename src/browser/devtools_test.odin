@@ -49,21 +49,24 @@ requests_are_logged_in_the_tab_they_run_in :: proc(t: ^testing.T) {
 	tab := new(Tab)
 	tab.scope = base.scope_make("tab")
 	append(&app.tabs, tab)
-	defer { delete(app.tabs); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy() }
+	defer { delete(app.tabs); net_log_destroy(&tab.net); base.scope_close(tab.scope); free(tab); net_destroy_owner() }
 
 	nav1 := base.scope_make("navigation", tab.scope)
 	page1 := base.scope_make("page", nav1)
 	net_observe(app, &fetch.Observed{kind = .Started, id = 1, scope = nav1, method = "GET", url = "https://x.test/", destination = .Document})
 	net_observe(app, &fetch.Observed{kind = .Started, id = 2, scope = page1, method = "POST", url = "https://x.test/api"})
-	net_observe(app, &fetch.Observed{kind = .Response, id = 1, url = "https://x.test/index", status = 200, mime = "text/html"})
+	net_observe(app, &fetch.Observed{kind = .Response, id = 1, url = "https://x.test/index", status = 200, mime = "text/html", headers = "Content-Length: 1234\r\nServer: t", status_text = "OK"})
 	net_observe(app, &fetch.Observed{kind = .Done, id = 1, bytes = 1234})
 	net_observe(app, &fetch.Observed{kind = .Failed, id = 2, error = .Transport, detail = "connection reset"})
 	testing.expect_value(t, len(tab.net.entries), 2)
 	e := tab.net.entries[0]
 	testing.expect_value(t, e.url, "https://x.test/index")   // the URL after redirects
 	testing.expect_value(t, e.status, 200)
+	testing.expect_value(t, e.status_text, "OK")
 	testing.expect_value(t, e.bytes, 1234)
+	testing.expect_value(t, e.transfer, 1234)
 	testing.expect(t, e.ms >= 0, "it ended")
+	testing.expect_value(t, e.type, Net_Type.Doc)
 	testing.expect(t, tab.net.entries[1].failed && tab.net.entries[1].error == "connection reset", "the failure is kept")
 	testing.expect_value(t, tab.net.bytes, i64(1234))
 

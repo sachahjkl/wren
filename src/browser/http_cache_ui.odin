@@ -265,8 +265,7 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, from: ^page.Page) {
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	page.load_html(t.page, transmute([]byte)cache_page_html(app, filter, cleared))
 	if c := app.profile.cache; c != nil && !httpcache.is_ready(c) {
 		// at start-up the index is still being read: the page is made again once it is

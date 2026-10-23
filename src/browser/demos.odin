@@ -388,8 +388,7 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	page.load_html(t.page, transmute([]byte)demos_html(app))
 	delete(t.url); t.url = strings.clone(DEMOS_URL)
 	delete(t.title); t.title = strings.clone("Demos and tests")
