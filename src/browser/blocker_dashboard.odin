@@ -733,8 +733,12 @@ tab_journal :: proc(app: ^App, t: ^Tab) {
 
 @(private = "file")
 journal_menu :: proc(app: ^App, t: ^Tab) {
+	if ui.ctx_menu(ui.key_from_string(0, "###lg_menu")) { journal_menu_items(app, t) }
+}
+
+@(private = "file")
+journal_menu_items :: proc(app: ^App, t: ^Tab) {
 	b := &bl.b
-	if !ui.ctx_menu(ui.key_from_string(0, "###lg_menu")) { return }
 	e := blocker.journal_get(&b.journal, dash.log_menu)
 	if e == nil { return }
 	host := adblock.url_host(e.url)

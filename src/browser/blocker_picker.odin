@@ -262,7 +262,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 	ui.custom("###bl_pick_outline", pick_overlay_draw, d)
 	picker_matches(t.page)
 	bar_h := ui.dense(em * 5.4)
-	w := min(draw.rect_size(area).x - em * 2, em * 52)
+	w := min(draw.rect_size(area).x - em * 2, em * 60)
 	ui.next({fixed_x = area.min.x + (draw.rect_size(area).x - w) * 0.5, fixed_y = area.max.y - bar_h - em * 1.0, width = ui.px(w), height = ui.px(bar_h), radius = em * 0.5})
 	if ui.column(.Start, {.Draw_Background, .Draw_Border}, "###bl_pick_bar") {
 		ui.spacer(ui.px(em * 0.4))

@@ -111,7 +111,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	if !bl.b.conf.first_run && state != .Off {
 		bl.b.conf.first_run = true
 		blocker.conf_save(&bl.b)
-		ui.toast(.Info, i18n.tr("Content blocker is on: the filter lists are downloading. The shield at the end of the address bar opens its panel; about:blocker customizes everything."))
+		ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel"))
 	}
 	d := ui.frame_new(Shield_Draw)
 	d.app, d.state, d.count = app, state, count
@@ -133,7 +133,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	case .Loading: tip_text = fmt.tprintf(i18n.tr("Content blocker: base list only, the filter lists are not loaded yet\n%d blocked on this page"), count)
 	case .Active: tip_text = fmt.tprintf(i18n.tr("this page, then all pages", "%d blocked on this page (%d in all)"), count, bl.b.totals.blocked)
 	}
-	tip(sig, tip_text)
+	if !ui.ctx_menu_is_open(key) { tip(sig, tip_text) }
 	// the popup is built where the button is, so its position follows the row
 	blocker_panel(app, t, key, state)
 }
@@ -229,7 +229,7 @@ cell_counts :: proc(row: ^blocker.Host_Row, c: Column) -> (allowed, blocked: u32
 @(private = "file")
 matrix_view :: proc(app: ^App, t: ^Tab, ts: ^blocker.Tab_State, page_host, src: string, w: f32) {
 	em := ui.font_size()
-	host_w := em * 10.2
+	host_w := em * 8.4
 	cell_w := (w - host_w - em * 1.2) / f32(len(COLUMNS))
 	// header
 	ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.5))})
@@ -315,12 +315,15 @@ blocker_rules_changed :: proc(app: ^App, t: ^Tab) {
 }
 
 blocker_panel :: proc(app: ^App, t: ^Tab, key: ui.Key, state: Shield_State) {
+	// (the deferred end of ctx_menu closes the popup at the end of the if statement: the whole panel is built inside it)
+	if ui.ctx_menu(key, ui.font_size() * PANEL_W_EM) { panel_body(app, t, state); return }
+	if bl.reload_pending && t != nil { bl.reload_pending = false; reload(app, t) }
+}
+
+@(private = "file")
+panel_body :: proc(app: ^App, t: ^Tab, state: Shield_State) {
 	em := ui.font_size()
 	w := em * PANEL_W_EM
-	if !ui.ctx_menu(key, w) {
-		if bl.reload_pending && t != nil { bl.reload_pending = false; reload(app, t) }
-		return
-	}
 	host, has_host := blocker_page_host(t)
 	ts := blocker_tab(t)
 	site_key := has_host ? blocker_site_key(host) : ""
@@ -411,7 +414,7 @@ blocker_panel :: proc(app: ^App, t: ^Tab, key: ui.Key, state: Shield_State) {
 		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
 		if ui.row(.Center) {
 			ui.spacer(ui.px(em * 0.6))
-			third := (w - em * 1.2) / 3
+			third := (w - em * 1.2) * 0.5
 			ui.next({width = ui.px(third), height = ui.pct(1)})
 			if ui.toggle("###sw_fnt", i18n.tr("Block remote fonts"), &fonts).clicked {
 				blocker.site_toggle(&bl.b, site_key, .Block_Fonts, fonts)
@@ -420,7 +423,11 @@ blocker_panel :: proc(app: ^App, t: ^Tab, key: ui.Key, state: Shield_State) {
 			}
 			ui.next({width = ui.px(third), height = ui.pct(1)})
 			if ui.toggle("###sw_med", i18n.tr("Block large media"), &media).clicked { blocker.site_toggle(&bl.b, site_key, .Block_Media, media); blocker_apply_site(app, t) }
-			ui.next({width = ui.px(third), height = ui.pct(1)})
+		}
+		ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 1.75))})
+		if ui.row(.Center) {
+			ui.spacer(ui.px(em * 0.6))
+			ui.next({width = ui.px((w - em * 1.2) * 0.5), height = ui.pct(1)})
 			if ui.toggle("###sw_hard", i18n.tr("Hard mode"), &hard).clicked {
 				blocker.site_toggle(&bl.b, site_key, .Hard, hard)
 				blocker.site_toggle(&bl.b, site_key, .Soft, !hard)
@@ -472,3 +479,4 @@ blocker_apply_site :: proc(app: ^App, t: ^Tab) {
 }
 
 _ :: strings
+
