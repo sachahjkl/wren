@@ -13,6 +13,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:cookies"
 import "wb:fetch"
+import "wb:page"
 import "wb:url"
 
 // Icon-font glyphs used by the chrome (the toolkit's icon font maps them to ASCII letters).
@@ -490,9 +491,11 @@ page_info_popup :: proc(app: ^App, t: ^Tab, sec: Security, chip: ^ui.Box) {
 			ui.spacer(ui.px(em * 0.5))
 			host := t != nil && t.page != nil ? t.page.env.location.host : ""
 			if ui.disabled(host == "") {
-				if action_button("Clear cookies", "pi_clear", em * 10) {
+				if action_button("Clear site data", "pi_clear", em * 10) {
 					n := cookies.delete_for_host(&app.profile.jar, host)
-					tab_log(t, .Log, fmt.tprintf("cleared %d cookie(s) for %s", n, host))
+					// IndexedDB: its connections close (the page hears "close"), the origin's file is emptied
+					page.idb_clear_origin(&app.storage, url.origin_serialize(t.page.env.origin, context.temp_allocator))
+					tab_log(t, .Log, fmt.tprintf("cleared %d cookie(s) and the IndexedDB data for %s", n, host))
 					ui.ctx_menu_close()
 				}
 			}

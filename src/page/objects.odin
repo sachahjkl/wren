@@ -249,5 +249,6 @@ microtask_checkpoint :: proc(p: ^Page) {
 		if res != .Ok { guest_failed(p, inst) }
 		if p.closed { return }
 	}
+	if p.web != nil && p.web.idb != nil && p.web.idb.cleanup_needed { idb_cleanup(p) }   // IndexedDB transactions go inactive
 	report_unhandled_rejections(p)
 }

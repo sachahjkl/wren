@@ -4,6 +4,7 @@ import "wb:canvas2d"
 import "wb:config"
 import "wb:forms"
 import "wb:html"
+import "wb:idb"
 import "wb:js"
 import "wb:media"
 import img "wb:images"
@@ -35,6 +36,7 @@ Settings :: struct {
 	canvas:          canvas2d.Settings,   // the 2D canvas (canvas.odin)
 	fullscreen:      Fullscreen_Settings, // the Fullscreen API (fullscreen.odin)
 	timeline:        Timeline_Settings,   // Performance Timeline entries (timeline.odin)
+	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
 }
 
 PREFS := [?]config.Def{
@@ -66,6 +68,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	canvas2d.register_prefs(p)
 	config.register(p, FULLSCREEN_PREFS[:])
 	config.register(p, TIMELINE_PREFS[:])
+	idb.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -92,6 +95,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		canvas = canvas2d.settings_from_prefs(p),
 		fullscreen = fullscreen_settings_from_prefs(p),
 		timeline = timeline_settings_from_prefs(p),
+		idb = idb.settings_from_prefs(p),
 	}
 }
 

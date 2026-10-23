@@ -93,6 +93,7 @@ Web_State :: struct {
 	frozen:          bool,      // in the back/forward cache: no task, timer or idle callback runs (bfcache.odin)
 	frozen_timers:   [dynamic]base.Handle,   // timers that came due while frozen, run when thawed
 	frozen_tasks:    [dynamic]rawptr,        // ^Page_Task posted while frozen, run when thawed
+	idb:             ^Idb_Page,              // IndexedDB: the page's client of the profile's manager (idb_host.odin), nil until used
 }
 
 // Extra fields of an event being dispatched (dom.Event has two strings; a StorageEvent needs four).
@@ -142,6 +143,7 @@ web_destroy :: proc(p: ^Page) {
 	}
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
+	idb_page_closed(p)
 	for d in w.frozen_tasks {
 		t := (^Page_Task)(d)
 		t.fn(nil, t.data)   // the page is gone: the task frees its data

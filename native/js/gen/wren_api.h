@@ -181,6 +181,8 @@ enum wr_ScrollRestoration {
     wr_ScrollRestoration_Manual = 1,
 };
 
+/* module idb: types */
+
 /* module images: types */
 typedef uint64_t wr_HTMLImageElement;
 
@@ -2033,6 +2035,10 @@ WR_IMPORT("history", "History_go") void wr_History_go(int32_t delta);
 WR_IMPORT("history", "History_scrollRestoration") int32_t wr_History_scrollRestoration(void);
 // history.scrollRestoration = mode, for the current entry (and the entries this document adds after it).
 WR_IMPORT("history", "History_set_scrollRestoration") void wr_History_set_scrollRestoration(int32_t mode);
+
+/* module idb */
+// See the module comment.
+WR_IMPORT("idb", "Idb_call") int32_t wr_Idb_call(int32_t op, const uint8_t *args, uint32_t args_len, uint8_t *_buf, uint32_t _cap);
 
 /* module images */
 WR_IMPORT("images", "HTMLImageElement_naturalWidth") int32_t wr_HTMLImageElement_naturalWidth(uint64_t image);
