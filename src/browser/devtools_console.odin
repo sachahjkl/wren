@@ -660,7 +660,7 @@ console_toolbar :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 		// the filter
 		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_con_fw") {
-			dt_search("###dt_con_filter", &c.filter, "Filter  (text, -text to exclude)")
+			dt_search("###dt_con_filter", &c.filter, "Filter  (-word excludes)")
 		}
 		// counts, one chip per level
 		errors, warns := console_counts(t)

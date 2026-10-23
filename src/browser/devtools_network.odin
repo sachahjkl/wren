@@ -469,7 +469,7 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		dt_vsep("###dt_nb0")
 		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_net_fw") {
-			dt_search("###dt_net_filter", &v.filter, "Filter  (text, -text to exclude, /regex/)")
+			dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)")
 		}
 		inv := dt_btn("###dt_net_inv", .None, "Invert", tooltip = "Invert the filter", on = v.filter.invert)
 		if inv.clicked { v.filter.invert = !v.filter.invert }
