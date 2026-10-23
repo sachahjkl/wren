@@ -379,6 +379,7 @@ Key_Sets :: struct {
 	ready: bool,
 	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
 	index: map[string]u32,           // canonical text -> number
+	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name (the rules' subjects: found without building their text)
 }
 
 @(private = "file")
@@ -391,6 +392,7 @@ key_sets_init :: proc() {
 	a := virtual.arena_allocator(&key_sets.arena)
 	key_sets.sets = make([dynamic][]Subject_Key, a)
 	key_sets.index = make(map[string]u32, 64, a)
+	for &m in key_sets.single { m = make(map[string]u32, 64, a) }
 	key_sets.ready = true
 }
 
@@ -476,5 +478,9 @@ subject_keys :: proc(c: ^css.Complex) -> u32 {
 	if !have { return 0 }
 	sync.mutex_lock(&key_sets.mu)
 	defer sync.mutex_unlock(&key_sets.mu)
-	return key_sets_intern([]Subject_Key{best})
+	key_sets_init()
+	if n, ok := key_sets.single[best.kind][best.name]; ok { return n }
+	n := key_sets_intern([]Subject_Key{best})
+	key_sets.single[best.kind][strings.clone(best.name, virtual.arena_allocator(&key_sets.arena))] = n
+	return n
 }
