@@ -135,12 +135,12 @@ engine_cosmetic_count :: proc(e: ^Engine) -> int { return len(e.cos) }
 engine_size :: proc(e: ^Engine) -> int { return len(e.blob) }
 
 // The lists the engine was built from (as given to `builder_add`) with what each contributed.
-Source_Info :: struct { id: u8, name: string, net, cosmetic, invalid: u32 }
+Source_Info :: struct { id: u8, name: string, net, cosmetic, invalid: u32, text_base, text_len: u32 }
 
 engine_sources :: proc(e: ^Engine, allocator := context.allocator) -> []Source_Info {
 	out := make([]Source_Info, len(e.sources), allocator)
 	for s, i in e.sources {
-		out[i] = Source_Info{id = s.id, name = string(e.source_names[s.name_off:s.name_off + s.name_len]), net = s.net, cosmetic = s.cosmetic, invalid = s.invalid}
+		out[i] = Source_Info{id = s.id, name = string(e.source_names[s.name_off:s.name_off + s.name_len]), net = s.net, cosmetic = s.cosmetic, invalid = s.invalid, text_base = s.text_base, text_len = s.text_len}
 	}
 	return out
 }

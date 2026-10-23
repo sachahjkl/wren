@@ -105,3 +105,28 @@ is_public_suffix :: proc(host: string) -> bool {
 	labels := strings.split(host, ".", context.temp_allocator)
 	return len(labels) == public_suffix_labels(host)
 }
+
+// `public_suffix_labels` without allocating: the request path of the content blocker calls it for every request.
+public_suffix_labels_fast :: proc(host: string) -> int {
+	sync.once_do(&psl_once, psl_init)
+	best := 1
+	count := 0
+	prev := ""
+	i := len(host)
+	for i > 0 {
+		j := i - 1
+		for j >= 0 && host[j] != '.' { j -= 1 }
+		suffix := host[j + 1:]
+		count += 1
+		if r, ok := psl_rules[suffix]; ok {
+			if r == .Exception { return count - 1 }
+			if r == .Normal && count > best { best = count }
+		}
+		if prev != "" {
+			if r, ok := psl_rules[prev]; ok && r == .Wildcard && count > best { best = count }
+		}
+		prev = suffix
+		i = j
+	}
+	return min(best, count)
+}
