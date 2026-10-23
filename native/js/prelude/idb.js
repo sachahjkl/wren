@@ -725,8 +725,14 @@
     activeSet.add(tx);
     if (!cleanupArmed) { cleanupArmed = true; call(OP.CLEANUP); }
   }
+  const vcDone = [];   // connections whose versionchange handlers have run: answered once their microtasks are done
   function cleanup() {
     cleanupArmed = false;
+    while (vcDone.length > 0) {
+      const w = new Wr();
+      w.uv(vcDone.shift());
+      call(OP.VC_DONE, w.done());
+    }
     const list = [...activeSet];
     activeSet.clear();
     for (const tx of list) { if (tx.state === "active") tx.state = "inactive"; }
@@ -1912,12 +1918,9 @@
         const c = conns.get(conn);
         if (c === undefined) break;
         dispatch(c.wrapper, versionEvent("versionchange", v1, v2 === 0 ? null : v2));
-        // the handlers have run, and the microtasks they queued (a promise that closes the connection): next task
-        post(() => {
-          const w = new Wr();
-          w.uv(conn);
-          call(OP.VC_DONE, w.done());
-        });
+        // the handlers have run: the answer goes when the microtasks they queued (a promise that closes the connection) are done
+        vcDone.push(conn);
+        if (!cleanupArmed) { cleanupArmed = true; call(OP.CLEANUP); }
         break;
       }
       case EV.DELETE_DONE: {
