@@ -17,7 +17,7 @@ foreach ($url in $Urls) {
       $env:WREN_LOAD_REPORT_MS = "$SettleMs"
       $prefs = @("--profile", $work, "--pref", "blocker.update.enabled=false", "--pref", "blocker.enabled=$($on.ToString().ToLower())")
       $p = Start-Process -PassThru -FilePath (Join-Path $root $Exe) -ArgumentList ($prefs + $url)
-      $deadline = (Get-Date).AddSeconds(($SettleMs / 1000) + 60)
+      $deadline = (Get-Date).AddSeconds(($SettleMs / 1000) + 180)
       while ((Get-Date) -lt $deadline) {
         Start-Sleep -Milliseconds 500
         if ((Test-Path $Out) -and @(Get-Content $Out).Count -gt $before) { break }
