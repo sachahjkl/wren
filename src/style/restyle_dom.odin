@@ -140,6 +140,7 @@ Marker :: struct {
 	// walk of the children, not 2 500 (each over every child).
 	walked:  map[Walk_Key]bool,   // positional walks from an element, forward or backward, per index
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
+	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
 }
 
 @(private = "file")
@@ -223,23 +224,86 @@ next_element :: proc(m: ^Marker, h: base.Handle) -> base.Handle {
 	return base.NIL_HANDLE
 }
 
-// Marks what `r` reaches from element `h`.
+// Marks what `r` reaches from element `h`. A whole subtree (desc, sib_desc) is restyled whole, unless the reach names its
+// subject's keys (Reach.set): then only the elements of it that carry one are marked (`.a .b`: the `.b` under `.a`), which
+// is all a rule can change; the rest is looked at, not restyled.
 @(private = "file")
 apply :: proc(m: ^Marker, h: base.Handle, r: Reach) {
-	if r.desc { mark(m, h, true) } else if r.self { mark(m, h, false) }
+	if r.desc {
+		if r.set != 0 && !m.shadows {
+			if r.self { mark(m, h, false) }
+			mark_keyed(m, h, r.set)
+		} else {
+			mark(m, h, true)
+		}
+	} else if r.self {
+		mark(m, h, false)
+	}
+	sibs :: proc(m: ^Marker, x: base.Handle, r: Reach) {
+		if r.sib_desc && r.set != 0 && !m.shadows {
+			mark(m, x, false)
+			mark_keyed(m, x, r.set)
+		} else {
+			mark(m, x, r.sib_desc)
+		}
+	}
 	if r.next > 0 || r.all_next {
 		k := 0
 		for x := next_element(m, h); x != base.NIL_HANDLE; x = next_element(m, x) {
 			k += 1
 			if !r.all_next && k > r.next { break }
-			mark(m, x, r.sib_desc)
+			sibs(m, x, r)
 		}
 	}
 	if r.all_prev {
-		for x := prev_element(&m.mc, h); x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { mark(m, x, r.sib_desc) }
+		for x := prev_element(&m.mc, h); x != base.NIL_HANDLE; x = prev_element(&m.mc, x) { sibs(m, x, r) }
 	}
 }
 
+// Marks the descendants of `h` that carry one of the keys of set `set` (their own marks only: what they pass on to their
+// children, the walk finds out). The scan is made once per element and set in a pass.
+@(private = "file")
+mark_keyed :: proc(m: ^Marker, h: base.Handle, set: u32) {
+	if m.keyed == nil { m.keyed = make(map[[2]u64]bool, 16, context.temp_allocator) }
+	done := [2]u64{u64(h), u64(set)}
+	if done in m.keyed { return }
+	m.keyed[done] = true
+	keys := key_set_keys(set)
+	if len(keys) == 0 { mark(m, h, true); return }
+	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+	append(&stack, h)
+	for len(stack) > 0 {
+		x := pop(&stack)
+		for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) {
+			n := dom.get(m.doc, ch)
+			if n == nil || n.kind != .Element { continue }
+			if carries_key(n, keys) { mark(m, ch, false) }
+			append(&stack, ch)
+		}
+	}
+}
+
+@(private = "file")
+carries_key :: proc(n: ^dom.Node, keys: []Subject_Key) -> bool {
+	for k in keys {
+		switch k.kind {
+		case .Type: if strings.equal_fold(n.name, k.name) { return true }
+		case .Id: if v, ok := attr(n, "id"); ok && strings.equal_fold(v, k.name) { return true }
+		case .Class:
+			if v, ok := attr(n, "class"); ok {
+				rest := v
+				for len(rest) > 0 {
+					for len(rest) > 0 && is_space(rest[0]) { rest = rest[1:] }
+					end := 0
+					for end < len(rest) && !is_space(rest[end]) { end += 1 }
+					if end > 0 && strings.equal_fold(rest[:end], k.name) { return true }
+					rest = rest[end:]
+				}
+			}
+		}
+	}
+	return false
+}
 @(private = "file")
 each_class :: proc(v: string, out: ^map[string]bool) {
 	rest := v
