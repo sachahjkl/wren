@@ -733,6 +733,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
 	if len(p.lists[3]) > 0 { selection_entries = make([dynamic]Entry, context.temp_allocator); append(&selection_entries, ..p.lists[3][:]) }
 	c := build_style(p, h, parent, p.lists[0][:], inline_rule)
+	if len(p.e.forced_hidden) > 0 { if h in p.e.forced_hidden { c.display = .None } }
 
 	for i in 1 ..< 3 {
 		entries := i == 1 ? before_entries : after_entries

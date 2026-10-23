@@ -22,6 +22,7 @@ import "wb:fetch"
 import "wb:host"
 import "wb:http"
 import "wb:net"
+import "wb:page"
 import "wb:url"
 
 Site_Flag :: enum u8 {
@@ -175,6 +176,7 @@ start :: proc(b: ^Blocker, loop: ^host.Loop, client: ^net.Client, loader: ^fetch
 	the_blocker = b
 	b.watch = config.watch(prefs, "blocker.", prefs_changed, b)
 	engine_boot(b)
+	install_page_hooks(b)   // page_hooks.odin
 	loader.interceptor = fetch.Interceptor{
 		user = b, request = request_hook, response = response_hook, document_begin = document_begin_hook, document_end = document_end_hook,
 	}
@@ -186,6 +188,7 @@ prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	b := (^Blocker)(user)
 	old := b.cfg
 	b.cfg = settings_from_prefs(p)
+	page.embedder.collapse_blocked = b.cfg.collapse
 	if b.cfg.log_capacity != old.log_capacity { journal_resize(&b.journal, b.cfg.log_capacity) }
 	b.conf_ver += 1
 	touch(b)
@@ -195,6 +198,7 @@ prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 shutdown :: proc(b: ^Blocker, loader: ^fetch.Loader) {
 	b.shutting_down = true
 	loader.interceptor = {}
+	remove_page_hooks(b)
 	if b.watch != 0 { config.unwatch(b.prefs, b.watch) }
 	updater_stop(b)
 	conf_save(b)
@@ -267,6 +271,7 @@ tab_reset_counters :: proc(t: ^Tab_State) {
 
 @(private)
 doc_free :: proc(b: ^Blocker, d: ^Doc) {
+	hooks_free(d)
 	if d.has_cosmetic { adblock.cosmetic_destroy(&d.cosmetic); d.has_cosmetic = false }
 	if d.engine != nil { engine_ref_drop(b, d.engine); d.engine = nil }
 	delete(d.href); delete(d.host); delete(d.domain)
