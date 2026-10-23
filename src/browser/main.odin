@@ -1265,7 +1265,7 @@ main :: proc() {
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
-	app.win.on_frame = proc(user: rawptr) { frame((^App)(user)) }
+	app.win.on_frame = proc(user: rawptr) { window_frame((^App)(user)) }   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if !headless_mode { platform.show_window(app.win) }
 	prof_mark(.Loop)
 
