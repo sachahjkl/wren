@@ -764,7 +764,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
-			find_bar(app, t)
+			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
+			if !elem_fs { find_bar(app, t) }
 			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 			dock, dev_on := devtools_dock(app, t)
 			switch {
@@ -785,7 +786,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				page_view(app, t)
 			}
 			// status bar (status_bar.odin)
-			status_bar_build(app, t)
+			if !elem_fs { status_bar_build(app, t) }
 			fullscreen_bars(app, t)
 			devtools_floating(app, t)   // over the page when it is undocked
 		}
@@ -831,6 +832,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
 		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
@@ -1030,6 +1032,7 @@ frame :: proc(app: ^App, idled := false) {
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
+	fullscreen_shell_frame(app)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
 	page_snapshot_wanted = ran > 0
@@ -1230,6 +1233,7 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
+	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
@@ -1269,6 +1273,7 @@ main :: proc() {
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	host.shutdown_step("shell_frames_destroy")
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
+	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
 	host.shutdown_step("session capture")
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")

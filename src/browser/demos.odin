@@ -144,6 +144,8 @@ DEMOS := [?]Demo{
 		"A module builds about 10 000 elements, then changes one span's text every 16 ms: only that paragraph is laid out again.", false, "", false},
 	{.Performance, "Class toggled every frame", "mutation_class.html",
 		"A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.", false, "", false},
+	{.Images, "Fullscreen API", "fullscreen.html",
+		"<code>requestFullscreen()</code> on a video, a styled card (<code>:fullscreen</code>) and two frames (one refused by <code>allow=\"fullscreen 'none'\"</code>): the window fills the screen without tabs, address bar or status bar; Esc or F11 leave; <code>fullscreenchange</code> and <code>fullscreenerror</code> are logged. A click is needed, as in other browsers.", true, "", false},
 	{.Performance, "Video benchmark", "video-bench.html",
 		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",

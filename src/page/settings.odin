@@ -33,6 +33,7 @@ Settings :: struct {
 	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
 	media:           media.Settings,      // video and audio (media/settings.odin)
 	canvas:          canvas2d.Settings,   // the 2D canvas (canvas.odin)
+	fullscreen:      Fullscreen_Settings, // the Fullscreen API (fullscreen.odin)
 }
 
 PREFS := [?]config.Def{
@@ -62,6 +63,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, FRAME_PREFS[:])
 	media.register_prefs(p)
 	canvas2d.register_prefs(p)
+	config.register(p, FULLSCREEN_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -86,6 +88,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		frames = frame_settings_from_prefs(p),
 		media = media.settings_from_prefs(p),
 		canvas = canvas2d.settings_from_prefs(p),
+		fullscreen = fullscreen_settings_from_prefs(p),
 	}
 }
 

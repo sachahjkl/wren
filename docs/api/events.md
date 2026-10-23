@@ -358,6 +358,16 @@ event.cancelable
 
 Host: `Event_cancelable :: proc(c: ^Call, event: Api_Event) -> bool`
 
+### `Event_composed`
+
+```
+bool Event_composed(Event event)
+```
+
+event.composed: whether the event crosses shadow boundaries (the browser's UI events, fullscreenchange...).
+
+Host: `Event_composed :: proc(c: ^Call, event: Api_Event) -> bool`
+
 ### `Event_eventPhase`
 
 ```

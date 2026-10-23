@@ -263,6 +263,13 @@ Api_FormEnctype :: enum i32 {
 	Text_Plain = 2,
 }
 
+// FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
+Api_FullscreenNavigation :: enum i32 {
+	Auto = 0,
+	Show = 1,
+	Hide = 2,
+}
+
 // What history.scrollRestoration says: whether the browser restores the scroll positions of an entry shown again.
 Api_ScrollRestoration :: enum i32 {
 	Auto = 0,
@@ -618,6 +625,9 @@ _valid_SelectionMode :: #force_inline proc "contextless" (v: i32) -> bool { swit
 
 @(private = "file")
 _valid_FormEnctype :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
+_valid_FullscreenNavigation :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_ScrollRestoration :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -8998,6 +9008,108 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Element_requestFullscreen :: proc(c: ^Call, element: Api_Element, navigationUI: Api_FullscreenNavigation) -> u64
+@(private = "file")
+_t_fullscreen_Element_requestFullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "fullscreen.Element_requestFullscreen: argument element is not a live Element") }
+		return wasm.trap_new("fullscreen.Element_requestFullscreen: argument element is not a live Element")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_FullscreenNavigation(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "fullscreen.Element_requestFullscreen: argument navigationUI is not a FullscreenNavigation") }
+		return wasm.trap_new("fullscreen.Element_requestFullscreen: argument navigationUI is not a FullscreenNavigation")
+	}
+	_p1 := Api_FullscreenNavigation(_e1)
+	_r := Element_requestFullscreen(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_exitFullscreen :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_fullscreen_Document_exitFullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_exitFullscreen(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_fullscreenElement :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_fullscreen_Document_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreenElement(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ShadowRoot_fullscreenElement :: proc(c: ^Call, root: Api_Node) -> u64
+@(private = "file")
+_t_fullscreen_ShadowRoot_fullscreenElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "fullscreen.ShadowRoot_fullscreenElement: argument root is not a live Node") }
+		return wasm.trap_new("fullscreen.ShadowRoot_fullscreenElement: argument root is not a live Node")
+	}
+	_r := ShadowRoot_fullscreenElement(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_fullscreenEnabled :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_fullscreen_Document_fullscreenEnabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreenEnabled(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Document_fullscreen :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_fullscreen_Document_fullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_fullscreen(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Window_self :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_history_Window_self :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -16522,6 +16634,26 @@ _t_events_Event_cancelable :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	return nil
 }
 
+// Event_composed :: proc(c: ^Call, event: Api_Event) -> bool
+@(private = "file")
+_t_events_Event_composed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.Event_composed: argument event is not a live Event") }
+		return wasm.trap_new("events.Event_composed: argument event is not a live Event")
+	}
+	_r := Event_composed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Event_eventPhase :: proc(c: ^Call, event: Api_Event) -> i32
 @(private = "file")
 _t_events_Event_eventPhase :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22374,6 +22506,12 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLIFrameElement_srcdoc", fn = _t_dom_HTMLIFrameElement_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLIFrameElement_set_srcdoc", fn = _t_dom_HTMLIFrameElement_set_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fullscreen", name = "Element_requestFullscreen", fn = _t_fullscreen_Element_requestFullscreen, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_exitFullscreen", fn = _t_fullscreen_Document_exitFullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_fullscreenElement", fn = _t_fullscreen_Document_fullscreenElement, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "ShadowRoot_fullscreenElement", fn = _t_fullscreen_ShadowRoot_fullscreenElement, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "fullscreen", name = "Document_fullscreenEnabled", fn = _t_fullscreen_Document_fullscreenEnabled, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "fullscreen", name = "Document_fullscreen", fn = _t_fullscreen_Document_fullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "history", name = "Window_self", fn = _t_history_Window_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Document_self", fn = _t_history_Document_self, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "history", name = "Location_get", fn = _t_history_Location_get, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -22693,6 +22831,7 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_isLive", fn = _t_events_Event_isLive, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_bubbles", fn = _t_events_Event_bubbles, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_cancelable", fn = _t_events_Event_cancelable, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "Event_composed", fn = _t_events_Event_composed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_eventPhase", fn = _t_events_Event_eventPhase, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_timeStamp", fn = _t_events_Event_timeStamp, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
 	{module = "events", name = "Event_isTrusted", fn = _t_events_Event_isTrusted, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

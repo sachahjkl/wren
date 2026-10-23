@@ -164,6 +164,14 @@ enum wr_FormEnctype {
 
 /* module dom (partial): types */
 
+/* module fullscreen: types */
+// FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
+enum wr_FullscreenNavigation {
+    wr_FullscreenNavigation_Auto = 0,
+    wr_FullscreenNavigation_Show = 1,
+    wr_FullscreenNavigation_Hide = 2,
+};
+
 /* module history: types */
 // The Window object (an EventTarget: popstate, hashchange, storage...).
 typedef uint64_t wr_Window;
@@ -1628,6 +1636,8 @@ WR_IMPORT("events", "Event_isLive") int32_t wr_Event_isLive(uint64_t event);
 WR_IMPORT("events", "Event_bubbles") int32_t wr_Event_bubbles(uint64_t event);
 // event.cancelable
 WR_IMPORT("events", "Event_cancelable") int32_t wr_Event_cancelable(uint64_t event);
+// event.composed: whether the event crosses shadow boundaries (the browser's UI events, fullscreenchange...).
+WR_IMPORT("events", "Event_composed") int32_t wr_Event_composed(uint64_t event);
 // event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
 WR_IMPORT("events", "Event_eventPhase") int32_t wr_Event_eventPhase(uint64_t event);
 // event.timeStamp, on the performance.now() timeline of the page.
@@ -1958,6 +1968,23 @@ WR_IMPORT("frames", "Frame_postMessagePorts") int32_t wr_Frame_postMessagePorts(
 WR_IMPORT("frames", "Window_get_name") int32_t wr_Window_get_name(uint8_t *_buf, uint32_t _cap);
 // window.name = value
 WR_IMPORT("frames", "Window_set_name") void wr_Window_set_name(const uint8_t *value, uint32_t value_len);
+
+/* module fullscreen */
+// element.requestFullscreen(options): settled once the window is in full screen. Rejected with TypeError when the
+// element cannot go (not connected, not an element that may, the document is not allowed by the permissions policy or
+// has no recent click or key press, the tab is not shown, full screen is turned off); "fullscreenerror" is fired too.
+WR_IMPORT("fullscreen", "Element_requestFullscreen") uint64_t wr_Element_requestFullscreen(uint64_t element, int32_t navigationUI);
+// document.exitFullscreen(): settled once the window is back. Rejected with TypeError when the document has no
+// fullscreen element.
+WR_IMPORT("fullscreen", "Document_exitFullscreen") uint64_t wr_Document_exitFullscreen(void);
+// document.fullscreenElement: the fullscreen element, retargeted against the document; null when there is none.
+WR_IMPORT("fullscreen", "Document_fullscreenElement") uint64_t wr_Document_fullscreenElement(void);
+// shadowRoot.fullscreenElement: the fullscreen element retargeted against the root (null when not in its tree).
+WR_IMPORT("fullscreen", "ShadowRoot_fullscreenElement") uint64_t wr_ShadowRoot_fullscreenElement(uint64_t root);
+// document.fullscreenEnabled: the document may request full screen (turned on, permissions policy "fullscreen").
+WR_IMPORT("fullscreen", "Document_fullscreenEnabled") int32_t wr_Document_fullscreenEnabled(void);
+// document.fullscreen (legacy): the document has a fullscreen element.
+WR_IMPORT("fullscreen", "Document_fullscreen") int32_t wr_Document_fullscreen(void);
 
 /* module history */
 // window (the same object every time).

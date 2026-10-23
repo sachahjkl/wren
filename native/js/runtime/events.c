@@ -477,6 +477,7 @@ static JSValue event_for_host(JSContext *ctx, uint64_t h)
     e->type = JS_NewStringLen(ctx, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
     e->bubbles = wr_Event_bubbles(h) != 0;
     e->cancelable = wr_Event_cancelable(h) != 0;
+    e->composed = wr_Event_composed(h) != 0;
     e->trusted = wr_Event_isTrusted(h) != 0;
     e->time_stamp = wr_Event_timeStamp(h);
     e->initialized = 1;
