@@ -170,12 +170,15 @@ fs_queue :: proc(p: ^Page, node: base.Handle, kind: Fs_Kind, promise: u64 = 0, m
 	fs_post(p, t)
 }
 
-// The shell's window has the size of the tree's full screen state: the changes the tree's pages were waiting with happen.
+// The shell's window has the size of the tree's full screen state: the changes the tree's pages were waiting with happen,
+// now (the "run the fullscreen steps" of update the rendering: before the frame's resize steps).
 fullscreen_settled :: proc(p: ^Page) {
 	if p == nil || p.closed || p.scope.closing { return }
-	if f := p.fullscreen; f != nil {
-		for t in f.waiting { fs_post(p, t) }
+	if f := p.fullscreen; f != nil && len(f.waiting) > 0 {
+		list := make([]^Fs_Task, len(f.waiting), context.temp_allocator)
+		copy(list, f.waiting[:])
 		clear(&f.waiting)
+		for t in list { fs_run(p, t) }   // (a handler may ask again: that change waits in the cleared list)
 	}
 	if p.frames == nil { return }
 	for n in p.frames.children { if n.page != nil { fullscreen_settled(n.page) } }
@@ -192,21 +195,24 @@ fullscreen_waiting :: proc(top: ^Page) -> bool {
 
 @(private = "file")
 fs_post :: proc(p: ^Page, t: ^Fs_Task) {
-	post_page_task(p, proc(pg: ^Page, data: rawptr) {
-		t := (^Fs_Task)(data)
-		defer { delete(t.message, base.process_allocator()); free(t, base.process_allocator()) }
-		if pg == nil || pg.closed { return }
-		// at the element while it is in the document, else at the document (events bubble and cross shadow trees)
-		target := pg.doc.root
-		if t.node != base.NIL_HANDLE && dom.get(pg.doc, t.node) != nil && dom.is_connected(pg.doc, t.node) { target = t.node }
-		type, prefixed := "fullscreenchange", "webkitfullscreenchange"
-		if t.kind == .Error { type, prefixed = "fullscreenerror", "webkitfullscreenerror" }
-		dispatch_event(pg, target, dom.Event{type = type, bubbles = true, composed = true})
-		if pg.closed { return }
-		dispatch_event(pg, target, dom.Event{type = prefixed, bubbles = true, composed = true})
-		if pg.closed || t.promise == 0 { return }
-		if t.kind == .Error { promise_reject(pg, t.promise, WEB_ERR_TYPE, t.message) } else { promise_resolve(pg, t.promise, 0) }
-	}, t)
+	post_page_task(p, proc(pg: ^Page, data: rawptr) { fs_run(pg, (^Fs_Task)(data)) }, t)
+}
+
+// The events of a change, then its promise (the task is consumed).
+@(private = "file")
+fs_run :: proc(pg: ^Page, t: ^Fs_Task) {
+	defer { delete(t.message, base.process_allocator()); free(t, base.process_allocator()) }
+	if pg == nil || pg.closed { return }
+	// at the element while it is in the document, else at the document (events bubble and cross shadow trees)
+	target := pg.doc.root
+	if t.node != base.NIL_HANDLE && dom.get(pg.doc, t.node) != nil && dom.is_connected(pg.doc, t.node) { target = t.node }
+	type, prefixed := "fullscreenchange", "webkitfullscreenchange"
+	if t.kind == .Error { type, prefixed = "fullscreenerror", "webkitfullscreenerror" }
+	dispatch_event(pg, target, dom.Event{type = type, bubbles = true, composed = true})
+	if pg.closed { return }
+	dispatch_event(pg, target, dom.Event{type = prefixed, bubbles = true, composed = true})
+	if pg.closed || t.promise == 0 { return }
+	if t.kind == .Error { promise_reject(pg, t.promise, WEB_ERR_TYPE, t.message) } else { promise_resolve(pg, t.promise, 0) }
 }
 
 ////////////////////////////////
