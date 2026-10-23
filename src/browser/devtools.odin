@@ -445,8 +445,10 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 		ui.menu_item("The browser's theme is set in Settings > Appearance###dt_m_t1", enabled = false)
 	}
 	ui.menu_separator()
-	console_settings_items(app, t)
-	network_settings_items(app, t)
+	#partial switch dev.panel {
+	case .Console: console_settings_items(app, t)
+	case .Network: network_settings_items(app, t)
+	}
 	ui.menu_separator()
 	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
 	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools") }
