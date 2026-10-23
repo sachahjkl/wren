@@ -29,6 +29,7 @@ import "wb:tools/testenv"
 PAGES_DIR :: "examples/jsdom"
 VIEW_W :: 800
 VIEW_H :: 600
+view_extra: f64   // a test widens the viewport script sees (fullscreen.odin: the resize event)
 
 failures: int
 passes: int
@@ -73,7 +74,7 @@ layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 
 layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	lh := (^Layout_Host)(user)
-	return page.Viewport{width = VIEW_W, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
+	return page.Viewport{width = VIEW_W + view_extra, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
 }
 
 layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {

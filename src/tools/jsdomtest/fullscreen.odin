@@ -50,6 +50,12 @@ wait_for_log :: proc(from: int, what: string, ms: f64 = 20000) -> bool {
 	return false
 }
 
+@(private = "file")
+logged_from :: proc(from: int, prefix: string) -> bool {
+	for l in logs[from:] { if strings.has_prefix(l, prefix) { return true } }
+	return false
+}
+
 // Runs `phase` of the page (an async function) and counts the verdicts it logs.
 @(private = "file")
 run_phase :: proc(p: ^page.Page, phase: string) {
@@ -115,9 +121,45 @@ fullscreen_checks :: proc(p: ^page.Page) {
 	rec.refuse = false
 	check(!page.fullscreen_active(p) && !rec.is_on, "a refusal leaves nothing behind")
 
-	// the document closes in full screen (main closes it): the window is given back
+	// a window that takes time (the shell): the events and the promise wait for fullscreen_settled
+	page.fullscreen_embedder.deferred = true
 	click(p)
 	from := len(logs)
+	page.js_run(p, transmute([]byte)string(`document.addEventListener("fullscreenchange", () => console.log("CHG " + !!document.fullscreenElement));
+		document.getElementById("b").requestFullscreen().then(() => console.log("PROMISE"))`), "probe.js")
+	time.sleep(60 * time.Millisecond)
+	host.loop_wait(&loop, 20)
+	check(page.fullscreen_waiting(p) && !logged("CHG true") && !logged("PROMISE"), "a deferred change: no event and no promise before the shell says the window is ready")
+	check(page.fullscreen_active(p), "... though the element is already the fullscreen element")
+	page.fullscreen_settled(p)
+	check(wait_for_log(from, "PROMISE") && logged("CHG true") && !page.fullscreen_waiting(p), "fullscreen_settled: the event, then the promise")
+	from = len(logs)
+	page.js_run(p, transmute([]byte)string(`document.exitFullscreen().then(() => console.log("PROMISE2"))`), "probe.js")
+	time.sleep(30 * time.Millisecond)
+	host.loop_wait(&loop, 20)
+	check(page.fullscreen_waiting(p) && !logged("PROMISE2"), "leaving waits too")
+	page.fullscreen_settled(p)
+	check(wait_for_log(from, "PROMISE2") && logged("CHG false"), "... and ends with the event and the promise")
+	page.fullscreen_embedder.deferred = false
+
+	// the window's "resize": once per frame whose viewport differs from the last one
+	from = len(logs)
+	page.js_run(p, transmute([]byte)string(`window.addEventListener("resize", () => console.log("RESIZE " + innerWidth))`), "probe.js")
+	now := f64(host.now_ns(&loop)) / 1e6
+	page.run_animation_frames(p, now)
+	page.run_animation_frames(p, now + 16)
+	check(!logged_from(from, "RESIZE "), "no resize event while the viewport keeps its size")
+	view_extra = 100
+	page.run_animation_frames(p, now + 32)
+	page.run_animation_frames(p, now + 48)
+	view_extra = 0
+	n := 0
+	for l in logs[from:] { if l == "RESIZE 900" { n += 1 } }
+	check(n == 1, "a changed viewport fires one resize event (with the new size), not one per frame")
+
+	// the document closes in full screen (main closes it): the window is given back
+	click(p)
+	from = len(logs)
 	page.js_run(p, transmute([]byte)string(`document.getElementById("b").requestFullscreen().then(() => console.log("FS_ON"))`), "probe.js")
 	check(wait_for_log(from, "FS_ON") && rec.is_on, "full screen again before the page closes")
 }
