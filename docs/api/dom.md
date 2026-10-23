@@ -3000,6 +3000,19 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)`
 
+### `Document_createElementInert`
+
+```
+Element Document_createElementInert(string local_name) raises
+```
+
+createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error)`
+
 ### `Document_createElementNSChecked`
 
 ```

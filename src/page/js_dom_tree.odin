@@ -169,12 +169,35 @@ document_base_url :: proc(p: ^Page) -> string {
 
 Node_isConnected :: proc(c: ^Call, node: Api_Node) -> bool { return dom.is_connected(c.page.doc, H(node.handle)) }
 
+// The document the contents of the page's <template>s belong to (HTML "appropriate template contents owner document"):
+// one without browsing context or custom element registry, so what a library makes there with ownerDocument.createElement
+// (Polymer's dom-repeat) is not constructed. It is a document node of its own, kept by the page.
+Template_Doc :: struct {
+	doc:    ^dom.Document,
+	handle: base.Handle,
+}
+
+@(private)
+template_owner_document :: proc(p: ^Page) -> base.Handle {
+	d := p.doc
+	if p.template_doc.doc == d && dom.get(d, p.template_doc.handle) != nil { return p.template_doc.handle }
+	f := dom.create_fragment(d)
+	n := dom.get(d, f)
+	n.as_document, n.held = true, true
+	p.template_doc = {d, f}
+	return f
+}
+
 Node_ownerDocument :: proc(c: ^Call, node: Api_Node) -> u64 {
 	if node.data.kind == .Document || node.data.as_document { return 0 }
-	// a node of a document createHTMLDocument made, shadow trees included: that document
+	// a node of a document createHTMLDocument made, shadow trees included: that document; the contents of a template
+	// (and what was made in them): the inert document of the templates
 	d := c.page.doc
 	if r := dom.shadow_including_root(d, H(node.handle)); r != d.root {
-		if n := dom.get(d, r); n != nil && n.as_document { return u64(r) }
+		if n := dom.get(d, r); n != nil {
+			if n.as_document { return u64(r) }
+			if n.kind == .Fragment && n.held { return u64(template_owner_document(c.page)) }
+		}
 	}
 	return u64(d.root)
 }
@@ -789,6 +812,13 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	h := dom.create_element(d, local_name)
 	custom_elements_created(c.page, h)   // a defined name: constructed before createElement returns
 	return u64(h), .None
+}
+
+Document_createElementInert :: proc(c: ^Call, local_name: string) -> (u64, Api_Error) {
+	d := jd_doc(c)
+	if d == nil { return 0, no_document(c) }
+	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
+	return u64(dom.create_element(d, local_name)), .None
 }
 
 // DOM "validate and extract": namespace, prefix and local name of a qualified name.

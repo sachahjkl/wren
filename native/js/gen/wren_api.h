@@ -1432,6 +1432,9 @@ WR_IMPORT("dom", "DocumentType_publicId") int32_t wr_DocumentType_publicId(uint6
 WR_IMPORT("dom", "DocumentType_systemId") int32_t wr_DocumentType_systemId(uint64_t node, uint8_t *_buf, uint32_t _cap);
 // document.createElement(localName): Invalid_Character for a name that is not a valid element name.
 WR_IMPORT("dom", "Document_createElementChecked") int32_t wr_Document_createElementChecked(const uint8_t *local_name, uint32_t local_name_len, uint64_t *_ret);
+// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+WR_IMPORT("dom", "Document_createElementInert") int32_t wr_Document_createElementInert(const uint8_t *local_name, uint32_t local_name_len, uint64_t *_ret);
 // document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
 WR_IMPORT("dom", "Document_createElementNSChecked") int32_t wr_Document_createElementNSChecked(const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, uint64_t *_ret);
 // document.createDocumentFragment()

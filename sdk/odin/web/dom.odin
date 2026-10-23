@@ -313,6 +313,7 @@ foreign _m_dom {
 	@(link_name = "DocumentType_publicId") _DocumentType_publicId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DocumentType_systemId") _DocumentType_systemId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_createElementChecked") _Document_createElementChecked :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Document_createElementInert") _Document_createElementInert :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createElementNSChecked") _Document_createElementNSChecked :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
 	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
@@ -3445,6 +3446,13 @@ DocumentType_systemId_alloc :: proc(node: $T_node, allocator: runtime.Allocator)
 // document.createElement(localName): Invalid_Character for a name that is not a valid element name.
 Document_createElementChecked :: proc "contextless" (local_name: string) -> (result: Element, err: Error) {
 	err = _Document_createElementChecked(raw_data(local_name), u32(len(local_name)), &result)
+	return
+}
+
+// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+Document_createElementInert :: proc "contextless" (local_name: string) -> (result: Element, err: Error) {
+	err = _Document_createElementInert(raw_data(local_name), u32(len(local_name)), &result)
 	return
 }
 

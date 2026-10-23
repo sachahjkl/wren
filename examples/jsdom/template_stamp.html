@@ -1,0 +1,136 @@
+<!doctype html>
+<html><head><title>Template stamping</title></head>
+<body>
+<template id="decl">
+  <style>:host { display: block }</style>
+  <div id="a" class="x [[cls]]" on-click="go">
+    <span>[[data]]</span>
+    <!-- a comment -->
+    <template is="dom-repeat" items="[[shownItems]]"><b>[[item]]</b></template>
+    {{one}} and {{two}}
+  </div>
+  <x-thing data="[[data]]" items="[[sourceAttributions]]"></x-thing>
+</template>
+<script>
+// What Polymer's TemplateStamp does: parse the template's content (marking nodes, removing whitespace, emptying
+// binding text), then stamp it with importNode and find the nodes again by their index paths
+function kids(n) { return Array.prototype.map.call(n.childNodes, c => c.nodeType + ":" + (c.nodeName)); }
+function parse(node, info, list, parentInfo, parentIndex) {
+  const mine = { parentInfo, parentIndex, index: list.length, node: null };
+  list.push(mine);
+  let i = 0;
+  for (let c = node.firstChild; c; ) {
+    const next = c.nextSibling;
+    if (c.nodeType === 3 && /^\s*$/.test(c.textContent) && c.textContent.length) { node.removeChild(c); c = next; continue; }
+    if (c.nodeType === 3 && /\[\[.*\]\]|\{\{.*\}\}/.test(c.textContent)) { c.textContent = ""; mine.bound = true; }
+    if (c.nodeType === 1 || c.nodeType === 3) parse(c, info, list, mine, i);
+    i++;
+    c = next;
+  }
+}
+function find(root, info) {
+  const parent = info.parentInfo && find(root, info.parentInfo);
+  if (parent) { let i = 0; for (let n = parent.firstChild; n; n = n.nextSibling) { if (info.parentIndex === i++) return n; } return undefined; }
+  return info.parentInfo ? undefined : root;
+}
+
+const tpl = document.getElementById("decl");
+t("a template in the document has contents of another document", tpl.content instanceof DocumentFragment && tpl.content.ownerDocument !== document && tpl.childNodes.length === 0);
+t("the contents are a fragment with the parsed children", tpl.content.querySelector("#a") !== null && tpl.content.querySelector("x-thing") !== null);
+t("the nested template has its own contents", tpl.content.querySelector("template").content.firstChild.nodeName === "B");
+
+const list = [];
+parse(tpl.content, null, list, null, 0);
+const stamped = document.importNode(tpl.content, true);
+t("importNode of the contents gives a fragment", stamped.nodeType === 11 && stamped.ownerDocument === document);
+eq("same children as the parsed contents", kids(stamped).join(","), kids(tpl.content).join(","));
+let missing = 0;
+for (const info of list) { if (find(stamped, info) === undefined) missing++; }
+eq("every node of the parse is found again in the stamp", missing, 0);
+
+// empty text nodes survive a deep clone and importNode
+const f = document.createDocumentFragment();
+f.appendChild(document.createTextNode(""));
+f.appendChild(document.createElement("i"));
+f.appendChild(document.createTextNode(""));
+eq("empty text nodes: fragment", f.childNodes.length, 3);
+eq("... cloneNode(true)", f.cloneNode(true).childNodes.length, 3);
+eq("... importNode(true)", document.importNode(f, true).childNodes.length, 3);
+const d = document.createElement("div");
+d.appendChild(document.createTextNode("a"));
+d.appendChild(document.createTextNode(""));
+d.appendChild(document.createTextNode("b"));
+eq("adjacent text nodes stay apart in a clone", d.cloneNode(true).childNodes.length, 3);
+const tt = document.createElement("template");
+tt.content.appendChild(document.createTextNode(""));
+tt.content.appendChild(document.createElement("p"));
+eq("a template built by DOM calls: empty text kept by importNode", document.importNode(tt.content, true).childNodes.length, 2);
+const tpl2 = document.createElement("template");
+tpl2.innerHTML = "<div>  </div>  <!--c--><p>x</p>";
+eq("innerHTML on a template: children of its contents", kids(tpl2.content).join(","), "1:DIV,3:#text,8:#comment,1:P");
+eq("... and a clone of the template element carries them", kids(tpl2.cloneNode(true).content).join(","), "1:DIV,3:#text,8:#comment,1:P");
+eq("importNode of the template element itself", kids(document.importNode(tpl2, true).content).join(","), "1:DIV,3:#text,8:#comment,1:P");
+const cc = tpl.cloneNode(true);
+t("the template's clone has its own contents, not shared", cc.content !== tpl.content && cc.content.querySelector("#a") !== tpl.content.querySelector("#a"));
+const ad = document.implementation.createHTMLDocument("");
+const adopted = ad.importNode(tpl2.content, true);
+eq("importNode into another document", kids(adopted).join(","), "1:DIV,3:#text,8:#comment,1:P");
+const html = document.createElement("div");
+html.appendChild(document.importNode(tpl2.content, true));
+eq("the stamp appended to an element", html.childNodes.length, 4);
+t("firstChild/nextSibling walk a fragment", (() => { let n = 0; for (let c = stamped.firstChild; c; c = c.nextSibling) n++; return n === stamped.childNodes.length; })());
+
+// the template contents' document is inert: no custom element is constructed in it (Polymer's `is="dom-repeat"`
+// templates are replaced by a dom-repeat made with ownerDocument.createElement while the template is parsed)
+{
+  const made = [];
+  class DomRepeat extends HTMLElement {
+    constructor() { super(); made.push("ctor"); }
+    static get observedAttributes() { return ["items"]; }
+    attributeChangedCallback(n, o, v) { made.push("attr " + n + "=" + v); }
+  }
+  customElements.define("dom-repeat", DomRepeat);
+  const t3 = document.createElement("template");
+  t3.innerHTML = '<div id="w"><template is="dom-repeat" items="[[list]]" as="x"><b>[[x]]</b></template></div>';
+  const cd = t3.content;
+  const od = cd.ownerDocument;
+  t("a template's contents belong to a document of their own", od !== document && od.nodeType === 9 && od === t3.content.firstChild.ownerDocument);
+  eq("... the same one for every template", od, document.createElement("template").content.ownerDocument);
+  const w = cd.querySelector("#w");
+  let tp = w.firstChild;
+  tp.removeAttribute("is");
+  const rep = tp.ownerDocument.createElement("dom-repeat");
+  tp.parentNode.replaceChild(rep, tp);
+  rep.appendChild(tp);
+  rep.setAttribute("items", "[[list]]");
+  tp.removeAttribute("items");
+  eq("a custom element made through the contents' document is not constructed", made.length, 0);
+  t("... and stays a plain element", !(rep instanceof DomRepeat) && rep.localName === "dom-repeat");
+  const cl = document.importNode(cd, true);
+  eq("importNode into the page upgrades it, after the template was prepared (constructed once)", made.join("|"), "ctor|attr items=[[list]]");
+  t("... as a DomRepeat", cl.querySelector("dom-repeat") instanceof DomRepeat);
+  // moving a template's contents elsewhere (Polymer's nested templates) does not construct what is in them
+  made.length = 0;
+  const t4 = document.createElement("template");
+  t4.innerHTML = '<p><dom-repeat items="a"></dom-repeat></p>';
+  const moved = t4.content.ownerDocument.createDocumentFragment();
+  moved.appendChild(t4.content);
+  const moved2 = document.createDocumentFragment();
+  moved2.appendChild(moved);
+  eq("contents moved to another fragment stay unconstructed", made.length, 0);
+  t("... plain elements", !(moved2.querySelector("dom-repeat") instanceof DomRepeat));
+  const t5 = document.createElement("template");
+  t5.innerHTML = '<p><dom-repeat items="a"></dom-repeat></p>';
+  const d5 = document.createElement("div");
+  d5.appendChild(t5.content);
+  eq("... also appended to a detached element", made.length, 0);
+  document.body.appendChild(d5);
+  eq("connecting them upgrades them", made.join("|"), "ctor|attr items=a");
+  d5.remove();
+  made.length = 0;
+  const hd = document.implementation.createHTMLDocument("");
+  t("createHTMLDocument's documents are inert as well", !(hd.createElement("dom-repeat") instanceof DomRepeat));
+  t("document.createElement still constructs", document.createElement("dom-repeat") instanceof DomRepeat);
+}
+done();
+</script></body></html>

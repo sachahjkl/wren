@@ -110,6 +110,9 @@ partial module dom {
 
   /// document.createElement(localName): Invalid_Character for a name that is not a valid element name.
   Element Document_createElementChecked(string local_name) raises;
+  /// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+  /// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+  Element Document_createElementInert(string local_name) raises;
   /// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
   Element Document_createElementNSChecked(optional string namespace, string qualified_name) raises;
   /// document.createDocumentFragment()

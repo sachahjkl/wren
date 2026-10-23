@@ -93,6 +93,9 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 		// template contents belong to an inert document: no definition applies there
 		root := dom.shadow_including_root(d, e.node)
 		if rn := dom.get(d, root); rn != nil && rn.kind == .Fragment && rn.held { return }
+		// a script's insertion into a tree that is not the document's reacts to nothing (HTML "insert": only a connected
+		// node is upgraded or connected); the parser's fragments are upgraded where they were made (innerHTML)
+		if root != d.root && d.parser_inserting == 0 { return }
 		ce_walk(p, ce, d, e.node, true, root == d.root)
 	case .Remove:
 		if e.parent != base.NIL_HANDLE && dom.is_connected(d, e.parent) { ce_walk(p, ce, d, e.node, false, true) }
