@@ -751,6 +751,7 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
 		page_area_focus(app, t, pb)
+		blocker_picker_frame(app, t)   // blocker_picker.odin
 	}
 }
 

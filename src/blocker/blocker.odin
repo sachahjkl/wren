@@ -541,6 +541,7 @@ record :: proc(b: ^Blocker, tab: ^Tab_State, q: ^fetch.Intercept_Query, req: ^ad
 		})
 	}
 	if counted {
+		trace("%d ms %v %v %s", now_ms() - (tab != nil ? tab.started_ms : 0), req.type, outcome, q.url)
 		if b.on_event != nil {
 			ev := Event{kind = .Blocked, tab = tab != nil ? tab.id : 0, url = q.url, rule = reason, type = req.type}
 			b.on_event(b.event_user, &ev)
