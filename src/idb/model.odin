@@ -688,7 +688,7 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 			c := i64(len(k.key) + KEY_OVERHEAD)
 			s.bytes += c
 			d.bytes += c
-			push(undo, Undo_Index_Put{s, rec, k.index, clone_bytes(k.key, d.allocator)})
+			if undo != nil { push(undo, Undo_Index_Put{s, rec, k.index, clone_bytes(k.key, d.allocator)}) }
 		}
 	case .Key_Gen:
 		s := find_store(db, op.store)
