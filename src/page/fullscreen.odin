@@ -54,6 +54,9 @@ Fullscreen_Embedder :: struct {
 	// The tab's document `top` has (on) or no longer has (off) an element in full screen: the window fills the screen
 	// and the interface goes, or the window is back as it was. False (on only) when it cannot be: the request fails.
 	set: proc(top: ^Page, on: bool, navigation: Api_FullscreenNavigation) -> bool,
+	// The window takes time to change its size: the events and promises of a change wait for the shell to call
+	// fullscreen_settled (it must, while fullscreen_waiting says so).
+	deferred: bool,
 }
 
 fullscreen_embedder: Fullscreen_Embedder
@@ -61,6 +64,7 @@ fullscreen_embedder: Fullscreen_Embedder
 @(private)
 Page_Fullscreen :: struct {
 	element: base.Handle,   // this document's fullscreen element; NIL: none
+	waiting: [dynamic]^Fs_Task,   // changes whose events wait for the window's new size (fs_queue)
 }
 
 // Whether the tab's document has an element in full screen (for the shell).
@@ -86,6 +90,11 @@ fullscreen_page_closing :: proc(data: rawptr) {
 	if f == nil { return }
 	had := f.element != base.NIL_HANDLE
 	p.fullscreen = nil
+	for t in f.waiting {
+		delete(t.message, base.process_allocator())
+		free(t, base.process_allocator())
+	}
+	delete(f.waiting)
 	free(f)
 	if !had { return }
 	p.style_state.fullscreen = base.NIL_HANDLE
@@ -147,10 +156,42 @@ Fs_Task :: struct {
 	message: string,      // owned (process allocator): the error's text
 }
 
+// A change waits (with a shell: Fullscreen_Embedder.deferred) until the window has its new size and the page has been
+// laid out for it: the scripts' handlers read the viewport, and Blink too fires the events after the resize. The shell
+// calls fullscreen_settled; the events of a page that goes away are dropped with it.
 @(private)
 fs_queue :: proc(p: ^Page, node: base.Handle, kind: Fs_Kind, promise: u64 = 0, message := "") {
 	t := new(Fs_Task, base.process_allocator())
 	t^ = {node = node, kind = kind, promise = promise, message = strings.clone(message, base.process_allocator())}
+	if kind == .Change && fullscreen_embedder.deferred && !p.scope.closing {
+		append(&fs_ensure(p).waiting, t)
+		return
+	}
+	fs_post(p, t)
+}
+
+// The shell's window has the size of the tree's full screen state: the changes the tree's pages were waiting with happen.
+fullscreen_settled :: proc(p: ^Page) {
+	if p == nil || p.closed || p.scope.closing { return }
+	if f := p.fullscreen; f != nil {
+		for t in f.waiting { fs_post(p, t) }
+		clear(&f.waiting)
+	}
+	if p.frames == nil { return }
+	for n in p.frames.children { if n.page != nil { fullscreen_settled(n.page) } }
+}
+
+// Whether a change of the tree of `top` waits for the shell.
+fullscreen_waiting :: proc(top: ^Page) -> bool {
+	if top == nil || top.closed || top.scope.closing { return false }
+	if top.fullscreen != nil && len(top.fullscreen.waiting) > 0 { return true }
+	if top.frames == nil { return false }
+	for n in top.frames.children { if n.page != nil && fullscreen_waiting(n.page) { return true } }
+	return false
+}
+
+@(private = "file")
+fs_post :: proc(p: ^Page, t: ^Fs_Task) {
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		t := (^Fs_Task)(data)
 		defer { delete(t.message, base.process_allocator()); free(t, base.process_allocator()) }

@@ -5,6 +5,7 @@ package browser
 // (and no reveal at the top edge: the page owns the whole window); Escape or F11 leave, as do showing another tab, a
 // navigation and closing the tab. The window comes back as it was: a window already in full screen by F11 stays so.
 
+import draw "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
@@ -40,12 +41,50 @@ Scroll_Back :: struct {
 sback: Scroll_Back
 
 fullscreen_shell_init :: proc(app: ^App) {
-	page.fullscreen_embedder = {set = fullscreen_set}
+	page.fullscreen_embedder = {set = fullscreen_set, deferred = true}
 }
 
 fullscreen_shell_destroy :: proc(app: ^App) {
 	page.fullscreen_embedder = {}
-	fshell, sback = {}, {}
+	fshell, sback, settle = {}, {}, {}
+}
+
+// The events of a change of full screen wait for the page to have been laid out at the window's new size (the page's
+// handlers read it, and a player resizes its video from them): the page area changes when the window does, else a
+// couple of frames (the interface going or coming), at the latest a second.
+@(private = "file")
+Settle :: struct {
+	armed:   bool,
+	page_id: u64,
+	tab_id:  u64,
+	area:    draw.Vec2,   // the page area when the change began
+	changes: bool,        // the window changes size
+	frames:  int,
+}
+
+@(private = "file")
+settle: Settle
+
+@(private = "file")
+fullscreen_settle_arm :: proc(app: ^App, top: ^page.Page, tab_id: u64, changes: bool) {
+	settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(app.page_rect), changes = changes}
+}
+
+@(private = "file")
+fullscreen_settle_tick :: proc(app: ^App) {
+	if !settle.armed { return }
+	tab_of: ^Tab
+	for tab in app.tabs { if tab.id == settle.tab_id { tab_of = tab; break } }
+	if tab_of == nil || tab_of.page == nil || page.page_id(tab_of.page) != settle.page_id || !page.fullscreen_waiting(tab_of.page) {
+		settle.armed = false
+		return
+	}
+	settle.frames += 1
+	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(app.page_rect) != settle.area : settle.frames >= 2)
+	if !ready { app.frames_requested = max(app.frames_requested, 2); return }
+	settle.armed = false
+	page.fullscreen_settled(tab_of.page)
+	app.frames_requested = max(app.frames_requested, 2)
 }
 
 // An element of the shown tab's document is in full screen.
@@ -66,11 +105,13 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 		}
 		if fshell.page_id == 0 { fshell.scroll = t.scroll }
 		fshell.page_id, fshell.tab_id = id, t.id
+		fullscreen_settle_arm(app, top, t.id, !platform.is_fullscreen(app.win))
 		window_fullscreen(app, true)
 		return true
 	}
 	if fshell.page_id == 0 || fshell.page_id != id { return true }   // not this tab's (already left)
 	fullscreen_scroll_arm(app)
+	fullscreen_settle_arm(app, top, fshell.tab_id, !fshell.window_was)
 	fshell.page_id = 0
 	if !fshell.window_was { window_fullscreen(app, false) }
 	wchrome.revealed = false
@@ -128,6 +169,7 @@ fullscreen_shell_escape :: proc(app: ^App, ev: platform.Event) -> bool {
 // Each frame, before the build: the tab that went full screen must still be the shown one with the same document.
 fullscreen_shell_frame :: proc(app: ^App) {
 	fullscreen_scroll_tick(app)
+	fullscreen_settle_tick(app)
 	if fshell.page_id == 0 { return }
 	t := current_tab(app)
 	if t != nil && t.id == fshell.tab_id && t.page != nil && page.page_id(t.page) == fshell.page_id && page.fullscreen_active(t.page) { return }
