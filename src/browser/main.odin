@@ -310,6 +310,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	hold_begin(app, t, target)
+	load_measure_begin(app, t, target)   // blocker_measure.odin
 	t.kind = .Web
 	t.nav = base.scope_make("navigation", t.scope)
 	base.on_close(t.nav, load_closed, load)
