@@ -47,8 +47,6 @@ SHELL_FRAME_PREFS := [?]config.Def{
 		description = "How long a page may keep the interface thread before the browser draws its interface in between (browser.shell.preempt)."},
 	{name = "browser.shell.preempt_tick_ms", kind = .Int, default = {i = 2}, bounded = true, min = 1, max = 100, unit = "ms",
 		description = "How often a running script is interrupted to see whether the interface needs a frame (only while some script runs). Smaller: interface frames closer to the display's rate during long scripts."},
-	{name = "browser.shell.video_overlay", kind = .Bool, default = {b = true},
-		description = "While a page keeps the interface thread busy, the pictures of the videos in its last frame keep moving: the browser's interface frames draw each new picture over the frozen frame, so a long script does not freeze a playing video. Off: the video stands still with the rest of the page."},
 	{name = "browser.shell.snapshot", kind = .Bool, default = {b = true},
 		description = "Keep a copy of each tab's last page frame on the GPU (the page area's size, 4 bytes per pixel), shown while the page is busy and scrolled at once by the wheel. Off: a busy page shows its canvas color."},
 	{name = "browser.shell.snapshot_tabs", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 64, unit = "tabs",
@@ -62,7 +60,6 @@ Shell_Frame_Settings :: struct {
 	after_ms:      f64,
 	tick_ms:       int,
 	snapshot:      bool,
-	video_overlay: bool,
 	snapshot_tabs: int,
 }
 
@@ -72,7 +69,6 @@ shell_frame_settings_from_prefs :: proc(p: ^config.Prefs) -> Shell_Frame_Setting
 		after_ms = config.float_of(p, "browser.shell.preempt_after_ms"),
 		tick_ms = int(config.int_of(p, "browser.shell.preempt_tick_ms")),
 		snapshot = config.bool_of(p, "browser.shell.snapshot"),
-		video_overlay = config.bool_of(p, "browser.shell.video_overlay"),
 		snapshot_tabs = int(config.int_of(p, "browser.shell.snapshot_tabs")),
 	}
 }
@@ -277,16 +273,8 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
 	unseen := (chrome_frames.phase == .Loop || chrome_frames.phase == .Anim) && !chrome_frames.outer_taken && len(chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	video_due := page_visible_video_due(app)
-	if !unseen && !video_due && !shell_input_pending() && !ui.needs_frame(&app.ui_state) && !(ui.wake_ms(&app.ui_state) > 0 && since >= f64(ui.wake_ms(&app.ui_state))) { return }
+	if !unseen && !shell_input_pending() && !ui.needs_frame(&app.ui_state) && !(ui.wake_ms(&app.ui_state) > 0 && since >= f64(ui.wake_ms(&app.ui_state))) { return }
 	shell_chrome_frame(app)
-}
-
-// A picture of a video in the current tab's last frame is due (video_shell.odin): the chrome frame shows it.
-@(private = "file")
-page_visible_video_due :: proc(app: ^App) -> bool {
-	t := current_tab(app)
-	return chrome_frames.cfg.video_overlay && t != nil && t.kind == .Web && t.page != nil && video_shell_due(t.page)
 }
 
 // Messages wait in the thread's queue (input, posted or sent messages, a repaint), without taking them.
@@ -543,7 +531,6 @@ shell_paint_page :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect)
 	if covered.max.x <= covered.min.x || covered.max.y <= covered.min.y { return true }
 	draw.push_clip(dc, rect)
 	draw.backdrop_draw(dc, img, covered, {})
-	if chrome_frames.cfg.video_overlay { video_shell_overlay(app, dc, rect, shift, t.page) }   // (video_shell.odin: the pictures that fell due since)
 	draw.pop_clip(dc)
 	return true
 }
