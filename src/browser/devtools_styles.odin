@@ -457,7 +457,6 @@ css_value_runs :: proc(v: string, base_col: draw.Color, enabled: bool) -> []Dt_R
 }
 
 // The color a value stands for, when it is plain (#rgb, #rrggbb, rgb(), a few names): for the swatch beside it.
-@(private = "file")
 swatch_of :: proc(v: string) -> (draw.Color, bool) {
 	s := strings.trim_space(v)
 	hexv :: proc(c: u8) -> (int, bool) {

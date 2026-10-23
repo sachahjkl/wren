@@ -116,6 +116,18 @@ con_sync_meta :: proc(t: ^Tab) {
 
 // Called by tab_log for every line: the line, then what the panel keeps beside it.
 console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
+	// the page's console describes its arguments (prelude/compat.js) in a line of its own that is not a message: the next line takes it
+	if len(message) > 3 && message[0] == 1 {
+		switch {
+		case strings.has_prefix(message, "\x01dt:"):
+			delete(dev.con.pending_payload)
+			dev.con.pending_payload = len(message) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(message[4:]) : ""
+			return
+		case strings.has_prefix(message, "\x01dtc:"):
+			console_complete_reply(message[5:])
+			return
+		}
+	}
 	prefix := ""
 	kind := Con_Kind.Log
 	switch level {
@@ -133,6 +145,13 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	for len(m.meta) < len(t.console) - 1 { append(&m.meta, Con_Meta{kind = .Log}); m.counts[.Log] += 1 }
 	payload := ""
 	if dev.con.pending_payload != "" { payload, dev.con.pending_payload = dev.con.pending_payload, "" }
+	if payload != "" && kind == .Log {
+		switch payload_level(payload) {
+		case "info": kind = .Info
+		case "debug": kind = .Debug
+		case "result": kind = .Result
+		}
+	}
 	append(&m.meta, Con_Meta{at_ms = local_time_ms(), kind = kind, payload = payload})
 	m.counts[kind] += 1
 	con_trim(t)
