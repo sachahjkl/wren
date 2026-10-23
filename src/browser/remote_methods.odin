@@ -571,6 +571,15 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			if h == base.NIL_HANDLE { finish(app, op, fail(remote.ERR_FAILED, fmt.tprintf("no element matches %q", op.arg))); return }
 			er, ok := element_window_rect(app, t, h)
 			if !ok { finish(app, op, fail(remote.ERR_FAILED, "the element has no box")); return }
+			if !op.scrolled && (er[1] < pr.min.y || er[1] + er[3] > pr.max.y) {
+				// not all of it in view: scrolled to (its top for an element taller than the view, else its middle), then looked at again
+				op.scrolled = true
+				doc_top := er[1] - pr.min.y + t.scroll
+				view := pr.max.y - pr.min.y
+				scroll_document_to(app, t, max(er[3] > view ? doc_top : doc_top + er[3] / 2 - view / 2, 0), false)
+				op.until = r.frame_no + 2
+				return
+			}
 			x0, y0 := max(er[0], pr.min.x), max(er[1], pr.min.y)
 			x1, y1 := min(er[0] + er[2], pr.max.x), min(er[1] + er[3], pr.max.y)
 			if x1 <= x0 || y1 <= y0 { finish(app, op, fail(remote.ERR_FAILED, "the element is outside the page's visible area (scroll to it first)")); return }

@@ -133,11 +133,11 @@ call :: proc(c: ^Conn, method, params: string, timeout_ms: int) -> (Reply, Call_
 			r := Reply{code = 0}
 			r.code, _ = remote.param_int(errobj, "code")
 			r.message, _ = remote.param_string(errobj, "message")
-			if d, has_d := errobj["data"]; has_d {
-				if s, mErr := json.marshal(d, {}, context.temp_allocator); mErr == nil { r.data = string(s) }
-			}
+			if at := strings.index(line, `"data":`); at >= 0 && strings.has_suffix(line, "}}") { r.data = line[at + len(`"data":`):len(line) - 2] }
 			return r, .Server
 		}
+		// the result as the server wrote it (re-writing it would change its numbers): from "result": to the closing brace
+		if at := strings.index(line, `"result":`); at >= 0 && strings.has_suffix(line, "}") { return Reply{result = line[at + len(`"result":`):len(line) - 1]}, .None }
 		res, _ := obj["result"]
 		s, merr := json.marshal(res, {}, context.temp_allocator)
 		if merr != nil { return {}, .Closed }

@@ -65,6 +65,7 @@ Remote_Op :: struct {
 	idx:      int,
 	t0:       i64,
 	speed:    f64,
+	scrolled: bool,       // Capture of an element: it was scrolled into view
 	snapshot: string,     // Capture: also write <snapshot>.html and .json (owned)
 }
 
@@ -390,7 +391,7 @@ eval_reply :: proc(obj: json.Object) -> Reply {
 		stack, _ := remote.param_string(e, "stack")
 		text := name == "" ? msg : fmt.tprintf("%s: %s", name, msg)
 		return done(fmt.tprintf(`{{"result":{{"type":"object","subtype":"error","className":%s,"description":%s}},"exceptionDetails":{{"text":%s,"exception":{{"className":%s,"description":%s}}}}}}`,
-			remote.quote(name), remote.quote(stack == "" ? text : stack), remote.quote(text), remote.quote(name), remote.quote(stack == "" ? text : stack)))
+			remote.quote(name), remote.quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack)), remote.quote(text), remote.quote(name), remote.quote(stack == "" ? text : fmt.tprintf("%s\n%s", text, stack))))
 	}
 	t, _ := remote.param_string(obj, "t")
 	v, has := remote.param_string(obj, "v")
@@ -400,7 +401,6 @@ eval_reply :: proc(obj: json.Object) -> Reply {
 
 // The JavaScript that runs `expression` (indirect eval, so its completion value is the result) and prints the outcome with
 // the secret prefix. With `await`, a promise is waited for.
-@(private = "file")
 eval_source :: proc(id: int, expression: string, await: bool) -> string {
 	return fmt.tprintf(`(function(){{var N=%s,I=%d;function E(e){{var r={{name:"Error",message:"",stack:""}};try{{if(e&&typeof e==="object"){{r.name=String(e.name||"Error");r.message=String(e.message===undefined?"":e.message);r.stack=String(e.stack||"")}}else{{r.message=String(e)}}}}catch(x){{r.message="(unprintable)"}}return r}}function S(v){{var t=typeof v;if(v===undefined)return{{t:"undefined"}};if(t==="function"||t==="symbol"||t==="bigint")return{{t:t,v:JSON.stringify(String(v))}};try{{var j=JSON.stringify(v);if(j===undefined)return{{t:t,v:"null"}};return{{t:v===null?"null":Array.isArray(v)?"array":t,v:j}}}}catch(x){{return{{t:"object",v:JSON.stringify(String(v))}}}}}}function O(o){{o.id=I;console.log(N+JSON.stringify(o))}}try{{var r=(0,eval)(%s);if(%v&&r&&typeof r.then==="function"){{r.then(function(v){{var s=S(v);s.ok=1;O(s)}},function(e){{O({{ok:0,e:E(e)}})}})}}else{{var s=S(r);s.ok=1;O(s)}}}}catch(e){{O({{ok:0,e:E(e)}})}}}})()`,
 		remote.quote(the_remote.prefix), id, remote.quote(expression), await)
