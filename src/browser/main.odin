@@ -72,6 +72,8 @@ Doc_Load :: struct {
 	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
 	cache:      fetch.Cache_Mode,        // the document's cache mode; Reload: its subresources too (http_cache_ui.odin)
 	from_cache: fetch.Cache_Outcome,     // where the document came from (the status bar says so)
+	started_ns: i64,                     // the loop clock when the navigation began (Navigation Timing)
+	response_ns: i64,                    // ... and when the head of the answer arrived
 }
 
 Load_Failure :: enum u8 { None, Other, Tls }
@@ -296,6 +298,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
+	load.started_ns = host.now_ns(&app.loop)
 	load.pushed = pushed
 	load.cache = cache
 	shown := target
@@ -510,6 +513,11 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(t) }
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
+		load.response_ns = host.now_ns(&app.loop)
+		page.set_navigation_timing(load.page, {
+			start_ns = load.started_ns, response_ns = load.response_ns, reload = load.cache == .Reload || load.cache == .No_Cache,
+			status = r.status, from_cache = r.cache == .Hit, mime = load.mime, redirects = r.redirected ? 1 : 0,
+		})
 		attach_page(app, t, load.page)
 		t.page = load.page
 		if !load.view_source && r.status < 400 { global_history_visit(app, t, r.url, "") }
@@ -554,6 +562,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 
 	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
 	load.bytes = len(data)
+	page.navigation_response_end(p, host.now_ns(&app.loop), len(data))
 	page.parse_document(p, data, load.charset, document_parsed, load)
 }
 

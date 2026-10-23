@@ -6,12 +6,22 @@ package web
 
 import "base:runtime"
 
-// The entries a query matches (Any: both).
+// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
 	Measure = 2,
+	Navigation = 3,
+	Resource = 4,
+	Paint = 5,
+	Event = 6,
+	First_Input = 7,
 }
+
+// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
+TimelineCallback :: #type proc "contextless" (user: i32, kinds: i32)
 
 foreign import _m_performance "performance"
 
@@ -29,6 +39,12 @@ foreign _m_performance {
 	@(link_name = "Performance_entryType") _Performance_entryType :: proc(name: [^]u8, name_len: u32, entry_type: PerformanceEntryType, index: i32, _ret: ^PerformanceEntryType) -> Error ---
 	@(link_name = "Performance_clearMarks") _Performance_clearMarks :: proc(name: [^]u8, name_len: u32) ---
 	@(link_name = "Performance_clearMeasures") _Performance_clearMeasures :: proc(name: [^]u8, name_len: u32) ---
+	@(link_name = "Performance_timeline") _Performance_timeline :: proc(entry_type: PerformanceEntryType, from_seq: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Performance_timelineNextSeq") _Performance_timelineNextSeq :: proc(entry_type: PerformanceEntryType) -> u64 ---
+	@(link_name = "Performance_timelineInterest") _Performance_timelineInterest :: proc(kinds: u32) ---
+	@(link_name = "Performance_onTimeline") _Performance_onTimeline :: proc(callback: TimelineCallback, user: i32) ---
+	@(link_name = "Performance_setResourceTimingBufferSize") _Performance_setResourceTimingBufferSize :: proc(entries: u32) ---
+	@(link_name = "Performance_clearResourceTimings") _Performance_clearResourceTimings :: proc() ---
 }
 
 // performance.now()
@@ -115,5 +131,61 @@ Performance_clearMarks :: proc "contextless" (name: string = "") {
 // performance.clearMeasures(name): "" clears all.
 Performance_clearMeasures :: proc "contextless" (name: string = "") {
 	_Performance_clearMeasures(raw_data(name), u32(len(name)))
+}
+
+// The timeline entries of `entry_type` (Navigation, Resource, Paint, Event or First_Input) whose sequence number is at
+// least `from_seq`, in order, as a JSON array of objects with the members of the entry's interface (name, startTime,
+// duration, initiatorType, responseStart...) and `seq`. A kept entry never changes; the buffers drop their oldest
+// entries (performance.resource_timing_entries...).
+Performance_timeline :: proc "contextless" (entry_type: PerformanceEntryType, from_seq: u64 = 0, buf: []u8) -> (string, Error) {
+	n := _Performance_timeline(entry_type, from_seq, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Performance_timeline's result.
+Performance_timeline_len :: proc "contextless" (entry_type: PerformanceEntryType, from_seq: u64 = 0) -> (int, Error) {
+	n := _Performance_timeline(entry_type, from_seq, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Performance_timeline's result in a buffer allocated to fit.
+Performance_timeline_alloc :: proc(entry_type: PerformanceEntryType, from_seq: u64 = 0, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Performance_timeline(entry_type, from_seq, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The sequence number the next entry of this kind will have.
+Performance_timelineNextSeq :: proc "contextless" (entry_type: PerformanceEntryType) -> u64 {
+	return _Performance_timelineNextSeq(entry_type)
+}
+
+// The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
+Performance_timelineInterest :: proc "contextless" (kinds: u32) {
+	_Performance_timelineInterest(kinds)
+}
+
+// Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
+Performance_onTimeline :: proc "contextless" (callback: TimelineCallback, user: i32 = 0) {
+	_Performance_onTimeline(callback, user)
+}
+
+// performance.setResourceTimingBufferSize(n) / performance.clearResourceTimings().
+Performance_setResourceTimingBufferSize :: proc "contextless" (entries: u32) {
+	_Performance_setResourceTimingBufferSize(entries)
+}
+
+Performance_clearResourceTimings :: proc "contextless" () {
+	_Performance_clearResourceTimings()
 }
 

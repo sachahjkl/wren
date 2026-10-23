@@ -19,6 +19,7 @@ Loader :: struct {
 	tasks:    base.Pool(Task),
 	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
 	observer: Observer,   // the developer tools' view of every request (observe.odin)
+	observers: [dynamic]Observer,   // more of them: the pages' timelines (observer_add)
 	next_obs: u64,
 }
 
@@ -33,6 +34,7 @@ loader_destroy :: proc(l: ^Loader) {
 	for h in handles { release(l, h) }
 	base.pool_destroy(&l.tasks)
 	revalidations_destroy(l)
+	delete(l.observers)
 }
 
 in_flight :: proc(l: ^Loader) -> int { return l.tasks.count }
@@ -135,7 +137,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	tp.self = h
 	l.next_obs += 1
 	tp.obs_id = l.next_obs
-	observe(tp, Observed{kind = .Started, scope = d.scope, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination})
+	observe(tp, Observed{kind = .Started, scope = d.scope, initiator = r.initiator, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination})
 	if d.scope != nil { tp.cleanup = base.on_close(d.scope, task_scope_closed, new_clone(Kick{l, h})) }
 	host.post(l.loop, kick, new_clone(Kick{l, h}))
 	return h
@@ -178,7 +180,7 @@ cancel :: proc(l: ^Loader, h: base.Handle) -> bool { return l != nil && release(
 release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
-	if !t.obs_done && l.observer.event != nil { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
+	if !t.obs_done && observing(l) { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
 	cancel_net(l, &t)
 	cache_task_release(l, &t)
 	url.destroy(&t.target)
@@ -208,12 +210,12 @@ cancel_net :: proc(l: ^Loader, t: ^Task) {
 
 @(private)
 deliver :: proc(t: ^Task, ev: ^Event) {
-	if t.loader != nil && t.loader.observer.event != nil && !t.obs_done {
+	if observing(t.loader) && !t.obs_done {
 		switch ev.kind {
 		case .Response:
 			if r := ev.response; r != nil {
 				mime := r.has_mime ? http.mime_essence(r.mime) : ""
-				observe(t, Observed{kind = .Response, url = r.url, destination = t.destination, status = r.status, mime = mime, cache = r.cache, redirected = r.redirected})
+				observe(t, Observed{kind = .Response, url = r.url, destination = t.destination, status = r.status, mime = mime, cache = r.cache, redirected = r.redirected, redirects = t.redirect_count})
 			}
 		case .Data: t.obs_bytes += len(ev.data)
 		case .Done:

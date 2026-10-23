@@ -49,6 +49,7 @@ first_paint_done :: proc(p: ^Page) {
 	if p.render.painted { return }
 	p.render.painted = true
 	p.render.collecting = false
+	timeline_painted(p)   // first-paint, first-contentful-paint (timeline.odin)
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element

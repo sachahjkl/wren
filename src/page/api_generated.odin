@@ -484,11 +484,17 @@ Api_FetchOptions :: struct {
 	cache: Api_RequestCache,
 }
 
-// The entries a query matches (Any: both).
+// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 Api_PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
 	Measure = 2,
+	Navigation = 3,
+	Resource = 4,
+	Paint = 5,
+	Event = 6,
+	First_Input = 7,
 }
 
 Api_StorageArea :: enum i32 {
@@ -672,7 +678,7 @@ _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { swi
 _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
-_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7: return true }; return false }
 
 @(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -741,6 +747,14 @@ invoke_EventListener :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i3
 invoke_FetchCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, request: u64, state: Api_FetchState) -> bool {
 	argv := [4]u32{u32(user), u32(u64(request)), u32(u64(request) >> 32), u32(state)}
 	return call_guest(ctx, inst, fn, argv[:4])
+}
+
+// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
+// Calls a guest's TimelineCallback (a function of its table) as a task of the realm; false when it trapped.
+invoke_TimelineCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, kinds: i32) -> bool {
+	argv := [2]u32{u32(user), u32(kinds)}
+	return call_guest(ctx, inst, fn, argv[:2])
 }
 
 // Calls a guest's TimerHandler (a function of its table) as a task of the realm; false when it trapped.
@@ -20436,6 +20450,102 @@ _t_performance_Performance_clearMeasures :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
+// Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string
+@(private = "file")
+_t_performance_Performance_timeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "performance.Performance_timeline", "result buffer") }
+	_e0 := i32(a[0].i32)
+	if !_valid_PerformanceEntryType(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timeline: argument entry_type is not a PerformanceEntryType") }
+		return wasm.trap_new("performance.Performance_timeline: argument entry_type is not a PerformanceEntryType")
+	}
+	_p0 := Api_PerformanceEntryType(_e0)
+	_p1 := u64(a[1].i64)
+	_r := Performance_timeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64
+@(private = "file")
+_t_performance_Performance_timelineNextSeq :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_e0 := i32(a[0].i32)
+	if !_valid_PerformanceEntryType(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timelineNextSeq: argument entry_type is not a PerformanceEntryType") }
+		return wasm.trap_new("performance.Performance_timelineNextSeq: argument entry_type is not a PerformanceEntryType")
+	}
+	_p0 := Api_PerformanceEntryType(_e0)
+	_r := Performance_timelineNextSeq(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Performance_timelineInterest :: proc(c: ^Call, kinds: u32)
+@(private = "file")
+_t_performance_Performance_timelineInterest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	Performance_timelineInterest(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_onTimeline :: proc(c: ^Call, callback: u32, user: i32)
+@(private = "file")
+_t_performance_Performance_onTimeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	Performance_onTimeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_setResourceTimingBufferSize :: proc(c: ^Call, entries: u32)
+@(private = "file")
+_t_performance_Performance_setResourceTimingBufferSize :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	Performance_setResourceTimingBufferSize(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Performance_clearResourceTimings :: proc(c: ^Call)
+@(private = "file")
+_t_performance_Performance_clearResourceTimings :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	Performance_clearResourceTimings(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
 // Port_entangle :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_ports_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -23004,6 +23114,12 @@ api_imports := [?]wasm.Import{
 	{module = "performance", name = "Performance_entryType", fn = _t_performance_Performance_entryType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "performance", name = "Performance_clearMarks", fn = _t_performance_Performance_clearMarks, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_clearMeasures", fn = _t_performance_Performance_clearMeasures, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_timeline", fn = _t_performance_Performance_timeline, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "performance", name = "Performance_timelineNextSeq", fn = _t_performance_Performance_timelineNextSeq, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "performance", name = "Performance_timelineInterest", fn = _t_performance_Performance_timelineInterest, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_onTimeline", fn = _t_performance_Performance_onTimeline, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_setResourceTimingBufferSize", fn = _t_performance_Performance_setResourceTimingBufferSize, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
+	{module = "performance", name = "Performance_clearResourceTimings", fn = _t_performance_Performance_clearResourceTimings, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "ports", name = "Port_entangle", fn = _t_ports_Port_entangle, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Port_bind", fn = _t_ports_Port_bind, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "Port_ship", fn = _t_ports_Port_ship, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
