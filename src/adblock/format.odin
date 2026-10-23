@@ -67,7 +67,8 @@ Source_Entry :: struct {
 	net:                u32,    // network filters accepted
 	cosmetic:           u32,
 	invalid:            u32,    // lines that were not valid or not supported
-	_pad:               u32,
+	text_base:          u32,    // where the list's text starts in the concatenation of the lists (the .src file next to the index)
+	text_len:           u32,
 }
 
 @(private)

@@ -26,6 +26,7 @@ Source_Stat :: struct {
 	net:     u32,
 	cosmetic: u32,
 	invalid: u32,
+	text:    string,    // the list's text (the caller keeps it alive until the build is over)
 }
 
 Builder :: struct {
@@ -124,7 +125,7 @@ builder_add_depth :: proc(b: ^Builder, id: u8, name, text: string, depth: int) {
 	si := -1
 	for s, i in b.sources { if s.id == id { si = i; break } }
 	if si < 0 {
-		append(&b.sources, Source_Stat{id = id, name = strings.clone(name, b.alloc)})
+		append(&b.sources, Source_Stat{id = id, name = strings.clone(name, b.alloc), text = text})
 		si = len(b.sources) - 1
 	}
 	Frame :: struct { active, taken, parent_active: bool }
@@ -598,8 +599,10 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 	// sources
 	name_blob := make([dynamic]u8, 0, 256, tmp)
 	ents := make([dynamic]Source_Entry, 0, len(b.sources), tmp)
+	base: u32
 	for s in b.sources {
-		append(&ents, Source_Entry{name_off = u32(len(name_blob)), name_len = u32(len(s.name)), id = s.id, net = s.net, cosmetic = s.cosmetic, invalid = s.invalid})
+		append(&ents, Source_Entry{name_off = u32(len(name_blob)), name_len = u32(len(s.name)), id = s.id, net = s.net, cosmetic = s.cosmetic, invalid = s.invalid, text_base = base, text_len = u32(len(s.text))})
+		base += u32(len(s.text))
 		append(&name_blob, s.name)
 	}
 	hdr.secs[SEC_SOURCES] = out_put(&o, ents[:])
@@ -645,3 +648,37 @@ string_at_n :: proc(data: []u8, off: u32, n: int) -> string {
 }
 
 _ :: runtime
+
+// How many lines of a downloaded list are filters (and how many are not understood): a body that is not a list
+// (an error page, a login wall) has none, and replaces nothing.
+validate_list :: proc(text: string) -> (valid, invalid: int) {
+	arena: virtual.Arena
+	_ = virtual.arena_init_growing(&arena)
+	defer virtual.arena_destroy(&arena)
+	alloc := virtual.arena_allocator(&arena)
+	rest := text
+	n := 0
+	for len(rest) > 0 {
+		nl := strings.index_byte(rest, '\n')
+		line: string
+		if nl < 0 { line, rest = rest, "" } else { line, rest = rest[:nl], rest[nl + 1:] }
+		t := strings.trim_space(line)
+		if len(t) == 0 || t[0] == '!' { continue }
+		p := parse_line(t, 0, 0, alloc)
+		if p.kind == .None { if !is_comment_line(t) { invalid += 1 } } else { valid += 1 }
+		n += 1
+		if n % 4096 == 0 { virtual.arena_free_all(&arena) }
+	}
+	return
+}
+
+// The line that starts at `offset` of a list's text (what Filter_Ref points to).
+line_at :: proc(text: string, offset: u32) -> string {
+	if int(offset) >= len(text) { return "" }
+	s := text[offset:]
+	if nl := strings.index_byte(s, '\n'); nl >= 0 { s = s[:nl] }
+	return strings.trim_right_space(s)
+}
+
+// The lists added so far, in order (their texts are what the .src file next to an index is made of).
+builder_sources :: proc(b: ^Builder) -> []Source_Stat { return b.sources[:] }
