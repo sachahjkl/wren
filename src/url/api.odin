@@ -10,7 +10,7 @@ foreign import lexbor_api {
 	"../../build/lexbor/lexbor.lib",
 	"system:msvcrt.lib",
 	"system:ucrt.lib",
-	"system:vcruntime.lib",
+	"system:libvcruntime.lib",
 	"system:legacy_stdio_definitions.lib",
 }
 

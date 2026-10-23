@@ -22,7 +22,7 @@ foreign import wren_media {
 	"system:bcrypt.lib",
 	"system:msvcrt.lib",
 	"system:ucrt.lib",
-	"system:vcruntime.lib",
+	"system:libvcruntime.lib",
 }
 
 @(private)
