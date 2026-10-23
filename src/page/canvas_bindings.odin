@@ -288,7 +288,11 @@ CanvasStyle_setObject :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, strok
 	slot := stroke ? &o.stroke_obj : &o.fill_obj
 	#partial switch x.kind {
 	case .Gradient: canvas2d.style_set_gradient(st, x.grad); slot^ = object
-	case .Pattern: canvas2d.style_set_pattern(st, x.pat); slot^ = object
+	case .Pattern:
+		canvas2d.style_set_pattern(st, x.pat)
+		slot^ = object
+		// a pattern made from an image the page may not read paints it: the canvas is tainted from now on
+		if x.tainted && o.backing != nil { o.backing.tainted = true }
 	}
 }
 
@@ -469,6 +473,7 @@ CanvasPath_ellipse :: proc(c: ^Call, p: Api_CanvasPathTarget, x: f64, y: f64, ra
 Path2D_create :: proc(c: ^Call, from: u64, svg: string) -> u64 {
 	o, h := canvas_new_object(c.page, c.owner, .Path)
 	if src := canvas_of_kind(c, from, .Path); src != nil { o.path = canvas2d.path_clone(&src.path) }
+	o.path.limit = c.page.settings.canvas.max_path_points
 	if svg != "" { canvas2d.path_add_svg(&o.path, svg) }
 	return h
 }
@@ -840,6 +845,8 @@ CanvasDrawImage_drawImage :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, s
 	canvas2d.ctx_draw_image(k, src.bmp, psx, psy, psw, psh, ddx, ddy, ddw, ddh)
 	return .None
 }
+
+CanvasImageData_maxBytes :: proc(c: ^Call) -> u64 { return u64(c.page.settings.canvas.max_image_data_bytes) }
 
 CanvasImageData_get :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: i32, y: i32, w: i32, h: i32, data: []u8) -> Api_Error {
 	if w == 0 || h == 0 { return fail(c, .Index_Size, "The source width or height is 0.") }

@@ -15,6 +15,8 @@ Settings :: struct {
 	max_save_depth:      int,
 	max_dashes:          int,
 	max_layer_bytes:     int,
+	max_path_points:     int,
+	max_text_bytes:      int,
 	samples:             int,
 	flatness:            f64,
 	jpeg_quality:        f64,
@@ -40,6 +42,10 @@ PREFS := [?]config.Def{
 		description = "Most states save() keeps on the stack of one context. Further save() calls are ignored (restore() then undoes fewer)."},
 	{name = "canvas.max_dashes", kind = .Int, default = {i = 100_000}, bounded = true, min = 16, max = 100_000_000,
 		description = "Most pieces one dashed line is cut into. A line that would need more is drawn solid (a pattern of 0.001 px dashes over a long path would never finish)."},
+	{name = "canvas.max_path_points", kind = .Int, default = {i = 2_000_000}, bounded = true, min = 1000, max = 1 << 28,
+		description = "Most points (line ends and curve control points) one path of a 2D context or Path2D keeps. Segments added past it are ignored."},
+	{name = "canvas.max_text_bytes", kind = .Int, default = {i = 1 << 20}, bounded = true, min = 256, max = 1 << 30, bytes = true, unit = "bytes",
+		description = "Longest text fillText, strokeText and measureText take (UTF-8 bytes); the rest is cut."},
 	{name = "canvas.max_layer_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 1 << 16, max = 1 << 34, bytes = true, unit = "bytes",
 		description = "Largest temporary layer a shadow, a blur or a source-in / copy operator draws through. A shape that needs more is not drawn."},
 	{name = "canvas.antialias.samples", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 64, unit = "per pixel",
@@ -69,6 +75,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		max_save_depth = int(config.int_of(p, "canvas.max_save_depth")),
 		max_dashes = int(config.int_of(p, "canvas.max_dashes")),
 		max_layer_bytes = int(config.int_of(p, "canvas.max_layer_bytes")),
+		max_path_points = int(config.int_of(p, "canvas.max_path_points")),
+		max_text_bytes = int(config.int_of(p, "canvas.max_text_bytes")),
 		samples = int(config.int_of(p, "canvas.antialias.samples")),
 		flatness = f64(config.float_of(p, "canvas.flatness")),
 		jpeg_quality = f64(config.float_of(p, "canvas.encode.jpeg_quality")),
@@ -83,6 +91,7 @@ options_of :: proc(s: ^Settings) -> Options {
 	return Options{
 		samples = s.samples, flatness = s.flatness, max_states = s.max_save_depth, max_dashes = s.max_dashes,
 		max_layer_bytes = s.max_layer_bytes, max_bytes = s.max_layer_bytes, smooth_default = s.smooth_default,
+		max_path_points = s.max_path_points, text_bytes = s.max_text_bytes,
 		filters = s.filters,
 	}
 }

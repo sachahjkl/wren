@@ -67,6 +67,8 @@ Options :: struct {
 	max_dashes:      int,    // dash pieces of one subpath before the line is drawn solid
 	max_layer_bytes: int,    // the temporary layer of a shadow or a source-in
 	max_bytes:       int,    // any other temporary bitmap (patterns, getImageData...)
+	max_path_points: int,    // points one path keeps
+	text_bytes:      int,    // longest text fillText draws (the rest is cut)
 	smooth_default:  bool,   // imageSmoothingEnabled of a new context
 	filters:         bool,   // the filter property does something
 }
@@ -74,6 +76,7 @@ Options :: struct {
 DEFAULT_OPTIONS :: Options{
 	samples = 16, flatness = 0.05, max_states = 4096, max_dashes = 100_000,
 	max_layer_bytes = 256 << 20, max_bytes = 256 << 20, smooth_default = true, filters = true,
+	max_path_points = 2_000_000, text_bytes = 1 << 20,
 }
 
 Context :: struct {
@@ -109,6 +112,7 @@ context_init :: proc(c: ^Context, bmp: ^Bitmap, opts: Options) {
 	c.inherit = Inherited{font_size = 10, color = {0, 0, 0, 1}}
 	c.state = state_default()
 	c.state.smoothing = opts.smooth_default
+	c.path.limit = opts.max_path_points
 }
 
 context_destroy :: proc(c: ^Context) {
@@ -322,7 +326,7 @@ job_row :: proc(user: rawptr, y, x0: int, cov: []f32) {
 			switch {
 			case p.kind == .Solid: s = p.s8
 			case stepped:
-				e := p.lut[int(clamp(ti, 0, 1) * f64(LUT_SIZE - 1) + 0.5)]
+				e := p.lut[ti == ti ? int(clamp(ti, 0, 1) * f64(LUT_SIZE - 1) + 0.5) : 0]
 				s = {u32(e[0]), u32(e[1]), u32(e[2]), u32(e[3])}
 			case:
 				f := paint_at(p, x, y)

@@ -55,7 +55,7 @@ raster_has_edges :: proc(r: ^Raster) -> bool { return len(r.edges) > 0 }
 
 @(private)
 add_edge :: proc(r: ^Raster, a, b: [2]f64) {
-	if a.y == b.y { return }   // horizontal edges cross no sub-scanline
+	if a.y == b.y || a.x != a.x || a.y != a.y || b.x != b.x || b.y != b.y { return }   // horizontal edges cross no sub-scanline
 	if !r.any {
 		r.min_pt, r.max_pt = a, a
 		r.any = true
@@ -190,6 +190,7 @@ sort_crossings :: proc(xs: []Crossing) {
 // Adds the span [xa, xb) (pixel units, clamped to [fx0, fx1]) to the row accumulators, relative to fx0.
 @(private)
 add_span :: proc(r: ^Raster, xa, xb, fx0, fx1: f64, wgt: f32, lo, hi: ^int) {
+	if xa != xa || xb != xb { return }
 	a, b := clamp(xa, fx0, fx1) - fx0, clamp(xb, fx0, fx1) - fx0
 	if b <= a { return }
 	ia, ib := int(a), int(b)   // (a, b >= 0: truncation is floor)

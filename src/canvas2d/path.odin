@@ -15,6 +15,7 @@ Path :: struct {
 	pts:    [dynamic][2]f64,
 	start:  [2]f64,   // first point of the last subpath (where a close returns to)
 	cur:    [2]f64,
+	limit:  int,      // most points the path keeps (0: no limit); further segments are ignored
 	has:    bool,     // a subpath exists (the current point is valid)
 	closed: bool,     // the last verb is a close: the next segment begins a subpath at `start`
 }
@@ -48,6 +49,7 @@ path_clone :: proc(p: ^Path, allocator := context.allocator) -> Path {
 // Appends `src` as it is after `m` transformed it (Path2D.addPath, the CTM applied to a Path2D being drawn).
 path_append :: proc(p: ^Path, src: ^Path, m: Matrix) {
 	if !matrix_finite(m) || len(src.verbs) == 0 { return }
+	if p.limit > 0 && len(p.pts) + len(src.pts) > p.limit { return }
 	// the first segment of a path that did not start with a move would join the current subpath: say so
 	if p.closed && len(src.verbs) > 0 && src.verbs[0] != .Move { append(&p.verbs, Verb.Move); append(&p.pts, p.start) }
 	for v in src.verbs { append(&p.verbs, v) }
@@ -90,13 +92,16 @@ continue_subpath :: proc(p: ^Path) -> bool {
 	return true
 }
 
+@(private)
+full :: #force_inline proc(p: ^Path) -> bool { return p.limit > 0 && len(p.pts) >= p.limit }
+
 path_move_to :: proc(p: ^Path, m: Matrix, x, y: f64) {
-	if !all_finite(x, y) { return }
+	if !all_finite(x, y) || full(p) { return }
 	add_move(p, clamp_pt(matrix_apply(m, {x, y})))
 }
 
 path_line_to :: proc(p: ^Path, m: Matrix, x, y: f64) {
-	if !all_finite(x, y) { return }
+	if !all_finite(x, y) || full(p) { return }
 	d := clamp_pt(matrix_apply(m, {x, y}))
 	if !continue_subpath(p) { add_move(p, d); return }
 	append(&p.verbs, Verb.Line)
@@ -105,7 +110,7 @@ path_line_to :: proc(p: ^Path, m: Matrix, x, y: f64) {
 }
 
 path_quad_to :: proc(p: ^Path, m: Matrix, cx, cy, x, y: f64) {
-	if !all_finite(cx, cy, x, y) { return }
+	if !all_finite(cx, cy, x, y) || full(p) { return }
 	c, d := clamp_pt(matrix_apply(m, {cx, cy})), clamp_pt(matrix_apply(m, {x, y}))
 	if !continue_subpath(p) { add_move(p, c) }
 	append(&p.verbs, Verb.Quad)
@@ -114,7 +119,7 @@ path_quad_to :: proc(p: ^Path, m: Matrix, cx, cy, x, y: f64) {
 }
 
 path_cubic_to :: proc(p: ^Path, m: Matrix, c1x, c1y, c2x, c2y, x, y: f64) {
-	if !all_finite(c1x, c1y, c2x, c2y, x, y) { return }
+	if !all_finite(c1x, c1y, c2x, c2y, x, y) || full(p) { return }
 	c1, c2, d := clamp_pt(matrix_apply(m, {c1x, c1y})), clamp_pt(matrix_apply(m, {c2x, c2y})), clamp_pt(matrix_apply(m, {x, y}))
 	if !continue_subpath(p) { add_move(p, c1) }
 	append(&p.verbs, Verb.Cubic)
@@ -165,6 +170,7 @@ arc_segments :: proc(p: ^Path, to_dev: Matrix, a0, sweep: f64) {
 path_ellipse :: proc(p: ^Path, m: Matrix, x, y, rx, ry, rotation, start, end: f64, ccw: bool) -> Path_Error {
 	if !all_finite(x, y, rx, ry, rotation, start, end) { return .None }
 	if rx < 0 || ry < 0 { return .Index_Size }
+	if full(p) { return .None }
 	TAU :: 2 * math.PI
 	sweep: f64
 	switch {

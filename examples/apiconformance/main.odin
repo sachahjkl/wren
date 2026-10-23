@@ -124,6 +124,7 @@ foreign _m_canvas {
 	@(link_name = "TextMetrics_alphabeticBaseline") c_TextMetrics_alphabeticBaseline :: proc(a0: i64) -> f64 ---
 	@(link_name = "TextMetrics_ideographicBaseline") c_TextMetrics_ideographicBaseline :: proc(a0: i64) -> f64 ---
 	@(link_name = "CanvasDrawImage_drawImage") c_CanvasDrawImage_drawImage :: proc(a0: i64, a1: i64, a2: i32, a3: f64, a4: f64, a5: f64, a6: f64, a7: f64, a8: f64, a9: f64, a10: f64) -> i32 ---
+	@(link_name = "CanvasImageData_maxBytes") c_CanvasImageData_maxBytes :: proc() -> i64 ---
 	@(link_name = "CanvasImageData_get") c_CanvasImageData_get :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i32 ---
 	@(link_name = "CanvasImageData_put") c_CanvasImageData_put :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32) ---
 	@(link_name = "CanvasPathDrawingStyles_lineWidth") c_CanvasPathDrawingStyles_lineWidth :: proc(a0: i64) -> f64 ---

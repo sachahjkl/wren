@@ -175,8 +175,11 @@ module canvas {
   void CanvasDrawImage_drawImage(CanvasRenderingContext2D ctx, u64 source, i32 form, f64 sx, f64 sy, f64 sw, f64 sh, f64 dx, f64 dy, f64 dw, f64 dh) raises;
 
   // CanvasImageData
+  /// The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+  u64 CanvasImageData_maxBytes();
   /// getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
-  /// canvas is tainted, Index_Size for an empty block, Quota for a block over canvas.max_image_data_bytes.
+  /// canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+  /// asks CanvasImageData_maxBytes first and throws a RangeError).
   void CanvasImageData_get(CanvasRenderingContext2D ctx, i32 x, i32 y, i32 w, i32 h, out bytes data) raises;
   /// putImageData: the dirty rectangle of `data` (data_w x data_h straight RGBA8) at (dx, dy).
   void CanvasImageData_put(CanvasRenderingContext2D ctx, bytes data, i32 data_w, i32 data_h, i32 dx, i32 dy, i32 dirty_x, i32 dirty_y, i32 dirty_w, i32 dirty_h);

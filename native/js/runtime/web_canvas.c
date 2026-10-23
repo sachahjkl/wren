@@ -709,7 +709,7 @@ static JSValue image_data_make(JSContext *ctx, JSValueConst new_target, uint32_t
 /* a zeroed or copied Uint8ClampedArray of n bytes; `src` NULL = zeroes */
 static JSValue clamped_array(JSContext *ctx, const uint8_t *src, size_t n)
 {
-    if (n > 0x7fffffffu) { return JS_ThrowRangeError(ctx, "Array buffer allocation failed"); }
+    if (n > 0x7fffffffu || n > wr_CanvasImageData_maxBytes()) { return JS_ThrowRangeError(ctx, "Out of memory: the image data is too large (canvas.max_image_data_bytes)."); }
     uint8_t *p = js_malloc(ctx, n ? n : 1);
     if (!p) { return JS_ThrowOutOfMemory(ctx); }
     if (src) { memcpy(p, src, n); } else { memset(p, 0, n); }
@@ -835,7 +835,7 @@ JSValue wjr_CanvasImageData_getImageData(JSContext *ctx, JSValueConst this_val, 
     if (sw == 0 || sh == 0) { return wj_throw_dom(ctx, "IndexSizeError", "The source width or height is 0."); }
     if (sw < 0) { sx += sw; sw = -sw; }
     if (sh < 0) { sy += sh; sh = -sh; }
-    if (sw * sh * 4 > 0x7fffffffLL) { return JS_ThrowRangeError(ctx, "Out of memory: the image data is too large."); }
+    if (sw * sh * 4 > 0x7fffffffLL || (uint64_t)(sw * sh * 4) > wr_CanvasImageData_maxBytes()) { return JS_ThrowRangeError(ctx, "Out of memory: the image data is too large (canvas.max_image_data_bytes)."); }
     size_t n = (size_t)(sw * sh * 4);
     uint8_t *p = js_malloc(ctx, n ? n : 1);
     if (!p) { return JS_ThrowOutOfMemory(ctx); }

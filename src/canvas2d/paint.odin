@@ -58,8 +58,12 @@ gradient_release :: proc(g: ^Gradient) {
 	}
 }
 
+// Most stops one gradient keeps (each insertion shifts the ones after it).
+MAX_STOPS :: 1 << 16
+
 // addColorStop: stops with the same offset keep the order they were added in.
 gradient_add_stop :: proc(g: ^Gradient, offset: f64, color: [4]f32) {
+	if len(g.stops) >= MAX_STOPS { return }
 	i := len(g.stops)
 	for i > 0 && g.stops[i - 1].offset > offset { i -= 1 }
 	inject_at(&g.stops, i, Color_Stop{offset, color})
@@ -69,6 +73,7 @@ gradient_add_stop :: proc(g: ^Gradient, offset: f64, color: [4]f32) {
 gradient_color :: proc(g: ^Gradient, t: f64) -> [4]f32 {
 	n := len(g.stops)
 	if n == 0 { return {} }
+	if t != t { return g.stops[0].color }
 	if t <= g.stops[0].offset { return g.stops[0].color }
 	if t >= g.stops[n - 1].offset { return g.stops[n - 1].color }
 	for i in 1 ..< n {
