@@ -35,6 +35,15 @@ DEV_PANEL_NAMES := [Dev_Panel]string{.Console = "console", .Elements = "elements
 DEV_PANEL_TITLES := [Dev_Panel]string{.Console = "Console", .Elements = "Elements", .Network = "Network", .Application = "Application", .Performance = "Performance", .Memory = "Memory"}
 DEV_PANEL_ICONS := [Dev_Panel]Dt_Icon{.Console = .Tab_Console, .Elements = .Tab_Elements, .Network = .Tab_Network, .Application = .Tab_Application, .Performance = .Tab_Performance, .Memory = .Tab_Memory}
 DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock to bottom", .Right = "Dock to right", .Left = "Dock to left", .Floating = "Undock into a floating panel"}
+// The commands (commands.odin) that dock the panel: their shortcuts are shown in the menus.
+DEV_DOCK_COMMANDS := [Dev_Dock]string{.Bottom = "view.devtools_dock_bottom", .Right = "view.devtools_dock_right", .Left = "view.devtools_dock_left", .Floating = "view.devtools_dock_floating"}
+
+// The first shortcut of a command, as a menu shows it ("" when it has none).
+cmd_key :: proc(name: string) -> string {
+	c := command(name)
+	return c == nil ? "" : command_shortcut_text(c)
+}
+
 DEV_DOCK_ICONS := [Dev_Dock]Dt_Icon{.Bottom = .Dock_Bottom, .Right = .Dock_Right, .Left = .Dock_Left, .Floating = .Float}
 
 DEVTOOLS_PREFS := [?]config.Def{
@@ -96,6 +105,7 @@ devtools_init :: proc(app: ^App) {
 }
 
 devtools_destroy :: proc(app: ^App) {
+	devtools_window_destroy(app)
 	config.unwatch(&app.prefs, dev.watch)
 	console_panel_destroy()
 	elements_destroy()
@@ -187,7 +197,7 @@ devtools_zoom :: proc(app: ^App, step: f32) {
 
 // Whether the panel is shown for `t` (a web page), and where.
 devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
-	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) { return {}, false }
+	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) || devtools_detached() { return {}, false }
 	return dev.dock, true
 }
 
@@ -230,8 +240,9 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 // The text size of the panel by Ctrl+wheel and Ctrl +, -, 0 while the pointer is over it: these events are the panel's
 // (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called by main.odin's frame with the
 // events of the frame; returns the others.
-devtools_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
+devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
 	if !dev.visible && net_media_active() { net_media_release() }
+	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
 	if !dev.visible || dev.rect.max.x <= dev.rect.min.x || ui.ctx_menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -346,7 +357,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 		hdr := ui.parent_box()
 		// a floating panel is moved by its header: this box takes the press under the buttons
 		dt_gap(2)
-		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = "Ctrl+Shift+C", on = dev.picking)
+		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key("view.devtools_pick"), on = dev.picking)
 		if pick.clicked { devtools_pick(app) }
 		dt_vsep("###dt_hs0")
 		dt_gap(2)
@@ -416,10 +427,14 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 		dkey := dt_menu_btn("###dt_dock", DEV_DOCK_ICONS[dev.dock], tooltip = "Dock side", caret = false)
 		if ui.ctx_menu(dkey, dt_px(240)) {
 			for d in Dev_Dock {
-				if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), checked = dev.dock == d, icon = "").clicked { devtools_set_dock(app, d) }
+				if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(DEV_DOCK_COMMANDS[d]), checked = dev.dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
 			}
 			ui.menu_separator()
-			ui.menu_item("Open in a separate window###dt_dock_win", enabled = false)
+			if devtools_detached() {
+				if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_attach(app) }
+			} else {
+				if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_detach(app) }
+			}
 		}
 		dt_gap(2)
 		dt_vsep("###dt_hs1")
@@ -457,6 +472,8 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	case .Network: network_settings_items(app, t)
 	}
 	ui.menu_separator()
+	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key("view.devtools_pick")).clicked { devtools_pick(app) }
+	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
 	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
 	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools") }
 	if ui.menu_item("Close the developer tools###dt_m_close", "F12").clicked { devtools_toggle(app) }
@@ -593,7 +610,7 @@ corner_grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // The floating panel takes the pointer where it is: the page under it gets nothing.
 devtools_captures :: proc(pos: draw.Vec2) -> bool {
-	return dev.visible && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
+	return dev.visible && !devtools_detached() && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
 }
 
 ////////////////////////////////

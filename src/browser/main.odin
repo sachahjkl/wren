@@ -1247,8 +1247,8 @@ main :: proc() {
 
 	for !platform.is_closed(app.win) {
 		idled := false
-		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) {
-			timeout := ui.wake_ms(&app.ui_state)
+		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) && !devtools_window_busy() {
+			timeout := devtools_window_timeout(ui.wake_ms(&app.ui_state))
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 			prof_begin(.Idle)
 			platform.wait_event(app.win, memcheck_wake(memory_trim_wake(timeout)))
@@ -1256,6 +1256,7 @@ main :: proc() {
 			idled = true
 		}
 		frame(app, idled)
+		devtools_window_tick(app)   // devtools_window.odin: the panel in a window of its own
 		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 		memory_trim_tick(app)   // memory_trim.odin
 		if app.frames_requested > 0 { app.frames_requested -= 1 }

@@ -311,7 +311,41 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.devtools_dock_floating", title = "Developer tools: undock into a floating panel", category = "View", keywords = "devtools panel position window",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Floating },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
-	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
+	add(r, {name = "view.devtools_application", title = "Developer tools: Application", category = "View", keywords = "storage cookies local session cache manifest",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Application },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Application) }})
+	add(r, {name = "view.devtools_performance", title = "Developer tools: Performance", category = "View", keywords = "frames timing fps cpu gpu profile",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Performance },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Performance) }})
+	add(r, {name = "view.devtools_memory", title = "Developer tools: Memory", category = "View", keywords = "heap allocation leak usage",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Memory },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Memory) }})
+	add(r, {name = "view.devtools_pick", title = "Developer tools: select an element in the page", category = "View", keywords = "inspect picker element select eyedropper",
+		keys = keys(&r.arena, {key = .C, mods = cs}), enabled = has_tab,
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.picking },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_pick(app) }})
+	add(r, {name = "view.devtools_dock_left", title = "Developer tools: dock at the left", category = "View", keywords = "devtools panel position side",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Left && !devtools_detached() },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, .Left) }})
+	add(r, {name = "view.devtools_detach", title = "Developer tools: open in a separate window", category = "View", keywords = "devtools panel undock detach window second",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return devtools_detached() },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) } else { devtools_detach(app) } }})
+	add(r, {name = "view.devtools_larger", title = "Developer tools: larger text", category = "View", keywords = "devtools zoom font size",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, 1) }})
+	add(r, {name = "view.devtools_smaller", title = "Developer tools: smaller text", category = "View", keywords = "devtools zoom font size",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, -1) }})
+	add(r, {name = "view.devtools_reset_layout", title = "Developer tools: reset the layout", category = "View", keywords = "devtools sizes columns panes default",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_reset_layout(app) }})
+	add(r, {name = "view.devtools_clear_console", title = "Developer tools: clear the console", category = "View", keywords = "devtools log messages empty",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { console_clear(app, t) }})
+	add(r, {name = "view.devtools_clear_network", title = "Developer tools: clear the network log", category = "View", keywords = "devtools requests empty",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { net_clear(&t.net); dev.net.has_sel = false }})
+	for p in NET_BUILTIN {
+		add(r, {name = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), title = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), category = "View",
+			keywords = "devtools throttle throttling network speed slow offline 3g bandwidth latency", arg = p.id, enabled = has_tab,
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(t).id == c.arg },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
+	}	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(app.win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",

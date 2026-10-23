@@ -193,6 +193,8 @@ try {
             }
             'type' { foreach ($ch in $arg.ToCharArray()) { [SH]::PostMessage($h, 0x0102, [IntPtr][int]$ch, [IntPtr]1) | Out-Null; Start-Sleep -Milliseconds 20 } }
             'wait' { Start-Sleep -Milliseconds ([int]$arg) }
+    'exec' { & $arg }
+    'desk' { Add-Type -AssemblyName System.Windows.Forms; $sb = [Windows.Forms.SystemInformation]::VirtualScreen; $bm = New-Object Drawing.Bitmap $sb.Width, $sb.Height; $gg = [Drawing.Graphics]::FromImage($bm); $gg.CopyFromScreen($sb.X, $sb.Y, 0, 0, $bm.Size); $bm.Save($arg); $gg.Dispose(); $bm.Dispose() }
             'shot' { [SH]::SetCursorPos($r0.R + 15, $r0.T + 200) | Out-Null; Start-Sleep -Milliseconds $SettleMs; Grab $h $arg }
             # hover:x,y moves the real pointer there (window-relative); hovershot:path captures without parking it
             'hover' {
