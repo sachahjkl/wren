@@ -96,3 +96,5 @@ blocker_open_dashboard :: proc(app: ^App, tab_name := "") {
 
 _ :: fetch
 _ :: page
+
+blocker_update_now :: proc() { if bl.started { blocker.updater_round(&bl.b, true) } }

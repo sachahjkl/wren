@@ -341,6 +341,30 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.setup", title = "Setup\u2026", category = "Browser", keywords = "install uninstall installer shortcut start menu path update repair standalone portable manage this installation",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { setup_open(app) }})
+	// the content blocker (blocker_shell.odin, blocker_ui.odin)
+	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bl.started && bl.b.cfg.enabled }
+	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && bl.started }
+	add(r, {name = "blocker.panel", title = "Blocker: open the panel", category = "Blocker", keywords = "ads adblock shield tracker matrix",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_panel_request = true; app.frames_requested = max(app.frames_requested, 3) }})
+	add(r, {name = "blocker.picker", title = "Blocker: block an element\u2026", category = "Blocker", keywords = "ads element picker zapper hide",
+		keys = keys(&r.arena, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
+	add(r, {name = "blocker.dashboard", title = "Blocker: dashboard", category = "Blocker", keywords = "lists filters rules whitelist statistics", url = "about:blocker",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app) }})
+	add(r, {name = "blocker.journal", title = "Blocker: request log", category = "Blocker", keywords = "logger journal requests blocked", url = "about:blocker#journal",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "journal") }})
+	add(r, {name = "blocker.filters", title = "Blocker: my filters", category = "Blocker", keywords = "custom rules editor", url = "about:blocker#filters",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "filters") }})
+	add(r, {name = "blocker.site", title = "Blocker: switch off / on for this site", category = "Blocker", keywords = "whitelist broken site disable allow",
+		enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			if host, ok := blocker_page_host(t); ok { blocker_set_site_enabled(app, t, host, !blocker_site_enabled(host)) }
+		}})
+	add(r, {name = "blocker.update", title = "Blocker: update the filter lists now", category = "Blocker", keywords = "download refresh easylist",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_update_now() }})
+	add(r, {name = "blocker.toggle", title = "Blocker: on", category = "Blocker", keywords = "ads adblock enable disable",
+		checked = blocker_on, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			config.set_from_string(&app.prefs, "blocker.enabled", bl.b.cfg.enabled ? "false" : "true", .User)
+			if t != nil && t.kind == .Web { reload(app, t) }
+		}})
 	add(r, {name = "browser.check_updates", title = "Check for updates", category = "Browser", keywords = "update upgrade new version release github latest",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_check_now(app) }})
 	add(r, {name = "browser.desktop_integration", title = "Integrate Wren with the desktop", category = "Browser", keywords = "start menu shortcut default apps browser application menu desktop entry install uninstall",
