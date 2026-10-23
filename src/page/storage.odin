@@ -49,6 +49,7 @@ Storage_Manager :: struct {
 	write_seq:   u64,
 	pending:     int,                         // background writes not finished
 	ready:       bool,
+	idb:         ^Idb_Host,                   // IndexedDB of the profile, made on first use (idb_host.odin)
 }
 
 // Storage events delivered to pages (diagnostics, tests).
@@ -69,6 +70,7 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
 	// every area it could be writing is written again here, the commit gate keeps the newest
 	storage_flush(m, sync_write = true, all = m.pending > 0)
+	idb_host_destroy(m)
 	if m.write_timer != base.NIL_HANDLE { host.clear_timer(m.loop, m.write_timer) }
 	for _, a in m.areas { area_free(a) }
 	delete(m.areas)

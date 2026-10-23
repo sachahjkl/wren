@@ -350,7 +350,9 @@ undo_discard :: proc(d: ^Data, u: ^Undo_Log) {
 	for e in u.entries {
 		switch v in e {
 		case Undo_Record: delete(v.key); if v.old != nil { record_free(d, v.old) }
-		case Undo_Version, Undo_Db_Created, Undo_Store_Created, Undo_Store_Renamed, Undo_Index_Created, Undo_Index_Renamed, Undo_Gen:
+		case Undo_Version, Undo_Db_Created, Undo_Store_Created, Undo_Index_Created, Undo_Gen:
+		case Undo_Store_Renamed: delete(v.old, d.allocator)
+		case Undo_Index_Renamed: delete(v.old, d.allocator)
 		case Undo_Store_Deleted: store_free(d, v.store)
 		case Undo_Db_Deleted: database_free(d, v.db)
 		case Undo_Cleared:

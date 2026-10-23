@@ -26,7 +26,14 @@ enum {
     T_BOOLEAN_OBJ, T_NUMBER_OBJ, T_STRING_OBJ, T_BIGINT_OBJ, T_DATE, T_REGEXP,
     T_ARRAY_BUFFER, T_TYPED_ARRAY, T_DATA_VIEW, T_MAP, T_SET, T_ERROR, T_ARRAY, T_OBJECT,
     T_PORT,   /* a MessagePort of the transfer list: its index among the transferred ports */
+    T_BLOB,   /* a Blob or File: is a file, its type, its bytes, and for a File its name and lastModified */
 };
+
+/* runtime/web_blob.c */
+extern bool web_blob_bytes(JSValueConst v, const uint8_t **ptr, size_t *len);
+extern JSValue web_blob_type(JSContext *ctx, JSValueConst v);
+extern JSValue web_blob_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len);
+extern JSValue web_file_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len, const char *name, size_t name_len, double last_modified);
 
 static const uint8_t MAGIC[4] = { 'W', 'S', 'C', 1 };
 
@@ -281,6 +288,31 @@ static bool serialize_object(ser *s, JSValueConst v)
             k++;
         }
         return clone_error(ctx, "A MessagePort could not be cloned because it was not transferred.");
+    }
+    const uint8_t *blob_bytes;
+    size_t blob_len;
+    if (web_blob_bytes(v, &blob_bytes, &blob_len)) {
+        /* a Blob or File is serializable: its bytes travel with it (a copy: the receiver's is independent) */
+        if (!remember(s, v)) { return false; }
+        bool is_file = wj_unwrap(v, WJ_IFACE_File) != NULL;
+        JSValue type = web_blob_type(ctx, v);
+        put_u8(&s->out, T_BLOB);
+        put_u8(&s->out, is_file);
+        bool ok = !JS_IsException(type) && put_string(ctx, &s->out, type);
+        JS_FreeValue(ctx, type);
+        if (!ok) { return false; }
+        put_u64(&s->out, blob_len);
+        put(&s->out, blob_bytes, blob_len);
+        if (is_file) {
+            JSValue name = JS_GetPropertyStr(ctx, v, "name");
+            JSValue lm = JS_GetPropertyStr(ctx, v, "lastModified");
+            double t = 0;
+            ok = !JS_IsException(name) && !JS_IsException(lm) && put_string(ctx, &s->out, name) && JS_ToFloat64(ctx, &t, lm) == 0;
+            if (ok) { put_f64(&s->out, t); }
+            JS_FreeValue(ctx, name);
+            JS_FreeValue(ctx, lm);
+        }
+        return ok;
     }
     if (wj_obj_of(v) || JS_VALUE_GET_PTR(v) == JS_VALUE_GET_PTR(wj_the_realm.global)) {
         wj_obj *o = wj_obj_of(v);
@@ -844,6 +876,41 @@ static JSValue deserialize(deser *d)
         if (!get_u32(d, &i) || !JS_IsArray(d->ports)) { r = malformed(ctx); break; }
         r = JS_GetPropertyUint32(ctx, d->ports, i);
         if (JS_IsUndefined(r)) { r = malformed(ctx); }
+        break;
+    }
+    case T_BLOB: {
+        uint8_t is_file;
+        if (!get_u8(d, &is_file)) { r = malformed(ctx); break; }
+        JSValue type = get_string(d);
+        if (JS_IsException(type)) { r = type; break; }
+        uint64_t n;
+        if (!get_u64(d, &n) || (uint64_t)(d->end - d->p) < n) { JS_FreeValue(ctx, type); r = malformed(ctx); break; }
+        const uint8_t *bytes = d->p;
+        d->p += n;
+        size_t tlen;
+        const char *t = JS_ToCStringLen(ctx, &tlen, type);
+        if (!t) { JS_FreeValue(ctx, type); r = JS_EXCEPTION; break; }
+        if (is_file) {
+            JSValue name = get_string(d);
+            double lm;
+            if (JS_IsException(name) || !get_f64(d, &lm)) {
+                if (!JS_IsException(name)) { JS_FreeValue(ctx, name); }
+                JS_FreeCString(ctx, t);
+                JS_FreeValue(ctx, type);
+                r = JS_IsException(name) ? name : malformed(ctx);
+                break;
+            }
+            size_t nlen;
+            const char *nm = JS_ToCStringLen(ctx, &nlen, name);
+            r = nm ? web_file_new(ctx, bytes, (size_t)n, t, tlen, nm, nlen, lm) : JS_EXCEPTION;
+            if (nm) { JS_FreeCString(ctx, nm); }
+            JS_FreeValue(ctx, name);
+        } else {
+            r = web_blob_new(ctx, bytes, (size_t)n, t, tlen);
+        }
+        JS_FreeCString(ctx, t);
+        JS_FreeValue(ctx, type);
+        if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
         break;
     }
     default:

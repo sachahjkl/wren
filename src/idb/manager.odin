@@ -26,7 +26,7 @@ import "wb:base"
 //     journal record is on disk: if the write fails it is rolled back (it was the only one that could see its changes).
 //   * Journal writes are queued per origin, one in flight, consecutive records written together.
 
-Submit_Proc :: #type proc(work, done: proc(data: rawptr), data: rawptr)
+Submit_Proc :: #type proc(user: rawptr, work, done: proc(data: rawptr), data: rawptr)
 
 Tx_Mode :: enum u8 { Read_Only, Read_Write, Version_Change }
 
@@ -161,6 +161,7 @@ Manager :: struct {
 	settings:   Settings,
 	dir:        string,          // "" = memory only
 	submit:     Submit_Proc,
+	submit_user: rawptr,
 	allocator:  runtime.Allocator,
 	origins:    map[string]^Origin,
 	conns:      map[u64]^Connection,
@@ -177,10 +178,10 @@ Stats :: struct {
 	rollbacks, commits: u64,
 }
 
-manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submit_Proc, now_ms: proc() -> f64, allocator: runtime.Allocator = {}) {
+manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submit_Proc, submit_user: rawptr, now_ms: proc() -> f64, allocator: runtime.Allocator = {}) {
 	alloc := allocator
 	if alloc.procedure == nil { alloc = base.process_allocator() }
-	m^ = {settings = settings, submit = submit, allocator = alloc, now_ms = now_ms}
+	m^ = {settings = settings, submit = submit, submit_user = submit_user, allocator = alloc, now_ms = now_ms}
 	context.allocator = alloc
 	m.dir = strings.clone(dir) if dir != "" else ""
 	m.origins = make(map[string]^Origin)
@@ -415,7 +416,7 @@ origin_get :: proc(m: ^Manager, key: string) -> ^Origin {
 		for _, ds in o.dbs { db_pump(o, ds) }
 	}
 	if m.submit != nil {
-		m.submit(run, finish, job)
+		m.submit(m.submit_user, run, finish, job)
 	} else {
 		run(job)
 		finish(job)

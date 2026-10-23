@@ -63,6 +63,7 @@ function not exposed to workers is not instantiated.
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`frames`](frames.md) | 16 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and |
 | [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
+| [`idb`](idb.md) | 1 | Window | IndexedDB (the JavaScript engine's prelude, native/js/prelude/idb.js, is the only caller). One entry point: the |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
 | [`scripts`](scripts.md) | 18 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
@@ -80,4 +81,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1016 imports in 917 functions.
+1017 imports in 918 functions.

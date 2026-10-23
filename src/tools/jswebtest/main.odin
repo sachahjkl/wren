@@ -169,6 +169,7 @@ main :: proc() {
 	fetch.loader_init(&loader, &loop, &client, &blocking, &profile)
 	settings = page.settings_default()
 	settings.web.storage_quota = 4000
+	if os.get_env("JSWEB_NOJIT", context.temp_allocator) != "" { settings.js.jit.enabled = false }   // (to tell an engine bug from a script's)
 	wasm.configure_from_args(os.args[1:])
 	if !page.register_imports() { fmt.eprintln("register failed"); os.exit(2) }
 	js.cache_start({memory_bytes = 16 << 20, min_source_bytes = 0})
@@ -188,6 +189,7 @@ main :: proc() {
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }
+	if selected("idb") { run("idb", seconds = 60) }
 
 	if selected("navigator") {
 		fmt.println("-- navigator")
