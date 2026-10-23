@@ -51,11 +51,15 @@ tab_about :: proc(app: ^App, t: ^Tab) {
 			{"0.0.0.0 host", i18n.tr("hosts files")},
 		}
 		for r, i in rows {
-			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.35))})
 			if ui.row(.Center) {
 				ui.spacer(ui.px(em * 0.9))
-				cell(r.syntax, fmt.tprintf("ab2s_%d", i), em * 58)
-				cell(r.meaning, fmt.tprintf("ab2m_%d", i), em * 60, true)
+				cell(r.meaning, fmt.tprintf("ab2m_%d", i), em * 100, true)
+			}
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5))})
+			if ui.row(.Center) {
+				ui.spacer(ui.px(em * 1.6))
+				cell(r.syntax, fmt.tprintf("ab2s_%d", i), em * 100)
 			}
 		}
 

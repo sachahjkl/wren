@@ -102,7 +102,7 @@ show_blocker :: proc(app: ^App, t: ^Tab, address: string) {
 cell :: proc(text: string, id: string, w: f32, weak := false, align := ui.Text_Align.Left) {
 	em := ui.font_size()
 	ui.next({width = ui.px(w), height = ui.pct(1), text_align = align, font_size = em * 0.92})
-	label := fmt.aprintf("%s###%s", text, id, allocator = ui.frame_allocator())
+	label := tid(text, id)
 	if weak { if ui.tags("weak") { ui.label(label) } } else { ui.label(label) }
 }
 
@@ -444,7 +444,7 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 		if ui.column() {
 			for d, i in dash.my_diag[:min(len(dash.my_diag), 5)] {
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.5)), font_size = em * 0.88})
-				ui.label(fmt.aprintf("%s###mf_d%d", d, i, allocator = ui.frame_allocator()))
+				ui.label(fmt.aprintf("%s###mf_d%d", label_text(d), i, allocator = ui.frame_allocator()))
 			}
 		}
 	}
