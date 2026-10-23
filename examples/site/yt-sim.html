@@ -44,7 +44,8 @@
      ?codecs=...    the MIME type of the video buffer (default avc1.640032 for H.264; av01.0.08M.08 for AV1)
      ?items=N       size of the surrounding page (default 1200 items, ~4000 elements)
      ?task=MS       a busy loop of MS milliseconds every 5 s in a rAF callback (the player's periodic work)
-     ?size=WxH      the player box (default fills the column) -->
+     ?size=WxH      the player box (default fills the column)
+     ?fs=1          the player covers the window (what the fullscreen button does: position fixed over everything) -->
 <div id="page">
   <div id="primary">
     <div id="movie_player" class="html5-video-player ytp-transparent ytp-modern-caption paused-mode">
@@ -76,6 +77,7 @@
   const load = document.getElementById('load');
   const time = document.getElementById('time');
   const s = document.getElementById('s');
+  if (q.get('fs')) { Object.assign(player.style, { position: 'fixed', left: '0', top: '0', width: '100vw', height: '100vh', borderRadius: '0', zIndex: '9', aspectRatio: 'auto' }); player.classList.add('ytp-fullscreen'); }
   if (q.get('size')) { const [w, h] = q.get('size').split('x'); player.style.width = w + 'px'; player.style.aspectRatio = 'auto'; player.style.height = h + 'px'; }
 
   // the page around the player
