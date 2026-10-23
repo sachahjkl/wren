@@ -123,6 +123,12 @@ setup_install_then_every_state_then_uninstall :: proc(t: ^testing.T) {
 	exe := exe_in(s.pkg)
 	installed_exe := exe_in(s.target)
 
+	// the release is the program alone (SETUP_PAYLOAD is empty), but the names listed there are copied when they exist beside the
+	// running executable: the scene's package has a README.txt and a licenses folder
+	payload := [?]string{"licenses", "README.txt"}
+	SETUP_PAYLOAD = payload[:]
+	defer { SETUP_PAYLOAD = nil }
+
 	// nothing installed
 	f := setup_read_facts(&s.opts, exe)
 	testing.expect_value(t, f.kind, Setup_Kind.Not_Installed)

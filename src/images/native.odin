@@ -19,7 +19,7 @@ foreign import wren_media {
 	"system:bcrypt.lib",
 	"system:msvcrt.lib",
 	"system:ucrt.lib",
-	"system:vcruntime.lib",
+	"system:libvcruntime.lib",
 }
 
 // Mirrors of the library's repr(C) structs (native\media\src\lib.rs).

@@ -190,14 +190,16 @@ Everything below exists in the code today and is covered by the tests of [`tools
 
 ## Try it
 
-Download `wren-<version>-windows-x64.zip` from the [latest release](https://github.com/sachahjkl/wren/releases/latest),
-unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
+Download `wren-<version>-windows-x64.exe` from the [latest release](https://github.com/sachahjkl/wren/releases/latest) and run it:
+the program is that one file (its licenses are in it, `about:licenses`; `wren.exe --setup` installs it). It needs Windows 10 or 11 (x64)
+with a Direct3D 11 GPU; nothing else to install.
 
-The zip is the program and nothing else. The demo and test pages, the examples and the small test server are a separate
-download of the same release, `wren-<version>-windows-x64-extras.zip`: extract it into the folder of `wren.exe`.
+The download is the program and nothing else. The demo and test pages (`examples\site`), the examples and the small test server
+(`tools\testserver`, Go) belong to the repository: clone it to get them (`tools\package.ps1 -Extras` also packs them as a zip to
+extract beside `wren.exe`).
 
-The start page links to `about:demos`, the index of every demo and test page. With the extras they are in `demos\` next
-to `wren.exe`, and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
+The start page links to `about:demos`, the index of every demo and test page. They are in `demos\` next
+to `wren.exe` (or `examples\site` in a checkout), and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
 it). The few that need a server (network images, forms, CSP, workers, the script loading and web API demos) are
 marked; run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens `about:demos`), or start them yourself:
 
