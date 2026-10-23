@@ -123,13 +123,13 @@ conf_path :: proc(b: ^Blocker) -> string {
 conf_load :: proc(b: ^Blocker) {
 	c := &b.conf
 	c.sites = make(map[string]Site_Flags)
+	conf_defaults(c)   // first: the file then updates the catalogue's entries
 	if p := conf_path(b); p != "" {
 		if data, err := os.read_entire_file(p, context.allocator); err == nil {
 			defer delete(data)
 			conf_parse(b, string(data), false)
 		}
 	}
-	conf_defaults(c)
 	c.loaded = true
 }
 
