@@ -27,6 +27,7 @@ import "wb:http"
 import "wb:net"
 import lay "wb:layout"
 import "wb:page"
+import "wb:remote"
 import "wb:url"
 import "wb:wasm"
 import "wb:tools/crashtrace"   // a crash leaves its symbolized stack and a minidump in <profile>\crashes
@@ -233,7 +234,10 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
-	tab_log((^Tab)(user), level, message)
+	if the_remote.active && remote_take_console(message) { return }   // (an answer of a remote script, not a message)
+	t := (^Tab)(user)
+	tab_log(t, level, message)
+	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", remote.quote(message))) }
 }
 
 set_status :: proc(t: ^Tab, s: string) {
@@ -1001,6 +1005,7 @@ frame :: proc(app: ^App, idled := false) {
 	events := platform.poll_events(app.win, false)
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events { if e.kind == .Activate { desktop_note_activate() } }
+	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
 	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
@@ -1077,6 +1082,7 @@ frame :: proc(app: ^App, idled := false) {
 	})
 	build_ui(app)
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
+	remote_notice(app)   // remote_shell.odin: the notice of a remote channel that did not start
 	ui.end_build()
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
@@ -1132,15 +1138,20 @@ main :: proc() {
 	the_app = app
 
 	// --- configuration: defaults < profile file < command line < policy file ---
-	args := os.args[1:]
+	args := desktop.command_line_args(base.permanent_allocator())   // (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
+	// `wren ctl ...`: the remote control client, before anything else is set up (no profile opened, no window, no GPU, no
+	// script engine): only as the first argument (a file or host named ctl is written ./ctl)
+	if len(args) > 0 && args[0] == "ctl" { os.exit(ctl_main(args[1:])) }
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
 	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
 	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
+	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
+	headless_mode, a8 := extract_switch(a7[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a6[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a8[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
@@ -1158,7 +1169,7 @@ main :: proc() {
 	prof_mark(.Prefs)
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
-	instance_early(app, rest[:], setup_requested, new_window || no_single)   // instance_shell.odin: a second start hands over to the first and ends here
+	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
@@ -1209,7 +1220,8 @@ main :: proc() {
 		for a in rest[1:] { tab_open(app, command_line_address(a)) }
 		app.current = len(app.tabs) - len(rest)
 	}
-	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }   // (tab_log keeps its copy)
+	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
+	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
 	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
 	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
 	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
@@ -1263,7 +1275,7 @@ main :: proc() {
 	app.frames_requested = 4
 	app.win.user = app
 	app.win.on_frame = proc(user: rawptr) { frame((^App)(user)) }
-	platform.show_window(app.win)
+	if !headless_mode { platform.show_window(app.win) }
 	prof_mark(.Loop)
 
 	for !platform.is_closed(app.win) {
@@ -1281,10 +1293,14 @@ main :: proc() {
 		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 		memory_trim_tick(app)   // memory_trim.odin
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
+		remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
 	}
 
 	win.ShowWindow(app.win.hwnd, win.SW_HIDE)   // closed means gone from the screen at once, whatever the teardown below takes
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
+	host.shutdown_step("remote_stop")
+	remote_stop(app)   // remote_shell.odin: the pipe and its clients
+	if remote_fast_exit { os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
@@ -1420,4 +1436,5 @@ main :: proc() {
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_end()
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
+	if remote_exit_code != 0 { os.exit(remote_exit_code) }   // Browser.close {exitCode}
 }

@@ -138,7 +138,7 @@ devtools_save :: proc(app: ^App) {
 }
 
 set_pref_string :: proc(app: ^App, name, value: string) {
-	if config.string_of(&app.prefs, name) == value { return }
+	if config.value_string(&app.prefs, config.ref_of(&app.prefs, name)) == value { return }   // (a Float preference too: string_of asserts on one)
 	if err := config.set_from_string(&app.prefs, name, value, .User); err != .None {
 		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
 	}
