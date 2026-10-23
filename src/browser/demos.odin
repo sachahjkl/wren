@@ -139,6 +139,8 @@ DEMOS := [?]Demo{
 		"A page with simulated ads: a script, an image, a frame and a fetch from a third-party host, an <code>.ad-banner</code> element and an anti-blocker check. With the content blocker on (and the filters of <code>build\\tp1</code>-style My filters), the requests are blocked and the banner is hidden before the first paint.", true, "", false},
 	{.Network, "Content blocker: ad frame", "blocker/adframe.html",
 		"The frame that blocker/ads.html embeds from a third-party host: a red box, collapsed when the blocker stops it.", true, "", false},
+	{.Network, "Content blocker: many blocked requests", "blocker/many.html",
+		"Starts 130 image requests (<code>?n=</code> sets the number) to a third-party host that the blocker stops: the badge of the shield counts them (99+ above ninety-nine).", true, "", false},
 	{.Network, "Content blocker: blocked script in the head", "blocker/headblock.html",
 		"A script in the head that the blocker stops: the page must paint at once instead of waiting for it.", true, "", false},
 
