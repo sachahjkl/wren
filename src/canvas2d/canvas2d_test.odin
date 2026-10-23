@@ -688,3 +688,37 @@ big_bitmap_limits :: proc(t: ^testing.T) {
 	testing.expect(t, ok2, "an empty canvas is fine")
 	bitmap_destroy(&b)
 }
+
+@(test)
+overflow_nan_and_limits :: proc(t: ^testing.T) {
+	c, b := make_ctx(16, 16)
+	defer free_ctx(&c, b)
+	style_set_color(&c.state.fill, {0, 0, 0, 1})
+	// matrix entries that overflow to infinity when applied (opposite infinities sum to NaN): nothing may crash
+	ctx_set_transform(&c, 1e308, 1e308, -1e308, -1e308, 0, 0)
+	ctx_fill_rect(&c, 1e308, 1e308, 1e308, -1e308)
+	path_move_to(&c.path, c.state.ctm, 1e308, 1e308)
+	path_line_to(&c.path, c.state.ctm, -1e308, 1e308)
+	path_line_to(&c.path, c.state.ctm, 1e308, -1e308)
+	ctx_fill(&c, .Nonzero)
+	g := gradient_linear(0, 0, 1e-300, 1e-300)
+	defer gradient_release(g)
+	gradient_add_stop(g, 0, {1, 0, 0, 1})
+	gradient_add_stop(g, 1, {0, 0, 1, 1})
+	style_set_gradient(&c.state.fill, g)
+	ctx_reset_transform(&c)
+	ctx_fill_rect(&c, 0, 0, 16, 16)
+	// a path that stops growing
+	c.path.limit = 100
+	path_clear(&c.path)
+	for i in 0 ..< 10_000 { path_line_to(&c.path, IDENTITY, f64(i), 1) }
+	testing.expect(t, len(c.path.pts) <= 101, "a path keeps at most its limit")
+	for i in 0 ..< MAX_STOPS + 10 { gradient_add_stop(g, f64(i) / f64(MAX_STOPS), {0, 1, 0, 1}) }
+	testing.expect_value(t, len(g.stops), MAX_STOPS)
+	// text that is cut
+	c.text = fake_engine()
+	defer path_destroy(&fake_outline)
+	c.opts.text_bytes = 4
+	tm, ok := ctx_measure_text(&c, "abcdefghij")
+	testing.expect(t, ok && abs(tm.width - 4 * 6) < 1e-4, "the text is cut at canvas.max_text_bytes")
+}

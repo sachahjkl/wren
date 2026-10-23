@@ -756,6 +756,16 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `CanvasDrawImage_drawImage :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, dx: f64, dy: f64, dw: f64, dh: f64) -> Api_Error`
 
+### `CanvasImageData_maxBytes`
+
+```
+u64 CanvasImageData_maxBytes()
+```
+
+The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+
+Host: `CanvasImageData_maxBytes :: proc(c: ^Call) -> u64`
+
 ### `CanvasImageData_get`
 
 ```
@@ -763,7 +773,8 @@ void CanvasImageData_get(CanvasRenderingContext2D ctx, i32 x, i32 y, i32 w, i32 
 ```
 
 getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
-canvas is tainted, Index_Size for an empty block, Quota for a block over canvas.max_image_data_bytes.
+canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+asks CanvasImageData_maxBytes first and throws a RangeError).
 
 Raises: returns an `Error` (see [web](web.md)).
 

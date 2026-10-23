@@ -64,7 +64,9 @@ lay_out_text :: proc(c: ^Context, text: string) -> (lo: Laid_Out, ok: bool) {
 	if e.font == nil || e.shape == nil || e.outline == nil { return }
 	f := e.font(e.user, &c.state.font)
 	if f == 0 { return }
-	size := f32(c.state.font.size)
+	size := f32(min(c.state.font.size, 100_000))
+	text := text
+	if c.opts.text_bytes > 0 && len(text) > c.opts.text_bytes { text = text[:c.opts.text_bytes] }
 	rtl := c.state.direction == .Rtl || (c.state.direction == .Inherit && c.inherit.rtl)
 	lo.size = size
 	lo.glyphs = make([dynamic]Placed_Glyph, context.temp_allocator)
@@ -159,7 +161,10 @@ ctx_measure_text :: proc(c: ^Context, text: string) -> (tm: Text_Metrics, ok: bo
 	for g in lo.glyphs {
 		o := e.outline(e.user, g.face, g.gid)
 		if o == nil { continue }
-		for p in o.pts {
+		// the curves themselves (a quadratic's control point lies outside it): flattened to 1/500 em
+		flat_clear(&c.flat)
+		path_flatten(o, IDENTITY, 0.002, &c.flat)
+		for p in c.flat.pts {
 			px := ox + f64(g.x) + p.x * f64(lo.size)
 			py := oy + f64(g.y) - p.y * f64(lo.size)
 			x0, x1 = min(x0, px), max(x1, px)

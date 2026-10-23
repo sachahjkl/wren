@@ -3006,6 +3006,20 @@ _t_canvas_CanvasDrawImage_drawImage :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// CanvasImageData_maxBytes :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_canvas_CanvasImageData_maxBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := CanvasImageData_maxBytes(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // CanvasImageData_get :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, x: i32, y: i32, w: i32, h: i32, data: []u8) -> Api_Error
 @(private = "file")
 _t_canvas_CanvasImageData_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -20681,6 +20695,7 @@ api_imports := [?]wasm.Import{
 	{module = "canvas", name = "TextMetrics_alphabeticBaseline", fn = _t_canvas_TextMetrics_alphabeticBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
 	{module = "canvas", name = "TextMetrics_ideographicBaseline", fn = _t_canvas_TextMetrics_ideographicBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
 	{module = "canvas", name = "CanvasDrawImage_drawImage", fn = _t_canvas_CanvasDrawImage_drawImage, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageData_maxBytes", fn = _t_canvas_CanvasImageData_maxBytes, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "canvas", name = "CanvasImageData_get", fn = _t_canvas_CanvasImageData_get, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "CanvasImageData_put", fn = _t_canvas_CanvasImageData_put, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
 	{module = "canvas", name = "CanvasPathDrawingStyles_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},

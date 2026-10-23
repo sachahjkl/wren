@@ -78,4 +78,8 @@ is_finite :: #force_inline proc "contextless" (v: f64) -> bool {
 // enough that arithmetic on them stays exact in f64.
 COORD_LIMIT :: 1e12
 
-clamp_coord :: #force_inline proc "contextless" (v: f64) -> f64 { return clamp(v, -COORD_LIMIT, COORD_LIMIT) }
+// (NaN, which a sum of opposite infinities makes, becomes 0: nothing downstream may see one)
+clamp_coord :: #force_inline proc "contextless" (v: f64) -> f64 {
+	if v != v { return 0 }
+	return clamp(v, -COORD_LIMIT, COORD_LIMIT)
+}

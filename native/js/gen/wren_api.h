@@ -697,8 +697,11 @@ WR_IMPORT("canvas", "TextMetrics_ideographicBaseline") double wr_TextMetrics_ide
 // dh); the unused ones are 0. An image that is not available yet draws nothing; a broken one, or a canvas with no
 // pixels, raises Invalid_State.
 WR_IMPORT("canvas", "CanvasDrawImage_drawImage") int32_t wr_CanvasDrawImage_drawImage(uint64_t ctx, uint64_t source, int32_t form, double sx, double sy, double sw, double sh, double dx, double dy, double dw, double dh);
+// The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+WR_IMPORT("canvas", "CanvasImageData_maxBytes") uint64_t wr_CanvasImageData_maxBytes(void);
 // getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
-// canvas is tainted, Index_Size for an empty block, Quota for a block over canvas.max_image_data_bytes.
+// canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+// asks CanvasImageData_maxBytes first and throws a RangeError).
 WR_IMPORT("canvas", "CanvasImageData_get") int32_t wr_CanvasImageData_get(uint64_t ctx, int32_t x, int32_t y, int32_t w, int32_t h, uint8_t *data, uint32_t data_cap);
 // putImageData: the dirty rectangle of `data` (data_w x data_h straight RGBA8) at (dx, dy).
 WR_IMPORT("canvas", "CanvasImageData_put") void wr_CanvasImageData_put(uint64_t ctx, const uint8_t *data, uint32_t data_len, int32_t data_w, int32_t data_h, int32_t dx, int32_t dy, int32_t dirty_x, int32_t dirty_y, int32_t dirty_w, int32_t dirty_h);

@@ -533,6 +533,8 @@ test("encoding", async () => {
 });
 
 test("limits and hostile input", () => {
+  throws(() => new ImageData(30000, 30000), "RangeError", "an ImageData over canvas.max_image_data_bytes");
+  throws(() => document.createElement("canvas").getContext("2d").createImageData(30000, 30000), "RangeError", "createImageData over the limit");
   const c = document.createElement("canvas");
   c.width = 100000;
   c.height = 100000;

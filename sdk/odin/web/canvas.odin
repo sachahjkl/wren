@@ -121,6 +121,7 @@ foreign _m_canvas {
 	@(link_name = "TextMetrics_alphabeticBaseline") _TextMetrics_alphabeticBaseline :: proc(m: TextMetrics) -> f64 ---
 	@(link_name = "TextMetrics_ideographicBaseline") _TextMetrics_ideographicBaseline :: proc(m: TextMetrics) -> f64 ---
 	@(link_name = "CanvasDrawImage_drawImage") _CanvasDrawImage_drawImage :: proc(ctx: CanvasRenderingContext2D, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, dx: f64, dy: f64, dw: f64, dh: f64) -> Error ---
+	@(link_name = "CanvasImageData_maxBytes") _CanvasImageData_maxBytes :: proc() -> u64 ---
 	@(link_name = "CanvasImageData_get") _CanvasImageData_get :: proc(ctx: CanvasRenderingContext2D, x: i32, y: i32, w: i32, h: i32, data: [^]u8, data_len: u32) -> Error ---
 	@(link_name = "CanvasImageData_put") _CanvasImageData_put :: proc(ctx: CanvasRenderingContext2D, data: [^]u8, data_len: u32, data_w: i32, data_h: i32, dx: i32, dy: i32, dirty_x: i32, dirty_y: i32, dirty_w: i32, dirty_h: i32) ---
 	@(link_name = "CanvasPathDrawingStyles_lineWidth") _CanvasPathDrawingStyles_lineWidth :: proc(ctx: CanvasRenderingContext2D) -> f64 ---
@@ -652,8 +653,14 @@ CanvasDrawImage_drawImage :: proc "contextless" (ctx: CanvasRenderingContext2D, 
 	return _CanvasDrawImage_drawImage(ctx, source, form, sx, sy, sw, sh, dx, dy, dw, dh)
 }
 
+// The largest ImageData a script may make or read back, in bytes (canvas.max_image_data_bytes).
+CanvasImageData_maxBytes :: proc "contextless" () -> u64 {
+	return _CanvasImageData_maxBytes()
+}
+
 // getImageData's pixels: straight RGBA8 of the w x h block at (x, y) into `data` (w * h * 4 bytes). Security when the
-// canvas is tainted, Index_Size for an empty block, Quota for a block over canvas.max_image_data_bytes.
+// canvas is tainted, Index_Size for an empty block (blocks over canvas.max_image_data_bytes never get here: the binding
+// asks CanvasImageData_maxBytes first and throws a RangeError).
 CanvasImageData_get :: proc "contextless" (ctx: CanvasRenderingContext2D, x: i32, y: i32, w: i32, h: i32, data: []u8) -> Error {
 	return _CanvasImageData_get(ctx, x, y, w, h, raw_data(data), u32(len(data)))
 }
