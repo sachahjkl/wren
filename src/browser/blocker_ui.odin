@@ -107,6 +107,11 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	if !bl.started { return }
 	em := ui.font_size()
 	state, count, _ := blocker_shield(app, t)
+	if !bl.b.conf.first_run && state != .Off {
+		bl.b.conf.first_run = true
+		blocker.conf_save(&bl.b)
+		ui.toast(.Info, "Content blocker is on: the filter lists are downloading. The shield at the end of the address bar opens its panel; about:blocker customizes everything.")
+	}
 	d := ui.frame_new(Shield_Draw)
 	d.app, d.state, d.count = app, state, count
 	ui.next({width = ui.px(em * 2.3), height = ui.px(ui.dense(em * 2)), radius = em * CHROME_BUTTON_RADIUS})
