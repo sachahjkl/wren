@@ -116,6 +116,7 @@ devtools_apply_prefs :: proc(p: ^config.Prefs) {
 	dev.density = config.string_of(p, "browser.devtools.density") == "comfortable" ? .Comfortable : .Compact
 	console_apply_prefs(p)
 	network_apply_prefs(p)
+	if the_app != nil { console_arm_all(the_app) }   // (the pages describe their console arguments while the panel is open)
 }
 
 // What the panel's own state asks of the preferences (they are what is saved, and what about:config shows).

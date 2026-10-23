@@ -11,13 +11,15 @@ package browser
 // that was all (the list of 100 000 lines of a page that logs in a loop is one row appended at a time). The list is
 // virtual: the rows it builds are the ones in view.
 
+import "core:encoding/json"
 import "core:fmt"
 import "core:math"
 import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
+import "wb:page"
 
-Con_Row_Flag :: enum u8 { Header, Stack, Multi, Expanded, Collapsed }
+Con_Row_Flag :: enum u8 { Header, Stack, Multi, Expanded, Collapsed, Obj, Table }
 
 Con_Row :: struct {
 	idx:   int,        // line index in t.console of the first line this row stands for
@@ -146,6 +148,7 @@ con_add :: proc(c: ^Dev_Console, t: ^Tab, i: int, next_depth: int) {
 	}
 	total, stack := line_shape(body)
 	header := next_depth > depth
+	payload := meta.payload
 	if con_prefs.group_similar && len(c.rows) > 0 && !header && total == 1 {
 		last := &c.rows[len(c.rows) - 1]
 		if last.idx < len(t.console) && last.depth == u8(depth) && last.kind == meta.kind && .Header not_in last.flags && last.lines == 1 && t.console[last.idx] == line && meta.kind != .Input && meta.kind != .Marker {
@@ -159,6 +162,18 @@ con_add :: proc(c: ^Dev_Console, t: ^Tab, i: int, next_depth: int) {
 	if total > 1 { r.flags += {.Multi} }
 	if c.expanded[abs] { r.flags += {.Expanded} }
 	r.lines = con_row_lines(&r, total, stack, c.expanded[abs])
+	if payload != "" {
+		// an object behind the message: it unfolds into a tree; a table is drawn whole
+		r.flags -= {.Stack, .Multi}
+		r.lines = 1
+		if payload_is_table(payload) {
+			r.flags += {.Table}
+			if root, pok := con_payload_parse(payload); pok { if tb, tok := con_payload_table(root); tok { r.lines = u16(1 + len(tb.rows)) } }
+		} else if payload_unfoldable(payload) {
+			r.flags += {.Obj}
+			if c.expanded[abs] { if root, pok := con_payload_parse(payload); pok { r.lines = u16(1 + len(con_payload_tree(root))) } }
+		}
+	}
 	if header && c.folded[abs] { r.flags += {.Collapsed}; c.skip = depth }
 	append(&c.rows, r)
 }
@@ -272,6 +287,10 @@ Con_Draw :: struct {
 	stack:   bool,
 	line_h:  f32,
 	more:    int,                 // lines not shown
+	runs:    []Dt_Run,            // the message as its page described it (objects, colors): drawn in place of the text
+	tree:    []Obj_Line,          // an unfolded object
+	table:   Con_Table,
+	is_table: bool,
 	level_icon: Dt_Icon,
 	text_col, icon_col, tint, bar: draw.Color,
 }
@@ -339,11 +358,15 @@ con_row_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		return
 	}
 	avail := right - x
-	if d.kind == .Input {
-		// what was typed: a prompt, the text in the colors of the language
-		dt_icon(dc, .Prompt, {math.round(x - dt_px(10)), top}, dtm.icon * 0.9, dtc.accent, dtm.sc)
+	if len(d.runs) > 0 { dt_runs(dc, dtm.mono, dtm.mono_fs, x, top, d.runs, x + avail) } else if !d.is_table { dt_text(dc, dtm.mono, dtm.mono_fs, x, top, d.text_col, d.first, avail) }
+	if d.is_table { con_table_paint(dc, d, x, r.min.y + d.line_h * 0.2 + dtm.row * 0.5, right) }
+	if len(d.tree) > 0 {
+		y := r.min.y + dtm.row * 0.5
+		for ln in d.tree {
+			y += d.line_h
+			dt_runs(dc, dtm.mono, dtm.mono_fs, x + dt_px(14) + f32(ln.depth) * dt_px(14), y, ln.runs, right)
+		}
 	}
-	dt_text(dc, dtm.mono, dtm.mono_fs, x, top, d.text_col, d.first, avail)
 	if len(d.extra) > 0 {
 		y := r.min.y + dtm.row * 0.5
 		for ln in d.extra {
@@ -381,6 +404,7 @@ con_level_icon :: proc(k: Con_Kind) -> (Dt_Icon, draw.Color) {
 	case .Error: return .Error, dtc.bad
 	case .Warn:  return .Warn, draw.Color{0.86, 0.60, 0.05, 1}
 	case .Result: return .Result, dtc.weak
+	case .Input:  return .Prompt, dtc.accent
 	case .Debug: return .Verbose, dtc.faint
 	}
 	return .None, dtc.weak
@@ -418,7 +442,7 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			first := body
 			if nl := strings.index_byte(body, '\n'); nl >= 0 { first = body[:nl] }
 			d.first = strings.trim_right(first, "\r")
-			if r.lines > 1 || .Multi in r.flags {
+			if (r.lines > 1 || .Multi in r.flags) && meta.payload == "" {
 				all := strings.split_lines(body, context.temp_allocator)
 				if .Stack in r.flags && .Expanded not_in r.flags {
 					// a folded stack shows its first line only
@@ -437,11 +461,25 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 			}
 			if !dtc.dark && level_k == .Error { d.text_col = draw.mix(dtc.bad, draw.Color{0.35, 0, 0, 1}, 0.25) }
 			d.level_icon, d.icon_col = con_level_icon(r.kind)
+			if r.kind == .Input {
+				// what was typed: a prompt in the gutter, the text in the colors of the language
+				d.first = strings.trim_prefix(d.first, "> ")
+				d.runs = syn_runs(d.first, .JS)
+			}
 			d.chevron = -1
 			if .Header in r.flags { d.chevron = .Collapsed in r.flags ? 0 : 1 }
 			if .Stack in r.flags || (.Multi in r.flags && (int(r.lines) < line_total(body) || .Expanded in r.flags)) { d.chevron = .Expanded in r.flags ? 1 : 0 }
+			if .Obj in r.flags { d.chevron = .Expanded in r.flags ? 1 : 0 }
 			if con_prefs.timestamps && r.kind != .Marker { d.time = dt_frame_str(con_time_text(meta.at_ms)) }
 			src := con_source(body)
+			if meta.payload != "" {
+				if root, pok := con_payload_parse(meta.payload); pok {
+					d.runs = con_payload_runs(root, 700)
+					if .Expanded in r.flags && .Obj in r.flags { d.tree = con_payload_tree(root) }
+					if .Table in r.flags { if tb, tok := con_payload_table(root); tok { d.table, d.is_table = tb, true } }
+					if w := con_payload_source(root); w != "" { if s := con_parse_location(w); s.line > 0 { src = s } }
+				}
+			}
 			if src.line > 0 { d.src = dt_frame_str(fmt.tprintf("%s:%d", src.file, src.line)) }
 			id := fmt.tprintf("###cr%d", r.abs)
 			ui.next({width = ui.fill(), height = ui.px(h), cursor = .Arrow})
@@ -690,4 +728,58 @@ console_clear :: proc(app: ^App, t: ^Tab) {
 	clear(&dev.con.expanded)
 	clear(&dev.con.folded)
 	app.frames_requested = max(app.frames_requested, 2)
+}
+
+// console.table: the columns sized to what they hold, a rule under the header.
+@(private = "file")
+con_table_paint :: proc(dc: ^draw.Context, d: ^Con_Draw, x, y0, right: f32) {
+	t := d.table
+	ncols := len(t.cols) + 1 + (t.has_values ? 1 : 0)
+	names := make([]string, ncols, context.temp_allocator)
+	names[0] = "(index)"
+	k := 1
+	if t.has_values { names[k] = "Value"; k += 1 }
+	for c in t.cols { names[k] = c; k += 1 }
+	widths := make([]f32, ncols, context.temp_allocator)
+	for n, i in names { widths[i] = dt_w(dtm.mono, dtm.mono_fs, n) }
+	for row in t.rows { for cell, i in row { if i < ncols { widths[i] = max(widths[i], dt_w(dtm.mono, dtm.mono_fs, cell)) } } }
+	for &w in widths { w = min(w, dt_px(240)) + dt_px(18) }
+	cx := x
+	for n, i in names {
+		dt_text(dc, dtm.mono, dtm.mono_fs, cx + dt_px(6), y0, dtc.weak, n, widths[i] - dt_px(10))
+		draw.rect(dc, {{cx + widths[i] - dtm.line, y0 - d.line_h * 0.5}, {cx + widths[i], y0 + d.line_h * (f32(len(t.rows)) + 0.5)}}, with_alpha(dtc.border, 0.7))
+		cx += widths[i]
+		if cx > right { break }
+	}
+	draw.rect(dc, {{x, y0 + d.line_h * 0.5}, {min(cx, right), y0 + d.line_h * 0.5 + dtm.line}}, with_alpha(dtc.border, 0.9))
+	for row, ri in t.rows {
+		cx = x
+		y := y0 + d.line_h * f32(ri + 1)
+		for cell, i in row {
+			if i >= ncols { break }
+			dt_text(dc, dtm.mono, dtm.mono_fs, cx + dt_px(6), y, i == 0 ? dtc.weak : dtc.text, cell, widths[i] - dt_px(10))
+			cx += widths[i]
+			if cx > right { break }
+		}
+	}
+}
+
+// What the page's realm said an expression offers (a JSON array of names): the evaluation line's completions use it.
+console_complete_reply :: proc(json_text: string) {
+	e := &dev.con.eval
+	for s in e.dyn { delete(s) }
+	clear(&e.dyn)
+	v, err := json.parse(transmute([]byte)json_text, spec = .JSON, allocator = context.temp_allocator)
+	if err != nil { return }
+	arr, ok := v.(json.Array)
+	if !ok { return }
+	for it in arr { if s, sok := it.(json.String); sok { append(&e.dyn, strings.clone(string(s))) } }
+}
+
+// Tells every tab's realm whether to describe its console arguments: on while the panel is open.
+console_arm_all :: proc(app: ^App) {
+	want := dev.visible && con_prefs.max_payload > 0 ? con_prefs.max_payload : 0
+	if want == page.dev_console_max { return }
+	page.dev_console_max = want
+	for t in app.tabs { if t.page != nil { page.dev_console_arm(t.page, want) } }
 }

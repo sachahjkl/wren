@@ -6,6 +6,8 @@ package page
 // markup, moving, cloning and removing a node) and of the Application tab (the storage areas of the page).
 // They run on the interface thread while the page is not running (the panel's own rule: it copies what it shows).
 
+import "core:fmt"
+import "core:strings"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -175,3 +177,24 @@ dev_storage_items :: proc(p: ^Page, session: bool) -> (items: []Dev_Storage_Item
 dev_storage_set :: proc(p: ^Page, session: bool, key, value: string) -> bool { return storage_set_item(p, session ? .Session : .Local, key, value) == 0 }
 dev_storage_remove :: proc(p: ^Page, session: bool, key: string) { _ = storage_remove_item(p, session ? .Session : .Local, key) }
 dev_storage_clear :: proc(p: ^Page, session: bool) { _ = storage_clear(p, session ? .Session : .Local) }
+
+////////////////////////////////
+// Console: the objects behind a message
+
+// While the developer tools are open the pages' console calls describe their arguments (prelude/compat.js); 0: they do not.
+// New realms are armed as they start (js_realm), the existing ones by dev_console_arm.
+dev_console_max: int
+
+// Turns the description of console arguments on (up to `max_bytes` per message) or off (0) in the page's realm, if it has one.
+dev_console_arm :: proc(p: ^Page, max_bytes: int) {
+	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
+	src := fmt.tprintf("{{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) {{ s.on = %v; s.max = %d; }} }}", max_bytes > 0, max(max_bytes, 1024))
+	js_run(p, transmute([]byte)src, "devtools", 1)
+}
+
+// Asks the realm for the names an expression offers (they come back as a console line the shell recognizes).
+dev_console_complete :: proc(p: ^Page, path: string) {
+	if p == nil || p.closed || p.js == nil || p.js.failed || p.worker != nil { return }
+	src := strings.concatenate({"{ const s = console[Symbol.for(\"wren.devtools\")]; if (s) s.complete(", js_quote(path), "); }"}, context.temp_allocator)
+	js_run(p, transmute([]byte)src, "devtools", 1)
+}

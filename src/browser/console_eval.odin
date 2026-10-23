@@ -23,12 +23,15 @@ Con_Eval :: struct {
 	word:    string,                // owned: the word the completions are for
 	shown_for: string,              // owned: the field's text the list was made for
 	dismissed: string,              // owned: the text the user closed the list at (it does not reopen until it changes)
+	dyn:       [dynamic]string,     // owned: the names the page's realm offered for the last expression
+	tab:       ^Tab,
 }
 
 // The input row of the console (built when the console is shown and the tab has a page).
 console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	if t == nil || t.page == nil || !app.page_settings.js.console_eval { return }
 	c := &dev.con.eval
+	c.tab = t
 	h := math.round(row_h * 1.25)
 	focused := false
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center, bg = dtc.bar, border = dtc.border})
@@ -44,6 +47,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 		var_res = ui.line_edit("###console_js", &c.field, "Run JavaScript in this page (Enter), Tab to complete")
 		if var_res.box != nil { var_res.box.flags -= {.Draw_Focus_Ring} }
 		focused = var_res.focused
+		if c.open && focused { console_complete_popup(app, c, box) }   // (a child of the row: it floats above it)
 	}
 	if focused { box.border = dtc.accent }
 	res := var_res
@@ -68,7 +72,6 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 		}
 	}
 	if res.cancelled { if c.open { c.open = false } else { ui.field_clear(&c.field); c.cursor = len(c.history) } }
-	if c.open && focused { console_complete_popup(app, c, box) }
 }
 
 // Up / Down: the completions when they are open, else the history. Tab / Right (at the end): accept.
@@ -191,6 +194,8 @@ console_eval_destroy :: proc() {
 	delete(c.word)
 	delete(c.shown_for)
 	delete(c.dismissed)
+	for s in c.dyn { delete(s) }
+	delete(c.dyn)
 	c^ = {}
 }
 
@@ -243,6 +248,11 @@ complete_names :: proc(c: ^Con_Eval, path, word: string) {
 		for it in c.items { if it == name { return } }
 		append(&c.items, strings.clone(name))
 	}
+	// the page's own realm knows better than any list: its answer comes back as a console line the shell recognizes
+	for s in c.dyn { delete(s) }
+	clear(&c.dyn)
+	if c.tab != nil && c.tab.page != nil { page.dev_console_complete(c.tab.page, path) }
+	for n in c.dyn { add(c, n, word) }
 	if path == "" {
 		for g in GLOBALS { add(c, g, word) }
 		for h in dev.con.eval.history {
