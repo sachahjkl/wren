@@ -1,5 +1,7 @@
 package idb
 
+import "core:sync"
+
 // The requests of a transaction, as the scripts' side sends them (native/js/prelude/idb.js builds these bytes) and the
 // manager executes them. A request is an operation code and its arguments in the encoding of model.odin (LEB128
 // integers, length-prefixed byte strings); the reply, written by the operation, depends on the operation.
@@ -53,6 +55,7 @@ in_scope :: proc(tx: ^Tx, store: u32) -> bool {
 
 // Executes one request of transaction `id` and writes its reply. The error is what the script's request fails with.
 tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]

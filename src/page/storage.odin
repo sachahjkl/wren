@@ -50,6 +50,7 @@ Storage_Manager :: struct {
 	pending:     int,                         // background writes not finished
 	ready:       bool,
 	idb:         ^Idb_Host,                   // IndexedDB of the profile, made on first use (idb_host.odin)
+	idb_mu:      sync.Mutex,                  // guards the making of idb (a worker's thread may be the first to need it)
 }
 
 // Storage events delivered to pages (diagnostics, tests).

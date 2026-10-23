@@ -2007,17 +2007,16 @@
 
   const all = [IDBRequest, IDBOpenDBRequest, IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex, IDBCursor, IDBCursorWithValue,
     IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList];
+  const classes = {};
   for (const cls of all) {
     exposeMembers(cls);
-    Object.defineProperty(globalThis, cls.name, { value: cls, writable: true, configurable: true, enumerable: false });
+    if (cls !== DOMStringList) classes[cls.name] = cls;   // (the realm's own DOMStringList stays the global one: see start)
   }
-  Object.defineProperty(globalThis, "indexedDB", {
-    get: Object.getOwnPropertyDescriptor({ get indexedDB() { if (this !== undefined && this !== null && this !== globalThis) throw new TypeError("Illegal invocation"); return factory; } }, "indexedDB").get,
-    set: undefined, configurable: true, enumerable: true,
-  });
 
-  // A window's realm starts: the interfaces exist, ours are linked to them.
+  // The realm's interfaces exist (the prelude runs at the first use): ours are linked to them.
   function start() {
+    // the lists of names are DOMStringLists of this realm (instanceof), with their own methods
+    if (typeof globalThis.DOMStringList === "function") Object.setPrototypeOf(DOMStringList.prototype, globalThis.DOMStringList.prototype);
     NativeEvent = Event;
     DOMEx = DOMException;
     // the roots of our event targets inherit from EventTarget itself, with their own addEventListener, removeEventListener and
@@ -2037,6 +2036,5 @@
     Object.defineProperty(IDBPlainEvent.prototype, "constructor", { value: Event, writable: true, configurable: true });
   }
 
-  host.install({ event: onEvent, cleanup, start });
-})(__wren_idb_host);
-delete globalThis.__wren_idb_host;
+  return { classes, factory, hooks: { event: onEvent, cleanup }, start };
+})

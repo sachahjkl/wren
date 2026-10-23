@@ -38,8 +38,6 @@ int wj_run_preludes(JSContext *ctx)
     JS_SetPropertyStr(ctx, global, "__wren_resize_host", wj_resize_host_object(ctx));
     extern JSValue wj_compat_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_compat_host", wj_compat_host_object(ctx));
-    extern JSValue wj_idb_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_idb_host", wj_idb_host_object(ctx));
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;
@@ -61,5 +59,8 @@ int wj_run_preludes(JSContext *ctx)
         }
         JS_FreeValue(ctx, r);
     }
+    /* IndexedDB's JavaScript is not run here: its interfaces appear on first use (web_idb.c) */
+    extern void wj_idb_define_lazy(JSContext *ctx);
+    wj_idb_define_lazy(ctx);
     return 0;
 }

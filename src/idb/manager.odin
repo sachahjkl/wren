@@ -172,6 +172,7 @@ Manager :: struct {
 	life:       ^Life,
 	now_ms:     proc() -> f64,
 	stats:      Stats,
+	mu:         sync.Recursive_Mutex,   // every entry point takes it: pages and workers (threads of their own) share the manager
 }
 
 Stats :: struct {
@@ -197,6 +198,12 @@ manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submi
 
 @(private)
 join_path :: proc(a, b: string) -> string { return strings.concatenate({a, "/", b}, context.temp_allocator) }
+
+// The settings in force (a realm's: it may differ from the one that made the manager).
+manager_set_settings :: proc(m: ^Manager, s: Settings) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	m.settings = s
+}
 
 life_unref :: proc(l: ^Life) {
 	if sync.atomic_sub(&l.refs, 1) == 1 { free(l, base.process_allocator()) }
@@ -237,6 +244,7 @@ manager_destroy :: proc(m: ^Manager) {
 // Clients
 
 client_create :: proc(m: ^Manager, origin: string, wake: proc(c: ^Client), user: rawptr) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	c := new(Client)
 	m.next_id += 1
@@ -255,6 +263,7 @@ client_create :: proc(m: ^Manager, origin: string, wake: proc(c: ^Client), user:
 
 // The realm is gone: its connections close, its transactions that had not committed roll back, its requests are dropped.
 client_destroy :: proc(c: ^Client) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	c.dead = true
@@ -301,12 +310,19 @@ client_destroy :: proc(c: ^Client) {
 	free(c)
 }
 
-client_post_task :: proc(c: ^Client, token: u64) { push_event(c, Event{kind = .Task, a = token}) }
+client_post_task :: proc(c: ^Client, token: u64) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
+	push_event(c, Event{kind = .Task, a = token})
+}
 
-client_has_events :: proc(c: ^Client) -> bool { return c.head < len(c.queue) }
+client_has_events :: proc(c: ^Client) -> bool {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
+	return c.head < len(c.queue)
+}
 
 // The next event; the caller releases it with event_free.
 client_pop :: proc(c: ^Client) -> (ev: Event, ok: bool) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	if c.head >= len(c.queue) { c.wake_pending = false; return {}, false }
 	ev = c.queue[c.head]
 	c.head += 1
@@ -401,6 +417,7 @@ origin_get :: proc(m: ^Manager, key: string) -> ^Origin {
 			return
 		}
 		o := j.o
+		sync.recursive_mutex_lock(&j.m.mu); defer sync.recursive_mutex_unlock(&j.m.mu)
 		context.allocator = j.m.allocator
 		o.pending_load = nil
 		o.data = j.result.data
@@ -463,6 +480,7 @@ db_state_free :: proc(ds: ^Db_State) {
 
 // Drops the origins nobody uses (no client, no connection, nothing waiting for the disk) after idle_unload_ms.
 manager_tick :: proc(m: ^Manager) -> (loaded: int) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	if m.now_ms == nil || m.dir == "" { return len(m.origins) }
 	now := m.now_ms()
@@ -487,6 +505,7 @@ manager_tick :: proc(m: ^Manager) -> (loaded: int) {
 // Opening and deleting databases
 
 open_database :: proc(c: ^Client, name: string, version: u64, has_version: bool) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	o := origin_get(m, c.origin)
@@ -504,6 +523,7 @@ open_database :: proc(c: ^Client, name: string, version: u64, has_version: bool)
 }
 
 delete_database :: proc(c: ^Client, name: string) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	o := origin_get(m, c.origin)
@@ -521,6 +541,7 @@ delete_database :: proc(c: ^Client, name: string) -> u64 {
 
 // The names and versions of the origin's databases, as a List event.
 list_databases :: proc(c: ^Client) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	m.next_id += 1
@@ -568,6 +589,7 @@ db_pump :: proc(o: ^Origin, ds: ^Db_State) {
 // Whether something is on its way to the client (an event in its queue, the origin's file being read or written): a page
 // waiting for IndexedDB is not idle (test tools use this to tell it from one with nothing left to do).
 client_busy :: proc(c: ^Client) -> bool {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	if c.head < len(c.queue) { return true }
 	o, ok := c.m.origins[c.origin]
 	return ok && (o.state == .Loading || o.writing || len(o.wq) > 0)

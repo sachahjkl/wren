@@ -14,9 +14,15 @@ package page
 //     inactive there (wj_idb_cleanup).
 //   * Disk work (reading an origin's file, appending the commits) runs on the profile's blocking pool.
 //
-// A page whose origin is opaque, or whose storage is off (indexeddb.enabled), gets a SecurityError. Workers have no
-// IndexedDB yet: the data lives on the page thread and a worker's realm runs on its own.
+// A page whose origin is opaque, or whose storage is off (indexeddb.enabled), gets a SecurityError.
+//
+// Workers: a dedicated worker's realm runs on a thread of its own and is a client of the same manager as the pages of its
+// origin (one realm, one client: same ordering of transactions, same versionchange / blocked handshake). The manager takes a
+// lock at each entry point, so a worker calls it directly: no message, no copy but the reply. What the manager has for a
+// worker's client is signalled to its thread (Worker_Global.idb_wake) and delivered by its loop, one event per task, as
+// for a page. Disk work stays on the blocking pool, which any thread may submit to.
 
+import "core:sync"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -26,6 +32,7 @@ Idb_Host :: struct {
 	m:     idb.Manager,
 	sm:    ^Storage_Manager,
 	timer: base.Handle,
+	arm_posted: b32,   // atomic: a task to arm the idle timer is on the UI loop
 }
 
 Idb_Page :: struct {
@@ -34,6 +41,9 @@ Idb_Page :: struct {
 	last:           [dynamic]byte,   // the reply of the last call: a reply that did not fit the caller's buffer is asked for again (IDB_OP_AGAIN)
 	cleanup_needed: bool,      // the realm wants wj_idb_cleanup after the current microtask checkpoint
 	deliver_posted: bool,
+	page_id:        u64,       // a document's id (live_pages); 0 in a worker
+	ui_loop:        ^host.Loop,   // the loop of a document's thread
+	worker:         ^Worker_Global,   // set in a worker's realm: events reach it by flag and signal, from any thread
 }
 
 IDB_OP_OPEN       :: 1
@@ -49,6 +59,7 @@ IDB_OP_TASK       :: 10
 IDB_OP_EVENT      :: 11
 IDB_OP_CLEANUP    :: 12
 IDB_OP_LIMITS     :: 13
+IDB_OP_PRELUDE    :: 14
 IDB_OP_AGAIN      :: 0x4000   // or-ed into any operation: do not run it, repeat the last reply
 
 @(private)
@@ -65,11 +76,13 @@ idb_submit :: proc(user: rawptr, work, done: proc(data: rawptr), data: rawptr) {
 @(private)
 idb_now_ms :: proc() -> f64 { return f64(time.tick_now()._nsec) / 1e6 }
 
-// The manager of the profile, made on first use.
+// The manager of the profile, made on first use (by whichever thread needs it first).
 @(private)
 idb_host_of :: proc(p: ^Page) -> ^Idb_Host {
 	sm := p.web.embedder.storage
 	if sm == nil || !sm.ready { return nil }
+	sync.mutex_lock(&sm.idb_mu)
+	defer sync.mutex_unlock(&sm.idb_mu)
 	if sm.idb == nil {
 		h := new(Idb_Host, base.process_allocator())
 		h.sm = sm
@@ -89,15 +102,30 @@ idb_host_destroy :: proc(sm: ^Storage_Manager) {
 	sm.idb = nil
 }
 
-// Drops the origins nobody uses once they have been idle long enough; the timer lives while some origin is loaded.
+// Drops the origins nobody uses once they have been idle long enough; the timer lives while some origin is loaded. Any
+// thread may ask: the timer belongs to the UI loop, a task there sets it.
 @(private)
 idb_arm :: proc(h: ^Idb_Host) {
-	if h.timer != base.NIL_HANDLE || h.sm.loop == nil || h.sm.dir == "" { return }
+	sm := h.sm
+	if sm.loop == nil || sm.dir == "" { return }
+	if sync.atomic_exchange(&h.arm_posted, true) { return }
+	host.post(sm.loop, proc(data: rawptr) {
+		sm := (^Storage_Manager)(data)
+		if !sm.ready || sm.idb == nil { return }
+		h := sm.idb
+		sync.atomic_store(&h.arm_posted, false)
+		idb_arm_timer(h)
+	}, sm)
+}
+
+@(private)
+idb_arm_timer :: proc(h: ^Idb_Host) {
+	if h.timer != base.NIL_HANDLE { return }
 	interval := clamp(h.m.settings.idle_unload_ms / 2, 1000, 30_000)
 	h.timer = host.set_timer(h.sm.loop, interval, 0, proc(data: rawptr) {
 		h := (^Idb_Host)(data)
 		h.timer = base.NIL_HANDLE
-		if idb.manager_tick(&h.m) > 0 { idb_arm(h) }
+		if idb.manager_tick(&h.m) > 0 { idb_arm_timer(h) }
 	}, h)
 }
 
@@ -105,23 +133,38 @@ idb_arm :: proc(h: ^Idb_Host) {
 @(private)
 idb_page_of :: proc(p: ^Page) -> (^Idb_Page, Api_Error) {
 	if ip := p.web.idb; ip != nil && ip.client != nil { return ip, .None }
-	if !p.settings.idb.enabled || p.env.origin.opaque || p.worker != nil { return nil, Api_Error(WEB_ERR_SECURITY) }
+	if !p.settings.idb.enabled || p.env.origin.opaque { return nil, Api_Error(WEB_ERR_SECURITY) }
 	h := idb_host_of(p)
 	if h == nil { return nil, Api_Error(WEB_ERR_SECURITY) }
-	h.m.settings = p.settings.idb
 	ip := p.web.idb
 	if ip == nil { ip = new(Idb_Page); p.web.idb = ip }
-	ip.client = idb.client_create(&h.m, storage_origin_key(p), idb_wake, rawptr(uintptr(p.web.id)))
+	ip.page_id, ip.ui_loop, ip.worker = page_id(p), p.loop, p.worker
+	key := p.worker.storage_key if p.worker != nil else storage_origin_key(p)
+	idb.manager_set_settings(&h.m, p.settings.idb)
+	ip.client = idb.client_create(&h.m, key, idb_wake, ip)
 	idb_arm(h)
 	return ip, .None
 }
-
 // Manager -> page: the client has an event. A task of the page delivers it.
 @(private)
 idb_wake :: proc(c: ^idb.Client) {
-	p := page_by_id(u64(uintptr(c.user)))
-	if p == nil || p.web.idb == nil { return }
-	idb_post_delivery(p)
+	// (called by the manager with its lock held, on any thread: nothing here may touch a page of another thread)
+	ip := (^Idb_Page)(c.user)
+	if w := ip.worker; w != nil {
+		sync.atomic_store(&w.idb_wake, true)
+		host.signal(&w.link.loop)
+		return
+	}
+	host.post(ip.ui_loop, proc(data: rawptr) {
+		p := page_by_id(u64(uintptr(data)))
+		if p == nil || p.web.idb == nil { return }
+		idb_post_delivery(p)
+	}, rawptr(uintptr(ip.page_id)))
+}
+
+// A worker's loop found the flag idb_wake set: its events are delivered, one per task.
+idb_worker_wake :: proc(p: ^Page) {
+	if p.web != nil && p.web.idb != nil && p.web.idb.client != nil { idb_post_delivery(p) }
 }
 
 @(private)
@@ -187,8 +230,13 @@ idb_clear_origin :: proc(sm: ^Storage_Manager, origin: string) {
 	}
 }
 
+// IndexedDB's JavaScript, run by a realm when a script first needs it (runtime/web_idb.c). Not in the engine's image: a realm that
+// never uses IndexedDB does not carry it.
+IDB_PRELUDE_SOURCE :: #load("../../native/js/lazy/idb.js", string)
+
 Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 	p := c.page
+	if op & ~i32(IDB_OP_AGAIN) == IDB_OP_PRELUDE { return transmute([]u8)string(IDB_PRELUDE_SOURCE), .None }
 	ip, err := idb_page_of(p)
 	if ip == nil { return nil, err }
 	cl := ip.client

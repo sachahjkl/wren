@@ -236,6 +236,7 @@ main :: proc() {
 	if selected("idb_bench") { run("idb_bench", seconds = 120) }
 	if selected("idb") { run("idb", seconds = 60) }
 	if selected("idb_pages") { idb_pages() }
+	if selected("idb_worker") { run("idb_worker", seconds = 60) }
 
 	if selected("navigator") {
 		fmt.println("-- navigator")
