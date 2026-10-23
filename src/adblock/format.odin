@@ -11,6 +11,12 @@ NO_LIST  :: u32(0xFFFFFFFF)
 
 Slot :: struct { key, val: u32 }   // key 0 = empty
 
+// An entry of a candidate list: the filter, and a copy of what is needed to discard it without reading its record:
+// the request types it applies to (bits 0..20) and the party it needs (bit 29: first party only, bit 30: third party only).
+Item :: struct { id, meta: u32 }
+META_FIRST_PARTY :: u32(1) << 29
+META_THIRD_PARTY :: u32(1) << 30
+
 Sec :: struct { off, count: u32 }  // byte offset from the start of the blob, number of records
 
 // The sections, in order. The per-class ones follow SEC_CLASS_BASE: host, token, source-domain tables and the items.
@@ -24,7 +30,8 @@ SEC_COS_ITEMS  :: 6
 SEC_SOURCES    :: 7
 SEC_SOURCE_NAMES :: 8
 SEC_CLASS_BASE :: 9
-SEC_COUNT      :: SEC_CLASS_BASE + CLASS_COUNT * 4
+SEC_CLASS_SECS :: 5
+SEC_COUNT      :: SEC_CLASS_BASE + CLASS_COUNT * SEC_CLASS_SECS
 
 Header :: struct #packed {
 	magic:       [8]u8,

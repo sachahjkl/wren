@@ -8,6 +8,7 @@ package adblock
 // is dropped). Limits: program size, repetition counts, nesting depth (all bounded: `regex_compile` fails above them).
 
 import "core:slice"
+import "core:strings"
 
 REGEX_MAX_PROGRAM :: 6000
 REGEX_MAX_REPEAT  :: 1000
@@ -28,13 +29,16 @@ Inst :: struct {
 Regex :: struct {
 	prog:    []Inst,
 	classes: [][32]u8,
-	literal: string,       // a substring every match contains ("" if none); lower case when icase
+	lits:    []string,     // literal runs every match contains, in order (lower case when icase)
+	literal: string,       // the longest of them ("" if none); lower case when icase
 	icase:   bool,
 	anchored_start: bool,  // begins with `^`
 }
 
 regex_destroy :: proc(r: ^Regex) {
 	delete(r.prog); delete(r.classes); delete(r.literal)
+	for l in r.lits { delete(l) }
+	delete(r.lits)
 	r^ = {}
 }
 
@@ -84,38 +88,24 @@ regex_compile :: proc(pattern: string, icase: bool) -> (re: Regex, ok: bool) {
 	re.prog = prog[:]
 	re.classes = slice.clone(p.classes[:])
 	re.icase = icase
-	// a literal every match must contain (cheap prefilter): the longest run of literals in the top-level concatenation
-	lit := make([dynamic]u8, context.temp_allocator)
-	best := make([dynamic]u8, context.temp_allocator)
-	collect :: proc(p: ^Parser, n: i32, lit, best: ^[dynamic]u8) {
-		flush :: proc(lit, best: ^[dynamic]u8) {
-			if len(lit^) > len(best^) { clear(best); append(best, ..lit[:]) }
-			clear(lit)
-		}
-		if n < 0 { return }
-		nd := p.nodes[n]
-		#partial switch nd.kind {
-		case .Char: append(lit, nd.c)
-		case .Cat:
-			c := nd.a
-			for c >= 0 { collect(p, c, lit, best); c = p.nodes[c].next }
-		case .Repeat:
-			flush(lit, best)
-			if nd.min >= 1 { collect(p, nd.a, lit, best) }
-			flush(lit, best)
-		case .Bol, .Eol, .Word_B, .Not_Word_B, .Look: // zero width: does not break the run
-		case: flush(lit, best)
-		}
-	}
-	collect(&p, root, &lit, &best)
-	if len(lit) > len(best) { clear(&best); append(&best, ..lit[:]) }
-	if len(best) >= 2 {
-		// icase: the literal is compared lower-cased
-		b := make([]u8, len(best))
-		for c, i in best { b[i] = icase ? lower_byte(c) : c }
+	// The literal runs every match must contain, in this order (a cheap prefilter before the VM): the runs of
+	// literal characters of the top-level concatenation. `literal` is the longest of them.
+	col := Lit_Collector{lit = make([dynamic]u8, context.temp_allocator), best = make([dynamic]u8, context.temp_allocator), runs = make([dynamic]string, context.temp_allocator)}
+	collect_literals(&p, root, &col)
+	col_flush(&col)
+	if len(col.best) >= 2 {
+		b := make([]u8, len(col.best))
+		for c, i in col.best { b[i] = icase ? lower_byte(c) : c }
 		re.literal = string(b)
 	}
-	if root >= 0 {
+	if len(col.runs) > 0 {
+		re.lits = make([]string, len(col.runs))
+		for r, i in col.runs {
+			b := make([]u8, len(r))
+			for k in 0 ..< len(r) { b[k] = icase ? lower_byte(r[k]) : r[k] }
+			re.lits[i] = string(b)
+		}
+	}	if root >= 0 {
 		first := p.nodes[root]
 		if first.kind == .Bol { re.anchored_start = true }
 		if first.kind == .Cat && p.nodes[first.a].kind == .Bol { re.anchored_start = true }
@@ -123,6 +113,36 @@ regex_compile :: proc(pattern: string, icase: bool) -> (re: Regex, ok: bool) {
 	return re, true
 }
 
+@(private)
+Lit_Collector :: struct {
+	lit, best: [dynamic]u8,
+	runs:      [dynamic]string,
+}
+
+@(private)
+col_flush :: proc(c: ^Lit_Collector) {
+	if len(c.lit) > len(c.best) { clear(&c.best); append(&c.best, ..c.lit[:]) }
+	if len(c.lit) >= 2 && len(c.runs) < 6 { append(&c.runs, strings.clone(string(c.lit[:]), context.temp_allocator)) }
+	clear(&c.lit)
+}
+
+@(private)
+collect_literals :: proc(p: ^Parser, n: i32, c: ^Lit_Collector) {
+	if n < 0 { return }
+	nd := p.nodes[n]
+	#partial switch nd.kind {
+	case .Char: append(&c.lit, nd.c)
+	case .Cat:
+		k := nd.a
+		for k >= 0 { collect_literals(p, k, c); k = p.nodes[k].next }
+	case .Repeat:
+		col_flush(c)
+		if nd.min >= 1 { collect_literals(p, nd.a, c) }
+		col_flush(c)
+	case .Bol, .Eol, .Word_B, .Not_Word_B, .Look: // zero width: the run goes on
+	case: col_flush(c)
+	}
+}
 @(private)
 peek :: proc(p: ^Parser) -> (u8, bool) {
 	if p.pos >= len(p.s) { return 0, false }
@@ -598,15 +618,20 @@ run_from :: proc(re: ^Regex, s: ^Regex_Scratch, start: i32, text: string, pos0: 
 regex_match :: proc(re: ^Regex, s: ^Regex_Scratch, text_in: string) -> bool {
 	text := text_in
 	if len(text) > REGEX_MAX_TEXT { text = text[:REGEX_MAX_TEXT] }
-	if re.literal != "" && !contains_literal(text, re.literal, re.icase) { return false }
+	pos := 0
+	for l in re.lits {
+		at := find_literal(text[pos:], l, re.icase)
+		if at < 0 { return false }
+		pos += at + len(l)
+	}
 	scratch_ensure(s, len(re.prog))
 	return run_from(re, s, 0, text, 0, re.anchored_start, 0)
 }
 
 @(private)
-contains_literal :: proc(text, lit: string, icase: bool) -> bool {
+find_literal :: proc(text, lit: string, icase: bool) -> int {
 	n, m := len(text), len(lit)
-	if m > n { return false }
+	if m > n { return -1 }
 	first := lit[0]
 	for i := 0; i + m <= n; i += 1 {
 		c := text[i]
@@ -618,7 +643,7 @@ contains_literal :: proc(text, lit: string, icase: bool) -> bool {
 			if icase { d = lower_byte(d) }
 			if d != lit[j] { ok = false; break }
 		}
-		if ok { return true }
+		if ok { return i }
 	}
-	return false
+	return -1
 }

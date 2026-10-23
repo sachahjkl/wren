@@ -1,5 +1,6 @@
 package adblock
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:mem"
 import "core:strings"
@@ -10,10 +11,13 @@ Index :: struct {
 	host:    []Slot,
 	tok:     []Slot,
 	src:     []Slot,
-	items:   []u32,
+	gram:    []Slot,
+	items:   []Item,
 	notoken: u32,
 	bloom:   []u64,
 	bloom_shift: u32,
+	gram_bloom: []u64,
+	gram_shift: u32,
 }
 
 Engine :: struct {
@@ -26,7 +30,7 @@ Engine :: struct {
 	cos:      []Cos_Filter,
 	cos_key:  []Slot,
 	cos_host: []Slot,
-	cos_items: []u32,
+	cos_items: []Item,
 	sources:  []Source_Entry,
 	source_names: []u8,
 	idx:      [CLASS_COUNT]Index,
@@ -70,16 +74,17 @@ engine_load :: proc(blob: []byte, own := false, verify := true, allocator := con
 	if e.cos, ok = section_of(blob, hdr.secs[SEC_COS], Cos_Filter); !ok { free(e); return nil, .Bad_Section }
 	if e.cos_key, ok = section_of(blob, hdr.secs[SEC_COS_KEY], Slot); !ok { free(e); return nil, .Bad_Section }
 	if e.cos_host, ok = section_of(blob, hdr.secs[SEC_COS_HOST], Slot); !ok { free(e); return nil, .Bad_Section }
-	if e.cos_items, ok = section_of(blob, hdr.secs[SEC_COS_ITEMS], u32); !ok { free(e); return nil, .Bad_Section }
+	if e.cos_items, ok = section_of(blob, hdr.secs[SEC_COS_ITEMS], Item); !ok { free(e); return nil, .Bad_Section }
 	if e.sources, ok = section_of(blob, hdr.secs[SEC_SOURCES], Source_Entry); !ok { free(e); return nil, .Bad_Section }
 	if e.source_names, ok = section_of(blob, hdr.secs[SEC_SOURCE_NAMES], u8); !ok { free(e); return nil, .Bad_Section }
 	for c in 0 ..< CLASS_COUNT {
-		b := SEC_CLASS_BASE + c * 4
+		b := SEC_CLASS_BASE + c * SEC_CLASS_SECS
 		ix := &e.idx[c]
 		if ix.host, ok = section_of(blob, hdr.secs[b + 0], Slot); !ok { free(e); return nil, .Bad_Section }
 		if ix.tok, ok = section_of(blob, hdr.secs[b + 1], Slot); !ok { free(e); return nil, .Bad_Section }
 		if ix.src, ok = section_of(blob, hdr.secs[b + 2], Slot); !ok { free(e); return nil, .Bad_Section }
-		if ix.items, ok = section_of(blob, hdr.secs[b + 3], u32); !ok { free(e); return nil, .Bad_Section }
+		if ix.gram, ok = section_of(blob, hdr.secs[b + 3], Slot); !ok { free(e); return nil, .Bad_Section }
+		if ix.items, ok = section_of(blob, hdr.secs[b + 4], Item); !ok { free(e); return nil, .Bad_Section }
 		ix.notoken = hdr.notoken[c]
 		build_bloom(ix)
 	}
@@ -91,30 +96,36 @@ engine_load :: proc(blob: []byte, own := false, verify := true, allocator := con
 bloom_hash :: #force_inline proc "contextless" (key, shift: u32) -> u32 { return (key * 2654435761) >> shift }
 
 @(private)
-build_bloom :: proc(ix: ^Index) {
+make_bloom :: proc(tab: []Slot) -> (bits: []u64, shift: u32) {
 	n := 0
-	for s in ix.tok { if s.key != 0 { n += 1 } }
-	if n == 0 { return }
-	bits := 1 << 10
-	for bits < n * 12 && bits < BLOOM_MAX_BITS { bits <<= 1 }
+	for s in tab { if s.key != 0 { n += 1 } }
+	if n == 0 { return nil, 0 }
+	nb := 1 << 10
+	for nb < n * 12 && nb < BLOOM_MAX_BITS { nb <<= 1 }
 	log := u32(0)
-	for (1 << log) < bits { log += 1 }
-	ix.bloom = make([]u64, bits / 64)
-	ix.bloom_shift = 32 - log
-	for s in ix.tok {
+	for (1 << log) < nb { log += 1 }
+	bits = make([]u64, nb / 64)
+	shift = 32 - log
+	for s in tab {
 		if s.key == 0 { continue }
-		h := bloom_hash(s.key, ix.bloom_shift)
-		ix.bloom[h >> 6] |= 1 << (h & 63)
+		h := bloom_hash(s.key, shift)
+		bits[h >> 6] |= 1 << (h & 63)
 	}
+	return
 }
 
+@(private)
+build_bloom :: proc(ix: ^Index) {
+	ix.bloom, ix.bloom_shift = make_bloom(ix.tok)
+	ix.gram_bloom, ix.gram_shift = make_bloom(ix.gram)
+}
 engine_destroy :: proc(e: ^Engine) {
 	if e == nil { return }
 	context.allocator = e.allocator
 	for _, r in e.regex { if r != nil { regex_destroy(r); free(r) } }
 	delete(e.regex)
 	regex_scratch_destroy(&e.scratch)
-	for &ix in e.idx { delete(ix.bloom) }
+	for &ix in e.idx { delete(ix.bloom); delete(ix.gram_bloom) }
 	if e.owned { delete(e.blob) }
 	free(e)
 }
@@ -164,10 +175,14 @@ filter_ref :: proc(e: ^Engine, id: u32) -> Filter_Ref {
 MAX_TOKENS :: 96
 MAX_URL    :: 8192
 MAX_SUFFIXES :: 12
+GRAM_WINDOWS :: 2048   // 4-byte windows of a URL looked up in the gram table
 
 @(private)
 Ctx :: struct {
 	req:     ^Request,
+	page_mode: bool,            // matching a page's own URL against the page switches (page_flags)
+	type_bit: u32,              // 1 << request type: tested against Item.meta
+	party_skip: u32,            // the META_ bit of the party this request is not
 	url_l:   string,            // lower case
 	url_o:   string,            // as given
 	hs, he:  int,
@@ -189,6 +204,8 @@ Ctx :: struct {
 @(private)
 ctx_init :: proc(c: ^Ctx, req: ^Request, buf: []u8) {
 	c.req = req
+	c.type_bit = u32(1) << u32(req.type)
+	c.party_skip = req.third_party ? META_FIRST_PARTY : META_THIRD_PARTY
 	n := min(len(req.url), len(buf))
 	lower_into(buf[:n], req.url[:n])
 	c.url_l = string(buf[:n])
@@ -267,10 +284,18 @@ get_regex :: proc(e: ^Engine, fid: u32) -> ^Regex {
 check_filter :: proc(e: ^Engine, c: ^Ctx, fid: u32, skip_pattern: bool) -> bool {
 	f := &e.filters[fid]
 	req := c.req
-	if req.type not_in f.types { return false }
-	if .Third_Party in f.flags && !req.third_party { return false }
-	if .First_Party in f.flags && req.third_party { return false }
+	if !c.page_mode {
+		if req.type not_in f.types { return false }
+		if .Third_Party in f.flags && !req.third_party { return false }
+		if .First_Party in f.flags && req.third_party { return false }
+	}
 	if f.methods != {} && req.method not_in f.methods { return false }
+	// the domain lists are cheaper than a pattern (and than a regular expression by far): first
+	if f.to_off != 0 && !domain_list_ok(e, f.to_off, c.dst_h[:c.n_dst]) { return false }
+	if f.src_off != 0 {
+		ctx_source(c)
+		if !domain_list_ok(e, f.src_off, c.src_h[:c.n_src]) { return false }
+	}
 	if !skip_pattern && .Empty_Pattern not_in f.flags {
 		pat := pattern_of(e, f)
 		if .Regex in f.flags {
@@ -281,15 +306,33 @@ check_filter :: proc(e: ^Engine, c: ^Ctx, fid: u32, skip_pattern: bool) -> bool 
 			if !pattern_match(pat, f.flags, url, c.hs, c.he) { return false }
 		}
 	}
-	if f.src_off != 0 {
-		ctx_source(c)
-		if !domain_list_ok(e, f.src_off, c.src_h[:c.n_src]) { return false }
-	}
-	if f.to_off != 0 {
-		if !domain_list_ok(e, f.to_off, c.dst_h[:c.n_dst]) { return false }
-	}
 	return true
 }
+
+// Sizes of the always-checked list and the biggest token buckets of a class (diagnostics).
+Index_Stats :: struct { notoken, hosts, tokens, srcs, grams: int, biggest: [8]int }
+
+engine_index_stats :: proc(e: ^Engine, class: Class) -> (s: Index_Stats) {
+	ix := &e.idx[class]
+	list_len :: proc(ix: ^Index, start: u32) -> int {
+		n := 0
+		i := start
+		for { n += 1; if ix.items[i].id & LAST_BIT != 0 { break }; i += 1 }
+		return n
+	}
+	if ix.notoken != NO_LIST { s.notoken = list_len(ix, ix.notoken) }
+	for sl in ix.host { if sl.key != 0 { s.hosts += 1 } }
+	for sl in ix.src { if sl.key != 0 { s.srcs += 1 } }
+	for sl in ix.gram { if sl.key != 0 { s.grams += 1 } }
+	for sl in ix.tok {
+		if sl.key == 0 { continue }
+		s.tokens += 1
+		n := list_len(ix, sl.val)
+		for k in 0 ..< 8 { if n > s.biggest[k] { copy(s.biggest[k + 1:], s.biggest[k:7]); s.biggest[k] = n; break } }
+	}
+	return
+}
+
 
 @(private)
 Scan_Result :: struct { any, important: u32 }
@@ -305,7 +348,10 @@ Scan_Opts :: struct {
 
 // Tests one candidate; true when the walk must stop.
 @(private)
-try_candidate :: proc(e: ^Engine, c: ^Ctx, fid: u32, skip_pattern: bool, res: ^Scan_Result, o: ^Scan_Opts) -> bool {
+try_candidate :: proc(e: ^Engine, c: ^Ctx, it: Item, skip_pattern: bool, res: ^Scan_Result, o: ^Scan_Opts) -> bool {
+	// the cheap discards come from the item itself, without reading the filter record
+	if it.meta & c.type_bit == 0 || it.meta & c.party_skip != 0 { return false }
+	fid := it.id & ~LAST_BIT
 	f := &e.filters[fid]
 	if o.important_only && .Important not_in f.flags { return false }
 	if o.use_arg {
@@ -323,17 +369,17 @@ try_candidate :: proc(e: ^Engine, c: ^Ctx, fid: u32, skip_pattern: bool, res: ^S
 visit :: proc(e: ^Engine, ix: ^Index, c: ^Ctx, start: u32, res: ^Scan_Result, o: ^Scan_Opts) -> bool {
 	i := start
 	for {
-		v := ix.items[i]
-		if try_candidate(e, c, v & ~LAST_BIT, false, res, o) { return true }
-		if v & LAST_BIT != 0 { break }
+		it := ix.items[i]
+		if try_candidate(e, c, it, false, res, o) { return true }
+		if it.id & LAST_BIT != 0 { break }
 		i += 1
 	}
 	return false
 }
 
 // Walks the candidates of a class for a request: the host table (probed with each label suffix of the request host),
-// the token table (each token of the URL, behind the bloom filter), the table of source domains, the filters without
-// any hook.
+// the token table (each token of the URL, behind a bloom filter), the 4-byte-gram table (for filters without a token),
+// the table of source domains, and the few filters without any hook.
 @(private)
 scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result {
 	ix := &e.idx[class]
@@ -348,11 +394,10 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 			suffix := host[c.dst_at[k]:]
 			i := start
 			for {
-				v := ix.items[i]
-				fid := v & ~LAST_BIT
+				it := ix.items[i]
 				// the pattern is the host: verified, a hash collision must not block
-				if pattern_of(e, &e.filters[fid]) == suffix && try_candidate(e, c, fid, true, &res, &o) { return res }
-				if v & LAST_BIT != 0 { break }
+				if pattern_of(e, &e.filters[it.id & ~LAST_BIT]) == suffix && try_candidate(e, c, it, true, &res, &o) { return res }
+				if it.id & LAST_BIT != 0 { break }
 				i += 1
 			}
 		}
@@ -363,6 +408,16 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 			bh := bloom_hash(key, ix.bloom_shift)
 			if ix.bloom[bh >> 6] & (1 << (bh & 63)) == 0 { continue }
 			if start, found := multi_find(ix.tok, key); found && visit(e, ix, c, start, &res, &o) { return res }
+		}
+	}
+	if len(ix.gram) > 0 {
+		n := min(len(c.url_l) - 3, GRAM_WINDOWS)
+		p := raw_data(c.url_l)
+		for i in 0 ..< n {
+			key := intrinsics.unaligned_load((^u32)(rawptr(uintptr(p) + uintptr(i))))
+			bh := bloom_hash(key, ix.gram_shift)
+			if ix.gram_bloom[bh >> 6] & (1 << (bh & 63)) == 0 { continue }
+			if start, found := multi_find(ix.gram, key); found && visit(e, ix, c, start, &res, &o) { return res }
 		}
 	}
 	if len(ix.src) > 0 {
@@ -378,9 +433,8 @@ scan :: proc(e: ^Engine, class: Class, c: ^Ctx, opts: Scan_Opts) -> Scan_Result 
 @(private)
 class_empty :: #force_inline proc "contextless" (e: ^Engine, class: Class) -> bool {
 	ix := &e.idx[class]
-	return len(ix.host) == 0 && len(ix.tok) == 0 && len(ix.src) == 0 && ix.notoken == NO_LIST
+	return len(ix.host) == 0 && len(ix.tok) == 0 && len(ix.gram) == 0 && len(ix.src) == 0 && ix.notoken == NO_LIST
 }
-
 ////////////////////////////////
 // Matching
 
@@ -445,69 +499,26 @@ Page_Flags :: bit_set[Page_Flag; u8]
 // What a page's own URL switches off for the whole page (`@@||site^$document`, `$elemhide`, `$generichide`, `$specifichide`).
 page_flags :: proc(e: ^Engine, page_url: string) -> (flags: Page_Flags, filter: u32) {
 	filter = NO_FILTER
-	if e == nil || len(e.idx[Class.Page].items) == 0 { return }
+	if e == nil || class_empty(e, .Page) { return }
 	req := make_request(page_url, "", .Document)
 	buf: [MAX_URL]u8
 	c: Ctx
 	ctx_init(&c, &req, buf[:])
 	if c.he <= c.hs { return }
-	ix := &e.idx[Class.Page]
-
-	collect :: proc(e: ^Engine, ix: ^Index, c: ^Ctx, start: u32, host_only: bool, host: string, flags: ^Page_Flags, filter: ^u32) {
-		i := start
-		for {
-			v := ix.items[i]
-			fid := v & ~LAST_BIT
-			f := &e.filters[fid]
-			if !host_only || pattern_of(e, f) == host {
-				if check_page_filter(e, c, fid, host_only) {
-					t := f.types
-					if .Document in t { flags^ += {.Document} }
-					if .Elemhide in t { flags^ += {.Elemhide} }
-					if .Generichide in t { flags^ += {.Generichide} }
-					if .Specifichide in t { flags^ += {.Specifichide} }
-					if filter^ == NO_FILTER { filter^ = fid }
-				}
-			}
-			if v & LAST_BIT != 0 { break }
-			i += 1
-		}
+	// the filters' types are the switches, not request types: nothing is discarded by type or party
+	c.page_mode = true
+	c.type_bit = ~u32(0)
+	c.party_skip = 0
+	found := make([dynamic]u32, 0, 4, context.temp_allocator)
+	scan(e, .Page, &c, Scan_Opts{collect = &found})
+	for fid in found {
+		t := e.filters[fid].types
+		if .Document in t { flags += {.Document} }
+		if .Elemhide in t { flags += {.Elemhide} }
+		if .Generichide in t { flags += {.Generichide} }
+		if .Specifichide in t { flags += {.Specifichide} }
+		if filter == NO_FILTER { filter = fid }
 	}
-	for k in 0 ..< c.n_dst {
-		if start, ok := multi_find(ix.host, c.dst_h[k]); ok { collect(e, ix, &c, start, true, c.host[c.dst_at[k]:], &flags, &filter) }
-	}
-	for t in 0 ..< c.n_tok {
-		if start, ok := multi_find(ix.tok, c.tokens[t]); ok { collect(e, ix, &c, start, false, "", &flags, &filter) }
-	}
-	if ix.notoken != NO_LIST { collect(e, ix, &c, ix.notoken, false, "", &flags, &filter) }
 	return
 }
-
-// Like check_filter for the page itself: the filter's types are the switches, not the request type.
-@(private)
-check_page_filter :: proc(e: ^Engine, c: ^Ctx, fid: u32, skip_pattern: bool) -> bool {
-	f := &e.filters[fid]
-	if .Third_Party in f.flags { return false }
-	if !skip_pattern && .Empty_Pattern not_in f.flags {
-		pat := pattern_of(e, f)
-		if .Regex in f.flags {
-			re := get_regex(e, fid)
-			if re == nil || !regex_match(re, &e.scratch, c.url_o) { return false }
-		} else {
-			url := .Needs_Original in f.flags ? c.url_o : c.url_l
-			if !pattern_match(pat, f.flags, url, c.hs, c.he) { return false }
-		}
-	}
-	if f.src_off != 0 {
-		// the page is its own source
-		c.req.source_host = c.host
-		c.src_ready = false
-		c.n_src, c.n_src_names = 0, 0
-		ctx_source(c)
-		if !domain_list_ok(e, f.src_off, c.src_h[:c.n_src]) { return false }
-	}
-	if f.to_off != 0 && !domain_list_ok(e, f.to_off, c.dst_h[:c.n_dst]) { return false }
-	return true
-}
-
 _ :: mem

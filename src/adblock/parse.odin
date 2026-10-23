@@ -193,14 +193,11 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 
 	opts := ""
 	pat := s
-	// a whole-line regular expression has no options (it may end with '$/')
-	if !(len(s) > 2 && s[0] == '/' && s[len(s) - 1] == '/') {
-		i := len(s)
-		for i > 0 {
-			i = strings.last_index_byte(s[:i], '$')
-			if i < 0 { break }
-			if looks_like_options(s[i + 1:]) { opts = s[i + 1:]; pat = s[:i]; break }
-		}
+	dollar := len(s)
+	for dollar > 0 {
+		dollar = strings.last_index_byte(s[:dollar], '$')
+		if dollar < 0 { break }
+		if looks_like_options(s[dollar + 1:]) { opts = s[dollar + 1:]; pat = s[:dollar]; break }
 	}
 
 	pos, neg: Resource_Set

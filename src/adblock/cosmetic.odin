@@ -98,7 +98,7 @@ cosmetic_for_host :: proc(e: ^Engine, host: string, flags: Page_Flags, allocator
 		if !ok { continue }
 		i := start
 		for {
-			v := e.cos_items[i]
+			v := e.cos_items[i].id
 			id := v & ~LAST_BIT
 			dup := false
 			for s in specific { if s == id { dup = true; break } }
@@ -118,7 +118,7 @@ cosmetic_for_host :: proc(e: ^Engine, host: string, flags: Page_Flags, allocator
 	if e.hdr.cos_generic_exc != NO_LIST {
 		i := e.hdr.cos_generic_exc
 		for {
-			v := e.cos_items[i]
+			v := e.cos_items[i].id
 			id := v & ~LAST_BIT
 			if domain_list_ok(e, e.cos[id].src_off, hs) || e.cos[id].src_off == 0 { note_exception(e, &c, id) }
 			if v & LAST_BIT != 0 { break }
@@ -142,7 +142,7 @@ cosmetic_for_host :: proc(e: ^Engine, host: string, flags: Page_Flags, allocator
 	if e.hdr.cos_generic != NO_LIST {
 		i := e.hdr.cos_generic
 		for {
-			v := e.cos_items[i]
+			v := e.cos_items[i].id
 			id := v & ~LAST_BIT
 			f := &e.cos[id]
 			ok := f.src_off == 0 || domain_list_ok(e, f.src_off, hs)
@@ -170,7 +170,7 @@ cosmetic_keyed :: proc(e: ^Engine, c: ^Cosmetic, key: u32, out: ^[dynamic]u32) {
 	hs := c.hashes[:c.n_hashes]
 	i := start
 	for {
-		v := e.cos_items[i]
+		v := e.cos_items[i].id
 		id := v & ~LAST_BIT
 		f := &e.cos[id]
 		if (f.src_off == 0 || domain_list_ok(e, f.src_off, hs)) && !is_excepted(c, f.sel_hash) { append(out, id) }
