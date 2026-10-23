@@ -1,3 +1,4 @@
+#+vet !unused-imports
 package browser
 
 // <video> in the shell: the current picture of a media element drawn into its box, and when the next one is due.
@@ -9,6 +10,8 @@ package browser
 // at its place in the already recorded page. While a video plays, a timer asks for a frame when the next picture is due,
 // so the browser composes once per video frame; a paused video asks for nothing.
 
+import "core:fmt"
+import "core:strings"
 import "toolkit:draw"
 import "toolkit:render"
 import "wb:base"
@@ -41,6 +44,7 @@ Video_Shell :: struct {
 	gpu_set:   bool,
 	converted: int,              // statistics: pictures converted
 	painted:   int,
+	stamps:    [dynamic]i64,     // profile build: when each picture was converted (qpc), for the cadence report
 }
 
 @(private = "file")
@@ -65,6 +69,7 @@ video_shell_destroy :: proc(app: ^App) {
 	delete(vshell.targets)
 	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake) }
 	if vshell.gpu_set { media.set_gpu_device(nil) }
+	delete(vshell.stamps)
 	vshell = {}
 }
 
@@ -160,7 +165,11 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 			}
 		}
 		if t != nil && (view.changed || t.frames == 0) {
-			if render.video_convert(&app.r, t.tex, pic) { t.frames += 1; vshell.converted += 1 }
+			if render.video_convert(&app.r, t.tex, pic) {
+				t.frames += 1
+				vshell.converted += 1
+				when PROFILE { append(&vshell.stamps, qpc()) }
+			}
 		}
 	}
 	if t != nil { t.epoch = vshell.epoch }
@@ -175,4 +184,30 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		vshell.painted += 1
 	}
 	return true
+}
+
+// Profile build: what the videos did, for the report (prof.odin). The cadence is the time between two pictures reaching
+// the screen's frame (converted into their texture) over the last seconds of the run: a 60 fps video at 60 Hz is a
+// picture every 16.7 ms, a stutter is an interval of 1.5 times the usual one or more.
+video_shell_report :: proc(sb: ^strings.Builder, freq: f64) {
+	when !PROFILE { return }
+	when PROFILE {
+	fmt.sbprintf(sb, "\n-- video: %d pictures converted, %d painted\n", vshell.converted, vshell.painted)
+	for key, t in vshell.targets {
+		p := page.page_by_id(key.page)
+		view, ok := page.media_view(p, key.node, false)
+		if !ok { continue }
+		fmt.sbprintf(sb, "  %dx%d %s%s | decoded %d dropped %d | position %.1f s of %.1f | stalled %v\n", t.size.x, t.size.y, view.decoder, view.hardware ? " (GPU)" : " (CPU)", view.decoded, view.dropped, view.position, view.duration, view.stalled)
+	}
+	n := len(vshell.stamps)
+	if n < 3 { return }
+	from := vshell.stamps[n - 1] - i64(10 * freq)
+	iv := make([dynamic]f64, 0, n, context.temp_allocator)
+	for i in 1 ..< n { if vshell.stamps[i - 1] >= from { append(&iv, f64(vshell.stamps[i] - vshell.stamps[i - 1]) * 1000 / freq) } }
+	if len(iv) == 0 { return }
+	s := stat_of(iv[:])
+	late15, late25 := 0, 0
+	for v in iv { if v > s.p50 * 1.5 { late15 += 1 }; if v > s.p50 * 2.5 { late25 += 1 } }
+	fmt.sbprintf(sb, "  cadence over the last 10 s: %d pictures (%.1f /s), interval mean %.2f p50 %.2f p95 %.2f p99 %.2f max %.2f ms | stutters (> 1.5 x p50) %d, (> 2.5 x p50) %d\n", len(iv) + 1, f64(len(iv)) * 1000 / max(s.sum, 1), s.mean, s.p50, s.p95, s.p99, s.max, late15, late25)
+	}
 }

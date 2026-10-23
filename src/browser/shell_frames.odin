@@ -285,6 +285,17 @@ shell_input_pending :: proc() -> bool {
 	return status >> 16 != 0   // (the high word: kinds of messages now in the queue)
 }
 
+// The user's input waits in the thread's queue: keys, pointer, buttons, touch, raw input, hot keys. Not the messages
+// other threads post to wake the loop (a network chunk, a decoded picture, a timer): those are work for the next frame,
+// not a hand on the keyboard, and counting them made every frame of a busy page "answer input" (shown at once, the
+// screen's slot not waited for: twice the display's rate while a video played).
+shell_user_input_pending :: proc() -> bool {
+	QS_KEY :: 0x0001; QS_MOUSEMOVE :: 0x0002; QS_MOUSEBUTTON :: 0x0004; QS_HOTKEY :: 0x0080; QS_RAWINPUT :: 0x0400
+	QS_TOUCH :: 0x0800; QS_POINTER :: 0x1000
+	status := GetQueueStatus(QS_KEY | QS_MOUSEMOVE | QS_MOUSEBUTTON | QS_HOTKEY | QS_RAWINPUT | QS_TOUCH | QS_POINTER)
+	return status >> 16 != 0
+}
+
 foreign import user32_shell "system:User32.lib"
 @(default_calling_convention = "system", private = "file")
 foreign user32_shell {
