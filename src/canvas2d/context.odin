@@ -288,28 +288,87 @@ job_row :: proc(user: rawptr, y, x0: int, cov: []f32) {
 	j := (^Job)(user)
 	ty := y - j.oy
 	if ty < 0 || ty >= j.target.h { return }
-	solid := j.paint.kind == .Solid
-	for i in 0 ..< len(cov) {
+	// the part of the run inside the target
+	i0, i1 := 0, len(cov)
+	if x0 - j.ox < 0 { i0 = j.ox - x0 }
+	if x0 + i1 - j.ox > j.target.w { i1 = j.target.w - (x0 - j.ox) }
+	if i0 >= i1 { return }
+	p := j.paint
+	tw := j.target.w
+	row := j.target.pix[ty * tw * 4:][:tw * 4]
+	over8 := j.op == .Source_Over && !j.target.opaque   // the common case runs on 8-bit integers
+	// a linear gradient is an affine function of x along a row: t is stepped, not computed from the matrix
+	stepped := p.kind == .Gradient && p.grad.kind == .Linear && p.lut != nil
+	t, dt := 0.0, 0.0
+	if stepped {
+		g := p.grad
+		dx, dy := g.x1 - g.x0, g.y1 - g.y0
+		len2 := dx * dx + dy * dy
+		if len2 == 0 { return }   // (nothing is painted)
+		q := matrix_apply(p.inv, {f64(x0 + i0) + 0.5, f64(y) + 0.5})
+		t = ((q.x - g.x0) * dx + (q.y - g.y0) * dy) / len2
+		dt = (p.inv.a * dx + p.inv.b * dy) / len2
+	}
+	for i in i0 ..< i1 {
 		x := x0 + i
-		tx := x - j.ox
-		if tx < 0 || tx >= j.target.w { continue }
 		a := cov[i] * j.alpha
 		if j.clip != nil { a *= clip_coverage(j.clip, x, y) }
+		ti := t
+		t += dt
 		if a <= 0 { continue }
-		src := solid ? j.paint.premul : paint_at(j.paint, x, y)
+		px := row[(x - j.ox) * 4:][:4]
+		if over8 {
+			s: [4]u32
+			switch {
+			case p.kind == .Solid: s = p.s8
+			case stepped:
+				e := p.lut[int(clamp(ti, 0, 1) * f64(LUT_SIZE - 1) + 0.5)]
+				s = {u32(e[0]), u32(e[1]), u32(e[2]), u32(e[3])}
+			case:
+				f := paint_at(p, x, y)
+				s = {u32(f.r * 255 + 0.5), u32(f.g * 255 + 0.5), u32(f.b * 255 + 0.5), u32(f.a * 255 + 0.5)}
+			}
+			if a < 0.998 {
+				s[0], s[1], s[2], s[3] = u32(f32(s[0]) * a + 0.5), u32(f32(s[1]) * a + 0.5), u32(f32(s[2]) * a + 0.5), u32(f32(s[3]) * a + 0.5)
+			}
+			sa := s[3]
+			if sa == 0 { continue }
+			if sa >= 255 {
+				px[0], px[1], px[2], px[3] = u8(s[0]), u8(s[1]), u8(s[2]), 255
+			} else {
+				inv := 255 - sa
+				px[0] = u8(min(s[0] + (u32(px[0]) * inv + 127) / 255, 255))
+				px[1] = u8(min(s[1] + (u32(px[1]) * inv + 127) / 255, 255))
+				px[2] = u8(min(s[2] + (u32(px[2]) * inv + 127) / 255, 255))
+				px[3] = u8(min(sa + (u32(px[3]) * inv + 127) / 255, 255))
+			}
+			continue
+		}
+		src := p.kind == .Solid ? p.premul : paint_at(p, x, y)
 		src *= a
-		d := load_px(j.target, tx, ty)
+		d := load_px(j.target, x - j.ox, ty)
 		out: [4]f32
 		if j.op == .Source_Over {
 			out = src + d * (1 - src.a)
 		} else {
 			out = blend(j.op, src, d)
 		}
-		store_px(j.target, tx, ty, out)
+		store_px(j.target, x - j.ox, ty, out)
 	}
 	j.touch = {min(j.touch[0], x0), min(j.touch[1], y), max(j.touch[2], x0 + len(cov)), max(j.touch[3], y + 1)}
 }
 
+// A table of a gradient's premultiplied colors, for fills of many pixels: one lookup per pixel instead of a search of
+// the stops. Built when the shape covers `area` pixels or more.
+@(private)
+paint_lut :: proc(p: ^Paint, area: int) {
+	if p.kind != .Gradient || p.lut != nil || area < 4096 { return }
+	p.lut = make([][4]u8, LUT_SIZE, context.temp_allocator)
+	for k in 0 ..< LUT_SIZE {
+		c := premultiply(gradient_color(p.grad, f64(k) / f64(LUT_SIZE - 1)))
+		p.lut[k] = {u8(c.r * 255 + 0.5), u8(c.g * 255 + 0.5), u8(c.b * 255 + 0.5), u8(c.a * 255 + 0.5)}
+	}
+}
 @(private)
 shadow_active :: proc "contextless" (c: ^Context) -> bool {
 	s := &c.state.shadow
@@ -349,6 +408,7 @@ make_paint :: proc(c: ^Context, s: ^Style, alpha_only := false) -> (p: Paint, ok
 paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
 	ex0, ey0, ex1, ey1, ok := raster_extent(&c.r)
 	if !ok { return }
+	paint_lut(paint, (ex1 - ex0) * (ey1 - ey0))
 	st := &c.state
 	op := st.op
 	alpha := f32(clamp(st.alpha, 0, 1))
@@ -473,6 +533,7 @@ fill_rect_with :: proc(c: ^Context, x, y, w, h: f64, paint: ^Paint) {
 		// no rotation or skew: exact box coverage
 		p0, p1 := matrix_apply(m, {x, y}), matrix_apply(m, {x + w, y + h})
 		bx0, by0, bx1, by1 := draw_bounds(c)
+		paint_lut(paint, int(abs((p1.x - p0.x) * (p1.y - p0.y))))
 		j := Job{target = c.bmp, paint = paint, op = c.state.op, alpha = f32(clamp(c.state.alpha, 0, 1)), clip = c.state.clip,
 			touch = {max(int), max(int), min(int), min(int)}}
 		raster_fill_rect(&c.r, min(p0.x, p1.x), min(p0.y, p1.y), max(p0.x, p1.x), max(p0.y, p1.y), bx0, by0, bx1, by1, job_row, &j)
