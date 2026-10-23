@@ -135,7 +135,10 @@ network_apply_prefs :: proc(p: ^config.Prefs) {
 
 // The loader passes on pieces of bodies only while the panel is open and keeps are allowed.
 network_sync_observer :: proc() {
-	if the_app != nil { the_app.loader.observer.body_limit = dev.visible && net_prefs.max_body > 0 ? net_prefs.max_body : 0 }
+	if the_app != nil {
+		the_app.loader.observer.body_limit = dev.visible && net_prefs.max_body > 0 ? net_prefs.max_body : 0
+		the_app.loader.observer.no_cache = dev.visible && net_prefs.disable_cache
+	}
 }
 
 ////////////////////////////////
@@ -567,7 +570,7 @@ net_fetch_code :: proc(e: ^Net_Entry) -> string {
 		strings.write_byte(&r, '"')
 		return strings.to_string(r)
 	}
-	fmt.sbprintf(&b, "fetch(%s, {\n  \"method\": %s", js(e.url), js(e.method))
+	fmt.sbprintf(&b, "fetch(%s, {{\n  \"method\": %s", js(e.url), js(e.method))
 	hs := net_header_pairs(e.req_headers)
 	n := 0
 	for h in hs { if !net_skip_header(h[0]) { n += 1 } }
@@ -632,19 +635,19 @@ net_har :: proc(t: ^Tab) -> string {
 	headers :: proc(b: ^strings.Builder, block: string) {
 		strings.write_string(b, "[")
 		for h, i in net_header_pairs(block) {
-			fmt.sbprintf(b, "%s{\"name\":\"%s\",\"value\":\"%s\"}", i > 0 ? "," : "", esc(h[0]), esc(h[1]))
+			fmt.sbprintf(b, "%s{{\"name\":\"%s\",\"value\":\"%s\"}}", i > 0 ? "," : "", esc(h[0]), esc(h[1]))
 		}
 		strings.write_string(b, "]")
 	}
-	fmt.sbprintf(&b, "{\"log\":{\"version\":\"1.2\",\"creator\":{\"name\":\"%s\",\"version\":\"%s\"},\"pages\":[],\"entries\":[", APP_NAME, APP_VERSION)
+	fmt.sbprintf(&b, "{{\"log\":{{\"version\":\"1.2\",\"creator\":{{\"name\":\"%s\",\"version\":\"%s\"}},\"pages\":[],\"entries\":[", APP_NAME, APP_VERSION)
 	for &e, i in t.net.entries {
 		if i > 0 { strings.write_string(&b, ",") }
-		fmt.sbprintf(&b, "{\"startedDateTime\":\"1970-01-01T00:00:00.000Z\",\"time\":%.2f,\"request\":{\"method\":\"%s\",\"url\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", max(e.ms, 0), esc(e.method), esc(e.url), esc(e.protocol == "" ? "http/1.1" : e.protocol))
+		fmt.sbprintf(&b, "{{\"startedDateTime\":\"1970-01-01T00:00:00.000Z\",\"time\":%.2f,\"request\":{{\"method\":\"%s\",\"url\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", max(e.ms, 0), esc(e.method), esc(e.url), esc(e.protocol == "" ? "http/1.1" : e.protocol))
 		headers(&b, e.req_headers)
-		fmt.sbprintf(&b, ",\"queryString\":[],\"cookies\":[],\"headersSize\":-1,\"bodySize\":%d}", len(e.req_body))
-		fmt.sbprintf(&b, ",\"response\":{\"status\":%d,\"statusText\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", e.status, esc(e.status_text), esc(e.protocol == "" ? "http/1.1" : e.protocol))
+		fmt.sbprintf(&b, ",\"queryString\":[],\"cookies\":[],\"headersSize\":-1,\"bodySize\":%d}}", len(e.req_body))
+		fmt.sbprintf(&b, ",\"response\":{{\"status\":%d,\"statusText\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", e.status, esc(e.status_text), esc(e.protocol == "" ? "http/1.1" : e.protocol))
 		headers(&b, e.res_headers)
-		fmt.sbprintf(&b, ",\"cookies\":[],\"content\":{\"size\":%d,\"mimeType\":\"%s\"},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":%d}", e.bytes, esc(e.mime), e.transfer)
+		fmt.sbprintf(&b, ",\"cookies\":[],\"content\":{{\"size\":%d,\"mimeType\":\"%s\"}},\"redirectURL\":\"\",\"headersSize\":-1,\"bodySize\":%d}}", e.bytes, esc(e.mime), e.transfer)
 		strings.write_string(&b, ",\"cache\":{},\"timings\":{\"send\":0,\"wait\":0,\"receive\":0}}")
 	}
 	strings.write_string(&b, "]}}")

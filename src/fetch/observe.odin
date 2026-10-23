@@ -50,6 +50,7 @@ Observed :: struct {
 Observer :: struct {
 	user:  rawptr,
 	event: proc(user: rawptr, ev: ^Observed),
+	no_cache: bool,      // requests that ask for the default cache mode go to the network and leave the cache alone (Disable cache)
 	body_limit: int,    // bytes of body the observer wants of a request (0: none: no piece of a body is passed on)
 	block: proc(user: rawptr, url: string) -> bool,   // true: the request for this URL is stopped before it is made (nil: none is)
 }

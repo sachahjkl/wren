@@ -365,7 +365,7 @@
           } else { r = e; thrown = true; }
         }
         const show = (val, err) => {
-          try { send("dt", '{"l":"' + (err ? "error" : "result") + '","a":[' + node(val, 0, [], { n: 600 }) + "]}"); } catch (e) {}
+          if (state.on) try { send("dt", '{"l":"' + (err ? "error" : "result") + '","a":[' + node(val, 0, [], { n: 600 }) + "]}"); } catch (e) {}
           let text;
           try { text = err ? String(val && val.stack || val) : (typeof val === "string" ? JSON.stringify(val) : (typeof val === "function" ? fdesc(val) : String(val))); } catch (e) { text = "[object]"; }
           (err ? orig.error : orig.info).call(c, text);
