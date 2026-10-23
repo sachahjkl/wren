@@ -195,14 +195,17 @@ devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
 // The panel
 
 // The panel under the box `next` sized: a header (tabs, dock, close) and the tab's content.
-devtools_panel :: proc(app: ^App, t: ^Tab, floating := false) {
+devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_Mod{}) {
 	dt_begin(app)
 	ui.set_menu_item_height(dev.density == .Comfortable ? 2.1 : 1.85)   // dense menus for the panel's own (toolkit 0.19)
 	defer ui.set_menu_item_height(0)
 	if ui.style({font_size = dtm.fs, text_pad = dt_px(4)}) {
 		flags := ui.Box_Flags{.Draw_Background}
 		if floating { flags += {.Draw_Border, .Draw_Shadow} }
-		ui.next({axis = .Y, radius = 0})
+		mod := place
+		mod.axis, mod.radius = .Y, 0
+		if floating { mod.border = dtc.border }
+		ui.next(mod)
 		panel := ui.build_box(flags, "###dt_panel")
 		dev.rect = panel.rect
 		if ui.parent(panel) {
@@ -549,8 +552,7 @@ devtools_floating :: proc(app: ^App, t: ^Tab) {
 	}
 	dev.float_size = {clamp(dev.float_size[0], 260, math.max(win.x, 260)), clamp(dev.float_size[1], 160, math.max(win.y, 160))}
 	dev.float_pos = {clamp(dev.float_pos[0], 0, math.max(win.x - dev.float_size[0], 0)), clamp(dev.float_pos[1], 0, math.max(win.y - dev.float_size[1], 0))}
-	ui.next({width = ui.px(dev.float_size[0] * sc), height = ui.px(dev.float_size[1] * sc), fixed_x = dev.float_pos[0] * sc, fixed_y = dev.float_pos[1] * sc})
-	devtools_panel(app, t, true)
+	devtools_panel(app, t, true, {width = ui.px(dev.float_size[0] * sc), height = ui.px(dev.float_size[1] * sc), fixed_x = dev.float_pos[0] * sc, fixed_y = dev.float_pos[1] * sc})
 	if b := ui.box_from_key(ui.key_from_string(ui.parent_box().key, "###dt_panel")); b != nil {
 		dev.panel_rect = b.rect
 		// the corner: a grip that resizes

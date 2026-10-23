@@ -1134,10 +1134,10 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 		sc := t.zoom > 0 ? t.zoom : 1
 		bx := r.border
 		mb := lay.Rect{{bx.min.x - m[3] * sc, bx.min.y - m[0] * sc}, {bx.max.x + m[1] * sc, bx.max.y + m[2] * sc}}
-		draw.rect(dc, at(mb, shift), draw.Color{0.97, 0.62, 0.30, 0.34})
-		draw.rect(dc, at(r.border, shift), draw.Color{0.98, 0.80, 0.30, 0.42})
-		draw.rect(dc, at(r.padding, shift), draw.Color{0.45, 0.72, 0.32, 0.42})
-		draw.rect(dc, at(r.content, shift), draw.Color{0.30, 0.55, 0.95, 0.45})
+		draw.rect(dc, at(mb, shift), draw.Color{0.97, 0.62, 0.30, 0.26})
+		draw.rect(dc, at(r.border, shift), draw.Color{0.98, 0.80, 0.30, 0.30})
+		draw.rect(dc, at(r.padding, shift), draw.Color{0.45, 0.72, 0.32, 0.30})
+		draw.rect(dc, at(r.content, shift), draw.Color{0.30, 0.55, 0.95, 0.32})
 	}
 	b := at(r.bounds, shift)
 	draw.rect(dc, b, draw.Color{0.30, 0.55, 0.95, 0.95}, 0, 1)
