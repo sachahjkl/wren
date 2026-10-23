@@ -927,9 +927,8 @@
       c.stores.push(meta);
       updateNames(c);
       enqueueInternal(T, () => {
-        if (meta.deleted) return;
         const w = reqWriter(T, REQ.CREATE_STORE, 0);
-        w.str(meta.name); w.bytes(packPath(keyPath)); w.u8(autoIncrement ? 1 : 0);
+        w.str(n); w.bytes(packPath(keyPath)); w.u8(autoIncrement ? 1 : 0);
         meta.id = expectOk(call(OP.EXEC, w.done())).uv();
         meta.ready = true;
       });
@@ -1384,9 +1383,9 @@
       meta.name = n;
       updateNames(T.conn);
       enqueueInternal(T, () => {   // (a store not made yet is made under its name then)
-        if (!meta.ready || meta.deleted) return;
+        if (!meta.ready) return;
         const w = reqWriter(T, REQ.RENAME_STORE, meta.id);
-        w.str(meta.name);
+        w.str(n);
         expectOk(call(OP.EXEC, w.done()));
       });
     }
@@ -1504,9 +1503,8 @@
       const meta = { id: 0, name: n, keyPath: frozenPath(kp), unique, multiEntry, deleted: false, ready: false };
       S.meta.indexes.push(meta);
       enqueueInternal(T, () => {
-        if (meta.deleted) return;
         const w = reqWriter(T, REQ.CREATE_INDEX, S.meta.id);
-        w.str(meta.name); w.bytes(packPath(kp)); w.u8((unique ? 1 : 0) | (multiEntry ? 2 : 0));
+        w.str(n); w.bytes(packPath(kp)); w.u8((unique ? 1 : 0) | (multiEntry ? 2 : 0));
         meta.id = expectOk(call(OP.EXEC, w.done())).uv();
         populateIndex(T, S, meta);
         meta.ready = true;
@@ -1603,9 +1601,9 @@
       const meta = X.meta;
       meta.name = n;
       enqueueInternal(T, () => {   // (an index not made yet is made under its name then)
-        if (!meta.ready || meta.deleted || S.meta.deleted) return;
+        if (!meta.ready) return;
         const w = reqWriter(T, REQ.RENAME_INDEX, S.meta.id);
-        w.uv(meta.id); w.str(meta.name);
+        w.uv(meta.id); w.str(n);
         expectOk(call(OP.EXEC, w.done()));
       });
     }
