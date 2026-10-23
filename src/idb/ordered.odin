@@ -10,7 +10,8 @@ import "core:bytes"
 // block. It does not keep pointers into itself across changes: a cursor of a script is a pair of keys that the host
 // searches again at each step, which is also what keeps it correct when its records change under it.
 //
-// The map owns a copy of every key; values are the caller's.
+// The map owns a copy of every key (unless it borrows them: the keys of a store's records are the records' own, and the map
+// is never asked to hold one longer than its record); values are the caller's.
 
 BLOCK_MAX :: 128
 
@@ -23,13 +24,14 @@ Ordered :: struct {
 	blocks:    [dynamic]^Block,
 	count:     int,
 	allocator: runtime.Allocator,
+	borrow:    bool,   // the keys belong to the values: not copied, not freed
 }
 
 // A position between entries: `block` == len(blocks) is the end.
 Pos :: struct { block, index: int }
 
-ordered_init :: proc(o: ^Ordered, allocator: runtime.Allocator) {
-	o^ = {allocator = allocator}
+ordered_init :: proc(o: ^Ordered, allocator: runtime.Allocator, borrow := false) {
+	o^ = {allocator = allocator, borrow = borrow}
 	o.blocks = make([dynamic]^Block, allocator)
 }
 
@@ -40,6 +42,27 @@ ordered_destroy :: proc(o: ^Ordered) {
 	o^ = {}
 }
 
+// Builds the map from entries already in order (strictly increasing keys), in blocks with room to grow: linear, no search.
+// The map must be empty. With orrow the keys are used as they are.
+ordered_bulk_load :: proc(o: ^Ordered, keys: [][]byte, vals: []rawptr, take := false) {
+	context.allocator = o.allocator
+	FILL :: BLOCK_MAX * 3 / 4
+	for i := 0; i < len(keys); i += FILL {
+		n := min(FILL, len(keys) - i)
+		b := new(Block)
+		b.keys = make([dynamic][]byte, 0, BLOCK_MAX)
+		b.vals = make([dynamic]rawptr, 0, BLOCK_MAX)
+		for j in 0 ..< n {
+			k := keys[i + j]
+			if !o.borrow && !take { c := make([]byte, len(k)); copy(c, k); k = c }
+			append(&b.keys, k)
+			append(&b.vals, vals[i + j])
+		}
+		append(&o.blocks, b)
+	}
+	o.count += len(keys)
+}
+
 ordered_clear :: proc(o: ^Ordered) {
 	for b in o.blocks { block_free(o, b) }
 	clear(&o.blocks)
@@ -48,7 +71,7 @@ ordered_clear :: proc(o: ^Ordered) {
 
 @(private)
 block_free :: proc(o: ^Ordered, b: ^Block) {
-	for k in b.keys { delete(k, o.allocator) }
+	if !o.borrow { for k in b.keys { delete(k, o.allocator) } }
 	delete(b.keys)
 	delete(b.vals)
 	free(b, o.allocator)
@@ -125,10 +148,14 @@ ordered_put :: proc(o: ^Ordered, key: []byte, val: rawptr) -> (old: rawptr, repl
 	if p.index < len(b.keys) && bytes.equal(b.keys[p.index], key) {
 		old = b.vals[p.index]
 		b.vals[p.index] = val
+		if o.borrow { b.keys[p.index] = key }   // (the old value's key goes with it)
 		return old, true
 	}
-	owned := make([]byte, len(key))
-	copy(owned, key)
+	owned := key
+	if !o.borrow {
+		owned = make([]byte, len(key))
+		copy(owned, key)
+	}
 	inject_at(&b.keys, p.index, owned)
 	inject_at(&b.vals, p.index, val)
 	o.count += 1
@@ -152,7 +179,7 @@ ordered_delete :: proc(o: ^Ordered, key: []byte) -> (old: rawptr, found: bool) {
 	b := o.blocks[p.block]
 	if !bytes.equal(b.keys[p.index], key) { return nil, false }
 	old = b.vals[p.index]
-	delete(b.keys[p.index], o.allocator)
+	if !o.borrow { delete(b.keys[p.index], o.allocator) }
 	ordered_remove(&b.keys, p.index)
 	ordered_remove(&b.vals, p.index)
 	o.count -= 1
