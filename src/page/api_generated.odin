@@ -22413,7 +22413,7 @@ api_imports := [?]wasm.Import{
 	{module = "history", name = "History_go", fn = _t_history_History_go, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "history", name = "History_scrollRestoration", fn = _t_history_History_scrollRestoration, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "history", name = "History_set_scrollRestoration", fn = _t_history_History_set_scrollRestoration, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
-	{module = "idb", name = "Idb_call", fn = _t_idb_Idb_call, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "idb", name = "Idb_call", fn = _t_idb_Idb_call, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "images", name = "HTMLImageElement_naturalWidth", fn = _t_images_HTMLImageElement_naturalWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "images", name = "HTMLImageElement_naturalHeight", fn = _t_images_HTMLImageElement_naturalHeight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "images", name = "HTMLImageElement_complete", fn = _t_images_HTMLImageElement_complete, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

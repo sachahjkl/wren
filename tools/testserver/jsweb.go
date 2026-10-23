@@ -11,6 +11,7 @@ package main
 //	/jsweb/beacon          POST: counted; /jsweb/beacon-log answers "<count>|<last body>|<last Content-Type>"
 //	/jsweb/page            an empty HTML page (for documents the test loads by URL)
 //	/jsweb/demo            examples/jsweb/demo.html (the server runs from the repository root)
+//	/jsweb/js/<name>.js    examples/jsweb/<name>.js as text/javascript (the source of a worker)
 
 import (
 	"fmt"
@@ -83,6 +84,16 @@ func registerJSWebHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("/jsweb/demo", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		http.ServeFile(w, r, "examples/jsweb/demo.html")
+	})
+	// /jsweb/js/<name>.js: a script of examples/jsweb (a worker's source: a blob: or data: worker has no usable origin)
+	mux.HandleFunc("/jsweb/js/", func(w http.ResponseWriter, r *http.Request) {
+		name := r.URL.Path[len("/jsweb/js/"):]
+		if name == "" || strings.ContainsAny(name, "/\\") || !strings.HasSuffix(name, ".js") {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		http.ServeFile(w, r, "examples/jsweb/"+name)
 	})
 	mux.HandleFunc("/jsweb/page", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

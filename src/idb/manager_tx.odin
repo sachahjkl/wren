@@ -105,6 +105,7 @@ conn_try_close :: proc(m: ^Manager, conn: ^Connection) {
 
 // connection.close(): no new transaction; it closes when the running ones have finished.
 close_connection :: proc(c: ^Client, id: u64) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[id]
@@ -117,6 +118,7 @@ close_connection :: proc(c: ^Client, id: u64) -> Error {
 
 // The script's "versionchange" handlers of the connection have run.
 versionchange_done :: proc(c: ^Client, id: u64) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[id]
@@ -342,6 +344,7 @@ schedule :: proc(ds: ^Db_State) {
 // Creates a transaction on a connection. `scope`: ids of object stores. Pending until the scheduler starts it
 // (Tx_Started).
 begin_transaction :: proc(c: ^Client, conn_id: u64, scope: []u32, mode: Tx_Mode, strict: bool) -> (id: u64, err: Error) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[conn_id]
@@ -400,6 +403,7 @@ tx_rollback :: proc(m: ^Manager, tx: ^Tx) { tx_finish(m, tx, false, .Aborted) }
 
 // transaction.abort() (and a failed request that nobody handled): back out, tell the script.
 tx_abort :: proc(c: ^Client, id: u64, err: Error) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]
@@ -411,6 +415,7 @@ tx_abort :: proc(c: ^Client, id: u64, err: Error) -> Error {
 
 // transaction.commit() or the end of the transaction's last request.
 tx_commit :: proc(c: ^Client, id: u64) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]
@@ -505,6 +510,7 @@ kick_writer :: proc(m: ^Manager, o: ^Origin) {
 		}
 		if !j.life.alive { return }
 		m, o := j.m, j.o
+		sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 		context.allocator = m.allocator
 		o.writing = false
 		if j.ok {
@@ -540,6 +546,7 @@ maybe_compact :: proc(m: ^Manager, o: ^Origin) {
 
 // Writes the journal's compaction now if it is due (tests, shutdown).
 manager_compact :: proc(m: ^Manager, origin: string) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	if o, ok := m.origins[origin]; ok { maybe_compact(m, o) }
 }
@@ -557,6 +564,7 @@ fail_or_finish_item :: proc(m: ^Manager, o: ^Origin, it: Write_Item, ok: bool) {
 // Removes everything the origin keeps (Clear site data): connections are closed (the scripts hear "close"), what runs
 // is aborted, requests fail, and the journal is emptied.
 manager_clear_origin :: proc(m: ^Manager, key: string) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	o, loaded := m.origins[key]
 	if !loaded {
