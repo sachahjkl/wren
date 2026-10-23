@@ -199,6 +199,22 @@ manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submi
 @(private)
 join_path :: proc(a, b: string) -> string { return strings.concatenate({a, "/", b}, context.temp_allocator) }
 
+// What an origin (storage key) holds: the bytes its records count against the quota, its databases. loaded false: not in memory.
+manager_usage :: proc(m: ^Manager, key: string) -> (bytes: i64, dbs: int, loaded: bool) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	o, ok := m.origins[key]
+	if !ok || o.state != .Ready { return 0, 0, false }
+	return o.data.bytes, len(o.data.dbs), true
+}
+
+// The keys of the origins in memory.
+manager_loaded_keys :: proc(m: ^Manager, allocator: runtime.Allocator) -> []string {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	out := make([dynamic]string, 0, len(m.origins), allocator)
+	for k in m.origins { append(&out, strings.clone(k, allocator)) }
+	return out[:]
+}
+
 // The settings in force (a realm's: it may differ from the one that made the manager).
 manager_set_settings :: proc(m: ^Manager, s: Settings) {
 	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)

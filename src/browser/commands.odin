@@ -360,6 +360,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, LICENSES_URL) }})
 	add(r, {name = "browser.about_cache", title = "HTTP cache", category = "Browser", keywords = "about:cache stored responses statistics", url = CACHE_URL,
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, CACHE_URL) }})
+	add(r, {name = "browser.about_sites", title = "Site data", category = "Browser", keywords = "about:sites cookies local storage indexeddb clear site data cache forget", url = SITES_URL,
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, SITES_URL) }})
 	add(r, {name = "browser.clear_cache", title = "Clear the cache", category = "Browser", keywords = "http cache empty delete purge stored responses",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { http_cache_clear(app) }})
 	add(r, {name = "browser.javascript", title = "JavaScript", category = "Browser", keywords = "script js enable disable everywhere global",
