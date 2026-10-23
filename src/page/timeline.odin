@@ -221,7 +221,7 @@ initiator_type :: proc(d: fetch.Destination) -> string {
 // fetch.Observer.event: the steps of every request, on the loop thread.
 @(private)
 timeline_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
-	switch ev.kind {
+	#partial switch ev.kind {   // (the Request / Redirect / Body / Ws_* steps are the developer tools' business)
 	case .Started:
 		if ev.initiator == nil || ev.destination == .Document || ev.destination == .Report { return }
 		p := page_of_environment(ev.initiator)

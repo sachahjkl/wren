@@ -1,0 +1,1 @@
+fetch("/status/204").then(function () { postMessage("fetched from a worker"); }); 

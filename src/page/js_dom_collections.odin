@@ -112,7 +112,7 @@ SYNTAX_SELECTOR :: "The provided selector is not a valid selector."
 @(private)
 script_match_ctx :: proc(p: ^Page, scope: base.Handle, in_tree: base.Handle) -> style.Match_Ctx {
 	m: style.Match_Ctx
-	style.match_ctx_init(&m, p.doc, p.style_state, context.temp_allocator)
+	style.match_ctx_init(&m, p.doc, effective_state(p), context.temp_allocator)
 	m.scope = scope
 	if dom.has_shadow_trees(p.doc) {
 		if r := dom.containing_shadow_root(p.doc, in_tree); r != base.NIL_HANDLE { m.featureless = dom.get(p.doc, r).shadow }

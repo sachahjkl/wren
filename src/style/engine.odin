@@ -42,7 +42,7 @@ Rule :: struct {
 }
 
 // Dynamic state that a rule can depend on. Which of them appear in the active rules decides what a change of state costs.
-State_Kind :: enum u8 { Hover, Active, Focus, Target, Fullscreen }
+State_Kind :: enum u8 { Hover, Active, Focus, Target, Fullscreen, Visited }
 State_Kinds :: bit_set[State_Kind; u8]
 
 Entry :: struct {

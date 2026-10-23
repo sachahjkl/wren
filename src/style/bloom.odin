@@ -84,6 +84,7 @@ compound_state :: proc(comp: css.Compound, depth := 0) -> (kinds: State_Kinds, u
 			case .Focus, .Focus_Visible, .Focus_Within: kinds += {.Focus}
 			case .Target: kinds += {.Target}
 			case .Fullscreen: kinds += {.Fullscreen}
+			case .Visited, .Link, .Any_Link: kinds += {.Visited}
 			case .Not, .Is, .Where, .Nth_Child, .Nth_Last_Child, .Host, .Host_Context:
 				if s.list != nil && depth < 8 {
 					k, h := list_state(s.list^, depth + 1)

@@ -227,6 +227,7 @@ Error_Kind :: enum u8 {
 	Unsupported,
 	Aborted,
 	Not_Cached,             // cache mode only-if-cached and nothing stored
+	Blocked_By_Client,      // the developer tools' request blocking (or their offline mode) stopped it
 }
 
 Event :: struct {

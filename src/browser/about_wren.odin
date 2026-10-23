@@ -323,8 +323,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = n
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	d := wren_page_data(app, notice)
 	html := strings.has_prefix(shown, LICENSES_URL) ? licenses_page_html(d) : wren_page_html(d)
 	page.load_html(t.page, transmute([]byte)html)
