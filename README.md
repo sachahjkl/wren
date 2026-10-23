@@ -109,7 +109,7 @@ Everything below exists in the code today and is covered by the tests of [`tools
   modules and import maps, inline event handlers, `javascript:` URLs, `<noscript>`, CSP for scripts (`eval`,
   inline), timers, JavaScript workers, `structuredClone`.
 - **Web APIs**: `fetch` / `Request` / `Response` / `Headers`, `XMLHttpRequest`, streams, `Blob` / `FormData`, URL,
-  encoding, `AbortController`, Web Storage, history and location, navigator, performance, `crypto` with
+  encoding, `AbortController`, Web Storage, IndexedDB (in pages, not in workers), history and location, navigator, performance, `crypto` with
   `crypto.subtle`, `matchMedia`, WebSocket, EventSource, `MessageChannel`, a minimal `Intl`.
 - Compiled scripts are kept in a bytecode cache, in memory and in the profile.
 - **On or off**, globally or per site: `javascript.enabled`, `javascript.sites.disabled`,
@@ -419,7 +419,7 @@ replace one. Known limits:
   engine compiled natively and about 1/55 of Edge. A simple DOM call costs about ten times what it costs in Edge
   (`node.nodeType`: 65 ns against 5). Pages that run a lot of script are slow.
 - **Part of the web platform is missing**: about half of the members of the specifications' Web IDL are implemented
-  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: Canvas 2D is software-drawn and partial (no workers, no video frames, no color emoji in `fillText`), no IndexedDB, no
+  ([`docs/js/coverage.md`](docs/js/coverage.md)). Among what pages notice: Canvas 2D is software-drawn and partial (no workers, no video frames, no color emoji in `fillText`), IndexedDB only in pages (no workers; an origin's whole database is kept in memory), no
   `ResizeObserver`, no Web Animations API, no service workers; `Intl` follows English conventions whatever the
   locale; `<iframe>` content is not loaded. Single-page applications that rely on these show little or nothing.
 - **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.
