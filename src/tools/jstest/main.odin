@@ -236,7 +236,7 @@ var po = new PerformanceObserver((list, obs) => {
 });
 po.observe({ type: "mark", buffered: true });
 po.observe({ type: "measure" });
-new PerformanceObserver(() => {}).observe({ type: "paint" });
+new PerformanceObserver(() => {}).observe({ type: "longtask" });
 performance.mark("m2");
 performance.measure("ms", "early", "m2");
 console.log("types", PerformanceObserver.supportedEntryTypes.join(), PerformanceObserver.supportedEntryTypes === PerformanceObserver.supportedEntryTypes, Object.isFrozen(PerformanceObserver.supportedEntryTypes));
@@ -249,12 +249,12 @@ console.log("take", p2.takeRecords().length);
 p2.disconnect();
 </script></body>`)
 		settle()
-		check(logged("types mark,measure true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
+		check(logged("types event,first-input,mark,measure,navigation,paint,resource true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
 		check(logged("mixed InvalidModificationError") && logged("empty TypeError"), "observe(): the errors of Performance Timeline")
 		check(logged("take 1") && !logged("p2 called"), "takeRecords empties the buffer, disconnect stops delivery")
 		check(logged("po mark:early,measure:ms,mark:m2,mark:m3 true 3 1"), "buffered entries, then new marks and measures, delivered by one task in start time order")
 		warned := false
-		for l in logs { if strings.contains(l, "'paint' does not exist") { warned = true } }
+		for l in logs { if strings.contains(l, "'longtask' does not exist") { warned = true } }
 		check(warned, "an unsupported entry type is ignored with a warning")
 		page.page_close(p)
 	}
