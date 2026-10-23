@@ -1,0 +1,1 @@
+(function(){var w=window;w.OBR=w.OBR||{};w.OBR.extern={researchWidget:function(){},reloadWidget:function(){}};})();

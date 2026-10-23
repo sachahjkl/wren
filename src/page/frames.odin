@@ -41,6 +41,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
+import "wb:style"
 import "wb:url"
 
 // What the embedder (the shell) does with nested documents. All optional.
@@ -583,6 +584,11 @@ frame_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		l.task = base.NIL_HANDLE
 		if ev.error == .Aborted { return }
 		p := n.parent
+		if ev.error == .Blocked_By_Client && embedder.collapse_blocked {
+			log(p, .Warn, fmt.tprintf("frame %s: blocked (%s)", l.url, ev.detail))
+			frame_show_error(n, "", "", collapse = true)
+			return
+		}
 		log(p, .Error, fmt.tprintf("frame %s: %s", l.url, ev.detail))
 		frame_show_error(n, "This content can't be shown.", ev.detail)
 	}
@@ -750,12 +756,14 @@ frames_delay_load :: proc(p: ^Page) -> bool {
 // A frame that cannot show its document: Chromium's short explanation (opaque origin, no scripts), and the
 // container's load event.
 @(private)
-frame_show_error :: proc(n: ^Navigable, headline, detail: string) {
+frame_show_error :: proc(n: ^Navigable, headline, detail: string, collapse := false) {
 	p := n.parent
 	c := frame_install_page(n, "about:blank", .Opaque)
 	if c == nil { return }
 	frames_of(c).sandbox = Sandbox{active = true}   // nothing runs in it
-	if p.settings.frames.error_pages {
+	// a frame the content blocker stopped leaves no box (embedder.odin)
+	if collapse && p.engine != nil { style.engine_set_hidden(p.engine, n.element, true) }
+	if p.settings.frames.error_pages && !collapse {
 		// (concatenated: fmt reads braces as its own)
 		html := strings.concatenate({`<!doctype html><html><head><meta charset="utf-8"><style>html{background:#f2f2f2;color:#5f6368;font:13px system-ui,sans-serif}body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center}p{margin:8px 16px}.h{font-size:15px;color:#202124}</style></head><body><div><p class="h">`,
 			escape_text(headline), `</p><p>`, escape_text(detail), `</p></div></body></html>`}, context.temp_allocator)

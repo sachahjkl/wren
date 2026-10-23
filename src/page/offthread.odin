@@ -290,6 +290,7 @@ adopt_document :: proc(p: ^Page, d: ^Parsed_Document) -> html.Parse_Result {
 		s.sheet = nil
 	}
 	apply_meta(p)
+	if embedder.adopted != nil && p.worker == nil { embedder.adopted(embedder.user, p) }   // (embedder.odin)
 	media_document_adopted(p)   // (media_element.odin: the new tree's <video> / <audio>)
 	render_begin(p)   // its stylesheets start loading now; the first paint waits for them (render_blocking.odin)
 	return d.result

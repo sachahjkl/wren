@@ -105,7 +105,7 @@ Beacon_send :: proc(c: ^Call, target: string, data: Maybe([]u8), content_type: s
 		request = fetch.Request_Desc{
 			url = u.href, method = "POST", headers = pairs[:], body = body,
 			mode = .No_Cors, credentials = .Include, redirect = .Follow, destination = .Empty,
-			initiator = &b.env, guard = .Request,
+			initiator = &b.env, guard = .Request, ping = true,
 		},
 		on_event = beacon_event, user = b, scope = nil, collect = false,
 	})

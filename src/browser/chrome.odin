@@ -54,6 +54,7 @@ Security :: struct {
 security_of :: proc(t: ^Tab) -> Security {
 	if t == nil { return {GLYPH_INFO, "", .Weak, "", ""} }
 	if t.kind == .Config { return {GLYPH_GEAR, "Settings", .Weak, "Browser settings", "This page edits the preferences of the browser itself. It has no network connection."} }
+	if t.kind == .Blocker { return {GLYPH_GEAR, "Blocker", .Weak, "Content blocker", "This page shows and edits the content blocker of the browser. It has no network connection."} }
 	if t.page == nil {
 		// no response yet: nothing is known about the connection, so claim nothing
 		if t.load != nil { return {GLYPH_INFO, "Loading", .Weak, "Loading", "The connection is being established."} }
@@ -208,6 +209,8 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
 
 	ui.spacer(ui.px(em * 0.4))
+	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
+	ui.spacer(ui.px(em * 0.2))
 	main_menu_button(app, t)
 	ui.spacer(ui.px(em * 0.5))
 }

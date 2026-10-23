@@ -372,6 +372,7 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 // The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
 	e := p.engine
+	if embedder.before_styles != nil && p.worker == nil { embedder.before_styles(embedder.user, p) }   // (embedder.odin)
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
 	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
 	style.engine_set_environment(e, env)

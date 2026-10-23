@@ -78,7 +78,7 @@ Doc_Load :: struct {
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config, History }   // History: about:history (history_ui.odin)
+Tab_Kind :: enum u8 { Web, Config, History, Blocker }   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -192,6 +192,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
 	tab_history_limits(app, t)
+	blocker_tab_new(app, t)   // blocker_shell.odin
 	return t
 }
 
@@ -284,6 +285,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
+	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if target == HOME_URL { show_home(app, t); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
@@ -305,6 +307,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	hold_begin(app, t, target)
+	load_measure_begin(app, t, target)   // blocker_measure.odin
 	t.kind = .Web
 	t.nav = base.scope_make("navigation", t.scope)
 	base.on_close(t.nav, load_closed, load)
@@ -743,10 +746,13 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		config_page(&app.config_view, &app.prefs)
 	} else if t != nil && t.kind == .History {
 		history_page(app, t)   // history_ui.odin
+	} else if t != nil && t.kind == .Blocker {
+		blocker_page(app, t)   // blocker_dashboard.odin
 	} else {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
 		page_area_focus(app, t, pb)
+		blocker_picker_frame(app, t)   // blocker_picker.odin
 	}
 }
 
@@ -1174,6 +1180,7 @@ main :: proc() {
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
+	blocker_start(app)   // blocker_shell.odin: the content blocker listens to the loader from here on
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	{
@@ -1329,6 +1336,8 @@ main :: proc() {
 	page.images_shutdown()   // the image cache and its decoding threads
 	host.shutdown_step("page.fonts_shutdown")
 	page.fonts_shutdown()    // the decoded web fonts kept for every page
+	host.shutdown_step("blocker_stop")
+	blocker_stop(app)   // after the pages are gone, before the loader
 	host.shutdown_step("fetch.loader_destroy")
 	fetch.loader_destroy(&app.loader)
 	host.shutdown_step("http_cache_stop")

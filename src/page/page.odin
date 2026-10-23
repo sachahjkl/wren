@@ -130,6 +130,7 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.env = fetch.environment_make(u)
 	p.env.on_violation = csp_violation
 	p.env.violation_user = p
+	fetch.document_begin(loader, &p.env, p.scope)   // the content blocker's per-document state (fetch/intercept.odin)
 	web_init(p)
 	timeline_attach(p)   // its requests become Resource Timing entries (timeline.odin)
 
@@ -176,6 +177,7 @@ page_cleanup :: proc(data: rawptr) {
 	if p.engine != nil { styles_destroy(p) }
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
+	fetch.document_end(p.loader, &p.env)
 	fetch.environment_destroy(&p.env)
 	free(p)
 }
