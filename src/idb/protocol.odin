@@ -61,10 +61,13 @@ tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
 	tx, ok := m.txs[id]
 	if !ok || tx.client != c || tx.state != .Active { return .Invalid_State }
 	undo_mark, redo_mark, reply_mark, changed := len(tx.undo.entries), len(tx.redo.data), len(reply.data), tx.x.changed
+	values_mark := len(tx.values)
 	err := exec_request(tx, req, reply)
 	if err != .None {
 		if len(tx.undo.entries) > undo_mark { undo_rollback(tx.x.d, &tx.undo, undo_mark) }
 		resize(&tx.redo.data, redo_mark)
+		for v in tx.values[values_mark:] { delete(v.key, tx.x.d.allocator) }
+		resize(&tx.values, values_mark)
 		resize(&reply.data, reply_mark)
 		tx.x.changed = changed
 	}
@@ -117,7 +120,7 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 		w_u8(reply, 1 if found else 0)
 		if found {
 			w_bytes(reply, hit.pk)
-			if !key_only { w_bytes(reply, hit.rec.value) }
+			if !key_only { if e := w_value(x.d, reply, hit.rec); e != .None { return e } }
 		}
 	case .Count:
 		src, found_ix := source(s, &r)
@@ -133,16 +136,18 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 		limit := int(r_uv(&r))
 		if r.bad || mode < 1 || mode > 3 { return .Data }
 		if !found_ix { return .Not_Found }
-		Ctx :: struct { w: ^Writer, mode: u8, mark: int, n: int }
+		Ctx :: struct { w: ^Writer, d: ^Data, mode: u8, mark: int, n: int, err: Error }
 		// the count comes first: written after the walk, at the place reserved
 		body: Writer
 		defer writer_destroy(&body)
-		ctx := Ctx{w = &body, mode = mode}
+		ctx := Ctx{w = &body, d = x.d, mode = mode}
 		visit :: proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool {
 			c := (^Ctx)(user)
 			if c.mode == 3 { w_bytes(c.w, key) }
 			if c.mode != 2 { w_bytes(c.w, pk) }
-			if c.mode != 1 { w_bytes(c.w, rec.value) }
+			if c.mode != 1 {
+				if e := w_value(c.d, c.w, rec); e != .None { c.err = e; return false }
+			}
 			c.n += 1
 			return true
 		}
@@ -152,12 +157,13 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 			for limit <= 0 || ctx.n < limit {
 				hit, found := cursor_step(src, q)
 				if !found { break }
-				visit(&ctx, hit.key, hit.pk, hit.rec)
+				if !visit(&ctx, hit.key, hit.pk, hit.rec) { break }
 				q.has_cur, q.cur_key, q.cur_pk = true, hit.key, hit.pk
 			}
 		} else {
 			scan(src, rng, flags & 1 != 0, limit if limit > 0 else -1, visit, &ctx)
 		}
+		if ctx.err != .None { return ctx.err }
 		w_uv(reply, u64(ctx.n))
 		append(&reply.data, ..body.data[:])
 	case .Cursor:
@@ -183,7 +189,7 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 		if found {
 			w_bytes(reply, hit.key)
 			w_bytes(reply, hit.pk)
-			if !key_only { w_bytes(reply, hit.rec.value) }
+			if !key_only { if e := w_value(x.d, reply, hit.rec); e != .None { return e } }
 		}
 	case .Put:
 		flags := r_u8(&r)

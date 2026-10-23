@@ -73,6 +73,13 @@ idb_submit :: proc(user: rawptr, work, done: proc(data: rawptr), data: rawptr) {
 	}
 }
 
+// Runs n on the UI loop (any thread may ask).
+@(private)
+idb_post :: proc(user: rawptr, fn: proc(data: rawptr), data: rawptr) {
+	h := (^Idb_Host)(user)
+	host.post(h.sm.loop, fn, data)
+}
+
 @(private)
 idb_now_ms :: proc() -> f64 { return f64(time.tick_now()._nsec) / 1e6 }
 
@@ -87,6 +94,7 @@ idb_host_of :: proc(p: ^Page) -> ^Idb_Host {
 		h := new(Idb_Host, base.process_allocator())
 		h.sm = sm
 		idb.manager_init(&h.m, p.settings.idb, sm.dir, idb_submit, h, idb_now_ms, base.process_allocator())
+		idb.manager_set_post(&h.m, idb_post, h)
 		sm.idb = h
 	}
 	return sm.idb

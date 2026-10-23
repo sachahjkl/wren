@@ -15,6 +15,7 @@ Exec :: struct {
 	settings: ^Settings,
 	quota:    i64,
 	changed:  bool,    // some op was emitted
+	values:   ^[dynamic]Value_Ref,   // the values the transaction put, to find them in the journal once it is written (nil: not tracked)
 }
 
 @(private)
@@ -23,12 +24,20 @@ emit :: proc(x: ^Exec, op: Op) -> Error {
 	o.db = x.db.name
 	// encoded first: applying may release what the op points into (a record deleted by key)
 	mark := len(x.redo.data)
-	op_encode(x.redo, o)
+	vp := op_encode(x.redo, o)
 	if e := apply(x.d, o, x.undo); e != .None {
 		resize(&x.redo.data, mark)
 		return e
 	}
 	x.changed = true
+	if o.kind == .Put && x.values != nil && vp >= 0 {
+		if s := find_store(x.db, o.store); s != nil {
+			if cur, found := ordered_get(&s.records, o.key); found {
+				rec := (^Record)(cur)
+				if rec.value != nil { append(x.values, Value_Ref{store = o.store, key = clone_bytes(o.key, x.d.allocator), ptr = raw_data(rec.value), rel = vp, len = rec.vlen}) }
+			}
+		}
+	}
 	return .None
 }
 
