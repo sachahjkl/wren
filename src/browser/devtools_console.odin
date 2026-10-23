@@ -217,6 +217,16 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 
 	if !grew { c.stay = !dev_at_end(&c.list, em) }   // a frame with no new row: where the view is says whether it follows
 
+	// the message selected alone, when it takes several lines (an error and its call stack): one line each below the list
+	if c.has_sel && c.sel_a == c.sel_b {
+		for k in 0 ..< n {
+			if c.ids[k] != c.sel_a { continue }
+			_, text := con_split(t.console[c.rows[k]])
+			if strings.contains_rune(text, '\n') { con_detail(text, em) }
+			break
+		}
+	}
+
 	// keys of the list
 	if c.list.focused {
 		if ui.key_press(.C, {.Ctrl}) && c.has_sel { clip_set(con_text(t, c, true)) }
@@ -237,6 +247,38 @@ console_panel :: proc(app: ^App, t: ^Tab) {
 	}
 
 	if t.page != nil { console_eval_row(app, t, em) }   // "run JavaScript" (console_eval.odin)
+}
+
+// The lines of a message under the list, in a scrolling pane of at most eight lines.
+@(private = "file")
+con_detail :: proc(text: string, em: f32) {
+	lines := strings.split_lines(text, context.temp_allocator)
+	for len(lines) > 0 && strings.trim_space(lines[len(lines) - 1]) == "" { lines = lines[:len(lines) - 1] }
+	rows := min(len(lines), 8)
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.45) * f32(rows) + em * 0.4)})
+	if ui.scroll_y("###dt_con_det") {
+		for line, i in lines {
+			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 1.45))})
+			if ui.row(.Center, {}, fmt.tprintf("###dt_cd_%d", i)) {
+				ui.spacer(ui.px(em * 1.2))
+				ui.next({width = ui.fill(), height = ui.pct(1)})
+				ui.label(fmt.aprintf("%s###dt_cdl_%d", dev_line(con_stack_line(line), 400), i, allocator = ui.frame_allocator()))
+			}
+		}
+	}
+}
+
+// A stack line "at name (https://host/long/path/file.js:12:34)" without the folders of its address: "at name (file.js:12:34)".
+con_stack_line :: proc(line: string) -> string {
+	s := strings.trim_space(line)
+	if !strings.has_prefix(s, "at ") || !strings.has_suffix(s, ")") { return s }
+	open := strings.index_byte(s, '(')
+	if open < 0 { return s }
+	addr := s[open + 1:len(s) - 1]
+	if !strings.has_prefix(addr, "http://") && !strings.has_prefix(addr, "https://") && !strings.has_prefix(addr, "file://") { return s }
+	slash := strings.last_index_byte(addr, '/')
+	if slash < 0 || slash > len(addr) - 2 { return s }
+	return strings.concatenate({s[:open + 1], addr[slash + 1:], ")"}, context.temp_allocator)
 }
 
 console_clear :: proc(app: ^App, t: ^Tab) {
