@@ -55,13 +55,14 @@ function not exposed to workers is not instantiated.
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
 | [`crypto`](crypto.md) | 4 | Window | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
 | [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
-| [`dom`](dom.md) | 347 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
+| [`dom`](dom.md) | 349 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
-| [`events`](events.md) | 38 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
+| [`events`](events.md) | 39 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`fetch`](fetch.md) | 10 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`frames`](frames.md) | 16 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and |
+| [`fullscreen`](fullscreen.md) | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
 | [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
@@ -71,7 +72,7 @@ function not exposed to workers is not instantiated.
 | [`htmlmedia`](htmlmedia.md) | 29 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
 | [`mse`](mse.md) | 30 | Window | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
-| [`performance`](performance.md) | 12 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
+| [`performance`](performance.md) | 18 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`ports`](ports.md) | 8 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
 | [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
 | [`timers`](timers.md) | 13 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
@@ -80,4 +81,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1016 imports in 917 functions.
+1031 imports in 932 functions.

@@ -34,6 +34,14 @@ labels_never_hold_an_id_marker_or_a_line_break :: proc(t: ^testing.T) {
 	testing.expect_value(t, dev_line("abcdef", 3), "abc\u2026")
 }
 
+@(test)
+stack_lines_lose_the_folders_of_their_addresses :: proc(t: ^testing.T) {
+	testing.expect_value(t, con_stack_line("    at Hx (https://www.youtube.com/s/_/js/k=a/m=late,app:953:51)"), "at Hx (m=late,app:953:51)")
+	testing.expect_value(t, con_stack_line("at apply (native)"), "at apply (native)")
+	testing.expect_value(t, con_stack_line("at <anonymous> (eval.js:1:381)"), "at <anonymous> (eval.js:1:381)")
+	testing.expect_value(t, con_stack_line("Uncaught TypeError: x"), "Uncaught TypeError: x")
+}
+
 @(private = "file")
 contains :: proc(s, sub: string) -> bool {
 	for i in 0 ..= len(s) - len(sub) { if s[i:i + len(sub)] == sub { return true } }

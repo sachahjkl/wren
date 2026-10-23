@@ -222,7 +222,6 @@ forms_unconsumed_events :: proc(events: []platform.Event) -> []platform.Event {
 	return out[:]
 }
 
-@(private = "file")
 consume :: proc(index: int) {
 	for len(fview.consumed) <= index { append(&fview.consumed, false) }
 	fview.consumed[index] = true

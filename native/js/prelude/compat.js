@@ -8,6 +8,7 @@
 //                            and say so on the console
 //   window.visualViewport    the layout viewport (no pinch zoom: scale 1, no offset), with resize / scroll events
 //   Element.scrollIntoViewIfNeeded   scrollIntoView when the element is not fully in the viewport (WebKit)
+//   webkitRequestFullscreen, webkitExitFullscreen, webkitFullscreenElement... the Fullscreen API under WebKit's names
 //   document.execCommand("copy" / "cut"), queryCommandSupported / queryCommandEnabled   the clipboard fallback pages use
 (function (host) {
   "use strict";
@@ -165,6 +166,27 @@
       const inside = r.top >= 0 && r.left >= 0 && r.bottom <= document.documentElement.clientHeight && r.right <= document.documentElement.clientWidth;
       if (!inside) this.scrollIntoView({ block: centerIfNeeded === false ? "nearest" : "center", inline: "nearest" });
     });
+
+    // the Fullscreen API's WebKit-prefixed names (the browser fires webkitfullscreenchange / webkitfullscreenerror too)
+    const quietly = (p) => { p.catch(() => {}); };
+    const requestFullscreen = Element.prototype.requestFullscreen;
+    if (typeof requestFullscreen === "function") {
+      for (const n of ["webkitRequestFullscreen", "webkitRequestFullScreen"]) {
+        hidden(Element.prototype, n, function (options) { quietly(requestFullscreen.call(this, options)); });
+      }
+      const exitFullscreen = Document.prototype.exitFullscreen;
+      for (const n of ["webkitExitFullscreen", "webkitCancelFullScreen"]) {
+        hidden(Document.prototype, n, function () { quietly(exitFullscreen.call(this)); });
+      }
+      for (const [alias, name] of [["webkitFullscreenElement", "fullscreenElement"], ["webkitCurrentFullScreenElement", "fullscreenElement"],
+        ["webkitFullscreenEnabled", "fullscreenEnabled"], ["webkitIsFullScreen", "fullscreen"]]) {
+        accessor(Document.prototype, alias, function () { return this[name]; });
+      }
+      for (const c of [Document, Element]) {
+        handler(c, "onwebkitfullscreenchange");
+        handler(c, "onwebkitfullscreenerror");
+      }
+    }
 
     // the clipboard fallback of pages: execCommand("copy" | "cut")
     const KNOWN = new Set(["copy", "cut"]);

@@ -1,0 +1,25 @@
+/// The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per
+/// document (an <iframe>'s container is the fullscreen element of its parent while its document is), the shell makes
+/// the window fill the screen and hides the browser's interface. "fullscreenchange" and "fullscreenerror" are plain
+/// events (bubbling, composed) fired at the element, or at the document when the element left the tree.
+[Exposed=Window]
+module fullscreen {
+  /// FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
+  enum FullscreenNavigation : i32 { Auto, Show, Hide }
+
+  /// element.requestFullscreen(options): settled once the window is in full screen. Rejected with TypeError when the
+  /// element cannot go (not connected, not an element that may, the document is not allowed by the permissions policy or
+  /// has no recent click or key press, the tab is not shown, full screen is turned off); "fullscreenerror" is fired too.
+  Promise Element_requestFullscreen(Element element, FullscreenNavigation navigationUI);
+  /// document.exitFullscreen(): settled once the window is back. Rejected with TypeError when the document has no
+  /// fullscreen element.
+  Promise Document_exitFullscreen();
+  /// document.fullscreenElement: the fullscreen element, retargeted against the document; null when there is none.
+  Element Document_fullscreenElement();
+  /// shadowRoot.fullscreenElement: the fullscreen element retargeted against the root (null when not in its tree).
+  Element ShadowRoot_fullscreenElement(Node root);
+  /// document.fullscreenEnabled: the document may request full screen (turned on, permissions policy "fullscreen").
+  bool Document_fullscreenEnabled();
+  /// document.fullscreen (legacy): the document has a fullscreen element.
+  bool Document_fullscreen();
+}

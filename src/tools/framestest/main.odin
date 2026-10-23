@@ -308,6 +308,9 @@ f.addEventListener("load", () => {
   try { w.location.href; r.push("href:open"); } catch (e) { r.push("href:" + e.name); }
   r.push(typeof w.postMessage, w.window === w, w.self === w, w.frames === w, w.top === window, w.parent === window, w.closed, w.length, String(w.opener), String(w.then));
   log("refused " + r.join(" "));
+  const q = [];
+  for (const k of ["history", "Array", "Node", "fetch", "console", "setTimeout", "JSON"]) { try { w[k]; q.push(k + ":open"); } catch (e) { q.push(k + ":" + e.name); } }
+  log("pristine refused " + q.join(" "));
 });
 </script></body>`, child))
 		check(wait_for(fill("parent got hello from child %s true | %s true", testenv.url(OTHER), testenv.url(OTHER))), "a cross-origin frame posts to its parent: origin and source")
@@ -317,6 +320,35 @@ f.addEventListener("load", () => {
 		run_for(300)
 		check(!logged_contains("child got wrong origin"), "a message whose targetOrigin does not match is dropped")
 		check(logged("refused document:SecurityError foo:SecurityError alert:SecurityError set:SecurityError href:SecurityError function true true true true true false 0 null undefined"), "a cross-origin WindowProxy: only the members HTML allows")
+		check(logged("pristine refused history:SecurityError Array:SecurityError Node:SecurityError fetch:SecurityError console:SecurityError setTimeout:SecurityError JSON:SecurityError"), "a cross-origin WindowProxy gives no pristine copy of anything")
+		page.page_close(p)
+	}
+
+	fmt.println("-- a same-origin frame: pristine copies of the platform (what SPF takes from contentWindow.history)")
+	{
+		p := load(`<body><iframe id=a></iframe><script>
+const w = document.getElementById("a").contentWindow;
+const r = [];
+const t = (name, f) => { try { r.push(name + ":" + f()); } catch (e) { r.push(name + ":" + e.name); } };
+t("pushState", () => typeof w.history.pushState + " " + (w.history.pushState === History.prototype.pushState));
+t("replace", () => { w.history.replaceState.call(window.history, { k: 7 }, "", "#viaframe"); return location.hash + " " + history.state.k; });
+t("push", () => { w.history.pushState.call(history, 1, "", "#second"); return location.hash + " " + history.state; });
+t("brandless", () => w.history.length);
+t("instanceof", () => (w.history instanceof History) + " " + (w.history === w.history));
+t("builtins", () => (w.Array === Array) + " " + (w.JSON === JSON) + " " + (w.Node === Node) + " " + (w.XMLHttpRequest === XMLHttpRequest));
+t("console", () => w.console === console);
+t("fetch", () => typeof w.fetch + " " + (w.fetch !== fetch));
+t("timer", () => typeof w.setTimeout(() => {}, 0));
+t("in", () => ("history" in w) + " " + ("Array" in w) + " " + ("nothing" in w));
+t("document", () => w.document);
+t("location", () => String(w.location.href));
+t("page global", () => { window.PageGlobal = function PageGlobal() {}; return w.PageGlobal; });
+t("page lowercase", () => { window.pageValue = 1; return w.pageValue; });
+t("navigator", () => w.navigator);
+t("descriptor", () => Object.getOwnPropertyDescriptor(w, "history").value === w.history);
+log("same-origin " + r.join(" | "));
+</script></body>`)
+		check(wait_for("same-origin pushState:function true | replace:#viaframe 7 | push:#second 1 | brandless:TypeError | instanceof:true true | builtins:true true true true | console:true | fetch:function true | timer:number | in:true true false | document:SecurityError | location:SecurityError | page global:SecurityError | page lowercase:SecurityError | navigator:SecurityError | descriptor:true"), "history's methods, the built-ins and the interface objects of this realm; the frame's state stays out of reach")
 		page.page_close(p)
 	}
 

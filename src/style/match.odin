@@ -12,6 +12,7 @@ State :: struct {
 	hover, active, focus: base.Handle,
 	focus_visible:        bool,         // the focus should be visible (:focus-visible): it came from the keyboard, or is in a text field
 	target_id:            string,       // the fragment of the document URL, for :target
+	fullscreen:           base.Handle,  // the element in full screen (Fullscreen API), for :fullscreen
 	controls:             Control_Provider,
 }
 
@@ -457,7 +458,7 @@ is_scope :: proc(m: ^Match_Ctx, el: base.Handle) -> bool {
 matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simple) -> bool {
 	if m.ignore_state {
 		#partial switch s.pseudo {
-		case .Hover, .Active, .Focus, .Focus_Visible, .Focus_Within, .Target: return true
+		case .Hover, .Active, .Focus, .Focus_Visible, .Focus_Within, .Target, .Fullscreen: return true
 		case .Not, .Is, .Where, .Has:
 			if s.list != nil { if k, h := list_state(s.list^); k != {} || h { return true } }
 		}
@@ -508,6 +509,7 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		_, ok := attr(n, "href")
 		return ok
 	case .Visited: return false
+	case .Fullscreen: return m.state.fullscreen != base.NIL_HANDLE && m.state.fullscreen == el
 	case .Target:
 		v, ok := attr(n, "id")
 		return ok && m.state.target_id != "" && v == m.state.target_id

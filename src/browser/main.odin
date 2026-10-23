@@ -72,6 +72,8 @@ Doc_Load :: struct {
 	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
 	cache:      fetch.Cache_Mode,        // the document's cache mode; Reload: its subresources too (http_cache_ui.odin)
 	from_cache: fetch.Cache_Outcome,     // where the document came from (the status bar says so)
+	started_ns: i64,                     // the loop clock when the navigation began (Navigation Timing)
+	response_ns: i64,                    // ... and when the head of the answer arrived
 }
 
 Load_Failure :: enum u8 { None, Other, Tls }
@@ -296,6 +298,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
+	load.started_ns = host.now_ns(&app.loop)
 	load.pushed = pushed
 	load.cache = cache
 	shown := target
@@ -510,6 +513,11 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(t) }
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
+		load.response_ns = host.now_ns(&app.loop)
+		page.set_navigation_timing(load.page, {
+			start_ns = load.started_ns, response_ns = load.response_ns, reload = load.cache == .Reload || load.cache == .No_Cache,
+			status = r.status, from_cache = r.cache == .Hit, mime = load.mime, redirects = r.redirected ? 1 : 0,
+		})
 		attach_page(app, t, load.page)
 		t.page = load.page
 		if !load.view_source && r.status < 400 { global_history_visit(app, t, r.url, "") }
@@ -554,6 +562,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 
 	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
 	load.bytes = len(data)
+	page.navigation_response_end(p, host.now_ns(&app.loop), len(data))
 	page.parse_document(p, data, load.charset, document_parsed, load)
 }
 
@@ -764,7 +773,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
-			find_bar(app, t)
+			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
+			if !elem_fs { find_bar(app, t) }
 			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 			dock, dev_on := devtools_dock(app, t)
 			switch {
@@ -785,7 +795,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				page_view(app, t)
 			}
 			// status bar (status_bar.odin)
-			status_bar_build(app, t)
+			if !elem_fs { status_bar_build(app, t) }
 			fullscreen_bars(app, t)
 			devtools_floating(app, t)   // over the page when it is undocked
 		}
@@ -831,6 +841,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
 		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
@@ -1015,6 +1026,7 @@ frame :: proc(app: ^App, idled := false) {
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
 	prof_end(.Input)
 
+	fullscreen_shell_settle(app)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
@@ -1030,6 +1042,7 @@ frame :: proc(app: ^App, idled := false) {
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
+	fullscreen_shell_frame(app)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
 	page_snapshot_wanted = ran > 0
@@ -1230,6 +1243,7 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
+	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
@@ -1269,6 +1283,7 @@ main :: proc() {
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	host.shutdown_step("shell_frames_destroy")
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
+	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
 	host.shutdown_step("session capture")
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")
