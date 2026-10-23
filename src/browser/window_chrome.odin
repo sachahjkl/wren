@@ -25,6 +25,8 @@ WINDOW_PREFS := [?]config.Def{
 		description = "In full screen (F11), the tabs and the address bar slide down over the page while the pointer is at the top edge of the screen."},
 	{name = "browser.window.fullscreen_reveal_px", kind = .Int, default = {i = 3}, bounded = true, min = 1, max = 200, unit = "px",
 		description = "Height of the strip along the top of the screen that brings the tabs and the address bar back in full screen."},
+	{name = "browser.window.fullscreen_hint", kind = .Bool, default = {b = true},
+		description = "A notice \"Press Esc to exit full screen\" when a page puts an element (a video) in full screen."},
 	{name = "browser.window.square_corners", kind = .Bool, default = {b = true},
 		description = "Square corners on the window itself (Windows 11 rounds them, Windows 10 never does). On (the default): the corners are cut square, by DWM_WINDOW_CORNER_PREFERENCE. Off: the system's rounded corners. Applies at once."},
 	{name = "browser.window.fixed_surface", kind = .Bool, default = {b = true}, restart = true,
@@ -38,6 +40,7 @@ Window_Settings :: struct {
 	min_drag_em: f32,
 	reveal:      bool,
 	reveal_px:   f32,
+	fullscreen_hint: bool,
 	square_corners: bool,
 }
 
@@ -47,6 +50,7 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 		min_drag_em = f32(config.float_of(p, "browser.window.min_drag_em")),
 		reveal = config.bool_of(p, "browser.window.fullscreen_reveal"),
 		reveal_px = f32(config.int_of(p, "browser.window.fullscreen_reveal_px")),
+		fullscreen_hint = config.bool_of(p, "browser.window.fullscreen_hint"),
 		square_corners = config.bool_of(p, "browser.window.square_corners"),
 	}
 }
@@ -95,6 +99,7 @@ window_chrome_frame :: proc(app: ^App) {
 }
 
 toggle_fullscreen :: proc(app: ^App) {
+	if fullscreen_shell_leave(app) { return }   // F11 in a page's full screen (a video): back to the page, window as it was
 	on := !platform.is_fullscreen(app.win)
 	platform.set_fullscreen(app.win, on)
 	wchrome.revealed = false
@@ -134,7 +139,7 @@ app_icon :: proc(app: ^App, size: f32) {
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.
 fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	if !platform.is_fullscreen(app.win) { wchrome.revealed = false; return }
-	if !wchrome.cfg.reveal { wchrome.revealed = false; return }
+	if !wchrome.cfg.reveal || fullscreen_shell_active() { wchrome.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
 	if !wchrome.revealed {
 		wchrome.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(app.win.size.x)

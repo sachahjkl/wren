@@ -1,0 +1,179 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Fullscreen API</title>
+<style>
+  #a { width: 200px; height: 100px; background: #ccc; margin: 10px; }
+  #b { width: 50px; height: 50px; }
+  #host { position: relative; }
+</style>
+<body>
+<div id="a"><span id="s">x</span></div>
+<div id="b">other</div>
+<div id="host"></div>
+<iframe id="fa" srcdoc='<body><script>
+  addEventListener("click", () => document.body.requestFullscreen().then(
+    () => parent.postMessage("child:ok:" + document.fullscreenEnabled + ":" + (document.fullscreenElement === document.body), "*"),
+    (e) => parent.postMessage("child:err:" + e.name, "*")));
+  parent.postMessage("child:ready", "*");
+</script>'></iframe>
+<iframe id="fb" allow="fullscreen 'none'" srcdoc='<body><script>
+  addEventListener("click", () => document.body.requestFullscreen().then(
+    () => parent.postMessage("child:ok", "*"),
+    (e) => parent.postMessage("child:err:" + e.name + ":" + document.fullscreenEnabled, "*")));
+  parent.postMessage("child:ready", "*");
+</script>'></iframe>
+<script>
+const a = document.getElementById("a"), b = document.getElementById("b");
+const events = [];
+const describe = (e) => e.type + ":" + (e.target === document ? "document" : e.target.id || e.target.localName) + ":" + e.bubbles + ":" + e.composed;
+for (const n of ["fullscreenchange", "fullscreenerror", "webkitfullscreenchange", "webkitfullscreenerror"]) document.addEventListener(n, (e) => events.push(describe(e)));
+const rejectionOf = async (p) => { try { await p; return null; } catch (e) { return e; } };
+const nextEvent = (type) => new Promise((res) => document.addEventListener(type, res, { once: true }));
+const messages = [];
+addEventListener("message", (e) => {
+  messages.push(e.data);
+  if (messages.filter((m) => m === "child:ready").length === 2 && !window.readyLogged) { window.readyLogged = true; console.log("READY2"); }
+});
+
+section("interface", () => {
+  eq("Element.requestFullscreen", typeof Element.prototype.requestFullscreen, "function");
+  eq("Document.exitFullscreen", typeof Document.prototype.exitFullscreen, "function");
+  eq("fullscreenEnabled", document.fullscreenEnabled, true);
+  eq("fullscreen", document.fullscreen, false);
+  eq("fullscreenElement is null", document.fullscreenElement, null);
+  eq("webkit names", [typeof a.webkitRequestFullscreen, typeof a.webkitRequestFullScreen, typeof document.webkitExitFullscreen, typeof document.webkitCancelFullScreen].join(), "function,function,function,function");
+  eq("webkit state", [document.webkitFullscreenEnabled, document.webkitIsFullScreen, document.webkitFullscreenElement, document.webkitCurrentFullScreenElement].join(), "true,false,,");
+  eq("onfullscreenchange defaults to null", [document.onfullscreenchange, a.onfullscreenchange, document.onwebkitfullscreenchange, a.onwebkitfullscreenerror].join(), ",,,");
+  eq("Element.matches(:fullscreen)", [a.matches(":fullscreen"), a.matches(":-webkit-full-screen"), a.matches(":not(:fullscreen)")].join(), "false,false,true");
+  eq("no fullscreen: no change in style", getComputedStyle(a).position, "static");
+  eq("the shadow root has the member too", typeof Object.getOwnPropertyDescriptor(ShadowRoot.prototype, "fullscreenElement").get, "function");
+});
+
+(async () => {
+  // no click or key press yet: a TypeError, and fullscreenerror at the element (bubbling to the document)
+  const err = await rejectionOf(a.requestFullscreen());
+  t("without a gesture: TypeError", err instanceof TypeError, String(err));
+  t("... naming the gesture", /user gesture/.test(String(err && err.message)), err && err.message);
+  eq("... fullscreenerror, then its prefixed twin", events.join(" "), "fullscreenerror:a:true:true webkitfullscreenerror:a:true:true");
+  eq("... nothing changed", [document.fullscreenElement, document.fullscreen].join(), ",false");
+  const err2 = await rejectionOf(document.exitFullscreen());
+  t("exitFullscreen without a fullscreen element: TypeError", err2 instanceof TypeError, String(err2));
+  const refused = nextEvent("webkitfullscreenerror");
+  eq("webkitRequestFullscreen returns nothing, and a refusal is no unhandled rejection", a.webkitRequestFullscreen(), undefined);
+  await refused;
+  events.length = 0;
+  done();
+})();
+
+// after the tool's click (trusted, so the document has transient activation)
+window.phase2 = async () => {
+  const r = a.requestFullscreen({ navigationUI: "hide" });
+  t("returns a promise", r instanceof Promise);
+  eq("resolves with undefined", await r, undefined);
+  eq("fullscreenElement", document.fullscreenElement, a);
+  eq("fullscreen", document.fullscreen, true);
+  eq("webkit state", [document.webkitIsFullScreen, document.webkitFullscreenElement === a, document.webkitCurrentFullScreenElement === a].join(), "true,true,true");
+  eq("the events: fullscreenchange, then the prefixed one, at the element, bubbling and composed", events.join(" "),
+    "fullscreenchange:a:true:true webkitfullscreenchange:a:true:true");
+  eq(":fullscreen matches the element and nothing under it", [a.matches(":fullscreen"), a.matches(":-webkit-full-screen"), document.getElementById("s").matches(":fullscreen"), b.matches(":fullscreen")].join(), "true,true,false,false");
+  const cs = getComputedStyle(a);
+  eq("the UA rule: fixed, over the viewport", [cs.position, cs.top, cs.left, cs.width, cs.height, cs.marginTop].join(), "fixed,0px,0px,800px,600px,0px");
+  eq("... above everything (the engine caps z-index), the author's ground wins", [cs.zIndex, cs.backgroundColor].join(), "2000000000,rgb(204, 204, 204)");
+  const rect = a.getBoundingClientRect();
+  eq("its box is the viewport", [rect.x, rect.y, rect.width, rect.height].join(), "0,0,800,600");
+  eq("the others are not affected", getComputedStyle(b).position, "static");
+  const uses = document.createElement("style");
+  uses.textContent = "#a:fullscreen { color: rgb(1, 2, 3) } #b:not(:fullscreen) { color: rgb(4, 5, 6) } :-webkit-full-screen #s { color: rgb(7, 8, 9) }";
+  document.head.append(uses);
+  eq("author rules with :fullscreen apply", [getComputedStyle(a).color, getComputedStyle(b).color].join(";"), "rgb(1, 2, 3);rgb(4, 5, 6)");
+  uses.remove();
+
+  // the same element again: nothing to do
+  events.length = 0;
+  eq("again for the fullscreen element resolves", await a.requestFullscreen(), undefined);
+
+  // another element replaces it
+  events.length = 0;
+  await b.requestFullscreen();
+  eq("... a ground of its own: the black of the backdrop", getComputedStyle(b).backgroundColor, "rgb(0, 0, 0)");
+  eq("another element replaces it", [document.fullscreenElement === b, a.matches(":fullscreen"), b.matches(":fullscreen")].join(), "true,false,true");
+  eq("... and fullscreenchange is fired for the one that left too", events.filter((e) => e.startsWith("fullscreenchange")).join(" "), "fullscreenchange:a:true:true fullscreenchange:b:true:true");
+  eq("the old element is back to normal", getComputedStyle(a).position, "static");
+
+  // leaving
+  events.length = 0;
+  const x = await document.exitFullscreen();
+  eq("exitFullscreen resolves with undefined", x, undefined);
+  eq("nothing is fullscreen any more", [document.fullscreenElement, document.fullscreen, b.matches(":fullscreen")].join(), ",false,false");
+  eq("... fullscreenchange at the element that left", events.join(" "), "fullscreenchange:b:true:true webkitfullscreenchange:b:true:true");
+
+  // an element that leaves the document ends full screen: the event goes to the document
+  await a.requestFullscreen();
+  events.length = 0;
+  const gone = nextEvent("fullscreenchange");
+  a.remove();
+  await gone;
+  eq("a removed fullscreen element: leaves, the event is the document's", [document.fullscreenElement, events[0]].join(), ",fullscreenchange:document:true:true");
+  document.body.prepend(a);
+
+  // refused requests
+  const e1 = await rejectionOf(document.createElement("div").requestFullscreen());
+  t("an element outside the document: TypeError", e1 instanceof TypeError && /not in the document/.test(e1.message), String(e1 && e1.message));
+  const e2 = await rejectionOf(b.requestFullscreen({ navigationUI: "bogus" }));
+  t("a bad navigationUI: TypeError", e2 instanceof TypeError, String(e2));
+  const e3 = await rejectionOf(Element.prototype.requestFullscreen.call({}));
+  t("a non-element receiver: TypeError", e3 instanceof TypeError, String(e3));
+  eq("none of them changed anything", document.fullscreenElement, null);
+
+  // the WebKit spelling
+  const changed = nextEvent("webkitfullscreenchange");
+  b.webkitRequestFullscreen();
+  await changed;
+  eq("webkitRequestFullscreen", [document.webkitFullscreenElement === b, document.fullscreenElement === b].join(), "true,true");
+  const left = nextEvent("webkitfullscreenchange");
+  document.webkitExitFullscreen();
+  await left;
+  eq("webkitExitFullscreen", [document.webkitFullscreenElement, document.fullscreenElement].join(), ",");
+  let handled = 0;
+  document.onwebkitfullscreenchange = () => handled++;
+  document.onfullscreenchange = () => handled++;
+  b.webkitRequestFullscreen();
+  await nextEvent("webkitfullscreenchange");
+  eq("onfullscreenchange and onwebkitfullscreenchange handlers", handled, 2);
+  document.onwebkitfullscreenchange = document.onfullscreenchange = null;
+  await document.exitFullscreen();
+
+  // a shadow tree: the document sees the host, the shadow root the element
+  const host = document.getElementById("host");
+  const root = host.attachShadow({ mode: "open" });
+  root.innerHTML = "<div id=inner>in</div>";
+  const inner = root.getElementById("inner");
+  await inner.requestFullscreen();
+  eq("in a shadow tree: retargeted for the document", [document.fullscreenElement === host, root.fullscreenElement === inner].join(), "true,true");
+  eq("... :fullscreen matches the inner element", [inner.matches(":fullscreen"), host.matches(":fullscreen")].join(), "true,false");
+  eq("... and its box is the viewport", (() => { const r = inner.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(); })(), "0,0,800,600");
+  await document.exitFullscreen();
+  eq("left", [document.fullscreenElement, root.fullscreenElement].join(), ",");
+};
+
+// two frames: the document of the first goes fullscreen; the second one's permissions policy refuses
+window.phase3 = async () => {
+  const fa = document.getElementById("fa");
+  for (let i = 0; i < 400 && messages.length < 4; i++) await new Promise((r) => setTimeout(r, 5));
+  eq("the frame allowed by the policy went fullscreen, its document sees it", messages.includes("child:ok:true:true"), true);
+  eq("the frame with allow=\"fullscreen 'none'\" was refused, and says it cannot", messages.includes("child:err:TypeError:false"), true);
+  eq("the parent's fullscreen element is the frame's container", [document.fullscreenElement === fa, fa.matches(":fullscreen")].join(), "true,true");
+  eq("... which covers the viewport", (() => { const r = fa.getBoundingClientRect(); return [r.x, r.y, r.width, r.height].join(); })(), "0,0,800,600");
+  eq("... without a border", getComputedStyle(fa).borderTopWidth, "0px");
+};
+
+// the shell refuses (no window for this tab)
+window.phase4 = async () => {
+  await new Promise((r) => setTimeout(r, 30));   // (the events of the tool's earlier exit)
+  events.length = 0;
+  const e = await rejectionOf(b.requestFullscreen());
+  t("a window that cannot go fullscreen: TypeError", e instanceof TypeError && /cannot go to full screen/.test(e.message), String(e && e.message));
+  eq("... with fullscreenerror", events.join(" "), "fullscreenerror:b:true:true webkitfullscreenerror:b:true:true");
+  eq("... and no fullscreen element", document.fullscreenElement, null);
+};
+</script>

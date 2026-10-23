@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fullscreen API</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { max-width: 56rem; margin: 1.5rem auto; padding: 0 1rem; line-height: 1.45; }
+  h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+  .lead { color: GrayText; margin-top: 0; }
+  section { border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: 10px; padding: .7rem 1rem; margin: 1rem 0; }
+  h2 { font-size: 1rem; margin: 0 0 .5rem; }
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+  video { background: #000; width: 320px; height: 180px; }
+  button { font: inherit; padding: .2rem .8rem; border-radius: 6px; }
+  #card { width: 280px; padding: 1rem; border-radius: 12px; background: linear-gradient(135deg, #2457d6, #8b3fd9); color: #fff; }
+  #card:fullscreen { display: grid; place-content: center; font-size: 3rem; text-align: center; border-radius: 0; }
+  #card:fullscreen .hint { font-size: 1.2rem; opacity: .8; }
+  iframe { width: 320px; height: 120px; border: 1px solid GrayText; }
+  pre { font-size: .85rem; margin: .4rem 0 0; white-space: pre-wrap; min-height: 6em; }
+</style>
+</head>
+<body>
+<h1>Fullscreen API</h1>
+<p class="lead"><code>element.requestFullscreen()</code> fills the screen with an element: the window goes full screen and the tabs, address bar and status bar go.
+<b>Esc</b> or <b>F11</b> leave. The element is fixed over the viewport (<code>:fullscreen</code>); a video player does this from its button.</p>
+
+<section>
+  <h2>A video</h2>
+  <div class="row">
+    <video id="v" controls muted loop autoplay src="/video/f/clip.mp4"></video>
+    <div>
+      <button id="vfs" type="button">Video full screen</button>
+      <button id="vwk" type="button">webkitRequestFullscreen</button>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Any element, styled by <code>:fullscreen</code></h2>
+  <div class="row">
+    <div id="card">A card<div class="hint">Esc leaves</div></div>
+    <div>
+      <button id="cfs" type="button">Card full screen</button>
+      <button id="exit" type="button">document.exitFullscreen()</button>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>A frame</h2>
+  <p>The frame asks for its own document; its container becomes this document's fullscreen element. The second frame has <code>allow="fullscreen 'none'"</code>: it is refused.</p>
+  <div class="row">
+    <iframe id="fa" srcdoc='<body style="font:14px system-ui"><button onclick="document.body.requestFullscreen().catch(e => this.textContent = e.name)">Frame full screen</button><p>allowed</p>'></iframe>
+    <iframe id="fb" allow="fullscreen 'none'" srcdoc='<body style="font:14px system-ui"><button onclick="document.body.requestFullscreen().catch(e => this.textContent = e.name + &quot; (fullscreenEnabled: &quot; + document.fullscreenEnabled + &quot;)&quot;)">Frame full screen</button><p>refused by its policy</p>'></iframe>
+  </div>
+</section>
+
+<section>
+  <h2>What the page sees</h2>
+  <pre id="log"></pre>
+</section>
+
+<script>
+  const log = document.getElementById("log"), lines = [];
+  const say = (s) => { lines.push(s); log.textContent = lines.slice(-8).join("\n"); };
+  const name = (e) => (e ? (e.id ? "#" + e.id : e.localName) : "null");
+  for (const type of ["fullscreenchange", "fullscreenerror"]) {
+    document.addEventListener(type, (e) => say(type + " at " + name(e.target) + ", fullscreenElement: " + name(document.fullscreenElement)));
+  }
+  const ask = (el, how) => el[how]({ navigationUI: "hide" })?.catch?.((e) => say(how + " rejected: " + e.name + ": " + e.message));
+  document.getElementById("vfs").onclick = () => ask(document.getElementById("v"), "requestFullscreen");
+  document.getElementById("vwk").onclick = () => document.getElementById("v").webkitRequestFullscreen();
+  document.getElementById("cfs").onclick = () => ask(document.getElementById("card"), "requestFullscreen");
+  document.getElementById("exit").onclick = () => document.exitFullscreen().catch((e) => say("exitFullscreen rejected: " + e.name + ": " + e.message));
+  document.getElementById("card").ondblclick = (e) => { if (document.fullscreenElement) document.exitFullscreen(); else e.currentTarget.requestFullscreen(); };
+  say("fullscreenEnabled: " + document.fullscreenEnabled);
+</script>
+</body>
+</html>

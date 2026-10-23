@@ -262,6 +262,12 @@ section("DOMImplementation", () => {
   throws("createDocument", () => impl.createDocument(null, "x"), "NotSupportedError");
 });
 
+// document.all is [IsHTMLDDA]: falsy, typeof "undefined", == undefined but not === undefined (Polymer-Resin tells an
+// undefined value from it with ===), and still the live collection of every element
+t("document.all: typeof undefined, falsy, == undefined, !== undefined", typeof document.all === "undefined" && !document.all && document.all == undefined && document.all !== undefined && undefined !== document.all);
+t("document.all: a live collection of all elements", document.all.length === document.getElementsByTagName("*").length && document.all[0] === document.documentElement && document.all.item(0) === document.documentElement);
+t("document.all is the same object", Object.is(document.all, document.all));
+t("a check of the form `v || v === document.all` is false for undefined and null", (function (v) { return !!(v || v === document.all); })(undefined) === false && (function (v) { return !!(v || v === document.all); })(null) === false);
 done();
 </script>
 </body></html>

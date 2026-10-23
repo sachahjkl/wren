@@ -34,6 +34,7 @@ Event_engineId :: proc(c: ^Call, event: Api_Event) -> i64 { return event.data.en
 Event_isLive :: proc(c: ^Call, event: u64) -> bool { return base.pool_get(&c.page.dp.events, H(event)) != nil }
 
 Event_bubbles :: proc(c: ^Call, event: Api_Event) -> bool { return event.data.bubbles }
+Event_composed :: proc(c: ^Call, event: Api_Event) -> bool { return event.data.composed }
 Event_cancelable :: proc(c: ^Call, event: Api_Event) -> bool { return event.data.cancelable }
 Event_eventPhase :: proc(c: ^Call, event: Api_Event) -> i32 { return i32(event.data.phase) }
 Event_isTrusted :: proc(c: ^Call, event: Api_Event) -> bool { return !event.data.untrusted }

@@ -25,8 +25,13 @@ partial module dom {
   void Node_set_textContent(Node node, string value) raises;
   /// node.normalize()
   void Node_normalize(Node node);
-  /// node.cloneNode(deep). Not_Supported for the document (one document per page).
+  /// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+  /// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+  /// document: no definition applies there).
   Node Node_cloneNode(Node node, bool deep = false) raises;
+  /// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+  /// contents included), so its elements of a defined name are upgraded before it returns.
+  Node Document_importNodeCopy(Node node, bool deep = false) raises;
   /// node.isEqualNode(other)
   bool Node_isEqualNode(Node node, optional Node other);
   /// node.isSameNode(other)
@@ -105,6 +110,9 @@ partial module dom {
 
   /// document.createElement(localName): Invalid_Character for a name that is not a valid element name.
   Element Document_createElementChecked(string local_name) raises;
+  /// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+  /// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+  Element Document_createElementInert(string local_name) raises;
   /// document.createElementNS(namespace, qualifiedName): Invalid_Character, Namespace as DOM "validate and extract".
   Element Document_createElementNSChecked(optional string namespace, string qualified_name) raises;
   /// document.createDocumentFragment()
