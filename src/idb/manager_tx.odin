@@ -32,6 +32,26 @@ metadata_bytes :: proc(m: ^Manager, db: ^Database) -> []byte {
 	return w.data[:]
 }
 
+// The databases databases() lists: those that exist at the last commit (one being created by a running upgrade is not there yet,
+// one being upgraded still has its old version).
+@(private)
+encode_list :: proc(w: ^Writer, o: ^Origin) {
+	n := 0
+	for db in o.data.dbs { if _, ok := committed_version(o, db); ok { n += 1 } }
+	w_uv(w, u64(n))
+	for db in o.data.dbs {
+		if v, ok := committed_version(o, db); ok { w_str(w, db.name); w_uv(w, v) }
+	}
+}
+
+@(private)
+committed_version :: proc(o: ^Origin, db: ^Database) -> (u64, bool) {
+	if ds, ok := o.dbs[db.name]; ok && ds.active != nil && ds.active.kind == .Open && ds.active.tx != nil {
+		return ds.active.old_version, ds.active.old_version != 0
+	}
+	return db.version, true
+}
+
 @(private)
 answer_lists :: proc(o: ^Origin) {
 	m := o.m
@@ -40,8 +60,7 @@ answer_lists :: proc(o: ^Origin) {
 		c, ok := m.clients[wait.client_id]
 		if !ok { continue }
 		w: Writer
-		w_uv(&w, u64(len(o.data.dbs)))
-		for db in o.data.dbs { w_str(&w, db.name); w_uv(&w, db.version) }
+		encode_list(&w, o)
 		push_event(c, Event{kind = .List, req = wait.req, data = w.data[:]})
 	}
 	clear(&o.list_waits)

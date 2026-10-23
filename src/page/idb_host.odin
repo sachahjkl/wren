@@ -255,3 +255,10 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 	copy(ip.last[:], out.data[:])
 	return out.data[:], .None
 }
+
+// Whether IndexedDB has something in flight for the page (see idb.client_busy).
+idb_busy :: proc(p: ^Page) -> bool {
+	if p == nil || p.web == nil { return false }
+	ip := p.web.idb
+	return ip != nil && ip.client != nil && (ip.deliver_posted || idb.client_busy(ip.client))
+}

@@ -529,8 +529,7 @@ list_databases :: proc(c: ^Client) -> u64 {
 	// a list waits for the load like everything else: it is answered from a task once the origin is ready
 	w: Writer
 	if o.state == .Ready {
-		w_uv(&w, u64(len(o.data.dbs)))
-		for db in o.data.dbs { w_str(&w, db.name); w_uv(&w, db.version) }
+		encode_list(&w, o)
 		push_event(c, Event{kind = .List, req = id, data = w.data[:]})
 	} else {
 		append(&o.list_waits, List_Wait{c.id, id})
@@ -564,4 +563,12 @@ db_pump :: proc(o: ^Origin, ds: ^Db_State) {
 		case .Delete: start_delete(o, ds, req)
 		}
 	}
+}
+
+// Whether something is on its way to the client (an event in its queue, the origin's file being read or written): a page
+// waiting for IndexedDB is not idle (test tools use this to tell it from one with nothing left to do).
+client_busy :: proc(c: ^Client) -> bool {
+	if c.head < len(c.queue) { return true }
+	o, ok := c.m.origins[c.origin]
+	return ok && (o.state == .Loading || o.writing || len(o.wq) > 0)
 }

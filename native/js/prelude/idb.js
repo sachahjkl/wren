@@ -20,7 +20,7 @@
   // ---- the browser's side ----------------------------------------------------------------------------------------
   const OP = { OPEN: 1, DELETE: 2, LIST: 3, CLOSE: 4, VC_DONE: 5, BEGIN: 6, COMMIT: 7, ABORT: 8, EXEC: 9, TASK: 10, EVENT: 11, CLEANUP: 12, LIMITS: 13 };
   const REQ = { GET: 1, COUNT: 2, GET_ALL: 3, CURSOR: 4, PUT: 5, GEN_KEY: 6, DELETE: 7, CLEAR: 8, INDEX_PUT: 9,
-    CREATE_STORE: 10, DELETE_STORE: 11, RENAME_STORE: 12, CREATE_INDEX: 13, DELETE_INDEX: 14, RENAME_INDEX: 15 };
+    CREATE_STORE: 10, DELETE_STORE: 11, RENAME_STORE: 12, CREATE_INDEX: 13, DELETE_INDEX: 14, RENAME_INDEX: 15, PEEK_KEY: 16 };
   const EV = { TASK: 1, OPEN_UPGRADE: 2, OPEN_DONE: 3, OPEN_ERROR: 4, BLOCKED: 5, VERSION_CHANGE: 6, DELETE_DONE: 7, DELETE_ERROR: 8,
     TX_STARTED: 9, TX_COMPLETE: 10, TX_ABORTED: 11, CONN_CLOSED: 12, LIST: 13 };
   // idb.Error -> DOMException name
@@ -43,6 +43,7 @@
   function fail(code, what) { return dom(ERR_NAME[code] || "UnknownError", what); }
 
   // ---- bytes ------------------------------------------------------------------------------------------------------
+  // Names are kept as WTF-8: a lone surrogate keeps its own 3-byte form (two names differing by one are two names).
   function utf8(s) {
     const n = s.length;
     let ascii = true;
@@ -55,7 +56,6 @@
         const d = s.charCodeAt(i + 1);
         if (d >= 0xdc00 && d <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; }
       }
-      if (c >= 0xd800 && c <= 0xdfff) c = 0xfffd;
       if (c < 0x80) out.push(c);
       else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
       else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
@@ -185,8 +185,19 @@
           return true;
         }
         if (isDate(v)) { const t = getTime.call(v); if (t !== t) return false; putNumber(w, 0x20, t); return true; }
-        if (isView(v)) { putBinary(w, new Uint8Array(v.buffer, v.byteOffset, v.byteLength)); return true; }
-        if (isArrayBuffer(v)) { putBinary(w, new Uint8Array(v)); return true; }
+        // (a detached buffer is not a key)
+        if (isView(v)) {
+          let bytes;
+          try { bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength); } catch { return false; }
+          putBinary(w, bytes);
+          return true;
+        }
+        if (isArrayBuffer(v)) {
+          let bytes;
+          try { bytes = new Uint8Array(v); } catch { return false; }
+          putBinary(w, bytes);
+          return true;
+        }
         return false;
       }
     }
@@ -278,13 +289,19 @@
     else { w.u8(2); w.uv(p.length); for (const s of p) w.str(s); }
     return w.done();
   }
+  function keyPathOf(st, k) {
+    if (!isArray(k)) return k;
+    if (st.kpSource !== k) { st.kpSource = k; st.kp = Object.freeze(k.slice()); }
+    return st.kp;
+  }
+  function frozenPath(p) { return isArray(p) ? Object.freeze(p.slice()) : p; }
   function unpackPath(b) {
     if (b.length === 0) return null;
     const rd = new Rd(b, 0);
     switch (rd.u8()) {
       case 0: return null;
       case 1: return rd.str();
-      default: { const n = rd.uv(); const out = []; for (let i = 0; i < n; i++) out.push(rd.str()); return out; }
+      default: { const n = rd.uv(); const out = []; for (let i = 0; i < n; i++) out.push(rd.str()); return Object.freeze(out); }
     }
   }
 
@@ -434,8 +451,10 @@
     }
     static bound(lower, upper, lowerOpen = false, upperOpen = false) {
       arity(2, arguments.length, "bound", "IDBKeyRange");
-      const l = keyOf(lower), u = keyOf(upper);
-      if (l === null || u === null) throw dom("DataError", "The parameter is not a valid key.");
+      const l = keyOf(lower);
+      if (l === null) throw dom("DataError", "The parameter is not a valid key.");
+      const u = keyOf(upper);
+      if (u === null) throw dom("DataError", "The parameter is not a valid key.");
       const c = compareBytes(l, u);
       if (c > 0 || (c === 0 && (lowerOpen || upperOpen))) throw dom("DataError", "The lower key is greater than the upper key.");
       return makeRange(l, u, !!lowerOpen, !!upperOpen);
@@ -587,7 +606,11 @@
         st.passive = !!l.passive;
         try {
           if (typeof cb === "function") cb.call(t, event);
-          else if (cb !== null && typeof cb === "object") { const h = cb.handleEvent; if (typeof h === "function") h.call(cb, event); }
+          else if (cb !== null && typeof cb === "object") {
+            const h = cb.handleEvent;
+            if (typeof h !== "function") throw new TypeError("The 'handleEvent' property of the event listener is not callable.");
+            h.call(cb, event);
+          }
         } catch (e) {
           threw = true;
           host.report(e);
@@ -662,21 +685,28 @@
       return !dispatch(this, event).canceled;
     }
   }
+  // 	his of an event handler attribute must be one of our event targets (the prototype object is not)
+  function brandTarget(o) {
+    if (!reqState.has(o) && !dbState.has(o) && !txState.has(o)) throw new TypeError("Illegal invocation");
+  }
+
   function defineHandlers(cls, types) {
     for (const type of types) {
-      Object.defineProperty(cls.prototype, "on" + type, {
-        get() { const s = etState.get(this); const h = s === undefined ? undefined : s.handlers[type]; return h === undefined ? null : h; },
-        set(v) {
+      const name = "on" + type;
+      // (the accessors' names are Web IDL's: "get onsuccess", "set onsuccess")
+      const accessors = {
+        ["get " + name]: function () { brandTarget(this); const s = etState.get(this); const h = s === undefined ? undefined : s.handlers[type]; return h === undefined ? null : h; },
+        ["set " + name]: function (v) {
+          brandTarget(this);
           const s = ets(this);
           const f = (v !== null && (typeof v === "object" || typeof v === "function")) ? v : null;
           if (!(type in s.handlers) && f !== null) s.listeners.push({ type, callback: null, capture: false, once: false, passive: false, removed: false, handler: true });
           s.handlers[type] = f;
         },
-        enumerable: true, configurable: true,
-      });
+      };
+      Object.defineProperty(cls.prototype, name, { get: accessors["get " + name], set: accessors["set " + name], enumerable: true, configurable: true });
     }
   }
-
   // ---- tasks, the active state of transactions --------------------------------------------------------------------
   const tasks = new Map();
   let nextTask = 1;
@@ -783,7 +813,7 @@
       const s = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), autoIncrement: !!(rd.u8() & 1), indexes: [], deleted: false };
       const m = rd.uv();
       for (let j = 0; j < m; j++) {
-        const ix = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), unique: false, multiEntry: false, deleted: false };
+        const ix = { id: rd.uv(), name: rd.str(), keyPath: unpackPath(rd.bytes()), unique: false, multiEntry: false, deleted: false, ready: true };
         const f = rd.u8();
         ix.unique = !!(f & 1);
         ix.multiEntry = !!(f & 2);
@@ -853,8 +883,10 @@
     cmp(first, second) {
       sOf(factoryState, this);
       arity(2, arguments.length, "cmp", "IDBFactory");
-      const a = keyOf(first), b = keyOf(second);
-      if (a === null || b === null) throw dom("DataError", "The parameter is not a valid key.");
+      const a = keyOf(first);
+      if (a === null) throw dom("DataError", "The parameter is not a valid key.");
+      const b = keyOf(second);
+      if (b === null) throw dom("DataError", "The parameter is not a valid key.");
       return compareBytes(a, b);
     }
   }
@@ -883,7 +915,7 @@
         }
       }
       const T = c.upgradeTx;
-      if (T === null || T.state === "finished") throw dom("InvalidStateError", "The database is not running a version change transaction.");
+      if (T === null) throw dom("InvalidStateError", "The database is not running a version change transaction.");
       if (T.state !== "active") throw dom("TransactionInactiveError", "The transaction is not active.");
       if (keyPath !== null && !validKeyPath(keyPath)) throw dom("SyntaxError", "The keyPath option is not a valid key path.");
       if (c.stores.some((s) => s.name === n)) throw dom("ConstraintError", "An object store with the specified name already exists.");
@@ -892,7 +924,7 @@
       w.str(n); w.bytes(packPath(keyPath)); w.u8(autoIncrement ? 1 : 0);
       const rep = call(OP.EXEC, w.done());
       if (rep[0]) throw fail(rep[0], "Failed to create the object store.");
-      const meta = { id: new Rd(rep, 1).uv(), name: n, keyPath, autoIncrement, indexes: [], deleted: false };
+      const meta = { id: new Rd(rep, 1).uv(), name: n, keyPath: frozenPath(keyPath), autoIncrement, indexes: [], deleted: false };
       c.stores.push(meta);
       updateNames(c);
       return storeFor(T, meta);
@@ -902,7 +934,7 @@
       arity(1, arguments.length, "deleteObjectStore", "IDBDatabase");
       const n = str(name);
       const T = c.upgradeTx;
-      if (T === null || T.state === "finished") throw dom("InvalidStateError", "The database is not running a version change transaction.");
+      if (T === null) throw dom("InvalidStateError", "The database is not running a version change transaction.");
       if (T.state !== "active") throw dom("TransactionInactiveError", "The transaction is not active.");
       const i = c.stores.findIndex((s) => s.name === n);
       if (i < 0) throw dom("NotFoundError", "The object store was not found.");
@@ -922,8 +954,7 @@
       if (typeof storeNames === "string") names = [storeNames];
       else if (storeNames !== null && typeof storeNames === "object" && typeof storeNames[Symbol.iterator] === "function") names = [...storeNames].map(str);
       else names = [str(storeNames)];
-      const m = str(mode);
-      if (m !== "readonly" && m !== "readwrite") throw new TypeError(`Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('${m}') is not one of 'readonly' or 'readwrite'.`);
+      const m = checkEnum(mode, ["readonly", "readwrite", "versionchange"], "IDBTransactionMode");
       let durability = "default";
       if (options !== undefined && options !== null) {
         if (typeof options !== "object" && typeof options !== "function") throw new TypeError("The options argument is not of type 'IDBTransactionOptions'.");
@@ -938,6 +969,7 @@
         if (meta === undefined) throw dom("NotFoundError", "One of the specified object stores was not found.");
         if (!scope.includes(meta)) scope.push(meta);
       }
+      if (m === "versionchange") throw new TypeError("Failed to execute 'transaction' on 'IDBDatabase': The mode provided ('versionchange') is not one of 'readonly' or 'readwrite'.");
       scope.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
       const w = new Wr();
       w.uv(c.id); w.u8(m === "readwrite" ? 1 : 0); w.u8(durability === "strict" ? 1 : 0); w.uv(scope.length);
@@ -1031,8 +1063,9 @@
     activeSet.delete(T);
     const pending = T.queue.splice(0);
     const wasUpgrade = T.mode === "versionchange";
-    if (wasUpgrade) restoreMeta(T);
+    if (wasUpgrade) { restoreMeta(T); T.conn.version = T.oldVersion; }
     for (const q of pending) {
+      if (q.R === null) continue;
       post(() => {
         const R = q.R;
         R.readyState = "done"; R.result = undefined; R.error = dom("AbortError", "The transaction was aborted.");
@@ -1040,7 +1073,9 @@
       });
     }
     post(() => {
+      if (T.conn.upgradeTx === T) T.conn.upgradeTx = null;   // (no version change transaction is running any more in the handlers)
       dispatch(T.wrapper, plainEvent("abort", true, false));
+      if (T.upgradeReq !== null) T.upgradeReq.tx = null;   // the open request no longer has a transaction once it ended
       T.conn.txCount--;
       forgetTx(T);
     });
@@ -1066,6 +1101,11 @@
     return w;
   }
 
+  function enqueueInternal(T, exec) {
+    T.queue.push({ R: null, exec });
+    if (T.started) processNext(T);
+  }
+
   function enqueue(T, R, exec) {
     T.queue.push({ R, exec });
     if (T.started) processNext(T);
@@ -1083,6 +1123,15 @@
     const q = T.queue.shift();
     if (q === undefined) { T.busy = false; maybeCommit(T); return; }
     const R = q.R;
+    if (R === null) {   // an operation of the transaction's own (no request, no event): index creation
+      try { q.exec(T, null); } catch (e) {
+        if (e instanceof Failure) { abortTransaction(T, fail(e.code, e.message), e.code, true); return; }
+        throw e;
+      }
+      T.busy = false;
+      if (T.queue.length > 0) processNext(T); else maybeCommit(T);
+      return;
+    }
     let ok = true, value, errCode = 0, errMsg;
     try {
       value = q.exec(T, R);
@@ -1098,7 +1147,7 @@
       R.result = value; R.error = null;
       outcome = dispatch(R.wrapper, plainEvent("success", false, false));
       T.busy = false;
-      if (outcome.threw) { abortTransaction(T, dom("AbortError", "An exception was thrown by an event handler."), E_ABORTED, true); return; }
+      if (outcome.threw && T.state !== "committing") { abortTransaction(T, dom("AbortError", "An exception was thrown by an event handler."), E_ABORTED, true); return; }
     } else {
       R.result = undefined; R.error = fail(errCode, errMsg);
       outcome = dispatch(R.wrapper, plainEvent("error", true, true));
@@ -1137,14 +1186,30 @@
     return T;
   }
 
+  // The structured clone of a value runs with the transaction inactive (a getter of the value cannot use it)
+  function cloneValue(T, value) {
+    const prev = T.state;
+    T.state = "inactive";
+    try { return serialize(value); } finally { if (T.state === "inactive") T.state = prev; }
+  }
+
   function valueOf(rd) { return deserialize(rd.bytes()); }
 
   function pathOf(S) { return S.meta.keyPath; }
 
-  function writeIndexKeys(w, S, value) {
+  // The index keys of a value, for the indexes of the store as they are when the request runs: the keys taken when the request
+  // was made (snap, [index, keys] of the indexes there were: the value was a snapshot then) where there are, else from the
+  // clone (an index created since, by a version change transaction whose requests were queued before it).
+  function snapIndexKeys(S, value) { return S.meta.indexes.map((ix) => [ix, indexKeys(value, ix)]); }
+  function writeIndexKeys(w, S, snap, bytes) {
     const list = [];
+    let clone = null;
     for (const ix of S.meta.indexes) {
-      for (const k of indexKeys(value, ix)) list.push([ix.id, k]);
+      if (!ix.ready) continue;   // (not made yet: the request is ahead of its creation)
+      let keys = null;
+      for (const e of snap) { if (e[0] === ix) { keys = e[1]; break; } }
+      if (keys === null) { if (clone === null) clone = deserialize(bytes); keys = indexKeys(clone, ix); }
+      for (const k of keys) list.push([ix.id, k]);
     }
     w.uv(list.length);
     for (const [id, k] of list) { w.uv(id); w.bytes(k); }
@@ -1161,7 +1226,7 @@
       keyBytes = keyOf(key);
       if (keyBytes === null) throw dom("DataError", "The parameter is not a valid key.");
     }
-    const bytes = serialize(value);
+    const bytes = cloneValue(T, value);
     let generate = false;
     if (kp !== null) {
       const k = pathKey(value, kp);
@@ -1175,36 +1240,43 @@
     const R = newRequest(IDBRequest.prototype, S.wrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     // index keys of the value as it is now (the clone is the snapshot); with a generated key they come from the clone
-    let snapshot = null;
-    if (!generate && meta.indexes.length > 0) {
-      const w0 = new Wr();
-      writeIndexKeys(w0, S, value);
-      snapshot = w0.done();
-    }
+    const snapshot = generate ? null : snapIndexKeys(S, value);
     enqueue(T, R, () => {
-      let kb = keyBytes, vb = bytes, ik = snapshot;
+      let kb = keyBytes, vb = bytes, ik = null;
       if (generate) {
-        const g = reqWriter(T, REQ.GEN_KEY, meta.id);
+        // the generator's next key (it moves on with the put, and only if the put succeeds)
+        const g = reqWriter(T, REQ.PEEK_KEY, meta.id);
         kb = expectOk(call(OP.EXEC, g.done())).bytes().slice();
         const clone = deserialize(bytes);
         inject(clone, kp, decodeKey(kb));
         vb = serialize(clone);
-        if (meta.indexes.length > 0) { const w0 = new Wr(); writeIndexKeys(w0, S, clone); ik = w0.done(); }
+        ik = new Wr();
+        writeIndexKeys(ik, S, snapIndexKeys(S, clone), vb);
+      } else {
+        ik = new Wr();
+        writeIndexKeys(ik, S, snapshot, vb);
       }
       const w = reqWriter(T, REQ.PUT, meta.id);
-      w.u8((noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0));
+      w.u8((noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0) | (generate ? 4 : 0));
       if (kb !== null) w.bytes(kb);
       w.bytes(vb);
-      if (ik !== null) w.raw(ik); else w.uv(0);
+      w.raw(ik.done());
       return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
     });
     return R.wrapper;
   }
 
+  function isDictionary(v) {
+    if (v === null || typeof v !== "object") return false;
+    const p = Object.getPrototypeOf(v);
+    return p === Object.prototype || p === null;
+  }
+
   // getAll / getAllKeys arguments: (query, count) or ({ query, count, direction })
   function listArgs(queryOrOptions, count) {
     let query = queryOrOptions, direction = "next";
-    if (queryOrOptions !== undefined && queryOrOptions !== null && typeof queryOrOptions === "object" && !rangeState.has(queryOrOptions) && keyOf(queryOrOptions) === null) {
+    // an ordinary object that is not a key is the options dictionary (a Date, a buffer, an array are queries)
+    if (isDictionary(queryOrOptions) && !rangeState.has(queryOrOptions) && keyOf(queryOrOptions) === null) {
       query = queryOrOptions.query;
       if (queryOrOptions.count !== undefined) count = queryOrOptions.count;
       if (queryOrOptions.direction !== undefined) direction = checkEnum(queryOrOptions.direction, ["next", "nextunique", "prev", "prevunique"], "IDBCursorDirection");
@@ -1308,11 +1380,13 @@
       S.meta.name = n;
       updateNames(T.conn);
     }
-    get keyPath() { const k = sOf(storeState, this).meta.keyPath; return isArray(k) ? k.slice() : k; }
+    // (an array key path: the same frozen array each time for one object, another for another)
+    get keyPath() { const S = sOf(storeState, this); return keyPathOf(S, S.meta.keyPath); }
     get indexNames() {
       const S = sOf(storeState, this);
-      if (S.names === null) S.names = makeList(S.meta.indexes.map((i) => i.name).sort());
-      else setList(S.names, S.meta.indexes.map((i) => i.name).sort());
+      const names = S.meta.deleted ? [] : S.meta.indexes.map((i) => i.name).sort();
+      if (S.names === null) S.names = makeList(names);
+      else setList(S.names, names);
       return S.names;
     }
     get transaction() { return sOf(storeState, this).tx.wrapper; }
@@ -1415,13 +1489,18 @@
       if (S.meta.indexes.some((i) => i.name === n)) throw dom("ConstraintError", "An index with the specified name already exists.");
       if (!validKeyPath(kp)) throw dom("SyntaxError", "The keyPath argument contains an invalid key path.");
       if (isArray(kp) && multiEntry) throw dom("InvalidAccessError", "The keyPath argument is an array and the multiEntry option is true.");
-      const w = reqWriter(T, REQ.CREATE_INDEX, S.meta.id);
-      w.str(n); w.bytes(packPath(kp)); w.u8((unique ? 1 : 0) | (multiEntry ? 2 : 0));
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0]);
-      const meta = { id: new Rd(rep, 1).uv(), name: n, keyPath: kp, unique, multiEntry, deleted: false };
+      // The index is there for the script at once; the browser makes it, and fills it from the records, in its turn among the
+      // transaction's requests (those queued before it do not know it, a failure aborts the transaction).
+      const meta = { id: 0, name: n, keyPath: frozenPath(kp), unique, multiEntry, deleted: false, ready: false };
       S.meta.indexes.push(meta);
-      populateIndex(T, S, meta);
+      enqueueInternal(T, () => {
+        if (meta.deleted) return;
+        const w = reqWriter(T, REQ.CREATE_INDEX, S.meta.id);
+        w.str(meta.name); w.bytes(packPath(kp)); w.u8((unique ? 1 : 0) | (multiEntry ? 2 : 0));
+        meta.id = expectOk(call(OP.EXEC, w.done())).uv();
+        populateIndex(T, S, meta);
+        meta.ready = true;
+      });
       return indexFor(S, meta);
     }
     deleteIndex(name) {
@@ -1435,10 +1514,12 @@
       const i = S.meta.indexes.findIndex((x) => x.name === n);
       if (i < 0) throw dom("NotFoundError", "The specified index was not found.");
       const meta = S.meta.indexes[i];
-      const w = reqWriter(T, REQ.DELETE_INDEX, S.meta.id);
-      w.uv(meta.id);
-      const rep = call(OP.EXEC, w.done());
-      if (rep[0]) throw fail(rep[0]);
+      if (meta.ready) {
+        const w = reqWriter(T, REQ.DELETE_INDEX, S.meta.id);
+        w.uv(meta.id);
+        const rep = call(OP.EXEC, w.done());
+        if (rep[0]) throw fail(rep[0]);
+      }
       S.meta.indexes.splice(i, 1);
       meta.deleted = true;
     }
@@ -1447,14 +1528,13 @@
   // Fills a new index from the records the store has: the browser lists them, the key path is evaluated here.
   function populateIndex(T, S, ix) {
     let after = null;
-    const failed = (e) => { throw e; };
     for (;;) {
       const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
       w.uv(0);
       putRange(w, after === null ? null : { lower: after, upper: null, lowerOpen: true, upperOpen: false });
       w.u8(3); w.u8(0); w.uv(256);
       const rep = call(OP.EXEC, w.done());
-      if (rep[0]) failed(fail(rep[0]));
+      if (rep[0]) throw new Failure(rep[0]);
       const rd = new Rd(rep, 1);
       const n = rd.uv();
       if (n === 0) break;
@@ -1469,11 +1549,8 @@
         iw.uv(ix.id); iw.bytes(pk); iw.uv(keys.length);
         for (const k of keys) iw.bytes(k);
         const r2 = call(OP.EXEC, iw.done());
-        if (r2[0]) {
-          // a unique index that the records violate: the version change transaction aborts (ConstraintError)
-          if (!T.dead) abortTransaction(T, fail(r2[0], "Unable to add the index entries."), r2[0], true);
-          return;
-        }
+        // (a unique index that the records violate: the version change transaction aborts with a ConstraintError)
+        if (r2[0]) throw new Failure(r2[0], "Unable to add the index entries.");
       }
       if (n < 256) break;
     }
@@ -1509,6 +1586,7 @@
       if (T.state !== "active") throw dom("TransactionInactiveError", "The transaction is not active.");
       if (n === X.meta.name) return;
       if (S.meta.indexes.some((i) => i !== X.meta && i.name === n)) throw dom("ConstraintError", "An index with the specified name already exists.");
+      if (!X.meta.ready) { X.meta.name = n; return; }   // not made yet: it will be, under this name
       const w = reqWriter(T, REQ.RENAME_INDEX, S.meta.id);
       w.uv(X.meta.id); w.str(n);
       const rep = call(OP.EXEC, w.done());
@@ -1516,7 +1594,7 @@
       X.meta.name = n;
     }
     get objectStore() { return sOf(indexState, this).store.wrapper; }
-    get keyPath() { const k = sOf(indexState, this).meta.keyPath; return isArray(k) ? k.slice() : k; }
+    get keyPath() { const X = sOf(indexState, this); return keyPathOf(X, X.meta.keyPath); }
     get multiEntry() { return sOf(indexState, this).meta.multiEntry; }
     get unique() { return sOf(indexState, this).meta.unique; }
     get(query) {
@@ -1566,13 +1644,15 @@
 
   // ---- cursors ----------------------------------------------------------------------------------------------------
   const DIRECTIONS = ["next", "nextunique", "prev", "prevunique"];
+  const NOCACHE = Symbol("nocache");
 
   class IDBCursor {
     constructor() { throw new TypeError("Illegal constructor"); }
     get source() { return sOf(cursorState, this).sourceWrapper; }
     get direction() { return DIRECTIONS[sOf(cursorState, this).direction]; }
-    get key() { const C = sOf(cursorState, this); return C.key === null ? undefined : decodeKey(C.key); }
-    get primaryKey() { const C = sOf(cursorState, this); return C.pk === null ? undefined : decodeKey(C.pk); }
+    // (the same object until the cursor moves: a script that changed it sees its change)
+    get key() { const C = sOf(cursorState, this); if (C.key === null) return undefined; if (C.kv === NOCACHE) C.kv = decodeKey(C.key); return C.kv; }
+    get primaryKey() { const C = sOf(cursorState, this); if (C.pk === null) return undefined; if (C.pv === NOCACHE) C.pv = decodeKey(C.pk); return C.pv; }
     get request() { return sOf(cursorState, this).R.wrapper; }
     advance(count) {
       const C = sOf(cursorState, this);
@@ -1621,22 +1701,23 @@
       if (T.mode === "readonly") throw dom("ReadOnlyError", "The transaction is read-only.");
       if (C.srcDeleted()) throw dom("InvalidStateError", "The cursor's source has been deleted.");
       if (!C.gotValue || C.keyOnly) throw dom("InvalidStateError", "The cursor is being iterated, past its end, or a key cursor.");
-      const bytes = serialize(value);
+      const bytes = cloneValue(T, value);
       const S = C.store;
       const kp = S.meta.keyPath;
       if (kp !== null) {
         const k = pathKey(value, kp);
         if (k === null || k === undefined || compareBytes(k, C.pk) !== 0) throw dom("DataError", "The effective key of the value differs from the cursor's primary key.");
       }
-      const R = newRequest(IDBRequest.prototype, C.sourceWrapper, T);
+      const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      let snapshot = null;
-      if (S.meta.indexes.length > 0) { const w0 = new Wr(); writeIndexKeys(w0, S, value); snapshot = w0.done(); }
+      const snapshot = snapIndexKeys(S, value);
       const pk = C.pk;
       enqueue(T, R, () => {
         const w = reqWriter(T, REQ.PUT, S.meta.id);
         w.u8(2); w.bytes(pk); w.bytes(bytes);
-        if (snapshot !== null) w.raw(snapshot); else w.uv(0);
+        const ik = new Wr();
+        writeIndexKeys(ik, S, snapshot, bytes);
+        w.raw(ik.done());
         return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
       });
       return R.wrapper;
@@ -1648,7 +1729,7 @@
       if (T.mode === "readonly") throw dom("ReadOnlyError", "The transaction is read-only.");
       if (C.srcDeleted()) throw dom("InvalidStateError", "The cursor's source has been deleted.");
       if (!C.gotValue || C.keyOnly) throw dom("InvalidStateError", "The cursor is being iterated, past its end, or a key cursor.");
-      const R = newRequest(IDBRequest.prototype, C.sourceWrapper, T);
+      const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
       const pk = C.pk;
       enqueue(T, R, () => {
@@ -1694,11 +1775,12 @@
     w.u8(C.keyOnly ? 1 : 0);
     const rd = expectOk(call(OP.EXEC, w.done()));
     if (!rd.u8()) {
-      C.key = null; C.pk = null; C.value = undefined; C.gotValue = false;
+      C.key = null; C.pk = null; C.kv = C.pv = NOCACHE; C.value = undefined; C.gotValue = false;
       return null;
     }
     C.key = rd.bytes().slice();
     C.pk = rd.bytes().slice();
+    C.kv = C.pv = NOCACHE;
     C.value = C.keyOnly ? undefined : valueOf(rd);
     C.gotValue = true;
     return C.wrapper;
@@ -1712,7 +1794,7 @@
     const w = Object.create(keyOnly ? IDBCursor.prototype : IDBCursorWithValue.prototype);
     const index = src.index || null;
     const C = {
-      R, range, direction: dir, keyOnly, key: null, pk: null, value: undefined, gotValue: false, store: S, index,
+      R, range, direction: dir, keyOnly, key: null, pk: null, kv: NOCACHE, pv: NOCACHE, value: undefined, gotValue: false, store: S, index,
       sourceWrapper: srcWrapper, wrapper: w,
       srcDeleted() { return S.meta.deleted || (index !== null && index.deleted); },
     };
@@ -1773,6 +1855,7 @@
         const T = newTransaction(c, txId, "versionchange", [], "default");
         T.started = true;
         T.upgradeReq = req;
+        T.oldVersion = old;
         T.backup = snapshotMeta(c);
         c.upgradeTx = T;
         // the transaction's metadata is the connection's live one (stores created here are added to it)
@@ -1850,7 +1933,9 @@
         activeSet.delete(T);
         txs.delete(T.id);
         T.conn.txCount--;
+        if (T.conn.upgradeTx === T) T.conn.upgradeTx = null;
         dispatch(T.wrapper, plainEvent("complete", false, false));
+        if (T.upgradeReq !== null) T.upgradeReq.tx = null;
         if (T.conn.upgradeTx === T) T.conn.upgradeTx = null;
         break;
       }
@@ -1890,7 +1975,8 @@
   function exposeMembers(cls) {
     for (const holder of [cls.prototype, cls]) {
       for (const key of Reflect.ownKeys(holder)) {
-        if (typeof key !== "string" || key === "constructor" || key === "prototype" || key === "length" || key === "name") continue;
+        if (typeof key !== "string" || key === "constructor" || key === "prototype") continue;
+        if (holder === cls && (key === "length" || key === "name")) continue;
         const d = Object.getOwnPropertyDescriptor(holder, key);
         if (d.configurable) { d.enumerable = true; Object.defineProperty(holder, key, d); }
       }
@@ -1905,7 +1991,7 @@
     Object.defineProperty(globalThis, cls.name, { value: cls, writable: true, configurable: true, enumerable: false });
   }
   Object.defineProperty(globalThis, "indexedDB", {
-    get: Object.getOwnPropertyDescriptor({ get indexedDB() { return factory; } }, "indexedDB").get,
+    get: Object.getOwnPropertyDescriptor({ get indexedDB() { if (this !== undefined && this !== null && this !== globalThis) throw new TypeError("Illegal invocation"); return factory; } }, "indexedDB").get,
     set: undefined, configurable: true, enumerable: true,
   });
 
@@ -1913,8 +1999,17 @@
   function start() {
     NativeEvent = Event;
     DOMEx = DOMException;
-    Object.setPrototypeOf(IDBEventTarget.prototype, EventTarget.prototype);
-    Object.setPrototypeOf(IDBEventTarget, EventTarget);
+    // the roots of our event targets inherit from EventTarget itself, with their own addEventListener, removeEventListener and
+    // dispatchEvent (the inherited ones need a native receiver)
+    for (const root of [IDBRequest, IDBDatabase, IDBTransaction]) {
+      for (const name of ["addEventListener", "removeEventListener", "dispatchEvent"]) {
+        const d = Object.getOwnPropertyDescriptor(IDBEventTarget.prototype, name);
+        d.enumerable = true;
+        Object.defineProperty(root.prototype, name, d);
+      }
+      Object.setPrototypeOf(root.prototype, EventTarget.prototype);
+      Object.setPrototypeOf(root, EventTarget);
+    }
     Object.setPrototypeOf(IDBVersionChangeEvent.prototype, Event.prototype);
     Object.setPrototypeOf(IDBVersionChangeEvent, Event);
     Object.setPrototypeOf(IDBPlainEvent.prototype, Event.prototype);

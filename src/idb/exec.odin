@@ -50,7 +50,7 @@ exec_generate_key :: proc(x: ^Exec, store_id: u32, allocator := context.allocato
 // Stores a record (IndexedDB "store a record into an object store"). `key` is nil when the script gave none: the
 // store's generator makes one. `ikeys`: the entry in each index (the scripts evaluated the key paths). Returns the key
 // of the record (valid until the next change).
-exec_put :: proc(x: ^Exec, store_id: u32, key: []byte, value: []byte, ikeys: []Index_Key, no_overwrite: bool) -> (out: []byte, err: Error) {
+exec_put :: proc(x: ^Exec, store_id: u32, key: []byte, value: []byte, ikeys: []Index_Key, no_overwrite: bool, from_generator := false) -> (out: []byte, err: Error) {
 	s := find_store(x.db, store_id)
 	if s == nil { return nil, .Not_Found }
 	if len(value) > x.settings.max_value_bytes { return nil, .Too_Large }
@@ -66,7 +66,11 @@ exec_put :: proc(x: ^Exec, store_id: u32, key: []byte, value: []byte, ikeys: []I
 	} else {
 		if !key_valid(k) { return nil, .Data }
 		if len(k) > x.settings.max_key_bytes { return nil, .Too_Large }
-		if n, is_num := key_number(k); is_num && s.auto_increment && n >= s.gen {
+		// a key the script took from the generator (peeked before it injected it into the value): the generator moves on
+		if from_generator {
+			if n, is_num := key_number(k); !is_num || !s.auto_increment || n != s.gen || s.gen > KEY_GEN_LIMIT { return nil, .Data }
+			if e := emit(x, Op{kind = .Key_Gen, store = s.id, gen = s.gen + 1}); e != .None { return nil, e }
+		} else if n, is_num := key_number(k); is_num && s.auto_increment && n >= s.gen {
 			next := math.floor(n) + 1
 			if math.floor(n) >= KEY_GEN_LIMIT { next = KEY_GEN_LIMIT * 2 }   // "past 2^53": the next generated key fails
 			if e := emit(x, Op{kind = .Key_Gen, store = s.id, gen = next}); e != .None { return nil, e }

@@ -374,10 +374,10 @@ undo_discard :: proc(d: ^Data, u: ^Undo_Log) {
 	u.entries = {}
 }
 
-// The changes are taken back, newest first.
-undo_rollback :: proc(d: ^Data, u: ^Undo_Log) {
+// The changes are taken back, newest first; with 	o, only those after that many entries (what one request did).
+undo_rollback :: proc(d: ^Data, u: ^Undo_Log, to := 0) {
 	context.allocator = d.allocator
-	#reverse for e in u.entries {
+	#reverse for e in u.entries[to:] {
 		switch v in e {
 		case Undo_Record:
 			if cur, found := ordered_get(&v.store.records, v.key); found {
@@ -454,6 +454,10 @@ undo_rollback :: proc(d: ^Data, u: ^Undo_Log) {
 			inject_at(&d.dbs, v.at, v.db)
 			d.bytes += v.bytes
 		}
+	}
+	if to > 0 {
+		resize(&u.entries, to)
+		return
 	}
 	delete(u.entries)
 	u.entries = {}

@@ -12,8 +12,11 @@ package idb
 //   CURSOR    store, index, range, direction (0 next, 1 next unique, 2 prev, 3 prev unique), has current, key, primary
 //             key, has target, target, has target primary key, target primary key, count, key only
 //                                                                  -> found; key; primary key; value (not for key only)
-//   PUT       store, flags (1 no overwrite, 2 has key), key (if), value, count, then (index, key) each -> key
-//   GEN_KEY   store                                                -> key
+//   PUT       store, flags (1 no overwrite, 2 has key, 4 the key is the generator's: it moves on), key (if), value, count,
+//             then (index, key) each                               -> key
+//   GEN_KEY   store                                                -> key (and the generator moves on)
+//   PEEK_KEY  store                                                -> the generator's next key (it does not move)
+//   A request that fails takes back everything it did, the generator's move included.
 //   DELETE    store, range
 //   CLEAR     store
 //   INDEX_PUT store, index, primary key, count, then the keys
@@ -25,7 +28,7 @@ package idb
 Request_Op :: enum u8 {
 	None,
 	Get, Count, Get_All, Cursor, Put, Gen_Key, Delete, Clear, Index_Put,
-	Create_Store, Delete_Store, Rename_Store, Create_Index, Delete_Index, Rename_Index,
+	Create_Store, Delete_Store, Rename_Store, Create_Index, Delete_Index, Rename_Index, Peek_Key,
 }
 
 @(private)
@@ -54,6 +57,19 @@ tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]
 	if !ok || tx.client != c || tx.state != .Active { return .Invalid_State }
+	undo_mark, redo_mark, reply_mark, changed := len(tx.undo.entries), len(tx.redo.data), len(reply.data), tx.x.changed
+	err := exec_request(tx, req, reply)
+	if err != .None {
+		if len(tx.undo.entries) > undo_mark { undo_rollback(tx.x.d, &tx.undo, undo_mark) }
+		resize(&tx.redo.data, redo_mark)
+		resize(&reply.data, reply_mark)
+		tx.x.changed = changed
+	}
+	return err
+}
+
+@(private)
+exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 	r := Reader{data = req}
 	op := Request_Op(r_u8(&r))
 	if r.bad || op == .None || op > max(Request_Op) { return .Data }
@@ -63,7 +79,7 @@ tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
 	writes := false
 	ddl := false
 	switch op {
-	case .None, .Get, .Count, .Get_All, .Cursor:
+	case .None, .Get, .Count, .Get_All, .Cursor, .Peek_Key:
 	case .Put, .Gen_Key, .Delete, .Clear, .Index_Put: writes = true
 	case .Create_Store, .Delete_Store, .Rename_Store, .Create_Index, .Delete_Index, .Rename_Index: writes = true; ddl = true
 	}
@@ -179,8 +195,13 @@ tx_exec :: proc(c: ^Client, id: u64, req: []byte, reply: ^Writer) -> Error {
 			ikeys[i].key = r_bytes(&r)
 		}
 		if r.bad { return .Data }
-		k, err := exec_put(x, store_id, key if flags & 2 != 0 else nil, value, ikeys, flags & 1 != 0)
+		k, err := exec_put(x, store_id, key if flags & 2 != 0 else nil, value, ikeys, flags & 1 != 0, flags & 4 != 0)
 		if err != .None { return err }
+		w_bytes(reply, k)
+	case .Peek_Key:
+		if !s.auto_increment { return .Data }
+		if s.gen > KEY_GEN_LIMIT { return .Constraint }
+		k := key_of_number(s.gen, context.temp_allocator)
 		w_bytes(reply, k)
 	case .Gen_Key:
 		k, err := exec_generate_key(x, store_id, context.temp_allocator)
