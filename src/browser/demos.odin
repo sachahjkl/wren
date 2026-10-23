@@ -110,6 +110,8 @@ DEMOS := [?]Demo{
 		"PNG, BMP, JPEG with EXIF orientation, ICO, TIFF, animated GIF, <code>object-fit</code>, <code>srcset</code> and <code>&lt;picture&gt;</code>, broken, missing, truncated and decompression-bomb files, cross-origin images, CSS backgrounds and lazy loading, all counted by the server.", true, "", false},
 	{.Images, "Built-in image decoders", "media.html",
 		"AVIF (8 and 10 bits, alpha, 4:4:4, rotation and mirroring, Display P3, animation), WebP (lossy, lossless, alpha, animation), Adobe RGB JPEG, <code>&lt;picture&gt;</code> and <code>Accept</code> negotiation, SVG as an image and as a background, inline <code>&lt;svg&gt;</code>.", true, "", false},
+	{.Images, "Video and audio", "video.html",
+		"<code>&lt;video&gt;</code> and <code>&lt;audio&gt;</code>: H.264 + AAC (MP4) and AV1 + Opus (WebM) through the system's decoders, on the GPU where possible, the picture drawn with <code>border-radius</code>, <code>object-fit</code> and a transform, exact colors, events, <code>canPlayType</code>, seeking, rate and volume, and Media Source Extensions appending a fragmented MP4 piece by piece.", true, "", false},
 	{.Images, "External link icons", "media/dark-links.html",
 		"An SVG icon in the <code>::after</code> background of external links, and <code>filter: invert()</code> to show it on a dark page.", true, "", false},
 
@@ -140,6 +142,8 @@ DEMOS := [?]Demo{
 		"A module builds about 10 000 elements, then changes one span's text every 16 ms: only that paragraph is laid out again.", false, "", false},
 	{.Performance, "Class toggled every frame", "mutation_class.html",
 		"A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.", false, "", false},
+	{.Performance, "Video benchmark", "video-bench.html",
+		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",
 		"200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.", true, "", false},
 	{.Performance, "Slow stylesheet", "firstpaint-slow.html",

@@ -58,6 +58,9 @@ Loop :: struct {
 	// When set, the loop's clock (ns since origin) is read here instead of the monotonic clock: tests move time
 	// explicitly (atomically, any thread) instead of sleeping, so what they check does not depend on the machine's speed.
 	manual_ns: ^i64,
+	// Callbacks of the last run_ready that made nothing show by themselves (a media player's notice that its decoders
+	// advanced): quiet_take hands the count to the shell, which does not draw a frame for them. Loop thread only.
+	quiet:     int,
 	// Debug builds: the thread that runs the loop (the first one to touch its timers or run it); everything but post and
 	// signal asserts it is that one (loop_owned). 0: none yet.
 	owner:     int,
@@ -205,6 +208,17 @@ next_timeout_ms :: proc(l: ^Loop) -> int {
 		return int((d + 999_999) / 1_000_000)
 	}
 	return -1
+}
+
+// Loop thread, from inside a callback: this one does not need a frame by itself (what it changes on screen it asks for:
+// a document mutation, an animation, a task of its own).
+quiet_note :: proc(l: ^Loop) { l.quiet += 1 }
+
+// Loop thread. The quiet callbacks since the last call: the shell takes them off what run_ready returned.
+quiet_take :: proc(l: ^Loop) -> int {
+	n := l.quiet
+	l.quiet = 0
+	return n
 }
 
 // Loop thread. Runs the posted tasks, then the timers due at this instant. Returns how many callbacks ran.

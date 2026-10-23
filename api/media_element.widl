@@ -1,0 +1,57 @@
+/// HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the
+/// media package's player. The events (loadstart ... ended) are plain events fired at the element; TimeRanges, MediaError and
+/// VideoPlaybackQuality are made by the engine (native/js/runtime/web_mediaobjects.c) from the numbers below.
+[Exposed=Window]
+module htmlmedia {
+  /// A <video> or <audio> element; anything else is not a live HTMLMediaElement.
+  handle HTMLMediaElement : Element = Media_Element via lookup_HTMLMediaElement;
+
+  /// element.currentSrc: the absolute URL of the resource being played ("" when none).
+  string HTMLMediaElement_currentSrc(HTMLMediaElement element);
+  /// element.networkState: 0 empty, 1 idle, 2 loading, 3 no source.
+  i32 HTMLMediaElement_networkState(HTMLMediaElement element);
+  /// element.readyState: 0 nothing ... 4 enough data.
+  i32 HTMLMediaElement_readyState(HTMLMediaElement element);
+  /// element.seeking
+  bool HTMLMediaElement_seeking(HTMLMediaElement element);
+  /// element.currentTime, in seconds.
+  f64 HTMLMediaElement_currentTime(HTMLMediaElement element);
+  /// element.currentTime = value: a seek (a NaN or infinite value is refused by Web IDL before).
+  void HTMLMediaElement_set_currentTime(HTMLMediaElement element, f64 value);
+  /// element.duration: NaN until the metadata is known, Infinity for a stream with no end.
+  f64 HTMLMediaElement_duration(HTMLMediaElement element);
+  /// element.paused
+  bool HTMLMediaElement_paused(HTMLMediaElement element);
+  /// element.ended
+  bool HTMLMediaElement_ended(HTMLMediaElement element);
+  f64 HTMLMediaElement_defaultPlaybackRate(HTMLMediaElement element);
+  void HTMLMediaElement_set_defaultPlaybackRate(HTMLMediaElement element, f64 value);
+  f64 HTMLMediaElement_playbackRate(HTMLMediaElement element);
+  void HTMLMediaElement_set_playbackRate(HTMLMediaElement element, f64 value);
+  bool HTMLMediaElement_preservesPitch(HTMLMediaElement element);
+  void HTMLMediaElement_set_preservesPitch(HTMLMediaElement element, bool value);
+  f64 HTMLMediaElement_volume(HTMLMediaElement element);
+  /// element.volume = value: IndexSize outside [0, 1].
+  void HTMLMediaElement_set_volume(HTMLMediaElement element, f64 value) raises;
+  bool HTMLMediaElement_muted(HTMLMediaElement element);
+  void HTMLMediaElement_set_muted(HTMLMediaElement element, bool value);
+  /// element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
+  /// makes the TimeRanges object of them.
+  bytes HTMLMediaElement_ranges(HTMLMediaElement element, i32 which);
+  /// element.error: the code (0 when null) and the message.
+  i32 HTMLMediaElement_errorCode(HTMLMediaElement element);
+  string HTMLMediaElement_errorMessage(HTMLMediaElement element);
+  /// element.play(): a promise settled when playback starts (NotAllowedError when the autoplay policy forbids it,
+  /// NotSupportedError when there is no usable source, AbortError when a pause or a load interrupts it).
+  Promise HTMLMediaElement_play(HTMLMediaElement element);
+  void HTMLMediaElement_pause(HTMLMediaElement element);
+  /// element.load(): the media element load algorithm.
+  void HTMLMediaElement_load(HTMLMediaElement element);
+  /// element.canPlayType(type): "", "maybe" or "probably".
+  string HTMLMediaElement_canPlayType(HTMLMediaElement element, string type);
+  /// video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
+  u32 HTMLVideoElement_videoWidth(HTMLMediaElement element);
+  u32 HTMLVideoElement_videoHeight(HTMLMediaElement element);
+  /// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+  bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element);
+}

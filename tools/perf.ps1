@@ -124,6 +124,8 @@ function Run($name, $url, [scriptblock]$actions, [bool]$sample = $true, [string]
         while (-not $p.HasExited -and $p.MainWindowHandle -eq 0 -and $sw.ElapsedMilliseconds -lt 10000) { Start-Sleep -Milliseconds 20; $p.Refresh() }
         $h = $p.MainWindowHandle
         & $actions $h
+        # the process's memory at the end of the scenario (the report has none): MB of private bytes and working set
+        try { $p.Refresh(); [IO.File]::WriteAllText("$prefix.mem", ('private_mb {0:N0} working_set_mb {1:N0}' -f ($p.PrivateMemorySize64 / 1MB), ($p.WorkingSet64 / 1MB))) } catch { }
         # when the input began (Mark), on the profile's clock (ms since the process started, about): perf_summary -Budget
         # counts the frames from there on
         if ($script:actMs -ge 0) { [IO.File]::WriteAllText("$prefix.act", "$script:actMs") } elseif (Test-Path "$prefix.act") { Remove-Item "$prefix.act" }
@@ -322,3 +324,21 @@ Run 'js_shadow1000_sample' (FileUrl (Join-Path $jsb 'shadow1000.html')) { param(
 Run 'nojs_p10k_load'   (FileUrl $p10k) { param($h) Start-Sleep 8 } $true '--pref javascript.enabled=false'
 Run 'nojs_p10k_scroll' (FileUrl $p10k) { param($h) Start-Sleep 5; Mark; Scroll $h 8000 } $false '--pref javascript.enabled=false'
 Run 'nojs_anim'        (FileUrl (Join-Path $site 'animations.html')) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref javascript.enabled=false'
+
+# video (examples/site/video-bench.html on the test server): a paused video must not make the browser draw (frames in
+# the report ~ 0 per second), a playing one draws at the video's picture rate (24 / s for the clip) and no more, and
+# the memory of the process after the load (<name>.mem)
+# a real site (network, only when named): YouTube's watch page, autoplaying with sound allowed (media.autoplay.policy)
+Run 'video_youtube' 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' { param($h) Start-Sleep 14; Mark; Start-Sleep 12 } $true '--pref media.autoplay.policy=allow-all'
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' -and $_ -ne 'video_youtube' })) {
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $vb = "$($srv.Origin)/site/video-bench.html"
+        Run 'video_none'  "$vb`?mode=none"  { param($h) Start-Sleep 4; Mark; Start-Sleep 6 } $false
+        Run 'video_idle'  "$vb`?mode=idle"  { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $false
+        Run 'video_play'  "$vb`?mode=play"  { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $false
+        Run 'video_mse'   "$vb`?mode=mse"   { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $false
+        Run 'video_play_sample' "$vb`?mode=play" { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $true
+    } finally { Stop-WrenTestServer $srv }
+}

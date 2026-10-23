@@ -925,6 +925,7 @@ hook_removed :: proc(user: rawptr, d: ^dom.Document) {
 	p := (^Page)(user)
 	if p.closed || d != p.doc { return }
 	frames_note_removed(p)
+	media_note_removed(p)
 }
 
 @(private)
@@ -940,6 +941,7 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 		n = dom.get(d, node)
 	}
 	styles_note_inserted(p, node)   // a <link> a script inserts loads now, not at the next styling (styles.odin)
+	media_note_inserted(p, node)    // a <video> / <audio> / <source> (media_element.odin)
 	fragment := d.parser_inserting > 0
 	// a node inserted into a connected script element that has not started: its text changed ("children changed")
 	if parent := dom.get(d, n.parent); is_script_element(parent) && !fragment {
@@ -991,6 +993,7 @@ hook_attribute :: proc(user: rawptr, d: ^dom.Document, el: base.Handle, name: st
 		if p.closed { return }
 	}
 	styles_note_attribute(p, el, name)
+	media_note_attribute(p, el, name)
 	if len(name) > 2 && name[0] == 'o' && name[1] == 'n' {
 		content_handler_changed(p, el, name)
 		return

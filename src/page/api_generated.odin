@@ -312,6 +312,31 @@ Api_ScreenField :: enum i32 {
 	Color_Depth = 6,
 }
 
+// A <video> or <audio> element; anything else is not a live HTMLMediaElement.
+// A live HTMLMediaElement: its handle and what lookup_HTMLMediaElement found.
+Api_HTMLMediaElement :: struct {
+	handle: u64,
+	data:   ^Media_Element,
+}
+
+// A live MediaSource: its handle and what lookup_MediaSource found.
+Api_MediaSource :: struct {
+	handle: u64,
+	data:   ^Media_Source_Object,
+}
+
+// A live SourceBuffer: its handle and what lookup_SourceBuffer found.
+Api_SourceBuffer :: struct {
+	handle: u64,
+	data:   ^Source_Buffer_Object,
+}
+
+// A live SourceBufferList: its handle and what lookup_SourceBufferList found.
+Api_SourceBufferList :: struct {
+	handle: u64,
+	data:   ^Source_Buffer_List_Object,
+}
+
 // A request and, once it arrived, its response.
 // A live Fetch: its handle and what lookup_Fetch found.
 Api_Fetch :: struct {
@@ -15164,6 +15189,1305 @@ _t_forms_FormData_encode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
+// HTMLMediaElement_currentSrc :: proc(c: ^Call, element: Api_HTMLMediaElement) -> string
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_currentSrc", "result buffer") }
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_currentSrc: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_currentSrc: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_currentSrc(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLMediaElement_networkState :: proc(c: ^Call, element: Api_HTMLMediaElement) -> i32
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_networkState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_networkState: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_networkState: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_networkState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLMediaElement_readyState :: proc(c: ^Call, element: Api_HTMLMediaElement) -> i32
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_readyState: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_readyState: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_readyState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLMediaElement_seeking :: proc(c: ^Call, element: Api_HTMLMediaElement) -> bool
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_seeking :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_seeking: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_seeking: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_seeking(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLMediaElement_currentTime :: proc(c: ^Call, element: Api_HTMLMediaElement) -> f64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_currentTime: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_currentTime: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_currentTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// HTMLMediaElement_set_currentTime :: proc(c: ^Call, element: Api_HTMLMediaElement, value: f64)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_currentTime: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_set_currentTime: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].f64
+	HTMLMediaElement_set_currentTime(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_duration :: proc(c: ^Call, element: Api_HTMLMediaElement) -> f64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_duration: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_duration: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// HTMLMediaElement_paused :: proc(c: ^Call, element: Api_HTMLMediaElement) -> bool
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_paused :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_paused: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_paused: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_paused(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLMediaElement_ended :: proc(c: ^Call, element: Api_HTMLMediaElement) -> bool
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_ended :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_ended: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_ended: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_ended(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLMediaElement_defaultPlaybackRate :: proc(c: ^Call, element: Api_HTMLMediaElement) -> f64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_defaultPlaybackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_defaultPlaybackRate: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_defaultPlaybackRate: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_defaultPlaybackRate(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// HTMLMediaElement_set_defaultPlaybackRate :: proc(c: ^Call, element: Api_HTMLMediaElement, value: f64)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_defaultPlaybackRate: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_set_defaultPlaybackRate: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].f64
+	HTMLMediaElement_set_defaultPlaybackRate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_playbackRate :: proc(c: ^Call, element: Api_HTMLMediaElement) -> f64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_playbackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_playbackRate: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_playbackRate: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_playbackRate(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// HTMLMediaElement_set_playbackRate :: proc(c: ^Call, element: Api_HTMLMediaElement, value: f64)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_playbackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_playbackRate: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_set_playbackRate: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].f64
+	HTMLMediaElement_set_playbackRate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_preservesPitch :: proc(c: ^Call, element: Api_HTMLMediaElement) -> bool
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_preservesPitch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_preservesPitch: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_preservesPitch: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_preservesPitch(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLMediaElement_set_preservesPitch :: proc(c: ^Call, element: Api_HTMLMediaElement, value: bool)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_preservesPitch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_preservesPitch: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_set_preservesPitch: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].i32 != 0
+	HTMLMediaElement_set_preservesPitch(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_volume :: proc(c: ^Call, element: Api_HTMLMediaElement) -> f64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_volume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_volume: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_volume: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_volume(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// HTMLMediaElement_set_volume :: proc(c: ^Call, element: Api_HTMLMediaElement, value: f64) -> Api_Error
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_volume :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_volume: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].f64
+	_err := HTMLMediaElement_set_volume(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLMediaElement_muted :: proc(c: ^Call, element: Api_HTMLMediaElement) -> bool
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_muted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_muted: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_muted: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_muted(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// HTMLMediaElement_set_muted :: proc(c: ^Call, element: Api_HTMLMediaElement, value: bool)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_set_muted :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_set_muted: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_set_muted: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].i32 != 0
+	HTMLMediaElement_set_muted(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_ranges :: proc(c: ^Call, element: Api_HTMLMediaElement, which: i32) -> []u8
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_ranges", "result buffer") }
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_ranges: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_ranges: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := a[1].i32
+	_r := HTMLMediaElement_ranges(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLMediaElement_errorCode :: proc(c: ^Call, element: Api_HTMLMediaElement) -> i32
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_errorCode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_errorCode: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_errorCode: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_errorCode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// HTMLMediaElement_errorMessage :: proc(c: ^Call, element: Api_HTMLMediaElement) -> string
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_errorMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_errorMessage", "result buffer") }
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_errorMessage: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_errorMessage: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_errorMessage(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLMediaElement_play :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_play :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_play: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_play: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_play(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLMediaElement_pause :: proc(c: ^Call, element: Api_HTMLMediaElement)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_pause :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_pause: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_pause: argument element is not a live HTMLMediaElement")
+	}
+	HTMLMediaElement_pause(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_load :: proc(c: ^Call, element: Api_HTMLMediaElement)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_load :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_load: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_load: argument element is not a live HTMLMediaElement")
+	}
+	HTMLMediaElement_load(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLMediaElement_canPlayType :: proc(c: ^Call, element: Api_HTMLMediaElement, type: string) -> string
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_canPlayType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_canPlayType", "type") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_canPlayType", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "htmlmedia.HTMLMediaElement_canPlayType: argument type is not valid UTF-8") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_canPlayType: argument type is not valid UTF-8")
+	}
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_canPlayType: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_canPlayType: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_canPlayType(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLVideoElement_videoWidth :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u32
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_videoWidth :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_videoWidth: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_videoWidth: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLVideoElement_videoWidth(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// HTMLVideoElement_videoHeight :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u32
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_videoHeight :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_videoHeight: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_videoHeight: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLVideoElement_videoHeight(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// HTMLVideoElement_playbackQuality :: proc(c: ^Call, element: Api_HTMLMediaElement) -> []u8
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_playbackQuality", "result buffer") }
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_playbackQuality: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_playbackQuality: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLVideoElement_playbackQuality(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSource_create", "result pointer") }
+	_r, _err := MediaSource_create(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string)
+@(private = "file")
+_t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_registerObjectURL", "url") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mse.MediaSource_registerObjectURL: argument url is not valid UTF-8") }
+		return wasm.trap_new("mse.MediaSource_registerObjectURL: argument url is not valid UTF-8")
+	}
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_registerObjectURL: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.MediaSource_registerObjectURL: argument source is not a live MediaSource")
+	}
+	MediaSource_registerObjectURL(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// MediaSource_revokeObjectURL :: proc(c: ^Call, url: string)
+@(private = "file")
+_t_mse_MediaSource_revokeObjectURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "mse.MediaSource_revokeObjectURL", "url") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mse.MediaSource_revokeObjectURL: argument url is not valid UTF-8") }
+		return wasm.trap_new("mse.MediaSource_revokeObjectURL: argument url is not valid UTF-8")
+	}
+	MediaSource_revokeObjectURL(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// MediaSource_isTypeSupported :: proc(c: ^Call, type: string) -> bool
+@(private = "file")
+_t_mse_MediaSource_isTypeSupported :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "mse.MediaSource_isTypeSupported", "type") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mse.MediaSource_isTypeSupported: argument type is not valid UTF-8") }
+		return wasm.trap_new("mse.MediaSource_isTypeSupported: argument type is not valid UTF-8")
+	}
+	_r := MediaSource_isTypeSupported(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// MediaSource_sourceBuffers :: proc(c: ^Call, source: Api_MediaSource) -> u64
+@(private = "file")
+_t_mse_MediaSource_sourceBuffers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_sourceBuffers: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.MediaSource_sourceBuffers: argument source is not a live MediaSource")
+	}
+	_r := MediaSource_sourceBuffers(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// MediaSource_activeSourceBuffers :: proc(c: ^Call, source: Api_MediaSource) -> u64
+@(private = "file")
+_t_mse_MediaSource_activeSourceBuffers :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_activeSourceBuffers: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.MediaSource_activeSourceBuffers: argument source is not a live MediaSource")
+	}
+	_r := MediaSource_activeSourceBuffers(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// MediaSource_readyState :: proc(c: ^Call, source: Api_MediaSource) -> string
+@(private = "file")
+_t_mse_MediaSource_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mse.MediaSource_readyState", "result buffer") }
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_readyState: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.MediaSource_readyState: argument source is not a live MediaSource")
+	}
+	_r := MediaSource_readyState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// MediaSource_duration :: proc(c: ^Call, source: Api_MediaSource) -> f64
+@(private = "file")
+_t_mse_MediaSource_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_duration: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.MediaSource_duration: argument source is not a live MediaSource")
+	}
+	_r := MediaSource_duration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// MediaSource_set_duration :: proc(c: ^Call, source: Api_MediaSource, value: f64) -> Api_Error
+@(private = "file")
+_t_mse_MediaSource_set_duration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_set_duration: argument source is not a live MediaSource")
+	}
+	_p1 := a[1].f64
+	_err := MediaSource_set_duration(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: string) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_MediaSource_addSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_addSourceBuffer", "type") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSource_addSourceBuffer", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "mse.MediaSource_addSourceBuffer: argument type is not valid UTF-8")
+	}
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_addSourceBuffer: argument source is not a live MediaSource")
+	}
+	_r, _err := MediaSource_addSourceBuffer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_removeSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, buffer: Api_SourceBuffer) -> Api_Error
+@(private = "file")
+_t_mse_MediaSource_removeSourceBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_removeSourceBuffer: argument source is not a live MediaSource")
+	}
+	_p1 := Api_SourceBuffer{handle = u64(a[1].i64)}
+	_p1.data = lookup_SourceBuffer(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_removeSourceBuffer: argument buffer is not a live SourceBuffer")
+	}
+	_err := MediaSource_removeSourceBuffer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_endOfStream :: proc(c: ^Call, source: Api_MediaSource, error: string) -> Api_Error
+@(private = "file")
+_t_mse_MediaSource_endOfStream :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_endOfStream", "error") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "mse.MediaSource_endOfStream: argument error is not valid UTF-8")
+	}
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_endOfStream: argument source is not a live MediaSource")
+	}
+	_err := MediaSource_endOfStream(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_setLiveSeekableRange :: proc(c: ^Call, source: Api_MediaSource, start: f64, end: f64) -> Api_Error
+@(private = "file")
+_t_mse_MediaSource_setLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_setLiveSeekableRange: argument source is not a live MediaSource")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_err := MediaSource_setLiveSeekableRange(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_clearLiveSeekableRange :: proc(c: ^Call, source: Api_MediaSource) -> Api_Error
+@(private = "file")
+_t_mse_MediaSource_clearLiveSeekableRange :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_clearLiveSeekableRange: argument source is not a live MediaSource")
+	}
+	_err := MediaSource_clearLiveSeekableRange(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBufferList_length :: proc(c: ^Call, list: Api_SourceBufferList) -> u32
+@(private = "file")
+_t_mse_SourceBufferList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBufferList{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBufferList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBufferList_length: argument list is not a live SourceBufferList") }
+		return wasm.trap_new("mse.SourceBufferList_length: argument list is not a live SourceBufferList")
+	}
+	_r := SourceBufferList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// SourceBufferList_item :: proc(c: ^Call, list: Api_SourceBufferList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_SourceBufferList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.SourceBufferList_item", "result pointer") }
+	_p0 := Api_SourceBufferList{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBufferList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBufferList_item: argument list is not a live SourceBufferList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := SourceBufferList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_mode :: proc(c: ^Call, buffer: Api_SourceBuffer) -> string
+@(private = "file")
+_t_mse_SourceBuffer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_mode", "result buffer") }
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBuffer_mode: argument buffer is not a live SourceBuffer") }
+		return wasm.trap_new("mse.SourceBuffer_mode: argument buffer is not a live SourceBuffer")
+	}
+	_r := SourceBuffer_mode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// SourceBuffer_set_mode :: proc(c: ^Call, buffer: Api_SourceBuffer, mode: string) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_set_mode", "mode") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "mse.SourceBuffer_set_mode: argument mode is not valid UTF-8")
+	}
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_set_mode: argument buffer is not a live SourceBuffer")
+	}
+	_err := SourceBuffer_set_mode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_updating :: proc(c: ^Call, buffer: Api_SourceBuffer) -> bool
+@(private = "file")
+_t_mse_SourceBuffer_updating :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBuffer_updating: argument buffer is not a live SourceBuffer") }
+		return wasm.trap_new("mse.SourceBuffer_updating: argument buffer is not a live SourceBuffer")
+	}
+	_r := SourceBuffer_updating(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// SourceBuffer_ranges :: proc(c: ^Call, buffer: Api_SourceBuffer) -> ([]u8, Api_Error)
+@(private = "file")
+_t_mse_SourceBuffer_ranges :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mse.SourceBuffer_ranges", "result buffer") }
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "mse.SourceBuffer_ranges: argument buffer is not a live SourceBuffer")
+	}
+	_r, _err := SourceBuffer_ranges(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// SourceBuffer_timestampOffset :: proc(c: ^Call, buffer: Api_SourceBuffer) -> f64
+@(private = "file")
+_t_mse_SourceBuffer_timestampOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBuffer_timestampOffset: argument buffer is not a live SourceBuffer") }
+		return wasm.trap_new("mse.SourceBuffer_timestampOffset: argument buffer is not a live SourceBuffer")
+	}
+	_r := SourceBuffer_timestampOffset(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// SourceBuffer_set_timestampOffset :: proc(c: ^Call, buffer: Api_SourceBuffer, value: f64) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_set_timestampOffset :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_set_timestampOffset: argument buffer is not a live SourceBuffer")
+	}
+	_p1 := a[1].f64
+	_err := SourceBuffer_set_timestampOffset(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_appendWindowStart :: proc(c: ^Call, buffer: Api_SourceBuffer) -> f64
+@(private = "file")
+_t_mse_SourceBuffer_appendWindowStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBuffer_appendWindowStart: argument buffer is not a live SourceBuffer") }
+		return wasm.trap_new("mse.SourceBuffer_appendWindowStart: argument buffer is not a live SourceBuffer")
+	}
+	_r := SourceBuffer_appendWindowStart(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// SourceBuffer_set_appendWindowStart :: proc(c: ^Call, buffer: Api_SourceBuffer, value: f64) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_set_appendWindowStart :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_set_appendWindowStart: argument buffer is not a live SourceBuffer")
+	}
+	_p1 := a[1].f64
+	_err := SourceBuffer_set_appendWindowStart(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_appendWindowEnd :: proc(c: ^Call, buffer: Api_SourceBuffer) -> f64
+@(private = "file")
+_t_mse_SourceBuffer_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.SourceBuffer_appendWindowEnd: argument buffer is not a live SourceBuffer") }
+		return wasm.trap_new("mse.SourceBuffer_appendWindowEnd: argument buffer is not a live SourceBuffer")
+	}
+	_r := SourceBuffer_appendWindowEnd(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// SourceBuffer_set_appendWindowEnd :: proc(c: ^Call, buffer: Api_SourceBuffer, value: f64) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_set_appendWindowEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_set_appendWindowEnd: argument buffer is not a live SourceBuffer")
+	}
+	_p1 := a[1].f64
+	_err := SourceBuffer_set_appendWindowEnd(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_appendBuffer :: proc(c: ^Call, buffer: Api_SourceBuffer, data: []u8) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_appendBuffer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_appendBuffer", "data") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_appendBuffer: argument buffer is not a live SourceBuffer")
+	}
+	_err := SourceBuffer_appendBuffer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_abort :: proc(c: ^Call, buffer: Api_SourceBuffer) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_abort :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_abort: argument buffer is not a live SourceBuffer")
+	}
+	_err := SourceBuffer_abort(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_changeType :: proc(c: ^Call, buffer: Api_SourceBuffer, type: string) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_changeType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mse.SourceBuffer_changeType", "type") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "mse.SourceBuffer_changeType: argument type is not valid UTF-8")
+	}
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_changeType: argument buffer is not a live SourceBuffer")
+	}
+	_err := SourceBuffer_changeType(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SourceBuffer_remove :: proc(c: ^Call, buffer: Api_SourceBuffer, start: f64, end: f64) -> Api_Error
+@(private = "file")
+_t_mse_SourceBuffer_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_SourceBuffer{handle = u64(a[0].i64)}
+	_p0.data = lookup_SourceBuffer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.SourceBuffer_remove: argument buffer is not a live SourceBuffer")
+	}
+	_p1 := a[1].f64
+	_p2 := a[2].f64
+	_err := SourceBuffer_remove(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -18122,6 +19446,65 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "FormData_fileAt", fn = _t_forms_FormData_fileAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_setBlob", fn = _t_forms_FormData_setBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_encode", fn = _t_forms_FormData_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_currentSrc", fn = _t_htmlmedia_HTMLMediaElement_currentSrc, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_networkState", fn = _t_htmlmedia_HTMLMediaElement_networkState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_readyState", fn = _t_htmlmedia_HTMLMediaElement_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_seeking", fn = _t_htmlmedia_HTMLMediaElement_seeking, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_currentTime", fn = _t_htmlmedia_HTMLMediaElement_currentTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_currentTime", fn = _t_htmlmedia_HTMLMediaElement_set_currentTime, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_duration", fn = _t_htmlmedia_HTMLMediaElement_duration, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_paused", fn = _t_htmlmedia_HTMLMediaElement_paused, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_ended", fn = _t_htmlmedia_HTMLMediaElement_ended, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_defaultPlaybackRate", fn = _t_htmlmedia_HTMLMediaElement_defaultPlaybackRate, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_defaultPlaybackRate", fn = _t_htmlmedia_HTMLMediaElement_set_defaultPlaybackRate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_playbackRate", fn = _t_htmlmedia_HTMLMediaElement_playbackRate, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_playbackRate", fn = _t_htmlmedia_HTMLMediaElement_set_playbackRate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_preservesPitch", fn = _t_htmlmedia_HTMLMediaElement_preservesPitch, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_preservesPitch", fn = _t_htmlmedia_HTMLMediaElement_set_preservesPitch, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_volume", fn = _t_htmlmedia_HTMLMediaElement_volume, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_volume", fn = _t_htmlmedia_HTMLMediaElement_set_volume, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_muted", fn = _t_htmlmedia_HTMLMediaElement_muted, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_set_muted", fn = _t_htmlmedia_HTMLMediaElement_set_muted, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_ranges", fn = _t_htmlmedia_HTMLMediaElement_ranges, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_errorCode", fn = _t_htmlmedia_HTMLMediaElement_errorCode, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLMediaElement_errorMessage", fn = _t_htmlmedia_HTMLMediaElement_errorMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_play", fn = _t_htmlmedia_HTMLMediaElement_play, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_pause", fn = _t_htmlmedia_HTMLMediaElement_pause, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_load", fn = _t_htmlmedia_HTMLMediaElement_load, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLMediaElement_canPlayType", fn = _t_htmlmedia_HTMLMediaElement_canPlayType, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLVideoElement_videoWidth", fn = _t_htmlmedia_HTMLVideoElement_videoWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLVideoElement_videoHeight", fn = _t_htmlmedia_HTMLVideoElement_videoHeight, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "htmlmedia", name = "HTMLVideoElement_playbackQuality", fn = _t_htmlmedia_HTMLVideoElement_playbackQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_create", fn = _t_mse_MediaSource_create, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_registerObjectURL", fn = _t_mse_MediaSource_registerObjectURL, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mse", name = "MediaSource_revokeObjectURL", fn = _t_mse_MediaSource_revokeObjectURL, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mse", name = "MediaSource_isTypeSupported", fn = _t_mse_MediaSource_isTypeSupported, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_sourceBuffers", fn = _t_mse_MediaSource_sourceBuffers, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_activeSourceBuffers", fn = _t_mse_MediaSource_activeSourceBuffers, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_readyState", fn = _t_mse_MediaSource_readyState, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_duration", fn = _t_mse_MediaSource_duration, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "MediaSource_set_duration", fn = _t_mse_MediaSource_set_duration, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_addSourceBuffer", fn = _t_mse_MediaSource_addSourceBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_removeSourceBuffer", fn = _t_mse_MediaSource_removeSourceBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_endOfStream", fn = _t_mse_MediaSource_endOfStream, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_setLiveSeekableRange", fn = _t_mse_MediaSource_setLiveSeekableRange, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_clearLiveSeekableRange", fn = _t_mse_MediaSource_clearLiveSeekableRange, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBufferList_length", fn = _t_mse_SourceBufferList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBufferList_item", fn = _t_mse_SourceBufferList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_mode", fn = _t_mse_SourceBuffer_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "SourceBuffer_set_mode", fn = _t_mse_SourceBuffer_set_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_updating", fn = _t_mse_SourceBuffer_updating, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_ranges", fn = _t_mse_SourceBuffer_ranges, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "SourceBuffer_timestampOffset", fn = _t_mse_SourceBuffer_timestampOffset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_timestampOffset", fn = _t_mse_SourceBuffer_set_timestampOffset, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendWindowStart", fn = _t_mse_SourceBuffer_appendWindowStart, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_appendWindowStart", fn = _t_mse_SourceBuffer_set_appendWindowStart, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendWindowEnd", fn = _t_mse_SourceBuffer_appendWindowEnd, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_appendWindowEnd", fn = _t_mse_SourceBuffer_set_appendWindowEnd, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendBuffer", fn = _t_mse_SourceBuffer_appendBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_abort", fn = _t_mse_SourceBuffer_abort, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_changeType", fn = _t_mse_SourceBuffer_changeType, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_remove", fn = _t_mse_SourceBuffer_remove, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
