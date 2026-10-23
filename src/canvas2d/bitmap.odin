@@ -16,6 +16,7 @@ Bitmap :: struct {
 	version:   u64,
 	dirty_min: [2]int,
 	dirty_max: [2]int,
+	opaque:    bool,   // getContext("2d", { alpha: false }): alpha is always 1, the canvas is composited over black
 	allocator: runtime.Allocator,
 }
 
@@ -71,6 +72,14 @@ bitmap_touch :: proc "contextless" (b: ^Bitmap, ax0, ay0, ax1, ay1: int) {
 bitmap_touch_all :: proc "contextless" (b: ^Bitmap) {
 	b.version += 1
 	b.dirty_min, b.dirty_max = {0, 0}, {b.w, b.h}
+}
+
+// The initial contents: transparent black, or opaque black for an opaque canvas.
+bitmap_reset_contents :: proc "contextless" (b: ^Bitmap) {
+	for i := 0; i < len(b.pix); i += 4 {
+		b.pix[i], b.pix[i + 1], b.pix[i + 2], b.pix[i + 3] = 0, 0, 0, b.opaque ? 255 : 0
+	}
+	bitmap_touch_all(b)
 }
 
 bitmap_clean :: proc "contextless" (b: ^Bitmap) { b.dirty_min, b.dirty_max = {}, {} }

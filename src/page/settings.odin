@@ -1,5 +1,6 @@
 package page
 
+import "wb:canvas2d"
 import "wb:config"
 import "wb:forms"
 import "wb:html"
@@ -29,6 +30,7 @@ Settings :: struct {
 	dom:             Js_Dom_Settings,     // the DOM for JavaScript (js_dom_settings.odin)
 	authn:           webauthn.Settings,   // Web Authentication (bindings_webauthn.odin)
 	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
+	canvas:          canvas2d.Settings,   // the 2D canvas (canvas.odin)
 }
 
 PREFS := [?]config.Def{
@@ -56,6 +58,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, JS_DOM_PREFS[:])
 	webauthn.register_prefs(p)
 	config.register(p, FRAME_PREFS[:])
+	canvas2d.register_prefs(p)
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -78,6 +81,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		dom = js_dom_settings_from_prefs(p),
 		authn = webauthn.settings_from_prefs(p),
 		frames = frame_settings_from_prefs(p),
+		canvas = canvas2d.settings_from_prefs(p),
 	}
 }
 

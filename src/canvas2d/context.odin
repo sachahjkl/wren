@@ -1,6 +1,7 @@
 package canvas2d
 
 import "core:math"
+import "core:strings"
 
 Text_Align :: enum u8 { Start, End, Left, Right, Center }
 Text_Baseline :: enum u8 { Alphabetic, Top, Hanging, Middle, Ideographic, Bottom }
@@ -54,6 +55,9 @@ State :: struct {
 	font_stretch:  u8,     // CanvasFontStretch index
 	variant_caps:  u8,
 	text_rendering: u8,
+	lang:          string,
+	filter:        []Filter_Op,   // the parsed `filter` (empty: none)
+	filter_text:   string,
 }
 
 Options :: struct {
@@ -63,11 +67,13 @@ Options :: struct {
 	max_dashes:      int,    // dash pieces of one subpath before the line is drawn solid
 	max_layer_bytes: int,    // the temporary layer of a shadow or a source-in
 	max_bytes:       int,    // any other temporary bitmap (patterns, getImageData...)
+	smooth_default:  bool,   // imageSmoothingEnabled of a new context
+	filters:         bool,   // the filter property does something
 }
 
 DEFAULT_OPTIONS :: Options{
 	samples = 16, flatness = 0.05, max_states = 4096, max_dashes = 100_000,
-	max_layer_bytes = 256 << 20, max_bytes = 256 << 20,
+	max_layer_bytes = 256 << 20, max_bytes = 256 << 20, smooth_default = true, filters = true,
 }
 
 Context :: struct {
@@ -77,10 +83,17 @@ Context :: struct {
 	path:    Path,
 	opts:    Options,
 	text:    Text_Engine,
+	host:    Host,
 	inherit: Inherited,        // the canvas element's direction and font size
 	r:       Raster,
 	flat:    Flat,
 	polys:   Polys,
+}
+
+// Services of the page the context needs: parsing a CSS color (drop-shadow() in a filter).
+Host :: struct {
+	user:  rawptr,
+	color: proc(user: rawptr, s: string) -> ([4]f32, bool),
 }
 
 // What the context inherits from its canvas element (it changes with the page's styles).
@@ -95,6 +108,7 @@ context_init :: proc(c: ^Context, bmp: ^Bitmap, opts: Options) {
 	c.opts = opts
 	c.inherit = Inherited{font_size = 10, color = {0, 0, 0, 1}}
 	c.state = state_default()
+	c.state.smoothing = opts.smooth_default
 }
 
 context_destroy :: proc(c: ^Context) {
@@ -123,6 +137,9 @@ state_destroy :: proc(s: ^State) {
 	style_clear(&s.stroke)
 	clip_release(s.clip)
 	delete(s.dash)
+	delete(s.filter)
+	delete(s.filter_text)
+	delete(s.lang)
 	font_spec_destroy(&s.font)
 	s^ = {}
 }
@@ -136,6 +153,9 @@ state_clone :: proc(s: ^State) -> State {
 	r.clip = clip_retain(s.clip)
 	if s.dash != nil { r.dash = make([]f64, len(s.dash)); copy(r.dash, s.dash) }
 	r.font = font_spec_clone(&s.font)
+	if s.filter != nil { r.filter = make([]Filter_Op, len(s.filter)); copy(r.filter, s.filter) }
+	r.filter_text = strings.clone(s.filter_text)
+	r.lang = strings.clone(s.lang)
 	return r
 }
 
@@ -196,11 +216,9 @@ context_reset :: proc(c: ^Context) {
 	clear(&c.stack)
 	state_destroy(&c.state)
 	c.state = state_default()
+	c.state.smoothing = c.opts.smooth_default
 	path_clear(&c.path)
-	if c.bmp != nil && len(c.bmp.pix) > 0 {
-		for i in 0 ..< len(c.bmp.pix) { c.bmp.pix[i] = 0 }
-		bitmap_touch_all(c.bmp)
-	}
+	if c.bmp != nil && len(c.bmp.pix) > 0 { bitmap_reset_contents(c.bmp) }
 }
 
 ////////////////////////////////
@@ -257,7 +275,7 @@ load_px :: #force_inline proc "contextless" (b: ^Bitmap, x, y: int) -> [4]f32 {
 @(private)
 store_px :: #force_inline proc "contextless" (b: ^Bitmap, x, y: int, v: [4]f32) {
 	p := b.pix[(y * b.w + x) * 4:][:4]
-	a := clamp(v.a, 0, 1)
+	a := b.opaque ? 1 : clamp(v.a, 0, 1)   // (an opaque canvas shows the color over black: the premultiplied color stays)
 	p[3] = u8(a * 255 + 0.5)
 	// premultiplied color cannot exceed alpha
 	p[0] = u8(min(clamp(v.r, 0, 1), a) * 255 + 0.5)
@@ -336,20 +354,26 @@ paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
 	alpha := f32(clamp(st.alpha, 0, 1))
 	bx0, by0, bx1, by1 := draw_bounds(c)
 	shadow := shadow_active(c)
-	if !shadow && !op_is_unbounded(op) {
+	filtered := filter_active(c)
+	if !shadow && !filtered && !op_is_unbounded(op) {
 		j := Job{target = c.bmp, paint = paint, op = op, alpha = alpha, clip = st.clip, touch = {max(int), max(int), min(int), min(int)}}
 		raster_fill(&c.r, rule, max(bx0, ex0), max(by0, ey0), min(bx1, ex1), min(by1, ey1), c.opts.samples, job_row, &j)
 		bitmap_touch(c.bmp, j.touch[0], j.touch[1], j.touch[2], j.touch[3])
 		return
 	}
-	// A layer: the shape is drawn by itself (source-over onto transparent black), then composited. A shadow needs it to
-	// blur and offset the shape; an unbounded operator needs it to act on the pixels the shape leaves alone.
+	// A layer: the shape is drawn by itself (source-over onto transparent black), then filtered, shadowed and
+	// composited. A shadow needs it to blur and offset the shape, a filter to work on the shape alone, an unbounded
+	// operator to act on the pixels the shape leaves alone.
 	lx0, ly0, lx1, ly1 := ex0, ey0, ex1, ey1
-	reach := 0
+	reach := filtered ? filter_reach(c) : 0
+	if reach > 0 { lx0, ly0, lx1, ly1 = lx0 - reach, ly0 - reach, lx1 + reach, ly1 + reach }
 	if shadow {
-		reach = int(math.ceil(max(st.shadow.blur, 0) * 1.5)) + 1
-		lx0, ly0 = max(lx0, -reach - int(min(st.shadow.ox, 0))), max(ly0, -reach - int(min(st.shadow.oy, 0)))
-		lx1, ly1 = min(lx1, c.bmp.w + reach + int(max(-st.shadow.ox, 0))), min(ly1, c.bmp.h + reach + int(max(-st.shadow.oy, 0)))
+		sreach := int(math.ceil(max(st.shadow.blur, 0) * 1.5)) + 1
+		slack := sreach + reach
+		lx0, ly0 = max(lx0, -slack - int(min(st.shadow.ox, 0))), max(ly0, -slack - int(min(st.shadow.oy, 0)))
+		lx1, ly1 = min(lx1, c.bmp.w + slack + int(max(-st.shadow.ox, 0))), min(ly1, c.bmp.h + slack + int(max(-st.shadow.oy, 0)))
+	} else if filtered {
+		lx0, ly0, lx1, ly1 = max(lx0, bx0 - reach), max(ly0, by0 - reach), min(lx1, bx1 + reach), min(ly1, by1 + reach)
 	} else {
 		lx0, ly0, lx1, ly1 = max(lx0, bx0), max(ly0, by0), min(lx1, bx1), min(ly1, by1)
 	}
@@ -362,6 +386,7 @@ paint_edges :: proc(c: ^Context, rule: Fill_Rule, paint: ^Paint) {
 	defer bitmap_destroy(&layer)
 	j := Job{target = &layer, ox = lx0, oy = ly0, paint = paint, op = .Source_Over, alpha = alpha, touch = {max(int), max(int), min(int), min(int)}}
 	raster_fill(&c.r, rule, lx0, ly0, lx1, ly1, c.opts.samples, job_row, &j)
+	if filtered { filter_apply(c, &layer) }
 	if shadow { composite_shadow(c, &layer, lx0, ly0) }
 	composite_layer(c, &layer, lx0, ly0, op, op_is_unbounded(op))
 }
@@ -444,7 +469,7 @@ ctx_fill_rect :: proc(c: ^Context, x, y, w, h: f64) {
 fill_rect_with :: proc(c: ^Context, x, y, w, h: f64, paint: ^Paint) {
 	m := c.state.ctm
 	raster_reset(&c.r)
-	if m.b == 0 && m.c == 0 && !shadow_active(c) && !op_is_unbounded(c.state.op) {
+	if m.b == 0 && m.c == 0 && !shadow_active(c) && !filter_active(c) && !op_is_unbounded(c.state.op) {
 		// no rotation or skew: exact box coverage
 		p0, p1 := matrix_apply(m, {x, y}), matrix_apply(m, {x + w, y + h})
 		bx0, by0, bx1, by1 := draw_bounds(c)

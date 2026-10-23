@@ -4,6 +4,7 @@
 #include <string.h>
 #include "wj.h"
 #include "bindings.h"
+wj_val wj_wrap_owned(wj_ctx *ctx, uint64_t handle, int iface, JSValueConst new_target);   /* qjs_platform.c */
 
 JSValue wjr_AbortController_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_AbortController_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -79,6 +80,30 @@ JSValue wjr_CSSStyleSheet_replace(JSContext *ctx, JSValueConst this_val, int arg
 JSValue wjr_CSSStyleSheet_replaceSync(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSS_escape(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSS_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawImage_drawImage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawPath_clip(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawPath_fill(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawPath_isPointInPath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawPath_isPointInStroke(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasDrawPath_stroke(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasFillStrokeStyles_createPattern(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasFillStrokeStyles_get_fillStyle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CanvasFillStrokeStyles_get_strokeStyle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CanvasFillStrokeStyles_set_fillStyle(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_CanvasFillStrokeStyles_set_strokeStyle(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_CanvasImageData_createImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasImageData_getImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasImageData_putImageData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasPathDrawingStyles_getLineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasPathDrawingStyles_setLineDash(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasPath_roundRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasPattern_setTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasSettings_getContextAttributes(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasText_fillText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasText_strokeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasTransform_getTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasTransform_setTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CanvasUserInterface_drawFocusIfNeeded(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ChildNode_after(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ChildNode_before(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ChildNode_replaceWith(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -331,6 +356,9 @@ JSValue wjr_HTMLButtonElement_get_validity(JSContext *ctx, JSValueConst this_val
 JSValue wjr_HTMLButtonElement_set_formAction(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLButtonElement_set_formEnctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLButtonElement_set_formMethod(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLCanvasElement_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLCanvasElement_toBlob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLCanvasElement_toDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLCollection_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLCollection_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_HTMLCollection_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -551,6 +579,12 @@ JSValue wjr_History_replaceState(JSContext *ctx, JSValueConst this_val, int argc
 JSValue wjr_History_set_scrollRestoration(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_IdleDeadline_get_didTimeout(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_IdleDeadline_timeRemaining(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ImageData_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ImageData_get_colorSpace(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ImageData_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ImageData_get_height(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ImageData_get_pixelFormat(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ImageData_get_width(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_InputEvent_get_data(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_InputEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
@@ -723,6 +757,9 @@ JSValue wjr_Node_removeChild(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_Node_replaceChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Node_set_nodeValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Node_set_textContent(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_OffscreenCanvas_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_OffscreenCanvas_convertToBlob(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_OffscreenCanvas_getContext(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PageTransitionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PageTransitionEvent_get_persisted(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ParentNode_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -731,6 +768,8 @@ JSValue wjr_ParentNode_moveBefore(JSContext *ctx, JSValueConst this_val, int arg
 JSValue wjr_ParentNode_prepend(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ParentNode_querySelectorAll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ParentNode_replaceChildren(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Path2D_addPath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Path2D_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceEntry_get_duration(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEntry_get_entryType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEntry_get_id(JSContext *ctx, JSValueConst this_val);
@@ -1059,6 +1098,7 @@ JSValue wjr_WindowOrWorkerGlobalScope_atob(JSContext *ctx, JSValueConst this_val
 JSValue wjr_WindowOrWorkerGlobalScope_btoa(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_clearInterval(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_clearTimeout(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WindowOrWorkerGlobalScope_createImageBitmap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_fetch(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WindowOrWorkerGlobalScope_get_crypto(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WindowOrWorkerGlobalScope_get_isSecureContext(JSContext *ctx, JSValueConst this_val);
@@ -1154,6 +1194,1039 @@ static JSValue wjg_CSSStyleRule_set_style(JSContext *ctx, JSValueConst this_val,
 static JSValue wjg_CSSImportRule_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 static JSValue wjg_CSSKeyframeRule_set_style(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "style", "cssText", v); }
 static JSValue wjg_CSSMarginRule_set_style(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "style", "cssText", v); }
+/* CanvasGradient.addColorStop() -> canvas.CanvasGradient_addColorStop */
+static JSValue wjg_CanvasGradient_addColorStop(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 79);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CanvasGradient.addColorStop", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { return JS_EXCEPTION; }
+    int32_t st = wr_CanvasGradient_addColorStop(self->handle, a0, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a1);
+    if (st < 0) { return wj_throw_status(ctx, st, "CanvasGradient.addColorStop"); }
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.canvas -> canvas.CanvasRenderingContext2D_canvas */
+static JSValue wjg_CanvasRenderingContext2D_get_canvas(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasRenderingContext2D_canvas(self->handle);
+    return wj_wrap_node(ctx, r);
+}
+
+/* CanvasRenderingContext2D.save() -> canvas.CanvasState_save */
+static JSValue wjg_CanvasRenderingContext2D_save(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_save(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.restore() -> canvas.CanvasState_restore */
+static JSValue wjg_CanvasRenderingContext2D_restore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_restore(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.reset() -> canvas.CanvasState_reset */
+static JSValue wjg_CanvasRenderingContext2D_reset(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_reset(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.isContextLost() -> canvas.CanvasState_isContextLost */
+static JSValue wjg_CanvasRenderingContext2D_isContextLost(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_CanvasState_isContextLost(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* CanvasRenderingContext2D.scale() -> canvas.CanvasTransform_scale */
+static JSValue wjg_CanvasRenderingContext2D_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.scale", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_scale(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.rotate() -> canvas.CanvasTransform_rotate */
+static JSValue wjg_CanvasRenderingContext2D_rotate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.rotate", 1, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_rotate(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.translate() -> canvas.CanvasTransform_translate */
+static JSValue wjg_CanvasRenderingContext2D_translate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.translate", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_translate(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.transform() -> canvas.CanvasTransform_transform */
+static JSValue wjg_CanvasRenderingContext2D_transform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.transform", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_transform(self->handle, a0, a1, a2, a3, a4, a5);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.resetTransform() -> canvas.CanvasTransform_resetTransform */
+static JSValue wjg_CanvasRenderingContext2D_resetTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasTransform_resetTransform(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.globalAlpha -> canvas.CanvasCompositing_globalAlpha */
+static JSValue wjg_CanvasRenderingContext2D_get_globalAlpha(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasCompositing_globalAlpha(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.globalAlpha = v -> canvas.CanvasCompositing_set_globalAlpha */
+static JSValue wjg_CanvasRenderingContext2D_set_globalAlpha(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasCompositing_set_globalAlpha(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.globalCompositeOperation -> canvas.CanvasCompositing_globalCompositeOperation */
+static JSValue wjg_CanvasRenderingContext2D_get_globalCompositeOperation(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasCompositing_globalCompositeOperation(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.globalCompositeOperation"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.globalCompositeOperation = v -> canvas.CanvasCompositing_set_globalCompositeOperation */
+static JSValue wjg_CanvasRenderingContext2D_set_globalCompositeOperation(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasCompositing_set_globalCompositeOperation(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.imageSmoothingEnabled -> canvas.CanvasImageSmoothing_imageSmoothingEnabled */
+static JSValue wjg_CanvasRenderingContext2D_get_imageSmoothingEnabled(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_CanvasImageSmoothing_imageSmoothingEnabled(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* CanvasRenderingContext2D.imageSmoothingEnabled = v -> canvas.CanvasImageSmoothing_set_imageSmoothingEnabled */
+static JSValue wjg_CanvasRenderingContext2D_set_imageSmoothingEnabled(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    wr_CanvasImageSmoothing_set_imageSmoothingEnabled(self->handle, a0 ? 1 : 0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.imageSmoothingQuality -> canvas.CanvasImageSmoothing_imageSmoothingQuality */
+static JSValue wjg_CanvasRenderingContext2D_get_imageSmoothingQuality(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasImageSmoothing_imageSmoothingQuality(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.imageSmoothingQuality"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.imageSmoothingQuality = v -> canvas.CanvasImageSmoothing_set_imageSmoothingQuality */
+static JSValue wjg_CanvasRenderingContext2D_set_imageSmoothingQuality(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasImageSmoothing_set_imageSmoothingQuality(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.createLinearGradient() -> canvas.CanvasFillStrokeStyles_createLinearGradient */
+static JSValue wjg_CanvasRenderingContext2D_createLinearGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.createLinearGradient", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, true)) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasFillStrokeStyles_createLinearGradient(self->handle, a0, a1, a2, a3);
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* CanvasRenderingContext2D.createRadialGradient() -> canvas.CanvasFillStrokeStyles_createRadialGradient */
+static JSValue wjg_CanvasRenderingContext2D_createRadialGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.createRadialGradient", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, true)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, true)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, true)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_CanvasFillStrokeStyles_createRadialGradient(self->handle, a0, a1, a2, a3, a4, a5, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "CanvasRenderingContext2D.createRadialGradient"); }
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* CanvasRenderingContext2D.createConicGradient() -> canvas.CanvasFillStrokeStyles_createConicGradient */
+static JSValue wjg_CanvasRenderingContext2D_createConicGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.createConicGradient", 3, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasFillStrokeStyles_createConicGradient(self->handle, a0, a1, a2);
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* CanvasRenderingContext2D.shadowOffsetX -> canvas.CanvasShadowStyles_shadowOffsetX */
+static JSValue wjg_CanvasRenderingContext2D_get_shadowOffsetX(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowOffsetX(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.shadowOffsetX = v -> canvas.CanvasShadowStyles_set_shadowOffsetX */
+static JSValue wjg_CanvasRenderingContext2D_set_shadowOffsetX(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowOffsetX(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.shadowOffsetY -> canvas.CanvasShadowStyles_shadowOffsetY */
+static JSValue wjg_CanvasRenderingContext2D_get_shadowOffsetY(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowOffsetY(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.shadowOffsetY = v -> canvas.CanvasShadowStyles_set_shadowOffsetY */
+static JSValue wjg_CanvasRenderingContext2D_set_shadowOffsetY(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowOffsetY(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.shadowBlur -> canvas.CanvasShadowStyles_shadowBlur */
+static JSValue wjg_CanvasRenderingContext2D_get_shadowBlur(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowBlur(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.shadowBlur = v -> canvas.CanvasShadowStyles_set_shadowBlur */
+static JSValue wjg_CanvasRenderingContext2D_set_shadowBlur(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowBlur(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.shadowColor -> canvas.CanvasShadowStyles_shadowColor */
+static JSValue wjg_CanvasRenderingContext2D_get_shadowColor(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasShadowStyles_shadowColor(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.shadowColor"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.shadowColor = v -> canvas.CanvasShadowStyles_set_shadowColor */
+static JSValue wjg_CanvasRenderingContext2D_set_shadowColor(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowColor(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.filter -> canvas.CanvasFilters_filter */
+static JSValue wjg_CanvasRenderingContext2D_get_filter(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasFilters_filter(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.filter"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.filter = v -> canvas.CanvasFilters_set_filter */
+static JSValue wjg_CanvasRenderingContext2D_set_filter(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasFilters_set_filter(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.clearRect() -> canvas.CanvasRect_clearRect */
+static JSValue wjg_CanvasRenderingContext2D_clearRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.clearRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_clearRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.fillRect() -> canvas.CanvasRect_fillRect */
+static JSValue wjg_CanvasRenderingContext2D_fillRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.fillRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_fillRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.strokeRect() -> canvas.CanvasRect_strokeRect */
+static JSValue wjg_CanvasRenderingContext2D_strokeRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.strokeRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_strokeRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.beginPath() -> canvas.CanvasDrawPath_beginPath */
+static JSValue wjg_CanvasRenderingContext2D_beginPath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasDrawPath_beginPath(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.measureText() -> canvas.CanvasText_measureText */
+static JSValue wjg_CanvasRenderingContext2D_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.measureText", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasText_measureText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return wj_wrap_owned(ctx, r, 526, JS_UNDEFINED);
+}
+
+/* CanvasRenderingContext2D.lineWidth -> canvas.CanvasPathDrawingStyles_lineWidth */
+static JSValue wjg_CanvasRenderingContext2D_get_lineWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_lineWidth(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.lineWidth = v -> canvas.CanvasPathDrawingStyles_set_lineWidth */
+static JSValue wjg_CanvasRenderingContext2D_set_lineWidth(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineWidth(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.lineCap -> canvas.CanvasPathDrawingStyles_lineCap */
+static JSValue wjg_CanvasRenderingContext2D_get_lineCap(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineCap(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.lineCap"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.lineCap = v -> canvas.CanvasPathDrawingStyles_set_lineCap */
+static JSValue wjg_CanvasRenderingContext2D_set_lineCap(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineCap(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.lineJoin -> canvas.CanvasPathDrawingStyles_lineJoin */
+static JSValue wjg_CanvasRenderingContext2D_get_lineJoin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineJoin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.lineJoin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.lineJoin = v -> canvas.CanvasPathDrawingStyles_set_lineJoin */
+static JSValue wjg_CanvasRenderingContext2D_set_lineJoin(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineJoin(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.miterLimit -> canvas.CanvasPathDrawingStyles_miterLimit */
+static JSValue wjg_CanvasRenderingContext2D_get_miterLimit(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_miterLimit(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.miterLimit = v -> canvas.CanvasPathDrawingStyles_set_miterLimit */
+static JSValue wjg_CanvasRenderingContext2D_set_miterLimit(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_miterLimit(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.lineDashOffset -> canvas.CanvasPathDrawingStyles_lineDashOffset */
+static JSValue wjg_CanvasRenderingContext2D_get_lineDashOffset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_lineDashOffset(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* CanvasRenderingContext2D.lineDashOffset = v -> canvas.CanvasPathDrawingStyles_set_lineDashOffset */
+static JSValue wjg_CanvasRenderingContext2D_set_lineDashOffset(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineDashOffset(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.lang -> canvas.CanvasTextDrawingStyles_lang */
+static JSValue wjg_CanvasRenderingContext2D_get_lang(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_lang(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.lang"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.lang = v -> canvas.CanvasTextDrawingStyles_set_lang */
+static JSValue wjg_CanvasRenderingContext2D_set_lang(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_lang(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.font -> canvas.CanvasTextDrawingStyles_font */
+static JSValue wjg_CanvasRenderingContext2D_get_font(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_font(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.font"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.font = v -> canvas.CanvasTextDrawingStyles_set_font */
+static JSValue wjg_CanvasRenderingContext2D_set_font(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_font(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.textAlign -> canvas.CanvasTextDrawingStyles_textAlign */
+static JSValue wjg_CanvasRenderingContext2D_get_textAlign(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textAlign(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.textAlign"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.textAlign = v -> canvas.CanvasTextDrawingStyles_set_textAlign */
+static JSValue wjg_CanvasRenderingContext2D_set_textAlign(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textAlign(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.textBaseline -> canvas.CanvasTextDrawingStyles_textBaseline */
+static JSValue wjg_CanvasRenderingContext2D_get_textBaseline(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textBaseline(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.textBaseline"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.textBaseline = v -> canvas.CanvasTextDrawingStyles_set_textBaseline */
+static JSValue wjg_CanvasRenderingContext2D_set_textBaseline(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textBaseline(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.direction -> canvas.CanvasTextDrawingStyles_direction */
+static JSValue wjg_CanvasRenderingContext2D_get_direction(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_direction(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.direction"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.direction = v -> canvas.CanvasTextDrawingStyles_set_direction */
+static JSValue wjg_CanvasRenderingContext2D_set_direction(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_direction(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.letterSpacing -> canvas.CanvasTextDrawingStyles_letterSpacing */
+static JSValue wjg_CanvasRenderingContext2D_get_letterSpacing(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_letterSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.letterSpacing"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.letterSpacing = v -> canvas.CanvasTextDrawingStyles_set_letterSpacing */
+static JSValue wjg_CanvasRenderingContext2D_set_letterSpacing(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_letterSpacing(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.fontKerning -> canvas.CanvasTextDrawingStyles_fontKerning */
+static JSValue wjg_CanvasRenderingContext2D_get_fontKerning(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontKerning(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.fontKerning"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.fontKerning = v -> canvas.CanvasTextDrawingStyles_set_fontKerning */
+static JSValue wjg_CanvasRenderingContext2D_set_fontKerning(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontKerning(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.fontStretch -> canvas.CanvasTextDrawingStyles_fontStretch */
+static JSValue wjg_CanvasRenderingContext2D_get_fontStretch(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontStretch(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.fontStretch"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.fontStretch = v -> canvas.CanvasTextDrawingStyles_set_fontStretch */
+static JSValue wjg_CanvasRenderingContext2D_set_fontStretch(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontStretch(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.fontVariantCaps -> canvas.CanvasTextDrawingStyles_fontVariantCaps */
+static JSValue wjg_CanvasRenderingContext2D_get_fontVariantCaps(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontVariantCaps(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.fontVariantCaps"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.fontVariantCaps = v -> canvas.CanvasTextDrawingStyles_set_fontVariantCaps */
+static JSValue wjg_CanvasRenderingContext2D_set_fontVariantCaps(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontVariantCaps(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.textRendering -> canvas.CanvasTextDrawingStyles_textRendering */
+static JSValue wjg_CanvasRenderingContext2D_get_textRendering(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textRendering(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.textRendering"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.textRendering = v -> canvas.CanvasTextDrawingStyles_set_textRendering */
+static JSValue wjg_CanvasRenderingContext2D_set_textRendering(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textRendering(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.wordSpacing -> canvas.CanvasTextDrawingStyles_wordSpacing */
+static JSValue wjg_CanvasRenderingContext2D_get_wordSpacing(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_wordSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "CanvasRenderingContext2D.wordSpacing"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* CanvasRenderingContext2D.wordSpacing = v -> canvas.CanvasTextDrawingStyles_set_wordSpacing */
+static JSValue wjg_CanvasRenderingContext2D_set_wordSpacing(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_wordSpacing(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.closePath() -> canvas.CanvasPath_closePath */
+static JSValue wjg_CanvasRenderingContext2D_closePath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasPath_closePath(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.moveTo() -> canvas.CanvasPath_moveTo */
+static JSValue wjg_CanvasRenderingContext2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.moveTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_moveTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.lineTo() -> canvas.CanvasPath_lineTo */
+static JSValue wjg_CanvasRenderingContext2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.lineTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_lineTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.quadraticCurveTo() -> canvas.CanvasPath_quadraticCurveTo */
+static JSValue wjg_CanvasRenderingContext2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.quadraticCurveTo", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_quadraticCurveTo(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.bezierCurveTo() -> canvas.CanvasPath_bezierCurveTo */
+static JSValue wjg_CanvasRenderingContext2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.bezierCurveTo", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_bezierCurveTo(self->handle, a0, a1, a2, a3, a4, a5);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.arcTo() -> canvas.CanvasPath_arcTo */
+static JSValue wjg_CanvasRenderingContext2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.arcTo", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_CanvasPath_arcTo(self->handle, a0, a1, a2, a3, a4);
+    if (st < 0) { return wj_throw_status(ctx, st, "CanvasRenderingContext2D.arcTo"); }
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.rect() -> canvas.CanvasPath_rect */
+static JSValue wjg_CanvasRenderingContext2D_rect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.rect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_rect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.arc() -> canvas.CanvasPath_arc */
+static JSValue wjg_CanvasRenderingContext2D_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.arc", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    bool a5 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 5))) { a5 = JS_ToBool(ctx, wj_arg(argc, argv, 5)); }
+    int32_t st = wr_CanvasPath_arc(self->handle, a0, a1, a2, a3, a4, a5 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "CanvasRenderingContext2D.arc"); }
+    return JS_UNDEFINED;
+}
+
+/* CanvasRenderingContext2D.ellipse() -> canvas.CanvasPath_ellipse */
+static JSValue wjg_CanvasRenderingContext2D_ellipse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 81);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 7) { return wj_throw_arity(ctx, "CanvasRenderingContext2D.ellipse", 7, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    double a6 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 6), &a6, false)) { return JS_EXCEPTION; }
+    bool a7 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 7))) { a7 = JS_ToBool(ctx, wj_arg(argc, argv, 7)); }
+    int32_t st = wr_CanvasPath_ellipse(self->handle, a0, a1, a2, a3, a4, a5, a6, a7 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "CanvasRenderingContext2D.ellipse"); }
+    return JS_UNDEFINED;
+}
+
 /* Crypto.randomUUID() -> crypto.Crypto_randomUUID */
 static JSValue wjg_Crypto_randomUUID(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -4428,6 +5501,50 @@ static JSValue wjg_HTMLButtonElement_setCustomValidity(JSContext *ctx, JSValueCo
     return JS_UNDEFINED;
 }
 
+/* HTMLCanvasElement.width -> canvas.HTMLCanvasElement_width */
+static JSValue wjg_HTMLCanvasElement_get_width(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 245);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLCanvasElement_width(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* HTMLCanvasElement.width = v -> canvas.HTMLCanvasElement_set_width */
+static JSValue wjg_HTMLCanvasElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 245);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    wr_HTMLCanvasElement_set_width(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* HTMLCanvasElement.height -> canvas.HTMLCanvasElement_height */
+static JSValue wjg_HTMLCanvasElement_get_height(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 245);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_HTMLCanvasElement_height(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* HTMLCanvasElement.height = v -> canvas.HTMLCanvasElement_set_height */
+static JSValue wjg_HTMLCanvasElement_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 245);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t a0 = 0;
+    if (!wj_to_uint32(ctx, argv[0], &a0, 32, 0)) { return JS_EXCEPTION; }
+    wr_HTMLCanvasElement_set_height(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_HTMLDListElement_get_compact(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 246, "compact", WJ_REFLECT_BOOL, 0, 0, 0, 0); }
 static JSValue wjg_HTMLDListElement_set_compact(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_reflect_set(ctx, this_val, 246, "compact", WJ_REFLECT_BOOL, v, 0, 0, 0); }
 static JSValue wjg_HTMLDataElement_get_value(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 247, "value", WJ_REFLECT_STRING, 0, 0, 0, 0); }
@@ -7396,6 +8513,63 @@ static JSValue wjg_Notification_get_onerror(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_Notification_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 347, "error", v, 0); }
 static JSValue wjg_Notification_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 347, "close"); }
 static JSValue wjg_Notification_set_onclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 347, "close", v, 0); }
+/* OffscreenCanvas.width -> canvas.OffscreenCanvas_width */
+static JSValue wjg_OffscreenCanvas_get_width(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 348);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_OffscreenCanvas_width(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvas.width = v -> canvas.OffscreenCanvas_set_width */
+static JSValue wjg_OffscreenCanvas_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 348);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_uint64(ctx, argv[0], &a0, WJ_ENFORCE_RANGE)) { return JS_EXCEPTION; }
+    int32_t st = wr_OffscreenCanvas_set_width(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvas.width"); }
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvas.height -> canvas.OffscreenCanvas_height */
+static JSValue wjg_OffscreenCanvas_get_height(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 348);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_OffscreenCanvas_height(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvas.height = v -> canvas.OffscreenCanvas_set_height */
+static JSValue wjg_OffscreenCanvas_set_height(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 348);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t a0 = 0;
+    if (!wj_to_uint64(ctx, argv[0], &a0, WJ_ENFORCE_RANGE)) { return JS_EXCEPTION; }
+    int32_t st = wr_OffscreenCanvas_set_height(self->handle, a0);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvas.height"); }
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvas.transferToImageBitmap() -> canvas.OffscreenCanvas_transferToImageBitmap */
+static JSValue wjg_OffscreenCanvas_transferToImageBitmap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 348);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_OffscreenCanvas_transferToImageBitmap(self->handle, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvas.transferToImageBitmap"); }
+    return wj_wrap_owned(ctx, r, 411, JS_UNDEFINED);
+}
+
 static JSValue wjg_OffscreenCanvas_get_oncontextlost(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 348, "contextlost"); }
 static JSValue wjg_OffscreenCanvas_set_oncontextlost(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 348, "contextlost", v, 0); }
 static JSValue wjg_OffscreenCanvas_get_oncontextrestored(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 348, "contextrestored"); }
@@ -8035,6 +9209,1216 @@ static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, J
     return JS_UNDEFINED;
 }
 
+/* ImageBitmap.width -> canvas.ImageBitmap_width */
+static JSValue wjg_ImageBitmap_get_width(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 411);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_ImageBitmap_width(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* ImageBitmap.height -> canvas.ImageBitmap_height */
+static JSValue wjg_ImageBitmap_get_height(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 411);
+    if (!self) { return JS_EXCEPTION; }
+    uint32_t r = wr_ImageBitmap_height(self->handle);
+    return JS_NewUint32(ctx, r);
+}
+
+/* ImageBitmap.close() -> canvas.ImageBitmap_close */
+static JSValue wjg_ImageBitmap_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 411);
+    if (!self) { return JS_EXCEPTION; }
+    wr_ImageBitmap_close(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.canvas -> canvas.OffscreenCanvasRenderingContext2D_canvas */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_canvas(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_OffscreenCanvasRenderingContext2D_canvas(self->handle);
+    return wj_wrap_host(ctx, r, 348);
+}
+
+/* OffscreenCanvasRenderingContext2D.save() -> canvas.CanvasState_save */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_save(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_save(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.restore() -> canvas.CanvasState_restore */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_restore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_restore(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.reset() -> canvas.CanvasState_reset */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_reset(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasState_reset(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.isContextLost() -> canvas.CanvasState_isContextLost */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_isContextLost(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_CanvasState_isContextLost(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* OffscreenCanvasRenderingContext2D.scale() -> canvas.CanvasTransform_scale */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.scale", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_scale(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.rotate() -> canvas.CanvasTransform_rotate */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_rotate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.rotate", 1, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_rotate(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.translate() -> canvas.CanvasTransform_translate */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_translate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.translate", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_translate(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.transform() -> canvas.CanvasTransform_transform */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_transform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.transform", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    wr_CanvasTransform_transform(self->handle, a0, a1, a2, a3, a4, a5);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.resetTransform() -> canvas.CanvasTransform_resetTransform */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_resetTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasTransform_resetTransform(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.globalAlpha -> canvas.CanvasCompositing_globalAlpha */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_globalAlpha(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasCompositing_globalAlpha(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.globalAlpha = v -> canvas.CanvasCompositing_set_globalAlpha */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalAlpha(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasCompositing_set_globalAlpha(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.globalCompositeOperation -> canvas.CanvasCompositing_globalCompositeOperation */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_globalCompositeOperation(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasCompositing_globalCompositeOperation(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.globalCompositeOperation"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.globalCompositeOperation = v -> canvas.CanvasCompositing_set_globalCompositeOperation */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalCompositeOperation(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasCompositing_set_globalCompositeOperation(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.imageSmoothingEnabled -> canvas.CanvasImageSmoothing_imageSmoothingEnabled */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingEnabled(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t r = wr_CanvasImageSmoothing_imageSmoothingEnabled(self->handle);
+    return JS_NewBool(ctx, r != 0);
+}
+
+/* OffscreenCanvasRenderingContext2D.imageSmoothingEnabled = v -> canvas.CanvasImageSmoothing_set_imageSmoothingEnabled */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingEnabled(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    bool a0 = false;
+    if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
+    wr_CanvasImageSmoothing_set_imageSmoothingEnabled(self->handle, a0 ? 1 : 0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.imageSmoothingQuality -> canvas.CanvasImageSmoothing_imageSmoothingQuality */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingQuality(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasImageSmoothing_imageSmoothingQuality(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.imageSmoothingQuality"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.imageSmoothingQuality = v -> canvas.CanvasImageSmoothing_set_imageSmoothingQuality */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingQuality(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasImageSmoothing_set_imageSmoothingQuality(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.createLinearGradient() -> canvas.CanvasFillStrokeStyles_createLinearGradient */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_createLinearGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createLinearGradient", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, true)) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasFillStrokeStyles_createLinearGradient(self->handle, a0, a1, a2, a3);
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* OffscreenCanvasRenderingContext2D.createRadialGradient() -> canvas.CanvasFillStrokeStyles_createRadialGradient */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_createRadialGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createRadialGradient", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, true)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, true)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, true)) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_CanvasFillStrokeStyles_createRadialGradient(self->handle, a0, a1, a2, a3, a4, a5, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvasRenderingContext2D.createRadialGradient"); }
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* OffscreenCanvasRenderingContext2D.createConicGradient() -> canvas.CanvasFillStrokeStyles_createConicGradient */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_createConicGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createConicGradient", 3, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, true)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, true)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, true)) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasFillStrokeStyles_createConicGradient(self->handle, a0, a1, a2);
+    return wj_wrap_owned(ctx, r, 79, JS_UNDEFINED);
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowOffsetX -> canvas.CanvasShadowStyles_shadowOffsetX */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetX(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowOffsetX(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowOffsetX = v -> canvas.CanvasShadowStyles_set_shadowOffsetX */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetX(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowOffsetX(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowOffsetY -> canvas.CanvasShadowStyles_shadowOffsetY */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetY(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowOffsetY(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowOffsetY = v -> canvas.CanvasShadowStyles_set_shadowOffsetY */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetY(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowOffsetY(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowBlur -> canvas.CanvasShadowStyles_shadowBlur */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowBlur(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasShadowStyles_shadowBlur(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowBlur = v -> canvas.CanvasShadowStyles_set_shadowBlur */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowBlur(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowBlur(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowColor -> canvas.CanvasShadowStyles_shadowColor */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowColor(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasShadowStyles_shadowColor(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.shadowColor"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.shadowColor = v -> canvas.CanvasShadowStyles_set_shadowColor */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowColor(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasShadowStyles_set_shadowColor(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.filter -> canvas.CanvasFilters_filter */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_filter(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasFilters_filter(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.filter"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.filter = v -> canvas.CanvasFilters_set_filter */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_filter(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasFilters_set_filter(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.clearRect() -> canvas.CanvasRect_clearRect */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_clearRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.clearRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_clearRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.fillRect() -> canvas.CanvasRect_fillRect */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_fillRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.fillRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_fillRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.strokeRect() -> canvas.CanvasRect_strokeRect */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_strokeRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.strokeRect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasRect_strokeRect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.beginPath() -> canvas.CanvasDrawPath_beginPath */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_beginPath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasDrawPath_beginPath(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.measureText() -> canvas.CanvasText_measureText */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.measureText", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    uint64_t r = wr_CanvasText_measureText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return wj_wrap_owned(ctx, r, 526, JS_UNDEFINED);
+}
+
+/* OffscreenCanvasRenderingContext2D.lineWidth -> canvas.CanvasPathDrawingStyles_lineWidth */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineWidth(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_lineWidth(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.lineWidth = v -> canvas.CanvasPathDrawingStyles_set_lineWidth */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineWidth(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineWidth(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.lineCap -> canvas.CanvasPathDrawingStyles_lineCap */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineCap(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineCap(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.lineCap"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.lineCap = v -> canvas.CanvasPathDrawingStyles_set_lineCap */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineCap(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineCap(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.lineJoin -> canvas.CanvasPathDrawingStyles_lineJoin */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineJoin(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineJoin(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.lineJoin"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.lineJoin = v -> canvas.CanvasPathDrawingStyles_set_lineJoin */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineJoin(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineJoin(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.miterLimit -> canvas.CanvasPathDrawingStyles_miterLimit */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_miterLimit(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_miterLimit(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.miterLimit = v -> canvas.CanvasPathDrawingStyles_set_miterLimit */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_miterLimit(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_miterLimit(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.lineDashOffset -> canvas.CanvasPathDrawingStyles_lineDashOffset */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineDashOffset(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_CanvasPathDrawingStyles_lineDashOffset(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* OffscreenCanvasRenderingContext2D.lineDashOffset = v -> canvas.CanvasPathDrawingStyles_set_lineDashOffset */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineDashOffset(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    double a0 = 0;
+    if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
+    wr_CanvasPathDrawingStyles_set_lineDashOffset(self->handle, a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.lang -> canvas.CanvasTextDrawingStyles_lang */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lang(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_lang(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.lang"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.lang = v -> canvas.CanvasTextDrawingStyles_set_lang */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lang(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_lang(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.font -> canvas.CanvasTextDrawingStyles_font */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_font(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_font(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.font"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.font = v -> canvas.CanvasTextDrawingStyles_set_font */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_font(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_font(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.textAlign -> canvas.CanvasTextDrawingStyles_textAlign */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textAlign(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textAlign(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.textAlign"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.textAlign = v -> canvas.CanvasTextDrawingStyles_set_textAlign */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textAlign(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textAlign(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.textBaseline -> canvas.CanvasTextDrawingStyles_textBaseline */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textBaseline(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textBaseline(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.textBaseline"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.textBaseline = v -> canvas.CanvasTextDrawingStyles_set_textBaseline */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textBaseline(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textBaseline(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.direction -> canvas.CanvasTextDrawingStyles_direction */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_direction(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_direction(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.direction"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.direction = v -> canvas.CanvasTextDrawingStyles_set_direction */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_direction(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_direction(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.letterSpacing -> canvas.CanvasTextDrawingStyles_letterSpacing */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_letterSpacing(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_letterSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.letterSpacing"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.letterSpacing = v -> canvas.CanvasTextDrawingStyles_set_letterSpacing */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_letterSpacing(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_letterSpacing(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.fontKerning -> canvas.CanvasTextDrawingStyles_fontKerning */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontKerning(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontKerning(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.fontKerning"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.fontKerning = v -> canvas.CanvasTextDrawingStyles_set_fontKerning */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontKerning(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontKerning(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.fontStretch -> canvas.CanvasTextDrawingStyles_fontStretch */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontStretch(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontStretch(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.fontStretch"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.fontStretch = v -> canvas.CanvasTextDrawingStyles_set_fontStretch */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontStretch(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontStretch(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.fontVariantCaps -> canvas.CanvasTextDrawingStyles_fontVariantCaps */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontVariantCaps(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontVariantCaps(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.fontVariantCaps"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.fontVariantCaps = v -> canvas.CanvasTextDrawingStyles_set_fontVariantCaps */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontVariantCaps(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_fontVariantCaps(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.textRendering -> canvas.CanvasTextDrawingStyles_textRendering */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textRendering(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textRendering(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.textRendering"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.textRendering = v -> canvas.CanvasTextDrawingStyles_set_textRendering */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textRendering(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_textRendering(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.wordSpacing -> canvas.CanvasTextDrawingStyles_wordSpacing */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_get_wordSpacing(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_wordSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "OffscreenCanvasRenderingContext2D.wordSpacing"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* OffscreenCanvasRenderingContext2D.wordSpacing = v -> canvas.CanvasTextDrawingStyles_set_wordSpacing */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_set_wordSpacing(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_CanvasTextDrawingStyles_set_wordSpacing(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.closePath() -> canvas.CanvasPath_closePath */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_closePath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasPath_closePath(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.moveTo() -> canvas.CanvasPath_moveTo */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.moveTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_moveTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.lineTo() -> canvas.CanvasPath_lineTo */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.lineTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_lineTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.quadraticCurveTo() -> canvas.CanvasPath_quadraticCurveTo */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.quadraticCurveTo", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_quadraticCurveTo(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.bezierCurveTo() -> canvas.CanvasPath_bezierCurveTo */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.bezierCurveTo", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_bezierCurveTo(self->handle, a0, a1, a2, a3, a4, a5);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.arcTo() -> canvas.CanvasPath_arcTo */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.arcTo", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_CanvasPath_arcTo(self->handle, a0, a1, a2, a3, a4);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvasRenderingContext2D.arcTo"); }
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.rect() -> canvas.CanvasPath_rect */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_rect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.rect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_rect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.arc() -> canvas.CanvasPath_arc */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.arc", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    bool a5 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 5))) { a5 = JS_ToBool(ctx, wj_arg(argc, argv, 5)); }
+    int32_t st = wr_CanvasPath_arc(self->handle, a0, a1, a2, a3, a4, a5 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvasRenderingContext2D.arc"); }
+    return JS_UNDEFINED;
+}
+
+/* OffscreenCanvasRenderingContext2D.ellipse() -> canvas.CanvasPath_ellipse */
+static JSValue wjg_OffscreenCanvasRenderingContext2D_ellipse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 445);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 7) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.ellipse", 7, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    double a6 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 6), &a6, false)) { return JS_EXCEPTION; }
+    bool a7 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 7))) { a7 = JS_ToBool(ctx, wj_arg(argc, argv, 7)); }
+    int32_t st = wr_CanvasPath_ellipse(self->handle, a0, a1, a2, a3, a4, a5, a6, a7 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvasRenderingContext2D.ellipse"); }
+    return JS_UNDEFINED;
+}
+
+/* Path2D.closePath() -> canvas.CanvasPath_closePath */
+static JSValue wjg_Path2D_closePath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    wr_CanvasPath_closePath(self->handle);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.moveTo() -> canvas.CanvasPath_moveTo */
+static JSValue wjg_Path2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Path2D.moveTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_moveTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.lineTo() -> canvas.CanvasPath_lineTo */
+static JSValue wjg_Path2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "Path2D.lineTo", 2, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_lineTo(self->handle, a0, a1);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.quadraticCurveTo() -> canvas.CanvasPath_quadraticCurveTo */
+static JSValue wjg_Path2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "Path2D.quadraticCurveTo", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_quadraticCurveTo(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.bezierCurveTo() -> canvas.CanvasPath_bezierCurveTo */
+static JSValue wjg_Path2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 6) { return wj_throw_arity(ctx, "Path2D.bezierCurveTo", 6, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_bezierCurveTo(self->handle, a0, a1, a2, a3, a4, a5);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.arcTo() -> canvas.CanvasPath_arcTo */
+static JSValue wjg_Path2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "Path2D.arcTo", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    int32_t st = wr_CanvasPath_arcTo(self->handle, a0, a1, a2, a3, a4);
+    if (st < 0) { return wj_throw_status(ctx, st, "Path2D.arcTo"); }
+    return JS_UNDEFINED;
+}
+
+/* Path2D.rect() -> canvas.CanvasPath_rect */
+static JSValue wjg_Path2D_rect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 4) { return wj_throw_arity(ctx, "Path2D.rect", 4, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    wr_CanvasPath_rect(self->handle, a0, a1, a2, a3);
+    return JS_UNDEFINED;
+}
+
+/* Path2D.arc() -> canvas.CanvasPath_arc */
+static JSValue wjg_Path2D_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 5) { return wj_throw_arity(ctx, "Path2D.arc", 5, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    bool a5 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 5))) { a5 = JS_ToBool(ctx, wj_arg(argc, argv, 5)); }
+    int32_t st = wr_CanvasPath_arc(self->handle, a0, a1, a2, a3, a4, a5 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Path2D.arc"); }
+    return JS_UNDEFINED;
+}
+
+/* Path2D.ellipse() -> canvas.CanvasPath_ellipse */
+static JSValue wjg_Path2D_ellipse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 447);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 7) { return wj_throw_arity(ctx, "Path2D.ellipse", 7, argc); }
+    double a0 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 0), &a0, false)) { return JS_EXCEPTION; }
+    double a1 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 1), &a1, false)) { return JS_EXCEPTION; }
+    double a2 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 2), &a2, false)) { return JS_EXCEPTION; }
+    double a3 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 3), &a3, false)) { return JS_EXCEPTION; }
+    double a4 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 4), &a4, false)) { return JS_EXCEPTION; }
+    double a5 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 5), &a5, false)) { return JS_EXCEPTION; }
+    double a6 = 0;
+    if (!wj_to_double(ctx, wj_arg(argc, argv, 6), &a6, false)) { return JS_EXCEPTION; }
+    bool a7 = false;
+    if (false || !JS_IsUndefined(wj_arg(argc, argv, 7))) { a7 = JS_ToBool(ctx, wj_arg(argc, argv, 7)); }
+    int32_t st = wr_CanvasPath_ellipse(self->handle, a0, a1, a2, a3, a4, a5, a6, a7 ? 1 : 0);
+    if (st < 0) { return wj_throw_status(ctx, st, "Path2D.ellipse"); }
+    return JS_UNDEFINED;
+}
+
 static JSValue wjg_StyleSheet_set_media(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_put_forwards(ctx, this_val, "media", "mediaText", v); }
 /* TextDecoder.encoding -> encoding.TextDecoder_encoding */
 static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_val)
@@ -8045,6 +10429,114 @@ static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_va
     WJ_FETCH_STRING(n, wr_TextDecoder_encoding(self->handle, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "TextDecoder.encoding"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* TextMetrics.width -> canvas.TextMetrics_width */
+static JSValue wjg_TextMetrics_get_width(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_width(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.actualBoundingBoxLeft -> canvas.TextMetrics_actualBoundingBoxLeft */
+static JSValue wjg_TextMetrics_get_actualBoundingBoxLeft(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_actualBoundingBoxLeft(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.actualBoundingBoxRight -> canvas.TextMetrics_actualBoundingBoxRight */
+static JSValue wjg_TextMetrics_get_actualBoundingBoxRight(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_actualBoundingBoxRight(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.fontBoundingBoxAscent -> canvas.TextMetrics_fontBoundingBoxAscent */
+static JSValue wjg_TextMetrics_get_fontBoundingBoxAscent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_fontBoundingBoxAscent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.fontBoundingBoxDescent -> canvas.TextMetrics_fontBoundingBoxDescent */
+static JSValue wjg_TextMetrics_get_fontBoundingBoxDescent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_fontBoundingBoxDescent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.actualBoundingBoxAscent -> canvas.TextMetrics_actualBoundingBoxAscent */
+static JSValue wjg_TextMetrics_get_actualBoundingBoxAscent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_actualBoundingBoxAscent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.actualBoundingBoxDescent -> canvas.TextMetrics_actualBoundingBoxDescent */
+static JSValue wjg_TextMetrics_get_actualBoundingBoxDescent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_actualBoundingBoxDescent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.emHeightAscent -> canvas.TextMetrics_emHeightAscent */
+static JSValue wjg_TextMetrics_get_emHeightAscent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_emHeightAscent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.emHeightDescent -> canvas.TextMetrics_emHeightDescent */
+static JSValue wjg_TextMetrics_get_emHeightDescent(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_emHeightDescent(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.hangingBaseline -> canvas.TextMetrics_hangingBaseline */
+static JSValue wjg_TextMetrics_get_hangingBaseline(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_hangingBaseline(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.alphabeticBaseline -> canvas.TextMetrics_alphabeticBaseline */
+static JSValue wjg_TextMetrics_get_alphabeticBaseline(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_alphabeticBaseline(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
+}
+
+/* TextMetrics.ideographicBaseline -> canvas.TextMetrics_ideographicBaseline */
+static JSValue wjg_TextMetrics_get_ideographicBaseline(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 526);
+    if (!self) { return JS_EXCEPTION; }
+    double r = wr_TextMetrics_ideographicBaseline(self->handle);
+    return JS_NewFloat64(ctx, (double)r);
 }
 
 /* URLSearchParams.size -> url.URLSearchParams_size */
@@ -8662,85 +11154,85 @@ static const wj_member wj_m_CacheStorage[] = {
     { "keys", WJ_M_METHOD, WJ_F_SECURE, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CanvasGradient[] = {
-    { "addColorStop", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
+    { "addColorStop", WJ_M_METHOD, 0, 2, wjg_CanvasGradient_addColorStop, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CanvasPattern[] = {
-    { "setTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "setTransform", WJ_M_METHOD, 0, 0, wjr_CanvasPattern_setTransform, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CanvasRenderingContext2D[] = {
-    { "canvas", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getContextAttributes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "save", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "restore", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "reset", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isContextLost", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scale", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "rotate", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "translate", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "transform", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "getTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "resetTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "globalAlpha", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "globalCompositeOperation", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "imageSmoothingEnabled", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "imageSmoothingQuality", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "strokeStyle", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fillStyle", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "createLinearGradient", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "createRadialGradient", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "createConicGradient", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "createPattern", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "shadowOffsetX", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowOffsetY", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowBlur", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "filter", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "clearRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "fillRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "strokeRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "beginPath", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "fill", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "stroke", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "clip", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isPointInPath", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "isPointInStroke", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "drawFocusIfNeeded", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "fillText", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "strokeText", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "measureText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "drawImage", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "createImageData", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getImageData", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "putImageData", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "lineWidth", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lineCap", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lineJoin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "miterLimit", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "setLineDash", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getLineDash", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "lineDashOffset", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lang", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "font", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textAlign", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textBaseline", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "direction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "letterSpacing", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontKerning", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontStretch", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontVariantCaps", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textRendering", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "wordSpacing", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "closePath", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "lineTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "bezierCurveTo", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "arcTo", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "rect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "roundRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "arc", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "ellipse", WJ_M_METHOD, 0, 7, NULL, NULL, NULL, 0 },
+    { "canvas", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_canvas, NULL, 0 },
+    { "getContextAttributes", WJ_M_METHOD, 0, 0, wjr_CanvasSettings_getContextAttributes, NULL, NULL, 0 },
+    { "save", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_save, NULL, NULL, 0 },
+    { "restore", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_restore, NULL, NULL, 0 },
+    { "reset", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_reset, NULL, NULL, 0 },
+    { "isContextLost", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_isContextLost, NULL, NULL, 0 },
+    { "scale", WJ_M_METHOD, 0, 2, wjg_CanvasRenderingContext2D_scale, NULL, NULL, 0 },
+    { "rotate", WJ_M_METHOD, 0, 1, wjg_CanvasRenderingContext2D_rotate, NULL, NULL, 0 },
+    { "translate", WJ_M_METHOD, 0, 2, wjg_CanvasRenderingContext2D_translate, NULL, NULL, 0 },
+    { "transform", WJ_M_METHOD, 0, 6, wjg_CanvasRenderingContext2D_transform, NULL, NULL, 0 },
+    { "getTransform", WJ_M_METHOD, 0, 0, wjr_CanvasTransform_getTransform, NULL, NULL, 0 },
+    { "setTransform", WJ_M_METHOD, 0, 0, wjr_CanvasTransform_setTransform, NULL, NULL, 0 },
+    { "resetTransform", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_resetTransform, NULL, NULL, 0 },
+    { "globalAlpha", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_globalAlpha, wjg_CanvasRenderingContext2D_set_globalAlpha, 0 },
+    { "globalCompositeOperation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_globalCompositeOperation, wjg_CanvasRenderingContext2D_set_globalCompositeOperation, 0 },
+    { "imageSmoothingEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_imageSmoothingEnabled, wjg_CanvasRenderingContext2D_set_imageSmoothingEnabled, 0 },
+    { "imageSmoothingQuality", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_imageSmoothingQuality, wjg_CanvasRenderingContext2D_set_imageSmoothingQuality, 0 },
+    { "strokeStyle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CanvasFillStrokeStyles_get_strokeStyle, wjr_CanvasFillStrokeStyles_set_strokeStyle, 0 },
+    { "fillStyle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CanvasFillStrokeStyles_get_fillStyle, wjr_CanvasFillStrokeStyles_set_fillStyle, 0 },
+    { "createLinearGradient", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_createLinearGradient, NULL, NULL, 0 },
+    { "createRadialGradient", WJ_M_METHOD, 0, 6, wjg_CanvasRenderingContext2D_createRadialGradient, NULL, NULL, 0 },
+    { "createConicGradient", WJ_M_METHOD, 0, 3, wjg_CanvasRenderingContext2D_createConicGradient, NULL, NULL, 0 },
+    { "createPattern", WJ_M_METHOD, 0, 2, wjr_CanvasFillStrokeStyles_createPattern, NULL, NULL, 0 },
+    { "shadowOffsetX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_shadowOffsetX, wjg_CanvasRenderingContext2D_set_shadowOffsetX, 0 },
+    { "shadowOffsetY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_shadowOffsetY, wjg_CanvasRenderingContext2D_set_shadowOffsetY, 0 },
+    { "shadowBlur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_shadowBlur, wjg_CanvasRenderingContext2D_set_shadowBlur, 0 },
+    { "shadowColor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_shadowColor, wjg_CanvasRenderingContext2D_set_shadowColor, 0 },
+    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_filter, wjg_CanvasRenderingContext2D_set_filter, 0 },
+    { "clearRect", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_clearRect, NULL, NULL, 0 },
+    { "fillRect", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_fillRect, NULL, NULL, 0 },
+    { "strokeRect", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_strokeRect, NULL, NULL, 0 },
+    { "beginPath", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_beginPath, NULL, NULL, 0 },
+    { "fill", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_fill, NULL, NULL, 0 },
+    { "stroke", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_stroke, NULL, NULL, 0 },
+    { "clip", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_clip, NULL, NULL, 0 },
+    { "isPointInPath", WJ_M_METHOD, 0, 2, wjr_CanvasDrawPath_isPointInPath, NULL, NULL, 0 },
+    { "isPointInStroke", WJ_M_METHOD, 0, 2, wjr_CanvasDrawPath_isPointInStroke, NULL, NULL, 0 },
+    { "drawFocusIfNeeded", WJ_M_METHOD, 0, 1, wjr_CanvasUserInterface_drawFocusIfNeeded, NULL, NULL, 0 },
+    { "fillText", WJ_M_METHOD, 0, 3, wjr_CanvasText_fillText, NULL, NULL, 0 },
+    { "strokeText", WJ_M_METHOD, 0, 3, wjr_CanvasText_strokeText, NULL, NULL, 0 },
+    { "measureText", WJ_M_METHOD, 0, 1, wjg_CanvasRenderingContext2D_measureText, NULL, NULL, 0 },
+    { "drawImage", WJ_M_METHOD, 0, 3, wjr_CanvasDrawImage_drawImage, NULL, NULL, 0 },
+    { "createImageData", WJ_M_METHOD, 0, 1, wjr_CanvasImageData_createImageData, NULL, NULL, 0 },
+    { "getImageData", WJ_M_METHOD, 0, 4, wjr_CanvasImageData_getImageData, NULL, NULL, 0 },
+    { "putImageData", WJ_M_METHOD, 0, 3, wjr_CanvasImageData_putImageData, NULL, NULL, 0 },
+    { "lineWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_lineWidth, wjg_CanvasRenderingContext2D_set_lineWidth, 0 },
+    { "lineCap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_lineCap, wjg_CanvasRenderingContext2D_set_lineCap, 0 },
+    { "lineJoin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_lineJoin, wjg_CanvasRenderingContext2D_set_lineJoin, 0 },
+    { "miterLimit", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_miterLimit, wjg_CanvasRenderingContext2D_set_miterLimit, 0 },
+    { "setLineDash", WJ_M_METHOD, 0, 1, wjr_CanvasPathDrawingStyles_setLineDash, NULL, NULL, 0 },
+    { "getLineDash", WJ_M_METHOD, 0, 0, wjr_CanvasPathDrawingStyles_getLineDash, NULL, NULL, 0 },
+    { "lineDashOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_lineDashOffset, wjg_CanvasRenderingContext2D_set_lineDashOffset, 0 },
+    { "lang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_lang, wjg_CanvasRenderingContext2D_set_lang, 0 },
+    { "font", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_font, wjg_CanvasRenderingContext2D_set_font, 0 },
+    { "textAlign", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_textAlign, wjg_CanvasRenderingContext2D_set_textAlign, 0 },
+    { "textBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_textBaseline, wjg_CanvasRenderingContext2D_set_textBaseline, 0 },
+    { "direction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_direction, wjg_CanvasRenderingContext2D_set_direction, 0 },
+    { "letterSpacing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_letterSpacing, wjg_CanvasRenderingContext2D_set_letterSpacing, 0 },
+    { "fontKerning", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_fontKerning, wjg_CanvasRenderingContext2D_set_fontKerning, 0 },
+    { "fontStretch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_fontStretch, wjg_CanvasRenderingContext2D_set_fontStretch, 0 },
+    { "fontVariantCaps", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_fontVariantCaps, wjg_CanvasRenderingContext2D_set_fontVariantCaps, 0 },
+    { "textRendering", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_textRendering, wjg_CanvasRenderingContext2D_set_textRendering, 0 },
+    { "wordSpacing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_CanvasRenderingContext2D_get_wordSpacing, wjg_CanvasRenderingContext2D_set_wordSpacing, 0 },
+    { "closePath", WJ_M_METHOD, 0, 0, wjg_CanvasRenderingContext2D_closePath, NULL, NULL, 0 },
+    { "moveTo", WJ_M_METHOD, 0, 2, wjg_CanvasRenderingContext2D_moveTo, NULL, NULL, 0 },
+    { "lineTo", WJ_M_METHOD, 0, 2, wjg_CanvasRenderingContext2D_lineTo, NULL, NULL, 0 },
+    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_quadraticCurveTo, NULL, NULL, 0 },
+    { "bezierCurveTo", WJ_M_METHOD, 0, 6, wjg_CanvasRenderingContext2D_bezierCurveTo, NULL, NULL, 0 },
+    { "arcTo", WJ_M_METHOD, 0, 5, wjg_CanvasRenderingContext2D_arcTo, NULL, NULL, 0 },
+    { "rect", WJ_M_METHOD, 0, 4, wjg_CanvasRenderingContext2D_rect, NULL, NULL, 0 },
+    { "roundRect", WJ_M_METHOD, 0, 4, wjr_CanvasPath_roundRect, NULL, NULL, 0 },
+    { "arc", WJ_M_METHOD, 0, 5, wjg_CanvasRenderingContext2D_arc, NULL, NULL, 0 },
+    { "ellipse", WJ_M_METHOD, 0, 7, wjg_CanvasRenderingContext2D_ellipse, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CaretPosition[] = {
     { "offsetNode", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -10681,11 +13173,11 @@ static const wj_member wj_m_HTMLButtonElement[] = {
     { "popoverTargetAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLCanvasElement[] = {
-    { "width", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "getContext", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "toDataURL", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toBlob", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLCanvasElement_get_width, wjg_HTMLCanvasElement_set_width, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLCanvasElement_get_height, wjg_HTMLCanvasElement_set_height, 0 },
+    { "getContext", WJ_M_METHOD, 0, 1, wjr_HTMLCanvasElement_getContext, NULL, NULL, 0 },
+    { "toDataURL", WJ_M_METHOD, 0, 0, wjr_HTMLCanvasElement_toDataURL, NULL, NULL, 0 },
+    { "toBlob", WJ_M_METHOD, 0, 1, wjr_HTMLCanvasElement_toBlob, NULL, NULL, 0 },
     { "transferControlToOffscreen", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLDListElement[] = {
@@ -11917,11 +14409,11 @@ static const wj_member wj_m_Notification[] = {
     { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_OffscreenCanvas[] = {
-    { "width", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "getContext", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "transferToImageBitmap", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "convertToBlob", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvas_get_width, wjg_OffscreenCanvas_set_width, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvas_get_height, wjg_OffscreenCanvas_set_height, 0 },
+    { "getContext", WJ_M_METHOD, 0, 1, wjr_OffscreenCanvas_getContext, NULL, NULL, 0 },
+    { "transferToImageBitmap", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvas_transferToImageBitmap, NULL, NULL, 0 },
+    { "convertToBlob", WJ_M_METHOD, 0, 0, wjr_OffscreenCanvas_convertToBlob, NULL, NULL, 0 },
     { "oncontextlost", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvas_get_oncontextlost, wjg_OffscreenCanvas_set_oncontextlost, 0 },
     { "oncontextrestored", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvas_get_oncontextrestored, wjg_OffscreenCanvas_set_oncontextrestored, 0 },
 };
@@ -12345,7 +14837,7 @@ static const wj_member wj_m_Window[] = {
     { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
     { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
     { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
-    { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "createImageBitmap", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_createImageBitmap, NULL, NULL, 0 },
     { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 210, NULL, NULL, NULL, 0 },
@@ -12389,7 +14881,7 @@ static const wj_member wj_m_WorkerGlobalScope[] = {
     { "setInterval", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_setInterval, NULL, NULL, 0 },
     { "clearInterval", WJ_M_METHOD, 0, 0, wjr_WindowOrWorkerGlobalScope_clearInterval, NULL, NULL, 0 },
     { "queueMicrotask", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_queueMicrotask, NULL, NULL, 0 },
-    { "createImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "createImageBitmap", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_createImageBitmap, NULL, NULL, 0 },
     { "structuredClone", WJ_M_METHOD, 0, 1, wjr_WindowOrWorkerGlobalScope_structuredClone, NULL, NULL, 0 },
     { "scheduler", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "caches", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 213, NULL, NULL, NULL, 0 },
@@ -12686,20 +15178,20 @@ static const wj_member wj_m_IdleDeadline[] = {
     { "didTimeout", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IdleDeadline_get_didTimeout, NULL, 0 },
 };
 static const wj_member wj_m_ImageBitmap[] = {
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "close", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ImageBitmap_get_width, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ImageBitmap_get_height, NULL, 0 },
+    { "close", WJ_M_METHOD, 0, 0, wjg_ImageBitmap_close, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ImageBitmapRenderingContext[] = {
     { "canvas", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "transferFromImageBitmap", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ImageData[] = {
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pixelFormat", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "colorSpace", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ImageData_get_width, NULL, 0 },
+    { "height", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ImageData_get_height, NULL, 0 },
+    { "data", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ImageData_get_data, NULL, 0 },
+    { "pixelFormat", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ImageData_get_pixelFormat, NULL, 0 },
+    { "colorSpace", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ImageData_get_colorSpace, NULL, 0 },
 };
 static const wj_member wj_m_IntersectionObserver[] = {
     { "root", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_IntersectionObserver_get_root, NULL, 0 },
@@ -12965,78 +15457,78 @@ static const wj_member wj_m_NotRestoredReasons[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_OffscreenCanvasRenderingContext2D[] = {
-    { "canvas", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getContextAttributes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "save", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "restore", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "reset", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isContextLost", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scale", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "rotate", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "translate", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "transform", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "getTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "resetTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "globalAlpha", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "globalCompositeOperation", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "imageSmoothingEnabled", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "imageSmoothingQuality", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "strokeStyle", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fillStyle", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "createLinearGradient", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "createRadialGradient", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "createConicGradient", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "createPattern", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "shadowOffsetX", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowOffsetY", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowBlur", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "shadowColor", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "filter", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "clearRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "fillRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "strokeRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "beginPath", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "fill", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "stroke", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "clip", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "isPointInPath", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "isPointInStroke", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "fillText", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "strokeText", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "measureText", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "drawImage", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "createImageData", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getImageData", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "putImageData", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "lineWidth", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lineCap", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lineJoin", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "miterLimit", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "setLineDash", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getLineDash", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "lineDashOffset", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "lang", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "font", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textAlign", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textBaseline", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "direction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "letterSpacing", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontKerning", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontStretch", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "fontVariantCaps", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "textRendering", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "wordSpacing", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "closePath", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "lineTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "bezierCurveTo", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "arcTo", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "rect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "roundRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "arc", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "ellipse", WJ_M_METHOD, 0, 7, NULL, NULL, NULL, 0 },
+    { "canvas", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_canvas, NULL, 0 },
+    { "getContextAttributes", WJ_M_METHOD, 0, 0, wjr_CanvasSettings_getContextAttributes, NULL, NULL, 0 },
+    { "save", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_save, NULL, NULL, 0 },
+    { "restore", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_restore, NULL, NULL, 0 },
+    { "reset", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_reset, NULL, NULL, 0 },
+    { "isContextLost", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_isContextLost, NULL, NULL, 0 },
+    { "scale", WJ_M_METHOD, 0, 2, wjg_OffscreenCanvasRenderingContext2D_scale, NULL, NULL, 0 },
+    { "rotate", WJ_M_METHOD, 0, 1, wjg_OffscreenCanvasRenderingContext2D_rotate, NULL, NULL, 0 },
+    { "translate", WJ_M_METHOD, 0, 2, wjg_OffscreenCanvasRenderingContext2D_translate, NULL, NULL, 0 },
+    { "transform", WJ_M_METHOD, 0, 6, wjg_OffscreenCanvasRenderingContext2D_transform, NULL, NULL, 0 },
+    { "getTransform", WJ_M_METHOD, 0, 0, wjr_CanvasTransform_getTransform, NULL, NULL, 0 },
+    { "setTransform", WJ_M_METHOD, 0, 0, wjr_CanvasTransform_setTransform, NULL, NULL, 0 },
+    { "resetTransform", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_resetTransform, NULL, NULL, 0 },
+    { "globalAlpha", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_globalAlpha, wjg_OffscreenCanvasRenderingContext2D_set_globalAlpha, 0 },
+    { "globalCompositeOperation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_globalCompositeOperation, wjg_OffscreenCanvasRenderingContext2D_set_globalCompositeOperation, 0 },
+    { "imageSmoothingEnabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingEnabled, wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingEnabled, 0 },
+    { "imageSmoothingQuality", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingQuality, wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingQuality, 0 },
+    { "strokeStyle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CanvasFillStrokeStyles_get_strokeStyle, wjr_CanvasFillStrokeStyles_set_strokeStyle, 0 },
+    { "fillStyle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CanvasFillStrokeStyles_get_fillStyle, wjr_CanvasFillStrokeStyles_set_fillStyle, 0 },
+    { "createLinearGradient", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_createLinearGradient, NULL, NULL, 0 },
+    { "createRadialGradient", WJ_M_METHOD, 0, 6, wjg_OffscreenCanvasRenderingContext2D_createRadialGradient, NULL, NULL, 0 },
+    { "createConicGradient", WJ_M_METHOD, 0, 3, wjg_OffscreenCanvasRenderingContext2D_createConicGradient, NULL, NULL, 0 },
+    { "createPattern", WJ_M_METHOD, 0, 2, wjr_CanvasFillStrokeStyles_createPattern, NULL, NULL, 0 },
+    { "shadowOffsetX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetX, wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetX, 0 },
+    { "shadowOffsetY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetY, wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetY, 0 },
+    { "shadowBlur", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_shadowBlur, wjg_OffscreenCanvasRenderingContext2D_set_shadowBlur, 0 },
+    { "shadowColor", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_shadowColor, wjg_OffscreenCanvasRenderingContext2D_set_shadowColor, 0 },
+    { "filter", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_filter, wjg_OffscreenCanvasRenderingContext2D_set_filter, 0 },
+    { "clearRect", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_clearRect, NULL, NULL, 0 },
+    { "fillRect", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_fillRect, NULL, NULL, 0 },
+    { "strokeRect", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_strokeRect, NULL, NULL, 0 },
+    { "beginPath", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_beginPath, NULL, NULL, 0 },
+    { "fill", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_fill, NULL, NULL, 0 },
+    { "stroke", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_stroke, NULL, NULL, 0 },
+    { "clip", WJ_M_METHOD, 0, 0, wjr_CanvasDrawPath_clip, NULL, NULL, 0 },
+    { "isPointInPath", WJ_M_METHOD, 0, 2, wjr_CanvasDrawPath_isPointInPath, NULL, NULL, 0 },
+    { "isPointInStroke", WJ_M_METHOD, 0, 2, wjr_CanvasDrawPath_isPointInStroke, NULL, NULL, 0 },
+    { "fillText", WJ_M_METHOD, 0, 3, wjr_CanvasText_fillText, NULL, NULL, 0 },
+    { "strokeText", WJ_M_METHOD, 0, 3, wjr_CanvasText_strokeText, NULL, NULL, 0 },
+    { "measureText", WJ_M_METHOD, 0, 1, wjg_OffscreenCanvasRenderingContext2D_measureText, NULL, NULL, 0 },
+    { "drawImage", WJ_M_METHOD, 0, 3, wjr_CanvasDrawImage_drawImage, NULL, NULL, 0 },
+    { "createImageData", WJ_M_METHOD, 0, 1, wjr_CanvasImageData_createImageData, NULL, NULL, 0 },
+    { "getImageData", WJ_M_METHOD, 0, 4, wjr_CanvasImageData_getImageData, NULL, NULL, 0 },
+    { "putImageData", WJ_M_METHOD, 0, 3, wjr_CanvasImageData_putImageData, NULL, NULL, 0 },
+    { "lineWidth", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_lineWidth, wjg_OffscreenCanvasRenderingContext2D_set_lineWidth, 0 },
+    { "lineCap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_lineCap, wjg_OffscreenCanvasRenderingContext2D_set_lineCap, 0 },
+    { "lineJoin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_lineJoin, wjg_OffscreenCanvasRenderingContext2D_set_lineJoin, 0 },
+    { "miterLimit", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_miterLimit, wjg_OffscreenCanvasRenderingContext2D_set_miterLimit, 0 },
+    { "setLineDash", WJ_M_METHOD, 0, 1, wjr_CanvasPathDrawingStyles_setLineDash, NULL, NULL, 0 },
+    { "getLineDash", WJ_M_METHOD, 0, 0, wjr_CanvasPathDrawingStyles_getLineDash, NULL, NULL, 0 },
+    { "lineDashOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_lineDashOffset, wjg_OffscreenCanvasRenderingContext2D_set_lineDashOffset, 0 },
+    { "lang", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_lang, wjg_OffscreenCanvasRenderingContext2D_set_lang, 0 },
+    { "font", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_font, wjg_OffscreenCanvasRenderingContext2D_set_font, 0 },
+    { "textAlign", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_textAlign, wjg_OffscreenCanvasRenderingContext2D_set_textAlign, 0 },
+    { "textBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_textBaseline, wjg_OffscreenCanvasRenderingContext2D_set_textBaseline, 0 },
+    { "direction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_direction, wjg_OffscreenCanvasRenderingContext2D_set_direction, 0 },
+    { "letterSpacing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_letterSpacing, wjg_OffscreenCanvasRenderingContext2D_set_letterSpacing, 0 },
+    { "fontKerning", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_fontKerning, wjg_OffscreenCanvasRenderingContext2D_set_fontKerning, 0 },
+    { "fontStretch", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_fontStretch, wjg_OffscreenCanvasRenderingContext2D_set_fontStretch, 0 },
+    { "fontVariantCaps", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_fontVariantCaps, wjg_OffscreenCanvasRenderingContext2D_set_fontVariantCaps, 0 },
+    { "textRendering", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_textRendering, wjg_OffscreenCanvasRenderingContext2D_set_textRendering, 0 },
+    { "wordSpacing", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_OffscreenCanvasRenderingContext2D_get_wordSpacing, wjg_OffscreenCanvasRenderingContext2D_set_wordSpacing, 0 },
+    { "closePath", WJ_M_METHOD, 0, 0, wjg_OffscreenCanvasRenderingContext2D_closePath, NULL, NULL, 0 },
+    { "moveTo", WJ_M_METHOD, 0, 2, wjg_OffscreenCanvasRenderingContext2D_moveTo, NULL, NULL, 0 },
+    { "lineTo", WJ_M_METHOD, 0, 2, wjg_OffscreenCanvasRenderingContext2D_lineTo, NULL, NULL, 0 },
+    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_quadraticCurveTo, NULL, NULL, 0 },
+    { "bezierCurveTo", WJ_M_METHOD, 0, 6, wjg_OffscreenCanvasRenderingContext2D_bezierCurveTo, NULL, NULL, 0 },
+    { "arcTo", WJ_M_METHOD, 0, 5, wjg_OffscreenCanvasRenderingContext2D_arcTo, NULL, NULL, 0 },
+    { "rect", WJ_M_METHOD, 0, 4, wjg_OffscreenCanvasRenderingContext2D_rect, NULL, NULL, 0 },
+    { "roundRect", WJ_M_METHOD, 0, 4, wjr_CanvasPath_roundRect, NULL, NULL, 0 },
+    { "arc", WJ_M_METHOD, 0, 5, wjg_OffscreenCanvasRenderingContext2D_arc, NULL, NULL, 0 },
+    { "ellipse", WJ_M_METHOD, 0, 7, wjg_OffscreenCanvasRenderingContext2D_ellipse, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Origin[] = {
     { "from", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -13045,17 +15537,17 @@ static const wj_member wj_m_Origin[] = {
     { "isSameSite", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Path2D[] = {
-    { "addPath", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "closePath", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "moveTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "lineTo", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "bezierCurveTo", WJ_M_METHOD, 0, 6, NULL, NULL, NULL, 0 },
-    { "arcTo", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "rect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "roundRect", WJ_M_METHOD, 0, 4, NULL, NULL, NULL, 0 },
-    { "arc", WJ_M_METHOD, 0, 5, NULL, NULL, NULL, 0 },
-    { "ellipse", WJ_M_METHOD, 0, 7, NULL, NULL, NULL, 0 },
+    { "addPath", WJ_M_METHOD, 0, 1, wjr_Path2D_addPath, NULL, NULL, 0 },
+    { "closePath", WJ_M_METHOD, 0, 0, wjg_Path2D_closePath, NULL, NULL, 0 },
+    { "moveTo", WJ_M_METHOD, 0, 2, wjg_Path2D_moveTo, NULL, NULL, 0 },
+    { "lineTo", WJ_M_METHOD, 0, 2, wjg_Path2D_lineTo, NULL, NULL, 0 },
+    { "quadraticCurveTo", WJ_M_METHOD, 0, 4, wjg_Path2D_quadraticCurveTo, NULL, NULL, 0 },
+    { "bezierCurveTo", WJ_M_METHOD, 0, 6, wjg_Path2D_bezierCurveTo, NULL, NULL, 0 },
+    { "arcTo", WJ_M_METHOD, 0, 5, wjg_Path2D_arcTo, NULL, NULL, 0 },
+    { "rect", WJ_M_METHOD, 0, 4, wjg_Path2D_rect, NULL, NULL, 0 },
+    { "roundRect", WJ_M_METHOD, 0, 4, wjr_CanvasPath_roundRect, NULL, NULL, 0 },
+    { "arc", WJ_M_METHOD, 0, 5, wjg_Path2D_arc, NULL, NULL, 0 },
+    { "ellipse", WJ_M_METHOD, 0, 7, wjg_Path2D_ellipse, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceEntry[] = {
     { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceEntry_get_id, NULL, 0 },
@@ -13703,18 +16195,18 @@ static const wj_member wj_m_TextEncoderStream[] = {
     { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TextMetrics[] = {
-    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "actualBoundingBoxLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "actualBoundingBoxRight", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fontBoundingBoxAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fontBoundingBoxDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "actualBoundingBoxAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "actualBoundingBoxDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "emHeightAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "emHeightDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hangingBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "alphabeticBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ideographicBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_width, NULL, 0 },
+    { "actualBoundingBoxLeft", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_actualBoundingBoxLeft, NULL, 0 },
+    { "actualBoundingBoxRight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_actualBoundingBoxRight, NULL, 0 },
+    { "fontBoundingBoxAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_fontBoundingBoxAscent, NULL, 0 },
+    { "fontBoundingBoxDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_fontBoundingBoxDescent, NULL, 0 },
+    { "actualBoundingBoxAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_actualBoundingBoxAscent, NULL, 0 },
+    { "actualBoundingBoxDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_actualBoundingBoxDescent, NULL, 0 },
+    { "emHeightAscent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_emHeightAscent, NULL, 0 },
+    { "emHeightDescent", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_emHeightDescent, NULL, 0 },
+    { "hangingBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_hangingBaseline, NULL, 0 },
+    { "alphabeticBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_alphabeticBaseline, NULL, 0 },
+    { "ideographicBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_ideographicBaseline, NULL, 0 },
 };
 static const wj_member wj_m_TextTrackCueList[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -14321,15 +16813,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CacheStorage, .n_members = 5, .subtree_end = 79,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CanvasGradient", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "CanvasGradient", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CanvasGradient, .n_members = 1, .subtree_end = 80,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CanvasPattern", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "CanvasPattern", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CanvasPattern, .n_members = 1, .subtree_end = 81,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CanvasRenderingContext2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "CanvasRenderingContext2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CanvasRenderingContext2D, .n_members = 73, .subtree_end = 82,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15397,7 +17889,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Notification, .n_members = 24, .subtree_end = 348,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "OffscreenCanvas", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "OffscreenCanvas", .parent = 170, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_OffscreenCanvas_constructor,
       .members = wj_m_OffscreenCanvas, .n_members = 7, .subtree_end = 349,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15649,7 +18141,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_IdleDeadline, .n_members = 2, .subtree_end = 411,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ImageBitmap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ImageBitmap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_ImageBitmap, .n_members = 3, .subtree_end = 412,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15657,7 +18149,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ImageBitmapRenderingContext, .n_members = 2, .subtree_end = 413,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ImageData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "ImageData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_ImageData_constructor,
       .members = wj_m_ImageData, .n_members = 5, .subtree_end = 414,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15785,7 +18277,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NotRestoredReasons, .n_members = 7, .subtree_end = 445,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "OffscreenCanvasRenderingContext2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "OffscreenCanvasRenderingContext2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_OffscreenCanvasRenderingContext2D, .n_members = 72, .subtree_end = 446,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -15793,7 +18285,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Origin, .n_members = 4, .subtree_end = 447,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Path2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Path2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Path2D_constructor,
       .members = wj_m_Path2D, .n_members = 11, .subtree_end = 448,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -16109,7 +18601,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextEncoderStream, .n_members = 3, .subtree_end = 526,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextMetrics", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextMetrics", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TextMetrics, .n_members = 12, .subtree_end = 527,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

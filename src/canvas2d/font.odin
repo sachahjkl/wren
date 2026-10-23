@@ -270,7 +270,7 @@ serialize_font :: proc(f: ^Font_Spec) -> string {
 	b := strings.builder_make()
 	if f.italic { strings.write_string(&b, "italic ") }
 	if f.small_caps { strings.write_string(&b, "small-caps ") }
-	if f.weight != 400 { strings.write_int(&b, int(f.weight)); strings.write_byte(&b, ' ') }
+	if f.weight == 700 { strings.write_string(&b, "bold ") } else if f.weight != 400 { strings.write_int(&b, int(f.weight)); strings.write_byte(&b, ' ') }
 	if f.stretch != 100 {
 		names := [?]string{"ultra-condensed", "extra-condensed", "condensed", "semi-condensed", "", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded"}
 		vals := [?]f32{50, 62.5, 75, 87.5, 100, 112.5, 125, 150, 200}

@@ -523,7 +523,7 @@ font_parsing :: proc(t: ^testing.T) {
 	testing.expect(t, f.italic, "italic")
 	testing.expect_value(t, len(f.families), 3)
 	testing.expect_value(t, f.families[0], "Helvetica Neue")
-	testing.expect_value(t, f.text, "italic 700 16px \"Helvetica Neue\", Arial, sans-serif")
+	testing.expect_value(t, f.text, "italic bold 16px \"Helvetica Neue\", Arial, sans-serif")
 	font_spec_destroy(&f)
 
 	f, ok = font_parse("12pt Times New Roman", 10)

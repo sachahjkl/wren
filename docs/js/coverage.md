@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 560 |
-| exposed by default | 224 |
+| exposed by default | 233 |
 | members | 5013 |
-| members implemented | 2682 (53.5 %) |
+| members implemented | 2899 (57.8 %) |
 
 ## By specification
 
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (3) | 19 / 126 |
 | `hr-time.idl` | 1 (1) | 13 / 17 |
-| `html.idl` | 160 (97) | 1170 / 1819 |
+| `html.idl` | 160 (106) | 1387 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -288,6 +288,107 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 1 / 1 members.
 
 - `cssFloat`: C `wjr_CSSStyleProperties_get_cssFloat`
+
+### CanvasGradient
+
+1 / 1 members.
+
+- `addColorStop()`: import `canvas.CanvasGradient_addColorStop`
+
+### CanvasPattern
+
+1 / 1 members.
+
+- `setTransform()`: C `wjr_CanvasPattern_setTransform`
+
+### CanvasRenderingContext2D
+
+84 / 84 members.
+
+- `readonly canvas`: import `canvas.CanvasRenderingContext2D_canvas`
+- `getContextAttributes()` (CanvasSettings): C `wjr_CanvasSettings_getContextAttributes`
+- `save()` (CanvasState): import `canvas.CanvasState_save`
+- `restore()` (CanvasState): import `canvas.CanvasState_restore`
+- `reset()` (CanvasState): import `canvas.CanvasState_reset`
+- `isContextLost()` (CanvasState): import `canvas.CanvasState_isContextLost`
+- `scale()` (CanvasTransform): import `canvas.CanvasTransform_scale`
+- `rotate()` (CanvasTransform): import `canvas.CanvasTransform_rotate`
+- `translate()` (CanvasTransform): import `canvas.CanvasTransform_translate`
+- `transform()` (CanvasTransform): import `canvas.CanvasTransform_transform`
+- `getTransform()` (CanvasTransform): C `wjr_CanvasTransform_getTransform`
+- `setTransform()` (CanvasTransform): C `wjr_CanvasTransform_setTransform`
+- `setTransform()` (CanvasTransform): C `wjr_CanvasTransform_setTransform`
+- `resetTransform()` (CanvasTransform): import `canvas.CanvasTransform_resetTransform`
+- `globalAlpha` (CanvasCompositing): import `canvas.CanvasCompositing_globalAlpha`
+- `globalCompositeOperation` (CanvasCompositing): import `canvas.CanvasCompositing_globalCompositeOperation`
+- `imageSmoothingEnabled` (CanvasImageSmoothing): import `canvas.CanvasImageSmoothing_imageSmoothingEnabled`
+- `imageSmoothingQuality` (CanvasImageSmoothing): import `canvas.CanvasImageSmoothing_imageSmoothingQuality`
+- `strokeStyle` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_get_strokeStyle`
+- `fillStyle` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_get_fillStyle`
+- `createLinearGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createLinearGradient`
+- `createRadialGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createRadialGradient`
+- `createConicGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createConicGradient`
+- `createPattern()` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_createPattern`
+- `shadowOffsetX` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowOffsetX`
+- `shadowOffsetY` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowOffsetY`
+- `shadowBlur` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowBlur`
+- `shadowColor` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowColor`
+- `filter` (CanvasFilters): import `canvas.CanvasFilters_filter`
+- `clearRect()` (CanvasRect): import `canvas.CanvasRect_clearRect`
+- `fillRect()` (CanvasRect): import `canvas.CanvasRect_fillRect`
+- `strokeRect()` (CanvasRect): import `canvas.CanvasRect_strokeRect`
+- `beginPath()` (CanvasDrawPath): import `canvas.CanvasDrawPath_beginPath`
+- `fill()` (CanvasDrawPath): C `wjr_CanvasDrawPath_fill`
+- `fill()` (CanvasDrawPath): C `wjr_CanvasDrawPath_fill`
+- `stroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_stroke`
+- `stroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_stroke`
+- `clip()` (CanvasDrawPath): C `wjr_CanvasDrawPath_clip`
+- `clip()` (CanvasDrawPath): C `wjr_CanvasDrawPath_clip`
+- `isPointInPath()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInPath`
+- `isPointInPath()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInPath`
+- `isPointInStroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInStroke`
+- `isPointInStroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInStroke`
+- `drawFocusIfNeeded()` (CanvasUserInterface): C `wjr_CanvasUserInterface_drawFocusIfNeeded`
+- `drawFocusIfNeeded()` (CanvasUserInterface): C `wjr_CanvasUserInterface_drawFocusIfNeeded`
+- `fillText()` (CanvasText): C `wjr_CanvasText_fillText`
+- `strokeText()` (CanvasText): C `wjr_CanvasText_strokeText`
+- `measureText()` (CanvasText): import `canvas.CanvasText_measureText`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `createImageData()` (CanvasImageData): C `wjr_CanvasImageData_createImageData`
+- `createImageData()` (CanvasImageData): C `wjr_CanvasImageData_createImageData`
+- `getImageData()` (CanvasImageData): C `wjr_CanvasImageData_getImageData`
+- `putImageData()` (CanvasImageData): C `wjr_CanvasImageData_putImageData`
+- `putImageData()` (CanvasImageData): C `wjr_CanvasImageData_putImageData`
+- `lineWidth` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineWidth`
+- `lineCap` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineCap`
+- `lineJoin` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineJoin`
+- `miterLimit` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_miterLimit`
+- `setLineDash()` (CanvasPathDrawingStyles): C `wjr_CanvasPathDrawingStyles_setLineDash`
+- `getLineDash()` (CanvasPathDrawingStyles): C `wjr_CanvasPathDrawingStyles_getLineDash`
+- `lineDashOffset` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineDashOffset`
+- `lang` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_lang`
+- `font` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_font`
+- `textAlign` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textAlign`
+- `textBaseline` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textBaseline`
+- `direction` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_direction`
+- `letterSpacing` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_letterSpacing`
+- `fontKerning` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontKerning`
+- `fontStretch` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontStretch`
+- `fontVariantCaps` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontVariantCaps`
+- `textRendering` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textRendering`
+- `wordSpacing` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_wordSpacing`
+- `closePath()` (CanvasPath): import `canvas.CanvasPath_closePath`
+- `moveTo()` (CanvasPath): import `canvas.CanvasPath_moveTo`
+- `lineTo()` (CanvasPath): import `canvas.CanvasPath_lineTo`
+- `quadraticCurveTo()` (CanvasPath): import `canvas.CanvasPath_quadraticCurveTo`
+- `bezierCurveTo()` (CanvasPath): import `canvas.CanvasPath_bezierCurveTo`
+- `arcTo()` (CanvasPath): import `canvas.CanvasPath_arcTo`
+- `rect()` (CanvasPath): import `canvas.CanvasPath_rect`
+- `roundRect()` (CanvasPath): C `wjr_CanvasPath_roundRect`
+- `arc()` (CanvasPath): import `canvas.CanvasPath_arc`
+- `ellipse()` (CanvasPath): import `canvas.CanvasPath_ellipse`
 
 ### Credential
 
@@ -1719,14 +1820,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLCanvasElement : HTMLElement
 
-0 / 7 members.
+5 / 7 members.
 
 - `constructor()`: not supported
-- `width`: not supported
-- `height`: not supported
-- `getContext()`: not supported
-- `toDataURL()`: not supported
-- `toBlob()`: not supported
+- `width`: import `canvas.HTMLCanvasElement_width`
+- `height`: import `canvas.HTMLCanvasElement_height`
+- `getContext()`: C `wjr_HTMLCanvasElement_getContext`
+- `toDataURL()`: C `wjr_HTMLCanvasElement_toDataURL`
+- `toBlob()`: C `wjr_HTMLCanvasElement_toBlob`
 - `transferControlToOffscreen()`: not supported
 
 ### HTMLDListElement : HTMLElement
@@ -3279,6 +3380,19 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly viewBox` (SVGFitToViewBox): not supported
 - `readonly preserveAspectRatio` (SVGFitToViewBox): not supported
 
+### OffscreenCanvas : EventTarget
+
+8 / 8 members.
+
+- `constructor()`: C `wjr_OffscreenCanvas_constructor`
+- `width`: import `canvas.OffscreenCanvas_width`
+- `height`: import `canvas.OffscreenCanvas_height`
+- `getContext()`: C `wjr_OffscreenCanvas_getContext`
+- `transferToImageBitmap()`: import `canvas.OffscreenCanvas_transferToImageBitmap`
+- `convertToBlob()`: C `wjr_OffscreenCanvas_convertToBlob`
+- `oncontextlost`: generic (event handler)
+- `oncontextrestored`: generic (event handler)
+
 ### Performance : EventTarget
 
 13 / 17 members.
@@ -3325,7 +3439,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-188 / 220 members.
+190 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -3536,8 +3650,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setInterval`
 - `clearInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearInterval`
 - `queueMicrotask()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_queueMicrotask`
-- `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
+- `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
+- `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
@@ -3562,7 +3676,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerGlobalScope : EventTarget
 
-24 / 32 members.
+26 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
 - `readonly location`: C `wjr_WorkerGlobalScope_get_location`
@@ -3589,8 +3703,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_setInterval`
 - `clearInterval()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_clearInterval`
 - `queueMicrotask()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_queueMicrotask`
-- `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
-- `createImageBitmap()` (WindowOrWorkerGlobalScope): not supported
+- `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
+- `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
 - `readonly caches` (WindowOrWorkerGlobalScope): not supported
@@ -3723,6 +3837,26 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 - `timeRemaining()`: C `wjr_IdleDeadline_timeRemaining`
 - `readonly didTimeout`: C `wjr_IdleDeadline_get_didTimeout`
+
+### ImageBitmap
+
+3 / 3 members.
+
+- `readonly width`: import `canvas.ImageBitmap_width`
+- `readonly height`: import `canvas.ImageBitmap_height`
+- `close()`: import `canvas.ImageBitmap_close`
+
+### ImageData
+
+7 / 7 members.
+
+- `constructor()`: C `wjr_ImageData_constructor`
+- `constructor()`: C `wjr_ImageData_constructor`
+- `readonly width`: C `wjr_ImageData_get_width`
+- `readonly height`: C `wjr_ImageData_get_height`
+- `readonly data`: C `wjr_ImageData_get_data`
+- `readonly pixelFormat`: C `wjr_ImageData_get_pixelFormat`
+- `readonly colorSpace`: C `wjr_ImageData_get_colorSpace`
 
 ### IntersectionObserver
 
@@ -3906,6 +4040,110 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `item()`: C `wjr_NodeList_item`
 - `readonly length`: C `wjr_NodeList_get_length`
 - `iterable`: generic (array iterator (indexed getter))
+
+### OffscreenCanvasRenderingContext2D
+
+82 / 82 members.
+
+- `readonly canvas`: import `canvas.OffscreenCanvasRenderingContext2D_canvas`
+- `getContextAttributes()` (CanvasSettings): C `wjr_CanvasSettings_getContextAttributes`
+- `save()` (CanvasState): import `canvas.CanvasState_save`
+- `restore()` (CanvasState): import `canvas.CanvasState_restore`
+- `reset()` (CanvasState): import `canvas.CanvasState_reset`
+- `isContextLost()` (CanvasState): import `canvas.CanvasState_isContextLost`
+- `scale()` (CanvasTransform): import `canvas.CanvasTransform_scale`
+- `rotate()` (CanvasTransform): import `canvas.CanvasTransform_rotate`
+- `translate()` (CanvasTransform): import `canvas.CanvasTransform_translate`
+- `transform()` (CanvasTransform): import `canvas.CanvasTransform_transform`
+- `getTransform()` (CanvasTransform): C `wjr_CanvasTransform_getTransform`
+- `setTransform()` (CanvasTransform): C `wjr_CanvasTransform_setTransform`
+- `setTransform()` (CanvasTransform): C `wjr_CanvasTransform_setTransform`
+- `resetTransform()` (CanvasTransform): import `canvas.CanvasTransform_resetTransform`
+- `globalAlpha` (CanvasCompositing): import `canvas.CanvasCompositing_globalAlpha`
+- `globalCompositeOperation` (CanvasCompositing): import `canvas.CanvasCompositing_globalCompositeOperation`
+- `imageSmoothingEnabled` (CanvasImageSmoothing): import `canvas.CanvasImageSmoothing_imageSmoothingEnabled`
+- `imageSmoothingQuality` (CanvasImageSmoothing): import `canvas.CanvasImageSmoothing_imageSmoothingQuality`
+- `strokeStyle` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_get_strokeStyle`
+- `fillStyle` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_get_fillStyle`
+- `createLinearGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createLinearGradient`
+- `createRadialGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createRadialGradient`
+- `createConicGradient()` (CanvasFillStrokeStyles): import `canvas.CanvasFillStrokeStyles_createConicGradient`
+- `createPattern()` (CanvasFillStrokeStyles): C `wjr_CanvasFillStrokeStyles_createPattern`
+- `shadowOffsetX` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowOffsetX`
+- `shadowOffsetY` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowOffsetY`
+- `shadowBlur` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowBlur`
+- `shadowColor` (CanvasShadowStyles): import `canvas.CanvasShadowStyles_shadowColor`
+- `filter` (CanvasFilters): import `canvas.CanvasFilters_filter`
+- `clearRect()` (CanvasRect): import `canvas.CanvasRect_clearRect`
+- `fillRect()` (CanvasRect): import `canvas.CanvasRect_fillRect`
+- `strokeRect()` (CanvasRect): import `canvas.CanvasRect_strokeRect`
+- `beginPath()` (CanvasDrawPath): import `canvas.CanvasDrawPath_beginPath`
+- `fill()` (CanvasDrawPath): C `wjr_CanvasDrawPath_fill`
+- `fill()` (CanvasDrawPath): C `wjr_CanvasDrawPath_fill`
+- `stroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_stroke`
+- `stroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_stroke`
+- `clip()` (CanvasDrawPath): C `wjr_CanvasDrawPath_clip`
+- `clip()` (CanvasDrawPath): C `wjr_CanvasDrawPath_clip`
+- `isPointInPath()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInPath`
+- `isPointInPath()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInPath`
+- `isPointInStroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInStroke`
+- `isPointInStroke()` (CanvasDrawPath): C `wjr_CanvasDrawPath_isPointInStroke`
+- `fillText()` (CanvasText): C `wjr_CanvasText_fillText`
+- `strokeText()` (CanvasText): C `wjr_CanvasText_strokeText`
+- `measureText()` (CanvasText): import `canvas.CanvasText_measureText`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `drawImage()` (CanvasDrawImage): C `wjr_CanvasDrawImage_drawImage`
+- `createImageData()` (CanvasImageData): C `wjr_CanvasImageData_createImageData`
+- `createImageData()` (CanvasImageData): C `wjr_CanvasImageData_createImageData`
+- `getImageData()` (CanvasImageData): C `wjr_CanvasImageData_getImageData`
+- `putImageData()` (CanvasImageData): C `wjr_CanvasImageData_putImageData`
+- `putImageData()` (CanvasImageData): C `wjr_CanvasImageData_putImageData`
+- `lineWidth` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineWidth`
+- `lineCap` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineCap`
+- `lineJoin` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineJoin`
+- `miterLimit` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_miterLimit`
+- `setLineDash()` (CanvasPathDrawingStyles): C `wjr_CanvasPathDrawingStyles_setLineDash`
+- `getLineDash()` (CanvasPathDrawingStyles): C `wjr_CanvasPathDrawingStyles_getLineDash`
+- `lineDashOffset` (CanvasPathDrawingStyles): import `canvas.CanvasPathDrawingStyles_lineDashOffset`
+- `lang` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_lang`
+- `font` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_font`
+- `textAlign` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textAlign`
+- `textBaseline` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textBaseline`
+- `direction` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_direction`
+- `letterSpacing` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_letterSpacing`
+- `fontKerning` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontKerning`
+- `fontStretch` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontStretch`
+- `fontVariantCaps` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_fontVariantCaps`
+- `textRendering` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_textRendering`
+- `wordSpacing` (CanvasTextDrawingStyles): import `canvas.CanvasTextDrawingStyles_wordSpacing`
+- `closePath()` (CanvasPath): import `canvas.CanvasPath_closePath`
+- `moveTo()` (CanvasPath): import `canvas.CanvasPath_moveTo`
+- `lineTo()` (CanvasPath): import `canvas.CanvasPath_lineTo`
+- `quadraticCurveTo()` (CanvasPath): import `canvas.CanvasPath_quadraticCurveTo`
+- `bezierCurveTo()` (CanvasPath): import `canvas.CanvasPath_bezierCurveTo`
+- `arcTo()` (CanvasPath): import `canvas.CanvasPath_arcTo`
+- `rect()` (CanvasPath): import `canvas.CanvasPath_rect`
+- `roundRect()` (CanvasPath): C `wjr_CanvasPath_roundRect`
+- `arc()` (CanvasPath): import `canvas.CanvasPath_arc`
+- `ellipse()` (CanvasPath): import `canvas.CanvasPath_ellipse`
+
+### Path2D
+
+12 / 12 members.
+
+- `constructor()`: C `wjr_Path2D_constructor`
+- `addPath()`: C `wjr_Path2D_addPath`
+- `closePath()` (CanvasPath): import `canvas.CanvasPath_closePath`
+- `moveTo()` (CanvasPath): import `canvas.CanvasPath_moveTo`
+- `lineTo()` (CanvasPath): import `canvas.CanvasPath_lineTo`
+- `quadraticCurveTo()` (CanvasPath): import `canvas.CanvasPath_quadraticCurveTo`
+- `bezierCurveTo()` (CanvasPath): import `canvas.CanvasPath_bezierCurveTo`
+- `arcTo()` (CanvasPath): import `canvas.CanvasPath_arcTo`
+- `rect()` (CanvasPath): import `canvas.CanvasPath_rect`
+- `roundRect()` (CanvasPath): C `wjr_CanvasPath_roundRect`
+- `arc()` (CanvasPath): import `canvas.CanvasPath_arc`
+- `ellipse()` (CanvasPath): import `canvas.CanvasPath_ellipse`
 
 ### PerformanceEntry
 
@@ -4157,6 +4395,23 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `encodeInto()`: C `wjr_TextEncoder_encodeInto`
 - `readonly encoding` (TextEncoderCommon): C `wjr_TextEncoder_get_encoding`
 
+### TextMetrics
+
+12 / 12 members.
+
+- `readonly width`: import `canvas.TextMetrics_width`
+- `readonly actualBoundingBoxLeft`: import `canvas.TextMetrics_actualBoundingBoxLeft`
+- `readonly actualBoundingBoxRight`: import `canvas.TextMetrics_actualBoundingBoxRight`
+- `readonly fontBoundingBoxAscent`: import `canvas.TextMetrics_fontBoundingBoxAscent`
+- `readonly fontBoundingBoxDescent`: import `canvas.TextMetrics_fontBoundingBoxDescent`
+- `readonly actualBoundingBoxAscent`: import `canvas.TextMetrics_actualBoundingBoxAscent`
+- `readonly actualBoundingBoxDescent`: import `canvas.TextMetrics_actualBoundingBoxDescent`
+- `readonly emHeightAscent`: import `canvas.TextMetrics_emHeightAscent`
+- `readonly emHeightDescent`: import `canvas.TextMetrics_emHeightDescent`
+- `readonly hangingBaseline`: import `canvas.TextMetrics_hangingBaseline`
+- `readonly alphabeticBaseline`: import `canvas.TextMetrics_alphabeticBaseline`
+- `readonly ideographicBaseline`: import `canvas.TextMetrics_ideographicBaseline`
+
 ### TreeWalker
 
 11 / 11 members.
@@ -4283,5 +4538,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CanvasGradient, CanvasPattern, CanvasRenderingContext2D, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, OffscreenCanvas, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmap, ImageBitmapRenderingContext, ImageData, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, OffscreenCanvasRenderingContext2D, Origin, Path2D, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextMetrics, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMParser, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaSource, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, SourceBuffer, ManagedSourceBuffer, SourceBufferList, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaError, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, PerformanceEventTiming, PerformanceLongTaskTiming, PerformancePaintTiming, PerformanceResourceTiming, PerformanceNavigationTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceNavigation, PerformanceTiming, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, ResizeObserver, ResizeObserverEntry, ResizeObserverSize, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextTrackCueList, TimeRanges, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 

@@ -187,6 +187,7 @@ main :: proc() {
 	if selected("perf_crypto") { run("perf_crypto") }
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
+	if selected("canvas") { run("canvas") }
 
 	if selected("navigator") {
 		fmt.println("-- navigator")
