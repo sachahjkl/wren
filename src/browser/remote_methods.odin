@@ -177,6 +177,7 @@ m_subscribe :: proc(app: ^App, c: ^Call, on: bool) -> Reply {
 m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	code, _ := remote.param_int(c.params, "exitCode")
 	the_remote.exit_code = code
+	the_remote.fast_exit, _ = remote.param_bool(c.params, "fast")
 	remote_answer(c.conn, c.id, done())
 	remote.close_client(c.conn)
 	platform.request_close(app.win)

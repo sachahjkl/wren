@@ -1276,6 +1276,7 @@ main :: proc() {
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
+	if remote_fast_exit { os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
