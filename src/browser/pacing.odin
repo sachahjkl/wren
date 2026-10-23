@@ -50,6 +50,8 @@ FRAME_PREFS := [?]config.Def{
 		description = "The time each frame shows (requestAnimationFrame timestamps, CSS animations, smooth scrolling) is the vblank it starts at, so motion advances by whole refresh periods. Off: the time the frame starts computing."},
 	{name = "browser.frame.input_immediate", kind = .Bool, default = {b = true},
 		description = "A frame woken by input (a click, a wheel notch, a key) is drawn and shown at once, without waiting for the swap chain's slot nor for a refresh: the interface answers within the next composition instead of one or two refreshes later. Off: frames keep their pacing. On a display without variable refresh, the frame may tear."},
+	{name = "browser.frame.video_at_vblank", kind = .Bool, default = {b = true},
+		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
 	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
 		description = "While the window is resized, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
 }
@@ -64,6 +66,7 @@ Pacer_Settings :: struct {
 	vblank_clock: bool,
 	resize_immediate: bool,
 	input_immediate: bool,
+	video_at_vblank: bool,
 }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
@@ -74,6 +77,7 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		vblank_clock = config.bool_of(p, "browser.frame.vblank_clock"),
 		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
 		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
+		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
 	return s
