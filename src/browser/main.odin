@@ -1117,7 +1117,7 @@ main :: proc() {
 	the_app = app
 
 	// --- configuration: defaults < profile file < command line < policy file ---
-	args := os.args[1:]
+	args := desktop.command_line_args(base.permanent_allocator())   // (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)
 	// `wren ctl ...`: the remote control client, before anything else is set up (no profile opened, no window, no GPU, no
 	// script engine): only as the first argument (a file or host named ctl is written ./ctl)
 	if len(args) > 0 && args[0] == "ctl" { os.exit(ctl_main(args[1:])) }
