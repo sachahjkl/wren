@@ -26,6 +26,7 @@ import "core:thread"
 import win "core:sys/windows"
 import "toolkit:render"
 import "toolkit:ui"
+import "wb:images"
 import lay "wb:layout"
 
 foreign import dbghelp "system:dbghelp.lib"
@@ -42,6 +43,8 @@ CONTEXT_CONTROL_AMD64 :: 0x100001
 // animation frame callbacks.)
 Phase :: enum u8 {
 	None, Idle, Frame, Wait, Events, Loop, Input, Build_UI, UI_Draw, Styles, Layout, Paint_Items, Submit, Present, Animation,
+	// inside Paint_Items (its time includes theirs): the textures of images, canvases and SVG rasters made and filled
+	Tex_Create, Tex_Upload,
 }
 
 // The phase clock of the frame being drawn. `on`: someone reads it this frame (hud_wants_clock, or the profiler).
@@ -73,6 +76,7 @@ prof_end :: proc "contextless" (p: Phase) {
 	// the phase that was running underneath (if any) resumes
 	switch p {
 	case .Styles, .Layout, .Paint_Items: phase_clock.cur = .UI_Draw
+	case .Tex_Create, .Tex_Upload: phase_clock.cur = .Paint_Items
 	case .Frame, .Idle: phase_clock.cur = .None
 	case .None, .Wait, .Events, .Loop, .Input, .Build_UI, .UI_Draw, .Submit, .Present, .Animation: phase_clock.cur = .Frame
 	}
@@ -303,6 +307,8 @@ prof_report :: proc() {
 	sb := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&sb, "wall %.2f s | cpu user %.2f s + kernel %.2f s = %.1f %% of one core | frames %d (%.1f/s)\n\n", wall, cpu_user, cpu_kernel, (cpu_user + cpu_kernel) / wall * 100, len(prof.frames), f64(len(prof.frames)) / wall)
 
+	ds := images.decoder_stats()
+	fmt.sbprintf(&sb, "image decoder threads: %d jobs, %d failed, %.1f ms busy (all threads), longest job %.1f ms\n", ds.jobs, ds.failed, ds.busy_ms, ds.longest_ms)
 	report_pacing(&sb)
 	fmt.sbprintf(&sb, "%-12s %7s %8s %8s %8s %8s %9s\n", "phase (ms)", "n", "mean", "p50", "p95", "p99", "max")
 	for p in Phase {
