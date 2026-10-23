@@ -298,6 +298,15 @@ enum wr_ScreenField {
 
 /* module forms (partial): types */
 
+/* module htmlmedia: types */
+// A <video> or <audio> element; anything else is not a live HTMLMediaElement.
+typedef uint64_t wr_HTMLMediaElement;
+
+/* module mse: types */
+typedef uint64_t wr_MediaSource;
+typedef uint64_t wr_SourceBuffer;
+typedef uint64_t wr_SourceBufferList;
+
 /* module net: types */
 // A request and, once it arrived, its response.
 typedef uint64_t wr_Fetch;
@@ -1883,6 +1892,102 @@ WR_IMPORT("media", "MediaQueryList_media") int32_t wr_MediaQueryList_media(uint6
 WR_IMPORT("media", "MediaQueryList_matches") int32_t wr_MediaQueryList_matches(uint64_t list);
 // screen.width, screen.availHeight...
 WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
+
+/* module htmlmedia */
+// element.currentSrc: the absolute URL of the resource being played ("" when none).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_currentSrc") int32_t wr_HTMLMediaElement_currentSrc(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.networkState: 0 empty, 1 idle, 2 loading, 3 no source.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_networkState") int32_t wr_HTMLMediaElement_networkState(uint64_t element);
+// element.readyState: 0 nothing ... 4 enough data.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_readyState") int32_t wr_HTMLMediaElement_readyState(uint64_t element);
+// element.seeking
+WR_IMPORT("htmlmedia", "HTMLMediaElement_seeking") int32_t wr_HTMLMediaElement_seeking(uint64_t element);
+// element.currentTime, in seconds.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_currentTime") double wr_HTMLMediaElement_currentTime(uint64_t element);
+// element.currentTime = value: a seek (a NaN or infinite value is refused by Web IDL before).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_currentTime") void wr_HTMLMediaElement_set_currentTime(uint64_t element, double value);
+// element.duration: NaN until the metadata is known, Infinity for a stream with no end.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_duration") double wr_HTMLMediaElement_duration(uint64_t element);
+// element.paused
+WR_IMPORT("htmlmedia", "HTMLMediaElement_paused") int32_t wr_HTMLMediaElement_paused(uint64_t element);
+// element.ended
+WR_IMPORT("htmlmedia", "HTMLMediaElement_ended") int32_t wr_HTMLMediaElement_ended(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_defaultPlaybackRate") double wr_HTMLMediaElement_defaultPlaybackRate(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_defaultPlaybackRate") void wr_HTMLMediaElement_set_defaultPlaybackRate(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_playbackRate") double wr_HTMLMediaElement_playbackRate(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_playbackRate") void wr_HTMLMediaElement_set_playbackRate(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_preservesPitch") int32_t wr_HTMLMediaElement_preservesPitch(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_preservesPitch") void wr_HTMLMediaElement_set_preservesPitch(uint64_t element, int32_t value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_volume") double wr_HTMLMediaElement_volume(uint64_t element);
+// element.volume = value: IndexSize outside [0, 1].
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_volume") int32_t wr_HTMLMediaElement_set_volume(uint64_t element, double value);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_muted") int32_t wr_HTMLMediaElement_muted(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_set_muted") void wr_HTMLMediaElement_set_muted(uint64_t element, int32_t value);
+// element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
+// makes the TimeRanges object of them.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_ranges") int32_t wr_HTMLMediaElement_ranges(uint64_t element, int32_t which, uint8_t *_buf, uint32_t _cap);
+// element.error: the code (0 when null) and the message.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_errorCode") int32_t wr_HTMLMediaElement_errorCode(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_errorMessage") int32_t wr_HTMLMediaElement_errorMessage(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// element.play(): a promise settled when playback starts (NotAllowedError when the autoplay policy forbids it,
+// NotSupportedError when there is no usable source, AbortError when a pause or a load interrupts it).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_play") uint64_t wr_HTMLMediaElement_play(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_pause") void wr_HTMLMediaElement_pause(uint64_t element);
+// element.load(): the media element load algorithm.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_load") void wr_HTMLMediaElement_load(uint64_t element);
+// element.canPlayType(type): "", "maybe" or "probably".
+WR_IMPORT("htmlmedia", "HTMLMediaElement_canPlayType") int32_t wr_HTMLMediaElement_canPlayType(uint64_t element, const uint8_t *type, uint32_t type_len, uint8_t *_buf, uint32_t _cap);
+// video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
+WR_IMPORT("htmlmedia", "HTMLVideoElement_videoWidth") uint32_t wr_HTMLVideoElement_videoWidth(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElement_videoHeight(uint64_t element);
+// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+WR_IMPORT("htmlmedia", "HTMLVideoElement_playbackQuality") int32_t wr_HTMLVideoElement_playbackQuality(uint64_t element, uint8_t *_buf, uint32_t _cap);
+
+/* module mse */
+// new MediaSource(): closed until an element attaches it.
+WR_IMPORT("mse", "MediaSource_create") int32_t wr_MediaSource_create(uint64_t *_ret);
+// URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
+// that URL plays this source. Called by the engine with the URL it made.
+WR_IMPORT("mse", "MediaSource_registerObjectURL") void wr_MediaSource_registerObjectURL(uint64_t source, const uint8_t *url, uint32_t url_len);
+// URL.revokeObjectURL(url): the URL no longer names a Media Source (one already attached keeps playing).
+WR_IMPORT("mse", "MediaSource_revokeObjectURL") void wr_MediaSource_revokeObjectURL(const uint8_t *url, uint32_t url_len);
+// MediaSource.isTypeSupported(type)
+WR_IMPORT("mse", "MediaSource_isTypeSupported") int32_t wr_MediaSource_isTypeSupported(const uint8_t *type, uint32_t type_len);
+// source.sourceBuffers, activeSourceBuffers: the same object each time.
+WR_IMPORT("mse", "MediaSource_sourceBuffers") uint64_t wr_MediaSource_sourceBuffers(uint64_t source);
+WR_IMPORT("mse", "MediaSource_activeSourceBuffers") uint64_t wr_MediaSource_activeSourceBuffers(uint64_t source);
+// source.readyState: "closed", "open" or "ended".
+WR_IMPORT("mse", "MediaSource_readyState") int32_t wr_MediaSource_readyState(uint64_t source, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mse", "MediaSource_duration") double wr_MediaSource_duration(uint64_t source);
+// source.duration = value: InvalidState unless open or updating buffers, Type for a negative value or NaN.
+WR_IMPORT("mse", "MediaSource_set_duration") int32_t wr_MediaSource_set_duration(uint64_t source, double value);
+// source.addSourceBuffer(type): NotSupported, InvalidState (not open), Quota.
+WR_IMPORT("mse", "MediaSource_addSourceBuffer") int32_t wr_MediaSource_addSourceBuffer(uint64_t source, const uint8_t *type, uint32_t type_len, uint64_t *_ret);
+WR_IMPORT("mse", "MediaSource_removeSourceBuffer") int32_t wr_MediaSource_removeSourceBuffer(uint64_t source, uint64_t buffer);
+// source.endOfStream(error): "" (none), "network" or "decode".
+WR_IMPORT("mse", "MediaSource_endOfStream") int32_t wr_MediaSource_endOfStream(uint64_t source, const uint8_t *error, uint32_t error_len);
+WR_IMPORT("mse", "MediaSource_setLiveSeekableRange") int32_t wr_MediaSource_setLiveSeekableRange(uint64_t source, double start, double end);
+WR_IMPORT("mse", "MediaSource_clearLiveSeekableRange") int32_t wr_MediaSource_clearLiveSeekableRange(uint64_t source);
+WR_IMPORT("mse", "SourceBufferList_length") uint32_t wr_SourceBufferList_length(uint64_t list);
+// list[index]: Not_Found past the end (undefined).
+WR_IMPORT("mse", "SourceBufferList_item") int32_t wr_SourceBufferList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+// buffer.mode: "segments" or "sequence".
+WR_IMPORT("mse", "SourceBuffer_mode") int32_t wr_SourceBuffer_mode(uint64_t buffer, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mse", "SourceBuffer_set_mode") int32_t wr_SourceBuffer_set_mode(uint64_t buffer, const uint8_t *mode, uint32_t mode_len);
+WR_IMPORT("mse", "SourceBuffer_updating") int32_t wr_SourceBuffer_updating(uint64_t buffer);
+// buffer.buffered as pairs of f64 (start, end), seconds (InvalidState for a removed buffer): the engine makes the TimeRanges.
+WR_IMPORT("mse", "SourceBuffer_ranges") int32_t wr_SourceBuffer_ranges(uint64_t buffer, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mse", "SourceBuffer_timestampOffset") double wr_SourceBuffer_timestampOffset(uint64_t buffer);
+WR_IMPORT("mse", "SourceBuffer_set_timestampOffset") int32_t wr_SourceBuffer_set_timestampOffset(uint64_t buffer, double value);
+WR_IMPORT("mse", "SourceBuffer_appendWindowStart") double wr_SourceBuffer_appendWindowStart(uint64_t buffer);
+WR_IMPORT("mse", "SourceBuffer_set_appendWindowStart") int32_t wr_SourceBuffer_set_appendWindowStart(uint64_t buffer, double value);
+WR_IMPORT("mse", "SourceBuffer_appendWindowEnd") double wr_SourceBuffer_appendWindowEnd(uint64_t buffer);
+WR_IMPORT("mse", "SourceBuffer_set_appendWindowEnd") int32_t wr_SourceBuffer_set_appendWindowEnd(uint64_t buffer, double value);
+// buffer.appendBuffer(data): InvalidState while updating or removed, Quota when full.
+WR_IMPORT("mse", "SourceBuffer_appendBuffer") int32_t wr_SourceBuffer_appendBuffer(uint64_t buffer, const uint8_t *data, uint32_t data_len);
+WR_IMPORT("mse", "SourceBuffer_abort") int32_t wr_SourceBuffer_abort(uint64_t buffer);
+WR_IMPORT("mse", "SourceBuffer_changeType") int32_t wr_SourceBuffer_changeType(uint64_t buffer, const uint8_t *type, uint32_t type_len);
+WR_IMPORT("mse", "SourceBuffer_remove") int32_t wr_SourceBuffer_remove(uint64_t buffer, double start, double end);
 
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A

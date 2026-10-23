@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Video benchmark</title>
+<style>
+  body { margin: 0; background: #111; color: #ddd; font: 14px system-ui, sans-serif; }
+  video { display: block; width: 640px; height: 360px; margin: 16px; background: #000; }
+</style>
+</head>
+<body>
+<!-- tools\perf.ps1 (video_*): ?mode=idle  a paused video (the first picture, controls) and nothing else moving
+                               ?mode=play  the same video playing, muted, in a loop
+                               ?mode=mse   the fragmented file through Media Source Extensions, playing, muted, in a loop
+                               ?mode=none  no video at all (the page alone) -->
+<video id="v" controls muted playsinline preload="auto"></video>
+<p id="s"></p>
+<script>
+  const mode = new URLSearchParams(location.search).get('mode') || 'idle';
+  const v = document.getElementById('v');
+  const s = document.getElementById('s');
+  if (mode === 'none') {
+    v.remove();
+    s.textContent = 'no video';
+  } else if (mode === 'mse') {
+    const type = 'video/mp4; codecs="avc1.64001f, mp4a.40.2"';
+    const ms = new MediaSource();
+    v.src = URL.createObjectURL(ms);
+    v.loop = true;
+    v.autoplay = true;
+    ms.addEventListener('sourceopen', async () => {
+      const sb = ms.addSourceBuffer(type);
+      sb.addEventListener('updateend', () => { if (ms.readyState === 'open') ms.endOfStream(); }, { once: true });
+      sb.appendBuffer(new Uint8Array(await (await fetch('/video/f/clip_frag.mp4')).arrayBuffer()));
+    });
+  } else {
+    v.src = '/video/f/clip.mp4';
+    if (mode === 'play') { v.loop = true; v.autoplay = true; }
+  }
+  // the benchmark's marker for the tool: the page is ready when the video has a picture
+  v.addEventListener('loadeddata', () => { s.textContent = 'ready ' + mode; });
+</script>
+</body>
+</html>

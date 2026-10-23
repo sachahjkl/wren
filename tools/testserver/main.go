@@ -118,6 +118,7 @@ func main() {
 	registerFormHandlers(mux)
 	registerImageHandlers(mux)
 	registerMediaHandlers(mux)
+	registerVideoHandlers(mux)
 	registerFirstPaintHandlers(mux)
 	registerJSLoadHandlers(mux)
 	registerJSWebHandlers(mux)

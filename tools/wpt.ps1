@@ -26,7 +26,7 @@ $Shared = @('/resources/', '/common/', '/interfaces/', '/images/', '/fonts/', '/
             '/html/resources/', '/fetch/api/resources/', '/fetch/resources/', '/xhr/resources/', '/encoding/resources/',
             '/service-workers/service-worker/resources/', '/workers/support/', '/webidl/resources/', '/dom/constants.js',
             '/trusted-types/support/', '/loading/resources/', '/webrtc/RTCPeerConnection-helper.js',
-            '/css/support/parsing-testcommon.js', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js')
+            '/css/support/parsing-testcommon.js', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/')
 
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\wpt'
@@ -113,6 +113,8 @@ if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_B
 . (Join-Path $PSScriptRoot 'test_env.ps1')
 $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $suitesFile, '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
+# media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)
+$runArgs += @('--pref', 'media.autoplay.policy=allow-all')
 if ($Jobs -gt 0) { $runArgs += @('-jobs', $Jobs) }
 if ($Quick) { $runArgs += '-quick' }
 if ($Update) { $runArgs += '-update' }

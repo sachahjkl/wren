@@ -52,6 +52,7 @@ static const dom_kw enctype_kw[] = {
     {"application/x-www-form-urlencoded", NULL}, {"multipart/form-data", NULL}, {"text/plain", NULL}, {NULL, NULL}};
 static const dom_kw track_kw[] = {
     {"subtitles", NULL}, {"captions", NULL}, {"descriptions", NULL}, {"chapters", NULL}, {"metadata", NULL}, {NULL, NULL}};
+static const dom_kw preload_kw[] = {{"none", NULL}, {"metadata", NULL}, {"auto", NULL}, {"", "auto"}, {NULL, NULL}};
 static const dom_kw scope_kw[] = {{"row", NULL}, {"col", NULL}, {"rowgroup", NULL}, {"colgroup", NULL}, {NULL, NULL}};
 static const dom_kw as_kw[] = {
     {"fetch", NULL}, {"audio", NULL}, {"audioworklet", NULL}, {"document", NULL}, {"embed", NULL}, {"font", NULL},
@@ -71,6 +72,7 @@ static const dom_enum E_ENCTYPE = {enctype_kw, "application/x-www-form-urlencode
 static const dom_enum E_FORM_METHOD = {method_kw, "", "get"};
 static const dom_enum E_FORM_ENCTYPE = {enctype_kw, "", "application/x-www-form-urlencoded"};
 static const dom_enum E_TRACK = {track_kw, "subtitles", "metadata"};
+static const dom_enum E_PRELOAD = {preload_kw, "metadata", "metadata"};
 static const dom_enum E_SCOPE = {scope_kw, "", ""};
 static const dom_enum E_AS = {as_kw, "", ""};
 
@@ -96,6 +98,10 @@ static JSValue enum_set(JSContext *ctx, JSValueConst this_val, int iface, const 
 
 JSValue wjr_HTMLImageElement_get_crossOrigin(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLImageElement), "crossorigin", &E_CORS); }
 JSValue wjr_HTMLImageElement_set_crossOrigin(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLImageElement), "crossorigin", v, true); }
+JSValue wjr_HTMLMediaElement_get_crossOrigin(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLMediaElement), "crossorigin", &E_CORS); }
+JSValue wjr_HTMLMediaElement_set_crossOrigin(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLMediaElement), "crossorigin", v, true); }
+JSValue wjr_HTMLMediaElement_get_preload(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLMediaElement), "preload", &E_PRELOAD); }
+JSValue wjr_HTMLMediaElement_set_preload(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLMediaElement), "preload", v, false); }
 JSValue wjr_HTMLLinkElement_get_crossOrigin(JSContext *ctx, JSValueConst t) { return enum_get(ctx, t, I(HTMLLinkElement), "crossorigin", &E_CORS); }
 JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst t, JSValueConst v) { return enum_set(ctx, t, I(HTMLLinkElement), "crossorigin", v, true); }
 

@@ -90,4 +90,19 @@ test("structuredClone", () => {
   throws(() => structuredClone(1, { transfer: [ab, ab] }), "DataCloneError", "a buffer twice in the transfer list");
 });
 
+test("performance.timing and performance.navigation (legacy)", () => {
+  const t = performance.timing;
+  ok(t instanceof PerformanceTiming, "a PerformanceTiming");
+  ok(t === performance.timing, "the same object each time");
+  eq(t.navigationStart, Math.floor(performance.timeOrigin), "navigationStart is the time origin");
+  ok(t.responseStart >= t.navigationStart && t.responseEnd >= t.responseStart, "the network steps in order");
+  ok(t.domComplete >= t.domInteractive && t.loadEventEnd >= t.loadEventStart, "the document steps in order");
+  eq(t.unloadEventStart, 0, "no unload event");
+  eq(t.redirectStart, 0, "no redirect");
+  const n = performance.navigation;
+  ok(n instanceof PerformanceNavigation && n === performance.navigation, "a PerformanceNavigation, the same each time");
+  eq(n.type, 0, "TYPE_NAVIGATE");
+  eq(n.redirectCount, 0, "no redirect");
+});
+
 __run();

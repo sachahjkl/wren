@@ -92,6 +92,7 @@ images_shell_init :: proc(app: ^App) {
 	shell.evicted = make([dynamic]u64)
 	shell.next_ms = -1
 	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic, ratio = shell_ratio})
+	video_shell_init(app)
 }
 
 // The natural ratio of a replaced element that has no natural size (an SVG image or inline <svg> with only a viewBox).
@@ -113,6 +114,7 @@ shell_intrinsic :: proc(user: rawptr, node: base.Handle) -> (w, h: f32, ok: bool
 	if p == nil { return 0, 0, false }
 	d := p.doc
 	if n := dom.get(d, node); n != nil && n.name == "svg" { return page.inline_svg_intrinsic(p, node) }
+	if n := dom.get(d, node); n != nil && n.name == "video" { return page.media_intrinsic(p, node) }
 	attr :: proc(d: ^dom.Document, h: base.Handle, name: string) -> (f32, bool) {
 		v, ok := dom.get_attribute(d, h, name)
 		if !ok { return 0, false }
@@ -153,6 +155,7 @@ images_set_texture_api :: proc(api: Texture_Api) {
 }
 
 images_shell_destroy :: proc(app: ^App) {
+	video_shell_destroy(app)
 	release_all_textures()
 	delete(shell.textures)
 	delete(shell.evicted)
@@ -231,6 +234,7 @@ images_paint_begin_frame :: proc(app: ^App) {
 		release_all_textures()
 	}
 	page.images_paint_begin()
+	video_shell_begin_frame(app)
 	shell.epoch += 1
 	shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
 	shell.next_ms = -1
@@ -248,6 +252,7 @@ images_after_paint :: proc(app: ^App) {
 		}, app)
 	}
 	enforce_texture_budget(app)
+	video_shell_after_paint(app)
 }
 
 @(private = "file")
@@ -349,7 +354,6 @@ draw_placeholder :: proc(dc: ^draw.Context, r: draw.Rect, kind: Placeholder_Kind
 // <img> / <input type=image>
 
 // object-fit / object-position (CSS Images 3 §5.5): where the picture goes in the content box.
-@(private = "file")
 fit_rect :: proc(content: draw.Rect, natural: [2]f32, cs: ^style.Computed, scale: f32) -> draw.Rect {
 	cw, ch := content.max.x - content.min.x, content.max.y - content.min.y
 	nw, nh := natural[0] * scale, natural[1] * scale
@@ -389,6 +393,7 @@ images_paint_content :: proc(dc: ^draw.Context, d: ^dom.Document, node: base.Han
 		paint_inline_svg(dc, node, content, scale)
 		return true
 	}
+	if n.name == "video" { return video_paint_content(dc, p, node, content, border, cs, scale) }   // (video_shell.odin)
 	if n.name != "img" {
 		if n.name != "input" { return false }
 		t, _ := dom.get_attribute(d, node, "type")

@@ -106,6 +106,7 @@ Page :: struct {
 	scroll_events: ^Scroll_Events,      // scroll offsets of the last frame, for scroll events (scroll_events.odin)
 	link_sync_timer: base.Handle,       // a script inserted a <link>: the sheets are read again in this task (styles.odin)
 	frames:       ^Page_Frames,         // nested browsing contexts: its navigable, its frames (frames.odin)
+	media:        ^Page_Media,          // <video> / <audio> elements (media_element.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -160,6 +161,7 @@ page_cleanup :: proc(data: rawptr) {
 	for _, t in base.pool_next(&p.timers, &it) { host.clear_timer(p.loop, t.handle) }
 	base.pool_destroy(&p.timers)
 	forms_detach(p)
+	media_destroy(p)    // before the objects: play() promises and the players' notices
 	images_destroy(p)   // before the objects: decode() promises are objects
 	objects_destroy(p)   // before the dispatcher: an object's destructor may still look at events
 	web_destroy(p)
@@ -284,6 +286,7 @@ instance_by_index :: proc(p: ^Page, i: u32) -> ^wasm.Instance {
 // Delivers an event to the DOM (from the shell: input, or a synthetic one). False if default was prevented.
 dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	webauthn_note_input(p, ev)   // HTML transient activation (bindings_webauthn.odin)
+	media_note_input(p, ev)      // sticky activation for autoplay (media_element.odin)
 	return dom.dispatch(p.doc, &p.dp, target, ev)
 }
 

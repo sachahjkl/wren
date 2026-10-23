@@ -991,6 +991,7 @@ frame :: proc(app: ^App, idled := false) {
 	// network completions, timers and posted tasks run here, on the UI thread
 	prof_begin(.Loop)
 	ran := host.run_ready(&app.loop)
+	ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
 	if ran > 0 { app.frames_requested = max(app.frames_requested, 2) }
 	images_shell_frame(app)
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
