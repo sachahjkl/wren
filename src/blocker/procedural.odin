@@ -127,13 +127,13 @@ proc_parse :: proc(text: string) -> (s: ^Proc_Selector, ok: bool) {
 				switch op.kind {
 				case .Has, .Not:
 					sub, sok := proc_parse(arg)
-					if !sok { proc_destroy(s); free(s); return nil, false }
+					if !sok { delete(t.arg); proc_destroy(s); free(s); return nil, false }
 					t.sub = sub
 				case .Upward_N:
 					if n, nok := strconv.parse_int(t.arg); nok { t.n = n } else { t.kind = .Upward_Sel }
 				case .Nth_Ancestor, .Min_Text_Length:
 					n, nok := strconv.parse_int(t.arg)
-					if !nok { proc_destroy(s); free(s); return nil, false }
+					if !nok { delete(t.arg); proc_destroy(s); free(s); return nil, false }
 					t.n = n
 				case .Remove: s.remove = true
 				case .Style: delete(s.style); s.style = strings.clone(t.arg)

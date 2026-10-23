@@ -294,7 +294,8 @@ split_args :: proc(text: string) -> []string {
 			strings.write_byte(&cur, text[i + 1]); i += 2; continue
 		case quote != 0:
 			if c == quote { quote = 0 } else { strings.write_byte(&cur, c) }
-		case (c == '"' || c == '\'') && strings.builder_len(cur) == 0:
+		case (c == '"' || c == '\'') && len(strings.trim_space(strings.to_string(cur))) == 0:
+			strings.builder_reset(&cur)
 			quote = c
 		case c == ',':
 			append(&out, strings.clone(strings.trim_space(strings.to_string(cur)), context.temp_allocator))

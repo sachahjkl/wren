@@ -3,6 +3,7 @@
 param([string]$Profile, [string]$Out = "build\blocker_perf.tsv", [int]$Runs = 2, [int]$SettleMs = 12000, [string]$Exe = "build\wren.exe", [string[]]$Urls)
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
+$Urls = @($Urls | ForEach-Object { $_ -split "," } | Where-Object { $_ })
 Remove-Item $Out -ErrorAction SilentlyContinue
 $work = Join-Path $root "build\perf_profile"
 foreach ($url in $Urls) {
