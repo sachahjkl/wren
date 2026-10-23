@@ -55,7 +55,11 @@ net_profiles_load :: proc(text: string) {
 
 net_profiles_text :: proc() -> string {
 	b := strings.builder_make(context.temp_allocator)
-	for p, i in net_custom { fmt.sbprintf(&b, "%s%s|%s|%g|%g|%g|%g", i > 0 ? ";" : "", p.id, strings.replace_all(p.name, "|", " ", context.temp_allocator), p.down_kbps, p.up_kbps, p.latency_ms, p.loss_pct) }
+	for p, i in net_custom {
+		name, _ := strings.replace_all(p.name, "|", " ", context.temp_allocator)
+		name, _ = strings.replace_all(name, ";", " ", context.temp_allocator)
+		fmt.sbprintf(&b, "%s%s|%s|%g|%g|%g|%g", i > 0 ? ";" : "", p.id, name, p.down_kbps, p.up_kbps, p.latency_ms, p.loss_pct)
+	}
 	return strings.to_string(b)
 }
 
