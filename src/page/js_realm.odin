@@ -103,6 +103,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		return nil
 	}
 	inst.lenient = true
+	js_profile_begin(p, inst)   // (WREN_WASM_PROFILE: js_profile.odin)
 	if js_on_realm != nil { js_on_realm(p, inst) }
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)
@@ -128,6 +129,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		}
 	}
 	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
+	js_prelude(p)   // (WREN_JS_PRELUDE: js_profile.odin)
 	if dev_console_max > 0 && p.worker == nil { dev_console_arm(p, dev_console_max) }   // the developer tools are open: console messages carry their objects (devtools_api.odin)
 	return r
 }
