@@ -38,6 +38,11 @@ Doc_Hooks :: struct {
 	poke:       base.Handle,          // a timer that brings the next pass
 	page:       ^page.Page,
 	timer_data: ^Poke,
+	prepared:   bool,                 // the document's scriptlets were sorted by route
+	rest:       [dynamic][]string,    // the scriptlets of route .Hook and .Js (owned)
+	raw:        [dynamic]string,      // raw JavaScript rules (owned)
+	ops:        Dom_Ops,              // dom_ops.odin: the scriptlets that change the document
+	owner:      ^Doc,
 }
 
 Poke :: struct { hs: ^Doc_Hooks }
@@ -45,6 +50,7 @@ Poke :: struct { hs: ^Doc_Hooks }
 install_page_hooks :: proc(b: ^Blocker) {
 	page.embedder = page.Embedder_Hooks{
 		user = b, realm_started = hook_realm_started, adopted = hook_adopted, before_styles = hook_before_styles,
+		before_script = hook_before_script, parsed = hook_parsed,
 		collapse_blocked = b.cfg.collapse,
 	}
 }
@@ -64,7 +70,7 @@ hooks_free :: proc(d: ^Doc) {
 	if d.hooks == nil { return }
 	hs := (^Doc_Hooks)(d.hooks)
 	hooks_reset(hs)
-	delete(hs.seen); delete(hs.hidden); delete(hs.procs)
+	delete(hs.seen); delete(hs.hidden); delete(hs.procs); delete(hs.rest); delete(hs.raw)
 	free(hs.timer_data)
 	free(hs)
 	d.hooks = nil
@@ -76,6 +82,12 @@ hooks_reset :: proc(hs: ^Doc_Hooks) {
 	clear(&hs.procs)
 	clear(&hs.seen)
 	clear(&hs.hidden)
+	ops_destroy(&hs.ops, hs.page != nil ? hs.page.loop : nil)
+	for r in hs.rest { for s in r { delete(s) }; delete(r) }
+	clear(&hs.rest)
+	for s in hs.raw { delete(s) }
+	clear(&hs.raw)
+	hs.prepared = false
 	hs.computed, hs.active, hs.rules = false, false, 0
 	hs.last_mut = 0
 	if hs.poke != base.NIL_HANDLE && hs.page != nil && hs.page.loop != nil { host.clear_timer(hs.page.loop, hs.poke) }
@@ -150,6 +162,7 @@ hook_adopted :: proc(user: rawptr, p: ^page.Page) {
 	hs.page = p
 	if d.has_cosmetic { adblock.cosmetic_destroy(&d.cosmetic); d.has_cosmetic = false; if d.engine != nil { engine_ref_drop(b, d.engine); d.engine = nil } }
 	doc_refresh(b, d)
+	prepare_scriptlets(b, d, hs, p)
 	if !cosmetic_applies(b, d) { return }
 	ensure_cosmetic(b, d)
 	hs.active = true
@@ -257,6 +270,7 @@ hook_before_styles :: proc(user: rawptr, p: ^page.Page) {
 	d := doc_of_page(b, p)
 	if d == nil || d.hooks == nil { return }
 	hs := (^Doc_Hooks)(d.hooks)
+	if hs.ops.started { ops_run(b, hs, p) }
 	if !hs.active || p.doc.mutations == hs.last_mut { return }
 	wait := i64(b.cfg.debounce_ms) - (now_ms() - hs.last_run)
 	if wait > 0 {
@@ -319,37 +333,73 @@ split_args :: proc(text: string) -> []string {
 }
 
 @(private)
-hook_realm_started :: proc(user: rawptr, p: ^page.Page) {
+hook_before_script :: proc(user: rawptr, p: ^page.Page, script: base.Handle) {
 	b := (^Blocker)(user)
 	d := doc_of_page(b, p)
-	if d == nil { return }
-	doc_refresh(b, d)
+	if d == nil || d.hooks == nil { return }
+	hs := (^Doc_Hooks)(d.hooks)
+	if hs.ops.started { ops_before_script(b, hs, p, script) }
+}
+
+@(private)
+hook_parsed :: proc(user: rawptr, p: ^page.Page) {
+	b := (^Blocker)(user)
+	d := doc_of_page(b, p)
+	if d == nil || d.hooks == nil { return }
+	hs := (^Doc_Hooks)(d.hooks)
+	if hs.ops.started { ops_parsed(b, hs, p) }
+}
+
+// Sorts the scriptlets of the document by route (scriptlet_route.odin): the ones that change the DOM become operations of dom_ops.odin
+// and start now; the rest waits for the realm (hook_realm_started).
+@(private)
+prepare_scriptlets :: proc(b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, p: ^page.Page) {
+	hs.prepared = true
+	hs.owner = d
 	if !b.cfg.enabled || !b.cfg.scriptlets || d.unfiltered || .No_Scriptlets in d.site || b.engine == nil { return }
 	ensure_cosmetic(b, d)
 	if d.cosmetic.no_scriptlets { return }
 	e := d.engine.engine
-	rules := make([dynamic][]string, context.temp_allocator)
-	raw := make([dynamic]string, context.temp_allocator)
 	for id in d.cosmetic.active {
 		v := adblock.cosmetic_filter(e, id)
 		switch {
 		case .Scriptlet in v.flags:
 			args := split_args(v.selector)
-			if len(args) > 0 && args[0] != "" { append(&rules, args) }
+			if len(args) == 0 || args[0] == "" { continue }
+			canon := scriptlet_canonical(args[0])
+			if scriptlet_route(canon) == .Dom {
+				if op, ok := ops_make(canon, args); ok { append(&hs.ops.ops, op) }
+				continue
+			}
+			keep := make([]string, len(args))
+			for a, i in args { keep[i] = strings.clone(a) }
+			append(&hs.rest, keep)
 		case .Js_Raw in v.flags:
-			append(&raw, v.selector)
+			append(&hs.raw, strings.clone(v.selector))
 		}
 	}
-	if len(rules) == 0 && len(raw) == 0 { return }
+	hs.ops.cursor = 0
+	ops_start(b, hs, p)
+}
+
+@(private)
+hook_realm_started :: proc(user: rawptr, p: ^page.Page) {
+	b := (^Blocker)(user)
+	d := doc_of_page(b, p)
+	if d == nil { return }
+	doc_refresh(b, d)
+	hs := hooks_of(d)
+	if !hs.prepared { hs.page = p; prepare_scriptlets(b, d, hs, p) }
+	if len(hs.rest) == 0 && len(hs.raw) == 0 { return }
 	sb := strings.builder_make(context.temp_allocator)
-	if len(rules) > 0 {
+	if len(hs.rest) > 0 {
 		strings.write_string(&sb, "(function(rules){\n")
 		strings.write_string(&sb, SCRIPTLETS_JS)
 		strings.write_string(&sb, "\n})(")
-		json_rules(&sb, rules[:])
+		json_rules(&sb, hs.rest[:])
 		strings.write_string(&sb, ");\n")
 	}
-	for r in raw {
+	for r in hs.raw {
 		strings.write_string(&sb, "try{")
 		strings.write_string(&sb, r)
 		strings.write_string(&sb, "\n}catch(e){}\n")
@@ -357,7 +407,6 @@ hook_realm_started :: proc(user: rawptr, p: ^page.Page) {
 	source := strings.to_string(sb)
 	page.js_run(p, transmute([]byte)source, "wren-blocker:scriptlets")
 }
-
 @(private)
 json_rules :: proc(sb: ^strings.Builder, rules: [][]string) {
 	strings.write_byte(sb, '[')

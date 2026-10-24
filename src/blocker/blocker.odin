@@ -108,6 +108,7 @@ Event_Kind :: enum u8 {
 	Blocked,       // a request of a tab was blocked (console line)
 	Changed,       // counters, lists or settings changed: redraw
 	Lists,         // a list update finished
+	Reload,        // a scriptlet asks for the tab to be loaded again (set-cookie-reload)
 }
 
 Event :: struct {
