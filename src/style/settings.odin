@@ -32,6 +32,7 @@ Settings :: struct {
 	user_stylesheet:     string,    // owned: path of a user CSS file ("" = none)
 	color_scheme:        Color_Scheme,
 	reduced_motion:      bool,
+	internal_document:   bool,      // the document is one of the browser's own pages (set by the page from its address, not a preference): -wren-shader is accepted
 	prefers_contrast:    bool,
 	default_font_size:   f32,
 	monospace_font_size: f32,

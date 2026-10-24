@@ -428,6 +428,11 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 // A document of the browser itself (about:home, about:demos): what it opens is opened by the browser's UI.
 builtin_document :: proc(p: ^page.Page) -> bool {
 	if p == nil { return false }
-	h := p.env.location.href
+	return is_builtin_href(p.env.location.href)
+}
+
+// The addresses of the browser's own pages that are built from HTML (builtin_document, and the pages' permission to use
+// -wren-shader: page.Settings.internal_address).
+is_builtin_href :: proc(h: string) -> bool {
 	return h == HOME_URL || h == DEMOS_URL || h == ABOUT_URL || is_wren_address(h)
 }

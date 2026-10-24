@@ -900,6 +900,8 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return apply_container_prop(cx, p, vs)
 	case .Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite, .Text_Fill_Color:
 		return apply_mask_prop(cx, p, vs)
+	case .Wren_Shader:
+		return apply_shader_prop(cx, p, vs)
 	}
 	return true
 }

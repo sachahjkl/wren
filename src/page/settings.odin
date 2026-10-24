@@ -37,6 +37,9 @@ Settings :: struct {
 	fullscreen:      Fullscreen_Settings, // the Fullscreen API (fullscreen.odin)
 	timeline:        Timeline_Settings,   // Performance Timeline entries (timeline.odin)
 	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
+	// Whether a document address is one of the browser's own pages (about:wren...): those documents may use the properties made for
+	// them (-wren-shader). Set by the shell; nil: no page is.
+	internal_address: proc(href: string) -> bool,
 }
 
 PREFS := [?]config.Def{
