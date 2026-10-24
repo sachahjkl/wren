@@ -4,7 +4,7 @@
 #   powershell -NoProfile -File tools\release_notes.ps1 -Tag v0.2.0 [-Ref HEAD] [-Out build\dist\NOTES.md]
 # -Ref: the commit the tag is (or will be) on, to preview the notes before tagging (default: the tag itself).
 # A change line is the commit's subject up to its first sentence (subjects carry their details after "(" or "; "),
-# and merges of main back into a branch are left out: they repeat changes already listed.
+# and merges of master (or main, the old name) back into a branch are left out: they repeat changes already listed.
 param([Parameter(Mandatory)][string]$Tag, [string]$Ref = '', [string]$Out = '', [int]$MaxLine = 200)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -39,7 +39,7 @@ $title = if ($range -eq $Ref) { 'Changes (the whole history)' } else { "Changes 
 $notes.Add("<details><summary>$title</summary>")
 $notes.Add('')
 foreach ($s in $subjects) {
-    if ($s -match "^Merge (remote-tracking )?branch '?(origin/)?main'? into ") { continue }
+    if ($s -match "^Merge (remote-tracking )?branch '?(origin/)?(main|master)'? into ") { continue }
     $notes.Add("- $(Shorten $s)")
 }
 $notes.Add('')
