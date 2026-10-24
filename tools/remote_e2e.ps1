@@ -72,7 +72,7 @@ public class WinClose {
             $log = Join-Path $prof 'shutdown.log'
             $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
             Check "round ${round}: quit with a client connected and a video playing: $ms ms" ($global:WrenExit -eq 0 -and $q -match 'exit code 3' -and $ms -lt $CloseLimitMs -and -not $forced) "$q | $global:WrenErr | forced=$forced"
-            if (Test-Path $log) { "      shutdown.log: " + ((Get-Content $log | Select-Object -Last 2) -join ' / ') }
+            if (Test-Path $log) { (Get-Content $log | Select-Object -First 14 | ForEach-Object { "      shutdown.log: " + $_.Substring(0, [Math]::Min(300, $_.Length)) }) -join "`n" }
             Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
             # 2. the window closed as the X button does
             $prof = Join-Path $tmp "stress-x-$round"
@@ -89,7 +89,7 @@ public class WinClose {
             $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
             Check "round ${round}: the window closed (WM_CLOSE to $n window(s)) with a video playing: $ms ms" ($ended -and $ms -lt $CloseLimitMs -and -not $forced) "ended=$ended forced=$forced"
             if (-not $ended) { Stop-Process -Id $wpid -Force }
-            if (Test-Path $log) { "      shutdown.log: " + ((Get-Content $log | Select-Object -Last 2) -join ' / ') }
+            if (Test-Path $log) { (Get-Content $log | Select-Object -First 14 | ForEach-Object { "      shutdown.log: " + $_.Substring(0, [Math]::Min(300, $_.Length)) }) -join "`n" }
             Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
         }
     } finally {
