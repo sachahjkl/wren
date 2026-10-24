@@ -608,14 +608,13 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 }
 
-@(private = "file")
 capture_reply :: proc(op: ^Remote_Op, pixels: []u8, size: [2]int) -> Reply {
 	w, h := size.x, size.y
 	rgba := pixels
 	if op.scale != 1 {
 		rgba, w, h = scale_rgba(pixels, size.x, size.y, op.scale)
-		defer delete(rgba)
 	}
+	defer if op.scale != 1 { delete(rgba) }   // (not in the block above: a defer runs where its block ends, before the picture is encoded)
 	png, ok := images.encode_rgba(rgba, w, h, .Png, 0, false)
 	if !ok { return fail(remote.ERR_FAILED, "the PNG could not be written") }
 	defer delete(png)
