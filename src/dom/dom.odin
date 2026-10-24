@@ -272,10 +272,12 @@ detach :: proc(d: ^Document, h: base.Handle) {
 	if n.prev != base.NIL_HANDLE { get(d, n.prev).next = n.next } else { p.first_child = n.next }
 	if n.next != base.NIL_HANDLE { get(d, n.next).prev = n.prev } else { p.last_child = n.prev }
 	old_parent, old_prev, old_next := n.parent, n.prev, n.next
+	watch: u64   // what leaves the document with it (a node kept in a detached tree is not looked at: the style engine does not see it)
+	if d.journal.on && d.journal.watch.on && n.kind == .Element && is_connected(d, old_parent) { watch = subtree_watch(d, h) }
 	n.parent, n.prev, n.next = base.NIL_HANDLE, base.NIL_HANDLE, base.NIL_HANDLE
 	touch(d)
 	d.tree_version += 1
-	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next)
+	journal_record(d, .Remove, h, old_parent, prev = old_prev, next = old_next, watch = watch)
 	if len(d.shadow_roots) > 0 { shadow_removed(d, h, old_parent) }
 	if d.hooks.removed != nil { d.hooks.removed(d.hooks.user, d) }
 }

@@ -407,8 +407,39 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	p := by_id(f, "p")
 	dom.remove_child(f.doc, by_id(f, "d"), p)
 	dom.release(f.doc, p)
+	expect_partial(t, f, "an element gone from a document with forms but no radio buttons")
+	// controls that come and go inside a form restyle the form (its :valid, its default button) and what they are
+	form := dom.find_first_by_tag(f.doc, "form")
+	c1 := dom.create_element(f.doc, "input")
+	dom.append_child(f.doc, form, c1)
+	expect_partial(t, f, "a control inserted in a form")
+	b1 := dom.create_element(f.doc, "button")
+	dom.append_child(f.doc, form, b1)
+	expect_partial(t, f, "a button inserted in the form (a default button)")
+	dom.set_attribute(f.doc, c1, "disabled", "")
+	expect_partial(t, f, "a control of the form disabled")
+	dom.remove_child(f.doc, form, c1)
+	expect_partial(t, f, "a control removed from the form")
+	dom.remove_child(f.doc, form, b1)
+	dom.release(f.doc, b1)
+	expect_partial(t, f, "a button gone from the form")
+	// a radio button belongs to a group we cannot find from the node: a full pass
+	rd := dom.create_element(f.doc, "input")
+	dom.set_attribute(f.doc, rd, "type", "radio")
+	dom.append_child(f.doc, form, rd)
+	_, okr := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, !okr && f.eng.last_restyle.fallback == "form controls inserted")
+	oldf := f.st
+	f.st = compute_styles(f.eng, f.doc, {controls = provider})
+	styled_destroy(oldf)
+	// and with one in the document, an element that is gone may have been one of the group
+	q2 := dom.create_element(f.doc, "p")
+	dom.append_child(f.doc, by_id(f, "d"), q2)
+	expect_partial(t, f, "a paragraph inserted")
+	dom.remove_child(f.doc, by_id(f, "d"), q2)
+	dom.release(f.doc, q2)
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
-	testing.expect(t, !ok, "an element gone from a document with forms")
+	testing.expect(t, !ok && f.eng.last_restyle.fallback == "element removed from a document with form controls")
 
 	// only local questions: a row with a button removed and another inserted, partially (and as a full pass would)
 	l := rx_load(`<style>button:disabled { opacity: .5 } .r { margin: 1px }</style><div id=list><div class=r id=r1><button>a</button></div><div class=r><button disabled>b</button></div></div>
@@ -443,11 +474,9 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	expect_partial(t, g, "an element gone from a document without forms")
 	in_ := dom.create_element(g.doc, "input")
 	dom.append_child(g.doc, by_id(g, "d"), in_)
-	_, ok2 := restyle_dom(g.eng, g.doc, g.st)
-	testing.expect(t, !ok2 && g.eng.last_restyle.fallback == "form controls inserted")
-	old := g.st
-	g.st = compute_styles(g.eng, g.doc, {controls = provider})
-	styled_destroy(old)
+	expect_partial(t, g, "a control inserted outside any form")
+	dom.set_attribute(g.doc, in_, "value", "b")
+	expect_partial(t, g, "its value changed")
 	dom.set_attribute(g.doc, in_, "name", "b")
 	_, ok3 := restyle_dom(g.eng, g.doc, g.st)
 	testing.expect(t, !ok3 && g.eng.last_restyle.fallback == "form control attribute changed")
@@ -672,4 +701,41 @@ restyle_dom_random :: proc(t: ^testing.T) {
 	}
 	log.infof("random mutations: %d partial restyles, %d full", f.partial, f.full)
 	testing.expectf(t, f.partial > 150, "%d partial restyles, %d full", f.partial, f.full)
+}
+
+// A :has() whose anchor is any element (`:has(ghost-el) .y`: YouTube's rules): elements that come or go restyle the anchors' subtrees
+// only when their features (tag, class, id, attribute names) are some the argument names; any other insertion or removal, a
+// removed node already destroyed included (the journal keeps its features), restyles the elements themselves.
+@(test)
+restyle_dom_has_bare_anchor :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(ghost-el) .y { margin: 1px } :has(.flag) .y { padding: 2px } :has(#spot) .y { color: red }</style>
+		<div id=a><p class=y>u</p><p class=y>v</p><div id=box></div></div>`)
+	defer rx_unload(f)
+	box := by_id(f, "box")
+	e := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, e, "class", "other")
+	dom.append_child(f.doc, box, e)
+	expect_partial(t, f, "an unrelated element inserted", 3)
+	dom.remove_child(f.doc, box, e)
+	dom.release(f.doc, e)
+	expect_partial(t, f, "an unrelated element removed and destroyed", 3)
+	g := dom.create_element(f.doc, "ghost-el")
+	dom.append_child(f.doc, box, g)
+	expect_partial(t, f, "the element a :has() names inserted")
+	testing.expect(t, f.eng.last_restyle.marked >= 3, "the paragraphs under the anchors were restyled")
+	dom.remove_child(f.doc, box, g)
+	dom.release(f.doc, g)
+	expect_partial(t, f, "and removed, destroyed")
+	testing.expect(t, f.eng.last_restyle.marked >= 2, "the paragraphs again")
+	w := dom.create_element(f.doc, "div")
+	dom.set_attribute(f.doc, w, "class", "flag")
+	dom.append_child(f.doc, box, w)
+	expect_partial(t, f, "a class a :has() names, inserted with its subtree")
+	h := dom.create_element(f.doc, "i")
+	dom.set_attribute(f.doc, h, "id", "spot")
+	dom.append_child(f.doc, w, h)
+	expect_partial(t, f, "an id a :has() names, in what was inserted")
+	dom.remove_child(f.doc, box, w)
+	dom.release(f.doc, w)
+	expect_partial(t, f, "the subtree that held both removed and destroyed")
 }

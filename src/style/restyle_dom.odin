@@ -4,6 +4,8 @@ import "base:runtime"
 import "core:fmt"
 import "core:mem"
 import "core:mem/virtual"
+import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -147,8 +149,9 @@ Marker :: struct {
 Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
 
 @(private = "file")
-mark :: proc(m: ^Marker, h: base.Handle, sub: bool) {
+mark :: proc(m: ^Marker, h: base.Handle, sub: bool, loc := #caller_location) {
 	if !is_element_node(m.doc, h) { return }
+	if sub && trace_restyle() && flat_parent_element(m.doc, h) == base.NIL_HANDLE { trace_roots[int(loc.line)] += 1 }
 	bits := m.marks[h]
 	nb := bits | (sub ? M_SUB : M_SELF)
 	if nb == bits { return }
@@ -228,13 +231,13 @@ next_element :: proc(m: ^Marker, h: base.Handle) -> base.Handle {
 // subject's keys (Reach.set): then only the elements of it that carry one are marked (`.a .b`: the `.b` under `.a`), which
 // is all a rule can change; the rest is looked at, not restyled.
 @(private = "file")
-apply :: proc(m: ^Marker, h: base.Handle, r: Reach) {
+apply :: proc(m: ^Marker, h: base.Handle, r: Reach, loc := #caller_location) {
 	if r.desc {
 		if r.set != 0 && !m.shadows {
 			if r.self { mark(m, h, false) }
 			mark_keyed(m, h, r.set)
 		} else {
-			mark(m, h, true)
+			mark(m, h, true, loc)
 		}
 	} else if r.self {
 		mark(m, h, false)
@@ -352,13 +355,18 @@ list_has_has :: proc(list: css.Selector_List, depth := 0) -> bool {
 has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Change{}) {
 	ix := ix_of(m, x)
 	if !ix.uses_has || len(ix.has_anchors) == 0 { return }
+	feat := feat
+	// the masks are of the document's watch, which only the index of the document's own rules sets up (watch_sync)
+	if feat.kind == .Tree && (ix.watched != m.doc || ix.watched_gen != m.doc.journal.watch.gen) { feat.known = false }
 	test :: proc(m: ^Marker, ix: ^Inv_Index, a: base.Handle, feat: Has_Change, hop: int) {
 		for &ha in ix.has_anchors {
 			if ha.hops >= 0 && hop > ha.hops { continue }   // (`:has(> .a)`: only the parent of the changed element)
 			// a feature that changed on an element: only the anchors whose :has() tests it can be affected (a bare
 			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
 			if !has_tests(ha.feat, feat) { continue }
-			if anchor_could_match(&m.mc, a, ha.compound) { apply(m, a, ha.reach) }
+			if anchor_could_match(&m.mc, a, ha.compound) {
+				apply(m, a, ha.reach)
+			}
 		}
 	}
 	any := false
@@ -386,14 +394,17 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 // or of anything: every anchor is concerned).
 @(private = "file")
 Has_Change :: struct {
-	kind: enum u8 { None, Class, Id, Attr },
-	name: string,
+	kind:  enum u8 { None, Class, Id, Attr, Tree },   // Tree: elements came or went (mask: which watched features they held; known: it was looked at)
+	name:  string,
+	mask:  u64,
+	known: bool,
 }
 
 @(private = "file")
 has_tests :: proc(f: Has_Feat, c: Has_Change) -> bool {
 	switch c.kind {
 	case .None: return true
+	case .Tree: return !c.known || f.unkeyed || f.mask & c.mask & ~dom.WATCH_KNOWN != 0
 	case .Class: return c.name in f.classes
 	case .Id: return c.name in f.ids
 	case .Attr: return c.name in f.attrs
@@ -431,7 +442,7 @@ children_inserted :: proc(m: ^Marker, p, at: base.Handle) {
 		}
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
-	has_invalidate(m, at, false)
+	has_invalidate(m, at, false, Has_Change{kind = .Tree, mask = dom.subtree_watch(m.doc, at), known = m.doc.journal.watch.on})
 }
 
 // Whether a sibling walk in direction `dir` already went through `x` in this pass; notes that one does now.
@@ -445,7 +456,7 @@ walk_seen :: proc(m: ^Marker, x: base.Handle, ix: ^Inv_Index, dir: u8) -> bool {
 
 // An element left `p` (where among the children is not known any more).
 @(private = "file")
-children_removed :: proc(m: ^Marker, p: base.Handle) {
+children_removed :: proc(m: ^Marker, p: base.Handle, mask: u64, mask_gen: u32) {
 	pn := dom.get(m.doc, p)
 	first := pn.first_child
 	for first != base.NIL_HANDLE && !is_element_node(m.doc, first) { first = dom.get(m.doc, first).next }
@@ -470,12 +481,12 @@ children_removed :: proc(m: ^Marker, p: base.Handle) {
 	}
 	if is_element_node(m.doc, p) { empty_changed(m, p) }
 	if ix := ix_of(m, first != base.NIL_HANDLE ? first : p); ix.uses_has {
-		if is_element_node(m.doc, p) { has_invalidate(m, p, true) }
+		if is_element_node(m.doc, p) { has_invalidate(m, p, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}) }
 		if key := (Walk_Key{p, ix, 3}); ix.has_sibling && key not_in m.emptied {
 			m.emptied[key] = true
 			pn = dom.get(m.doc, p)
 			for ch := pn.first_child; ch != base.NIL_HANDLE; ch = dom.get(m.doc, ch).next {
-				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true) }
+				if is_element_node(m.doc, ch) { has_invalidate(m, ch, true, Has_Change{kind = .Tree, mask = mask, known = mask & dom.WATCH_KNOWN != 0 && mask_gen == m.doc.journal.watch.gen}) }
 			}
 		}
 	}
@@ -504,6 +515,7 @@ inserted_features_of :: proc(m: ^Marker, ix: ^Inv_Index, h: base.Handle, n: ^dom
 	r.self, r.desc = false, false
 	if reach_any(r) { apply(m, h, r) }
 }
+
 
 @(private = "file")
 FORM_RELATED :: [?]string{"form", "input", "select", "option", "optgroup", "textarea", "button", "fieldset", "datalist", "output", "label", "legend"}
@@ -548,20 +560,80 @@ legend_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
 	return false
 }
 
+
+// Controls that make a group across the tree: a radio button (its group is the buttons of its name under the same form owner)
+// and a control owned through a form attribute (it belongs to a form elsewhere). What their coming or going changes cannot
+// be found from the node alone: a full pass.
 @(private = "file")
-form_related_in :: proc(doc: ^dom.Document, h: base.Handle) -> bool {
-	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
-	append(&stack, h)
-	for len(stack) > 0 {
-		x := pop(&stack)
-		n := dom.get(doc, x)
-		if n == nil || n.kind != .Element { continue }
-		for f in FORM_RELATED { if n.name == f { return true } }
-		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+group_control :: proc(doc: ^dom.Document, h: base.Handle, n: ^dom.Node) -> bool {
+	if n.name == "input" {
+		if v, ok := dom.get_attribute(doc, h, "type"); ok && strings.equal_fold(strings.trim_space(v), "radio") { return true }
+	}
+	_, owned := dom.get_attribute(doc, h, "form")
+	return owned
+}
+
+@(private = "file")
+is_listed_control :: proc(name: string) -> bool {
+	switch name {
+	case "input", "select", "textarea", "button", "output", "fieldset", "option", "optgroup", "form": return true
 	}
 	return false
 }
 
+// Rules ask the forms model about groups of controls (:checked, :default, :valid...). A control that comes or goes changes,
+// besides itself, what depends on all the controls of its form (the form's and its fieldsets' :valid / :invalid, which
+// button is the default one) and on all the options of its select: those are restyled with what they hold (mark_form_ancestors).
+// False: a radio button or a control owned through a form attribute is in `root` (group_control): the caller does a full pass.
+@(private = "file")
+scope_controls :: proc(m: ^Marker, root, parent: base.Handle) -> bool {
+	doc := m.doc
+	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
+	append(&stack, root)
+	listed := false
+	for len(stack) > 0 {
+		x := pop(&stack)
+		n := dom.get(doc, x)
+		if n == nil || n.kind != .Element { continue }
+		if is_listed_control(n.name) {
+			listed = true
+			if group_control(doc, x, n) { return false }
+		}
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+	}
+	if listed { mark_form_ancestors(m, parent) }
+	return true
+}
+
+// The form, fieldsets and select that hold `h` (or are it), restyled with what they hold.
+@(private = "file")
+mark_form_ancestors :: proc(m: ^Marker, h: base.Handle) {
+	for p := h; p != base.NIL_HANDLE; {
+		n := dom.get(m.doc, p)
+		if n == nil { return }
+		if n.kind == .Element && (n.name == "form" || n.name == "fieldset" || n.name == "select") { mark(m, p, true) }
+		p = n.parent
+	}
+}
+
+// Whether the document has a control that makes a group across the tree (group_control), looked for once per full pass.
+@(private = "file")
+groups_in_document :: proc(s: ^Styled, doc: ^dom.Document) -> bool {
+	if s.forms_scan == 0 {
+		s.forms_scan = 1
+		stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
+		append(&stack, doc.root)
+		for len(stack) > 0 && s.forms_scan == 1 {
+			x := pop(&stack)
+			n := dom.get(doc, x)
+			if n == nil { continue }
+			if n.kind == .Element && is_listed_control(n.name) && group_control(doc, x, n) { s.forms_scan = 2; break }
+			for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+			if n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
+		}
+	}
+	return s.forms_scan == 2
+}
 // Some element of the subtree of `h` (styles as last computed) changes or shows counters or quotes.
 @(private = "file")
 subtree_feeds :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle) -> bool {
@@ -598,7 +670,7 @@ attribute_changed :: proc(m: ^Marker, ch: Attr_Change) {
 		// custom states (:state()): no value to compare, the rules that test them say what they reach
 		for ix in ixs_for(m, h) {
 			if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-			if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
+			if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{kind = .Attr, name = ch.name}) }
 		}
 		return
 	}
@@ -632,18 +704,18 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		for c in a {
 			if c in b { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{kind = .Class, name = c}) }
 		}
 		for c in b {
 			if c in a { continue }
 			if r, ok := ix.by_class[c]; ok { apply(m, h, r) }
-			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{.Class, c}) }
+			if c in ix.has_classes { has_invalidate(m, h, false, Has_Change{kind = .Class, name = c}) }
 		}
 	case "id":
 		for v in ([2]string{ch.had_old ? ch.old : "", has_cur ? cur : ""}) {
 			if v == "" { continue }
 			if r, ok := ix.by_id[v]; ok { apply(m, h, r) }
-			if v in ix.has_ids { has_invalidate(m, h, false, Has_Change{.Id, v}) }
+			if v in ix.has_ids { has_invalidate(m, h, false, Has_Change{kind = .Id, name = v}) }
 		}
 	case "style":
 		mark(m, h, false)
@@ -653,14 +725,19 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 		if m.s.counters_used { m.rewalk = true }   // quotes follow the language
 	}
 	if r, ok := ix.by_attr[ch.name]; ok { apply(m, h, r) }
-	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{.Attr, ch.name}) }
+	if ch.name in ix.has_attrs { has_invalidate(m, h, false, Has_Change{kind = .Attr, name = ch.name}) }
 	if hint, subtree := hint_attribute(n.name, ch.name); hint || subtree { mark(m, h, subtree) }
 	if ix.uses_controls && is_form_attr(ch.name) {
 		for f in FORM_RELATED {
 			if n.name != f { continue }
 			// the forms model answers from groups and forms (radio groups, form validity, default button): another
 			// control's state may follow (only questions of the element itself: its subtree below)
-			if control_groups_used(m.e, ix, m.s) { m.fail = "form control attribute changed"; return }
+			if control_groups_used(m.e, ix, m.s) {
+				// only a radio button (its group), a control owned through a form attribute, or a change of what makes it one,
+				// reaches controls we cannot find; the rest reaches the form, fieldsets and select that hold it (scope_controls)
+				if ch.name == "name" || ch.name == "form" || ch.name == "type" || group_control(m.doc, h, n) { m.fail = "form control attribute changed"; return }
+				mark_form_ancestors(m, h)
+			}
 			apply(m, h, ix.controls)
 			break
 		}
@@ -695,7 +772,7 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			}
 			if !connected(doc, en.node) { continue }   // removed again since (that removal is in the journal)
 			structure = true
-			if controls && form_related_in(doc, en.node) { m.fail = "form controls inserted"; return }
+			if controls && !scope_controls(m, en.node, n.parent) { m.fail = "form controls inserted"; return }
 			if local_controls && legend_in(doc, en.node) { mark(m, n.parent, true) }
 			if (n.name == "style" || n.name == "link") && !in_shadow(m, en.node) { m.fail = "stylesheet element inserted"; return }
 			// moved here from elsewhere: counter values change on both sides (new elements: see settle)
@@ -719,15 +796,10 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 				if s.counters_used { m.rewalk = true }
 				if controls {
 					// what it held is gone: it may have been a control of a form or radio group still there. Only a
-					// document with form elements cares (scanned once per full pass; inserting some forces one)
-					if s.forms_scan == 0 {
-						s.forms_scan = 1
-						root := dom.get(doc, doc.root)
-						for ch := root.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
-							if form_related_in(doc, ch) { s.forms_scan = 2; break }
-						}
-					}
-					if s.forms_scan == 2 { m.fail = "element removed from a document with form controls"; return }
+					// document with radio buttons or controls owned through a form attribute cares (scanned once per full
+					// pass; inserting some forces one); the form, fieldsets and select around it are restyled
+					if groups_in_document(s, doc) { m.fail = "element removed from a document with form controls"; return }
+					if p_ok { mark_form_ancestors(m, en.parent) }
 				} else if local_controls && p_ok {
 					// (gone, so unknown: it may have been a fieldset's first legend)
 					if pn := dom.get(doc, en.parent); pn != nil && pn.kind == .Element && pn.name == "fieldset" { mark(m, en.parent, true) }
@@ -735,10 +807,10 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			} else {
 				if !connected(doc, en.node) { append(&m.removed, en.node) } else if m.shadows { append(&m.left, en.node) }
 				if s.counters_used && !m.rewalk && subtree_feeds(s, doc, en.node) { m.rewalk = true }
-				if controls && form_related_in(doc, en.node) { m.fail = "form controls removed"; return }
+				if controls && p_ok && !scope_controls(m, en.node, en.parent) { m.fail = "form controls removed"; return }
 				if local_controls && p_ok && legend_in(doc, en.node) { mark(m, en.parent, true) }
 			}
-			if p_ok { children_removed(m, en.parent) }
+			if p_ok { children_removed(m, en.parent, en.watch, en.watch_gen) }
 		case .Text:
 			n := dom.get(doc, en.node)
 			p := n != nil ? n.parent : en.parent
@@ -789,6 +861,53 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	}
 }
 
+@(private = "file")
+trace_roots: map[int]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.odin that marked the root element's whole subtree, and how often
+
+// WREN_RESTYLE_TRACE=1: what made a restyle too big to scope, on standard error (for the measuring tools): the mutations, and the
+// elements whose whole subtree was marked, the biggest first.
+@(private = "file")
+trace_restyle :: proc() -> bool {
+	@(static) known, on: bool
+	if !known { known = true; on = os.get_env("WREN_RESTYLE_TRACE", context.temp_allocator) != "" }
+	return on
+}
+
+@(private = "file")
+trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
+	Row :: struct { h: base.Handle, size: int }
+	rows := make([dynamic]Row, 0, 16, context.temp_allocator)
+	for h, bits in m.marks {
+		if bits & M_SUB == 0 { continue }
+		size := 0
+		stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+		append(&stack, h)
+		for len(stack) > 0 {
+			x := pop(&stack)
+			size += 1
+			for ch := dom.flat_first_child(m.doc, x); ch != base.NIL_HANDLE; ch = dom.flat_next(m.doc, ch) { if is_element_node(m.doc, ch) { append(&stack, ch) } }
+		}
+		append(&rows, Row{h, size})
+	}
+	slice.sort_by(rows[:], proc(a, b: Row) -> bool { return a.size > b.size })
+	fmt.eprintfln("restyle too big: %d elements to restyle of %d, %d mutations, %d subtrees marked whole, %d shadow roots", work, m.doc.nodes.count, len(entries), len(rows), len(m.doc.shadow_roots))
+	tally := make(map[string]int, 16, context.temp_allocator)
+	for en in entries {
+		n := dom.get(m.doc, en.node)
+		tally[fmt.tprintf("%v of <%s> %s", en.kind, n != nil ? n.name : "(gone)", en.name)] += 1
+	}
+	for k, v in trace_roots { fmt.eprintfln("    root subtree marked by restyle_dom.odin:%d x %d", k, v) }
+	clear(&trace_roots)
+	fmt.eprintfln("    mutations: %s", len(tally) > 12 ? "(many kinds)" : "")
+	for k, v in tally { fmt.eprintfln("      %d x %s", v, k) }
+	for r, i in rows {
+		if i >= 6 { break }
+		n := dom.get(m.doc, r.h)
+		cls, _ := dom.get_attribute(m.doc, r.h, "class")
+		id, _ := dom.get_attribute(m.doc, r.h, "id")
+		fmt.eprintfln("    %d elements under <%s id=%q class=%q>", r.size, n.name, id, cls[:min(len(cls), 60)])
+	}
+}
 // Elements marked, counting whole subtrees (the work a restyle will do at least).
 @(private = "file")
 estimate :: proc(m: ^Marker) -> int {
@@ -1004,6 +1123,7 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }
+	if !shadows && ix.uses_has { watch_sync(ix, doc) }
 
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make(map[base.Handle]u8, 64, context.temp_allocator)
@@ -1027,7 +1147,10 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	mark_mutations(&m, entries)
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m)
-	if f64(work) > f64(e.settings.inc_max_ratio) * f64(max(doc.nodes.count, 1)) { return fail(e, "too much changed") }
+	if f64(work) > f64(e.settings.inc_max_ratio) * f64(max(doc.nodes.count, 1)) {
+		if trace_restyle() { trace_marks(&m, work, entries) }
+		return fail(e, "too much changed")
+	}
 
 	// from here on the styles change
 	for h in m.removed {
