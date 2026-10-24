@@ -9,6 +9,7 @@
  *   serialize(value)       the structured serialization of a value (runtime/clone.c) as a Uint8Array; DataCloneError
  *   deserialize(bytes)     the value back
  *   report(exception)      report an exception thrown by a handler, as an uncaught one
+ *   utf8, utf8d, key, keyValue, cmp, validPath, pathKey, indexKeys, canInject, inject, execGet...: web_idb_native.c
  * and the prelude returns { classes, factory, hooks: { event, cleanup }, start }: wj_idb_event is the browser telling the
  * realm that its next event is ready to take with call(11); wj_idb_cleanup, that a microtask checkpoint ended and
  * transactions that were active become inactive. Windows and dedicated workers alike. */
@@ -60,6 +61,23 @@ static JSValue host_call(JSContext *ctx, JSValueConst this_val, int argc, JSValu
     return u8_copy(ctx, wj_scratch.data, (size_t)n);
 }
 
+/* One request of the browser (Idb_call): the reply in a copy made with the engine's allocator (to js_free); a failed call throws. */
+bool web_idb_call_copy(JSContext *ctx, int32_t op, const uint8_t *args, size_t alen, uint8_t **out, size_t *outn)
+{
+    int32_t n = wr_Idb_call(op, args, (uint32_t)alen, wj_scratch.data, wj_scratch.cap);
+    if (n > 0 && (uint32_t)n > wj_scratch.cap) {
+        if (!wj_scratch_grow((uint32_t)n)) { JS_ThrowOutOfMemory(ctx); return false; }
+        n = wr_Idb_call(op | 0x4000, NULL, 0, wj_scratch.data, wj_scratch.cap);
+    }
+    if (n < 0) { wj_throw_status(ctx, n, "indexedDB"); return false; }
+    uint8_t *copy = js_malloc(ctx, n ? (size_t)n : 1);
+    if (!copy) { return false; }
+    if (n) { memcpy(copy, wj_scratch.data, (size_t)n); }
+    *out = copy;
+    *outn = (size_t)n;
+    return true;
+}
+
 static JSValue host_serialize(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);
@@ -87,12 +105,6 @@ static JSValue host_report(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     return JS_UNDEFINED;
 }
 
-static JSValue host_is_proxy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    return JS_NewBool(ctx, argc > 0 && JS_IsProxy(argv[0]));
-}
-
 extern int32_t wj_run_jobs(void);
 
 /* The microtask checkpoint, now: for a script of the prelude that is called with nothing else running (between two listeners). */
@@ -103,16 +115,19 @@ static JSValue host_drain(JSContext *ctx, JSValueConst this_val, int argc, JSVal
     return JS_UNDEFINED;
 }
 
+void web_idb_native_install(JSContext *ctx, JSValueConst host);   /* web_idb_native.c */
+
 static JSValue host_object(JSContext *ctx)
 {
     JSValue o = JS_NewObject(ctx);
     static const struct { const char *name; JSCFunction *fn; int length; } fns[] = {
         {"call", host_call, 2}, {"serialize", host_serialize, 1}, {"deserialize", host_deserialize, 1},
-        {"report", host_report, 1}, {"isProxy", host_is_proxy, 1}, {"drain", host_drain, 0},
+        {"report", host_report, 1}, {"drain", host_drain, 0},
     };
     for (size_t i = 0; i < sizeof fns / sizeof fns[0]; i++) {
         JS_SetPropertyStr(ctx, o, fns[i].name, JS_NewCFunction(ctx, fns[i].fn, fns[i].name, fns[i].length));
     }
+    web_idb_native_install(ctx, o);
     return o;
 }
 

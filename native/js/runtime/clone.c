@@ -92,6 +92,18 @@ void wj_clone_start(JSContext *ctx)
     ctor_object = JS_GetPropertyStr(ctx, g, "Object");
 }
 
+static JSValue brand(JSContext *ctx, JSValueConst fn, JSValueConst v);
+
+/* The time value of a Date (false:  is not one; no exception pending). */
+bool web_date_time(JSContext *ctx, JSValueConst v, double *t)
+{
+    JSValue tv = brand(ctx, date_get_time, v);
+    if (JS_IsException(tv)) { return false; }
+    bool ok = JS_ToFloat64(ctx, t, tv) == 0;
+    JS_FreeValue(ctx, tv);
+    return ok;
+}
+
 /* Calls a brand-checking built-in: the result, or JS_EXCEPTION (cleared) when `v` is not of its kind. */
 static JSValue brand(JSContext *ctx, JSValueConst fn, JSValueConst v)
 {

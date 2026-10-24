@@ -29,13 +29,9 @@
   const E_ABORTED = 8, E_UNKNOWN = 11;
   const MAX_UV = 9007199254740991;
 
-  const call = host.call, serialize = host.serialize, deserialize = host.deserialize, isProxy = host.isProxy, drain = host.drain;
+  const call = host.call, serialize = host.serialize, deserialize = host.deserialize, drain = host.drain;
   let DOMEx = null;   // the realm's DOMException (its interface objects exist from start on: the ones of pre-initialization are not the page's)
-  const hasOwn = Object.prototype.hasOwnProperty;
   const isArray = Array.isArray;
-  const isView = ArrayBuffer.isView;
-  const getTime = Date.prototype.getTime;
-  const abByteLength = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, "byteLength").get;
   const mathFloor = Math.floor;
   const PRIVATE = {};
 
@@ -43,47 +39,12 @@
   function fail(code, what) { return dom(ERR_NAME[code] || "UnknownError", what); }
 
   // ---- bytes ------------------------------------------------------------------------------------------------------
-  // Names are kept as WTF-8: a lone surrogate keeps its own 3-byte form (two names differing by one are two names).
-  function utf8(s) {
-    const n = s.length;
-    let ascii = true;
-    for (let i = 0; i < n; i++) { if (s.charCodeAt(i) > 0x7f) { ascii = false; break; } }
-    if (ascii) { const b = new Uint8Array(n); for (let i = 0; i < n; i++) b[i] = s.charCodeAt(i); return b; }
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      let c = s.charCodeAt(i);
-      if (c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
-        const d = s.charCodeAt(i + 1);
-        if (d >= 0xdc00 && d <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; }
-      }
-      if (c < 0x80) out.push(c);
-      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
-      else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
-      else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
-    }
-    return new Uint8Array(out);
-  }
-
-  function unitsToString(units) {
-    if (units.length < 4096) return String.fromCharCode.apply(null, units);
-    let s = "";
-    for (let i = 0; i < units.length; i += 4096) s += String.fromCharCode.apply(null, units.slice(i, i + 4096));
-    return s;
-  }
-
-  function utf8d(b) {
-    const units = [];
-    for (let i = 0; i < b.length;) {
-      const c = b[i++];
-      let cp;
-      if (c < 0x80) cp = c;
-      else if (c < 0xe0) cp = ((c & 31) << 6) | (b[i++] & 63);
-      else if (c < 0xf0) { cp = ((c & 15) << 12) | ((b[i] & 63) << 6) | (b[i + 1] & 63); i += 2; }
-      else { cp = ((c & 7) << 18) | ((b[i] & 63) << 12) | ((b[i + 1] & 63) << 6) | (b[i + 2] & 63); i += 3; }
-      if (cp >= 0x10000) { cp -= 0x10000; units.push(0xd800 + (cp >> 10), 0xdc00 + (cp & 1023)); } else units.push(cp);
-    }
-    return unitsToString(units);
-  }
+  // Names (WTF-8: a lone surrogate keeps its own 3-byte form), keys (a value <-> the bytes of src/idb/key.odin, ordered by comparing
+  // bytes), key paths on a value and the injection of a generated key: the browser's (runtime/web_idb_keys.c).
+  const { utf8, utf8d, key: keyOf, keyValue: decodeKey, cmp: compareBytes, validPath: validKeyPath, pathKey, canInject, inject } = host;
+  // ... and the execution of requests (what a request is made of, what its reply holds): the frames of src/idb/protocol.odin are
+  // written and read there, the keys and values come back as values.
+  const { execGet, execCount, execGetAll, execPut, execDelete, execClear, execCursor } = host;
 
   const fdv = new DataView(new ArrayBuffer(8));
   class Wr {
@@ -123,167 +84,7 @@
     f64() { for (let i = 0; i < 8; i++) fdv.setUint8(i, this.b[this.p++]); return fdv.getFloat64(0, true); }
   }
 
-  // ---- keys -------------------------------------------------------------------------------------------------------
-  const dv = new DataView(new ArrayBuffer(8));
-
-  function putNumber(w, tag, v) {
-    dv.setFloat64(0, v === 0 ? 0 : v);
-    w.need(9);
-    w.b[w.n++] = tag;
-    const neg = dv.getUint8(0) & 0x80;
-    for (let i = 0; i < 8; i++) {
-      const x = dv.getUint8(i);
-      w.b[w.n++] = neg ? x ^ 0xff : (i === 0 ? x ^ 0x80 : x);
-    }
-  }
-
-  function putString(w, s) {
-    w.need(2 * s.length + 3);
-    w.b[w.n++] = 0x30;
-    for (let i = 0; i < s.length; i++) {
-      const c = s.charCodeAt(i);
-      if (c >= 0xfffe) { w.b[w.n++] = 0xff; w.b[w.n++] = 0xff; w.b[w.n++] = c === 0xfffe ? 1 : 2; }
-      else { const v = c + 1; w.b[w.n++] = v >> 8; w.b[w.n++] = v & 255; }
-    }
-    w.b[w.n++] = 0;
-    w.b[w.n++] = 0;
-  }
-
-  function putBinary(w, bytes) {
-    w.need(2 * bytes.length + 2);
-    w.b[w.n++] = 0x40;
-    for (let i = 0; i < bytes.length; i++) {
-      const c = bytes[i];
-      w.b[w.n++] = c;
-      if (c === 0) w.b[w.n++] = 0xff;
-    }
-    w.b[w.n++] = 0;
-  }
-
-  function isDate(v) {
-    try { getTime.call(v); return true; } catch { return false; }
-  }
-  function isArrayBuffer(v) {
-    try { abByteLength.call(v); return true; } catch { return false; }
-  }
-
-  // Writes the key of `v` ("convert a value to a key"); false when it is not a valid key (the writer is then unusable).
-  function putKey(w, v, seen) {
-    switch (typeof v) {
-      case "number": if (v !== v) return false; putNumber(w, 0x10, v); return true;
-      case "string": putString(w, v); return true;
-      case "object": {
-        if (v === null) return false;
-        if (isArray(v) && !isProxy(v)) {   // (a Proxy of an array is not an Array exotic object: no key)
-          if (seen.length >= 64 || seen.includes(v)) return false;
-          seen.push(v);
-          w.u8(0x50);
-          const len = v.length;
-          for (let i = 0; i < len; i++) {
-            if (!hasOwn.call(v, i)) return false;
-            if (!putKey(w, v[i], seen)) return false;
-          }
-          w.u8(0);
-          seen.pop();
-          return true;
-        }
-        if (isDate(v)) { const t = getTime.call(v); if (t !== t) return false; putNumber(w, 0x20, t); return true; }
-        // (a detached buffer is not a key)
-        if (isView(v)) {
-          let bytes;
-          try { bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength); } catch { return false; }
-          putBinary(w, bytes);
-          return true;
-        }
-        if (isArrayBuffer(v)) {
-          let bytes;
-          try { bytes = new Uint8Array(v); } catch { return false; }
-          putBinary(w, bytes);
-          return true;
-        }
-        return false;
-      }
-    }
-    return false;
-  }
-
-  // The encoded key of a value, or null when it is not a key.
-  function keyOf(v) {
-    const w = new Wr();
-    return putKey(w, v, []) ? w.done() : null;
-  }
-
-  function readNumber(rd) {
-    const neg = !(rd.b[rd.p] & 0x80);   // transformed: a set top bit means it was non-negative
-    for (let i = 0; i < 8; i++) {
-      const x = rd.b[rd.p + i];
-      dv.setUint8(i, neg ? x ^ 0xff : (i === 0 ? x ^ 0x80 : x));
-    }
-    rd.p += 8;
-    return dv.getFloat64(0);
-  }
-
-  function readKey(rd) {
-    const tag = rd.u8();
-    switch (tag) {
-      case 0x10: return readNumber(rd);
-      case 0x20: return new Date(readNumber(rd));
-      case 0x30: {
-        const units = [];
-        for (;;) {
-          const a = rd.b[rd.p], c = rd.b[rd.p + 1];
-          if (a === 0 && c === 0) { rd.p += 2; break; }
-          if (a === 0xff && c === 0xff) { units.push(0xfffe + rd.b[rd.p + 2] - 1); rd.p += 3; }
-          else { units.push(((a << 8) | c) - 1); rd.p += 2; }
-        }
-        return unitsToString(units);
-      }
-      case 0x40: {
-        const out = [];
-        for (;;) {
-          const c = rd.b[rd.p++];
-          if (c === 0) { if (rd.b[rd.p] === 0xff) { rd.p++; out.push(0); continue; } break; }
-          out.push(c);
-        }
-        return new Uint8Array(out).buffer;
-      }
-      case 0x50: {
-        const arr = [];
-        while (rd.b[rd.p] !== 0) arr.push(readKey(rd));
-        rd.p++;
-        return arr;
-      }
-    }
-    return undefined;
-  }
-
-  function decodeKey(bytes) { return readKey(new Rd(bytes, 0)); }
-
-  function compareBytes(a, b) {
-    const n = a.length < b.length ? a.length : b.length;
-    for (let i = 0; i < n; i++) { if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; }
-    return a.length === b.length ? 0 : (a.length < b.length ? -1 : 1);
-  }
-
-  // ---- key paths --------------------------------------------------------------------------------------------------
-  const IDENT = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
-
-  function validPathString(s) {
-    if (s === "") return true;
-    for (const part of s.split(".")) { if (!IDENT.test(part)) return false; }
-    return true;
-  }
-
-  function validKeyPath(p) {
-    if (typeof p === "string") return validPathString(p);
-    if (isArray(p)) {
-      if (p.length === 0) return false;
-      for (const s of p) { if (typeof s !== "string" || !validPathString(s)) return false; }
-      return true;
-    }
-    return false;
-  }
-
+  // ---- key paths ----------------------------------------------------------------------------------------------------
   // null | string | string[], as bytes for the browser (opaque there) and back
   function packPath(p) {
     const w = new Wr();
@@ -308,97 +109,8 @@
     }
   }
 
-  const FAILURE = Symbol("failure");
-
-  // "Evaluate a key path on a value": FAILURE when a step has no value.
-  function evalPathString(v, path) {
-    if (path === "") return v;
-    let cur = v;
-    for (const id of path.split(".")) {
-      if (typeof cur === "string" && id === "length") { cur = cur.length; continue; }
-      if (isArray(cur) && id === "length") { cur = cur.length; continue; }
-      if (cur !== null && typeof cur === "object") {
-        if (id === "size" || id === "type" || id === "name" || id === "lastModified") {
-          if (typeof Blob === "function" && cur instanceof Blob) {
-            if (id === "size" || id === "type") { cur = cur[id]; continue; }
-            if (typeof File === "function" && cur instanceof File) { cur = cur[id]; continue; }
-          }
-        }
-        if (!hasOwn.call(cur, id)) return FAILURE;
-        cur = cur[id];
-        continue;
-      }
-      return FAILURE;
-    }
-    return cur;
-  }
-
-  // The encoded key a key path gives for a value: undefined (no value at the path), null (not a valid key)
-  function pathKey(v, path) {
-    if (typeof path === "string") {
-      const r = evalPathString(v, path);
-      if (r === FAILURE) return undefined;
-      return keyOf(r);
-    }
-    const w = new Wr();
-    w.u8(0x50);
-    for (const p of path) {
-      const r = evalPathString(v, p);
-      if (r === FAILURE) return undefined;
-      if (!putKey(w, r, [])) return null;
-    }
-    w.u8(0);
-    return w.done();
-  }
-
-  // Index keys of a value (multi-entry: one per distinct valid element of an array result)
-  function indexKeys(v, ix) {
-    const path = ix.keyPath;
-    if (typeof path === "string") {
-      const r = evalPathString(v, path);
-      if (r === FAILURE) return [];
-      if (ix.multiEntry && isArray(r)) {
-        const out = [];
-        const seen = [];
-        for (let i = 0; i < r.length; i++) {
-          if (!hasOwn.call(r, i)) continue;
-          const k = keyOf(r[i]);
-          if (k === null) continue;
-          let dup = false;
-          for (const s of seen) { if (compareBytes(s, k) === 0) { dup = true; break; } }
-          if (!dup) { seen.push(k); out.push(k); }
-        }
-        return out;
-      }
-      const k = keyOf(r);
-      return k === null ? [] : [k];
-    }
-    const k = pathKey(v, path);
-    return k === undefined || k === null ? [] : [k];
-  }
-
-  // Can a generated key be injected at this path of the value? ("check that a key could be injected into a value")
-  function canInject(v, path) {
-    const parts = path === "" ? [] : path.split(".");
-    let cur = v;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (cur === null || typeof cur !== "object") return false;
-      if (!hasOwn.call(cur, parts[i])) { cur = undefined; break; }
-      cur = cur[parts[i]];
-    }
-    if (cur === undefined) return true;
-    return cur !== null && typeof cur === "object";
-  }
-
-  function inject(v, path, key) {
-    const parts = path.split(".");
-    let cur = v;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!hasOwn.call(cur, parts[i])) cur[parts[i]] = {};
-      cur = cur[parts[i]];
-    }
-    Object.defineProperty(cur, parts[parts.length - 1], { value: key, writable: true, enumerable: true, configurable: true });
-  }
+  // The encoded keys an index makes for a value (multi-entry: one per distinct valid element of an array result)
+  function indexKeys(v, ix) { return host.indexKeys(v, ix.keyPath, ix.multiEntry); }
 
   // ---- argument conversions ---------------------------------------------------------------------------------------
   function str(v) { return `${v}`; }
@@ -488,6 +200,8 @@
     if (k === null) throw dom("DataError", "The parameter is not a valid key or key range.");
     return { lower: k, upper: k, lowerOpen: false, upperOpen: false };
   }
+  // A range as the bytes of a request (a flags byte and the bounds; null: unbounded).
+  function packRange(r) { const w = new Wr(); putRange(w, r); return w.done(); }
   function putRange(w, r) {
     if (r === null) { w.u8(0); return; }
     w.u8((r.lower !== null ? 1 : 0) | (r.upper !== null ? 2 : 0) | (r.lowerOpen ? 4 : 0) | (r.upperOpen ? 8 : 0));
@@ -1192,6 +906,7 @@
   class Failure {
     constructor(code, message) { this.code = code; this.message = message; }
   }
+  host.setFailure(Failure);   // (the browser's side throws it when a request fails)
   function expectOk(rep) {
     if (rep[0]) throw new Failure(rep[0]);
     return new Rd(rep, 1);
@@ -1224,15 +939,14 @@
     try { return serialize(value); } finally { if (T.state === "inactive") T.state = prev; }
   }
 
-  function valueOf(rd) { return deserialize(rd.bytes()); }
-
   function pathOf(S) { return S.meta.keyPath; }
 
   // The index keys of a value, for the indexes of the store as they are when the request runs: the keys taken when the request
   // was made (snap, [index, keys] of the indexes there were: the value was a snapshot then) where there are, else from the
   // clone (an index created since, by a version change transaction whose requests were queued before it).
   function snapIndexKeys(S, value) { return S.meta.indexes.map((ix) => [ix, indexKeys(value, ix)]); }
-  function writeIndexKeys(w, S, snap, bytes) {
+  // The index keys of a record for the browser: [index id, key, index id, key...]
+  function indexKeyList(S, snap, bytes) {
     const list = [];
     let clone = null;
     // (the indexes the browser has now: one made later, or one deleted later, is not for a request that is ahead of it)
@@ -1240,12 +954,10 @@
       let keys = null;
       for (const e of snap) { if (e[0] === ix) { keys = e[1]; break; } }
       if (keys === null) { if (clone === null) clone = deserialize(bytes); keys = indexKeys(clone, ix); }
-      for (const k of keys) list.push([ix.id, k]);
+      for (const k of keys) list.push(ix.id, k);
     }
-    w.uv(list.length);
-    for (const [id, k] of list) { w.uv(id); w.bytes(k); }
+    return list;
   }
-
   function doPut(S, value, key, noOverwrite, what) {
     const T = checkStore(S, true);
     const meta = S.meta;
@@ -1275,7 +987,7 @@
     // index keys of the value as it is now (the clone is the snapshot); with a generated key they come from the clone
     const snapshot = generate ? null : snapIndexKeys(S, evalValue);
     enqueue(T, R, () => {
-      let kb = keyBytes, vb = bytes, ik = null;
+      let kb = keyBytes, vb = bytes, ik;
       if (generate) {
         // the generator's next key (it moves on with the put, and only if the put succeeds)
         const g = reqWriter(T, REQ.PEEK_KEY, meta.id);
@@ -1283,18 +995,11 @@
         const clone = deserialize(bytes);
         inject(clone, kp, decodeKey(kb));
         vb = serialize(clone);
-        ik = new Wr();
-        writeIndexKeys(ik, S, snapIndexKeys(S, clone), vb);
+        ik = indexKeyList(S, snapIndexKeys(S, clone), vb);
       } else {
-        ik = new Wr();
-        writeIndexKeys(ik, S, snapshot, vb);
+        ik = indexKeyList(S, snapshot, vb);
       }
-      const w = reqWriter(T, REQ.PUT, meta.id);
-      w.u8((noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0) | (generate ? 4 : 0));
-      if (kb !== null) w.bytes(kb);
-      w.bytes(vb);
-      w.raw(ik.done());
-      return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
+      return execPut(T.id, meta.id, (noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0) | (generate ? 4 : 0), kb, vb, ik);
     });
     return R.wrapper;
   }
@@ -1347,26 +1052,11 @@
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     enqueue(T, R, () => {
-      // the browser answers a long list in pieces (about 2 MiB of reply each, with where to go on): only one piece is in flight at a time
-      const out = [];
-      let resume = null;
-      for (;;) {
-        const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
-        w.uv(src.index ? src.index.id : 0);
-        putRange(w, a.range);
-        w.u8(mode); w.u8((a.backwards ? 1 : 0) | (a.unique ? 2 : 0) | (resume !== null ? 4 : 0)); w.uv(a.limit > 0 ? a.limit - out.length : 0);
-        if (resume !== null) { w.bytes(resume.key); w.bytes(resume.pk); }
-        const rd = expectOk(call(OP.EXEC, w.done()));
-        const n = rd.uv();
-        for (let i = 0; i < n; i++) {
-          if (mode === 1) out.push(decodeKey(rd.bytes()));
-          else if (mode === 2) out.push(valueOf(rd));
-          else { const k = decodeKey(rd.bytes()), pk = decodeKey(rd.bytes()); out.push(makeRecord(k, pk, valueOf(rd))); }
-        }
-        if (rd.u8() === 0 || (a.limit > 0 && out.length >= a.limit)) break;
-        resume = { key: rd.bytes().slice(), pk: rd.bytes().slice() };
-      }
-      return out;
+      const out = execGetAll(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(a.range), mode, (a.backwards ? 1 : 0) | (a.unique ? 2 : 0), a.limit);
+      if (mode !== 3) return out;
+      const records = [];
+      for (let i = 0; i < out.length; i += 3) records.push(makeRecord(out[i], out[i + 1], out[i + 2]));
+      return records;
     });
     return R.wrapper;
   }
@@ -1375,16 +1065,7 @@
     const range = rangeArg(query, false);
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-    enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.GET, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, range);
-      w.u8(keyOnly ? 1 : 0);
-      const rd = expectOk(call(OP.EXEC, w.done()));
-      if (!rd.u8()) return undefined;
-      const pk = rd.bytes();
-      return keyOnly ? decodeKey(pk) : valueOf(rd);
-    });
+    enqueue(T, R, () => execGet(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(range), keyOnly));
     return R.wrapper;
   }
 
@@ -1392,12 +1073,7 @@
     const range = rangeArg(query, true);
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-    enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.COUNT, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, range);
-      return expectOk(call(OP.EXEC, w.done())).uv();
-    });
+    enqueue(T, R, () => execCount(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(range)));
     return R.wrapper;
   }
 
@@ -1443,12 +1119,7 @@
       const range = rangeArg(query, false);
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.DELETE, S.meta.id);
-        putRange(w, range);
-        expectOk(call(OP.EXEC, w.done()));
-        return undefined;
-      });
+      enqueue(T, R, () => { execDelete(T.id, S.meta.id, packRange(range)); return undefined; });
       return R.wrapper;
     }
     clear() {
@@ -1456,7 +1127,7 @@
       const T = checkStore(S, true);
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      enqueue(T, R, () => { expectOk(call(OP.EXEC, reqWriter(T, REQ.CLEAR, S.meta.id).done())); return undefined; });
+      enqueue(T, R, () => { execClear(T.id, S.meta.id); return undefined; });
       return R.wrapper;
     }
     get(query) {
@@ -1764,14 +1435,7 @@
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
       const snapshot = snapIndexKeys(S, evalValue);
       const pk = C.pk;
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.PUT, S.meta.id);
-        w.u8(2); w.bytes(pk); w.bytes(bytes);
-        const ik = new Wr();
-        writeIndexKeys(ik, S, snapshot, bytes);
-        w.raw(ik.done());
-        return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
-      });
+      enqueue(T, R, () => execPut(T.id, S.meta.id, 2, pk, bytes, indexKeyList(S, snapshot, bytes)));
       return R.wrapper;
     }
     delete() {
@@ -1784,12 +1448,7 @@
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
       const pk = C.pk;
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.DELETE, C.store.meta.id);
-        putRange(w, { lower: pk, upper: pk, lowerOpen: false, upperOpen: false });
-        expectOk(call(OP.EXEC, w.done()));
-        return undefined;
-      });
+      enqueue(T, R, () => { execDelete(T.id, C.store.meta.id, packRange({ lower: pk, upper: pk, lowerOpen: false, upperOpen: false })); return undefined; });
       return R.wrapper;
     }
   }
@@ -1815,29 +1474,18 @@
   }
 
   function cursorExec(C, T, R, target, targetPk, count) {
-    const w = reqWriter(T, REQ.CURSOR, C.store.meta.id);
-    w.uv(C.index === null ? 0 : C.index.id);
-    putRange(w, C.range);
-    w.u8(C.direction);
-    if (C.key === null) { w.u8(0); w.bytes(new Uint8Array(0)); w.bytes(new Uint8Array(0)); }
-    else { w.u8(1); w.bytes(C.key); w.bytes(C.pk); }
-    if (target !== null) { w.u8(1); w.bytes(target); } else { w.u8(0); w.bytes(new Uint8Array(0)); }
-    if (targetPk !== null) { w.u8(1); w.bytes(targetPk); } else { w.u8(0); w.bytes(new Uint8Array(0)); }
-    w.uv(count);
-    w.u8(C.keyOnly ? 1 : 0);
-    const rd = expectOk(call(OP.EXEC, w.done()));
-    if (!rd.u8()) {
+    const rep = execCursor(T.id, C.store.meta.id, C.index === null ? 0 : C.index.id, packRange(C.range), C.direction, C.key, C.pk, target, targetPk, count, C.keyOnly);
+    if (rep === null) {
       C.key = null; C.pk = null; C.kv = C.pv = NOCACHE; C.value = undefined; C.gotValue = false;
       return null;
     }
-    C.key = rd.bytes().slice();
-    C.pk = rd.bytes().slice();
+    C.key = rep[0];
+    C.pk = rep[1];
     C.kv = C.pv = NOCACHE;
-    C.value = C.keyOnly ? undefined : valueOf(rd);
+    C.value = rep[2];
     C.gotValue = true;
     return C.wrapper;
   }
-
   function openCursor(S, src, T, srcWrapper, query, direction, keyOnly) {
     const range = rangeArg(query, true);
     const dir = DIRECTIONS.indexOf(checkEnum(direction, DIRECTIONS, "IDBCursorDirection"));
