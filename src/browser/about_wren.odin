@@ -41,7 +41,11 @@ Wren_Page :: struct {
 	notice:      Wren_Notice,
 	support_url: string,
 	profile_dir: string,
+	card_sample: bool,   // about:wren?card=sample: the licence card of a sample licence, to see its shader without a licence (nothing is registered)
 }
+
+// What about:wren?card=sample shows on the card.
+SAMPLE_LICENSE :: license.License{product = "wren", edition = "supporter", name = "Sample Supporter", email = "sample@example.org", date = "2026-10-24", order = "WREN-SAMPLE"}
 
 Wren_Notice :: struct {
 	text: string,
@@ -170,6 +174,10 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 		strings.write_string(sb, "<p class=\"status weak\">Unregistered &mdash; free during the beta &middot; <a href=\"")
 		esc(sb, d.support_url)
 		strings.write_string(sb, "\">Support Wren</a></p>\n")
+		if d.card_sample {
+			strings.write_string(sb, "<p class=\"weak\">Preview of the licence card with a sample licence: nothing is registered.</p>\n")
+			license_card_html(sb, SAMPLE_LICENSE)
+		}
 		if s.err != .None && s.stored {
 			// a licence is stored but does not check out (another key, a damaged file): said once, quietly
 			strings.write_string(sb, "<p class=\"weak\">The stored licence was not accepted: ")
@@ -247,7 +255,7 @@ third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
 
 wren_page_html :: proc(d: Wren_Page) -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	page_head(&sb, "About Wren", d.palette, d.state.registered ? card_css() : "")
+	page_head(&sb, "About Wren", d.palette, d.state.registered || d.card_sample ? card_css() : "")
 	// the name, the version, the tagline, and the maker's signature as the last, small line of the header
 	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p>",
 		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
@@ -311,8 +319,10 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = n
 		notice = wren_query(app, params)
 		if v, ok := url.params_get(params, "choose"); ok && v == "1" { choose = true }
 	}
-	// the entry is about:wren again: the key is not left in the history, and going back here does not ask twice
-	if query != "" { shown = WREN_URL }
+	// the entry is about:wren again: the key is not left in the history, and going back here does not ask twice (the card preview
+	// is the one query that stays: it changes nothing)
+	sample := query == "card=sample"
+	if query != "" && !sample { shown = WREN_URL }
 	if hash := strings.index_byte(shown, '#'); hash >= 0 && strings.has_prefix(shown, WREN_URL) { shown = WREN_URL }
 
 	base.scope_close(t.nav)
@@ -325,10 +335,11 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = n
 	t.scroll = 0
 	console_reset(t)
 	d := wren_page_data(app, notice)
+	d.card_sample = sample
 	html := strings.has_prefix(shown, LICENSES_URL) ? licenses_page_html(d) : wren_page_html(d)
 	page.load_html(t.page, transmute([]byte)html)
 	// the licence card's pointer script (about_card.odin); the other built-in pages have none, so they start no realm
-	if d.state.registered && !strings.has_prefix(shown, LICENSES_URL) { page.scripts_start(t.page) }
+	if (d.state.registered || d.card_sample) && !strings.has_prefix(shown, LICENSES_URL) { page.scripts_start(t.page) }
 	if shown != address {
 		page.session_replace(&t.session, shown)
 		sync_history(t)

@@ -70,7 +70,7 @@ Shader_State :: struct {
 
 // The state of entry `i` ready for `r`: made on first use, made again when the renderer was replaced, its textures filled again when
 // the device was lost. The GPU objects belong to the renderer, which frees them when it is destroyed (nothing here owns memory).
-@(private = "file")
+@(private)
 shader_ready :: proc(r: ^render.Renderer, i: int) -> ^Shader_State {
 	st := &shader_states[i]
 	id := render.renderer_id(r)

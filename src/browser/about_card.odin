@@ -7,8 +7,10 @@ import "wb:license"
 
 ////////////////////////////////
 // The licence card of about:wren, shown when a licence is registered: a dark card with the supporter's name, edition,
-// date and order number, an iridescent foil that shifts with the pointer, and a certification seal. Made with the page
-// engine's own CSS and a little JavaScript:
+// date and order number, an engraved iridescent foil that a sweeping light and the pointer play over, and a certification
+// seal. Made with the page engine's own CSS and a little JavaScript, and a shader: the foil is `-wren-shader: card-foil`
+// (shaders.odin, shaders/card_foil.wgsl, a normal map from about_card_relief.odin), lit over the CSS background of `.base`,
+// which is also what shows where the shader cannot be had;
 //
 //  - the card tilts with the pointer (rotateX / rotateY, eased back to rest by a CSS transition) in the perspective of its box
 //    (CSS Transforms 2: .cardbox has perspective, .lic preserve-3d): the base with its foil and glare lies at z = 0 and the
@@ -17,7 +19,8 @@ import "wb:license"
 //    word and the tick embossed on top), so the tilt shows its relief and it never floats; the text slides a little on the
 //    pointer. At rest the scales (900 / (900 - z)) cancel the enlargement the perspective gives the lifted layers;
 //  - the script runs on pointer events only, applies at most one update per frame (requestAnimationFrame) and never
-//    loops: a card at rest, or the pointer still, costs no frame;
+//    loops: a card at rest, or the pointer still, costs no frame. The sweep is a CSS animation of the registered property
+//    --sweep that rests for 60 % of its 7 s: a resting animation asks for no frame either;
 //  - without JavaScript (javascript.enabled off) or with prefers-reduced-motion the card is the same, still, foil at
 //    a fixed angle.
 

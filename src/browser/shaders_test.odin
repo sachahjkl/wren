@@ -1,13 +1,18 @@
 package browser
 
+import "core:fmt"
 import "core:math"
+import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:testing"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
 import "wb:config"
 import "wb:dom"
+import "wb:host"
 import "wb:html"
 import lay "wb:layout"
 import "wb:style"
@@ -250,6 +255,72 @@ the_box_keeps_its_background_where_the_shader_cannot_be_had :: proc(t: ^testing.
 	defer sh_close(g)
 	n2, _ := sh_diff(base, sh_paint(g), 0)
 	testing.expect_value(t, n2, 0)
+}
+
+// What the card's shader costs, on the machine's GPU (not WARP). Off unless WREN_SHADER_BENCH is set in the environment:
+//   $env:WREN_SHADER_BENCH = '1'; odin test src/browser ... -define:ODIN_TEST_NAMES=browser.shader_cost -define:D3D_DEBUG=false
+// Draws the card's two passes over a card-sized rect (the size the plane is rasterized at: 770 x 487 at 175 %) 300 times into an
+// offscreen frame and prints the CPU time of the drawing (draw calls and submit) and the GPU time per frame (timestamp queries).
+@(test)
+shader_cost :: proc(t: ^testing.T) {
+	if os.get_env("WREN_SHADER_BENCH", context.temp_allocator) == "" { return }
+	page_render_test_lock()
+	defer page_render_test_unlock()
+	r: render.Renderer
+	W, H :: 800, 520
+	if !render.init_offscreen(&r, {W, H}, warp = false) { testing.fail_now(t, "no GPU") }
+	defer render.destroy(&r)
+	fonts: font.State
+	dc: draw.Context
+	draw.init(&dc, &r, &fonts)
+	defer draw.destroy(&dc)
+	render.set_gpu_timing(&r, true)
+	// the first use: the app shader, the normal map made (card_normal_map) and uploaded
+	t_map := time.tick_now()
+	texels := card_normal_map()
+	ms_map := time.duration_milliseconds(time.tick_since(t_map))
+	delete(texels)
+	t_first := time.tick_now()
+	_ = shader_ready(&r, 0)
+	ms_first := time.duration_milliseconds(time.tick_since(t_first))
+	fmt.printfln("SHADER_COST first use: normal map %.1f ms (%d threads), shader + texture + upload (the map included) %.1f ms", ms_map, host.processor_count(), ms_first)
+	card := draw.Rect{{15, 15}, {15 + 770, 15 + 487}}
+	slots := [4]draw.Vec4{{770, 487, 1.75, 0}, {}, {0.5, 0.5, 0.5, 0}, {1, 0, 0, 0}}
+	cpu: [dynamic]f64
+	gpu: [dynamic]f32
+	defer { delete(cpu); delete(gpu) }
+	for frame in 0 ..< 300 {
+		slots[2].x = f32(frame) / 300
+		t0 := time.tick_now()
+		draw.begin_frame(&dc, {W, H})
+		render.frame_begin(&r, {0.08, 0.09, 0.14, 1})
+		paint_wren_shader_direct(&dc, "card-foil", card, slots[:])
+		draw.end_frame(&dc)
+		render.frame_end(&r, vsync = false)
+		if frame >= 20 { append(&cpu, time.duration_milliseconds(time.tick_since(t0))); append(&gpu, render.gpu_ms(&r)) }
+	}
+	img := render.read_pixels(&r, context.temp_allocator)
+	lit := 0
+	for i := 0; i < len(img); i += 4 { if abs(int(img[i]) - 80) + abs(int(img[i + 2]) - 100) > 30 { lit += 1 } }
+	testing.expectf(t, lit > 100_000, "the bench draws something (%d pixels differ from the clear color)", lit)
+	slice.sort(cpu[:])
+	slice.sort(gpu[:])
+	fmt.printfln("SHADER_COST card-foil 770x487: CPU per frame p50 %.3f ms p95 %.3f ms | GPU p50 %.3f ms p95 %.3f ms (%s)", cpu[len(cpu) / 2], cpu[len(cpu) * 95 / 100], gpu[len(gpu) / 2], gpu[len(gpu) * 95 / 100], render.backend_name())
+}
+
+// The painter's draw of a shader by name with the given slots (the bench).
+@(private = "file")
+paint_wren_shader_direct :: proc(dc: ^draw.Context, name: string, area: draw.Rect, slots: []draw.Vec4) {
+	for &d, i in SHADERS {
+		if d.name != name { continue }
+		st := shader_ready(dc.renderer, i)
+		if st.handle == 0 { return }
+		s := slots
+		for p, pass in d.passes {
+			s[1].x = f32(pass)
+			draw.app_shader(dc, st.handle, area, s, st.textures[:], p.blend, {24, 24, 24, 24})
+		}
+	}
 }
 
 @(test)

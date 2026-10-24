@@ -92,83 +92,90 @@ height_at :: proc(x, y: int) -> f32 {
 	return h
 }
 
-Fill_Rows :: struct {
-	hf:     []f32,
-	y0, y1: int,
-}
+// The work of card_normal_map, stage by stage, on bands of rows (each stage reads what the one before it wrote).
+@(private = "file")
+Stage :: enum u8 { Height, Blur_X, Blur_Y, Normals }
 
 @(private = "file")
-fill_rows :: proc(t: ^thread.Thread) {
-	job := (^Fill_Rows)(t.data)
-	for y in job.y0 ..< job.y1 {
-		for x in 0 ..< NORMAL_W {
-			job.hf[y * NORMAL_W + x] = height_at(x, y) + (hash2(x, y) - 0.5) * 0.10   // the grain
+Maps :: struct {
+	hf, tmp, blur: []f32,
+	out:           []u8,
+	lo, hi:        f32,
+	stage:         Stage,
+	y0, y1:        int,
+}
+
+@(private = "file") BLUR_R :: 6   // the cavity's box: 13 x 13, in two passes
+
+@(private = "file")
+run_band :: proc(t: ^thread.Thread) {
+	m := (^Maps)(t.data)
+	W, H :: NORMAL_W, NORMAL_H
+	for y in m.y0 ..< m.y1 {
+		for x in 0 ..< W {
+			switch m.stage {
+			case .Height:
+				m.hf[y * W + x] = height_at(x, y) + (hash2(x, y) - 0.5) * 0.10   // the grain
+			case .Blur_X:
+				s: f32
+				for k in -BLUR_R ..= BLUR_R { s += m.hf[y * W + clamp(x + k, 0, W - 1)] }
+				m.tmp[y * W + x] = s / (2 * BLUR_R + 1)
+			case .Blur_Y:
+				s: f32
+				for k in -BLUR_R ..= BLUR_R { s += m.tmp[clamp(y + k, 0, H - 1) * W + x] }
+				m.blur[y * W + x] = s / (2 * BLUR_R + 1)
+			case .Normals:
+				hf := m.hf
+				xm, xp := max(x - 1, 0), min(x + 1, W - 1)
+				ym, yp := max(y - 1, 0), min(y + 1, H - 1)
+				// a 3 x 3 Sobel: the grain would make a one-texel difference too rough to light
+				gx := (hf[ym * W + xp] + 2 * hf[y * W + xp] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[y * W + xm] - hf[yp * W + xm]) / (8 * f32(xp - xm) * 0.5)
+				gy := (hf[yp * W + xm] + 2 * hf[yp * W + x] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[ym * W + x] - hf[ym * W + xp]) / (8 * f32(yp - ym) * 0.5)
+				nx, ny, nz := -gx * SLOPE, -gy * SLOPE, f32(1)
+				inv := 1 / math.sqrt(nx * nx + ny * ny + nz * nz)
+				nx, ny = nx * inv, ny * inv
+				i := (y * W + x) * 4
+				m.out[i + 0] = u8(clamp(128 + nx * 127, 0, 255))
+				m.out[i + 1] = u8(clamp(128 + ny * 127, 0, 255))
+				m.out[i + 2] = u8(clamp((hf[y * W + x] - m.lo) / (m.hi - m.lo) * 255, 0, 255))
+				m.out[i + 3] = u8(clamp((m.blur[y * W + x] - hf[y * W + x]) * 2.4 * 255, 0, 255))
+			}
 		}
 	}
 }
 
-// The normal map: NORMAL_W x NORMAL_H texels of RGBA8 (see above), in `allocator`. The same bytes every time.
-card_normal_map :: proc(allocator := context.allocator) -> []u8 {
-	W, H :: NORMAL_W, NORMAL_H
-	hf := make([]f32, W * H, allocator)
-	defer delete(hf)
-	// the height field, in bands of rows on a few threads (about 100 ms on one: the card should not stall the page when it first shows)
-	workers := clamp(host.processor_count(), 1, 8)
-	jobs := make([]Fill_Rows, workers, allocator)
-	defer delete(jobs)
-	threads := make([]^thread.Thread, workers, allocator)
-	defer delete(threads)
+// Runs one stage over all the rows on `workers` threads (the same bytes whatever the number: a texel depends on the stage before, not on a band).
+@(private = "file")
+run_stage :: proc(m: ^Maps, stage: Stage, workers: int) {
+	m.stage = stage
+	bands := make([]Maps, workers)
+	threads := make([]^thread.Thread, workers)
+	defer { delete(bands); delete(threads) }
 	for i in 0 ..< workers {
-		jobs[i] = Fill_Rows{hf = hf, y0 = H * i / workers, y1 = H * (i + 1) / workers}
-		threads[i] = thread.create(fill_rows)
-		threads[i].data = &jobs[i]
+		bands[i] = m^
+		bands[i].y0, bands[i].y1 = NORMAL_H * i / workers, NORMAL_H * (i + 1) / workers
+		threads[i] = thread.create(run_band)
+		threads[i].data = &bands[i]
 		thread.start(threads[i])
 	}
 	for t in threads {
 		thread.join(t)
 		thread.destroy(t)
 	}
+}
 
-	// the cavity: the height field against its own blur (a box of 13 x 13, two passes)
-	R :: 6
-	tmp := make([]f32, W * H, allocator)
-	defer delete(tmp)
-	blur := make([]f32, W * H, allocator)
-	defer delete(blur)
-	for y in 0 ..< H {
-		for x in 0 ..< W {
-			s: f32
-			for k in -R ..= R { s += hf[y * W + clamp(x + k, 0, W - 1)] }
-			tmp[y * W + x] = s / (2 * R + 1)
-		}
-	}
-	for y in 0 ..< H {
-		for x in 0 ..< W {
-			s: f32
-			for k in -R ..= R { s += tmp[clamp(y + k, 0, H - 1) * W + x] }
-			blur[y * W + x] = s / (2 * R + 1)
-		}
-	}
-	lo, hi := f32(1e9), f32(-1e9)
-	for h in hf { lo, hi = min(lo, h), max(hi, h) }
-
-	out := make([]u8, W * H * 4, allocator)
-	for y in 0 ..< H {
-		for x in 0 ..< W {
-			xm, xp := max(x - 1, 0), min(x + 1, W - 1)
-			ym, yp := max(y - 1, 0), min(y + 1, H - 1)
-			// a 3 x 3 Sobel: the grain would make a one-texel difference too rough to light
-			gx := (hf[ym * W + xp] + 2 * hf[y * W + xp] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[y * W + xm] - hf[yp * W + xm]) / (8 * f32(xp - xm) * 0.5)
-			gy := (hf[yp * W + xm] + 2 * hf[yp * W + x] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[ym * W + x] - hf[ym * W + xp]) / (8 * f32(yp - ym) * 0.5)
-			nx, ny, nz := -gx * SLOPE, -gy * SLOPE, f32(1)
-			inv := 1 / math.sqrt(nx * nx + ny * ny + nz * nz)
-			nx, ny = nx * inv, ny * inv
-			i := (y * W + x) * 4
-			out[i + 0] = u8(clamp(128 + nx * 127, 0, 255))
-			out[i + 1] = u8(clamp(128 + ny * 127, 0, 255))
-			out[i + 2] = u8(clamp((hf[y * W + x] - lo) / (hi - lo) * 255, 0, 255))
-			out[i + 3] = u8(clamp((blur[y * W + x] - hf[y * W + x]) * 2.4 * 255, 0, 255))
-		}
-	}
-	return out
+// The normal map: NORMAL_W x NORMAL_H texels of RGBA8 (see above), in `allocator`. The same bytes every time. Made on a few threads (the
+// card should not stall the page when it first shows).
+card_normal_map :: proc(allocator := context.allocator) -> []u8 {
+	W, H :: NORMAL_W, NORMAL_H
+	m := Maps{hf = make([]f32, W * H, allocator), tmp = make([]f32, W * H, allocator), blur = make([]f32, W * H, allocator), out = make([]u8, W * H * 4, allocator)}
+	defer { delete(m.hf); delete(m.tmp); delete(m.blur) }
+	workers := clamp(host.processor_count(), 1, 8)
+	run_stage(&m, .Height, workers)
+	run_stage(&m, .Blur_X, workers)
+	run_stage(&m, .Blur_Y, workers)
+	m.lo, m.hi = 1e9, -1e9
+	for h in m.hf { m.lo, m.hi = min(m.lo, h), max(m.hi, h) }
+	run_stage(&m, .Normals, workers)
+	return m.out
 }
