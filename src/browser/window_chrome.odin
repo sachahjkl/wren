@@ -10,6 +10,7 @@ package browser
 // Full screen (F11): no frame, no title bar, no tabs nor address bar; they slide down over the page while the pointer
 // is at the top edge of the screen (browser.window.fullscreen_reveal), and go when it leaves them.
 
+import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
@@ -30,10 +31,21 @@ WINDOW_PREFS := [?]config.Def{
 	{name = "browser.window.square_corners", kind = .Bool, default = {b = true},
 		description = "Square corners on the window itself (Windows 11 rounds them, Windows 10 never does). On (the default): the corners are cut square, by DWM_WINDOW_CORNER_PREFERENCE. Off: the system's rounded corners. Applies at once."},
 	{name = "browser.window.fixed_surface", kind = .Bool, default = {b = true}, restart = true,
-		description = "Never resize the surface the window shows: a composition swap chain holds one surface (the monitor's size) and the window shows the top-left part of it, 1:1, clipped. A window being resized then cuts what was drawn instead of stretching it, and the newly shown strip stays the background until the next frame paints it. Needs a restart; falls back to the usual swap chain when the system cannot compose."},
+		description = "Never resize the surface the window shows: a composition swap chain holds one surface (the monitor's size) and the window shows the top-left part of it, 1:1, clipped. A window being resized then cuts what was drawn instead of stretching it, and the newly shown strip stays the background until the next frame paints it. Needs a restart (the developer tools' own window takes it when it opens); falls back to the usual swap chain when the system cannot compose."},
 }
 
 register_window_prefs :: proc(p: ^config.Prefs) { config.register(p, WINDOW_PREFS[:]) }
+
+// The size of the one surface a window shows (the size of its monitor) when browser.window.fixed_surface is on, else zero: the main window's
+// composition swap chain (render.set_fixed_surface) and the developer tools' window's (render.surface_create) are made with it, so that both are
+// resized the same way: cut, never stretched.
+fixed_surface_size :: proc(app: ^App, hwnd: win.HWND) -> [2]int {
+	if !config.bool_of(&app.prefs, "browser.window.fixed_surface") { return {} }
+	mon := win.MonitorFromWindow(hwnd, .MONITOR_DEFAULTTONEAREST)
+	mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
+	if !win.GetMonitorInfoW(mon, &mi) { return {} }
+	return {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)}
+}
 
 Window_Settings :: struct {
 	integrated:  bool,
