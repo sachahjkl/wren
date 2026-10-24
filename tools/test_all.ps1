@@ -454,6 +454,12 @@ if (-not $Quick) {
     }
 }
 if ($Jobs -gt 1) { Flush-Steps }
+# Last, and alone (the steps above are over): closing the browser with every core saturated by busy loops, a video playing and a client
+# connected, by wren ctl quit and by the window's close button, within 8 s and with no forced exit. A background thread starved by the
+# load that the close waits for made it take 10 to 25 s (tools\remote_e2e.ps1 -Stress); this step saturates the machine, so it runs when no
+# other step does.
+Step 'remote control: the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
+if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
 [IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")
 "failed steps: $failed ($([int]((Get-Date) - $runStart).TotalSeconds) s, -Jobs $Jobs)"
