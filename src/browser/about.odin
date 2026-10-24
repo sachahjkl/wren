@@ -13,6 +13,13 @@ APP_NAME    :: "Wren"
 APP_VERSION :: "0.3.0"
 APP_TAGLINE :: "A small browser where WebAssembly runs everything, JavaScript included."
 
+// A label for a build that is not the release of this version, set when it is built (build.bat: `set WREN_VERSION_LABEL=experimental-2026-10-24`,
+// -define:WREN_VERSION_LABEL): "0.3.0-experimental-2026-10-24" is what the user is shown (about:wren, the menu, the status bar, the file's
+// Details, Setup). APP_VERSION stays the plain number, because the program compares it (Setup's installed copy, the update check) and
+// sends it (the User-Agent): the label never reaches those.
+APP_VERSION_LABEL :: #config(WREN_VERSION_LABEL, "")
+APP_VERSION_SHOWN :: APP_VERSION + "-" + APP_VERSION_LABEL when APP_VERSION_LABEL != "" else APP_VERSION
+
 // The sources the program was built from, injected by build.bat (-define): the short commit hash, "+" when the tree
 // had uncommitted changes, and the commit's date. "dev" / "" when built without git (or by `odin test`).
 @(private = "file") COMMIT_DEFINE :: #config(WREN_COMMIT, "dev")
@@ -42,7 +49,7 @@ app_logo_url :: proc() -> string {
 
 // "Wren 0.2.1 (1a2b3c4)", "Wren 0.2.1 dev (1a2b3c4)" (the menu's last line).
 app_identity :: proc(allocator := context.temp_allocator) -> string {
-	return fmt.aprintf("%s %s%s (%s)", APP_NAME, APP_VERSION, IS_DEV_BUILD ? " dev" : "", app_commit(), allocator = allocator)
+	return fmt.aprintf("%s %s%s (%s)", APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " dev" : "", app_commit(), allocator = allocator)
 }
 
 Build_Kind :: enum u8 { Release, Debug, Profile }

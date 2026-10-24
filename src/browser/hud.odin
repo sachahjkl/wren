@@ -677,7 +677,7 @@ title_values :: proc(app: ^App, t: ^Tab) -> (v: [Title_Field]string) {
 	h := &hud
 	c := h.cfg.comma
 	v[.App] = APP_NAME
-	v[.Version] = APP_VERSION
+	v[.Version] = APP_VERSION_SHOWN
 	v[.Commit] = app_commit()
 	v[.Date] = APP_COMMIT_DATE
 	v[.Build] = build_description()

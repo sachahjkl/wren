@@ -484,7 +484,7 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 		ui.stat_row("m_img", fmt.tprintf("Image cache (%d)", is.entries), fmt.tprintf("%s of %s", fmt_bytes(is.bytes, c), fmt_bytes(is.limit, c)), w)
 	case .Build:
 		ui.stat_heading("build", "BUILD", w)
-		ui.stat_row("b_ver", "Version", APP_VERSION, w)
+		ui.stat_row("b_ver", "Version", APP_VERSION_SHOWN, w)
 		ui.stat_row("b_commit", "Commit", APP_COMMIT_DATE != "" ? fmt.tprintf("%s, %s", app_commit(), APP_COMMIT_DATE) : app_commit(), w)
 		ui.stat_row("b_kind", "Build", build_description(), w, mono = false)
 		ui.stat_row("b_tk", "Toolkit", ui.VERSION, w)

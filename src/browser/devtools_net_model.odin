@@ -737,7 +737,7 @@ net_har :: proc(t: ^Tab) -> string {
 		}
 		strings.write_string(b, "]")
 	}
-	fmt.sbprintf(&b, "{{\"log\":{{\"version\":\"1.2\",\"creator\":{{\"name\":\"%s\",\"version\":\"%s\"}},\"pages\":[],\"entries\":[", APP_NAME, APP_VERSION)
+	fmt.sbprintf(&b, "{{\"log\":{{\"version\":\"1.2\",\"creator\":{{\"name\":\"%s\",\"version\":\"%s\"}},\"pages\":[],\"entries\":[", APP_NAME, APP_VERSION_SHOWN)
 	for &e, i in t.net.entries {
 		if i > 0 { strings.write_string(&b, ",") }
 		fmt.sbprintf(&b, "{{\"startedDateTime\":\"1970-01-01T00:00:00.000Z\",\"time\":%.2f,\"request\":{{\"method\":\"%s\",\"url\":\"%s\",\"httpVersion\":\"%s\",\"headers\":", max(e.ms, 0), esc(e.method), esc(e.url), esc(e.protocol == "" ? "http/1.1" : e.protocol))

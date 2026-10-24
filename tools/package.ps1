@@ -44,7 +44,7 @@ if ($dumpbin) {
     if ($bad) { throw "wren.exe imports $($bad -join ', '): the release must carry its runtime (build.bat links libvcruntime)" }
 }
 
-$name = if ($Dev) { "wren-$Version-dev-windows-x64" } else { "wren-$Version-windows-x64" }
+$label = if ($env:WREN_VERSION_LABEL) { "-" + ($env:WREN_VERSION_LABEL -replace '[^A-Za-z0-9._-]', '-') } else { "" }   # build.bat: WREN_VERSION_LABEL
 $dist = Join-Path $root 'build\dist'
 New-Item -ItemType Directory -Force $dist | Out-Null
 $exe = Join-Path $dist "$name.exe"
