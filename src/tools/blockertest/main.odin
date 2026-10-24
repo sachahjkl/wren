@@ -27,7 +27,7 @@ check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { passes += 1; fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
 
-MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n127.0.0.1##+js(json-prune-fetch-response, ads, , data.json)\n127.0.0.1##+js(json-prune-xhr-response, ads, , data.json)\n127.0.0.1##+js(trusted-replace-fetch-response, /\"price\":\\s*100/, '\"price\":101', url:data.json)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adPlacements, undefined)\n127.0.0.1##+js(set-constant, hookConst, 42)\n127.0.0.1##+js(set-constant, hookObj.flag, yes)\n127.0.0.1##+js(aopr, hookAopr)\n127.0.0.1##+js(aopw, hookAopw)\n127.0.0.1##+js(nostif, BLOCKME)\n127.0.0.1##+js(aeld, wbcustom, DEFUSEME)\n127.0.0.1##+js(jp, adsX)\n127.0.0.1##+js(nofetch, hookblock)\n127.0.0.1##+js(noxhr, hookblock)\n127.0.0.1##+js(noeval)\n127.0.0.1##+js(nowoif, popup.example)\n127.0.0.1##+js(nostif, NEVERMATCH-bench)\n127.0.0.1##+js(jp, neverKey)\n127.0.0.1##+js(set-constant, benchConst, 7)\n*data2.json$replace=/\"w\":\"a+\"/\"w\":\"b\"/\n*replacedoc.html$replace=/RAWTEXT/REPLACED/\n"
+MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n127.0.0.1##+js(json-prune-fetch-response, ads, , data.json)\n127.0.0.1##+js(json-prune-xhr-response, ads, , data.json)\n127.0.0.1##+js(trusted-replace-fetch-response, /\"price\":\\s*100/, '\"price\":101', url:data.json)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adPlacements, undefined)\n127.0.0.1##+js(set-constant, hookConst, 42)\n127.0.0.1##+js(set-constant, hookObj.flag, yes)\n127.0.0.1##+js(aopr, hookAopr)\n127.0.0.1##+js(aopw, hookAopw)\n127.0.0.1##+js(nostif, BLOCKME)\n127.0.0.1##+js(aeld, wbcustom, DEFUSEME)\n127.0.0.1##+js(jp, adsX)\n127.0.0.1##+js(nofetch, hookblock)\n127.0.0.1##+js(noxhr, hookblock)\n127.0.0.1##+js(noeval)\n127.0.0.1##+js(nowoif, popup.example)\n127.0.0.1##+js(nostif, NEVERMATCH-bench)\n127.0.0.1##+js(jp, neverKey)\n127.0.0.1##+js(set-constant, benchConst, 7)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adSlots, undefined)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.playerAds, undefined)\n127.0.0.1##+js(trusted-replace-xhr-response, /\"adPlacements.*?([A-Z]\"\\}|\"\\}{2\\,4})\\}\\]\\,/, , /playlist\\?list=|\\/player(?:\\?.+)?$|watch\\?[tv]=/)\n127.0.0.1##+js(trusted-replace-xhr-response, /\"adPlacements.*?(\"adSlots\"|\"adBreakHeartbeatParams\")/gms, $1, /\\/player(?:\\?.+)?$/)\n127.0.0.1##+js(trusted-rpfr, '\"adPlacements\"', '\"no_ads\"', player?)\n||127.0.0.1/site/blocker/youtubei/v1/player?$xhr,1p,replace=/\"adPlacements\"/\"no_ads\"/\n*data2.json$replace=/\"w\":\"a+\"/\"w\":\"b\"/\n*replacedoc.html$replace=/RAWTEXT/REPLACED/\n"
 
 by_id :: proc(d: ^dom.Document, id: string) -> base.Handle {
 	for h in dom.ids_all(d, id) { return h }
@@ -65,7 +65,16 @@ main :: proc() {
 	b: blocker.Blocker
 	blocker.start(&b, &e.loop, &e.client, &e.loader, &prefs, dir)
 	blocker.tab_register(&b, 1, e.process)
-	headless.pump(&headless.Doc{env = &e}, 300)   // the index of the user's filters is compiled on a thread
+	// no compiled index in the profile yet: the requests wait (the loader holds them) until the real one is installed, so that the very
+	// first page is filtered by the lists too; a page asked for at once is held, then answered
+	held_at_start := e.loader.hold
+	check(held_at_start, "the loader holds the requests while the first index is compiled")
+	yt0 := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/ytwatch.html"))
+	yl0 := log_text(yt0)
+	check(strings.contains(yl0, "page:none:OK:"), fmt.tprintf("a page asked for at start-up is filtered once the index is there (%q)", yl0))
+	check(!e.loader.hold, "the hold on requests ended with the compile job")
+	headless.close(yt0)
+	headless.pump(&headless.Doc{env = &e}, 300)
 
 	url := testenv.url("http://127.0.0.1:8765/site/blocker/ads.html")
 	d := load(&e, url)
@@ -132,6 +141,19 @@ main :: proc() {
 		rd := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/replacedoc.html"))
 		check(dom.text_content(rd.page.doc, by_id(rd.page.doc, "t")) == "REPLACED", "a `$replace filter rewrites a document before it is parsed")
 		headless.close(rd)
+	}
+	// the shape of a YouTube watch page: the player data in an inline literal, then the answers of /youtubei/v1/player to XHR and fetch,
+	// with the rules of the lists (set-constant on the variable, trusted-replace-*-response, trusted-rpfr, $xhr,1p,replace=)
+	{
+		yt := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/ytwatch.html"))
+		headless.pump(yt, 1500)
+		yl := log_text(yt)
+		check(strings.contains(yl, "page:none:OK:") && strings.contains(yl, ":34:"), fmt.tprintf("the player data of the page has no ad data and keeps the rest (%q)", yl))
+		check(!strings.contains(yl, "playerAds") && strings.contains(yl, "adBreakHeartbeatParams"), fmt.tprintf("a property set to undefined is not listed among the keys (%q)", yl))
+		check(strings.contains(yl, "boot:none;"), "the variable read again through window[...] has none either")
+		check(strings.contains(yl, "xhr:none:OK:wbtest00001:clean;"), fmt.tprintf("the XHR answer of /youtubei/v1/player has no ad data (%q)", yl))
+		check(strings.contains(yl, "fetch:none:OK:1:clean;"), fmt.tprintf("the fetch answer of /youtubei/v1/player has no ad data (%q)", yl))
+		headless.close(yt)
 	}
 	// the scriptlets that change what an API does: native hooks of the engine (then, as a check of the fallback, as JavaScript)
 	for mode in ([]string{"true", "false"}) {

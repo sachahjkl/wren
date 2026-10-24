@@ -306,7 +306,9 @@ static void leaf_install(JSContext *ctx, JSValueConst owner, const char *prop, i
     JSValue get = JS_NewCFunctionData(ctx, leaf_accessor, 0, 0, 2, data);
     JSValue set = JS_NewCFunctionData(ctx, leaf_accessor, 1, 1, 2, data);
     JS_FreeValue(ctx, holder);
-    if (JS_DefinePropertyGetSet(ctx, owner, atom, get, set, JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE) < 0) { clear_exception(ctx); }
+    /* a property set to undefined is a property that is not there: not listed by Object.keys / for-in / JSON.stringify */
+    int flags = JS_PROP_CONFIGURABLE | ((r->kind == R_SET_CONST && JS_IsUndefined(r->val)) ? 0 : JS_PROP_ENUMERABLE);
+    if (JS_DefinePropertyGetSet(ctx, owner, atom, get, set, flags) < 0) { clear_exception(ctx); }
     JS_FreeAtom(ctx, atom);
 }
 

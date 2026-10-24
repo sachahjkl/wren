@@ -163,8 +163,13 @@ host_rules_for :: proc(b: ^Blocker, host: string, pf: adblock.Page_Flags) -> ^Ho
 				if re == nil { continue }
 				r := Replace_Rule{pat = re, repl = strings.clone(a(args, 2))}
 				urlp := ""
-				for word in strings.fields(a(args, 3), context.temp_allocator) {
-					if strings.has_prefix(word, "url:") { urlp = word[4:] } else if strings.has_prefix(word, "method:") { r.method = strings.clone(word[7:]) }
+				props := strings.trim_space(a(args, 3))
+				if strings.has_prefix(props, "url:") || strings.has_prefix(props, "method:") {
+					for word in strings.fields(props, context.temp_allocator) {
+						if strings.has_prefix(word, "url:") { urlp = word[4:] } else if strings.has_prefix(word, "method:") { r.method = strings.clone(word[7:]) }
+					}
+				} else {
+					urlp = props   // a bare pattern is the URL's (a /regex/ may hold colons and spaces)
 				}
 				r.url = needle_make(urlp)
 				append(&h.replace, r)
@@ -179,6 +184,17 @@ host_rules_for :: proc(b: ^Blocker, host: string, pf: adblock.Page_Flags) -> ^Ho
 				er := Embed_Rule{var = strings.clone(chain[0]), action = text == "" ? .Delete : .Set, value = strings.clone(text)}
 				er.path = make([]string, len(chain) - 1)
 				for s, i in chain[1:] { er.path[i] = strings.clone(s) }
+				// `ytInitialPlayerResponse` in the page is what `/youtubei/v1/player` answers to the page's own requests (the next video
+				// of the same page, a reload by script): the property removed from the variable is removed from those answers too
+				if er.action == .Delete && er.var == "ytInitialPlayerResponse" {
+					pr := Prune_Rule{url = needle_make("/youtubei/v1/player")}
+					pr.paths = make([][]string, 1)
+					pr.paths[0] = make([]string, len(er.path))
+					for s, i in er.path { pr.paths[0][i] = strings.clone(s) }
+					pr.keys = make([]string, 1)
+					pr.keys[0] = strings.clone(er.path[len(er.path) - 1])
+					append(&h.prune, pr)
+				}
 				append(&h.embed, er)
 			}
 		}
@@ -724,7 +740,6 @@ split_replace :: proc(arg: string) -> (search, repl, flags: string, ok: bool) {
 }
 
 // A filter that rewrites the text of a response by the `$replace=` filters that matched it.
-@(private = "file")
 replace_filter_make :: proc(args: []string) -> fetch.Body_Filter {
 	f: ^Buf_Filter
 	for a in args {
@@ -828,5 +843,7 @@ rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf:
 			}
 		}
 	}
-	return chain_make(first, second)
+	// the scriptlets' rewrite first: a `$replace=` filter that renames `adPlacements` (`"no_ads"`) would otherwise hide the property from
+	// the pruning that removes its content
+	return chain_make(second, first)
 }

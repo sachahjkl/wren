@@ -23,6 +23,19 @@ Loader :: struct {
 	interceptor: Interceptor,   // the content blocker (intercept.odin)
 	next_obs: u64,
 	ws_ctx:   map[base.Handle]^Ws_Ctx,   // the open sockets, by handle (websocket.odin)
+	hold:     bool,                 // the interceptor is not ready: http(s) requests wait in `held` (hold_requests)
+	held:     [dynamic]base.Handle, // the tasks waiting for hold to end, in the order they were made
+}
+
+// While `on`, requests to the network are parked before the interceptor sees them; when it ends they start, in order. The content
+// blocker uses it while its filter index is being compiled (a request let through before would escape every rule). A task cancelled
+// meanwhile is simply gone when its turn comes.
+hold_requests :: proc(l: ^Loader, on: bool) {
+	if l == nil || l.hold == on { return }
+	l.hold = on
+	if on { return }
+	for h in l.held { host.post(l.loop, kick, new_clone(Kick{l, h})) }
+	clear(&l.held)
 }
 
 loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking: ^host.Blocking_Pool, profile: ^Profile) {
@@ -37,6 +50,7 @@ loader_destroy :: proc(l: ^Loader) {
 	base.pool_destroy(&l.tasks)
 	revalidations_destroy(l)
 	delete(l.observers)
+	delete(l.held)
 	delete(l.ws_ctx)
 	l.ws_ctx = nil
 }
@@ -171,6 +185,10 @@ kick :: proc(data: rawptr) {
 	if t == nil { return }
 	if t.early_error != .None {
 		fail(t, t.early_error, early_detail(t.early_error))
+		return
+	}
+	if k.l.hold && (t.target.scheme == "http" || t.target.scheme == "https") {
+		append(&k.l.held, k.h)
 		return
 	}
 	run_hop(t)
