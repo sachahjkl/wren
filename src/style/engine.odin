@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:mem/virtual"
 import "core:os"
 import "core:slice"
+import "core:time"
 import "core:strings"
 import "wb:base"
 import "wb:css"
@@ -802,8 +803,14 @@ flatten_sheet :: proc(e: ^Engine, s: ^Sheet, lc_in: LayerCtx) {
 	}
 }
 
+// What the rebuilds cost, for the profile report (prof.odin).
+Rebuild_Total :: struct { n: int, ns: i64, sheets: int }
+rebuild_total: Rebuild_Total
+
 // Rebuilds the rule index from every sheet. `doc` gives the order of sheets that come from the document.
 engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
+	t0 := time.tick_now()
+	defer { rebuild_total.n += 1; rebuild_total.ns += i64(time.tick_since(t0)); rebuild_total.sheets += len(e.sheets) }
 	free_all(e.alloc)
 	rule_set_clear(&e.rules)
 	e.cur = &e.rules

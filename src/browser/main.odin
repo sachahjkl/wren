@@ -1306,6 +1306,7 @@ main :: proc() {
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
 	prof_report()
+	wasm.host_profile_write()   // (WREN_HOST_PROFILE: before the pages are freed; the runtime's end writes it again)
 	host.shutdown_step("desktop_shell_shutdown")
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	host.shutdown_step("shell_frames_destroy")

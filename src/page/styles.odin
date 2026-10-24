@@ -2,6 +2,7 @@ package page
 
 import "core:fmt"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -372,6 +373,7 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 // The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
 	e := p.engine
+	t0 := time.tick_now()
 	if embedder.before_styles != nil && p.worker == nil { embedder.before_styles(embedder.user, p) }   // (embedder.odin)
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
 	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
@@ -380,16 +382,17 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 
 	now := document_time_ms(p)
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
+	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? "style rules changed (a sheet came or went)" : e.restyle_needed ? "an environment change asked for one" : ""
 	partial, dom_partial := false, false
 	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty) {
-		full = true
+		full, why = true, "shadow tree rules changed"
 		if e.settings.inc_enabled {
 			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)
 			for o in p.link_loads { append(&owners, o) }
 			if style.dom_touches_sheets(e, p.doc, p.styled, owners[:]) { sync_styles(p) }
 			if !e.dirty {
-				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true }
-			}
+				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true } else { why = e.last_restyle.fallback }
+			} else { why = "a changed element carries style rules (<style>, <link>)" }
 		}
 	}
 	if !full && !style.state_equal(effective_state(p), p.styled.state) {
@@ -429,5 +432,45 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	}
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
+	styles_note(full, dom_partial, partial, time.tick_since(t0), why)
 	return p.styled
+}
+// What the style passes cost, for the profile report (prof.odin) and the measuring scripts: how many passes of each kind and
+// the time they took, and the engine's rebuilds (style.rebuild_total).
+Styles_Stats :: struct {
+	calls, full, dom, state, none: int,
+	full_ns, dom_ns, state_ns, none_ns: i64,
+	why: map[string]Why_Count,   // the full passes by the reason the incremental one was not enough
+}
+Why_Count :: struct { n: int, ns: i64 }
+styles_stats: Styles_Stats
+
+@(private = "file")
+styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
+	s := &styles_stats
+	s.calls += 1
+	switch {
+	case full:
+		s.full += 1; s.full_ns += i64(d)
+		if s.why == nil { s.why = make(map[string]Why_Count, 16, base.process_allocator()) }
+		w := s.why[why]
+		w.n += 1; w.ns += i64(d)
+		s.why[why] = w
+	case dom: s.dom += 1; s.dom_ns += i64(d)
+	case state: s.state += 1; s.state_ns += i64(d)
+	case: s.none += 1; s.none_ns += i64(d)
+	}
+}
+
+styles_stats_text :: proc() -> string {
+	s := styles_stats
+	r := style.rebuild_total
+	return fmt.tprintf("style passes: %d | full %d (%.0f ms) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average",
+		s.calls, s.full, f64(s.full_ns) / 1e6, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
+		r.n, f64(r.ns) / 1e6, f64(r.sheets) / f64(max(r.n, 1)))
+}
+styles_stats_why :: proc() -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	for k, v in styles_stats.why { fmt.sbprintf(&sb, "  full pass x %d, %.0f ms: %s\n", v.n, f64(v.ns) / 1e6, k) }
+	return strings.to_string(sb)
 }
