@@ -320,7 +320,11 @@ foreign user32_shell {
 // thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
-	if !chrome_frames.nested { frame(app); return }
+	if !chrome_frames.nested {
+		frame(app)
+		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
+		return
+	}
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
 	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
