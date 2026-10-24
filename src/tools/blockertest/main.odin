@@ -27,7 +27,7 @@ check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { passes += 1; fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
 
-MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n"
+MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n127.0.0.1##+js(json-prune-fetch-response, ads, , data.json)\n127.0.0.1##+js(json-prune-xhr-response, ads, , data.json)\n127.0.0.1##+js(trusted-replace-fetch-response, /\"price\":\\s*100/, '\"price\":101', url:data.json)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adPlacements, undefined)\n127.0.0.1##+js(set-constant, hookConst, 42)\n127.0.0.1##+js(set-constant, hookObj.flag, yes)\n127.0.0.1##+js(aopr, hookAopr)\n127.0.0.1##+js(aopw, hookAopw)\n127.0.0.1##+js(nostif, BLOCKME)\n127.0.0.1##+js(aeld, wbcustom, DEFUSEME)\n127.0.0.1##+js(jp, adsX)\n127.0.0.1##+js(nofetch, hookblock)\n127.0.0.1##+js(noxhr, hookblock)\n127.0.0.1##+js(noeval)\n127.0.0.1##+js(nowoif, popup.example)\n127.0.0.1##+js(nostif, NEVERMATCH-bench)\n127.0.0.1##+js(jp, neverKey)\n127.0.0.1##+js(set-constant, benchConst, 7)\n*data2.json$replace=/\"w\":\"a+\"/\"w\":\"b\"/\n*replacedoc.html$replace=/RAWTEXT/REPLACED/\n"
 
 by_id :: proc(d: ^dom.Document, id: string) -> base.Handle {
 	for h in dom.ids_all(d, id) { return h }
@@ -92,6 +92,73 @@ main :: proc() {
 	check(row != nil && row.third_party, "the matrix has the third-party host")
 	headless.close(d)
 
+	// the scriptlets that change the document run natively: no realm is involved
+	{
+		dom_url := testenv.url("http://127.0.0.1:8765/site/blocker/domops.html")
+		dd := load(&e, dom_url)
+		headless.pump(dd, 800)
+		dp := dd.page
+		attr :: proc(p: ^page.Page, id, name: string) -> (string, bool) { return dom.get_attribute(p.doc, by_id(p.doc, id), name) }
+		_, has := attr(dp, "ra1", "data-ad")
+		check(!has, "remove-attr: the attribute is gone")
+		_, has = attr(dp, "ra2", "data-late")
+		check(!has, "remove-attr with stay: an element that arrives later is cleaned too")
+		cls, _ := attr(dp, "rc1", "class")
+		check(cls == "rc keep", fmt.tprintf("remove-class leaves the other classes (%q)", cls))
+		v, _ := attr(dp, "sa", "data-set")
+		check(v == "yes", "set-attr sets the attribute")
+		check(dom.text_content(dp.doc, by_id(dp.doc, "sec")) == "", "remove-node-text empties the node")
+		check(dom.text_content(dp.doc, by_id(dp.doc, "rep")) == "price: 100 USD, 200 USD", "replace-node-text with a regex and $1")
+		href, _ := attr(dp, "lnk", "href")
+		check(href == "https://example.org/page", fmt.tprintf("href-sanitizer takes the link's target (%q)", href))
+		log := log_text(dd)
+		check(strings.contains(log, "flag=FLAG_OFF;"), fmt.tprintf("replace-node-text rewrites an inline script before it runs (%q)", log))
+		check(strings.contains(log, "dyn=FLAG_OFF;"), "...and one inserted later")
+		check(strings.contains(log, "clicked;"), "trusted-click-element clicks the button")
+		check(strings.contains(page.document_cookies(dp), "wb_test=1"), "set-cookie writes the cookie")
+		// (the storage writes need the browser's storage manager: the headless environment has none)
+		headless.close(dd)
+	}
+	// responses rewritten by the loader: JSON of fetch and XHR, the JSON literal in the page's own markup
+	{
+		rw := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/rewrite.html"))
+		headless.pump(rw, 1500)
+		lg := log_text(rw)
+		check(strings.contains(lg, "src:false;"), fmt.tprintf("the literal in the page's markup lost adPlacements before the parser read it (%q)", lg))
+		check(strings.contains(lg, "fetch:keep,price;price=101;"), fmt.tprintf("json-prune-fetch-response and the text replacement (%q)", lg))
+		check(strings.contains(lg, "xhr:keep,price;"), "json-prune-xhr-response")
+		check(strings.contains(lg, "data2:b;"), fmt.tprintf("a `$replace filter rewrites a fetch answer (%q)", lg))
+		headless.close(rw)
+		rd := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/replacedoc.html"))
+		check(dom.text_content(rd.page.doc, by_id(rd.page.doc, "t")) == "REPLACED", "a `$replace filter rewrites a document before it is parsed")
+		headless.close(rd)
+	}
+	// the scriptlets that change what an API does: native hooks of the engine (then, as a check of the fallback, as JavaScript)
+	for mode in ([]string{"true", "false"}) {
+		config.set_from_string(&prefs, "blocker.hooks.native", mode, .User)
+		hd := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/hooks.html"))
+		headless.pump(hd, 600)
+		hl := log_text(hd)
+		what := mode == "true" ? "native hook" : "JavaScript fallback"
+		check(strings.contains(hl, "const:42;obj:yes;aopr:threw;aopw:threw;aeld2:ran;json:keepX;eval:undefined;open:null;"), fmt.tprintf("%s: set-constant, abort-on-property-read / write, listener defuser, JSON.parse prune, noeval, window.open (%q)", what, hl))
+		check(strings.contains(hl, "timeout2:ran;") && !strings.contains(hl, "timeout:ran;") && !strings.contains(hl, "aeld:ran"), fmt.tprintf("%s: a timer is defused by its function text and the others run (%q)", what, hl))
+		check(strings.contains(hl, "fetch:{};") && strings.contains(hl, "xhr:200:0;"), fmt.tprintf("%s: fetch and XHR answered without the network (%q)", what, hl))
+		headless.close(hd)
+	}
+	config.set_from_string(&prefs, "blocker.hooks.native", "true", .User)
+	// WREN_HOOKBENCH=1: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions
+	if os.get_env("WREN_HOOKBENCH", context.temp_allocator) != "" {
+		for mode in ([]string{"off", "native", "javascript"}) {
+			config.set_from_string(&prefs, "blocker.enabled", mode == "off" ? "false" : "true", .User)
+			config.set_from_string(&prefs, "blocker.hooks.native", mode == "javascript" ? "false" : "true", .User)
+			hb := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/hookbench.html"))
+			headless.pump(hb, 3000)
+			fmt.printf("hook cost, %s: %s\n", mode, log_text(hb))
+			headless.close(hb)
+		}
+		config.set_from_string(&prefs, "blocker.enabled", "true", .User)
+		config.set_from_string(&prefs, "blocker.hooks.native", "true", .User)
+	}
 	// the site is on the whitelist: nothing is blocked or hidden
 	blocker.site_toggle(&b, "127.0.0.1", .Off, true)
 	d = load(&e, url)

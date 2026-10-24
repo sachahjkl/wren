@@ -56,8 +56,9 @@ a filter remembers (list, offset), and the journal reads the line from the `.src
 - Pages (`page_hooks.odin`, `procedural.odin`, `scriptlets.js`): the cosmetic filters of the host become a user-origin
   stylesheet before the first style computation; generic `.class` / `#id` selectors are applied only when the DOM has that
   class or id (looked up again, debounced, when the DOM changes); procedural selectors are evaluated natively on the DOM
-  and hide through the style engine (nothing is added to the page); scriptlets run in the realm before any script of the
-  page. Blocked frames and images are hidden.
+  and hide through the style engine (nothing is added to the page); scriptlets are carried out by the route that costs
+  the page least (next section): on the DOM, on the response, or as hooks of the engine. Blocked frames and images are
+  hidden.
 
 ## Syntax understood
 
@@ -65,18 +66,29 @@ Network: `||host^`, `|`, `*`, `^`, `/regex/`; `$third-party` (`3p`, `1p`, `first
 xmlhttprequest subdocument media font websocket ping object other document popup webrtc csp_report`, `all`; `$domain=`
 (`from=`), `$to=`, `$denyallow=`, `$method=`, `$important`, `$match-case`, `$badfilter`, `$redirect=`, `$redirect-rule=`,
 `$rewrite=abp-resource:`, `$empty`, `$mp4`, `$removeparam=` (name or `/regex/`), `$csp=`, `$inline-script`, `$inline-font`,
-`$header=`, `$generichide`, `$elemhide`, `$specifichide`; exceptions `@@`. A line with an option the engine does not know ($replace=, $cookie=, $ipaddress=...) is not a filter: it is counted as "not understood", as uBlock Origin does, and the dashboard shows the lines (My filters) and the count per list (Statistics).
+`$header=`, `$replace=/search/replacement/flags` (the response text, any type), `$generichide`, `$elemhide`, `$specifichide`;
+exceptions `@@`. A line with an option the engine does not know (`$cookie=`, `$ipaddress=`...) is not a filter: it is counted as
+"not understood", as uBlock Origin does, and the dashboard shows the lines (My filters) and the count per list (Statistics).
 
 Cosmetic: `##`, `#@#`, entities (`google.*`), `~domain` exclusions; procedural `:has() :has-text() :contains()
 :-abp-contains() :-abp-has() :matches-css() :matches-attr() :matches-path() :min-text-length() :not() :upward()
 :nth-ancestor() :remove() :style()`; AdGuard `#$#` style injections and `#%#//scriptlet()`; `##+js(name, args...)`.
 
-Scriptlets (`scriptlets.js`, uBO names and aliases): `set-constant`, `abort-on-property-read`, `abort-on-property-write`,
-`abort-current-script`, `abort-on-stack-trace`, `no-setTimeout-if`, `no-setInterval-if`, `nano-setTimeout-booster`,
-`nano-setInterval-booster`, `no-fetch-if`, `no-xhr-if`, `addEventListener-defuser`, `window.open-defuser`, `noeval`,
-`nowebrtc`, `json-prune`, `json-prune-fetch-response`, `json-prune-xhr-response`, `remove-attr`, `remove-class`,
-`set-attr`, `click-element` (`trusted-click-element`), `remove-node-text`, `replace-node-text`, `href-sanitizer`,
-`disable-newtab-links`, `set-cookie`, `set-local-storage-item`, `set-session-storage-item`.
+## Scriptlets: where each one is carried out
+
+The blocker does not run JavaScript in a page when it can do the thing natively. Each scriptlet (uBlock Origin's names, aliases and
+`.js` suffixes; `scriptlet_route.odin`) has a route, from the cheapest for the page:
+
+| route | scriptlets | how |
+|---|---|---|
+| **DOM** (Odin, no realm) | `remove-attr` (`ra`), `remove-class` (`rc`), `set-attr` (`sa`), `remove-node-text` (`rmnt`), `replace-node-text` (`rpnt`, `trusted-replace-node-text`), `click-element` (`trusted-click-element`), `href-sanitizer`, `disable-newtab-links`, `set-cookie` (`trusted-set-cookie`), `set-cookie-reload`, `remove-cookie`, `set-local-storage-item`, `set-session-storage-item` (`trusted-` forms), `remove-local-storage-item`, `remove-session-storage-item` | `dom_ops.odin`: operations on the document, fed by the mutation journal: the nodes inserted since the last pass are looked at once (never the whole document again, unless the journal lost entries), before the page styles, before every script that is about to run, and when the parser finishes. An inline script's text is rewritten before it runs (`before_script`). Cookies and storage are written through the page's own cookie jar and storage manager. Behavior as uBlock Origin's: `asap`, `stay`, a plain operation rests once the parse is done; text operations and clicks watch (clicks up to 10 s). Regular expressions are JavaScript's (`jsre.odin`: captures, lazy quantifiers, look-around, back-references, a step budget). |
+| **network** (Odin, in the loader) | `json-prune-fetch-response` (`jpfr`), `json-prune-xhr-response` (`jpxhr`), `xml-prune`, `trusted-replace-fetch-response`, `trusted-replace-xhr-response` (`replace-in-response`), and the filter option `$replace=` | `rewrite.odin`: a `fetch.Body_Filter` on the response, by URL (and method), before the page reads it. JSON and XML answers are held until complete and rewritten once (JSON pruned by path with wildcards, XML by element selector, text by regular expression); nothing is held or parsed for a request no rule targets. `Content-Length` is dropped and the HTTP cache keeps the server's version. |
+| **network, in the markup** | `set-constant` and `json-prune` of a variable the page's own HTML assigns (`var ytInitialPlayerResponse = {...}`) | the same `Body_Filter` on the document: the literal is found in the stream, pruned (or its property set) and written back before the parser reads it; the rest of the page flows through. |
+| **engine hooks** (C in the engine, no interpreted code) | `set-constant` (`set`, `trusted-set-constant`), `abort-on-property-read` (`aopr`), `abort-on-property-write` (`aopw`), `abort-current-script` (`acs`, `acis`), `abort-on-stack-trace` (`aost`), `no-setTimeout-if` (`nostif`), `no-setInterval-if` (`nosiif`), `nano-setTimeout-booster`, `nano-setInterval-booster`, `no-fetch-if`, `no-xhr-if`, `addEventListener-defuser` (`aeld`), `window.open-defuser` (`nowoif`), `noeval`, `nowebrtc`, `json-prune` (`jp`, on `JSON.parse`) | `native/js/engine/qjs_blocker.c`: before the first script the browser hands the rules to the engine (`wj_hook_install`), which installs C accessors and replaced functions; the decision (function text, current script, stack, arguments, URL) is made in C with the page's values, patterns are real JavaScript regular expressions. A call a rule does not concern costs the check and the call of the original. |
+| **JavaScript** (last resort) | raw `#%#` JavaScript rules; every hook scriptlet when `blocker.hooks.native` is off | `scriptlets.js` run in the realm. Off by default for everything but the raw rules, which are the user's own code. |
+| accepted, no effect | `json-edit` and `spoof-css` families, `addEventListener-logger` | uBlock Origin's logging and experimental ones: the line is understood and does nothing. |
+
+Count of scriptlets that still run as JavaScript with the default settings: **none**, besides the lines the user wrote as raw JavaScript.
 
 Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `noop.txt`, `empty`, `1x1.gif`, `2x2.png`,
 `3x2.png`, `32x32.png` (generated), `noopmp3-0.1s`, `noopmp4-1s`, `google-analytics.com/ga.js`, `analytics.js`,
@@ -115,6 +127,8 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
   that has the lists, a cold HTTP cache) and collects `WREN_LOAD_REPORT` lines (first paint, readyState complete, requests,
   blocked, bytes, DOM nodes, CPU time, memory). `WREN_BLOCKER_TRACE=<file>` logs what the page hooks cost.
 - `src/tools/blockerpages`: the same in the headless stack.
+- `tools\blocker_js.ps1`: how much JavaScript the interpreter runs for a page (`WREN_JS_PROFILE` samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.
+- `WREN_HOOKBENCH=1 build\blockertest.exe`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions.
 - Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `blockertest` (`tools\test_all.ps1`).
 
 ## Results
@@ -143,3 +157,34 @@ that script starts earlier and can hold the main thread before the first frame (
 loader): the first paint is then later although the bytes, requests and CPU time fell. An exception for `optimizely.com`
 brought CNN's first paint back to 1.0 s. Where little is blocked (the Guardian's blocked requests are beacons, Fox News served
 none from the lists) the numbers are the same within noise.
+### Scriptlets without JavaScript
+
+The interpreter's work for a page (`tools\blocker_js.ps1`: the samples `WREN_JS_PROFILE` takes of the page's functions, summed over every
+page of the tab, 20 to 25 s after the navigation; a profile with the lists; `before` is the build that ran the scriptlets as
+JavaScript, `after` this one). The samples of the blocker's own scripts (`wren-blocker:...`) are 0 in both builds on these sites.
+
+| site | before | after | blocker off |
+|---|---:|---:|---:|
+| theguardian.com | 159 | 146 | 156 |
+| allrecipes.com | 105 | 99 | 269 |
+| weather.com | 556 | 542 | 1144 |
+| dailymail.co.uk | 1125 | 1119 | 1119 |
+| edition.cnn.com | 12 | 12 | 229 |
+| youtube.com (watch), median of 4 | 1705 | 1733 | 1240 |
+
+Reading: the scriptlets add nothing to the interpreter's work (before and after are the same within the noise of a sample taken
+every few thousand interrupt checks), and where the blocker removes scripts the page's work falls (allrecipes, weather.com,
+CNN). What the table cannot show is that the blocker no longer has a script in the realm at all: with the default settings no
+JavaScript of the blocker is compiled or run (the page's `wren-blocker:scriptlets` script exists only for raw `#%#` rules, or with
+`blocker.hooks.native` off). On YouTube the page itself does more work with the blocker on than off (about 40 %): it reacts to what
+is blocked, which is not the blocker's own work.
+
+What a hooked API costs per call (`WREN_HOOKBENCH=1`, median of 3 runs, ns per iteration of a loop that itself costs about 35):
+
+| call | no blocker | native hooks | JavaScript versions |
+|---|---:|---:|---:|
+| `setTimeout` + `clearTimeout`, rule on the function's text | 1380 | 1925 | 3816 |
+| `JSON.parse` of a small object, a `json-prune` rule | 3753 | 3195 | 8415 |
+| read of a property a `set-constant` defines | 5677 (a miss on the window) | 118 | 177 |
+
+A rule with a text pattern has to read the callback's source (about 0.5 us); a rule with an empty pattern does not.

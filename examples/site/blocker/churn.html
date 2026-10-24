@@ -1,0 +1,13 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: a page that keeps changing</title></head><body>
+<h1>Ten thousand text nodes and a page that keeps adding more</h1>
+<div id="root"></div>
+<script>
+// what a heavy page does while it starts: thousands of text nodes, and more arriving every few milliseconds
+var root = document.getElementById('root');
+for (var i = 0; i < 5000; i++) { var p = document.createElement('p'); p.textContent = 'row ' + i; root.appendChild(p); }
+var n = 0;
+var t = setInterval(function () {
+  for (var k = 0; k < 20; k++) { var q = document.createElement('p'); q.textContent = 'new ' + (n++); root.appendChild(q); }
+  if (n > 8000) { clearInterval(t); document.title = 'done'; }
+}, 10);
+</script></body></html>

@@ -5,7 +5,10 @@ package page
 
 import "wb:base"
 import "wb:css"
+import "wb:cookies"
 import "wb:dom"
+import "wb:fetch"
+import "wb:forms"
 import "wb:style"
 
 Embedder_Hooks :: struct {
@@ -16,6 +19,11 @@ Embedder_Hooks :: struct {
 	adopted:       proc(user: rawptr, p: ^Page),
 	// Before each computation of the page's styles (cheap to return from: it is called every time).
 	before_styles: proc(user: rawptr, p: ^Page),
+	// A script element is about to be read (parser-inserted or not, before its text, src or type are looked at): the blocker may rewrite the
+	// text of an inline script natively before it runs, and settle the DOM changes made so far.
+	before_script: proc(user: rawptr, p: ^Page, script: base.Handle),
+	// The parser has finished: readyState is interactive.
+	parsed:        proc(user: rawptr, p: ^Page),
 	// Frames and images whose request the blocker stopped are hidden instead of showing an error or a broken image.
 	collapse_blocked: bool,
 }
@@ -46,3 +54,35 @@ selector_valid :: proc(p: ^Page, selector: string) -> bool {
 
 _ :: css
 _ :: dom
+
+// What the blocker does to a page natively, in place of the JavaScript it would otherwise run in the page's realm: the same effect
+// as the page's own `element.click()`, `document.cookie = ...`, `localStorage.setItem(...)`, without a realm.
+
+// A click on the element, as `HTMLElement.click()` does it.
+click_element :: proc(p: ^Page, el: base.Handle) -> bool { return forms.synthetic_click(page_forms(p), el) }
+
+// A cookie as `document.cookie = text` stores it (the document's URL, not HttpOnly). False when the document cannot have cookies.
+store_cookie :: proc(p: ^Page, text: string) -> bool {
+	cc, ok := cookie_context(p)
+	if !ok { return false }
+	r := cookies.store(&p.loader.profile.jar, text, cc)
+	return r == .Stored || r == .Replaced || r == .Deleted
+}
+
+// localStorage / sessionStorage as the page's own `setItem` / `removeItem` write them (the quota and the origin are checked).
+storage_write :: proc(p: ^Page, session: bool, key, value: string) -> bool {
+	return storage_set_item(p, session ? .Session : .Local, key, value) == 0
+}
+
+storage_delete :: proc(p: ^Page, session: bool, key: string) -> bool {
+	return storage_remove_item(p, session ? .Session : .Local, key) == 0
+}
+
+// The cookies the document can read (document.cookie), as "name=value; name=value".
+document_cookies :: proc(p: ^Page) -> string {
+	cc, ok := cookie_context(p)
+	if !ok { return "" }
+	return cookies.header_for(&p.loader.profile.jar, cc, context.temp_allocator)
+}
+
+_ :: fetch

@@ -55,6 +55,8 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 		if t := current_tab(app); t != nil && t.id == ev.tab { app.frames_requested = max(app.frames_requested, 1) }
 	case .Changed, .Lists:
 		app.frames_requested = max(app.frames_requested, 1)
+	case .Reload:
+		for t in app.tabs { if t.id == ev.tab && t.kind == .Web { reload(app, t); break } }
 	}
 }
 
