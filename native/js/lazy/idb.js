@@ -29,7 +29,7 @@
   const E_ABORTED = 8, E_UNKNOWN = 11;
   const MAX_UV = 9007199254740991;
 
-  const call = host.call, serialize = host.serialize, deserialize = host.deserialize;
+  const call = host.call, serialize = host.serialize, deserialize = host.deserialize, isProxy = host.isProxy, drain = host.drain;
   let DOMEx = null;   // the realm's DOMException (its interface objects exist from start on: the ones of pre-initialization are not the page's)
   const hasOwn = Object.prototype.hasOwnProperty;
   const isArray = Array.isArray;
@@ -171,7 +171,7 @@
       case "string": putString(w, v); return true;
       case "object": {
         if (v === null) return false;
-        if (isArray(v)) {
+        if (isArray(v) && !isProxy(v)) {   // (a Proxy of an array is not an Array exotic object: no key)
           if (seen.length >= 64 || seen.includes(v)) return false;
           seen.push(v);
           w.u8(0x50);
@@ -604,6 +604,7 @@
         let cb = l.callback;
         if (l.handler) { cb = s.handlers[type]; if (typeof cb !== "function") continue; }
         st.passive = !!l.passive;
+        listenerDepth++;
         try {
           if (typeof cb === "function") cb.call(t, event);
           else if (cb !== null && typeof cb === "object") {
@@ -615,11 +616,17 @@
           threw = true;
           host.report(e);
         }
+        listenerDepth--;
         st.passive = false;
+        // the browser calls us for an event with nothing else running: the microtasks a listener queued run before the next listener
+        if (inHostEvent && listenerDepth === 0) drain();
       }
     }
     return threw;
   }
+
+  let listenerDepth = 0;   // listeners running (an event dispatched by a script inside one is nested)
+  let inHostEvent = false;   // the browser called us to deliver an event: the stack holds nothing of a script
 
   function removeListener(s, l) {
     l.removed = true;
@@ -1243,19 +1250,21 @@
     }
     const bytes = cloneValue(T, value);
     let generate = false;
+    // key paths are read on the clone, not on the value (a getter or a Proxy of the value ran once, in the clone)
+    const evalValue = (typeof value === "object" && value !== null && (kp !== null || meta.indexes.length > 0)) ? deserialize(bytes) : value;
     if (kp !== null) {
-      const k = pathKey(value, kp);
+      const k = pathKey(evalValue, kp);
       if (k === null) throw dom("DataError", "The key path yielded a value that is not a valid key.");
       if (k === undefined) {
         if (!meta.autoIncrement) throw dom("DataError", "Evaluating the object store's key path did not yield a value.");
-        if (typeof kp !== "string" || !canInject(value, kp)) throw dom("DataError", "A key could not be injected into the value.");
+        if (typeof kp !== "string" || !canInject(evalValue, kp)) throw dom("DataError", "A key could not be injected into the value.");
         generate = true;
       } else keyBytes = k;
     }
     const R = newRequest(IDBRequest.prototype, S.wrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     // index keys of the value as it is now (the clone is the snapshot); with a generated key they come from the clone
-    const snapshot = generate ? null : snapIndexKeys(S, value);
+    const snapshot = generate ? null : snapIndexKeys(S, evalValue);
     enqueue(T, R, () => {
       let kb = keyBytes, vb = bytes, ik = null;
       if (generate) {
@@ -1715,8 +1724,10 @@
       if (C.index === null) throw dom("InvalidAccessError", "The cursor's source is not an index.");
       if (C.direction === 1 || C.direction === 3) throw dom("InvalidAccessError", "The cursor's direction is a unique one.");
       if (!C.gotValue) throw dom("InvalidStateError", "The cursor is being iterated or has iterated past its end.");
-      const k = keyOf(key), pk = keyOf(primaryKey);
-      if (k === null || pk === null) throw dom("DataError", "The parameter is not a valid key.");
+      const k = keyOf(key);
+      if (k === null) throw dom("DataError", "The parameter is not a valid key.");
+      const pk = keyOf(primaryKey);   // (the first key is checked before the second is read)
+      if (pk === null) throw dom("DataError", "The parameter is not a valid key.");
       const c = compareBytes(k, C.key);
       const fwd = C.direction < 2;
       if ((fwd && (c < 0 || (c === 0 && compareBytes(pk, C.pk) <= 0))) || (!fwd && (c > 0 || (c === 0 && compareBytes(pk, C.pk) >= 0)))) {
@@ -1735,13 +1746,14 @@
       const bytes = cloneValue(T, value);
       const S = C.store;
       const kp = S.meta.keyPath;
+      const evalValue = (typeof value === "object" && value !== null && (kp !== null || S.meta.indexes.length > 0)) ? deserialize(bytes) : value;
       if (kp !== null) {
-        const k = pathKey(value, kp);
+        const k = pathKey(evalValue, kp);
         if (k === null || k === undefined || compareBytes(k, C.pk) !== 0) throw dom("DataError", "The effective key of the value differs from the cursor's primary key.");
       }
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      const snapshot = snapIndexKeys(S, value);
+      const snapshot = snapIndexKeys(S, evalValue);
       const pk = C.pk;
       enqueue(T, R, () => {
         const w = reqWriter(T, REQ.PUT, S.meta.id);
@@ -1865,6 +1877,10 @@
   }
 
   function onEvent() {
+    inHostEvent = true;
+    try { onEventInner(); } finally { inHostEvent = false; }
+  }
+  function onEventInner() {
     const rep = call(OP.EVENT);
     const rd = new Rd(rep, 1);
     const kind = rd.u8();
