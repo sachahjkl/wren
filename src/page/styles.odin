@@ -434,6 +434,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
 	styles_note(full, dom_partial, partial, time.tick_since(t0), why)
+	if full { styles_stats.full_bytes += i64(p.styled.arena.total_used) }
 	return p.styled
 }
 // What the style passes cost, for the profile report (prof.odin) and the measuring scripts: how many passes of each kind and
@@ -441,6 +442,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 Styles_Stats :: struct {
 	calls, full, dom, state, none: int,
 	full_ns, dom_ns, state_ns, none_ns: i64,
+	full_bytes: i64,   // memory the styles of the full passes took (the arena's use at the end of each)
 	why: map[string]Why_Count,   // the full passes by the reason the incremental one was not enough
 }
 Why_Count :: struct { n: int, ns: i64 }
@@ -466,9 +468,9 @@ styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
 styles_stats_text :: proc() -> string {
 	s := styles_stats
 	r := style.rebuild_total
-	return fmt.tprintf("style passes: %d | full %d (%.0f ms) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average",
-		s.calls, s.full, f64(s.full_ns) / 1e6, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
-		r.n, f64(r.ns) / 1e6, f64(r.sheets) / f64(max(r.n, 1)))
+	return fmt.tprintf("style passes: %d | full %d (%.0f ms, %.0f MB of styles made) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average\nlayouts forced by scripts' readings (geometry, computed style; style passes included): %d, %.0f ms",
+		s.calls, s.full, f64(s.full_ns) / 1e6, f64(s.full_bytes) / 1048576, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
+		r.n, f64(r.ns) / 1e6, f64(r.sheets) / f64(max(r.n, 1)), forced_layouts.n, f64(forced_layouts.ns) / 1e6)
 }
 styles_stats_why :: proc() -> string {
 	sb := strings.builder_make(context.temp_allocator)

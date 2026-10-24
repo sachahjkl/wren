@@ -5,6 +5,7 @@ import "core:mem/virtual"
 import "core:slice"
 import "core:strings"
 import "core:sync"
+import "wb:base"
 import "wb:css"
 import "wb:dom"
 
@@ -103,6 +104,27 @@ Has_Anchor :: struct {
 	reach:    Reach,
 	feat:     Has_Feat,
 	hops:     int,   // how many levels above a changed element the anchor can be (-1: any: the argument has a descendant combinator)
+	// :has(<compound>) or :has(> <compound>) of tags, ids, classes and attributes only: whether the anchor matches is whether some
+	// element under it (a child) matches the compound, so the elements that do are kept (members) and a change of the tree or of
+	// attributes restyles the anchor's subtree only if the answer flipped (restyle_dom.odin has_flip), not at every insertion of
+	// an element that holds the feature (YouTube: :has(yt-icon-shape) ..., restyled the whole page about as often as it changed)
+	// A chain (:has([role] .x), :has(.a > .b:not([hidden])): compounds joined by descendant and child combinators) keeps the elements
+	// that match its last compound; the others must be tested against the chain (match_chain) and a change of an attribute the chain
+	// reads on an ancestor of a member may flip the answer without a member coming or going (Has_Members.dirty).
+	exact:      bool,
+	child_only: bool,
+	chain:      bool,
+	cx:         ^css.Complex,
+	arg:        css.Compound,    // the last compound
+	last_mask:  u64,             // its keys in the document's Watch
+	members:    ^Has_Members,
+}
+
+Has_Members :: struct {
+	set:     map[base.Handle]struct{},   // the elements that match the argument, as of the last pass (those gone or detached are dropped when met)
+	added:   [dynamic]base.Handle,       // this batch of mutations: members that came (inserted subtrees, attributes that now match)
+	removed: [dynamic]base.Handle,       // this batch: the parents members may have left (a removed subtree that held the features, an attribute that stopped matching)
+	dirty:   bool,                       // this batch: an attribute the chain reads changed on an ancestor of a member: any answer may have flipped
 }
 
 // The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
@@ -159,6 +181,7 @@ inv_free :: proc(ix: ^Inv_Index) {
 		for k in ha.feat.ids { delete(k) }
 		for k in ha.feat.attrs { delete(k) }
 		for k in ha.feat.types { delete(k) }
+		if ha.members != nil { delete(ha.members.set); delete(ha.members.added); delete(ha.members.removed); free(ha.members) }
 		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs); delete(ha.feat.types)
 	}
 	delete(ix.has_anchors)
@@ -304,7 +327,18 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 				ix.collect = &feat
 				analyze_list(ix, s.list, total, true, depth)
 				ix.collect = saved
-				append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list)})
+				ha := Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list)}
+				if s.list != nil && len(s.list^) == 1 && !feat.unkeyed {
+					c := &s.list^[0]
+					if len(c.compounds) > 0 && (c.leading == .Descendant || c.leading == .Child) && c.pseudo_element == .None && c.slotted == nil {
+						last := c.compounds[len(c.compounds) - 1]
+						ok := len(last.simples) > 0 && plain_compound(last, false)
+						for k in 0 ..< len(c.compounds) - 1 { if !plain_compound(c.compounds[k], true) { ok = false } }
+						for cb in c.combinators { if cb != .Descendant && cb != .Child { ok = false } }
+						if ok { ha.exact, ha.child_only, ha.chain, ha.cx, ha.arg = true, c.leading == .Child && len(c.compounds) == 1, len(c.compounds) > 1, c, last }
+					}
+				}
+				append(&ix.has_anchors, ha)
 			} else {
 				analyze_list(ix, s.list, total, true, depth)
 			}
@@ -491,27 +525,95 @@ subject_keys :: proc(c: ^css.Complex) -> u32 {
 	return n
 }
 
-// Gives `doc` the features the :has() anchors of `ix` ask about (dom.Watch: what its journal says about removed subtrees) and
-// each anchor its mask of them. Once per index and document.
-watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
-	if ix.watched == doc && ix.watched_gen == doc.journal.watch.gen { return }
-	dom.watch_reset(doc)
-	for &ha in ix.has_anchors {
-		m: u64
-		for k in ha.feat.classes { m |= dom.watch_bit(doc, .Class, k) }
-		for k in ha.feat.ids { m |= dom.watch_bit(doc, .Id, k) }
-		for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, strings.to_lower(k, context.temp_allocator)) }
-		for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, strings.to_lower(k, context.temp_allocator)) }
-		ha.feat.mask = m
+// Gives `doc` the features the :has() anchors of `ix` ask about (dom.Watch: what its journal says about removed subtrees), each
+// anchor its mask of them, and each exact anchor its members (the elements that match its argument now). Once per index and
+// document (true then: the members are of the document as it is now, not as it was when the mutations of the restyle that asks began:
+// they cannot say what flipped); `force` (after a full pass, which took the changes since the last restyle without telling the members) the members again.
+watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh: bool) {
+	fresh = !(ix.watched == doc && ix.watched_gen == doc.journal.watch.gen)
+	if !fresh && !force { return }
+	if fresh {
+		dom.watch_reset(doc)
+		for &ha in ix.has_anchors {
+			m: u64
+			for k in ha.feat.classes { m |= dom.watch_bit(doc, .Class, k) }
+			for k in ha.feat.ids { m |= dom.watch_bit(doc, .Id, k) }
+			for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, strings.to_lower(k, context.temp_allocator)) }
+			for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, strings.to_lower(k, context.temp_allocator)) }
+			ha.feat.mask = m
+			if ha.exact {
+				lm: u64
+				for sp in ha.arg.simples {
+					#partial switch sp.kind {
+					case .Type: lm |= dom.watch_bit(doc, .Tag, strings.to_lower(sp.name, context.temp_allocator))
+					case .Id: lm |= dom.watch_bit(doc, .Id, sp.name)
+					case .Class: lm |= dom.watch_bit(doc, .Class, sp.name)
+					case .Attribute: lm |= dom.watch_bit(doc, .Attr, strings.to_lower(sp.name, context.temp_allocator))
+					}
+				}
+				ha.last_mask = lm
+			}
+		}
+		ix.watched, ix.watched_gen = doc, doc.journal.watch.gen
 	}
-	ix.watched, ix.watched_gen = doc, doc.journal.watch.gen
+	members_scan(ix, doc)
+	return
 }
 
-// After a full pass: the watch is made then, so that the removals that follow say what they held. Documents with shadow trees
-// are not watched (their anchors are in the indexes of the trees).
+// The members of the exact anchors: one walk of the document.
+@(private = "file")
+members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
+	any := false
+	for &ha in ix.has_anchors {
+		if !ha.exact { continue }
+		if ha.members == nil { ha.members = new(Has_Members) }
+		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed)
+		ha.members.dirty = false
+		any = true
+	}
+	if !any { return }
+	mc: Match_Ctx
+	match_ctx_init(&mc, doc, State{}, context.temp_allocator)
+	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
+	append(&stack, doc.root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := dom.get(doc, h)
+		if n == nil { continue }
+		if n.kind == .Element {
+			for &ha in ix.has_anchors { if ha.exact && matches_compound(&mc, h, ha.arg) { ha.members.set[h] = {} } }
+		}
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+	}
+}
+
+// After a full pass: the watch is made then, so that the removals that follow say what they held, and the members are taken
+// again. Documents with shadow trees are not watched (their anchors are in the indexes of the trees).
 watch_prepare :: proc(e: ^Engine, doc: ^dom.Document) {
 	if len(e.shadow.of_root) > 0 || dom.has_shadow_trees(doc) || !doc.journal.on { return }
 	ix := inv_index(e)
 	if ix.give_up || !ix.uses_has { return }
-	watch_sync(ix, doc)
+	_ = watch_sync(ix, doc, true)
+}
+
+// A compound of tags, ids, classes and attributes, and (unless `last`) :not() / :is() / :where() of such: what it matches depends on
+// the element alone and on the attributes the index lists for the :has(), nothing else (no positions, no state, no :has()).
+@(private = "file")
+plain_compound :: proc(comp: css.Compound, allow_logical: bool) -> bool {
+	for sp in comp.simples {
+		#partial switch sp.kind {
+		case .Type, .Id, .Class, .Attribute, .Universal:
+		case .Pseudo_Class:
+			if !allow_logical || sp.list == nil { return false }
+			#partial switch sp.pseudo {
+			case .Not, .Is, .Where:
+				for &cx in sp.list^ {
+					if len(cx.combinators) > 0 || len(cx.compounds) != 1 || !plain_compound(cx.compounds[0], true) { return false }
+				}
+			case: return false
+			}
+		case: return false
+		}
+	}
+	return true
 }
