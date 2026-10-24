@@ -118,6 +118,20 @@ about_page_without_a_license :: proc(t: ^testing.T) {
 }
 
 @(test)
+the_card_can_be_previewed_without_a_licence :: proc(t: ^testing.T) {
+	d := test_page("graphite")
+	d.card_sample = true
+	html := wren_page_html(d)
+	for want in ([]string{`id="lic"`, "Sample Supporter", "-wren-shader: card-foil", "<script>", "Unregistered"}) {
+		testing.expectf(t, strings.contains(html, want), "the preview lacks %q", want)
+	}
+	testing.expect(t, !strings.contains(html, "Registered to"), "nothing is registered")
+	d.card_sample = false
+	testing.expect(t, !strings.contains(wren_page_html(d), `id="lic"`), "no card without the preview or a licence")
+	testing.expect(t, is_builtin_href("about:wren?card=sample") && !is_builtin_href("about:blank") && !is_builtin_href("https://example.org/about:wren"), "the preview is a built-in page; about:blank is not")
+}
+
+@(test)
 about_page_with_a_license :: proc(t: ^testing.T) {
 	lic := license.License{product = "wren", edition = "patron", name = "Zoé <b>Martin</b> & Co", email = "z@example.org", date = "2026-10-22", order = "WREN-0042"}
 	state := License_State{lic = lic, registered = true, stored = true}
@@ -127,7 +141,7 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !strings.contains(html, "Unregistered"), "a registered Wren is not unregistered")
 	testing.expect(t, !strings.contains(html, "<b>Martin</b>"), "the name is escaped")
-	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", ".lic .holo", "mix-blend-mode", `class="tickwrap"`, "text-shadow", "@media (max-width: 520px)"}) {
+	for want in ([]string{`id="lic"`, "CERTIFIED", `class="seal"`, "<script>", "requestAnimationFrame", "prefers-reduced-motion", "-wren-shader: card-foil", "@property --sweep", `class="tickwrap"`, "text-shadow", "@media (max-width: 520px)"}) {
 		testing.expectf(t, strings.contains(html, want), "the licence card lacks %q", want)
 	}
 	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")

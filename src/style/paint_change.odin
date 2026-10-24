@@ -36,7 +36,7 @@ PAINT_PROPS :: [?]Prop{
 	.Object_Position, .Filter, .Backdrop_Filter, .Clip_Path,
 	.Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Caret_Color, .Accent_Color,
 	.Mask_Image, .Mask_Mode, .Mask_Repeat, .Mask_Position, .Mask_Size, .Mask_Origin, .Mask_Clip, .Mask_Composite,
-	.Text_Fill_Color,
+	.Text_Fill_Color, .Wren_Shader,
 }
 
 @(private) tiers_once: sync.Once

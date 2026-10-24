@@ -100,6 +100,7 @@ tables_build :: proc() {
 		{"border-block-start", "border-top"}, {"border-block-end", "border-bottom"}, {"border-inline-start", "border-left"}, {"border-inline-end", "border-right"},
 	}) { alias_by_name[pair[0]] = pair[1] }
 	mask_names()
+	shader_names()
 }
 
 // A property name as written in CSS: a longhand, a shorthand or neither.
