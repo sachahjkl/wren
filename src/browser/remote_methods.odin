@@ -1009,7 +1009,7 @@ m_stats :: proc(app: ^App) -> Reply {
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
 	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
 	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
-	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints)))
+	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev.visible)
 	j_end(&b)
 	return done(strings.to_string(b))
 }
