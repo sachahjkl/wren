@@ -82,8 +82,11 @@ $exe = Join-Path $root 'build\test262.exe'
 Push-Location $root
 try {
     # Wasm calls run on the main thread too: room for wasm.wasmtime.max_stack_bytes
-    & odin build src/tools/test262 -collection:wb=src -vet -o:speed -out:$exe "-extra-linker-flags:/STACK:33554432"
-    if ($LASTEXITCODE -ne 0) { throw 'building src\tools\test262 failed' }
+    # (-Quick: one module per package, 1 s instead of 4; and test_all runs this script twice: the second run finds the program built)
+    . (Join-Path $PSScriptRoot 'test_env.ps1')
+    $modules = @(if ($Quick) { '-use-separate-modules' })
+    $ok = Invoke-WrenBuildIfStale $exe "test262 $($modules -join ' ')" { & odin build src/tools/test262 -collection:wb=src -vet -o:speed @modules -out:$exe "-extra-linker-flags:/STACK:33554432" }
+    if (-not $ok) { throw 'building src\tools\test262 failed' }
 } finally { Pop-Location }
 
 $threadArgs = if ($Threads -gt 0) { @('-threads', $Threads) } else { @() }

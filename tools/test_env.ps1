@@ -119,6 +119,89 @@ function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
 
+# Is build\<variant>.exe (default wren) newer than everything it is built from? A test that needs the browser built (the CI built it one step
+# before; a developer built it a minute ago) skips the 40 s that `build.bat` takes even when nothing changed: Odin compiles the whole program every time.
+# The inputs: the sources of the browser and of the toolkit (not their tests), the libraries and the script engine's image build.bat links or
+# embeds, build.bat and odin.version themselves.
+function Test-WrenBuildFresh([string]$Variant = 'wren') {
+    $root = Get-WrenRepoRoot
+    $exe = Join-Path $root "build\$Variant.exe"
+    if (-not (Test-Path $exe)) { return $false }
+    $built = [IO.File]::GetLastWriteTimeUtc($exe)
+    foreach ($f in 'build.bat', 'odin.version', 'build\js\wren_js.wasm', 'build\lexbor\lexbor.lib', 'build\media\wren_media.lib') {
+        $p = Join-Path $root $f
+        if (-not (Test-Path $p) -or [IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
+    }
+    foreach ($dir in 'src', 'ext\gui_toolkit', 'api', 'sdk') {
+        $d = Join-Path $root $dir
+        if (-not (Test-Path $d)) { continue }
+        foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
+            if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
+            if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
+        }
+    }
+    return $true
+}
+
+# Odin compiles a whole program every time (no incremental build): a tool that a run builds twice (test262.ps1 is called twice by test_all)
+# or that is already built does not need it again. Builds `Output` with `Build` (a script block), unless Output is newer than every source of the
+# repository's src and ext\gui_toolkit (tests aside) and was built with the same `Flags` (written beside it, Output.flags).
+function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$Build) {
+    $root = Get-WrenRepoRoot
+    $stamp = "$Output.flags"
+    $fresh = (Test-Path $Output) -and (Test-Path $stamp) -and ([IO.File]::ReadAllText($stamp) -eq $Flags)
+    if ($fresh) {
+        $built = [IO.File]::GetLastWriteTimeUtc($Output)
+        foreach ($dir in 'src', 'ext\gui_toolkit') {
+            $d = Join-Path $root $dir
+            if (-not (Test-Path $d)) { continue }
+            foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
+                if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
+                if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { $fresh = $false; break }
+            }
+            if (-not $fresh) { break }
+        }
+    }
+    if ($fresh) { return $true }
+    & $Build
+    if ($LASTEXITCODE -ne 0) { return $false }
+    [IO.File]::WriteAllText($stamp, $Flags)
+    return $true
+}
+
+# Where the time of a script goes, section by section (the tests are slow when nobody can see which part is):
+#   Section 'name'      ends the section in progress and starts a new one (a section is a stretch of the script, from one call to the next)
+#   Show-WrenSections   ends the last one and prints "seconds  section" for the script, longest first, with the total and (when
+#                       wrenctl.ps1 is loaded) how many `wren ctl` processes were started and for how long
+# When $env:WREN_TIMINGS_FILE names a file (tools\test_all.ps1 sets it), every section is appended to it as "script<TAB>section<TAB>seconds"
+# and test_all prints the longest ones at the end of the run (and in the job summary of a GitHub run): the table is there in a CI log too.
+$global:WrenSections = New-Object Collections.Generic.List[object]
+$global:WrenSectionName = $null
+$global:WrenSectionClock = [Diagnostics.Stopwatch]::StartNew()
+$global:WrenSectionScript = if ($MyInvocation.PSCommandPath) { [IO.Path]::GetFileNameWithoutExtension($MyInvocation.PSCommandPath) } else { 'script' }
+function Close-WrenSection {
+    if ($null -eq $global:WrenSectionName) { return }
+    $global:WrenSections.Add([pscustomobject]@{ Section = $global:WrenSectionName; Seconds = [Math]::Round($global:WrenSectionClock.Elapsed.TotalSeconds, 2) })
+    $global:WrenSectionName = $null
+}
+function Section([string]$Name) {
+    Close-WrenSection
+    $global:WrenSectionName = $Name
+    $global:WrenSectionClock.Restart()
+}
+function Show-WrenSections([string]$Title = '') {
+    Close-WrenSection
+    if ($global:WrenSections.Count -eq 0) { return }
+    $scr = if ($Title) { $Title } else { $global:WrenSectionScript }
+    $total = ($global:WrenSections | Measure-Object Seconds -Sum).Sum
+    "sections of ${scr}: $([Math]::Round($total, 1)) s in $($global:WrenSections.Count) sections" + $(if ($null -ne $global:WrenCtlCalls) { "; $($global:WrenCtlCalls) wren ctl processes started, $([Math]::Round($global:WrenCtlMs / 1000.0, 1)) s in them" } else { '' })
+    foreach ($s in ($global:WrenSections | Sort-Object Seconds -Descending)) { '  {0,7:N2} s  {1}' -f $s.Seconds, $s.Section }
+    if ($env:WREN_TIMINGS_FILE) {
+        try { [IO.File]::AppendAllText($env:WREN_TIMINGS_FILE, (($global:WrenSections | ForEach-Object { "$scr`t$($_.Section)`t$($_.Seconds)" }) -join "`n") + "`n") } catch { }
+    }
+    $global:WrenSections.Clear()
+}
+
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
 # Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'

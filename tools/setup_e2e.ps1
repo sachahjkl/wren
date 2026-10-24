@@ -68,6 +68,13 @@ function Start-Wren([string]$exe, [string[]]$wrenArgs, [hashtable]$extraEnv = @{
     [SE]::SetWindowPos($p.MainWindowHandle, [IntPtr]::Zero, 40, 40, 1280, 800, 0x14) | Out-Null   # no z-order change, no activation
     return $p
 }
+# Waits (at most $Seconds) until $Test is true; returns whether it was. What a step waits for is what it asks: a file that is written, a folder that goes.
+# (Where nothing says that the dialog is open, a fixed delay stays.)
+function Wait-Until([scriptblock]$Test, [double]$Seconds = 10) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $Seconds) { if (& $Test) { return $true }; Start-Sleep -Milliseconds 25 }
+    return [bool](& $Test)
+}
 function Click($p, [int]$x, [int]$y) {
     $h = $p.MainWindowHandle
     $r = New-Object SE+RECT
@@ -94,11 +101,11 @@ $Pos = @{ Install = @(762, 693); Uninstall = @(182, 693); Confirm = @(182, 733);
 
 try {
     $profile = "$scratch\profile"
-    "A. install: Enter on the main button"
+    Section "A install: Enter on the main button"; "A. install: Enter on the main button"
     $p = Start-Wren $Exe @('--profile', $profile, '--setup')
     Start-Sleep -Milliseconds 3000
     Key $p $Enter
-    Start-Sleep -Milliseconds 3500
+    $null = Wait-Until { (Test-Path "$installDir\wren_install.txt") -and (Test-Path "$scratch\StartMenu\Wren Dev.lnk") -and (Test-Path "HKCU:\$regRoot\Microsoft\Windows\CurrentVersion\Uninstall\WrenDev") } 20
     Check (Test-Path $installed) 'wren.exe is in the install folder'
     Check (Test-Path "$installDir\wren_install.txt") 'the manifest is written'
     Check (Test-Path "$scratch\StartMenu\Wren Dev.lnk") 'the Start menu shortcut exists'
@@ -107,13 +114,13 @@ try {
     Check (-not (Test-Path "$scratch\Desktop\Wren Dev.lnk")) 'no desktop shortcut (not ticked)'
     Close-Wren $p
 
-    "B. uninstall from the installed copy"
+    Section "B uninstall from the installed copy"; "B. uninstall from the installed copy"
     $p = Start-Wren $installed @('--profile', $profile, '--setup')
     Start-Sleep -Milliseconds 3000
     Click $p $Pos.Uninstall[0] $Pos.Uninstall[1]
     Check (Test-Path $installed) 'the first click only asks'
     Click $p $Pos.Confirm[0] $Pos.Confirm[1]
-    Start-Sleep -Milliseconds 2500
+    $null = Wait-Until { (-not (Test-Path "$scratch\StartMenu\Wren Dev.lnk")) -and (-not (Test-Path "HKCU:\$regRoot\Clients\StartMenuInternet\WrenDev")) -and (-not (Test-Path "HKCU:\$regRoot\Microsoft\Windows\CurrentVersion\Uninstall\WrenDev")) } 20
     Check (-not (Test-Path "$scratch\StartMenu\Wren Dev.lnk")) 'the Start menu shortcut is gone'
     Check (-not (Test-Path "HKCU:\$regRoot\Clients\StartMenuInternet\WrenDev")) 'the browser registration is gone'
     Check (-not (Test-Path "HKCU:\$regRoot\Microsoft\Windows\CurrentVersion\Uninstall\WrenDev")) 'the Settings > Apps record is gone'
@@ -125,24 +132,24 @@ try {
     if (Test-Path $installDir) { '    left: ' + ((Get-ChildItem $installDir -Force | ForEach-Object { $_.Name }) -join ', '); Get-ChildItem $env:TEMP -Filter 'wren_cleanup_*.cmd' | ForEach-Object { '    helper script still there: ' + $_.Name } }
     Check (-not (Get-ChildItem $env:TEMP -Filter 'wren_cleanup_*.cmd' -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-2) })) 'the helper batch file deleted itself'
 
-    "C. Use standalone"
+    Section "C Use standalone"; "C. Use standalone"
     $p = Start-Wren $Exe @('--profile', $profile, '--setup')
     Start-Sleep -Milliseconds 3000
     Click $p $Pos.Secondary[0] $Pos.Secondary[1]
-    Start-Sleep -Milliseconds 600
+    $null = Wait-Until { (Test-Path "$profile\setup.txt") -and ((Get-Content "$profile\setup.txt" -Raw) -match 'choice=') } 10
     $choice = if (Test-Path "$profile\setup.txt") { Get-Content "$profile\setup.txt" -Raw } else { '' }
     Check ($choice -match 'choice=standalone') 'setup.txt says standalone'
     Close-Wren $p
     Remove-Item "$profile\setup.txt" -ErrorAction SilentlyContinue
 
-    "D. the first start opens it by itself, once"
+    Section "D the first start opens it by itself, once"; "D. the first start opens it by itself, once"
     # a profile outside the temporary folder, found through APPDATA (not --profile: that never offers anything)
     $appdata = "$scratch\appdata"; New-Item -ItemType Directory -Force $appdata | Out-Null
     $first = @{ APPDATA = $appdata }
     $p = Start-Wren $Exe @('--pref', 'browser.desktop_integration.on_first_run=true') $first @('WREN_DESKTOP_INTEGRATION')
     Start-Sleep -Milliseconds 3500
     Key $p $Escape
-    Start-Sleep -Milliseconds 500
+    $null = Wait-Until { (Test-Path "$appdata\Wren\setup.txt") -and ((Get-Content "$appdata\Wren\setup.txt" -Raw) -match 'choice=') } 10
     $choice = if (Test-Path "$appdata\Wren\setup.txt") { Get-Content "$appdata\Wren\setup.txt" -Raw } else { '' }
     Check ($choice -match 'choice=dismissed') 'it opened, and Escape was remembered as "dismissed"'
     Close-Wren $p
@@ -156,7 +163,7 @@ try {
     $choice = Get-Content "$appdata\Wren\setup.txt" -Raw
     Check ($choice -match 'choice=standalone' -and $choice -notmatch 'dismissed') 'after "standalone" it does not open (Escape wrote nothing)'
 
-    "E. never by itself: WREN_DESKTOP_INTEGRATION=off, --profile, a portable copy"
+    Section "E never by itself: WREN_DESKTOP_INTEGRATION=off, --profile, a portable copy"; "E. never by itself: WREN_DESKTOP_INTEGRATION=off, --profile, a portable copy"
     Remove-Item "$appdata\Wren\setup.txt" -ErrorAction SilentlyContinue
     foreach ($case in @(
         @{ Name = 'WREN_DESKTOP_INTEGRATION=off'; Args = @('--pref', 'browser.desktop_integration.on_first_run=true'); Env = @{ APPDATA = $appdata; WREN_DESKTOP_INTEGRATION = 'off' }; File = "$appdata\Wren\setup.txt" },
@@ -179,13 +186,13 @@ try {
     Check (Test-Path "$portableDir\data") 'a portable copy keeps its profile in <folder>\data'
     Check (-not (Test-Path "$appdata2\Wren")) 'a portable copy wrote nothing to %APPDATA%'
 
-    "F. the daily update check"
+    Section "F the daily update check"; "F. the daily update check"
     # (APPDATA again, a profile that is not --profile; WREN_DESKTOP_INTEGRATION unset: it also silences the update check)
     $appdata3 = "$scratch\appdata3"; New-Item -ItemType Directory -Force $appdata3 | Out-Null
     $upd = @{ APPDATA = $appdata3 }
     $doc = 'data:application/json,%7B%22tag_name%22%3A%22v99.0.0%22%2C%22html_url%22%3A%22https%3A%2F%2Fgithub.com%2Fsachahjkl%2Fwren%2Freleases%2Ftag%2Fv99.0.0%22%7D'
     $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true', '--pref', "browser.update.url=$doc") $upd @('WREN_DESKTOP_INTEGRATION')
-    Start-Sleep -Milliseconds 4500
+    $null = Wait-Until { (Test-Path "$appdata3\Wren\update.txt") -and ((Get-Content "$appdata3\Wren\update.txt" -Raw) -match 'notified=') } 15
     Close-Wren $p
     $u = if (Test-Path "$appdata3\Wren\update.txt") { Get-Content "$appdata3\Wren\update.txt" -Raw } else { '' }
     Check ($u -match 'latest=99\.0\.0' -and $u -match 'notified=99\.0\.0' -and $u -match 'url=https://github\.com/sachahjkl/wren/releases/tag/v99\.0\.0') 'a newer version is recorded (latest, its page, announced)'
@@ -196,7 +203,7 @@ try {
     Check ($u -match 'latest=99\.0\.0') 'asked once a day: a second start the same day does not ask again'
     Remove-Item "$appdata3\Wren\update.txt"
     $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true') $upd @('WREN_DESKTOP_INTEGRATION')   # (GitHub itself, the real latest release)
-    Start-Sleep -Milliseconds 6000
+    $null = Wait-Until { (Test-Path "$appdata3\Wren\update.txt") -and ((Get-Content "$appdata3\Wren\update.txt" -Raw) -match 'latest=\d+\.\d+') } 20
     Close-Wren $p
     $u = if (Test-Path "$appdata3\Wren\update.txt") { Get-Content "$appdata3\Wren\update.txt" -Raw } else { '' }
     Check ($u -match 'latest=\d+\.\d+\.\d+' -and $u -match 'url=https://github\.com/') "GitHub's latest release is read: $(($u -split "`n" | Where-Object { $_ -match '^latest=' }) -join '')"
@@ -217,5 +224,6 @@ finally {
 $after = Real-State
 Check ($after -eq $before) 'nothing leaked into the real Start menu, PATH, StartMenuInternet or Settings > Apps'
 if ($after -ne $before) { "  before: $before"; "  after:  $after" }
+Show-WrenSections setup_e2e
 if ($failures.Count) { "FAILED: $($failures.Count)"; exit 1 }
 "all scenarios passed"

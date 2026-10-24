@@ -37,6 +37,14 @@ preflight_cache_destroy :: proc(c: ^Preflight_Cache) {
 	c^ = {}
 }
 
+// Forgets every authorisation (`wren ctl reset`); returns how many there were.
+preflight_cache_clear :: proc(c: ^Preflight_Cache) -> int {
+	n := len(c.entries)
+	for &e in c.entries { free_entry(&e) }
+	clear(&c.entries)
+	return n
+}
+
 // Is this method + set of unsafe header names already authorised?
 preflight_cache_allows :: proc(c: ^Preflight_Cache, origin, request_url: string, credentials: bool, method: string, unsafe_headers: []string, now: i64) -> bool {
 	for i := len(c.entries) - 1; i >= 0; i -= 1 {

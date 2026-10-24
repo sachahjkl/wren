@@ -28,7 +28,7 @@ import "wb:page"
 import "wb:remote"
 import "wb:remote/client"
 
-Remote_Wait :: enum u8 { Load, Idle, Stable, Selector, Function }
+Remote_Wait :: enum u8 { Load, Idle, Stable, Selector, Function, Quiet }
 Remote_Op_Kind :: enum u8 { Wait, Capture, Frames, Eval, Click, Replay }
 Capture_Target :: enum u8 { Window, Page, Rect, Selector }
 
@@ -45,6 +45,12 @@ Remote_Op :: struct {
 	arg:      string,     // selector or expression (owned)
 	visible:  bool,
 	quiet_at: i64,        // when the network went quiet (0: not now)
+	idle_ms:  int,        // Idle, Stable: how long it must hold (0: browser.remote.idle_ms)
+	// Quiet: nothing loading and the process's CPU time moving by at most max_cpu in quiet_ms (t0, cpu0: when the wait began)
+	quiet:    Quiet_Window,
+	quiet_ms: int,
+	max_cpu:  f64,
+	cpu0:     f64,
 	// Frames, Capture, Click
 	until:    u64,        // frame number to reach
 	stage:    int,
@@ -93,6 +99,8 @@ Remote :: struct {
 	inputs:     int,        // events injected (macro and statistics)
 	rec:        Remote_Recording,
 	queued:     [dynamic]Remote_Queued,   // requests that came while a page held the thread (a chrome frame ran): taken after the frame
+	baseline:   ^Checkpoint,              // what `reset` returns to (remote_state.odin)
+	checkpoints: map[string]^Checkpoint,  // the named ones (keys are the checkpoints' own names)
 }
 
 Remote_Queued :: struct {
@@ -151,6 +159,7 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	r.prefix = strings.clone(fmt.tprintf("\x01wren-remote:%x:", nonce[:]))
 	r.timer = base.NIL_HANDLE
 	if !remote.write_info(app.profile_dir, name, APP_VERSION) { r.error = strings.clone(i18n.tr("Remote control: cannot write remote.json in the profile")) }
+	remote_take_baseline(app)
 }
 
 // The notice of a start that failed, once the interface exists.
@@ -179,6 +188,7 @@ remote_stop :: proc(app: ^App) {
 	delete(r.name); delete(r.prefix); delete(r.error); delete(r.sync_text)
 	delete(r.stash_text)
 	remote_recording_destroy(&r.rec)
+	remote_state_free()
 	remote_exit_code = r.exit_code
 	remote_fast_exit = r.fast_exit
 	r^ = {}
@@ -325,7 +335,7 @@ remote_arm :: proc(app: ^App) {
 	next := max(i64)
 	for op in r.ops {
 		next = min(next, op.deadline)
-		if op_polls(op) { next = min(next, now + i64(r.cfg.poll_ms) * 1_000_000) }
+		if op_polls(op) { next = min(next, now + op_poll_ns(op)) }
 	}
 	if r.timer != base.NIL_HANDLE {
 		if r.timer_at <= next { return }   // (it fires early enough: the tick arms again)
@@ -344,6 +354,15 @@ remote_timer :: proc(_: rawptr) {
 	if app == nil { return }
 	host.quiet_note(&app.loop)   // looking at an op draws nothing by itself (what it asks for, it asks)
 	remote_tick(app)
+}
+
+// How often a polled op is looked at: browser.remote.poll_ms, but a wait for quiet looks less often (every look is CPU time it
+// would count against the process).
+@(private = "file")
+op_poll_ns :: proc(op: ^Remote_Op) -> i64 {
+	ms := the_remote.cfg.poll_ms
+	if op.kind == .Wait && op.wait == .Quiet { ms = max(ms, 20) }
+	return i64(ms) * 1_000_000
 }
 
 // Does the op need to be looked at on a timer (nothing else tells when its condition becomes true)?
@@ -482,7 +501,7 @@ page_has_script :: proc(t: ^Tab) -> bool {
 
 // Has the tab's document finished loading (the document, its modules, its parse; its own load event when it has a
 // script engine)?
-tab_loaded :: proc(app: ^App, t: ^Tab) -> bool {
+tab_loaded :: proc(app: ^App, t: ^Tab, ask_script := true) -> bool {
 	if t == nil { return false }
 	if t.kind != .Web { return true }   // about:config, about:history: made at once
 	if t.lazy { return false }
@@ -493,7 +512,7 @@ tab_loaded :: proc(app: ^App, t: ^Tab) -> bool {
 		for s in load.slots { if s.state == .Pending || s.state == .Ready { return false } }
 		if load.bytes > 0 && !t.page.render.adopted { return false }   // (still being parsed)
 	}
-	if page_has_script(t) {
+	if ask_script && page_has_script(t) {
 		if v, _, err := eval_sync(t, `document.readyState`); err == "" && v != `"complete"` { return false }
 	}
 	return true
@@ -547,7 +566,14 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 		case .Idle, .Stable:
 			good := op.wait == .Idle ? tab_idle(app, t) : tab_stable(app, t)
 			if !good { op.quiet_at = 0 } else if op.quiet_at == 0 { op.quiet_at = now }
-			ok = good && now - op.quiet_at >= i64(r.cfg.idle_ms) * 1_000_000
+			ok = good && now - op.quiet_at >= i64(op.idle_ms > 0 ? op.idle_ms : r.cfg.idle_ms) * 1_000_000
+		case .Quiet:
+			cpu, _, _ := process_cpu_ms()
+			ok = quiet_look(&op.quiet, remote_busy(app), now, cpu, op.quiet_ms, op.max_cpu)
+			if ok {
+				op_finish(op, done(fmt.tprintf(`{{"waited":true,"waitedMs":%.0f,"cpuMs":%.1f,"quietMs":%d}}`, f64(now - op.t0) / 1e6, cpu - op.cpu0, op.quiet_ms)))
+				return
+			}
 		case .Selector:
 			if t.page != nil {
 				h, valid := page.query_first(t.page, op.arg)

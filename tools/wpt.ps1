@@ -98,11 +98,15 @@ if (-not (Test-Path $stamp) -or [IO.File]::ReadAllText($stamp) -ne $want) {
 if ($Fetch) { exit 0 }
 
 # the runner (its children are the same executable)
+. (Join-Path $PSScriptRoot 'test_env.ps1')
 $exe = Join-Path $root 'build\wpt.exe'
 Push-Location $root
 try {
-    & odin build src/tools/wpt -collection:wb=src -vet -o:speed -out:$exe "-extra-linker-flags:/STACK:33554432"
-    if ($LASTEXITCODE -ne 0) { throw 'building src\tools\wpt failed' }
+    # -Quick (a sample of a few dozen tests): one module per package compiles in 5 s instead of 40 s and runs the sample as fast; the whole-program
+    # build pays off on a full run (thousands of tests).
+    $modules = @(if ($Quick) { '-use-separate-modules' })
+    $ok = Invoke-WrenBuildIfStale $exe "wpt $($modules -join ' ')" { & odin build src/tools/wpt -collection:wb=src -vet -o:speed @modules -out:$exe "-extra-linker-flags:/STACK:33554432" }
+    if (-not $ok) { throw 'building src\tools\wpt failed' }
     if (-not $NoServer) {
         Push-Location tools\testserver
         try { & go build -o ..\..\build\testserver.exe . ; if ($LASTEXITCODE -ne 0) { throw 'building the test server failed' } } finally { Pop-Location }
@@ -110,7 +114,6 @@ try {
 } finally { Pop-Location }
 
 if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_BASE_PORT) { [int]$env:WREN_TEST_BASE_PORT + 3 } else { 8768 } }
-. (Join-Path $PSScriptRoot 'test_env.ps1')
 $runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $suitesFile, '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
 # media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)

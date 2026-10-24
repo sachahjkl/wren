@@ -269,3 +269,22 @@ bad_ports :: proc(t: ^testing.T) {
 	testing.expect(t, is_bad_port(8080, &S), "a port can be added to the list")
 	S.bad_ports_allowed, S.bad_ports_blocked = nil, nil
 }
+
+@(test)
+hsts_and_preflight_stores_can_be_emptied :: proc(t: ^testing.T) {
+	h := hsts_make()
+	defer hsts_destroy(&h)
+	hsts_note(&h, "a.org", "max-age=1000", 0)
+	hsts_note(&h, "b.org", "max-age=1000; includeSubDomains", 0)
+	testing.expect_value(t, hsts_clear(&h), 2)
+	testing.expect(t, !hsts_should_upgrade(&h, "a.org", 1))
+	testing.expect(t, !hsts_should_upgrade(&h, "x.b.org", 1))
+	testing.expect_value(t, hsts_clear(&h), 0)
+	testing.expect(t, hsts_note(&h, "a.org", "max-age=1000", 0), "and it takes new ones")
+
+	c := preflight_cache_make()
+	defer preflight_cache_destroy(&c)
+	preflight_cache_store(&c, "https://a", "https://b/x", false, {"PUT"}, {"X-Token"}, 60, 10_000, 7200, 1000)
+	testing.expect_value(t, preflight_cache_clear(&c), 1)
+	testing.expect(t, !preflight_cache_allows(&c, "https://a", "https://b/x", false, "PUT", {"x-token"}, 10_001))
+}

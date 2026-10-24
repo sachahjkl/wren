@@ -286,6 +286,34 @@ clear_all :: proc(j: ^Jar) {
 	for len(j.cookies) > 0 { remove_at(j, len(j.cookies) - 1) }
 }
 
+// A deep copy of every cookie, session cookies included (a checkpoint of `wren ctl`); free it with copy_destroy.
+copy_all :: proc(j: ^Jar, allocator := context.allocator) -> []Cookie {
+	out := make([]Cookie, len(j.cookies), allocator)
+	for c, i in j.cookies {
+		out[i] = c
+		out[i].name, out[i].value = strings.clone(c.name, allocator), strings.clone(c.value, allocator)
+		out[i].domain, out[i].path = strings.clone(c.domain, allocator), strings.clone(c.path, allocator)
+	}
+	return out
+}
+
+copy_destroy :: proc(list: []Cookie, allocator := context.allocator) {
+	for c in list { delete(c.name, allocator); delete(c.value, allocator); delete(c.domain, allocator); delete(c.path, allocator) }
+	delete(list, allocator)
+}
+
+// The jar's cookies become exactly `list` (a copy_all's).
+replace_all :: proc(j: ^Jar, list: []Cookie) {
+	clear_all(j)
+	for c in list {
+		n := c
+		n.name, n.value = strings.clone(c.name, j.allocator), strings.clone(c.value, j.allocator)
+		n.domain, n.path = strings.clone(c.domain, j.allocator), strings.clone(c.path, j.allocator)
+		append(&j.cookies, n)
+	}
+	j.dirty = true
+}
+
 ////////////////////////////////
 // Persistence: one line per persistent cookie, written atomically.
 

@@ -66,6 +66,13 @@ launch :: proc(ctx: ^Context, name, profile: string, hidden: bool, extra: []stri
 	// the start, which a measure of an idle Wren takes for the Wren's own, and a request in flight at the end); --pref below may turn it on
 	if l.temp { append(&args, "--pref", "blocker.update.enabled=false") }
 	for p in ctx.o.prefs { append(&args, "--pref", p) }
+	// a throwaway profile has no lists and no reason to download them (24 MB from the internet, 15 s after the start, in a Wren that
+	// lives long enough: a test session that reuses its Wren): unless --pref says otherwise
+	if l.temp {
+		asked := false
+		for p in ctx.o.prefs { if strings.has_prefix(p, "blocker.update.enabled=") { asked = true } }
+		if !asked { append(&args, "--pref", "blocker.update.enabled=false") }
+	}
 	for e in extra { append(&args, e) }
 	append(&args, "about:blank")
 	line := strings.builder_make(context.temp_allocator)
@@ -146,6 +153,7 @@ cmd_run :: proc(ctx: ^Context, args: []string) -> int {
 		w, h, good := parse_size(s)
 		if !good { code = usage("run", "--size WxH"); return code }
 		if _, c := request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h)); c != 0 { code = c; return code }
+		save_initial(ctx)
 	}
 	if len(args) > 0 {
 		wait := opt(&ctx.o, "wait", "load")
@@ -163,6 +171,10 @@ cmd_run :: proc(ctx: ^Context, args: []string) -> int {
 	}
 	return code
 }
+
+// The window has its size: that is the state `reset` puts back (the preferences are the ones the Wren started with).
+@(private)
+save_initial :: proc(ctx: ^Context) { _, _ = call(&ctx.conn, "Wren.checkpoint", `{"action":"save","name":"initial"}`, 5000) }
 
 ////////////////////////////////
 // A session
@@ -193,7 +205,10 @@ cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	_ = os.write_entire_file(state_file(name), transmute([]byte)state)
 	if s := opt(&ctx.o, "size"); s != "" {
 		w, h, good := parse_size(s)
-		if good { _, _ = request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h)) }
+		if good {
+			_, _ = request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h))
+			save_initial(ctx)
+		}
 	}
 	if len(args) > 0 {
 		if _, c := request(ctx, "Page.navigate", fmt.tprintf(`{{"url":%s,"wait":%s}}`, q(args[0]), q(opt(&ctx.o, "wait", "load")))); c != 0 { return c }

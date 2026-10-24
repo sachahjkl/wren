@@ -271,3 +271,23 @@ cookies_of_a_host_can_be_counted_and_cleared :: proc(t: ^testing.T) {
 	testing.expect_value(t, delete_for_host(&j, "shop.example.com"), 2)
 	testing.expect_value(t, count(&j), 1)
 }
+
+@(test)
+a_copy_of_the_jar_puts_it_back_session_cookies_included :: proc(t: ^testing.T) {
+	j := jar_make()
+	defer jar_destroy(&j)
+	st := ctx_for("https://shop.example.com/cart/view")
+	testing.expect_value(t, store(&j, "a=1", st), Store_Result.Stored)   // a session cookie
+	testing.expect_value(t, store(&j, "b=2; Domain=example.com; Path=/; Max-Age=3600", st), Store_Result.Stored)
+	saved := copy_all(&j)
+	defer copy_destroy(saved)
+	testing.expect_value(t, len(saved), 2)
+
+	testing.expect_value(t, store(&j, "c=3; Path=/", st), Store_Result.Stored)
+	testing.expect_value(t, store(&j, "a=changed", st), Store_Result.Replaced)
+	replace_all(&j, saved)
+	testing.expect_value(t, count(&j), 2)
+	testing.expect_value(t, cookie_header(&j, "https://shop.example.com/cart/x"), "a=1; b=2")
+	replace_all(&j, saved)   // twice: nothing doubles, nothing leaks (the test runner checks)
+	testing.expect_value(t, count(&j), 2)
+}
