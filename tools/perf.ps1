@@ -376,6 +376,20 @@ if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_*' })) {
         Run 'yt_h264_1080p60_sample' "$yt`?src=perf_h264_1080p60" $play $true $ytp
     } finally { Stop-WrenTestServer $srv }
 }
+# The start-up of a heavy single-page app without the network (examples/site/yt-boot.html: component styles added while the page is built
+# in batches, forced layout reads between them, :has() anchors on a tag, a class and a chain, form controls, toggling attributes): the
+# report's "style passes" says how many were full and why, "layouts forced by scripts' readings" what they cost, and the page's own
+# window.__boot the time it took. yt_boot_sample: with the sampling profile of the main thread.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_boot*' })) {
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $ytb = "$($srv.Origin)/site/yt-boot.html"
+        $ytp = '--pref browser.profile.persist=false'
+        Run 'yt_boot'        "$ytb`?batches=14&cards=50" { param($h) Start-Sleep 9 } $false $ytp
+        Run 'yt_boot_sample' "$ytb`?batches=14&cards=50" { param($h) Start-Sleep 9 } $true $ytp
+    } finally { Stop-WrenTestServer $srv }
+}
 # The developer tools (browser.devtools.*) open on each tab, left alone (frames per second must be 0 once the page has settled)
 # and, for the console, with 100 000 lines kept and scrolled. The page of the sockets, the stream, the worker and the media
 # (examples/site/devtools) gives the Network tab something to list; the console page logs lines in a loop.
