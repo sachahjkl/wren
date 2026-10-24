@@ -31,9 +31,12 @@ jobs:
         shell: cmd
         run: call build.bat
 
-      - name: Tests (tools\test_all.ps1 -CI)
+      # Two steps of test_all at a time (-Jobs 2; the end-to-end timeouts of -CI are three times the usual): the runner has 4 cores, and most
+      # of the steps spend their time waiting (servers, expiries, a video that plays) or run on a few threads. The AddressSanitizer unit tests
+      # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
+      - name: Tests (tools\test_all.ps1 -CI -Jobs 2 -NoAsan)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -Jobs 2 -NoAsan
 
       # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
       - uses: actions/upload-artifact@v4
@@ -69,3 +72,27 @@ jobs:
           name: wren-windows-x64-${{ github.sha }}
           path: build/dist/*.zip
           retention-days: 14
+
+  # The unit tests of every package under AddressSanitizer (tools\asan.ps1): what test_all -CI runs without -NoAsan. A job of its own, so that
+  # the wall clock of a run is the longer of the two, not their sum. It builds the browser's dependencies as the first job does (the caches
+  # are shared: the second to start restores what the first saved, or builds the same), because asan.ps1 reads the libraries the browser links.
+  asan:
+    runs-on: windows-2025
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/setup
+
+      - name: Build (the dependencies, and the program the libraries are read from)
+        shell: cmd
+        run: call build.bat
+
+      - name: Unit tests under AddressSanitizer (tools\asan.ps1 -Jobs 3)
+        shell: cmd
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3

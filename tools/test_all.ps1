@@ -1,5 +1,5 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-BasePort n]
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-BasePort n] [-NoAsan]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
 #   default ports. Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
@@ -14,8 +14,10 @@
 # -Jobs n (default: a quarter of the processors, at most 4; 1 with -CI): steps run n at a time, each in its own
 # process, longest first (the durations of the last run, build\test_all_times.txt); each step that needs the test
 # server starts its own (a block of ports and counters of its own). A step's result is printed whole when it ends.
+# Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
+# are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0)
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan)
 if ($CI) { $Quick = $true }
 $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
@@ -52,7 +54,9 @@ function Report($name, $ok, $out, $secs, $port = 0) {
 # -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
 $script:queue = New-Object System.Collections.Generic.List[object]
 $script:serverSteps = $false
-function Step($name, [scriptblock]$body) {
+# -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
+# clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
+function Step($name, [scriptblock]$body, [switch]$Light) {
     if ($Jobs -gt 1) {
         # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
         $vars = @{}
@@ -63,7 +67,7 @@ function Step($name, [scriptblock]$body) {
             if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
             elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
         }
-        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars })
+        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light })
         return
     }
     $t0 = Get-Date
@@ -107,12 +111,23 @@ function Flush-Steps([string]$NameLike = '*') {
     foreach ($s in $mine) { [void]$script:queue.Remove($s) }
     $running = @{}
     $names = @{}
+    $light = @{}
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
-        while ($running.Count -lt $Jobs -and $pending.Count -gt 0) {
-            $s = $pending[0]; $pending.RemoveAt(0)
+        # the first pending step that may start now (longest first): a normal one while fewer than -Jobs normal ones run, a light one while fewer than -LightJobs do
+        while ($pending.Count -gt 0) {
+            $heavyN = @($running.Keys | Where-Object { -not $light[$_] }).Count
+            $lightN = $running.Count - $heavyN
+            $k = -1
+            for ($i = 0; $i -lt $pending.Count; $i++) {
+                $may = if ($pending[$i].Light) { $lightN -lt $LightJobs } else { $heavyN -lt $Jobs }
+                if ($may) { $k = $i; break }
+            }
+            if ($k -lt 0) { break }
+            $s = $pending[$k]; $pending.RemoveAt($k)
             $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $s.Server, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $BasePort, $s.Vars
             $running[$j.Id] = $j
             $names[$j.Id] = $s.Name
+            $light[$j.Id] = $s.Light
         }
         foreach ($j in @($running.Values)) {
             if ($j.State -eq 'Running' -or $j.State -eq 'NotStarted') { continue }
@@ -307,13 +322,13 @@ try {
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pol.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' {
         odin build src/tools/blockertest -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/blockertest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $o = .\build\blockertest.exe | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
         odin build src/tools/cachetest -use-separate-modules -collection:wb=src -vet $Track -out:build/cachetest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
@@ -321,7 +336,7 @@ try {
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\cat.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\cat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'end-to-end page test' {
         $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\counter.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
@@ -337,7 +352,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\nat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
         odin build src/tools/wsclosetest -use-separate-modules -collection:wb=src -vet $Track -out:build/wsclosetest.exe
         if ($LASTEXITCODE -ne 0) { return }
@@ -345,7 +360,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wct.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wct.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' {
         $p = Start-Process .\build\webapitest.exe -ArgumentList 'build\webapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
@@ -427,7 +442,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\imt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'web-platform-tests (wpt\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\expectations)' {
         # the WPT origin of the step's server: the fourth port of its block
         $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-Port', ([int]$env:WREN_TEST_BASE_PORT + 3), '-TimeoutMs', (10000 * $slow))
@@ -468,10 +483,11 @@ Step 'remote control on the check build: a driven session (navigate, script, inp
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     }
 }
-# AddressSanitizer on the unit tests of every package (tools\asan.ps1, about 3 minutes): -CI and full runs.
-if ($CI -or -not $Quick) {
+# AddressSanitizer on the unit tests of every package (tools\asan.ps1, three packages at a time): -CI and full runs, unless -NoAsan (the CI runs
+# it as a job of its own, beside the others).
+if (($CI -or -not $Quick) -and -not $NoAsan) {
     Step 'unit tests under AddressSanitizer (overflows, use after free, double frees; tools\asan.ps1)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3
     }
 }
 if (-not $Quick) {
