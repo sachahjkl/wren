@@ -326,6 +326,8 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.html, g.settings.style = {}, {}   // owned by the shell and changed under its feet: a worker needs neither
 	g.settings.wasm = p.settings.workers.wasm
 	g.javascript = h.javascript
+	g.storage = p.web.embedder.storage
+	g.storage_key = strings.clone(storage_origin_key(p))
 	// the JavaScript settings' lists are the shell's, changed under the worker's feet: a copy of its own
 	if g.javascript { g.settings.js = js.settings_clone(p.settings.js) } else { g.settings.js = {} }
 	// the other strings the shell owns (freed when its preferences change): copies, or nothing a worker reads
@@ -643,6 +645,9 @@ Worker_Global :: struct {
 	closing:  bool,
 	inbox:    [dynamic]^Worker_Msg,
 	javascript: bool,             // `image` is a JavaScript classic script (js_workers.odin)
+	storage:  ^Storage_Manager,   // the creator's profile storage (IndexedDB: idb_host.odin)
+	storage_key: string,         // the creator's storage key (origin, and the top-level site of a partitioned frame)
+	idb_wake: b32,              // atomic: the IndexedDB manager has an event for this realm (any thread sets it)
 }
 
 @(private)
@@ -652,7 +657,7 @@ worker_global_vt := Object_VTable{name = "DedicatedWorkerGlobalScope"}
 worker_global_free :: proc(g: ^Worker_Global) {
 	if g.javascript { js.settings_destroy(&g.settings.js) }
 	js_web_settings_destroy(&g.settings.js_web)
-	delete(g.url); delete(g.name); delete(g.image)
+	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
 	for m in g.inbox { msg_free(m) }
 	delete(g.inbox)
 	free(g)
@@ -698,6 +703,7 @@ worker_main :: proc(data: rawptr) {
 		for !link_stopping(l) {
 			worker_run_inbox(g)
 			if link_stopping(l) { break }
+			if sync.atomic_exchange(&g.idb_wake, false) { idb_worker_wake(p) }   // IndexedDB events (idb_host.odin)
 			host.loop_wait(&l.loop)
 			free_all(context.temp_allocator)
 		}
@@ -722,6 +728,7 @@ worker_realm_create :: proc(g: ^Worker_Global) -> ^Page {
 	p.dp.invoke = invoke_listener
 	p.dp.user = p
 	web_init(p, live = false)   // timers (nesting clamp), performance, encoding work the same in a worker
+	p.web.embedder.storage = g.storage
 	g.self = object_create(p, &worker_global_vt, g, 0)
 	return p
 }

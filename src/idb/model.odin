@@ -31,9 +31,18 @@ KEY_OVERHEAD    :: 24   // ... one index entry
 
 Index_Key :: struct { index: u32, key: []byte }
 
+// A record. Its value is not always in memory: once its transaction is on the disk it is only where the journal has it (off,
+// in the file of generation gen) and is read when asked for, with the most recently used ones kept (values.odin). The keys,
+// and the index keys, always are.
 Record :: struct {
-	key, value: []byte,
-	ikeys:      [dynamic]Index_Key,   // the entry of this record in each index (a multi-entry index may have several)
+	key:      []byte,
+	ikeys:    [dynamic]Index_Key,   // the entry of this record in each index (a multi-entry index may have several)
+	value:    []byte,               // in memory: not written yet, or kept in the cache; nil: on the disk only
+	voff:     i64,                  // offset of the value in the journal file of generation gen; < 0: nowhere yet
+	vlen:     u32,
+	gen:      u8,
+	cached:   bool,                 // linked in Data's list of cached values
+	lru_prev, lru_next: ^Record,
 }
 
 Index :: struct {
@@ -51,9 +60,17 @@ Store :: struct {
 	key_path:       []byte,   // opaque
 	auto_increment: bool,
 	gen:            f64,      // the key generator's current number (1 at the start)
-	records:        Ordered,  // primary key -> ^Record
+	records:        Ordered,  // primary key -> ^Record (the keys are the records' own)
 	indexes:        [dynamic]^Index,
 	bytes:          i64,      // what its records count against the quota
+	// Residency (checkpoint.odin): a store read from a checkpoint is not in memory until a transaction needs it.
+	resident:       bool,     // records and index entries are in memory
+	loading:        bool,     // being read
+	has_section:    bool,     // the checkpoint has its records: section
+	section:        Section,
+	ck_rev:         u32,      // ev of the data its checkpoint section holds: unchanged since (rev == ck_rev) means clean, and it can be dropped from memory
+	rev:            u32,      // bumped by every change of its data
+	used_ms:        f64,      // when a transaction last used it
 }
 
 Database :: struct {
@@ -68,12 +85,18 @@ Data :: struct {
 	dbs:       [dynamic]^Database,
 	bytes:     i64,                // the sum of the stores' bytes
 	allocator: runtime.Allocator,
+	vsrc:      ^Value_Source,      // where values are read from (nil: memory only, every value stays in memory)
+	replay_base: i64,              // while replaying a journal without keeping its values: the file offset of the ops being read (else < 0)
+	replay_gen:  u8,
+	lru_head, lru_tail: ^Record,   // the cached values, most recently used first
+	cache_bytes: i64,
+	cache_limit: i64,
 }
 
 KEY_GEN_LIMIT :: f64(1 << 53)
 
 data_init :: proc(d: ^Data, allocator: runtime.Allocator) {
-	d^ = {allocator = allocator}
+	d^ = {allocator = allocator, replay_base = -1, cache_limit = 64 << 20}
 	d.dbs = make([dynamic]^Database, allocator)
 }
 
@@ -96,13 +119,14 @@ clone_bytes :: proc(b: []byte, allocator: runtime.Allocator) -> []byte {
 clone_str :: proc(s: string, allocator: runtime.Allocator) -> string { return string(clone_bytes(transmute([]byte)s, allocator)) }
 
 record_cost :: proc(r: ^Record) -> i64 {
-	n := i64(len(r.key) + len(r.value) + RECORD_OVERHEAD)
+	n := i64(len(r.key) + int(r.vlen) + RECORD_OVERHEAD)
 	for k in r.ikeys { n += i64(len(k.key) + KEY_OVERHEAD) }
 	return n
 }
 
 @(private)
 record_free :: proc(d: ^Data, r: ^Record) {
+	if r.cached { cache_unlink(d, r) }
 	delete(r.key, d.allocator)
 	delete(r.value, d.allocator)
 	for k in r.ikeys { delete(k.key, d.allocator) }
@@ -190,6 +214,7 @@ Op :: struct {
 	value:    []byte,
 	ikeys:    []Index_Key,
 	gen:      f64,
+	value_pos: int,   // decoded ops: where the value is in the reader's data
 }
 
 Writer :: struct { data: [dynamic]byte }
@@ -253,7 +278,9 @@ r_f64 :: proc(r: ^Reader) -> f64 {
 	return transmute(f64)u
 }
 
-op_encode :: proc(w: ^Writer, op: Op) {
+// Returns where the value of a Put begins in w.data (-1: no value), for the place of the value in the journal.
+op_encode :: proc(w: ^Writer, op: Op) -> (value_pos: int) {
+	value_pos = -1
 	w_u8(w, u8(op.kind))
 	w_str(w, op.db)
 	switch op.kind {
@@ -267,7 +294,10 @@ op_encode :: proc(w: ^Writer, op: Op) {
 	case .Index_Delete: w_uv(w, u64(op.store)); w_uv(w, u64(op.index))
 	case .Index_Rename: w_uv(w, u64(op.store)); w_uv(w, u64(op.index)); w_str(w, op.name)
 	case .Put:
-		w_uv(w, u64(op.store)); w_bytes(w, op.key); w_bytes(w, op.value)
+		w_uv(w, u64(op.store)); w_bytes(w, op.key)
+		w_uv(w, u64(len(op.value)))
+		value_pos = len(w.data)
+		append(&w.data, ..op.value)
 		w_uv(w, u64(len(op.ikeys)))
 		for k in op.ikeys { w_uv(w, u64(k.index)); w_bytes(w, k.key) }
 	case .Delete: w_uv(w, u64(op.store)); w_bytes(w, op.key)
@@ -277,6 +307,7 @@ op_encode :: proc(w: ^Writer, op: Op) {
 		for k in op.ikeys { w_uv(w, u64(k.index)); w_bytes(w, k.key) }
 	case .Key_Gen: w_uv(w, u64(op.store)); w_f64(w, op.gen)
 	}
+	return
 }
 
 // Reads one op; its strings and bytes point into the reader's data. `ikeys` is allocated with `allocator`.
@@ -305,7 +336,15 @@ op_decode :: proc(r: ^Reader, allocator: runtime.Allocator) -> (op: Op, ok: bool
 	case .Index_Create: op.store = u32(r_uv(r)); op.index = u32(r_uv(r)); op.name = r_str(r); op.key_path = r_bytes(r); op.flags = r_u8(r)
 	case .Index_Delete: op.store = u32(r_uv(r)); op.index = u32(r_uv(r))
 	case .Index_Rename: op.store = u32(r_uv(r)); op.index = u32(r_uv(r)); op.name = r_str(r)
-	case .Put: op.store = u32(r_uv(r)); op.key = r_bytes(r); op.value = r_bytes(r); op.ikeys = read_ikeys(r, allocator)
+	case .Put:
+		op.store = u32(r_uv(r)); op.key = r_bytes(r)
+		vl := r_uv(r)
+		if r.bad || vl > u64(len(r.data) - r.pos) { r.bad = true } else {
+			op.value_pos = r.pos
+			op.value = r.data[r.pos:][:vl]
+			r.pos += int(vl)
+		}
+		op.ikeys = read_ikeys(r, allocator)
 	case .Delete: op.store = u32(r_uv(r)); op.key = r_bytes(r)
 	case .Index_Put: op.store = u32(r_uv(r)); op.key = r_bytes(r); op.ikeys = read_ikeys(r, allocator)
 	case .Key_Gen: op.store = u32(r_uv(r)); op.gen = r_f64(r)
@@ -488,6 +527,7 @@ drop_record :: proc(d: ^Data, s: ^Store, r: ^Record) {
 		}
 	}
 	ordered_delete(&s.records, r.key)
+	s.rev += 1
 	c := record_cost(r)
 	s.bytes -= c
 	d.bytes -= c
@@ -497,6 +537,7 @@ drop_record :: proc(d: ^Data, s: ^Store, r: ^Record) {
 @(private)
 insert_record :: proc(d: ^Data, s: ^Store, r: ^Record) {
 	ordered_put(&s.records, r.key, r)
+	s.rev += 1
 	for k in r.ikeys {
 		if ix := find_index(s, k.index); ix != nil {
 			ordered_put(&ix.entries, composite_key(k.key, r.key, context.temp_allocator), r)
@@ -556,7 +597,8 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		s.key_path = clone_bytes(op.key_path, d.allocator)
 		s.auto_increment = op.flags & 1 != 0
 		s.gen = 1
-		ordered_init(&s.records, d.allocator)
+		s.resident = true
+		ordered_init(&s.records, d.allocator, true)
 		s.indexes = make([dynamic]^Index)
 		old_next := db.next_store_id
 		append(&db.stores, s)
@@ -581,12 +623,13 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 	case .Store_Clear:
 		s := find_store(db, op.store)
 		if s == nil { return .Not_Found }
+		s.rev += 1
 		if undo == nil {
 			clear_store(d, s)
 		} else {
 			c := Undo_Cleared{db = db, store = s, records = s.records, bytes = s.bytes}
 			c.indexes = make([dynamic]Undo_Cleared_Index)
-			ordered_init(&s.records, d.allocator)
+			ordered_init(&s.records, d.allocator, true)
 			for ix in s.indexes {
 				append(&c.indexes, Undo_Cleared_Index{ix, ix.entries})
 				ordered_init(&ix.entries, d.allocator)
@@ -651,9 +694,17 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		if s == nil { return .Not_Found }
 		r := new(Record)
 		r.key = clone_bytes(op.key, d.allocator)
-		r.value = clone_bytes(op.value, d.allocator)
+		if d.replay_base >= 0 {
+			// replaying a journal that stays on the disk: the value is where it was read, not kept
+			r.voff, r.gen = d.replay_base + i64(op.value_pos), d.replay_gen
+		} else {
+			r.value = clone_bytes(op.value, d.allocator)
+			r.voff = -1
+		}
+		r.vlen = u32(len(op.value))
 		r.ikeys = make([dynamic]Index_Key, 0, len(op.ikeys))
-		for k in op.ikeys { append(&r.ikeys, Index_Key{k.index, clone_bytes(k.key, d.allocator)}) }
+		// (the keys of an index that is gone are dropped: a record read back sees the schema as it ended)
+		for k in op.ikeys { if find_index(s, k.index) != nil { append(&r.ikeys, Index_Key{k.index, clone_bytes(k.key, d.allocator)}) } }
 		var_old: ^Record
 		if cur, found := ordered_get(&s.records, op.key); found {
 			var_old = (^Record)(cur)
@@ -682,6 +733,9 @@ apply :: proc(d: ^Data, op: Op, undo: ^Undo_Log) -> Error {
 		for k in op.ikeys {
 			ix := find_index(s, k.index)
 			if ix == nil { return .Not_Found }
+			dup := false
+			for e in rec.ikeys { if e.index == k.index && bytes.equal(e.key, k.key) { dup = true; break } }
+			if dup { continue }
 			kc := clone_bytes(k.key, d.allocator)
 			append(&rec.ikeys, Index_Key{k.index, kc})
 			ordered_put(&ix.entries, composite_key(k.key, rec.key, context.temp_allocator), rec)
@@ -738,7 +792,8 @@ snapshot_ops :: proc(d: ^Data, chunk: int, emit: proc(user: rawptr, payload: []b
 			for pos_valid(&s.records, it) {
 				_, v := pos_entry(&s.records, it)
 				r := (^Record)(v)
-				op_encode(&w, Op{kind = .Put, db = db.name, store = s.id, key = r.key, value = r.value, ikeys = r.ikeys[:]})
+				val, _ := rec_value(d, r)
+				op_encode(&w, Op{kind = .Put, db = db.name, store = s.id, key = r.key, value = val, ikeys = r.ikeys[:]})
 				if len(w.data) >= chunk { flush(&w, emit, user) }
 				pos_next(&s.records, &it)
 			}

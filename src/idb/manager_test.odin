@@ -29,6 +29,17 @@ run_jobs :: proc() -> int {
 	return n
 }
 
+// Runs the oldest job only (a test that wants to act between two of them).
+@(private)
+run_next_job :: proc() -> bool {
+	if len(jobs) == 0 { return false }
+	j := jobs[0]
+	ordered_remove(&jobs, 0)
+	j.work(j.data)
+	j.done(j.data)
+	return true
+}
+
 @(private)
 test_now :: proc() -> f64 { return clock }
 
@@ -42,11 +53,11 @@ Harness :: struct {
 harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(Settings) = nil, fresh := true) {
 	h.dir = fmt.aprintf("%s/wren_idb_test/%s", os.get_env("TEMP", context.temp_allocator), name)
 	if fresh {
-		os.remove(fmt.tprintf("%s/idb/http_3A_2F_2Fa.test.widb", h.dir))
-		os.remove(fmt.tprintf("%s/idb/http_3A_2F_2Fb.test.widb", h.dir))
+		os.remove_all(fmt.tprintf("%s/idb", h.dir))
 	}
 	s, ok := settings.?
 	if !ok { s = settings_default() }
+	if async { s.sync_write_bytes = 0 }   // (the write is a job of the pool: the tests run it when they choose)
 	clear(&jobs)
 	manager_init(&h.m, s, h.dir, test_submit if async else nil, nil, test_now, context.allocator)
 	h.events = make(map[u64][dynamic]Event)
@@ -176,7 +187,7 @@ open_and_upgrade :: proc(h: ^Harness, c: ^Client, name: string, version: u64, ha
 
 @(private)
 txn :: proc(c: ^Client, conn: u64, scope: []u32, mode: Tx_Mode) -> u64 {
-	id, _ := begin_transaction(c, conn, scope, mode, false)
+	id, _, _ := begin_transaction(c, conn, scope, mode, false)
 	return id
 }
 
@@ -413,8 +424,11 @@ a_failed_write_rolls_the_transaction_back :: proc(t: ^testing.T) {
 	w := txn(c, conn, {store}, .Read_Write)
 	drain(&h, c)
 	put(c, w, store, str_key("k"), "v")
-	// make the file unwritable: the path becomes a directory
-	path := origin_key_path(&h.m, "http://a.test")
+	// make the file unwritable: the journal is closed and its path becomes a directory
+	path := fmt.tprintf("%s.widb", origin_stem(&h.m, "http://a.test"))
+	o := h.m.origins["http://a.test"]
+	file_close(&o.jfile)
+	file_close(&o.vsrc.files[0])
 	os.remove(path)
 	os.make_directory(path)
 	defer os.remove(path)
@@ -561,6 +575,9 @@ idle_origins_are_unloaded :: proc(t: ^testing.T) {
 	manager_tick(&h.m)                       // starts the idle clock
 	testing.expect_value(t, len(h.m.origins), 1)
 	clock = 1000 + h.m.settings.idle_unload_ms + 1
+	manager_tick(&h.m)                       // writes its checkpoint first (the next opening reads keys, not the journal)
+	testing.expect_value(t, len(h.m.origins), 1)
+	clock += 1
 	manager_tick(&h.m)
 	testing.expect_value(t, len(h.m.origins), 0)
 	// used again, it loads again
@@ -590,7 +607,7 @@ clearing_site_data_closes_everything :: proc(t: ^testing.T) {
 	l := Reader{data = last_of(drain(&h, c), .List).data}
 	testing.expect_value(t, r_uv(&l), 0)
 	// nothing is left on the disk
-	path := origin_key_path(&h.m, "http://a.test")
+	path := fmt.tprintf("%s.widb", origin_stem(&h.m, "http://a.test"))
 	data, err := os.read_entire_file(path, context.temp_allocator)
 	testing.expect(t, err != nil || len(data) <= HEADER_SIZE, "the file is empty")
 }

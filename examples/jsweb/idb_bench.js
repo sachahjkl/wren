@@ -15,6 +15,9 @@ const rate = (n, ms) => (n / ms * 1000).toFixed(0) + " /s (" + (ms / n * 1000).t
 
 test("bench: opening and committing", async () => {
   let t0 = now();
+  void indexedDB;   // the first use loads the JavaScript of IndexedDB
+  measure("first use of indexedDB (the prelude is loaded)", (now() - t0).toFixed(2) + " ms");
+  t0 = now();
   const N = 50;
   for (let i = 0; i < N; i++) {
     const db = await open("bench_open_" + i, 1, (db) => { db.createObjectStore("s"); });

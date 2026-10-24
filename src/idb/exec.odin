@@ -15,6 +15,7 @@ Exec :: struct {
 	settings: ^Settings,
 	quota:    i64,
 	changed:  bool,    // some op was emitted
+	values:   ^[dynamic]Value_Ref,   // the values the transaction put, to find them in the journal once it is written (nil: not tracked)
 }
 
 @(private)
@@ -23,12 +24,20 @@ emit :: proc(x: ^Exec, op: Op) -> Error {
 	o.db = x.db.name
 	// encoded first: applying may release what the op points into (a record deleted by key)
 	mark := len(x.redo.data)
-	op_encode(x.redo, o)
+	vp := op_encode(x.redo, o)
 	if e := apply(x.d, o, x.undo); e != .None {
 		resize(&x.redo.data, mark)
 		return e
 	}
 	x.changed = true
+	if o.kind == .Put && x.values != nil && vp >= 0 {
+		if s := find_store(x.db, o.store); s != nil {
+			if cur, found := ordered_get(&s.records, o.key); found {
+				rec := (^Record)(cur)
+				if rec.value != nil { append(x.values, Value_Ref{store = o.store, key = clone_bytes(o.key, x.d.allocator), ptr = raw_data(rec.value), rel = vp, len = rec.vlen}) }
+			}
+		}
+	}
 	return .None
 }
 
@@ -365,6 +374,29 @@ less_pos :: proc(a, b: Pos) -> bool { return a.block < b.block || (a.block == b.
 scan :: proc(s: Source, r: Range, backwards: bool, limit: int, visit: proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool, user: rawptr) {
 	o := source_entries(s)
 	p, ok := range_start(s, r, !backwards)
+	n := 0
+	for ok && (limit < 0 || n < limit) {
+		k, pk, rec, inside := in_range(s, r, p)
+		if !inside { return }
+		if !visit(user, k, pk, rec) { return }
+		n += 1
+		if backwards { ok = pos_prev(o, &p) } else { pos_next(o, &p); ok = pos_valid(o, p) }
+	}
+}
+
+// Like scan, from the entry after (cur_key, cur_pk) when has_cur (what a walk that stopped goes on from).
+scan_resume :: proc(s: Source, r: Range, backwards: bool, limit: int, has_cur: bool, cur_key, cur_pk: []byte, visit: proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool, user: rawptr) {
+	o := source_entries(s)
+	p: Pos
+	ok: bool
+	switch {
+	case !has_cur: p, ok = range_start(s, r, !backwards)
+	case !backwards:
+		if s.index == nil { p = seek_after_key(s, cur_key) } else { p = ordered_seek(o, composite_key(cur_key, cur_pk, context.temp_allocator), true) }
+		ok = pos_valid(o, p)
+	case:
+		if s.index == nil { p, ok = before(o, seek_from_key(s, cur_key)) } else { p, ok = before(o, ordered_seek(o, composite_key(cur_key, cur_pk, context.temp_allocator))) }
+	}
 	n := 0
 	for ok && (limit < 0 || n < limit) {
 		k, pk, rec, inside := in_range(s, r, p)

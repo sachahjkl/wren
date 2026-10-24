@@ -27,6 +27,7 @@ import "wb:base"
 //   * Journal writes are queued per origin, one in flight, consecutive records written together.
 
 Submit_Proc :: #type proc(user: rawptr, work, done: proc(data: rawptr), data: rawptr)
+Post_Proc :: #type proc(user: rawptr, fn: proc(data: rawptr), data: rawptr)
 
 Tx_Mode :: enum u8 { Read_Only, Read_Write, Version_Change }
 
@@ -95,6 +96,7 @@ Tx :: struct {
 	system:    ^Request,   // a deletion's own record
 	client:    ^Client,    // who is told how it ends (nil: nobody)
 	stale:     bool,       // the origin's data was cleared while this one was being written: nothing to roll back
+	values:    [dynamic]Value_Ref,   // the values it put (their place in the journal is known once it is written)
 }
 
 Tx_State :: enum u8 { Pending, Active, Committing, Finished }
@@ -138,22 +140,35 @@ Write_Item :: struct {
 Origin :: struct {
 	m:           ^Manager,
 	key:         string,
-	path:        string,
+	stem:        string,    // <profile>/idb/<escaped key>: the files are this and a generation and an extension
 	state:       Origin_State,
 	data:        Data,
 	dbs:         map[string]^Db_State,
-	file_len:    i64,       // where the next record goes; 0: the header is still to write
+	file_len:    i64,       // where the next record goes (the journal's length); 0: the header is still to write
 	alien:       bool,      // the file is something else: nothing is written
+	jfile:       File,      // the journal of generation jgen (invalid until something is written)
+	jgen:        u32,
+	vsrc:        Value_Source,   // where Data reads values: the journal files by generation parity
 	wq:          [dynamic]Write_Item,
-	writing:     bool,
+	writing:     bool,      // a write is on the pool
+	flush_posted: bool,     // a task will write what is queued
+	hold_writes: bool,      // commits wait: a compaction is switching to its files
 	dirty_txs:   int,       // transactions holding changes not yet on disk
+	unsynced:    i64,       // bytes written that the system may still hold (relaxed durability)
+	sync_busy:   bool,
+	ck_len:      i64,       // the journal length the checkpoint stands for (0: none)
+	ck_busy:     bool,      // a checkpoint is being written
+	loads:       int,       // reads of stores in flight
+	epoch:       u32,       // bumped when the data is cleared: results of jobs started before are dropped
+	compaction:  ^Compaction,
+	compact_retry: i64,     // after a failed compaction: not again before the journal is this long
+	clear_pending: bool,    // site data was cleared while a write was on the pool: the files go when it ends
 	idle_since:  f64,       // ms; 0 while in use
 	pending_load: ^Load_Job,
 	clients:     int,
 	list_waits:  [dynamic]List_Wait,   // databases() asked before the load finished
 	clear_on_load: bool,               // site data was cleared while the file was being read
 }
-
 List_Wait :: struct { client_id, req: u64 }
 
 Life :: struct { refs: int, alive: bool }
@@ -171,7 +186,10 @@ Manager :: struct {
 	next_id:    u64,
 	life:       ^Life,
 	now_ms:     proc() -> f64,
+	post:       Post_Proc,        // runs a function later on the thread of the shell's loop (nil: at once)
+	post_user:  rawptr,
 	stats:      Stats,
+	mu:         sync.Recursive_Mutex,   // every entry point takes it: pages and workers (threads of their own) share the manager
 }
 
 Stats :: struct {
@@ -198,12 +216,53 @@ manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submi
 @(private)
 join_path :: proc(a, b: string) -> string { return strings.concatenate({a, "/", b}, context.temp_allocator) }
 
+// The client a connection / a transaction belongs to (nil: unknown).
+conn_client :: proc(m: ^Manager, id: u64) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	if conn, ok := m.conns[id]; ok { return conn.client }
+	return nil
+}
+
+tx_client :: proc(m: ^Manager, id: u64) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	if tx, ok := m.txs[id]; ok { return tx.client }
+	return nil
+}
+
+// How the manager runs something later on the thread of the shell's loop (the grouping of commits, slices of a remap).
+manager_set_post :: proc(m: ^Manager, post: Post_Proc, user: rawptr) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	m.post, m.post_user = post, user
+}
+
+// What an origin (storage key) holds: the bytes its records count against the quota, its databases. loaded false: not in memory.
+manager_usage :: proc(m: ^Manager, key: string) -> (bytes: i64, dbs: int, loaded: bool) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	o, ok := m.origins[key]
+	if !ok || o.state != .Ready { return 0, 0, false }
+	return o.data.bytes, len(o.data.dbs), true
+}
+
+// The keys of the origins in memory.
+manager_loaded_keys :: proc(m: ^Manager, allocator: runtime.Allocator) -> []string {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	out := make([dynamic]string, 0, len(m.origins), allocator)
+	for k in m.origins { append(&out, strings.clone(k, allocator)) }
+	return out[:]
+}
+
+// The settings in force (a realm's: it may differ from the one that made the manager).
+manager_set_settings :: proc(m: ^Manager, s: Settings) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	m.settings = s
+}
+
 life_unref :: proc(l: ^Life) {
 	if sync.atomic_sub(&l.refs, 1) == 1 { free(l, base.process_allocator()) }
 }
 
-// Rolls back what is not committed, writes what is waiting (synchronously: the pool may be gone), frees everything.
-// Clients must be destroyed first.
+// Rolls back what is not committed, writes what is waiting (synchronously: the pool may be gone), writes the checkpoints, frees
+// everything. Clients must be destroyed first.
 manager_destroy :: proc(m: ^Manager) {
 	context.allocator = m.allocator
 	for _, o in m.origins {
@@ -211,18 +270,7 @@ manager_destroy :: proc(m: ^Manager) {
 			txs := slice.clone(ds.txs[:], context.temp_allocator)
 			for tx in txs { if tx.state == .Pending || tx.state == .Active { tx_rollback(m, tx) } }
 		}
-		if m.dir != "" && !o.alien && o.state == .Ready && (o.writing || len(o.wq) > 0) {
-			// the state of a write in flight is unknown: the file is made again from what is in memory
-			items := slice.clone(o.wq[:], context.temp_allocator)
-			clear(&o.wq)
-			for it in items { delete(it.data); if it.tx != nil { tx_finish(m, it.tx, true, .None) } }
-			for _, ds in o.dbs {
-				txs := slice.clone(ds.txs[:], context.temp_allocator)
-				for tx in txs { if tx.state == .Committing { tx_finish(m, tx, true, .None) } }
-			}
-			snap := snapshot_file(&o.data, context.temp_allocator)
-			replace_file(o.path, snap, true)
-		}
+		origin_shutdown(m, o)
 		origin_free(m, o)
 	}
 	delete(m.origins)
@@ -232,11 +280,11 @@ manager_destroy :: proc(m: ^Manager) {
 	life_unref(m.life)
 	m^ = {}
 }
-
 ////////////////////////////////
 // Clients
 
 client_create :: proc(m: ^Manager, origin: string, wake: proc(c: ^Client), user: rawptr) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	c := new(Client)
 	m.next_id += 1
@@ -255,6 +303,7 @@ client_create :: proc(m: ^Manager, origin: string, wake: proc(c: ^Client), user:
 
 // The realm is gone: its connections close, its transactions that had not committed roll back, its requests are dropped.
 client_destroy :: proc(c: ^Client) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	c.dead = true
@@ -301,12 +350,19 @@ client_destroy :: proc(c: ^Client) {
 	free(c)
 }
 
-client_post_task :: proc(c: ^Client, token: u64) { push_event(c, Event{kind = .Task, a = token}) }
+client_post_task :: proc(c: ^Client, token: u64) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
+	push_event(c, Event{kind = .Task, a = token})
+}
 
-client_has_events :: proc(c: ^Client) -> bool { return c.head < len(c.queue) }
+client_has_events :: proc(c: ^Client) -> bool {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
+	return c.head < len(c.queue)
+}
 
 // The next event; the caller releases it with event_free.
 client_pop :: proc(c: ^Client) -> (ev: Event, ok: bool) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	if c.head >= len(c.queue) { c.wake_pending = false; return {}, false }
 	ev = c.queue[c.head]
 	c.head += 1
@@ -333,7 +389,8 @@ push_event :: proc(c: ^Client, ev: Event) {
 ////////////////////////////////
 // Origins
 
-origin_key_path :: proc(m: ^Manager, key: string) -> string {
+// <profile>/idb/<key with every byte outside [a-z0-9.-] as _XX>: the files of the origin are this, a generation and an extension.
+origin_stem :: proc(m: ^Manager, key: string) -> string {
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_string(&b, m.dir)
 	strings.write_string(&b, "/idb/")
@@ -346,14 +403,19 @@ origin_key_path :: proc(m: ^Manager, key: string) -> string {
 			strings.write_byte(&b, '_'); strings.write_byte(&b, HEX[c >> 4]); strings.write_byte(&b, HEX[c & 15])
 		}
 	}
-	strings.write_string(&b, ".widb")
 	return strings.to_string(b)
+}
+
+// The journal file of generation `gen` (and, with ".widx", the checkpoint).
+origin_file :: proc(o: ^Origin, gen: u32, ext := ".widb", allocator := context.temp_allocator) -> string {
+	return generation_name(o.stem, gen, ext, allocator)
 }
 
 @(private)
 Load_Job :: struct {
-	path:   string,
-	result: Load_Result,
+	dir:    string,
+	name:   string,   // the stem's last part
+	result: Origin_Load,
 	life:   ^Life,
 	o:      ^Origin,
 	m:      ^Manager,
@@ -372,13 +434,16 @@ origin_get :: proc(m: ^Manager, key: string) -> ^Origin {
 	m.origins[o.key] = o
 	if m.dir == "" {
 		data_init(&o.data, m.allocator)
+		o.data.cache_limit = m.settings.value_cache_bytes
 		o.state = .Ready
 		return o
 	}
-	o.path = strings.clone(origin_key_path(m, key))
+	o.stem = strings.clone(origin_stem(m, key))
 	o.state = .Loading
 	job := new(Load_Job, base.process_allocator())
-	job.path = strings.clone(o.path, base.process_allocator())
+	slash := strings.last_index_byte(o.stem, '/')
+	job.dir = strings.clone(o.stem[:slash], base.process_allocator())
+	job.name = strings.clone(o.stem[slash + 1:], base.process_allocator())
 	job.life = m.life
 	sync.atomic_add(&m.life.refs, 1)
 	job.o, job.m = o, m
@@ -387,29 +452,35 @@ origin_get :: proc(m: ^Manager, key: string) -> ^Origin {
 	run :: proc(data: rawptr) {
 		j := (^Load_Job)(data)
 		context.allocator = base.process_allocator()
-		j.result = load_file(j.path, base.process_allocator())
+		j.result = load_origin(j.dir, j.name, base.process_allocator())
 	}
 	finish :: proc(data: rawptr) {
 		j := (^Load_Job)(data)
 		defer {
-			delete(j.path, base.process_allocator())
+			delete(j.dir, base.process_allocator())
+			delete(j.name, base.process_allocator())
 			life_unref(j.life)
 			free(j, base.process_allocator())
 		}
 		if !j.life.alive {
 			data_destroy(&j.result.data)
+			file_close(&j.result.jfile)
 			return
 		}
 		o := j.o
+		sync.recursive_mutex_lock(&j.m.mu); defer sync.recursive_mutex_unlock(&j.m.mu)
 		context.allocator = j.m.allocator
 		o.pending_load = nil
-		o.data = j.result.data
-		o.file_len = j.result.good_len
-		o.alien = j.result.alien
+		r := &j.result
+		o.data = r.data
+		o.alien = r.alien
+		o.jgen, o.file_len, o.ck_len = r.jgen, r.good_len, r.ck_len
+		o.jfile = r.jfile
+		o.vsrc.files[r.jgen & 1] = r.jfile
+		o.data.vsrc = &o.vsrc
+		o.data.cache_limit = j.m.settings.value_cache_bytes
 		if o.clear_on_load {
-			data_destroy(&o.data)
-			data_init(&o.data, j.m.allocator)
-			o.file_len = 0
+			origin_wipe(j.m, o)
 			o.clear_on_load = false
 		}
 		o.state = .Ready
@@ -434,11 +505,13 @@ origin_free :: proc(m: ^Manager, o: ^Origin) {
 	for it in o.wq { delete(it.data) }
 	delete(o.wq)
 	delete(o.list_waits)
+	for i in 0 ..< 2 { file_close(&o.vsrc.files[i]) }
+	o.jfile = {}
+	free(o.compaction)
 	delete(o.key)
-	delete(o.path)
+	delete(o.stem)
 	free(o)
 }
-
 @(private)
 db_state :: proc(o: ^Origin, name: string) -> ^Db_State {
 	if ds, ok := o.dbs[name]; ok { return ds }
@@ -461,32 +534,45 @@ db_state_free :: proc(ds: ^Db_State) {
 	free(ds)
 }
 
-// Drops the origins nobody uses (no client, no connection, nothing waiting for the disk) after idle_unload_ms.
+// Housekeeping, from a timer: what the system holds of the journals is flushed (relaxed durability), the stores nobody uses
+// are dropped from memory, and so are the origins nobody uses (their checkpoint is written first: the next opening reads
+// keys, not the journal).
 manager_tick :: proc(m: ^Manager) -> (loaded: int) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	if m.now_ms == nil || m.dir == "" { return len(m.origins) }
 	now := m.now_ms()
 	doomed := make([dynamic]string, context.temp_allocator)
 	for k, o in m.origins {
-		if o.clients > 0 || o.state != .Ready || o.writing || len(o.wq) > 0 || o.dirty_txs > 0 { continue }
+		if o.state != .Ready { continue }
+		origin_sync_maybe(m, o, now)
+		evict_stores(m, o, now)
+		if o.clients > 0 || o.writing || len(o.wq) > 0 || o.dirty_txs > 0 || o.ck_busy || o.loads > 0 || o.compaction != nil || o.sync_busy { continue }
 		busy := false
 		for _, ds in o.dbs { if len(ds.conns) > 0 || len(ds.queue) > 0 || ds.active != nil || len(ds.txs) > 0 { busy = true } }
 		if busy { continue }
 		if o.idle_since == 0 { o.idle_since = now; continue }
-		if now - o.idle_since >= m.settings.idle_unload_ms { append(&doomed, k) }
+		if now - o.idle_since >= m.settings.idle_unload_ms {
+			if origin_checkpoint_due(m, o, true) {
+				maybe_checkpoint(m, o, true)   // (written in the background: the origin goes at a later tick)
+				continue
+			}
+			append(&doomed, k)
+		}
 	}
 	for k in doomed {
 		o := m.origins[k]
 		delete_key(&m.origins, k)
+		if file_valid(o.jfile) && o.unsynced > 0 { file_sync(o.jfile) }
 		origin_free(m, o)
 	}
 	return len(m.origins)
 }
-
 ////////////////////////////////
 // Opening and deleting databases
 
 open_database :: proc(c: ^Client, name: string, version: u64, has_version: bool) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	o := origin_get(m, c.origin)
@@ -504,6 +590,7 @@ open_database :: proc(c: ^Client, name: string, version: u64, has_version: bool)
 }
 
 delete_database :: proc(c: ^Client, name: string) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	o := origin_get(m, c.origin)
@@ -521,6 +608,7 @@ delete_database :: proc(c: ^Client, name: string) -> u64 {
 
 // The names and versions of the origin's databases, as a List event.
 list_databases :: proc(c: ^Client) -> u64 {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	m.next_id += 1
@@ -568,7 +656,8 @@ db_pump :: proc(o: ^Origin, ds: ^Db_State) {
 // Whether something is on its way to the client (an event in its queue, the origin's file being read or written): a page
 // waiting for IndexedDB is not idle (test tools use this to tell it from one with nothing left to do).
 client_busy :: proc(c: ^Client) -> bool {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	if c.head < len(c.queue) { return true }
 	o, ok := c.m.origins[c.origin]
-	return ok && (o.state == .Loading || o.writing || len(o.wq) > 0)
+	return ok && (o.state == .Loading || o.writing || len(o.wq) > 0 || o.loads > 0 || o.flush_posted)
 }
