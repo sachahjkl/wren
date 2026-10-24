@@ -71,6 +71,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         'command tab.close'
         'open {o}/site/shadow-dom.html'; 'load'
         'open {o}/site/layout.html'; 'load'
+        'open about:wren?card=sample'; 'load'; 'frames 60'; 'wait 500'
         'open {o}/site/media.html'; 'load'
         'command tab.duplicate'; 'load'
         'command tab.close'; 'command tab.close'; 'command tab.close'
