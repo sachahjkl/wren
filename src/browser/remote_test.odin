@@ -1,5 +1,6 @@
 package browser
 
+import "core:fmt"
 import "core:testing"
 import "toolkit:platform"
 import "wb:remote"
@@ -51,6 +52,22 @@ scaling_a_picture_averages_what_a_pixel_covers :: proc(t: ^testing.T) {
 	testing.expect_value(t, uw, 4)
 	testing.expect_value(t, uh, 4)
 	testing.expect_value(t, up[(3 * 4 + 3) * 4], 100)   // the far corner is the source's
+}
+
+@(test)
+a_scaled_capture_is_encoded_from_the_scaled_picture :: proc(t: ^testing.T) {
+	// the picture made by the scaling was freed where its block ended, before the PNG was written from it (a capture with --scale)
+	src := []u8{
+		0, 0, 0, 255,   100, 0, 0, 255,
+		0, 100, 0, 255, 100, 100, 0, 255,
+	}
+	for sc in ([]f32{2, 0.5}) {
+		op := Remote_Op{scale = sc}
+		rep := capture_reply(&op, src, {2, 2})
+		testing.expect_value(t, rep.code, 0)
+		w := sc == 2 ? 4 : 1
+		testing.expectf(t, contains_all(rep.result, {fmt.tprintf(`"width":%d`, w), fmt.tprintf(`"height":%d`, w)}), "scale %v: %s", sc, rep.result)
+	}
 }
 
 @(test)
