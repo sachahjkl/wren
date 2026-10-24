@@ -164,6 +164,7 @@ Computed :: struct {
 	stroke_width: f32,
 	stroke_linecap: Stroke_Linecap,
 	stroke_linejoin: Stroke_Linejoin,
+	wren_shader:    Shader_Call,   // -wren-shader (wren_shader.odin): built-in pages only
 	font_family: []string,
 	font_size:  f32,
 	font_size_src: Font_Size_Src,   // where font_size came from (values.odin generic_family_adjust): part of font-size
@@ -366,6 +367,7 @@ Prop :: enum u8 {
 	Container_Type, Container_Name, Scrollbar_Width, Scrollbar_Color, Scrollbar_Gutter,
 	Mask_Image, Mask_Mode, Mask_Repeat, Mask_Position, Mask_Size, Mask_Origin, Mask_Clip, Mask_Composite, Text_Fill_Color,
 	Fill, Stroke, Stroke_Width, Stroke_Linecap, Stroke_Linejoin,
+	Wren_Shader,
 }
 
 // A set of properties. Wider than a bit_set can be (there are more than 128 longhands), hence the procedures in props.odin:

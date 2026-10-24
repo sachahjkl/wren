@@ -76,6 +76,7 @@ configure_styles :: proc(p: ^Page) {
 page_style_settings :: proc(p: ^Page) -> style.Settings {
 	s := p.settings.style
 	s.scripting = p.worker == nil && js_enabled(p)
+	s.internal_document = p.worker == nil && p.settings.internal_address != nil && p.settings.internal_address(p.env.location.href)
 	return s
 }
 

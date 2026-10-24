@@ -960,6 +960,7 @@ apply_prefs :: proc(app: ^App) {
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	app.page_settings.internal_address = is_builtin_href
 	for tab in app.tabs { if tab.page != nil { page.configure_styles(tab.page) } }
 
 	delete(app.cfg.homepage)
@@ -1193,6 +1194,7 @@ main :: proc() {
 	blocker_start(app)   // blocker_shell.odin: the content blocker listens to the loader from here on
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
+	app.page_settings.internal_address = is_builtin_href
 	{
 		rs := wasm.runtime_settings_from_prefs(&app.prefs, app.cfg.persist_profile ? app.profile_dir : "")   // nothing on disk without a kept profile
 		wasm.configure(rs)

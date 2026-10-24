@@ -126,6 +126,7 @@ Timeline :: struct {
 	dropped_events: int,
 	base_gens:   u64,
 	last_props:  Prop_Set,     // properties the overlays wrote at the last application
+	retired:     [dynamic]^Anim_Run,   // animations that ended in this restyle, freed once update_element is done with the old style
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -150,6 +151,8 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 	delete(tl.overlays)
 	delete(tl.order)
 	delete(tl.events)
+	for r in tl.retired { run_free(r) }
+	delete(tl.retired)
 	virtual.arena_destroy(&tl.event_arena)
 	free(tl)
 }
@@ -393,6 +396,8 @@ update_element :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 	ea.base_gen = tl.base_gens
 	sync_runs(tl, ea, c)
 	if old_eff != nil { update_transitions(tl, ea, old_eff, c) }
+	for r in tl.retired { run_free(r) }
+	clear(&tl.retired)
 	if len(ea.runs) == 0 && len(ea.transitions) == 0 {
 		element_free(tl, ea)
 		delete_key(&tl.elements, h)
@@ -451,7 +456,9 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 	for old, k in ea.runs {
 		if matched[k] { continue }
 		run_cancel_event(tl, ea.node, old)
-		run_free(old)
+		// freed after update_transitions (update_element): the effective style of the last frame, which that compares with the new
+		// base, holds strings and slices of this run's frames arena (a value a keyframe or a var() of an animated custom property made)
+		append(&tl.retired, old)
 		tl.running -= 1
 	}
 	delete(ea.runs)
