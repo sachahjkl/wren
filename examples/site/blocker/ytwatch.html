@@ -1,0 +1,30 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: a YouTube watch page</title></head><body>
+<h1>The shape of a YouTube watch page</h1>
+<p>The player's data is the JSON literal of an inline script (<code>var ytInitialPlayerResponse = {...}</code>, read again as <code>window['ytInitialPlayerResponse']</code>); the next
+video of the page is asked of <code>/youtubei/v1/player</code> by XMLHttpRequest and by fetch. Ad data in either (<code>adPlacements</code>, <code>adSlots</code>, <code>playerAds</code>)
+is what the blocker removes.</p>
+<pre id="log"></pre>
+<script nonce="n0nc3">var ytInitialPlayerResponse = {"responseContext":{"serviceTrackingParams":[{"service":"GFEEDBACK","params":[{"key":"is_viewed_live","value":"False"}]}]},"playabilityStatus":{"status":"OK","playableInEmbed":true},"streamingData":{"expiresInSeconds":"21540","formats":[{"itag":18,"mimeType":"video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"","approxDurationMs":"212091"}]},"playerAds":[{"playerLegacyDesktopWatchAdsRenderer":{"playerAdParams":{"showContentThumbnail":true,"enabledEngageTypes":"3,6,4,5,17,1"},"gutParams":{"tag":"\\/4061\\/ytpwmpu\\/main_5\\/watch"},"showCompanion":true}}],"videoDetails":{"videoId":"wbtest00001","title":"A } \" brace and a quote in a title","lengthSeconds":"212"},"adPlacements":[{"adPlacementRenderer":{"config":{"adPlacementConfig":{"kind":"AD_PLACEMENT_KIND_START","adTimeOffset":{"offsetStartMilliseconds":"0"}}},"renderer":{"adBreakServiceRenderer":{"getAdBreakUrl":"https://www.youtube.example/pagead/ads?ad_type=video"}}}}],"adSlots":[{"adSlotRenderer":{"adSlotMetadata":{"slotId":"A"}}}],"adBreakHeartbeatParams":"Q0FBJTNE","frameworkUpdates":{"entityBatchUpdate":{"mutations":[]}}};</script>
+<script nonce="n0nc3">
+(function () {
+  var log = document.getElementById('log');
+  function bad(o) { return ['adPlacements', 'adSlots', 'playerAds'].filter(function (k) { return k in o && o[k] !== undefined; }).join('+') || 'none'; }
+  function line(s) { log.textContent += s + ';'; }
+  var r = window.ytInitialPlayerResponse;
+  line('page:' + bad(r) + ':' + r.playabilityStatus.status + ':' + r.videoDetails.title.length + ':' + Object.keys(r).filter(function (k) { return /^ad|^player/.test(k); }).join(','));
+  var boot = window['ytInitialPlayerResponse'];
+  line('boot:' + bad(boot));
+  var body = JSON.stringify({ context: { client: { clientName: 'WEB', clientVersion: '2.20250101.00.00' } }, videoId: 'wbtest00001' });
+  var x = new XMLHttpRequest();
+  x.open('GET', 'youtubei/v1/player?prettyPrint=false');
+  x.onload = function () {
+    var j = JSON.parse(x.responseText);
+    line('xhr:' + bad(j) + ':' + j.playabilityStatus.status + ':' + j.videoDetails.videoId + ':' + (x.responseText.indexOf('no_ads') >= 0 ? 'renamed' : 'clean'));
+    fetch('youtubei/v1/player?prettyPrint=false').then(function (res) { return res.text(); }).then(function (t) {
+      var j2 = JSON.parse(t);
+      line('fetch:' + bad(j2) + ':' + j2.playabilityStatus.status + ':' + j2.streamingData.formats.length + ':' + (t.indexOf('no_ads') >= 0 ? 'renamed' : 'clean'));
+    });
+  };
+  x.send(body);
+})();
+</script></body></html>
