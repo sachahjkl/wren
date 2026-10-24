@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: cost of the API hooks</title></head><body>
+<h1>What a hooked API costs per call</h1>
+<pre id="log"></pre>
+<script>
+function bench(name, n, f) {
+  var t0 = performance.now();
+  for (var i = 0; i < n; i++) f();
+  var ns = (performance.now() - t0) * 1e6 / n;
+  document.getElementById('log').textContent += name + ':' + ns.toFixed(0) + ';';
+}
+var parsed = '{"a":1,"b":[1,2,3],"c":{"d":"x"}}';
+var noop = function () {};
+bench('loop', 300000, function () {});
+bench('timer', 30000, function () { clearTimeout(setTimeout(noop, 100000)); });
+bench('json', 100000, function () { JSON.parse(parsed); });
+bench('const', 300000, function () { return window.benchConst; });
+</script></body></html>

@@ -127,6 +127,8 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
   that has the lists, a cold HTTP cache) and collects `WREN_LOAD_REPORT` lines (first paint, readyState complete, requests,
   blocked, bytes, DOM nodes, CPU time, memory). `WREN_BLOCKER_TRACE=<file>` logs what the page hooks cost.
 - `src/tools/blockerpages`: the same in the headless stack.
+- `tools\blocker_js.ps1`: how much JavaScript the interpreter runs for a page (`WREN_JS_PROFILE` samples summed over the tab's pages, and those of the blocker's own scripts), two executables side by side and the page without the blocker.
+- `WREN_HOOKBENCH=1 build\blockertest.exe`: what a hooked API costs per call (ns), without the blocker, with the native hooks, with the JavaScript versions.
 - Unit tests: `odin test src/adblock`, `odin test src/blocker`; end to end: `blockertest` (`tools\test_all.ps1`).
 
 ## Results
@@ -155,3 +157,34 @@ that script starts earlier and can hold the main thread before the first frame (
 loader): the first paint is then later although the bytes, requests and CPU time fell. An exception for `optimizely.com`
 brought CNN's first paint back to 1.0 s. Where little is blocked (the Guardian's blocked requests are beacons, Fox News served
 none from the lists) the numbers are the same within noise.
+### Scriptlets without JavaScript
+
+The interpreter's work for a page (`tools\blocker_js.ps1`: the samples `WREN_JS_PROFILE` takes of the page's functions, summed over every
+page of the tab, 20 to 25 s after the navigation; a profile with the lists; `before` is the build that ran the scriptlets as
+JavaScript, `after` this one). The samples of the blocker's own scripts (`wren-blocker:...`) are 0 in both builds on these sites.
+
+| site | before | after | blocker off |
+|---|---:|---:|---:|
+| theguardian.com | 159 | 146 | 156 |
+| allrecipes.com | 105 | 99 | 269 |
+| weather.com | 556 | 542 | 1144 |
+| dailymail.co.uk | 1125 | 1119 | 1119 |
+| edition.cnn.com | 12 | 12 | 229 |
+| youtube.com (watch), median of 4 | 1705 | 1733 | 1240 |
+
+Reading: the scriptlets add nothing to the interpreter's work (before and after are the same within the noise of a sample taken
+every few thousand interrupt checks), and where the blocker removes scripts the page's work falls (allrecipes, weather.com,
+CNN). What the table cannot show is that the blocker no longer has a script in the realm at all: with the default settings no
+JavaScript of the blocker is compiled or run (the page's `wren-blocker:scriptlets` script exists only for raw `#%#` rules, or with
+`blocker.hooks.native` off). On YouTube the page itself does more work with the blocker on than off (about 40 %): it reacts to what
+is blocked, which is not the blocker's own work.
+
+What a hooked API costs per call (`WREN_HOOKBENCH=1`, median of 3 runs, ns per iteration of a loop that itself costs about 35):
+
+| call | no blocker | native hooks | JavaScript versions |
+|---|---:|---:|---:|
+| `setTimeout` + `clearTimeout`, rule on the function's text | 1380 | 1925 | 3816 |
+| `JSON.parse` of a small object, a `json-prune` rule | 3753 | 3195 | 8415 |
+| read of a property a `set-constant` defines | 5677 (a miss on the window) | 118 | 177 |
+
+A rule with a text pattern has to read the callback's source (about 0.5 us); a rule with an empty pattern does not.
