@@ -6,6 +6,7 @@ import "core:strings"
 import "core:time"
 import "toolkit:ui"
 import "wb:base"
+import "wb:i18n"
 import "wb:license"
 import "wb:page"
 import "wb:url"
@@ -159,6 +160,44 @@ page_head :: proc(sb: ^strings.Builder, title: string, p: ui.Palette, extra_css 
 	strings.write_string(sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n")
 }
 
+// The licence as plain text for the clipboard: never the key itself. A field that is empty is left out.
+licence_details_text :: proc(lic: license.License) -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&sb, "Wren %s licence\nRegistered to: %s", license.edition_title(lic.edition), lic.name)
+	if lic.email != "" { fmt.sbprintf(&sb, "\nEmail: %s", lic.email) }
+	if lic.date != "" { fmt.sbprintf(&sb, "\nIssued: %s", lic.date) }
+	if lic.order != "" { fmt.sbprintf(&sb, "\nOrder: %s", lic.order) }
+	return strings.to_string(sb)
+}
+
+// The "Copy the licence details" button and its one handler. The text rides in an attribute (escaped like every field of the page), so
+// no field is ever part of a script. navigator.clipboard.writeText is the engine's own; when it is refused the text appears in a
+// read-only field, selected, and the button says so.
+@(private = "file")
+copy_details_html :: proc(sb: ^strings.Builder, lic: license.License) {
+	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" data-text=\"%s\" data-done=\"%s\" data-fail=\"%s\">%s</button></p>\n",
+		escape_html(licence_details_text(lic)), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")), escape_html(i18n.tr("Copy the licence details")))
+	fmt.sbprintf(sb, "<textarea id=\"copyfb\" readonly rows=\"5\" aria-label=\"%s\" spellcheck=\"false\" style=\"display: none\"></textarea>\n", escape_html(i18n.tr("Licence details to copy by hand")))
+	strings.write_string(sb, `<script>
+(function () {
+  var b = document.getElementById("copylic");
+  if (!b) return;
+  var label = b.textContent, text = b.getAttribute("data-text");
+  function say(m) { b.textContent = m; setTimeout(function () { b.textContent = label; }, 1600); }
+  function by_hand() {
+    var a = document.getElementById("copyfb");
+    a.style.display = "block"; a.value = text; a.focus(); a.select();
+    say(b.getAttribute("data-fail"));
+  }
+  b.addEventListener("click", function () {
+    if (!navigator.clipboard || !navigator.clipboard.writeText) { by_hand(); return; }
+    navigator.clipboard.writeText(text).then(function () { say(b.getAttribute("data-done")); }, by_hand);
+  });
+})();
+</script>
+`)
+}
+
 // The licence line, and under it the entry form.
 @(private = "file")
 licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
@@ -170,6 +209,7 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 		fmt.sbprintf(sb, "</b> &middot; %s licence</p>\n", escape_html(license.edition_title(s.lic.edition)))
 		license_card_html(sb, s.lic)
 		strings.write_string(sb, "<p>Thank you for supporting the development of Wren.</p>\n")
+		copy_details_html(sb, s.lic)
 	} else {
 		strings.write_string(sb, "<p class=\"status weak\">Unregistered &mdash; free during the beta &middot; <a href=\"")
 		esc(sb, d.support_url)
