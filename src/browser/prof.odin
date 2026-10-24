@@ -181,9 +181,19 @@ Prof :: struct {
 	wall0:     i64,
 	cur_lay:   Frame_Rec,         // the layout pass of the frame being measured (lay_* fields)
 	shown:     [dynamic]Shown_Rec,   // frames the swap chain reported on screen
+	dtwin:     [dynamic]Window_Rec,  // frames of the developer tools' own window (devtools_window.odin)
 }
 
 Shown_Rec :: struct { t_ms, latency_ms: f32, missed: u32 }
+
+// A frame of the developer tools' window: when it ended, how long it took in all, and how much of that was its present.
+Window_Rec :: struct { t_ms, dur_ms, present_ms: f32 }
+
+prof_window_frame :: proc(start, present_start: i64) {
+	if !prof.on { return }
+	now := qpc()
+	append(&prof.dtwin, Window_Rec{t_ms = f32(f64(now - prof.t0) * 1000 / prof.freq), dur_ms = f32(f64(now - start) * 1000 / prof.freq), present_ms = f32(f64(now - present_start) * 1000 / prof.freq)})
+}
 
 // A frame on screen (hud_displayed): input latency (< 0: none) and missed refreshes, for the report.
 prof_displayed :: proc(d: render.Displayed_Frame, latency_ms: f32) {
@@ -538,6 +548,13 @@ prof_report :: proc() {
 	strings.write_string(&sc, "t_ms,latency_ms,missed\n")
 	for s in prof.shown { fmt.sbprintf(&sc, "%.3f,%.3f,%d\n", s.t_ms, s.latency_ms, s.missed) }
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".shown.csv"}, context.temp_allocator), transmute([]byte)strings.to_string(sc))
+	// frames of the developer tools' window: <prefix>.dtwin.csv
+	if len(prof.dtwin) > 0 {
+		wc := strings.builder_make(context.temp_allocator)
+		strings.write_string(&wc, "t_ms,dur_ms,present_ms\n")
+		for w in prof.dtwin { fmt.sbprintf(&wc, "%.3f,%.3f,%.3f\n", w.t_ms, w.dur_ms, w.present_ms) }
+		_ = os.write_entire_file(strings.concatenate({prof.out, ".dtwin.csv"}, context.temp_allocator), transmute([]byte)strings.to_string(wc))
+	}
 }
 
 // Frame pacing: the display, the budget, the frames against it, what reached the screen. CPU work = the frame without its
@@ -795,6 +812,7 @@ report_samples :: proc(sb: ^strings.Builder) {
 
 prof_init :: proc(app: ^App) {}
 prof_displayed :: proc(d: render.Displayed_Frame, latency_ms: f32) {}
+prof_window_frame :: proc(start, present_start: i64) {}
 prof_mark :: proc(m: Startup_Mark) {}
 prof_layout :: proc(l: ^lay.Layout) { hud_layout(l) }
 prof_record :: proc(app: ^App, items, elements: int) {}
