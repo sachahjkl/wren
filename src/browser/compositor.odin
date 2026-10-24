@@ -175,7 +175,7 @@ RASTER_PROPS :: [?]style.Prop{
 	.Border_Top_Left_Radius, .Border_Top_Right_Radius, .Border_Bottom_Right_Radius, .Border_Bottom_Left_Radius,
 	.Background_Color, .Background_Image, .Background_Repeat, .Background_Position, .Background_Size,
 	.Background_Origin, .Background_Clip, .Background_Attachment, .Box_Shadow,
-	.Outline_Width, .Outline_Style, .Outline_Color, .Outline_Offset, .List_Style_Type, .Text_Fill_Color,
+	.Outline_Width, .Outline_Style, .Outline_Color, .Outline_Offset, .List_Style_Type, .Text_Fill_Color, .Wren_Shader,
 }
 
 @(private = "file")
@@ -277,6 +277,8 @@ raster_hash :: proc(cs: ^style.Computed, cache: ^map[^style.Computed]u64) -> u64
 	h = hash_of(h, cs.outline_color)
 	h = hash_of(h, cs.list_style_type)
 	h = hash_string(mix(h, u64(cs.list_style.style)), cs.list_style.text)
+	// the shader's arguments: a kept layer holding the box is drawn again when one changes (and not while they hold still)
+	h = hash_slice(hash_string(h, cs.wren_shader.name), cs.wren_shader.args)
 	if cache != nil { cache[cs] = h }
 	return h
 }
@@ -335,10 +337,11 @@ immediate_item :: proc(user: rawptr, l: ^Layout, it: ^lay.Display_Item) -> bool 
 	case .Replaced, .Control, .Scrollbar: return true
 	case .Box:
 		if page_render.bare != nil && page_render.bare(page_render.content_user, c.doc, it.node) { return true }
-		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs)) && .No_Background not_in it.flags { return true }
+		// (a -wren-shader box: its shader is not recordable, its arguments change with every frame of an animation)
+		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs) || style.has_shader(it.cs)) && .No_Background not_in it.flags { return true }
 	case .Inline_Box:
 		// background-clip: text draws the text of other items (maybe of other chunks) into a mask: directly
-		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs)) { return true }
+		if it.cs != nil && (background_has_url(it.cs) || background_clips_text(it.cs) || style.has_shader(it.cs)) { return true }
 	case .Text:
 		if it.cs != nil && effects_settings.exact_shadows {
 			for s in it.cs.text_shadow { if s.blur > 0 && s.color.a > 0 { return true } }
