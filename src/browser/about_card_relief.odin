@@ -2,9 +2,9 @@ package browser
 
 import "core:encoding/base64"
 import "core:fmt"
-import "base:runtime"
 import "core:math"
 import "core:sync"
+import "wb:base"
 import "wb:images"
 
 ////////////////////////////////
@@ -106,13 +106,13 @@ card_relief :: proc(allocator := context.temp_allocator) -> Card_Relief {
 @(private = "file") relief_lock: sync.Mutex
 
 // The pictures, made once (the first time a licence card is shown) and kept for the life of the program: they are what a licence card
-// needs on every build of the page, a few hundred kilobytes, and they do not depend on anything. Held by the heap, outside the
+// needs on every build of the page, a few hundred kilobytes, and they do not depend on anything. Held by the process allocator, outside the
 // allocator the tests and the check build follow.
 card_relief_cached :: proc() -> Card_Relief {
 	sync.lock(&relief_lock)
 	defer sync.unlock(&relief_lock)
 	if relief_cache.emboss == "" {
-		context.allocator = runtime.heap_allocator()
+		context.allocator = base.process_allocator()
 		relief_cache = card_relief(context.allocator)
 	}
 	return relief_cache
