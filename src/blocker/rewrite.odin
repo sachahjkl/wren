@@ -507,6 +507,7 @@ Buf_Filter :: struct {
 	xml:     [dynamic]^Xml_Rule,
 	hold:    [dynamic]byte,
 	through: bool,
+	own:     [dynamic]^Replace_Rule,   // the rules this filter owns ($replace filters: made for the request)
 	h:       ^Host_Rules,         // kept alive by `refs`
 	b:       ^Blocker,
 }
@@ -548,6 +549,8 @@ buf_finish :: proc(user: rawptr, out: ^[dynamic]byte) {
 buf_destroy :: proc(user: rawptr) {
 	f := (^Buf_Filter)(user)
 	delete(f.prune); delete(f.replace); delete(f.xml); delete(f.hold)
+	for r in f.own { needle_destroy(&r.url); delete(r.method); jsre_destroy(r.pat); delete(r.repl); free(r) }
+	delete(f.own)
 	engine_ref_drop_rules(f)
 	free(f)
 }
@@ -705,6 +708,80 @@ html_finish :: proc(user: rawptr, out: ^[dynamic]byte) {
 	html_scan(f, out, true)
 }
 
+// `/search/replacement/flags`, the argument of a `$replace=` filter (an escaped slash stays inside its part).
+@(private = "file")
+split_replace :: proc(arg: string) -> (search, repl, flags: string, ok: bool) {
+	if len(arg) < 2 || arg[0] != '/' { return }
+	parts: [2]string
+	n, start, i := 0, 1, 1
+	for n < 2 {
+		if i >= len(arg) { return }
+		if arg[i] == '\\' { i += 2; continue }
+		if arg[i] == '/' { parts[n] = arg[start:i]; n += 1; start = i + 1 }
+		i += 1
+	}
+	return parts[0], parts[1], arg[start:], true
+}
+
+// A filter that rewrites the text of a response by the `$replace=` filters that matched it.
+@(private = "file")
+replace_filter_make :: proc(args: []string) -> fetch.Body_Filter {
+	f: ^Buf_Filter
+	for a in args {
+		search, repl, flags, ok := split_replace(a)
+		if !ok { continue }
+		re := jsre_compile(search, flags)
+		if re == nil { continue }
+		r := new(Replace_Rule)
+		r.pat = re
+		unescaped, _ := strings.replace_all(repl, "\\/", "/", context.temp_allocator)
+		unescaped, _ = strings.replace_all(unescaped, "\\,", ",", context.temp_allocator)
+		r.repl = strings.clone(unescaped)
+		if f == nil { f = new(Buf_Filter) }
+		append(&f.own, r)
+		append(&f.replace, r)
+	}
+	if f == nil { return {} }
+	return fetch.Body_Filter{user = f, push = buf_push, finish = buf_finish, destroy = buf_destroy}
+}
+
+// Two filters one after the other: the first one's output is the second one's input.
+Chain_Filter :: struct { a, b: fetch.Body_Filter, mid: [dynamic]byte }
+
+@(private = "file")
+chain_push :: proc(user: rawptr, chunk: []byte, out: ^[dynamic]byte) {
+	c := (^Chain_Filter)(user)
+	clear(&c.mid)
+	c.a.push(c.a.user, chunk, &c.mid)
+	if len(c.mid) > 0 { c.b.push(c.b.user, c.mid[:], out) }
+}
+
+@(private = "file")
+chain_finish :: proc(user: rawptr, out: ^[dynamic]byte) {
+	c := (^Chain_Filter)(user)
+	clear(&c.mid)
+	if c.a.finish != nil { c.a.finish(c.a.user, &c.mid) }
+	if len(c.mid) > 0 { c.b.push(c.b.user, c.mid[:], out) }
+	if c.b.finish != nil { c.b.finish(c.b.user, out) }
+}
+
+@(private = "file")
+chain_destroy :: proc(user: rawptr) {
+	c := (^Chain_Filter)(user)
+	if c.a.destroy != nil { c.a.destroy(c.a.user) }
+	if c.b.destroy != nil { c.b.destroy(c.b.user) }
+	delete(c.mid)
+	free(c)
+}
+
+chain_make :: proc(a, b: fetch.Body_Filter) -> fetch.Body_Filter {
+	if a.push == nil { return b }
+	if b.push == nil { return a }
+	c := new(Chain_Filter)
+	c.a, c.b = a, b
+	return fetch.Body_Filter{user = c, push = chain_push, finish = chain_finish, destroy = chain_destroy}
+}
+
 // A filter for a page's markup: the JSON literals the rules name are rewritten as they pass.
 html_filter_make :: proc(rules: []Embed_Rule) -> fetch.Body_Filter {
 	f := new(Html_Filter)
@@ -717,35 +794,39 @@ html_filter_make :: proc(rules: []Embed_Rule) -> fetch.Body_Filter {
 	return fetch.Body_Filter{user = f, push = html_push, finish = html_finish, destroy = html_destroy}
 }
 
-// Decides, from the response of a request, whether its body is rewritten, and returns the filter.
+// Decides, from the response of a request, whether its body is rewritten, and returns the filter: the `$replace=` filters that matched
+// (`replace`), then what the scriptlets of the document's host ask for (when `scriptlets`).
 @(private)
-rewrite_filter :: proc(b: ^Blocker, d: ^Doc, q: ^fetch.Intercept_Query, host: string, pf: adblock.Page_Flags, headers: http.Headers) -> fetch.Body_Filter {
-	if !b.cfg.scriptlets { return {} }
-	h := host_rules_for(b, host, pf)
-	if h == nil { return {} }
-	nav := q.destination == .Document || q.destination == .Iframe
-	switch {
-	case q.destination == .Empty && !q.ping:
-		if len(h.prune) == 0 && len(h.replace) == 0 && len(h.xml) == 0 { return {} }
-		f := new(Buf_Filter)
-		for &r in h.prune { if needle_test(&r.url, q.url) { append(&f.prune, &r) } }
-		for &r in h.replace {
-			if !needle_test(&r.url, q.url) { continue }
-			if r.method != "" && !strings.equal_fold(r.method, q.method) { continue }
-			append(&f.replace, &r)
+rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf: adblock.Page_Flags, headers: http.Headers, scriptlets: bool, replace: []string) -> fetch.Body_Filter {
+	first := replace_filter_make(replace)
+	second: fetch.Body_Filter
+	if scriptlets {
+		if h := host_rules_for(b, host, pf); h != nil {
+			nav := q.destination == .Document || q.destination == .Iframe
+			switch {
+			case q.destination == .Empty && !q.ping:
+				if len(h.prune) + len(h.replace) + len(h.xml) > 0 {
+					f := new(Buf_Filter)
+					for &r in h.prune { if needle_test(&r.url, q.url) { append(&f.prune, &r) } }
+					for &r in h.replace {
+						if !needle_test(&r.url, q.url) { continue }
+						if r.method != "" && !strings.equal_fold(r.method, q.method) { continue }
+						append(&f.replace, &r)
+					}
+					for &r in h.xml { if needle_test(&r.url, q.url) { append(&f.xml, &r) } }
+					if len(f.prune) + len(f.replace) + len(f.xml) == 0 { free(f) } else {
+						f.h, f.b = h, b
+						h.refs += 1
+						second = fetch.Body_Filter{user = f, push = buf_push, finish = buf_finish, destroy = buf_destroy}
+					}
+				}
+			case nav:
+				if len(h.embed) > 0 {
+					ct, _ := http.get_header(headers, "content-type")
+					if strings.contains(ct, "html") { second = html_filter_make(h.embed[:]) }
+				}
+			}
 		}
-		for &r in h.xml { if needle_test(&r.url, q.url) { append(&f.xml, &r) } }
-		if len(f.prune) == 0 && len(f.replace) == 0 && len(f.xml) == 0 { free(f); return {} }
-		f.h, f.b = h, b
-		h.refs += 1
-
-		return fetch.Body_Filter{user = f, push = buf_push, finish = buf_finish, destroy = buf_destroy}
-	case nav:
-		if len(h.embed) == 0 { return {} }
-		ct, _ := http.get_header(headers, "content-type")
-		if !strings.contains(ct, "html") { return {} }
-
-		return html_filter_make(h.embed[:])
 	}
-	return {}
+	return chain_make(first, second)
 }

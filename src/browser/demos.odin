@@ -143,6 +143,8 @@ DEMOS := [?]Demo{
 		"remove-attr, remove-class, set-attr, remove-node-text, replace-node-text (also in an inline script before it runs), href-sanitizer, click-element and set-cookie, done natively on the document by the blocker with the filters of the blockertest profile.", true, "", false},
 	{.Network, "Content blocker: scriptlets on the API", "blocker/hooks.html",
 		"set-constant, abort-on-property-read / write, timers, listeners, JSON.parse, fetch, XMLHttpRequest, eval and window.open hooked natively by the engine (blocker.hooks.native).", true, "", false},
+	{.Network, "Content blocker: `$replace on a document", "blocker/replacedoc.html",
+		"A page whose own text a `$replace= filter rewrites before the parser reads it.", true, "", false},
 	{.Network, "Content blocker: rewritten responses", "blocker/rewrite.html",
 		"A JSON answer of fetch and XMLHttpRequest and the JSON literal in this page's own markup pruned by the loader before the page reads them.", true, "", false},
 	{.Network, "Content blocker: many blocked requests", "blocker/many.html",

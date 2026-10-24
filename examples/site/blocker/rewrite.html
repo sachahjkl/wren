@@ -12,4 +12,5 @@ fetch('data.json').then(function (r) { return r.json(); }).then(function (j) {
   x.onload = function () { var j2 = JSON.parse(x.responseText); log.textContent += 'xhr:' + Object.keys(j2).sort().join(',') + ';'; };
   x.send();
 });
+fetch('data2.json').then(function (r) { return r.json(); }).then(function (j) { log.textContent += 'data2:' + j.w + ';'; });
 </script></body></html>

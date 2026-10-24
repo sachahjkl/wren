@@ -614,17 +614,25 @@ response_hook :: proc(user: rawptr, q: ^fetch.Intercept_Query, headers: http.Hea
 			}
 		}
 	}
-	// the response body rewritten natively (rewrite.odin): JSON, XML and text of fetch / XHR answers, the JSON literals of a page's markup
-	if b.cfg.scriptlets && .No_Scriptlets not_in site {
+	// the response body rewritten natively (rewrite.odin): `$replace=` filters, JSON / XML / text answers of fetch and XHR, the JSON
+	// literals of a page's markup, as the scriptlets of the document's host ask
+	{
+		e := b.engine.engine
+		scr := b.cfg.scriptlets && .No_Scriptlets not_in site
+		replace: []string
+		if adblock.has_replace_filters(e) { replace = adblock.replace_args(e, &req, context.temp_allocator) }
+		host: string
+		pf: adblock.Page_Flags
 		switch {
 		case nav || q.destination == .Iframe:
-			pf, _ := adblock.page_flags(b.engine.engine, q.url)
-			if .Document not_in pf { r.filter = rewrite_filter(b, d, q, req.host, pf, headers) }
-		case q.destination == .Empty && d != nil:
-			r.filter = rewrite_filter(b, d, q, d.host, d.page, headers)
+			host = req.host
+			pf, _ = adblock.page_flags(e, q.url)
+			if .Document in pf { scr = false }
+		case d != nil:
+			host, pf = d.host, d.page
 		}
-	}
-	if !adblock.has_response_filters(b.engine.engine) { return }
+		if scr || len(replace) > 0 { r.filter = rewrite_filter(b, q, host, pf, headers, scr, replace) }
+	}	if !adblock.has_response_filters(b.engine.engine) { return }
 	// $header filters
 	lk := Header_Lookup{headers}
 	fid := adblock.match_response_headers(b.engine.engine, &req, header_lookup, &lk)
