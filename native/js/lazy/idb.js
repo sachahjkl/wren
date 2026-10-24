@@ -3,12 +3,13 @@
 // is runtime/web_idb.c; the data, the scheduling of transactions and the journal are the browser's (src/idb), reached
 // through host.call(op, bytes).
 //
-// What lives here: the objects scripts see, argument checks in the specification's order, keys (JavaScript value <->
-// the byte encoding of src/idb/key.odin, ordered by comparing bytes), key paths, the structured clone of values (the
-// engine's serializer, through host.serialize / deserialize), requests and their queue per transaction, the events (an
-// IDB event target of its own: a request's parent is its transaction, whose parent is the connection) and the active /
-// inactive state of transactions (a transaction is active from its creation, or the event of one of its requests, until
-// the microtask checkpoint that follows; the browser calls `cleanup` there).
+// What lives here: the objects scripts see, argument checks in the specification's order, requests and their queue per transaction,
+// the events (an IDB event target of its own: a request's parent is its transaction, whose parent is the connection) and the active /
+// inactive state of transactions (a transaction is active from its creation, or the event of one of its requests, until the microtask
+// checkpoint that follows; the browser calls `cleanup` there). Everything that needs no JavaScript semantics is native, in
+// runtime/web_idb_native.c: keys (JavaScript value <-> the byte encoding of src/idb/key.odin, ordered by comparing bytes), key
+// paths, names, the frames of a transaction's requests and the decoding of their replies, and the structured clone of values (the
+// engine's serializer, through host.serialize / deserialize).
 //
 // What does not: anything stored. Each request of a transaction is executed by the browser when its task comes
 // (host.post), the answer becomes the request's result and an event is fired. Transactions start, complete and abort
