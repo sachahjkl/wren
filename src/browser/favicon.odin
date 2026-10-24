@@ -114,7 +114,7 @@ Favicon :: struct {
 	task:      base.Handle,     // the request while Loading
 	scope:     ^base.Scope,     // the navigation scope the request belongs to (its page is the initiator)
 	cleanup:   base.Cleanup_Id, // in `scope`: the page closing during the request fails the icon
-	job:       ^images.Job,     // while Decoding
+	job:       images.Job_Id,   // while Decoding (0: none)
 	tex:       render.Texture,
 	w, h:      int,
 	used:      u64,             // frame count when last drawn
@@ -148,18 +148,18 @@ favicons_destroy :: proc(app: ^App) {
 	if favs.timer != base.NIL_HANDLE { host.clear_timer(&app.loop, favs.timer) }
 	if favs.spin != base.NIL_HANDLE { host.clear_timer(&app.loop, favs.spin) }
 	if favs.port != 0 { images.port_close(favs.port) }   // jobs not delivered are freed by the image threads
-	for _, e in favs.entries { favicon_free(app, e, port_closed = true) }
+	for _, e in favs.entries { favicon_free(app, e) }
 	delete(favs.entries)
 	favs = {}
 }
 
 @(private = "file")
-favicon_free :: proc(app: ^App, e: ^Favicon, port_closed := false) {
+favicon_free :: proc(app: ^App, e: ^Favicon) {
 	if e.task != base.NIL_HANDLE {
 		base.forget_cleanup(e.scope, e.cleanup)
 		fetch.cancel(&app.loader, e.task)
 	}
-	if e.job != nil && !port_closed { images.job_cancel(e.job) }
+	images.job_cancel(e.job)
 	if e.state == .Ready { render.destroy_texture(&app.r, e.tex) }
 	delete(e.url)
 	free(e)
@@ -418,9 +418,9 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		lim.max_encoded_bytes = min(lim.max_encoded_bytes, favs.cfg.icon_max_bytes)
 		px := tab_icon_px(app)
 		opts := images.Decode_Options{limits = lim, target_w = px, target_h = px, downscale_below = 0.99, first_frame_only = true}
-		e.job = images.job_make(.Decode, blob, opts, user = e)
 		e.state = .Decoding
-		if !images.submit(favs.port, e.job) { e.job = nil; e.state = .Failed }
+		e.job = images.submit(favs.port, images.job_make(.Decode, blob, opts, user = e))
+		if e.job == 0 { e.state = .Failed }
 	case .Failed:
 		base.forget_cleanup(e.scope, e.cleanup)
 		e.task, e.scope = base.NIL_HANDLE, nil
@@ -433,7 +433,7 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	defer images.job_free(j)
 	e := (^Favicon)(j.user)
 	app := favs.app
-	e.job = nil
+	e.job = 0
 	img := j.image
 	if j.err != .None || img == nil || len(img.frames) == 0 || img.width <= 0 || img.height <= 0 { e.state = .Failed; return }
 	e.tex = render.create_texture_rgba(&app.r, img.width, img.height)
