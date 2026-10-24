@@ -14,8 +14,11 @@ backend_audio_decoder :: proc(t: Track) -> ^Audio_Decoder {
 	return mf_audio_create(t)
 }
 
+// The default device, or, on a machine that has none (a server, a CI runner), an output that lets the audio go by in silence at the
+// pace of the clock: the video still plays, as in the browsers.
 backend_audio_output :: proc(rate: int) -> ^Audio_Output {
-	return audio_open(rate)
+	if o := audio_open(rate); o != nil { return o }
+	return null_audio_open(rate)
 }
 
 backend_video_support :: proc(c: Codec) -> Decoder_Support {

@@ -89,7 +89,15 @@ function Get-WrenPreferredBasePort([string]$Root = (Get-WrenRepoRoot)) {
 function Start-WrenTestServer([int]$BasePort = 0, [string]$Exe = '', [switch]$WptOnly, [string]$Log = '', [int]$TimeoutSec = 60) {
     $root = Get-WrenRepoRoot
     if ($BasePort -le 0) { $BasePort = Get-WrenPreferredBasePort $root }
-    if (-not $Exe) { $Exe = Join-Path $root 'build\testserver.exe' }
+    if (-not $Exe) {
+        $Exe = Join-Path $root 'build\testserver.exe'
+        # a fresh checkout (CI) has not built it yet: a test that needs it does not depend on the order of test_all's steps
+        if (-not (Test-Path $Exe)) {
+            Push-Location (Join-Path $root 'tools\testserver')
+            try { go build -o $Exe . 2>&1 | Out-Null } finally { Pop-Location }
+            if (-not (Test-Path $Exe)) { throw "build\testserver.exe is missing and 'go build' of tools\testserver did not make it" }
+        }
+    }
     $portFile = Join-Path ([IO.Path]::GetTempPath()) "wren_testserver_${PID}_$([guid]::NewGuid().ToString('N')).port"
     $a = if ($WptOnly) { @('-wpt-only', '-wpt-port', $BasePort) } else { @('-base-port', $BasePort) }
     $a += @('-scan', '-port-file', "`"$portFile`"", '-parent-pid', $PID)
