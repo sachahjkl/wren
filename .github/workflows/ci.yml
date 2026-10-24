@@ -62,7 +62,7 @@ jobs:
 
       - name: Package (smoke test of tools\package.ps1)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Dev
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Dev -Extras
 
       - uses: actions/upload-artifact@v4
         with:

@@ -206,6 +206,78 @@ restyle_dom_has :: proc(t: ^testing.T) {
 	dom.release(f.doc, n)
 }
 
+// A :has() anchor with nothing else in its compound (`:not(:has(.flag)) .t`, as YouTube's sheets have) is every
+// ancestor's candidate: a class change that no :has() argument tests must not mark them (and through them the whole
+// document); one the argument tests must, and the result stays what a full pass gives.
+@(test)
+restyle_dom_has_bare_anchor_unrelated_changes :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:not(:has(.flag)) > .t { color: red } .z { margin: 1px } [data-k] { padding: 2px }
+		:has([data-w]) > .u { color: blue } .card:has(.q) { outline: 1px solid red }</style>
+		<div id=root><div id=a><div id=b><span class=t id=t1>x</span><span class=u id=u1>y</span></div></div><div id=c><p id=p>t</p></div></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "z")
+	expect_partial(t, f, "class no :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "q")   // tested by another anchor's :has(): the bare ones are not concerned
+	expect_partial(t, f, "class another :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "data-k", "1")
+	expect_partial(t, f, "attribute no :has() tests", 1)
+	dom.set_attribute(f.doc, by_id(f, "p"), "class", "flag")
+	expect_partial(t, f, "class a :has() tests")
+	dom.set_attribute(f.doc, by_id(f, "p"), "data-w", "1")
+	expect_partial(t, f, "attribute a :has() tests")
+	dom.remove_attribute(f.doc, by_id(f, "p"), "data-w")
+	expect_partial(t, f, "attribute removed")
+}
+
+// `:has(> .k)` can only be an ancestor one level up: a class toggled deep in the tree restyles the parent's subtree, not
+// every ancestor's (html and body as whole subtrees), and the result is still a full pass's.
+@(test)
+restyle_dom_has_child_combinator_reaches_one_level :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(> .k) .w { color: red } :has(> .k > .j) { outline: 1px solid red } :has(+ .m) { margin: 1px }</style>
+		<div id=r><div id=a><div id=b><div id=c><div id=d><span class=w id=w1>x</span></div></div></div></div>
+		<div id=e><span class=w id=w2>y</span></div></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "d"), "class", "k")
+	expect_partial(t, f, "class on a deep element", 4)   // its parent (c) and what the rule reaches below it (not r, a, b)
+	testing.expect(t, style_of(f.st, by_id(f, "w1")).color == {1, 0, 0, 1})
+	dom.set_attribute(f.doc, by_id(f, "w1"), "class", "w j")
+	expect_partial(t, f, "second level")
+	dom.set_attribute(f.doc, by_id(f, "e"), "class", "m")
+	expect_partial(t, f, "sibling anchor", 3)
+}
+
+// `.a .b`: a class toggled on the ancestor restyles the `.b` elements under it, not its whole subtree (the reach names its
+// subject's key); unions of rules with other subjects keep every key; a subject with no key restyles the subtree.
+@(test)
+restyle_dom_subject_keys :: proc(t: ^testing.T) {
+	sb := strings.builder_make(context.temp_allocator)
+	strings.write_string(&sb, `<style>.a .b { color: red } .a > .c { padding: 2px } #only { margin: 1px } .a em { outline: 1px solid red } .k * { margin: 3px }</style><div id=x>`)
+	for i in 0 ..< 40 { fmt.sbprintf(&sb, "<p><i>t%d</i><span class=b>u</span></p>", i) }
+	strings.write_string(&sb, `<em id=e>z</em><u id=only>w</u><div class=c id=c>q</div></div>`)
+	f := rx_load(strings.to_string(sb))
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "x"), "class", "a")
+	expect_partial(t, f, ".a toggled", 44)   // 40 .b, the em, the .c: not the 40 p and 40 i
+	testing.expect(t, style_of(f.st, by_id(f, "e")).outline_width > 0)
+	dom.remove_attribute(f.doc, by_id(f, "x"), "class")
+	expect_partial(t, f, ".a removed", 44)
+	dom.set_attribute(f.doc, by_id(f, "x"), "class", "k")
+	expect_partial(t, f, ".k * (no key): the subtree")
+	testing.expect(t, f.eng.last_restyle.marked > 100)
+}
+
+// An element that becomes a query container changes what its descendants see (their `containers`) though no rule of theirs
+// matches differently: the walk must go down (it used to, by luck, through a descendant rule of the demo page).
+@(test)
+restyle_dom_becomes_container :: proc(t: ^testing.T) {
+	f := rx_load(`<style>.k { container: box / inline-size } @container box (width >= 0px) { i { color: red } }</style><div id=d><p><i id=i>t</i></p></div>`)
+	defer rx_unload(f)
+	dom.set_attribute(f.doc, by_id(f, "d"), "class", "k")
+	_ = rx_step(t, f, "container made")   // (compared with a full pass)
+	dom.remove_attribute(f.doc, by_id(f, "d"), "class")
+	_ = rx_step(t, f, "container removed")
+}
+
 @(test)
 restyle_dom_attributes_and_ids :: proc(t: ^testing.T) {
 	f := rx_load(`<style>[data-x="y"] { color: red } [data-x] span { margin: 1px } #one { padding: 5px } #one > i { font-style: normal } a:link { color: green }</style>
@@ -335,8 +407,39 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	p := by_id(f, "p")
 	dom.remove_child(f.doc, by_id(f, "d"), p)
 	dom.release(f.doc, p)
+	expect_partial(t, f, "an element gone from a document with forms but no radio buttons")
+	// controls that come and go inside a form restyle the form (its :valid, its default button) and what they are
+	form := dom.find_first_by_tag(f.doc, "form")
+	c1 := dom.create_element(f.doc, "input")
+	dom.append_child(f.doc, form, c1)
+	expect_partial(t, f, "a control inserted in a form")
+	b1 := dom.create_element(f.doc, "button")
+	dom.append_child(f.doc, form, b1)
+	expect_partial(t, f, "a button inserted in the form (a default button)")
+	dom.set_attribute(f.doc, c1, "disabled", "")
+	expect_partial(t, f, "a control of the form disabled")
+	dom.remove_child(f.doc, form, c1)
+	expect_partial(t, f, "a control removed from the form")
+	dom.remove_child(f.doc, form, b1)
+	dom.release(f.doc, b1)
+	expect_partial(t, f, "a button gone from the form")
+	// a radio button belongs to a group we cannot find from the node: a full pass
+	rd := dom.create_element(f.doc, "input")
+	dom.set_attribute(f.doc, rd, "type", "radio")
+	dom.append_child(f.doc, form, rd)
+	_, okr := restyle_dom(f.eng, f.doc, f.st)
+	testing.expect(t, !okr && f.eng.last_restyle.fallback == "form controls inserted")
+	oldf := f.st
+	f.st = compute_styles(f.eng, f.doc, {controls = provider})
+	styled_destroy(oldf)
+	// and with one in the document, an element that is gone may have been one of the group
+	q2 := dom.create_element(f.doc, "p")
+	dom.append_child(f.doc, by_id(f, "d"), q2)
+	expect_partial(t, f, "a paragraph inserted")
+	dom.remove_child(f.doc, by_id(f, "d"), q2)
+	dom.release(f.doc, q2)
 	_, ok := restyle_dom(f.eng, f.doc, f.st)
-	testing.expect(t, !ok, "an element gone from a document with forms")
+	testing.expect(t, !ok && f.eng.last_restyle.fallback == "element removed from a document with form controls")
 
 	// only local questions: a row with a button removed and another inserted, partially (and as a full pass would)
 	l := rx_load(`<style>button:disabled { opacity: .5 } .r { margin: 1px }</style><div id=list><div class=r id=r1><button>a</button></div><div class=r><button disabled>b</button></div></div>
@@ -371,11 +474,15 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	expect_partial(t, g, "an element gone from a document without forms")
 	in_ := dom.create_element(g.doc, "input")
 	dom.append_child(g.doc, by_id(g, "d"), in_)
-	_, ok2 := restyle_dom(g.eng, g.doc, g.st)
-	testing.expect(t, !ok2 && g.eng.last_restyle.fallback == "form controls inserted")
-	old := g.st
-	g.st = compute_styles(g.eng, g.doc, {controls = provider})
-	styled_destroy(old)
+	expect_partial(t, g, "a control inserted outside any form")
+	dom.set_attribute(g.doc, in_, "value", "b")
+	expect_partial(t, g, "its value changed")
+	// a control built the way components are (its type and name set, then put in): its attributes are restyled with it
+	cb := dom.create_element(g.doc, "input")
+	dom.set_attribute(g.doc, cb, "type", "checkbox")
+	dom.set_attribute(g.doc, cb, "name", "n")
+	dom.append_child(g.doc, by_id(g, "d"), cb)
+	expect_partial(t, g, "a control inserted after its type and name were set")
 	dom.set_attribute(g.doc, in_, "name", "b")
 	_, ok3 := restyle_dom(g.eng, g.doc, g.st)
 	testing.expect(t, !ok3 && g.eng.last_restyle.fallback == "form control attribute changed")
@@ -442,12 +549,12 @@ restyle_dom_journal_and_records :: proc(t: ^testing.T) {
 	testing.expect_value(t, f.st.arena.total_used, used)
 }
 
-// A class on <body> that every section's descendants depend on: the forced subtree is shared out between threads, with
-// the result of a full pass.
+// A class on <body> that every section's descendants depend on (a rule whose subject has no class, id or tag to look for:
+// .wide :not(.nz)): the forced subtree is shared out between threads, with the result of a full pass.
 @(test)
 restyle_dom_parallel :: proc(t: ^testing.T) {
 	sb := strings.builder_make(context.temp_allocator)
-	strings.write_string(&sb, `<style>.wide section p { margin-left: 3px } .wide b::before { content: "x" counter(sec) } section { counter-increment: sec } .wide { font-size: 18px } p + p { color: red }</style><body>`)
+	strings.write_string(&sb, `<style>.wide section p { margin-left: 3px } .wide :not(.nz) { padding-top: 1px } .wide b::before { content: "x" counter(sec) } section { counter-increment: sec } .wide { font-size: 18px } p + p { color: red }</style><body>`)
 	for i in 0 ..< 400 { fmt.sbprintf(&sb, "<section class=k%d><p><b>t</b></p><p>u</p><ol><li>a</li><li>b</li></ol></section>", i % 5) }
 	f := rx_load(strings.to_string(sb))
 	defer rx_unload(f)
@@ -600,4 +707,125 @@ restyle_dom_random :: proc(t: ^testing.T) {
 	}
 	log.infof("random mutations: %d partial restyles, %d full", f.partial, f.full)
 	testing.expectf(t, f.partial > 150, "%d partial restyles, %d full", f.partial, f.full)
+}
+
+// A :has() whose anchor is any element (`:has(ghost-el) .y`: YouTube's rules): elements that come or go restyle the anchors' subtrees
+// only when their features (tag, class, id, attribute names) are some the argument names; any other insertion or removal, a
+// removed node already destroyed included (the journal keeps its features), restyles the elements themselves.
+@(test)
+restyle_dom_has_bare_anchor :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(ghost-el) .y { margin: 1px } :has(.flag) .y { padding: 2px } :has(#spot) .y { color: red }</style>
+		<div id=a><p class=y>u</p><p class=y>v</p><div id=box></div></div>`)
+	defer rx_unload(f)
+	box := by_id(f, "box")
+	e := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, e, "class", "other")
+	dom.append_child(f.doc, box, e)
+	expect_partial(t, f, "an unrelated element inserted", 3)
+	dom.remove_child(f.doc, box, e)
+	dom.release(f.doc, e)
+	expect_partial(t, f, "an unrelated element removed and destroyed", 3)
+	g := dom.create_element(f.doc, "ghost-el")
+	dom.append_child(f.doc, box, g)
+	expect_partial(t, f, "the element a :has() names inserted")
+	testing.expect(t, f.eng.last_restyle.marked >= 3, "the paragraphs under the anchors were restyled")
+	dom.remove_child(f.doc, box, g)
+	dom.release(f.doc, g)
+	expect_partial(t, f, "and removed, destroyed")
+	testing.expect(t, f.eng.last_restyle.marked >= 2, "the paragraphs again")
+	w := dom.create_element(f.doc, "div")
+	dom.set_attribute(f.doc, w, "class", "flag")
+	dom.append_child(f.doc, box, w)
+	expect_partial(t, f, "a class a :has() names, inserted with its subtree")
+	h := dom.create_element(f.doc, "i")
+	dom.set_attribute(f.doc, h, "id", "spot")
+	dom.append_child(f.doc, w, h)
+	expect_partial(t, f, "an id a :has() names, in what was inserted")
+	dom.remove_child(f.doc, box, w)
+	dom.release(f.doc, w)
+	expect_partial(t, f, "the subtree that held both removed and destroyed")
+}
+
+// A :has() of tags, ids, classes and attributes keeps the elements that match its argument; the subtree of an anchor is restyled
+// when its answer flips (the first member under it comes, the last one leaves), not whenever one more comes or goes.
+@(test)
+restyle_dom_has_exact :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has(ghost-el) .y { margin: 1px } :has(> .kid) .z { padding: 2px }</style>
+		<div id=a><p class=y>u</p><p class=z>w</p><div id=box><ghost-el id=g1></ghost-el></div><div id=other></div></div>`)
+	defer rx_unload(f)
+	box, other := by_id(f, "box"), by_id(f, "other")
+	// (the first restyle makes the watch and takes the members: the page does it after its full pass)
+	dom.set_attribute(f.doc, other, "title", "x")
+	expect_partial(t, f, "a first change")
+	// one more member under anchors that were true already: nothing above it is restyled
+	g2 := dom.create_element(f.doc, "ghost-el")
+	dom.append_child(f.doc, box, g2)
+	expect_partial(t, f, "a second member under anchors that were true", 2)
+	// one of two leaves: still true everywhere
+	dom.remove_child(f.doc, box, g2)
+	dom.release(f.doc, g2)
+	expect_partial(t, f, "one of two members removed and destroyed", 2)
+	// a member moved to another parent: the anchors that held it still do, `box` loses it and `other` gets it
+	g1 := by_id(f, "g1")
+	dom.remove_child(f.doc, box, g1)
+	dom.append_child(f.doc, other, g1)
+	expect_partial(t, f, "the only member moved to a sibling")
+	// the last one gone: every anchor above it flips
+	dom.remove_child(f.doc, other, g1)
+	dom.release(f.doc, g1)
+	expect_partial(t, f, "the last member removed and destroyed")
+	testing.expect(t, f.eng.last_restyle.marked >= 1, "the paragraph under the anchors was restyled")
+	g3 := dom.create_element(f.doc, "ghost-el")
+	dom.append_child(f.doc, box, g3)
+	expect_partial(t, f, "the first member again")
+	testing.expect(t, f.eng.last_restyle.marked >= 1, "and again")
+	// by a class changing
+	dom.set_attribute(f.doc, g3, "class", "kid")
+	expect_partial(t, f, "a class that makes it a child member of the other rule")
+	dom.remove_attribute(f.doc, g3, "class")
+	expect_partial(t, f, "and not any more")
+	// :has(> .kid): only the parent is an anchor
+	k := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k, "class", "kid")
+	dom.append_child(f.doc, other, k)
+	expect_partial(t, f, "a child member of a :has(> .kid) anchor")
+	k2 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k2, "class", "kid")
+	dom.append_child(f.doc, other, k2)
+	expect_partial(t, f, "a second one: the answer is the same", 2)
+}
+
+// The same for a chain of compounds (YouTube: `:has([role]:not([aria-hidden]) .host) ...`): members are the elements that match its last
+// compound and satisfy the chain; a change of an attribute the chain reads on an ancestor of a member may flip the answer.
+@(test)
+restyle_dom_has_chain :: proc(t: ^testing.T) {
+	f := rx_load(`<style>:has([role]:not([aria-hidden]) .k) .y { margin: 1px }</style>
+		<div id=a><p class=y>u</p><div id=r role=x><span class=k id=k1></span></div><div id=other><i id=i></i></div></div>`)
+	defer rx_unload(f)
+	r, other := by_id(f, "r"), by_id(f, "other")
+	dom.set_attribute(f.doc, other, "title", "x")
+	expect_partial(t, f, "a first change")
+	k2 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k2, "class", "k")
+	dom.append_child(f.doc, r, k2)
+	expect_partial(t, f, "a second member under the same ancestor with the attribute", 2)
+	k3 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k3, "class", "k")
+	dom.append_child(f.doc, other, k3)
+	expect_partial(t, f, "a member where the chain does not hold", 2)
+	dom.set_attribute(f.doc, other, "role", "y")
+	expect_partial(t, f, "the chain holds for it now: the answer flips for `other`'s side")
+	dom.set_attribute(f.doc, other, "aria-hidden", "true")
+	expect_partial(t, f, "and not any more")
+	dom.remove_attribute(f.doc, r, "role")
+	expect_partial(t, f, "the attribute of the ancestor of two members removed")
+	dom.set_attribute(f.doc, r, "role", "x")
+	expect_partial(t, f, "and back")
+	dom.remove_child(f.doc, r, k2)
+	dom.release(f.doc, k2)
+	expect_partial(t, f, "a member removed and destroyed, another left")
+	k1 := by_id(f, "k1")
+	dom.remove_child(f.doc, r, k1)
+	dom.release(f.doc, k1)
+	expect_partial(t, f, "the last one of that ancestor")
 }

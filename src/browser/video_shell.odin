@@ -1,3 +1,4 @@
+#+vet !unused-imports
 package browser
 
 // <video> in the shell: the current picture of a media element drawn into its box, and when the next one is due.
@@ -9,6 +10,9 @@ package browser
 // at its place in the already recorded page. While a video plays, a timer asks for a frame when the next picture is due,
 // so the browser composes once per video frame; a paused video asks for nothing.
 
+import "core:fmt"
+import "core:strings"
+import "core:time"
 import "toolkit:draw"
 import "toolkit:render"
 import "wb:base"
@@ -41,6 +45,7 @@ Video_Shell :: struct {
 	gpu_set:   bool,
 	converted: int,              // statistics: pictures converted
 	painted:   int,
+	stamps:    [dynamic]i64,     // profile build: when each picture was converted (qpc), for the cadence report
 }
 
 @(private = "file")
@@ -65,6 +70,7 @@ video_shell_destroy :: proc(app: ^App) {
 	delete(vshell.targets)
 	if vshell.wake != base.NIL_HANDLE { host.clear_timer(&app.loop, vshell.wake) }
 	if vshell.gpu_set { media.set_gpu_device(nil) }
+	delete(vshell.stamps)
 	vshell = {}
 }
 
@@ -112,7 +118,6 @@ pixel_format :: proc(f: media.Pixel_Format) -> render.Video_Format {
 }
 
 // The picture a decoder made, as the renderer wants it described.
-@(private = "file")
 picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	pic := render.Video_Picture{
 		format = pixel_format(f.format), size = f.surface, crop_origin = f.crop, crop_size = {f.width, f.height},
@@ -133,14 +138,10 @@ picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	return pic
 }
 
-// Paints the <video> element `node` into `content`. Always true: the video owns its box.
-video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
-	app := the_app
-	if app == nil { return true }
-	view, ok := page.media_view(p, node)
-	if !ok { return true }
-	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
-	key := Video_Key{page.page_id(p), node}
+// The GPU picture of a video for the frame being made: its target (made, or made again at another size) holding the
+// picture the player chose (converted when it is a new one). nil: nothing to show yet.
+@(private = "file")
+video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -> ^Video_Target {
 	t := vshell.targets[key]
 	if view.frame != nil {
 		pic := picture_of(view.frame)
@@ -160,9 +161,37 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 			}
 		}
 		if t != nil && (view.changed || t.frames == 0) {
-			if render.video_convert(&app.r, t.tex, pic) { t.frames += 1; vshell.converted += 1 }
+			if render.video_convert(&app.r, t.tex, pic) {
+				t.frames += 1
+				vshell.converted += 1
+				when PROFILE { append(&vshell.stamps, qpc()) }
+			}
 		}
 	}
+	return t
+}
+
+// How long from now until the screen shows the frame being made: the next vblank after the one this frame started at
+// (pacing.odin's grid). The picture of a video is chosen for that moment, so the choice does not follow the jitter of when
+// the thread got to run.
+@(private = "file")
+screen_ahead_ns :: proc() -> i64 {
+	if !pacer.cfg.video_at_vblank { return 0 }
+	app := the_app
+	now_ms := loop_ms(app, time.tick_now())
+	show_ms := pacer.frame_ms + pacer.period_ms
+	return i64(clamp(show_ms - now_ms, 0, 2 * pacer.period_ms) * 1e6)
+}
+
+// Paints the <video> element `node` into `content`. Always true: the video owns its box.
+video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
+	app := the_app
+	if app == nil { return true }
+	view, ok := page.media_view(p, node, true, screen_ahead_ns())
+	if !ok { return true }
+	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
+	key := Video_Key{page.page_id(p), node}
+	t := video_update_target(app, key, &view)
 	if t != nil { t.epoch = vshell.epoch }
 	if view.ready { draw.rect(dc, content, draw.Color{0, 0, 0, 1}) }
 	if t != nil && t.frames > 0 {
@@ -175,4 +204,31 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		vshell.painted += 1
 	}
 	return true
+}
+
+// Profile build: what the videos did, for the report (prof.odin). The cadence is the time between two pictures reaching
+// the screen's frame (converted into their texture) over the last seconds of the run: a 60 fps video at 60 Hz is a
+// picture every 16.7 ms, a stutter is an interval of 1.5 times the usual one or more.
+video_shell_report :: proc(sb: ^strings.Builder, freq: f64) {
+	when !PROFILE { return }
+	when PROFILE {
+	fmt.sbprintf(sb, "\n-- video: %d pictures converted, %d painted | chrome frames made under scripts %d, skipped %d\n", vshell.converted, vshell.painted, chrome_frames.frames, chrome_frames.skipped)
+	for key, t in vshell.targets {
+		p := page.page_by_id(key.page)
+		view, ok := page.media_view(p, key.node, false)
+		if !ok { continue }
+		fmt.sbprintf(sb, "  %dx%d %s%s | decoded %d dropped %d | position %.1f s of %.1f | stalled %v\n", t.size.x, t.size.y, view.decoder, view.hardware ? " (GPU)" : " (CPU)", view.decoded, view.dropped, view.position, view.duration, view.stalled)
+		fmt.sbprintf(sb, "    player: %s\n", page.media_debug(p, key.node))
+	}
+	n := len(vshell.stamps)
+	if n < 3 { return }
+	from := vshell.stamps[n - 1] - i64(10 * freq)
+	iv := make([dynamic]f64, 0, n, context.temp_allocator)
+	for i in 1 ..< n { if vshell.stamps[i - 1] >= from { append(&iv, f64(vshell.stamps[i] - vshell.stamps[i - 1]) * 1000 / freq) } }
+	if len(iv) == 0 { return }
+	s := stat_of(iv[:])
+	late15, late25 := 0, 0
+	for v in iv { if v > s.p50 * 1.5 { late15 += 1 }; if v > s.p50 * 2.5 { late25 += 1 } }
+	fmt.sbprintf(sb, "  cadence over the last 10 s: %d pictures (%.1f /s), interval mean %.2f p50 %.2f p95 %.2f p99 %.2f max %.2f ms | stutters (> 1.5 x p50) %d, (> 2.5 x p50) %d\n", len(iv) + 1, f64(len(iv)) * 1000 / max(s.sum, 1), s.mean, s.p50, s.p95, s.p99, s.max, late15, late25)
+	}
 }

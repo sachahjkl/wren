@@ -103,6 +103,7 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		return nil
 	}
 	inst.lenient = true
+	js_profile_begin(p, inst)   // (WREN_WASM_PROFILE: js_profile.odin)
 	if js_on_realm != nil { js_on_realm(p, inst) }
 	inst.index = u32(len(p.instances))
 	append(&p.instances, inst)
@@ -128,6 +129,8 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		}
 	}
 	js_load_realm_started(p, r)   // rejections, modules, eval policy (js_load_realm.odin)
+	js_prelude(p)   // (WREN_JS_PRELUDE: js_profile.odin)
+	if dev_console_max > 0 && p.worker == nil { dev_console_arm(p, dev_console_max) }   // the developer tools are open: console messages carry their objects (devtools_api.odin)
 	return r
 }
 
@@ -243,12 +246,35 @@ js_shutdown :: proc() {
 	js_engine_once = {}
 }
 
-// Shows the completion value of `source` in the console ("run JavaScript" from the tab's console).
+// Shows the completion value of `source` in the console ("run JavaScript" from the tab's console). In a window the value goes
+// through the console's own evaluator (prelude/compat.js: indirect eval, a promise's outcome, the value described for the
+// developer tools' tree), in a worker it is the engine's printed result.
 js_console_eval :: proc(p: ^Page, source: string) -> bool {
 	if !p.settings.js.console_eval { log(p, .Warn, "javascript.console_eval is off"); return false }
 	if js_realm(p) == nil { log(p, .Warn, "JavaScript is off for this page"); return false }
+	if p.worker == nil {
+		call := strings.concatenate({"console[Symbol.for(\"wren.devtools\")].eval(", js_quote(source), ")"}, context.temp_allocator)
+		return js_run(p, transmute([]byte)call, "console", 1) == .Ok
+	}
 	st := js_run(p, transmute([]byte)source, "console", 1, print_result = true)
 	return st == .Ok
 }
 
+// `s` as a JavaScript string literal.
+js_quote :: proc(s: string, allocator := context.temp_allocator) -> string {
+	b := strings.builder_make(allocator)
+	strings.write_byte(&b, '"')
+	for c in transmute([]u8)s {
+		switch c {
+		case '"': strings.write_string(&b, "\\\"")
+		case '\\': strings.write_string(&b, "\\\\")
+		case '\n': strings.write_string(&b, "\\n")
+		case '\r': strings.write_string(&b, "\\r")
+		case '\t': strings.write_string(&b, "\\t")
+		case: if c < 0x20 { fmt.sbprintf(&b, "\\u%04x", c) } else { strings.write_byte(&b, c) }
+		}
+	}
+	strings.write_byte(&b, '"')
+	return strings.to_string(b)
+}
 _ :: strings

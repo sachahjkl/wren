@@ -28,9 +28,10 @@ import "wb:config"
 import "wb:desktop"
 import "wb:host"
 
-// What tools\package.ps1 puts next to wren.exe, copied beside the installed executable when it exists (a development
-// build, which has none of it, installs the executable alone).
-SETUP_PAYLOAD := [?]string{"vcruntime140.dll", "LICENSE.txt", "THIRD_PARTY.md", "README.txt", "licenses", "demos", "examples", "testserver.exe", "demo.bat"}
+// What is installed beside wren.exe: nothing. The release is the program alone (its licenses, its version and the C runtime
+// are in it), so Setup copies the executable and writes the manifest. The names of other files can be listed here again
+// (copied when they exist next to the running executable).
+SETUP_PAYLOAD: []string
 
 SETUP_CHOICE_FILE :: "setup.txt"
 

@@ -179,3 +179,10 @@ sites :: proc(t: ^testing.T) {
 	testing.expect(t, same_site(mk("http://localhost:1/"), mk("http://localhost:2/")))
 	testing.expect(t, !same_site(mk("file:///a"), mk("file:///a")))
 }
+
+@(test)
+test_public_suffix_fast_agrees :: proc(t: ^testing.T) {
+	for h in ([]string{"com", "example.com", "a.b.example.co.uk", "foo.github.io", "x.y.city.kawasaki.jp", "a.b.c.ck", "www.ck", "localhost", "a.b", "x.compute.amazonaws.com", "1.2.3.4", "sub.example.pvt.k12.ma.us"}) {
+		testing.expectf(t, public_suffix_labels(h) == public_suffix_labels_fast(h), "%s: %d vs %d", h, public_suffix_labels(h), public_suffix_labels_fast(h))
+	}
+}

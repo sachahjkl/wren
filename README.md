@@ -82,6 +82,7 @@ Screenshots show the whole window and are all taken in one pass by `tools\shots.
 Everything below exists in the code today and is covered by the tests of [`tools\test_all.ps1`](tools/test_all.ps1).
 
 **WebAssembly, the only execution engine**
+- **A content blocker, built in** ([docs/blocker.md](docs/blocker.md)): advertising, tracking and malware are stopped before the request leaves the machine, in a few microseconds each (a filter engine in Odin for the Adblock Plus / uBlock Origin / AdGuard syntax, compiled to a compact index that loads in milliseconds), the elements ads leave behind are hidden before the first paint, scriptlets defuse anti-blocker scripts, and the interface is native: a shield at the end of the address bar with its panel and bout:blocker. Lists are downloaded, never shipped; nothing is reported anywhere.
 - [Wasmtime](https://wasmtime.dev) 49 (official C API, statically linked; Cranelift, or Winch via
   `wasm.wasmtime.compiler`). Any number of modules per document, fetched concurrently, run in document order, each in
   its own instance sharing the DOM; memory64 modules supported.
@@ -190,14 +191,18 @@ Everything below exists in the code today and is covered by the tests of [`tools
 
 ## Try it
 
-Download `wren-<version>-windows-x64.zip` from the [latest release](https://github.com/sachahjkl/wren/releases/latest),
-unzip it anywhere and run `wren.exe`. It needs Windows 10 or 11 (x64) with a Direct3D 11 GPU; nothing else to install.
+Download `wren-<version>-windows-x64.exe` from the [latest release](https://github.com/sachahjkl/wren/releases/latest) and run it:
+the program is that one file (its licenses are in it, `about:licenses`; `wren.exe --setup` installs it). It needs Windows 10 or 11 (x64)
+with a Direct3D 11 GPU; nothing else to install.
 
-The start page links to `about:demos`, the index of every demo and test page. They come in the zip, in `demos\` next to
-`wren.exe`, and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
+The download is the program and nothing else. The demo and test pages (`examples\site`), the examples and the small test server
+(`tools\testserver`, Go) belong to the repository: clone it to get them (`tools\package.ps1 -Extras` also packs them as a zip to
+extract beside `wren.exe`).
+
+The start page links to `about:demos`, the index of every demo and test page. They are in `demos\` next
+to `wren.exe` (or `examples\site` in a checkout), and most open straight from disk: `demos\index.html` is the same index as a page (opening the folder shows
 it). The few that need a server (network images, forms, CSP, workers, the script loading and web API demos) are
-marked; the small local test server is in the zip too: run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765
-and opens `about:demos`), or start them yourself:
+marked; run `demo.bat` (it starts `testserver.exe` on 127.0.0.1:8765 and opens `about:demos`), or start them yourself:
 
     testserver.exe                                   # http://127.0.0.1:8765, https://127.0.0.1:8766 (self-signed)
     wren.exe http://127.0.0.1:8765/site/effects.html

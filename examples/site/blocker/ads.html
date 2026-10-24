@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Blocker test page</title>
+<style>body{font:16px sans-serif;margin:24px} .ad-banner{background:#fc0;padding:20px;margin:10px 0} #log{white-space:pre;font:14px monospace;background:#eee;padding:8px}</style>
+</head><body>
+<h1>Content blocker test page</h1>
+<p id="intro">The elements below are advertisements the blocker must remove.</p>
+<div class="ad-banner" id="ad1">ADVERTISEMENT (class ad-banner)</div>
+<div class="sponsored-box">Not an ad</div>
+<img id="adimg" src="http://localhost:8765/site/blocker/banner.gif" width="300" height="60" alt="ad image">
+<iframe id="adframe" src="http://localhost:8765/site/blocker/adframe.html" width="300" height="100"></iframe>
+<p id="after">Text after the ad slots.</p>
+<div id="log"></div>
+<script id="nodetext">var secretMarker = "AAA-MARKER";</script>
+<script id="nodegone">var goneMarker = "CCC-MARKER";</script>
+<script>window.adblockDetected = true;</script>
+<script src="http://localhost:8765/site/blocker/ad.js"></script>
+<script>
+var log = document.getElementById("log");
+function line(s){ log.textContent += s + "\n"; }
+line("ad.js ran: " + (window.adScriptRan === true));
+line("adblockDetected: " + window.adblockDetected);
+fetch("http://localhost:8765/site/blocker/track.json").then(function(r){ line("tracker fetch: ok " + r.status); }).catch(function(e){ line("tracker fetch: failed"); });
+setTimeout(function () {
+  line("node text: " + document.getElementById("nodetext").textContent.trim());
+  line("removed node text length: " + document.getElementById("nodegone").textContent.length);
+}, 400);
+fetch("/site/blocker/ok.json").then(function(r){ return r.text(); }).then(function(t){ line("first party fetch: ok"); });
+</script>
+</body></html>

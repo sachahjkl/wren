@@ -162,10 +162,15 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 	return true
 }
 
+// A compile was still running when the runtime was stopped (attach_stop): nothing of the runtime was freed.
+@(private)
+wt_abandoned: bool
+
 // Under runtime_lock. Every instance must be gone.
 @(private)
 wt_stop :: proc() {
 	if wt.engine == nil { wt.start_failed = false; return }
+	host_profile_write()   // (WREN_HOST_PROFILE: host_profile.odin)
 	if wt.ticker != nil {
 		sync.atomic_store(&wt.ticker_stop, true)
 		sync.atomic_add(&wt.running, 1)   // wakes it
@@ -176,7 +181,11 @@ wt_stop :: proc() {
 		wt.ticker = nil
 	}
 	host.shutdown_step("wasm.runtime_destroy: attach (module compile) threads")
-	attach_stop()   // (its jobs hold module cache entries)
+	if !attach_stop() {   // (its jobs hold module cache entries)
+		wt_abandoned = true
+		host.shutdown_step("wasm.runtime_destroy: a module is being compiled: the engine is left to the end of the process")
+		return
+	}
 	host.shutdown_step("wasm.runtime_destroy: module cache writer")
 	cache_stop()
 	host.shutdown_step("wasm.runtime_destroy: engine delete")

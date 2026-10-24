@@ -148,7 +148,7 @@ $script:watchdog = Start-Watchdog
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
 if ($Jobs -gt 1) { Flush-Steps }
-foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'media', 'canvas2d', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'instance', 'i18n', 'browser') {
+foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'media', 'canvas2d', 'idb', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'instance', 'adblock', 'blocker', 'i18n', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 }
 
@@ -275,6 +275,12 @@ try {
         $p = Start-Process .\build\policytest.exe -NoNewWindow -PassThru -RedirectStandardOutput build\pol.txt
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pol.txt | Out-String; $o
+        $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
+    }
+    Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' {
+        odin build src/tools/blockertest -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/blockertest.exe $Stack
+        if ($LASTEXITCODE -ne 0) { return }
+        $o = .\build\blockertest.exe | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
     }
     Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
@@ -421,7 +427,13 @@ if ($CI -or -not $Quick) {
 }
 # The remote control channel on the check build (every allocation tracked): the same session exits with nothing allocated.
 if ($CI -or -not $Quick) {
-    Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
+    Step 'crash reports (tools\crash_e2e.ps1: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
+}
+Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
+}
+Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     }
 }
@@ -441,6 +453,12 @@ if (-not $Quick) {
         $global:LASTEXITCODE = if ($ok -and $LASTEXITCODE -eq 0) { 0 } else { 1 }
     }
 }
+if ($Jobs -gt 1) { Flush-Steps }
+# Last, and alone (the steps above are over): closing the browser with every core saturated by busy loops, a video playing and a client
+# connected, by wren ctl quit and by the window's close button, within 8 s and with no forced exit. A background thread starved by the
+# load that the close waits for made it take 10 to 25 s (tools\remote_e2e.ps1 -Stress); this step saturates the machine, so it runs when no
+# other step does.
+Step 'remote control: the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
 if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
 [IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")

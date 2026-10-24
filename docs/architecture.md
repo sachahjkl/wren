@@ -37,7 +37,7 @@ feature list, see the [README](../README.md).
 Wasmtime, the official C API release **v49.0.3**, downloaded by `tools\fetch_wasmtime.ps1` (version and SHA-256
 pinned in the script) into `build\wasmtime`; the static `wasmtime.lib` is linked into the exe (no DLL; it adds about
 12 MB). It needs `ws2_32 advapi32 userenv ntdll shell32 ole32 bcrypt kernel32` and the dynamic CRT
-(`msvcrt ucrt vcruntime`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
+(`msvcrt ucrt libvcruntime`: the Visual C++ runtime is linked in, so `wren.exe` needs no `vcruntime140.dll`), declared in `src/wasm/wasmtime.odin`. Modules are compiled by Cranelift (or Winch,
 `wasm.wasmtime.compiler`), kept in a memory cache and in an HMAC-authenticated disk cache of the profile
 (`wasm-cache`), and every call from the host has a wall-clock deadline (`wasm.max_call_ms`, epoch interruption; with
 `wasm.wasmtime.fuel`, also an instruction budget). `src/tools/wasmbench` compares the compiler configurations and

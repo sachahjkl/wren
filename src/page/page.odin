@@ -86,6 +86,7 @@ Page :: struct {
 	engine:       ^style.Engine,
 	styled:       ^style.Styled,
 	style_state:  style.State,
+	forced:       Forced_State,   // :hover / :active / :focus / :visited the developer tools force on an element (devtools_api.odin)
 	style_stale:  bool,
 	link_loads:   map[base.Handle]^Style_Load,
 	import_loads: [dynamic]^Style_Load,
@@ -107,6 +108,9 @@ Page :: struct {
 	link_sync_timer: base.Handle,       // a script inserted a <link>: the sheets are read again in this task (styles.odin)
 	frames:       ^Page_Frames,         // nested browsing contexts: its navigable, its frames (frames.odin)
 	media:        ^Page_Media,          // <video> / <audio> elements (media_element.odin)
+	template_doc: Template_Doc,         // the inert document the contents of <template>s belong to (js_dom_tree.odin)
+	fullscreen:   ^Page_Fullscreen,     // the document's fullscreen element, made on first use (fullscreen.odin)
+	timeline:     ^Page_Timeline,       // Performance Timeline entries: navigation, resources, paints, slow input (timeline.odin)
 }
 
 // `parent` is the tab's scope (or the process scope). `document_url` defines the document's origin; an invalid URL gives
@@ -126,7 +130,9 @@ page_create :: proc(loop: ^host.Loop, loader: ^fetch.Loader, settings: ^Settings
 	p.env = fetch.environment_make(u)
 	p.env.on_violation = csp_violation
 	p.env.violation_user = p
+	fetch.document_begin(loader, &p.env, p.scope)   // the content blocker's per-document state (fetch/intercept.odin)
 	web_init(p)
+	timeline_attach(p)   // its requests become Resource Timing entries (timeline.odin)
 
 	p.doc = dom.document_create(p.scope)
 	shadow_doc_attached(p)
@@ -171,6 +177,7 @@ page_cleanup :: proc(data: rawptr) {
 	if p.engine != nil { styles_destroy(p) }
 	dom.dispatcher_destroy(&p.dp)
 	delete(p.instances)
+	fetch.document_end(p.loader, &p.env)
 	fetch.environment_destroy(&p.env)
 	free(p)
 }
@@ -287,7 +294,11 @@ instance_by_index :: proc(p: ^Page, i: u32) -> ^wasm.Instance {
 dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	webauthn_note_input(p, ev)   // HTML transient activation (bindings_webauthn.odin)
 	media_note_input(p, ev)      // sticky activation for autoplay (media_element.odin)
-	return dom.dispatch(p.doc, &p.dp, target, ev)
+	ev := ev
+	timed := timeline_event_begin(p, &ev)   // Event Timing (timeline.odin)
+	ok := dom.dispatch(p.doc, &p.dp, target, ev)
+	if timed != 0 { timeline_event_end(p, &ev, timed) }
+	return ok
 }
 
 @(private)

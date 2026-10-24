@@ -61,6 +61,12 @@ Track_Store :: struct {
 	version:  u64,              // changes with every write
 	last_dur: Time,             // the duration of the last frame appended (frames without one take it)
 	max_end:  Time,             // the greatest end of a frame in presentation time (0 when empty)
+	// store_ranges' answer for ranges_ver / ranges_tol (a player and a script ask for it many times a frame; it is a sort
+	// of every frame)
+	ranges:     [dynamic]Range,
+	ranges_ver: u64,
+	ranges_tol: Time,
+	ranges_ok:  bool,
 }
 
 store_create :: proc() -> ^Track_Store { return new(Track_Store, base.process_allocator()) }
@@ -69,6 +75,7 @@ store_destroy :: proc(s: ^Track_Store) {
 	if s == nil { return }
 	for &c in s.frames { coded_release(&c) }
 	delete(s.frames)
+	delete(s.ranges)
 	for &e in s.configs { track_destroy(&e.track) }
 	delete(s.configs)
 	free(s, base.process_allocator())
@@ -189,6 +196,7 @@ store_ranges :: proc(s: ^Track_Store, tolerance: Time, allocator := context.allo
 	// frames by presentation time (decode order differs with B-frames): collect the intervals and merge
 	n := len(s.frames)
 	if n == 0 { return nil }
+	if s.ranges_ok && s.ranges_ver == s.version && s.ranges_tol == tolerance { return slice.clone(s.ranges[:], allocator) }
 	iv := make([]Range, n, context.temp_allocator)
 	for f, i in s.frames { iv[i] = Range{max(f.pts, 0), f.pts + max(f.dur, 0)} }
 	slice.sort_by(iv, proc(a, b: Range) -> bool { return a.start < b.start })
@@ -203,6 +211,10 @@ store_ranges :: proc(s: ^Track_Store, tolerance: Time, allocator := context.allo
 		}
 	}
 	append(&out, cur)
+	if s.ranges.allocator.procedure == nil { s.ranges.allocator = base.process_allocator() }
+	clear(&s.ranges)
+	append(&s.ranges, ..out[:])
+	s.ranges_ver, s.ranges_tol, s.ranges_ok = s.version, tolerance, true
 	return out[:]
 }
 

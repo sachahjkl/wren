@@ -276,6 +276,7 @@ foreign _m_dom {
 	@(link_name = "Node_set_textContent") _Node_set_textContent :: proc(node: u64, value: [^]u8, value_len: u32) -> Error ---
 	@(link_name = "Node_normalize") _Node_normalize :: proc(node: u64) ---
 	@(link_name = "Node_cloneNode") _Node_cloneNode :: proc(node: u64, deep: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Document_importNodeCopy") _Document_importNodeCopy :: proc(node: u64, deep: i32, _ret: ^Node) -> Error ---
 	@(link_name = "Node_isEqualNode") _Node_isEqualNode :: proc(node: u64, other: u64) -> i32 ---
 	@(link_name = "Node_isSameNode") _Node_isSameNode :: proc(node: u64, other: u64) -> i32 ---
 	@(link_name = "Node_compareDocumentPosition") _Node_compareDocumentPosition :: proc(node: u64, other: u64) -> u32 ---
@@ -312,6 +313,7 @@ foreign _m_dom {
 	@(link_name = "DocumentType_publicId") _DocumentType_publicId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DocumentType_systemId") _DocumentType_systemId :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_createElementChecked") _Document_createElementChecked :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
+	@(link_name = "Document_createElementInert") _Document_createElementInert :: proc(local_name: [^]u8, local_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createElementNSChecked") _Document_createElementNSChecked :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, _ret: ^Element) -> Error ---
 	@(link_name = "Document_createDocumentFragment") _Document_createDocumentFragment :: proc(_ret: ^Node) -> Error ---
 	@(link_name = "Document_createComment") _Document_createComment :: proc(data: [^]u8, data_len: u32, _ret: ^Node) -> Error ---
@@ -3034,9 +3036,18 @@ Node_normalize :: proc "contextless" (node: $T_node) where intrinsics.type_is_in
 	_Node_normalize(u64(node))
 }
 
-// node.cloneNode(deep). Not_Supported for the document (one document per page).
+// node.cloneNode(deep). Not_Supported for the document (one document per page). The elements of the clone whose name
+// has a custom element definition are upgraded before it returns, unless `node` is in a template's contents (an inert
+// document: no definition applies there).
 Node_cloneNode :: proc "contextless" (node: $T_node, deep: bool = false) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
 	err = _Node_cloneNode(u64(node), i32(1 if deep else 0), &result)
+	return
+}
+
+// document.importNode(node, deep): the clone belongs to this document, whatever document `node` is in (a template's
+// contents included), so its elements of a defined name are upgraded before it returns.
+Document_importNodeCopy :: proc "contextless" (node: $T_node, deep: bool = false) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	err = _Document_importNodeCopy(u64(node), i32(1 if deep else 0), &result)
 	return
 }
 
@@ -3435,6 +3446,13 @@ DocumentType_systemId_alloc :: proc(node: $T_node, allocator: runtime.Allocator)
 // document.createElement(localName): Invalid_Character for a name that is not a valid element name.
 Document_createElementChecked :: proc "contextless" (local_name: string) -> (result: Element, err: Error) {
 	err = _Document_createElementChecked(raw_data(local_name), u32(len(local_name)), &result)
+	return
+}
+
+// createElement(localName) of a document other than the page's (createHTMLDocument, DOMParser, the one a template's
+// contents belong to): no custom element registry, so the element is made as is and never constructed or upgraded.
+Document_createElementInert :: proc "contextless" (local_name: string) -> (result: Element, err: Error) {
+	err = _Document_createElementInert(raw_data(local_name), u32(len(local_name)), &result)
 	return
 }
 

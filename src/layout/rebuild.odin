@@ -288,8 +288,12 @@ plan_children :: proc(c: ^Ctx, touched: []base.Handle, plans: ^[dynamic]Child_Pl
 		for p in ([2]i32{pl.old_p, pl.new_p}) {
 			if p == NONE { continue }
 			b := &l.boxes[p]
-			// the box's style is still the old record here (styles are re-read later): the element's current one
-			if b.kind == .Block && !has_block_child(c, b.node, style.style_of(c.st, b.node), b.depth) { return false }
+			// the box's style is still the old record here (styles are re-read later): the element's current one (none:
+			// the container's element has left the document or lost its style in the same pass: it is rebuilt whole)
+			if b.kind == .Block {
+				cur := style.style_of(c.st, b.node)
+				if cur == nil || !has_block_child(c, b.node, cur, b.depth) { return false }
+			}
 		}
 	}
 	return true

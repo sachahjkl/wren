@@ -34,6 +34,8 @@ Settings :: struct {
 	frames:          Frame_Settings,      // nested browsing contexts (frames.odin)
 	media:           media.Settings,      // video and audio (media/settings.odin)
 	canvas:          canvas2d.Settings,   // the 2D canvas (canvas.odin)
+	fullscreen:      Fullscreen_Settings, // the Fullscreen API (fullscreen.odin)
+	timeline:        Timeline_Settings,   // Performance Timeline entries (timeline.odin)
 	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
 }
 
@@ -64,6 +66,8 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, FRAME_PREFS[:])
 	media.register_prefs(p)
 	canvas2d.register_prefs(p)
+	config.register(p, FULLSCREEN_PREFS[:])
+	config.register(p, TIMELINE_PREFS[:])
 	idb.register_prefs(p)
 }
 
@@ -89,6 +93,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		frames = frame_settings_from_prefs(p),
 		media = media.settings_from_prefs(p),
 		canvas = canvas2d.settings_from_prefs(p),
+		fullscreen = fullscreen_settings_from_prefs(p),
+		timeline = timeline_settings_from_prefs(p),
 		idb = idb.settings_from_prefs(p),
 	}
 }

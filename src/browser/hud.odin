@@ -322,7 +322,7 @@ hud_destroy :: proc(app: ^App) {
 
 // Somebody reads the frame's phases: the status bar, or statistics in the title.
 hud_wants_clock :: proc() -> bool {
-	return hud.cfg.bar_visible || (hud.cfg.title_stats && title_has_stats(hud.cfg.title_format))
+	return hud.cfg.bar_visible || (hud.cfg.title_stats && title_has_stats(hud.cfg.title_format)) || (dev.visible && dev.panel == .Performance)   // (the developer tools' Performance tab reads the frames too)
 }
 
 @(private = "file")

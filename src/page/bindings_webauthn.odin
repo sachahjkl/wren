@@ -116,6 +116,13 @@ webauthn_has_activation :: proc(p: ^Page) -> bool {
 	return host.now_ns(p.loop) - d.activation_ns <= i64(p.settings.authn.user_activation_ms) * 1_000_000
 }
 
+// Nanoseconds since the page's last activation-triggering input event (ok = false: it had none).
+activation_age_ns :: proc(p: ^Page) -> (age: i64, ok: bool) {
+	d := webauthn_doc(p)
+	if d == nil || !d.has_activation { return 0, false }
+	return host.now_ns(p.loop) - d.activation_ns, true
+}
+
 // For the shell: the ceremony the page is waiting for, if any.
 webauthn_pending :: proc(p: ^Page) -> (pending: bool, create: bool, rp_id: string) {
 	d := webauthn_doc(p)

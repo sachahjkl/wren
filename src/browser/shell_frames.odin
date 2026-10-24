@@ -285,10 +285,46 @@ shell_input_pending :: proc() -> bool {
 	return status >> 16 != 0   // (the high word: kinds of messages now in the queue)
 }
 
+// The user's input waits in the thread's queue: keys, pointer, buttons, touch, raw input, hot keys. Not the messages
+// other threads post to wake the loop (a network chunk, a decoded picture, a timer): those are work for the next frame,
+// not a hand on the keyboard, and counting them made every frame of a busy page "answer input" (shown at once, the
+// screen's slot not waited for: twice the display's rate while a video played).
+shell_user_input_pending :: proc() -> bool {
+	QS_KEY :: 0x0001; QS_MOUSEMOVE :: 0x0002; QS_MOUSEBUTTON :: 0x0004; QS_POSTMESSAGE :: 0x0008; QS_HOTKEY :: 0x0080
+	QS_RAWINPUT :: 0x0400; QS_TOUCH :: 0x0800; QS_POINTER :: 0x1000
+	status := GetQueueStatus(QS_KEY | QS_MOUSEMOVE | QS_MOUSEBUTTON | QS_POSTMESSAGE | QS_HOTKEY | QS_RAWINPUT | QS_TOUCH | QS_POINTER)
+	if status >> 16 & (QS_KEY | QS_MOUSEMOVE | QS_MOUSEBUTTON | QS_HOTKEY | QS_RAWINPUT | QS_TOUCH | QS_POINTER) != 0 { return true }
+	if status >> 16 & QS_POSTMESSAGE == 0 { return false }
+	// only posted messages wait: other threads' wake-ups, or input posted to the window (an automation driver, a remote
+	// desktop): look through them for keys, pointer and touch
+	WM_KEYFIRST :: 0x0100; WM_KEYLAST :: 0x0109; WM_MOUSEFIRST :: 0x0200; WM_MOUSELAST :: 0x020E
+	WM_TOUCH :: 0x0240; WM_POINTERFIRST :: 0x0245; WM_POINTERLAST :: 0x0258
+	PM_NOREMOVE :: 0x0000; PM_NOYIELD :: 0x0002
+	msg: win.MSG
+	for r in ([?][2]u32{{WM_KEYFIRST, WM_KEYLAST}, {WM_MOUSEFIRST, WM_MOUSELAST}, {WM_TOUCH, WM_TOUCH}, {WM_POINTERFIRST, WM_POINTERLAST}}) {
+		if PeekMessageW(&msg, nil, r[0], r[1], PM_NOREMOVE | PM_NOYIELD) { return true }
+	}
+	return false
+}
+
 foreign import user32_shell "system:User32.lib"
 @(default_calling_convention = "system", private = "file")
 foreign user32_shell {
 	GetQueueStatus :: proc(flags: u32) -> u32 ---
+	PeekMessageW :: proc(msg: ^win.MSG, hwnd: win.HWND, filter_min, filter_max, remove: u32) -> win.BOOL ---
+}
+
+// The window asked for a frame (WM_PAINT inside a loop of the system: live resize, a menu). Normally a full frame. But the loop may have begun
+// inside a chrome frame (the mouse went down on the window's border while one was being made: its poll pumps the messages), that is
+// under a script or a layout pass of the page: a full frame there would run the page's world a second time, re-entrantly (the page
+// thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
+// there, at the size the window has now.
+window_frame :: proc(app: ^App) {
+	if !chrome_frames.nested { frame(app); return }
+	resized := app.win.size != pacer.size
+	pacer.size = app.win.size
+	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	shell_chrome_frame(app)
 }
 
 // A frame of the chrome alone, made while the page holds the thread.
@@ -300,8 +336,9 @@ shell_chrome_frame :: proc(app: ^App) {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
 		pacer.slot_held = true
 	}
+	was_nested := chrome_frames.nested   // (a modal loop of the system may have begun inside a chrome frame: window_frame)
 	chrome_frames.nested = true
-	defer chrome_frames.nested = false
+	defer chrome_frames.nested = was_nested
 	refused := wasm.refuse_calls(true)   // nothing of a page runs here (a guest call would be refused, not run)
 	defer wasm.refuse_calls(refused)
 	chrome_frames.frames += 1

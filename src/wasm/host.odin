@@ -171,7 +171,8 @@ define_import :: proc(l: wt_linker, im: ^Import, wide: bool) -> bool {
 	}
 	ty := wide ? functype_of(im.wide_params, im.wide_results) : functype_of(im.params, im.results)
 	defer wasm_functype_delete(ty)
-	err := wasmtime_linker_define_func_unchecked(l, raw_data(im.module), len(im.module), raw_data(im.name), len(im.name), ty, im.fn, wide ? WIDE : NARROW, nil)
+	cb, env := host_profile_wrap(im, wide ? WIDE : NARROW)   // (host_profile.odin: WREN_HOST_PROFILE)
+	err := wasmtime_linker_define_func_unchecked(l, raw_data(im.module), len(im.module), raw_data(im.name), len(im.name), ty, cb, env, nil)
 	if err != nil {
 		fmt.eprintfln("wasm: cannot define %s.%s: %s", im.module, im.name, wt_error_text(err, context.temp_allocator))
 		wasmtime_error_delete(err)

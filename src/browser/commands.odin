@@ -15,6 +15,7 @@ import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:i18n"
 
 Shortcut :: struct {
 	key:  platform.Key,
@@ -311,7 +312,41 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.devtools_dock_floating", title = "Developer tools: undock into a floating panel", category = "View", keywords = "devtools panel position window",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Floating },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
-	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
+	add(r, {name = "view.devtools_application", title = "Developer tools: Application", category = "View", keywords = "storage cookies local session cache manifest",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Application },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Application) }})
+	add(r, {name = "view.devtools_performance", title = "Developer tools: Performance", category = "View", keywords = "frames timing fps cpu gpu profile",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Performance },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Performance) }})
+	add(r, {name = "view.devtools_memory", title = "Developer tools: Memory", category = "View", keywords = "heap allocation leak usage",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Memory },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Memory) }})
+	add(r, {name = "view.devtools_pick", title = "Developer tools: select an element in the page", category = "View", keywords = "inspect picker element select eyedropper",
+		keys = keys(&r.arena, {key = .C, mods = cs}), enabled = has_tab,
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.picking },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_pick(app) }})
+	add(r, {name = "view.devtools_dock_left", title = "Developer tools: dock at the left", category = "View", keywords = "devtools panel position side",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Left && !devtools_detached() },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, .Left) }})
+	add(r, {name = "view.devtools_detach", title = "Developer tools: open in a separate window", category = "View", keywords = "devtools panel undock detach window second",
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return devtools_detached() },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) } else { devtools_detach(app) } }})
+	add(r, {name = "view.devtools_larger", title = "Developer tools: larger text", category = "View", keywords = "devtools zoom font size",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, 1) }})
+	add(r, {name = "view.devtools_smaller", title = "Developer tools: smaller text", category = "View", keywords = "devtools zoom font size",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_zoom(app, -1) }})
+	add(r, {name = "view.devtools_reset_layout", title = "Developer tools: reset the layout", category = "View", keywords = "devtools sizes columns panes default",
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_reset_layout(app) }})
+	add(r, {name = "view.devtools_clear_console", title = "Developer tools: clear the console", category = "View", keywords = "devtools log messages empty",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { console_clear(app, t) }})
+	add(r, {name = "view.devtools_clear_network", title = "Developer tools: clear the network log", category = "View", keywords = "devtools requests empty",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { net_clear(&t.net); dev.net.has_sel = false }})
+	for p in NET_BUILTIN {
+		add(r, {name = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), title = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), category = "View",
+			keywords = "devtools throttle throttling network speed slow offline 3g bandwidth latency", arg = p.id, enabled = has_tab,
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(t).id == c.arg },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
+	}	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(app.win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",
@@ -341,6 +376,30 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.setup", title = "Setup\u2026", category = "Browser", keywords = "install uninstall installer shortcut start menu path update repair standalone portable manage this installation",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return desktop_available() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { setup_open(app) }})
+	// the content blocker (blocker_shell.odin, blocker_ui.odin)
+	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bl.started && bl.b.cfg.enabled }
+	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && bl.started }
+	add(r, {name = "blocker.panel", title = i18n.tr("Blocker: open the panel"), category = "Blocker", keywords = "ads adblock shield tracker matrix",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_panel_request = true; app.frames_requested = max(app.frames_requested, 3) }})
+	add(r, {name = "blocker.picker", title = i18n.tr("Blocker: block an element\u2026"), category = "Blocker", keywords = "ads element picker zapper hide",
+		keys = keys(&r.arena, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
+	add(r, {name = "blocker.dashboard", title = i18n.tr("Blocker: dashboard"), category = "Blocker", keywords = "lists filters rules whitelist statistics", url = "about:blocker",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app) }})
+	add(r, {name = "blocker.journal", title = i18n.tr("Blocker: request log"), category = "Blocker", keywords = "logger journal requests blocked", url = "about:blocker#journal",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "journal") }})
+	add(r, {name = "blocker.filters", title = i18n.tr("Blocker: my filters"), category = "Blocker", keywords = "custom rules editor", url = "about:blocker#filters",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_open_dashboard(app, "filters") }})
+	add(r, {name = "blocker.site", title = i18n.tr("Blocker: switch off / on for this site"), category = "Blocker", keywords = "whitelist broken site disable allow",
+		enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			if host, ok := blocker_page_host(t); ok { blocker_set_site_enabled(app, t, host, !blocker_site_enabled(host)) }
+		}})
+	add(r, {name = "blocker.update", title = i18n.tr("Blocker: update the filter lists now"), category = "Blocker", keywords = "download refresh easylist",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_update_now() }})
+	add(r, {name = "blocker.toggle", title = i18n.tr("Blocker: on"), category = "Blocker", keywords = "ads adblock enable disable",
+		checked = blocker_on, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			config.set_from_string(&app.prefs, "blocker.enabled", bl.b.cfg.enabled ? "false" : "true", .User)
+			if t != nil && t.kind == .Web { reload(app, t) }
+		}})
 	add(r, {name = "browser.check_updates", title = "Check for updates", category = "Browser", keywords = "update upgrade new version release github latest",
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { update_check_now(app) }})
 	add(r, {name = "browser.desktop_integration", title = "Integrate Wren with the desktop", category = "Browser", keywords = "start menu shortcut default apps browser application menu desktop entry install uninstall",

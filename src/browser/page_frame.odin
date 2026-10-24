@@ -138,4 +138,5 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	prof_end(.Paint_Items)
 	draw.pop_clip(dc)
 	timing_painted(t)
+	load_measure_painted(t)   // blocker_measure.odin
 }

@@ -19,7 +19,10 @@ Loader :: struct {
 	tasks:    base.Pool(Task),
 	revalidations: [dynamic]^Revalidation,   // stale-while-revalidate refreshes in flight (http_cache.odin)
 	observer: Observer,   // the developer tools' view of every request (observe.odin)
+	observers: [dynamic]Observer,   // more of them: the pages' timelines (observer_add)
+	interceptor: Interceptor,   // the content blocker (intercept.odin)
 	next_obs: u64,
+	ws_ctx:   map[base.Handle]^Ws_Ctx,   // the open sockets, by handle (websocket.odin)
 }
 
 loader_init :: proc(l: ^Loader, loop: ^host.Loop, client: ^net.Client, blocking: ^host.Blocking_Pool, profile: ^Profile) {
@@ -33,6 +36,9 @@ loader_destroy :: proc(l: ^Loader) {
 	for h in handles { release(l, h) }
 	base.pool_destroy(&l.tasks)
 	revalidations_destroy(l)
+	delete(l.observers)
+	delete(l.ws_ctx)
+	l.ws_ctx = nil
 }
 
 in_flight :: proc(l: ^Loader) -> int { return l.tasks.count }
@@ -89,6 +95,15 @@ Task :: struct {
 	obs_id:    u64,             // observe.odin
 	obs_bytes: int,
 	obs_done:  bool,           // a Done or Failed was reported
+	obs_timing: net.Timing,    // what the network layer measured (the last hop)
+	obs_proto: u8,
+	obs_remote: [48]u8,
+	obs_remote_len: u8,
+	obs_status: [64]u8,        // the reason phrase of the answer
+	obs_status_len: u8,
+	obs_net:   bool,           // the answer came over the network (obs_timing and the others are set)
+	ping:      bool,
+	rewritten: bool,           // the interceptor changed the URL
 }
 
 ////////////////////////////////
@@ -105,7 +120,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		loader = l, mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
-		script = r.script, parser_inserted = r.parser_inserted,
+		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping,
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
@@ -114,6 +129,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 
 	u, ok := url.parse_absolute(r.url)
 	if ok { t.target = u } else { t.early_error = .Bad_URL }
+	if ok && l.observer.block != nil && l.observer.block(l.observer.user, t.scope, t.target.href) { t.early_error = .Blocked_By_Client }
 	if t.early_error == .None {
 		switch {
 		case !http.is_token(t.method) || http.is_forbidden_method(t.method): t.early_error = .Bad_Method
@@ -135,7 +151,11 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 	tp.self = h
 	l.next_obs += 1
 	tp.obs_id = l.next_obs
-	observe(tp, Observed{kind = .Started, scope = d.scope, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination})
+	if observing(l) {
+		init_url := r.initiator != nil ? r.initiator.location.href : ""
+		observe(tp, Observed{kind = .Started, scope = d.scope, initiator = r.initiator, method = tp.method, url = ok ? tp.target.href : r.url, destination = r.destination, mode = r.mode,
+			navigate = r.mode == .Navigate, parser = r.parser_inserted, initiator_url = init_url})
+	}
 	if d.scope != nil { tp.cleanup = base.on_close(d.scope, task_scope_closed, new_clone(Kick{l, h})) }
 	host.post(l.loop, kick, new_clone(Kick{l, h}))
 	return h
@@ -160,6 +180,7 @@ early_detail :: proc(k: Error_Kind) -> string {
 	case .Bad_URL: return "invalid URL"
 	case .Bad_Method: return "invalid or forbidden method, or a body on GET/HEAD"
 	case .Bad_Header: return "invalid header name or value"
+	case .Blocked_By_Client: return "blocked by the developer tools"
 	}
 	return "request rejected"
 }
@@ -178,7 +199,7 @@ cancel :: proc(l: ^Loader, h: base.Handle) -> bool { return l != nil && release(
 release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	t, ok := base.pool_remove(&l.tasks, h)
 	if !ok { return false }
-	if !t.obs_done && l.observer.event != nil { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
+	if !t.obs_done && observing(l) { t.obs_done = true; observe(&t, Observed{kind = .Failed, error = .Aborted, detail = "cancelled", bytes = t.obs_bytes}) }
 	cancel_net(l, &t)
 	cache_task_release(l, &t)
 	url.destroy(&t.target)
@@ -208,20 +229,31 @@ cancel_net :: proc(l: ^Loader, t: ^Task) {
 
 @(private)
 deliver :: proc(t: ^Task, ev: ^Event) {
-	if t.loader != nil && t.loader.observer.event != nil && !t.obs_done {
+	if observing(t.loader) && !t.obs_done {
 		switch ev.kind {
 		case .Response:
 			if r := ev.response; r != nil {
 				mime := r.has_mime ? http.mime_essence(r.mime) : ""
-				observe(t, Observed{kind = .Response, url = r.url, destination = t.destination, status = r.status, mime = mime, cache = r.cache, redirected = r.redirected})
+				o := Observed{kind = .Response, url = r.url, destination = t.destination, status = r.status, mime = mime, cache = r.cache, redirected = r.redirected, redirects = t.redirect_count}
+				// the answer as it came (the page may see less of it: a no-cors response has no headers for it)
+				if len(t.raw_headers.list) > 0 { o.headers = join_headers(t.raw_headers) }
+				if t.obs_net {
+					o.protocol, o.remote, o.status_text = protocol_name(t.obs_proto), string(t.obs_remote[:t.obs_remote_len]), string(t.obs_status[:t.obs_status_len])
+					o.timing, o.has_timing = t.obs_timing, true
+				} else if t.status > 0 { o.status_text = string(t.obs_status[:t.obs_status_len]) }
+				if r.status == 0 { o.status = t.status }
+				observe(t, o)
 			}
-		case .Data: t.obs_bytes += len(ev.data)
+		case .Data:
+			t.obs_bytes += len(ev.data)
+			if t.loader.observer.body_limit > 0 { observe(t, Observed{kind = .Body, data = ev.data}) }
 		case .Done:
 			t.obs_done = true
-			observe(t, Observed{kind = .Done, bytes = t.collect ? len(ev.data) : t.obs_bytes})
+			if t.collect && t.loader.observer.body_limit > 0 && len(ev.data) > 0 { observe(t, Observed{kind = .Body, data = ev.data}) }
+			observe(t, Observed{kind = .Done, bytes = t.collect ? len(ev.data) : t.obs_bytes, timing = t.obs_timing, has_timing = t.obs_net})
 		case .Failed:
 			t.obs_done = true
-			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes})
+			observe(t, Observed{kind = .Failed, error = ev.error, detail = ev.detail, bytes = t.obs_bytes, blocked_by = ev.error == .Blocked_By_Client ? ev.detail : ""})
 		}
 	}
 	if t.on_event != nil { t.on_event(t.user, t.self, ev) }
@@ -249,6 +281,7 @@ run_hop :: proc(t: ^Task) {
 		s := url.site_of(o, context.temp_allocator)
 		if !url.same_site(s, t.initiator.top_level_site) { t.cross_site_seen = true }
 	}
+	if !intercept_hop(t) { return }
 	if !content_security_check(t) { return }
 	switch t.target.scheme {
 	case "http", "https": http_hop(t)
@@ -538,7 +571,7 @@ send_preflight :: proc(t: ^Task, unsafe: []string) {
 	t.net_user = pf
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = "OPTIONS", headers = join_headers(h), on_event = preflight_event, user = pf,
-		collect = true, max_body = 1 << 20, priority = .High,
+		collect = true, max_body = 1 << 20, priority = .High, link = link_of(l, t.scope),
 	})
 }
 
@@ -600,11 +633,12 @@ send_main :: proc(t: ^Task) {
 	if cache_lookup(t) { return }   // served from the HTTP cache, waiting for it, or failed (only-if-cached)
 	h := request_header_list(t)
 	cache_request_headers(t, &h)
+	if observing(t.loader) { observe(t, Observed{kind = .Request, method = t.method, url = t.target.href, headers = join_headers(h), request_body = t.body}) }
 	k := new_clone(Kick{l, t.self})
 	t.net_user = k
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = t.method, headers = join_headers(h), body = t.body,
-		on_event = main_event, user = k, collect = false, max_body = t.max_body,
+		on_event = main_event, user = k, collect = false, max_body = t.max_body, link = link_of(l, t.scope),
 		priority = t.destination == .Document || t.destination == .Iframe || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
 }
@@ -633,6 +667,7 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		t.net_req = base.NIL_HANDLE
 		cache_on_done(t)
 		out := Event{kind = .Done}
+		if t.obs_net { t.obs_timing.done = ev.timing.done }
 		if t.collect { out.data = t.collected[:] }
 		h, l := t.self, t.loader
 		deliver(t, &out)
@@ -656,6 +691,10 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 	t.raw_headers = http.parse_header_block(ev.headers)
 	t.status = ev.status
 	raw := t.raw_headers
+	t.obs_net, t.obs_timing, t.obs_proto, t.obs_remote, t.obs_remote_len = true, ev.timing, ev.protocol, ev.remote, ev.remote_len
+	st := status_text_of(ev.headers)
+	t.obs_status_len = u8(min(len(st), len(t.obs_status)))
+	copy(t.obs_status[:], st[:t.obs_status_len])
 
 	// cookies and HSTS are processed for every response, redirects included
 	if cookies_allowed(t) {
@@ -692,6 +731,8 @@ check_and_send_response :: proc(t: ^Task) -> bool {
 		}
 	}
 
+	if !intercept_response(t) { return false }
+	raw = t.raw_headers
 	m, has_mime := http.extract_mime(raw, context.temp_allocator)
 	nosniff := false
 	if v, ok := http.get_header(raw, "x-content-type-options"); ok { nosniff = strings.equal_fold(strings.trim_space(strings.split(v, ",", context.temp_allocator)[0]), "nosniff") }
@@ -806,6 +847,7 @@ handle_redirect :: proc(t: ^Task, location: string) {
 		for n in ([]string{"content-encoding", "content-language", "content-location", "content-type"}) { http.delete_header(&t.headers, n) }
 	}
 
+	if observing(t.loader) { observe(t, Observed{kind = .Redirect, url = t.target.href, status = t.status, detail = next.href}) }
 	t.redirect_count += 1
 	t.redirected = true
 	cancel_net(l, t)
