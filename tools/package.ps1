@@ -45,6 +45,7 @@ if ($dumpbin) {
 }
 
 $label = if ($env:WREN_VERSION_LABEL) { "-" + ($env:WREN_VERSION_LABEL -replace '[^A-Za-z0-9._-]', '-') } else { "" }   # build.bat: WREN_VERSION_LABEL
+$name = if ($Dev) { "wren-$Version$label-dev-windows-x64" } else { "wren-$Version$label-windows-x64" }
 $dist = Join-Path $root 'build\dist'
 New-Item -ItemType Directory -Force $dist | Out-Null
 $exe = Join-Path $dist "$name.exe"
