@@ -3,10 +3,15 @@
 # asked for and costs nothing at rest, two instances do not meet, a taken name is an error, a client that vanishes or sends
 # too much does not hurt, closing with clients connected).
 #   powershell -NoProfile -File tools\remote_e2e.ps1 [-Exe build\wren.exe]
+#   powershell -NoProfile -File tools\remote_e2e.ps1 -Stress 16   only the closing, with 16 busy loops saturating the machine (-Stress -1: every
+#                                                              logical processor; -Rounds n, default 3): wren ctl quit with a client connected, and the
+#                                                              window closed as the X button does, each with a video playing, must end within -CloseLimitMs
+#                                                              (8 s) with no forced exit. A close that waits for a thread of lower priority starved by the
+#                                                              load fails here (the disk cache's writer did: ten seconds).
 #   powershell -NoProfile -File tools\remote_e2e.ps1 -Check     the same kind of session on the check build (build.bat check: every
 #                                                              allocation tracked): it must exit with nothing left allocated
 # Nothing here takes the desktop: the window is never shown and the capture is read from the renderer's frame.
-param([string]$Exe = '', [switch]$Check)
+param([string]$Exe = '', [switch]$Check, [int]$Stress = 0, [int]$Rounds = 3, [int]$CloseLimitMs = 8000)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot\test_env.ps1"
@@ -30,6 +35,75 @@ function Pipe-Names { [IO.Directory]::GetFiles('\\.\pipe\') | Where-Object { $_ 
 $tmp = Join-Path $env:TEMP "wren-remote-e2e-$PID"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 $started = @()   # processes this script started (and the only ones it ends)
+
+if ($Stress -ne 0) {
+    Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class WinClose {
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  // WM_CLOSE to every top-level window of the process: what the close button of the title bar sends
+  public static int Close(uint pid) { int n = 0; EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); if (p == pid) { PostMessage(h, 0x10, IntPtr.Zero, IntPtr.Zero); n++; } return true; }, IntPtr.Zero); return n; }
+}
+"@
+    $cores = if ($Stress -lt 0) { [Environment]::ProcessorCount } else { $Stress }
+    $hogs = @()
+    $times = @()
+    $server = Start-WrenTestServer
+    try {
+        for ($i = 0; $i -lt $cores; $i++) { $hogs += Start-Process -PassThru -WindowStyle Hidden -FilePath powershell -ArgumentList '-NoProfile', '-Command', 'while ($true) { }' }
+        "      $cores busy loops running"
+        Start-Sleep -Seconds 2
+        $url = "$($server.Origin)/site/video.html"
+        for ($round = 1; $round -le $Rounds; $round++) {
+            # 1. wren ctl quit, a client connected, a video playing
+            $prof = Join-Path $tmp "stress-quit-$round"
+            $name = Start-Wren -Size 800x600 -ProfileDir $prof
+            $null = Wren-Ctl nav $url --timeout 60000
+            Start-Sleep -Milliseconds 1500
+            $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
+            $pipe.Connect(10000)
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $q = Wren-Ctl quit --code 3 --timeout 60000
+            $ms = $sw.ElapsedMilliseconds; $times += $ms
+            $pipe.Dispose()
+            $log = Join-Path $prof 'shutdown.log'
+            $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
+            Check "round ${round}: quit with a client connected and a video playing: $ms ms" ($global:WrenExit -eq 0 -and $q -match 'exit code 3' -and $ms -lt $CloseLimitMs -and -not $forced) "$q | $global:WrenErr | forced=$forced"
+            if (Test-Path $log) { "      shutdown.log: " + ((Get-Content $log | Select-Object -Last 2) -join ' / ') }
+            Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
+            # 2. the window closed as the X button does
+            $prof = Join-Path $tmp "stress-x-$round"
+            $name = Start-Wren -Size 800x600 -ProfileDir $prof
+            $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
+            $null = Wren-Ctl nav $url --timeout 60000
+            Start-Sleep -Milliseconds 1500
+            $proc = Get-Process -Id $wpid
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $n = [WinClose]::Close([uint32]$wpid)
+            $ended = $proc.WaitForExit(40000)
+            $ms = $sw.ElapsedMilliseconds; $times += $ms
+            $log = Join-Path $prof 'shutdown.log'
+            $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
+            Check "round ${round}: the window closed (WM_CLOSE to $n window(s)) with a video playing: $ms ms" ($ended -and $ms -lt $CloseLimitMs -and -not $forced) "ended=$ended forced=$forced"
+            if (-not $ended) { Stop-Process -Id $wpid -Force }
+            if (Test-Path $log) { "      shutdown.log: " + ((Get-Content $log | Select-Object -Last 2) -join ' / ') }
+            Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
+        }
+    } finally {
+        foreach ($h in $hogs) { Stop-Process -Id $h.Id -Force -ErrorAction SilentlyContinue }
+        Stop-WrenTestServer $server
+        if ($env:WREN_REMOTE) { Stop-Wren }
+    }
+    $sorted = @($times | Sort-Object)
+    if ($sorted.Count -gt 0) { "      closing times under load (ms): $($sorted -join ', ')  max $($sorted[-1])  p95 $($sorted[[Math]::Min($sorted.Count - 1, [int][Math]::Ceiling($sorted.Count * 0.95) - 1)])" }
+    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
+    'remote_e2e -Stress: all closings within the limit'
+    exit 0
+}
 
 if ($Check) {
     # a session that touches every part of the channel, then a normal exit: the tracker lists what is still allocated

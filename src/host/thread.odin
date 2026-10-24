@@ -45,6 +45,8 @@ threads_running :: proc(allocator := context.allocator) -> []string {
 
 @(private)
 STACK_SIZE_PARAM_IS_A_RESERVATION :: 0x00010000
+@(private)
+THREAD_PRIORITY_ABOVE_NORMAL :: 1
 
 // Scheduling priority relative to the process. Background work below the UI thread keeps the window responsive when
 // every core is busy.
@@ -100,6 +102,10 @@ thread_finished :: proc(t: ^Thread) -> bool { return t == nil || bool(sync.atomi
 thread_join :: proc(t: ^Thread) {
 	if t == nil { return }
 	shutdown_joining(thread_name(t) == "" ? "(unnamed)" : thread_name(t))
+	// What the caller waits for runs at least as urgently as the caller: a background thread (below normal) starves while every
+	// core is busy (Windows lifts a starved thread for two time slices every few seconds), so joining the disk cache's writer
+	// took ten seconds on a loaded machine. The caller sleeps meanwhile: the boost takes nothing from it.
+	if !thread_finished(t) && win.GetThreadPriority(t.handle) < 0 { win.SetThreadPriority(t.handle, i32(THREAD_PRIORITY_ABOVE_NORMAL)) }
 	win.WaitForSingleObject(t.handle, win.INFINITE)
 	shutdown_joining("")
 	sync.mutex_lock(&live_mu)

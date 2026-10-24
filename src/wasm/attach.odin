@@ -226,7 +226,7 @@ attach_stop :: proc() {
 	attach_pool.stopping = true
 	sync.cond_broadcast(&attach_pool.cond)
 	sync.mutex_unlock(&attach_pool.lock)
-	for t in attach_pool.threads { thread.join(t); thread.destroy(t) }
+	for t in attach_pool.threads { boost_for_join(t); thread.join(t); thread.destroy(t) }
 	context.allocator = base.process_allocator()
 	for _, job in attach_pool.jobs { attach_job_free(job) }
 	for job in attach_pool.queue { if job.inst == nil { attach_job_free(job) } }
