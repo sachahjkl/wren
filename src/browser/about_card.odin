@@ -10,9 +10,11 @@ import "wb:license"
 // engine's own CSS and a little JavaScript:
 //
 //  - the card tilts with the pointer (rotateX / rotateY, eased back to rest by a CSS transition) in the perspective of its box
-//    (CSS Transforms 2: .cardbox has perspective, .lic preserve-3d): the base with its foil and glare lies at z = 0, the
-//    text 18px above it and the seal 30px, so the tilt shows real parallax between them, and the layers also slide a little
-//    on the pointer. At rest the scales (900 / (900 - z)) cancel the enlargement the perspective gives the lifted layers;
+//    (CSS Transforms 2: .cardbox has perspective, .lic preserve-3d): the base with its foil and glare lies at z = 0 and the
+//    text 18px above it. The seal is a medal stuck ON the card: a stack of layers 1 to 9px above the base (its cast shadow,
+//    which slides away from the light, the ridged gold edge, the domed green face, a highlight that follows the pointer, the
+//    word and the tick embossed on top), so the tilt shows its relief and it never floats; the text slides a little on the
+//    pointer. At rest the scales (900 / (900 - z)) cancel the enlargement the perspective gives the lifted layers;
 //  - the script runs on pointer events only, applies at most one update per frame (requestAnimationFrame) and never
 //    loops: a card at rest, or the pointer still, costs no frame;
 //  - without JavaScript (javascript.enabled off) or with prefers-reduced-motion the card is the same, still, foil at
@@ -49,17 +51,24 @@ CARD_STYLE :: `
     .lic .meta { flex-direction: column; }
     .lic .meta div { margin: 0 0 5px 0; }
   }
-  .lic .seal { right: 16px; bottom: 14px; transform: translate3d(0, 0, 30px) scale(0.9667); width: 88px; height: 88px; border-radius: 50%; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 1px rgba(0, 0, 0, 0.4);
-    background-image: repeating-conic-gradient(from 0deg, #f3dc8e 0deg, #f3dc8e 1.5deg, #d3a93d 1.5deg, #d3a93d 5deg, #9c7220 5deg, #9c7220 8deg); }
-  .lic .seal .ring { position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px; border-radius: 50%; border: 2px solid #f4df9a; box-sizing: border-box;
-    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3), inset 0 -2px 3px rgba(0, 0, 0, 0.35);
-    background-image: repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.09) 0px, rgba(255, 255, 255, 0.09) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 3px), radial-gradient(circle at 34% 28%, #46c27d, #1f7a47 72%); }
+  .lic .seal { right: 16px; bottom: 14px; width: 88px; height: 88px; transform-style: preserve-3d; }
+  .lic .seal > div { position: absolute; box-sizing: border-box; }
+  .lic .seal .shadow { left: 0; top: 0; width: 88px; height: 88px; border-radius: 50%; transform: translate3d(3px, 5px, 1px) scale(0.99889); filter: blur(3px);
+    background-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0) 74%); }
+  .lic .seal .edge { left: 0; top: 0; width: 88px; height: 88px; border-radius: 50%; transform: translate3d(0, 0, 3px) scale(0.99667);
+    box-shadow: inset 0 2px 1px rgba(255, 255, 255, 0.55), inset 0 -2px 2px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(0, 0, 0, 0.4);
+    background-image: repeating-conic-gradient(from 0deg, #f6e29a 0deg, #f6e29a 1.5deg, #d3a93d 1.5deg, #d3a93d 5deg, #8f6a1c 5deg, #8f6a1c 8deg); }
+  .lic .seal .ring { left: 6px; top: 6px; width: 76px; height: 76px; border-radius: 50%; transform: translate3d(0, 0, 5px) scale(0.99444); border: 2px solid #f4df9a;
+    box-shadow: inset 0 3px 4px rgba(255, 255, 255, 0.28), inset 0 -5px 7px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.55);
+    background-image: repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.09) 0px, rgba(255, 255, 255, 0.09) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 3px), radial-gradient(circle at 34% 28%, #5ad98e, #1f8a52 55%, #0f5a36 100%); }
   .lic .seal .rim { position: absolute; left: 4px; top: 4px; right: 4px; bottom: 4px; border-radius: 50%; border: 1px solid rgba(244, 223, 154, 0.6); }
-  .lic .seal .gloss { position: absolute; left: 0; top: 0; right: 0; bottom: 0; border-radius: 50%; background-image: linear-gradient(140deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0) 46%); }
-  .lic .seal .tickwrap { position: absolute; left: 30px; top: 11px; width: 13px; height: 22px; filter: drop-shadow(0px 1px 0px rgba(0, 0, 0, 0.4)) drop-shadow(0px -1px 0px rgba(255, 255, 255, 0.3)); }
+  .lic .seal .gloss { left: 6px; top: 6px; width: 76px; height: 76px; border-radius: 50%; transform: translate3d(0, 0, 6px) scale(0.99333);
+    background-image: radial-gradient(circle at var(--sgx, 32%) var(--sgy, 26%), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%), linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 46%); }
+  .lic .seal .word { left: 0; top: 48px; width: 88px; height: 10px; transform: translate3d(0, 0, 7px) scale(0.99222); text-align: center; font-size: 8px; line-height: 10px; font-weight: 700; letter-spacing: 0.08em; color: #f7e9b0;
+    text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.5), 0px -1px 0px rgba(255, 255, 255, 0.3); }
+  .lic .seal .tickwrap { left: 35px; top: 16px; width: 13px; height: 22px; transform: translate3d(0, 0, 9px) scale(0.99);
+    filter: drop-shadow(0px 2px 1px rgba(0, 0, 0, 0.5)) drop-shadow(0px -1px 0px rgba(255, 255, 255, 0.35)); }
   .lic .seal .tick { width: 9px; height: 18px; border: solid #fbf0c4; border-width: 0 4px 4px 0; transform: rotate(45deg); }
-  .lic .seal .word { position: absolute; left: 0; right: 0; top: 43px; text-align: center; font-size: 8px; line-height: 10px; font-weight: 700; letter-spacing: 0.08em; color: #f7e9b0;
-    text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.4), 0px -1px 0px rgba(255, 255, 255, 0.28); }
 `
 
 @(private = "file")
@@ -68,7 +77,7 @@ CARD_SCRIPT :: `
   var card = document.getElementById("lic");
   if (!card || !card.addEventListener) return;
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var box = card.parentNode, face = card.querySelector(".face"), seal = card.querySelector(".seal");
+  var box = card.parentNode, face = card.querySelector(".face"), shadow = card.querySelector(".seal .shadow");
   var px = 0, py = 0, queued = false, live = false;
   function apply() {
     queued = false;
@@ -79,7 +88,9 @@ CARD_SCRIPT :: `
     card.style.setProperty("--gx", (50 + px * 50).toFixed(1) + "%");
     card.style.setProperty("--gy", (50 + py * 50).toFixed(1) + "%");
     face.style.transform = "translate3d(" + (-px * 5).toFixed(2) + "px," + (-py * 4).toFixed(2) + "px,18px) scale(0.98)";
-    seal.style.transform = "translate3d(" + (px * 7).toFixed(2) + "px," + (py * 6).toFixed(2) + "px,30px) scale(0.9667)";
+    shadow.style.transform = "translate3d(" + (3 - px * 5).toFixed(2) + "px," + (5 - py * 4).toFixed(2) + "px,1px) scale(0.99889)";
+    card.style.setProperty("--sgx", (50 + px * 28).toFixed(1) + "%");
+    card.style.setProperty("--sgy", (50 + py * 28).toFixed(1) + "%");
   }
   function move(e) {
     var r = box.getBoundingClientRect();
@@ -93,7 +104,9 @@ CARD_SCRIPT :: `
     card.className = "lic";
     card.style.transform = "rotateX(0deg) rotateY(0deg)";
     face.style.transform = "translate3d(0px,0px,18px) scale(0.98)";
-    seal.style.transform = "translate3d(0px,0px,30px) scale(0.9667)";
+    shadow.style.transform = "translate3d(3px,5px,1px) scale(0.99889)";
+    card.style.setProperty("--sgx", "32%");
+    card.style.setProperty("--sgy", "26%");
   }
   box.addEventListener(window.PointerEvent ? "pointermove" : "mousemove", move);
   box.addEventListener(window.PointerEvent ? "pointerleave" : "mouseleave", leave);
@@ -114,7 +127,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	if lic.date != "" { fmt.sbprintf(sb, "<div><small>Issued</small><em>%s</em></div>", e(lic.date)) }
 	if lic.order != "" { fmt.sbprintf(sb, "<div><small>Order</small><em>%s</em></div>", e(lic.order)) }
 	strings.write_string(sb, "</div></div>")
-	strings.write_string(sb, "<div class=\"seal\"><div class=\"ring\"><div class=\"rim\"></div><div class=\"gloss\"></div><div class=\"tickwrap\"><div class=\"tick\"></div></div><div class=\"word\">CERTIFIED</div></div></div>")
+	strings.write_string(sb, "<div class=\"seal\"><div class=\"shadow\"></div><div class=\"edge\"></div><div class=\"ring\"><div class=\"rim\"></div></div><div class=\"gloss\"></div><div class=\"word\">CERTIFIED</div><div class=\"tickwrap\"><div class=\"tick\"></div></div></div>")
 	strings.write_string(sb, "</div></div>\n<script>")
 	strings.write_string(sb, CARD_SCRIPT)
 	strings.write_string(sb, "</script>\n")
