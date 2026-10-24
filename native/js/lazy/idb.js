@@ -988,7 +988,10 @@
       for (const s of scope) w.uv(s.id);
       const rep = call(OP.BEGIN, w.done());
       if (rep[0]) throw fail(rep[0]);
-      return newTransaction(c, new Rd(rep, 1).uv(), m, scope, durability).wrapper;
+      const rd = new Rd(rep, 1);
+      const T = newTransaction(c, rd.uv(), m, scope, durability);
+      if (rd.u8() !== 0) { T.started = true; T.startedEarly = true; }   // (the browser started it at once: its first request need not wait for an event)
+      return T.wrapper;
     }
     close() {
       const c = sOf(dbState, this);
@@ -1326,17 +1329,24 @@
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, a.range);
-      w.u8(mode); w.u8((a.backwards ? 1 : 0) | (a.unique ? 2 : 0)); w.uv(a.limit);
-      const rd = expectOk(call(OP.EXEC, w.done()));
-      const n = rd.uv();
+      // the browser answers a long list in pieces (about 2 MiB of reply each, with where to go on): only one piece is in flight at a time
       const out = [];
-      for (let i = 0; i < n; i++) {
-        if (mode === 1) out.push(decodeKey(rd.bytes()));
-        else if (mode === 2) out.push(valueOf(rd));
-        else { const k = decodeKey(rd.bytes()), pk = decodeKey(rd.bytes()); out.push(makeRecord(k, pk, valueOf(rd))); }
+      let resume = null;
+      for (;;) {
+        const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
+        w.uv(src.index ? src.index.id : 0);
+        putRange(w, a.range);
+        w.u8(mode); w.u8((a.backwards ? 1 : 0) | (a.unique ? 2 : 0) | (resume !== null ? 4 : 0)); w.uv(a.limit > 0 ? a.limit - out.length : 0);
+        if (resume !== null) { w.bytes(resume.key); w.bytes(resume.pk); }
+        const rd = expectOk(call(OP.EXEC, w.done()));
+        const n = rd.uv();
+        for (let i = 0; i < n; i++) {
+          if (mode === 1) out.push(decodeKey(rd.bytes()));
+          else if (mode === 2) out.push(valueOf(rd));
+          else { const k = decodeKey(rd.bytes()), pk = decodeKey(rd.bytes()); out.push(makeRecord(k, pk, valueOf(rd))); }
+        }
+        if (rd.u8() === 0 || (a.limit > 0 && out.length >= a.limit)) break;
+        resume = { key: rd.bytes().slice(), pk: rd.bytes().slice() };
       }
       return out;
     });
@@ -1570,7 +1580,8 @@
         // (a unique index that the records violate: the version change transaction aborts with a ConstraintError)
         if (r2[0]) throw new Failure(r2[0], "Unable to add the index entries.");
       }
-      if (n < 256) break;
+      const more = rd.u8();   // (a piece cut short by its size: the next one goes on)
+      if (n < 256 && more === 0) break;
     }
   }
 
@@ -1941,6 +1952,7 @@
       case EV.TX_STARTED: {
         const T = txs.get(txId);
         if (T === undefined || T.dead) break;
+        if (T.startedEarly) { T.startedEarly = false; break; }
         T.started = true;
         processNext(T);
         if (T.queue.length === 0) maybeCommit(T);

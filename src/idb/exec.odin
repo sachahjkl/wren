@@ -384,6 +384,29 @@ scan :: proc(s: Source, r: Range, backwards: bool, limit: int, visit: proc(user:
 	}
 }
 
+// Like scan, from the entry after (cur_key, cur_pk) when has_cur (what a walk that stopped goes on from).
+scan_resume :: proc(s: Source, r: Range, backwards: bool, limit: int, has_cur: bool, cur_key, cur_pk: []byte, visit: proc(user: rawptr, key, pk: []byte, rec: ^Record) -> bool, user: rawptr) {
+	o := source_entries(s)
+	p: Pos
+	ok: bool
+	switch {
+	case !has_cur: p, ok = range_start(s, r, !backwards)
+	case !backwards:
+		if s.index == nil { p = seek_after_key(s, cur_key) } else { p = ordered_seek(o, composite_key(cur_key, cur_pk, context.temp_allocator), true) }
+		ok = pos_valid(o, p)
+	case:
+		if s.index == nil { p, ok = before(o, seek_from_key(s, cur_key)) } else { p, ok = before(o, ordered_seek(o, composite_key(cur_key, cur_pk, context.temp_allocator))) }
+	}
+	n := 0
+	for ok && (limit < 0 || n < limit) {
+		k, pk, rec, inside := in_range(s, r, p)
+		if !inside { return }
+		if !visit(user, k, pk, rec) { return }
+		n += 1
+		if backwards { ok = pos_prev(o, &p) } else { pos_next(o, &p); ok = pos_valid(o, p) }
+	}
+}
+
 // The first record of the range (get, getKey): by key for a store, by index key then primary key for an index.
 first_in_range :: proc(s: Source, r: Range) -> (hit: Cursor_Hit, found: bool) {
 	return cursor_step(s, Cursor_Request{range = r, direction = .Next})
