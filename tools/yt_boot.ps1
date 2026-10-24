@@ -7,7 +7,7 @@
 #   warm  the same profile again after the Wren was closed (HTTP cache, bytecode cache, Wasm code cache)
 #   powershell -NoProfile -File tools\yt_boot.ps1 [-Exe build\wren.exe] [-Runs 3] [-Page watch|home|short] [-Pref a=b,c=d] [-Tag name] [-NoWarm]
 # Prints one line per run and the medians; with -Tag also appends them to build\yt_boot.txt.
-param([string]$Exe = '', [int]$Runs = 3, [ValidateSet('watch', 'home', 'short')][string]$Page = 'watch', [string[]]$Pref = @(), [string]$Tag = '', [switch]$NoWarm)
+param([string]$Exe = '', [int]$Runs = 3, [ValidateSet('watch', 'home', 'short')][string]$Page = 'watch', [string]$Pref = '', [string]$Tag = '', [switch]$NoWarm)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -21,7 +21,7 @@ $tmp = Join-Path $env:TEMP "yt-boot-$PID"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 
 function Measure-Load([string]$prof, [bool]$consent) {
-    $null = Start-Wren -Dpi 96 -Size 1280x800 -ProfileDir $prof -Pref $Pref
+    $null = Start-Wren -Dpi 96 -Size 1280x800 -ProfileDir $prof -Pref $(if ($Pref) { $Pref -split ',' } else { @() })
     $wrenPid = [int](((Wren-Ctl ping --json) | ConvertFrom-Json).pid)
     try {
         if ($consent) {
@@ -67,4 +67,4 @@ foreach ($mode in 'cold', 'warm') {
     $lines += "{0,-4} {1} median of {2}: masthead {3} | logo {4} | thumbs {5} | video {6} ms | cpu user {7} s kernel {8} s" -f $mode, $Page, $g.Count, (Median ($g | % masthead)), (Median ($g | % logo)), (Median ($g | % thumbs)), (Median ($g | % video)), (Median ($g | % user)), (Median ($g | % kernel))
 }
 $lines
-if ($Tag) { Add-Content -Path (Join-Path $root 'build\yt_boot.txt') -Value (@("== $Tag ($(Get-Date -Format s)) exe $Exe prefs $($Pref -join ',')") + $lines) }
+if ($Tag) { Add-Content -Path (Join-Path $root 'build\yt_boot.txt') -Value (@("== $Tag ($(Get-Date -Format s)) exe $Exe prefs $Pref") + $lines) }
