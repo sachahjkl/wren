@@ -187,6 +187,17 @@ pacer_update :: proc(app: ^App) {
 // The frame budget in ms: what one frame may take at the target rate.
 frame_budget_ms :: proc() -> f32 { return pacer.period_ms > 0 ? f32(pacer.period_ms) : 1000.0 / 60 }
 
+// The most frames the swap chain in use may queue: two for a step of a resize or an input frame (see pacer_wait), else one.
+// `latency` is the window's own memory of it (the swap chain in use is the renderer's current one: the main window's, or
+// a surface made current by devtools_window.odin).
+pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
+	want := two ? 2 : 1
+	if want != latency^ {
+		render.set_max_frame_latency(&app.r, want)
+		latency^ = want
+	}
+}
+
 // At the start of a frame: wait for its time (a timed rate), then for the swap chain to take a frame, taking input
 // meanwhile. `idled`: the loop slept before this frame (nothing moved): it starts a new run of frames.
 pacer_wait :: proc(app: ^App, idled: bool) {
@@ -204,11 +215,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
-	want_latency := (pacer.resizing || pacer.input_frame) ? 2 : 1
-	if want_latency != pacer.latency {
-		render.set_max_frame_latency(&app.r, want_latency)
-		pacer.latency = want_latency
-	}
+	pacer_latency(app, &pacer.latency, pacer.resizing || pacer.input_frame)
 	if pacer.resizing { return }
 	// input waiting in the queue: the frame is made for it now, not at the next slot of the target rate (the pointer's
 	// hover state follows the hand, not a refresh later)

@@ -786,22 +786,19 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				if ui.row(.Start, {}, "###page_and_devtools") {
 					page_view(app, t)
 					devtools_splitter(app, true)
-					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-					devtools_panel(app, t)
+					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 				}
 			case dev_on && dock == .Left:
 				ui.next({width = ui.fill(), height = ui.fill()})
 				if ui.row(.Start, {}, "###devtools_and_page") {
-					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-					devtools_panel(app, t)
+					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 					devtools_splitter(app, true)
 					page_view(app, t)
 				}
 			case dev_on && dock == .Bottom:
 				page_view(app, t)
 				devtools_splitter(app, false)
-				ui.next({width = ui.fill(), height = ui.px(devtools_extent(app, false))})
-				devtools_panel(app, t)
+				devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))})
 			case:
 				page_view(app, t)
 			}
@@ -1231,14 +1228,10 @@ main :: proc() {
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
 	if !render.init(&app.r, app.win.hwnd, app.win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
-	if fixed_surface {
+	if fixed_size := fixed_surface_size(app, app.win.hwnd); fixed_size.x > 0 {
 		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
-		// (browser.window.fixed_surface; render.set_fixed_surface)
-		mon := win.MonitorFromWindow(app.win.hwnd, .MONITOR_DEFAULTTONEAREST)
-		mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
-		if win.GetMonitorInfoW(mon, &mi) {
-			render.set_fixed_surface(&app.r, {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)})
-		}
+		// (browser.window.fixed_surface; render.set_fixed_surface; the developer tools' window does the same)
+		render.set_fixed_surface(&app.r, fixed_size)
 	}
 	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
