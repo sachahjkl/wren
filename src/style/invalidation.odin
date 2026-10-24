@@ -108,11 +108,15 @@ Has_Anchor :: struct {
 // The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
 // cannot change whether the anchor matches.
 Has_Feat :: struct {
-	classes, ids, attrs: map[string]bool,
+	classes, ids, attrs, types: map[string]bool,
+	mask:     u64,    // their bits of the document's dom.Watch (watch_sync): a subtree that holds none of them cannot make the anchor match
+	unkeyed:  bool,   // the argument also asks something a key does not name (*, :not(), :nth-child(), a sibling combinator): any element may change it
 }
 
 Inv_Index :: struct {
 	rebuilds:   u64,                // the engine rebuild this was made for
+	watched:    ^dom.Document,      // the document whose Watch has the features of the anchors (watch_sync), and its generation
+	watched_gen: u32,
 	ready:      bool,
 	by_class:   map[string]Reach,
 	by_id:      map[string]Reach,
@@ -154,7 +158,8 @@ inv_free :: proc(ix: ^Inv_Index) {
 		for k in ha.feat.classes { delete(k) }
 		for k in ha.feat.ids { delete(k) }
 		for k in ha.feat.attrs { delete(k) }
-		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs)
+		for k in ha.feat.types { delete(k) }
+		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs); delete(ha.feat.types)
 	}
 	delete(ix.has_anchors)
 	ix^ = {}
@@ -230,8 +235,8 @@ analyze_list :: proc(ix: ^Inv_Index, list: ^css.Selector_List, outer: Reach, in_
 analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: bool, depth: int) {
 	if depth > MAX_DEPTH { ix.give_up = true; return }
 	if in_has {
-		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { ix.has_sibling = true }
-		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true } }
+		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } }
+		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } } }
 	}
 	for j in 0 ..< len(c.combinators) {
 		if c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling {
@@ -247,6 +252,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 			if analyze_simple(ix, &s, comp, total, in_has, depth) { keyed = true }
 		}
 		if !keyed && !in_has { ix.keyless = reach_union(ix.keyless, total) }
+		if !keyed && in_has && ix.collect != nil { ix.collect.unkeyed = true }
 	}
 }
 
@@ -259,7 +265,7 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 	subtree := reach_compose(Reach{self = true, desc = true}, total)   // read on an ancestor too (lang, dir, fieldset)
 	switch s.kind {
 	case .Type:
-		if !in_has { merge(&ix.by_tag, s.name, total) }
+		if !in_has { merge(&ix.by_tag, s.name, total) } else if ix.collect != nil { flag(&ix.collect.types, s.name) }
 		return true
 	case .Universal:
 	case .Id:
@@ -483,4 +489,29 @@ subject_keys :: proc(c: ^css.Complex) -> u32 {
 	n := key_sets_intern([]Subject_Key{best})
 	key_sets.single[best.kind][strings.clone(best.name, virtual.arena_allocator(&key_sets.arena))] = n
 	return n
+}
+
+// Gives `doc` the features the :has() anchors of `ix` ask about (dom.Watch: what its journal says about removed subtrees) and
+// each anchor its mask of them. Once per index and document.
+watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
+	if ix.watched == doc && ix.watched_gen == doc.journal.watch.gen { return }
+	dom.watch_reset(doc)
+	for &ha in ix.has_anchors {
+		m: u64
+		for k in ha.feat.classes { m |= dom.watch_bit(doc, .Class, k) }
+		for k in ha.feat.ids { m |= dom.watch_bit(doc, .Id, k) }
+		for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, strings.to_lower(k, context.temp_allocator)) }
+		for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, strings.to_lower(k, context.temp_allocator)) }
+		ha.feat.mask = m
+	}
+	ix.watched, ix.watched_gen = doc, doc.journal.watch.gen
+}
+
+// After a full pass: the watch is made then, so that the removals that follow say what they held. Documents with shadow trees
+// are not watched (their anchors are in the indexes of the trees).
+watch_prepare :: proc(e: ^Engine, doc: ^dom.Document) {
+	if len(e.shadow.of_root) > 0 || dom.has_shadow_trees(doc) || !doc.journal.on { return }
+	ix := inv_index(e)
+	if ix.give_up || !ix.uses_has { return }
+	watch_sync(ix, doc)
 }

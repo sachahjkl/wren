@@ -418,6 +418,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		if e.settings.inc_enabled {
 			if !p.doc.journal.on { dom.journal_enable(p.doc, e.settings.inc_journal) }
 			p.doc.journal.max = max(p.doc.journal.max, e.settings.inc_journal)
+			style.watch_prepare(e, p.doc)   // (what removed subtrees held, for the :has() anchors: dom.Watch)
 		}
 	} else if partial || dom_partial {
 		style.timeline_restyled_dom(p.anim.timeline, p.doc, p.styled, now)

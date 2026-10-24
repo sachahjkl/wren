@@ -1,5 +1,6 @@
 package dom
 
+import "base:runtime"
 import "core:mem/virtual"
 import "core:strings"
 import "wb:base"
@@ -35,6 +36,8 @@ Journal_Entry :: struct {
 	had_old:  bool,          // Attribute: the attribute existed before the change; Text: always
 	batch:    u32,           // entries of one DOM operation share it (Document.batch), 0 = an operation of its own
 	mutation: u64,
+	watch:    u64,           // Remove of an element that was in the document: which of the watched features (Watch) its subtree held, WATCH_KNOWN set; 0: not known
+	watch_gen: u32,          // the Watch generation the bits are of
 }
 
 // Called for every mutation as it happens, journal on or off (Document.observer). The entry's strings are valid
@@ -48,6 +51,7 @@ Journal :: struct {
 	entries: [dynamic]Journal_Entry,
 	names:   virtual.Arena,            // attribute names of the entries
 	names_ready: bool,
+	watch:   Watch,
 }
 
 // Starts recording (again with a new bound: max_entries >= 16). The journal covers the mutations from now on.
@@ -70,6 +74,7 @@ journal_free :: proc(d: ^Document) {
 	j := &d.journal
 	delete(j.entries)
 	j.entries = nil
+	watch_free(&j.watch)
 	if j.names_ready { virtual.arena_destroy(&j.names); j.names_ready = false }
 }
 
@@ -87,7 +92,7 @@ journal_since :: proc(d: ^Document, since: u64) -> ([]Journal_Entry, bool) {
 }
 
 @(private)
-journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE) {
+journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Handle, name := "", old := "", had_old := false, prev := base.NIL_HANDLE, next := base.NIL_HANDLE, watch := u64(0)) {
 	if d.observer != nil && kind != .Reslot && !(kind == .Attribute && name == CUSTOM_STATE_ATTRIBUTE) {
 		e := Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = name, old = old, had_old = had_old, batch = d.batch, mutation = d.mutations}
 		d.observer(d.observer_user, d, &e)
@@ -123,5 +128,95 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 	// the old data of a text change is for the hook only: readers of the journal do not need it
 	ov := ""
 	if old != "" && kind == .Attribute { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
-	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, batch = d.batch, mutation = d.mutations})
+	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, batch = d.batch, mutation = d.mutations, watch = watch, watch_gen = d.journal.watch.gen})
+}
+
+////////////////////////////////
+// Watched features
+
+// The features the style engine asks about when elements come and go: the keys of the arguments of its :has() anchors (tag
+// names, attribute names, ids and classes). Each gets a bit (up to 62; the rest share the last one), and a Remove entry of the
+// journal says which of them the removed subtree held: a node already destroyed when the engine looks at the journal has
+// still told what it carried. Set by the style engine (watch_reset, watch_bit); a new generation when it changes them, and
+// the entries of an older one say nothing.
+Watch :: struct {
+	gen:       u32,
+	on:        bool,
+	allocator: runtime.Allocator,
+	tags, attrs, ids, classes: map[string]u64,
+}
+
+WATCH_KNOWN :: u64(1) << 63
+
+@(private)
+watch_free :: proc(w: ^Watch) {
+	if w.allocator.procedure == nil { return }
+	context.allocator = w.allocator
+	for m in ([]^map[string]u64{&w.tags, &w.attrs, &w.ids, &w.classes}) {
+		for k in m { delete(k) }
+		delete(m^)
+	}
+	w^ = Watch{gen = w.gen}
+}
+
+// Forgets the features watched; the bits handed out so far mean nothing any more.
+watch_reset :: proc(d: ^Document) {
+	w := &d.journal.watch
+	watch_free(w)
+	w.gen += 1
+	w.on = true
+}
+
+// The bit of a feature, watched from now on.
+watch_bit :: proc(d: ^Document, kind: Feature, name: string) -> u64 {
+	w := &d.journal.watch
+	if w.allocator.procedure == nil { w.allocator = context.allocator }
+	context.allocator = w.allocator
+	m: ^map[string]u64
+	switch kind {
+	case .Tag: m = &w.tags
+	case .Attr: m = &w.attrs
+	case .Id: m = &w.ids
+	case .Class: m = &w.classes
+	}
+	if b, ok := m[name]; ok { return b }
+	n := len(w.tags) + len(w.attrs) + len(w.ids) + len(w.classes)
+	b := u64(1) << u32(min(n, 62))
+	m[strings.clone(name)] = b
+	return b
+}
+
+Feature :: enum u8 { Tag, Attr, Id, Class }
+
+// Which watched features the elements of the subtree of `root` carry (its own tree, not the shadow trees of its elements).
+subtree_watch :: proc(d: ^Document, root: base.Handle) -> (bits: u64) {
+	w := &d.journal.watch
+	bits = WATCH_KNOWN
+	if len(w.tags) + len(w.attrs) + len(w.ids) + len(w.classes) == 0 { return }
+	stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+	append(&stack, root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := get(d, h)
+		if n == nil || n.kind != .Element { continue }
+		if b, ok := w.tags[n.name]; ok { bits |= b }
+		for a in n.attrs {
+			if b, ok := w.attrs[a.name]; ok { bits |= b }
+			switch a.name {
+			case "id": if b, ok := w.ids[a.value]; ok { bits |= b }
+			case "class":
+				if len(w.classes) == 0 { continue }
+				rest := a.value
+				for len(rest) > 0 {
+					for len(rest) > 0 && (rest[0] == ' ' || rest[0] == '\t' || rest[0] == '\n' || rest[0] == '\r' || rest[0] == '\f') { rest = rest[1:] }
+					end := 0
+					for end < len(rest) && !(rest[end] == ' ' || rest[end] == '\t' || rest[end] == '\n' || rest[end] == '\r' || rest[end] == '\f') { end += 1 }
+					if end > 0 { if b, ok := w.classes[rest[:end]]; ok { bits |= b } }
+					rest = rest[end:]
+				}
+			}
+		}
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = get(d, ch).next { append(&stack, ch) }
+	}
+	return
 }
