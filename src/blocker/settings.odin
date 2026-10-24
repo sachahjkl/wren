@@ -27,6 +27,7 @@ Settings :: struct {
 	max_selectors:    int,
 	engine_cache:     bool,
 	badge:            bool,
+	native_hooks:     bool,    // the API-changing scriptlets are engine hooks (else the JavaScript fallback)
 	badge_inside:     bool,    // the count goes inside the shield, in place of the state's glyph
 	max_hosts_per_tab: int,
 	graph_points:     int,
@@ -70,6 +71,8 @@ PREFS := [?]config.Def{
 		description = i18n.tr("Most cosmetic selectors applied to one page (a guard against pathological pages).")},
 	{name = "blocker.engine.cache", kind = .Bool, default = {b = true},
 		description = i18n.tr("Keep the compiled filter index in the profile so that start-up loads it in a few milliseconds instead of compiling the lists.")},
+	{name = "blocker.hooks.native", kind = .Bool, default = {b = true},
+		description = i18n.tr("Install the scriptlets that change what a JavaScript API does (set-constant, timers, fetch, listeners...) as native hooks of the engine, with no JavaScript run in the page. Off: they run as JavaScript (a fallback; slower).")},
 	{name = "blocker.badge.enabled", kind = .Bool, default = {b = true},
 		description = i18n.tr("Show the number of blocked requests on the blocker icon of the address row.")},
 	{name = "blocker.badge.style", kind = .String, default = {s = "corner"}, choices = {"corner", "inside"},
@@ -105,6 +108,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		max_selectors = int(config.int_of(p, "blocker.cosmetic.max_selectors")),
 		engine_cache = config.bool_of(p, "blocker.engine.cache"),
 		badge = config.bool_of(p, "blocker.badge.enabled"),
+		native_hooks = config.bool_of(p, "blocker.hooks.native"),
 		badge_inside = config.string_of(p, "blocker.badge.style") == "inside",
 		max_hosts_per_tab = int(config.int_of(p, "blocker.matrix.max_hosts")),
 		graph_points = int(config.int_of(p, "blocker.graph.points")),

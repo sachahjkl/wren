@@ -391,14 +391,34 @@ hook_realm_started :: proc(user: rawptr, p: ^page.Page) {
 	hs := hooks_of(d)
 	if !hs.prepared { hs.page = p; prepare_scriptlets(b, d, hs, p) }
 	if len(hs.rest) == 0 && len(hs.raw) == 0 { return }
+	// the scriptlets that change an API go to the engine as native hooks; what is left, and everything when the hooks are off, is JavaScript
+	js_rules := make([dynamic][]string, context.temp_allocator)
+	spec := strings.builder_make(context.temp_allocator)
+	hooks := 0
+	for r in hs.rest {
+		canon := scriptlet_canonical(r[0])
+		if b.cfg.native_hooks && scriptlet_route(canon) == .Hook {
+			if hooks > 0 { strings.write_byte(&spec, 0x1e) }
+			strings.write_string(&spec, canon)
+			for a in r[1:] { strings.write_byte(&spec, 0x1f); strings.write_string(&spec, a) }
+			hooks += 1
+		} else {
+			js := make([]string, len(r), context.temp_allocator)
+			copy(js, r)
+			js[0] = canon
+			append(&js_rules, js)
+		}
+	}
+	if hooks > 0 { page.js_hooks(p, transmute([]byte)strings.to_string(spec)) }
 	sb := strings.builder_make(context.temp_allocator)
-	if len(hs.rest) > 0 {
+	if len(js_rules) > 0 {
 		strings.write_string(&sb, "(function(rules){\n")
 		strings.write_string(&sb, SCRIPTLETS_JS)
 		strings.write_string(&sb, "\n})(")
-		json_rules(&sb, hs.rest[:])
+		json_rules(&sb, js_rules[:])
 		strings.write_string(&sb, ");\n")
 	}
+	if strings.builder_len(sb) == 0 { return }
 	for r in hs.raw {
 		strings.write_string(&sb, "try{")
 		strings.write_string(&sb, r)
