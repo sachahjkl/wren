@@ -62,6 +62,9 @@ launch :: proc(ctx: ^Context, name, profile: string, hidden: bool, extra: []stri
 		if v <= 0 { errln("wren ctl: --dpi is a number (96 = 100 %, 144 = 150 %, 192 = 200 %)"); return l, false }
 		append(&args, "--pref", fmt.tprintf("browser.ui.scale=%.4f", v / 96))
 	}
+	// a Wren of a throwaway profile is for automation: it does not download the content blocker's lists (a few seconds of CPU a little after
+	// the start, which a measure of an idle Wren takes for the Wren's own, and a request in flight at the end); --pref below may turn it on
+	if l.temp { append(&args, "--pref", "blocker.update.enabled=false") }
 	for p in ctx.o.prefs { append(&args, "--pref", p) }
 	for e in extra { append(&args, e) }
 	append(&args, "about:blank")

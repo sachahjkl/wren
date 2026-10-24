@@ -27,6 +27,7 @@ Updater :: struct {
 	queue:        [dynamic]string,   // list ids still to ask
 	current_id:   string,            // owned
 	current:      base.Handle,       // the network request
+	current_ctx:  ^Ctx,              // what its events carry: freed with the last event, or by updater_stop when the request is cancelled (no event follows)
 	downloads:    [dynamic]Download,
 	running:      bool,
 	job:          ^Job,
@@ -52,7 +53,12 @@ updater_schedule :: proc(b: ^Blocker, delay_s: int) {
 
 updater_stop :: proc(b: ^Blocker) {
 	if b.upd.timer != base.NIL_HANDLE { host.clear_timer(b.loop, b.upd.timer); b.upd.timer = base.NIL_HANDLE }
-	if b.upd.current != base.NIL_HANDLE { net.cancel(b.client, b.upd.current); b.upd.current = base.NIL_HANDLE }
+	if b.upd.current != base.NIL_HANDLE {
+		net.cancel(b.client, b.upd.current); b.upd.current = base.NIL_HANDLE
+		// a cancelled request sends no more events: what they carried would stay allocated (the check build found it at exit when the
+		// lists were downloaded while the browser closed, which a machine with its lists up to date never does)
+		if c := b.upd.current_ctx; c != nil { b.upd.current_ctx = nil; delete(c.id); free(c) }
+	}
 	if b.upd.job != nil {
 		j := b.upd.job
 		if j.thread != nil { host.thread_join(j.thread); j.thread = nil }
@@ -119,6 +125,7 @@ updater_next :: proc(b: ^Blocker) {
 		}
 		c := new(Ctx)
 		c.b, c.id = b, strings.clone(id)
+		b.upd.current_ctx = c
 		b.upd.current = net.fetch(b.client, {
 			url = l.url, method = "GET", headers = strings.to_string(sb), on_event = list_event, user = c,
 			collect = true, max_body = b.cfg.max_list_bytes, priority = .Low,
@@ -184,6 +191,7 @@ list_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 @(private)
 finish_request :: proc(c: ^Ctx) {
 	c.b.upd.current = base.NIL_HANDLE
+	if c.b.upd.current_ctx == c { c.b.upd.current_ctx = nil }
 	delete(c.id)
 	free(c)
 }
