@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>yt-boot: the start-up of a heavy single-page app, without the network</title>
+<!-- tools\perf.ps1 (yt_boot): what the main thread does while a YouTube watch page starts, made deterministic. Component styles come
+     in as <style> elements while the page is built in batches; between batches the script reads layout (as Polymer's visibility
+     and sizing code does); rules anchor on :has() of a tag, a class or a chain; form controls come and go; attributes toggle.
+     ?batches=12&cards=40 sizes it. window.__boot has the numbers when it is done. -->
+<style>
+  html { font: 14px/1.4 Roboto, sans-serif; background: #fff; color: #111 }
+  body { margin: 0 }
+  #app { display: block; position: relative }
+  .card { display: flex; gap: 8px; padding: 6px 12px; contain: layout }
+  .card .thumb { width: 168px; height: 94px; background: #ddd }
+  .card .meta { flex: 1 1 auto; min-width: 0 }
+  .card .title { font-weight: 500; max-height: 2.8em; overflow: hidden }
+</style>
+</head>
+<body>
+<div id="app"><div id="masthead"></div><div id="list"></div></div>
+<script>
+(function () {
+  const q = new URLSearchParams(location.search);
+  const BATCHES = +q.get('batches') || 12, CARDS = +q.get('cards') || 40;
+  let seed = 12345;
+  const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const t0 = performance.now();
+  const stats = { reads: 0, ghosts: 0, batches: 0 };
+  const list = document.getElementById('list');
+
+  // component styles: a few thousand rules in ten sheets, var() everywhere, anchors on :has()
+  function sheetText(n, k) {
+    let s = '';
+    for (let i = 0; i < n; i++) {
+      s += `ytd-card-${k}.c${i} .title:not(.x${i}) { color: var(--c${i % 17}, #222); margin: ${i % 5}px; font-size: calc(var(--s${i % 7}, 1) * 14px) }\n`;
+      s += `.card.k${i} > .meta span.t${i % 9}[data-i="${i % 11}"] { padding: ${i % 3}px; border-color: var(--b${i % 13}, #ccc) }\n`;
+    }
+    return s;
+  }
+  function addSheet(k) {
+    const el = document.createElement('style');
+    el.textContent = sheetText(180, k) +
+      ':has(ghost-el) .ghost-aware { opacity: .9 }\n' +
+      ':has(.flag) :not(.nope) { --z: 1 }\n' +
+      ':has(ghost-el) :not(.nope) { --y: 1 }\n' +
+      ':has(.flag) .flag-aware { outline: 1px solid red }\n' +
+      ':has([role] .host) .role-aware { padding: 1px }\n' +
+      ':has(> .direct) .direct-aware { margin: 1px }\n' +
+      'input:checked + label { font-weight: 700 }\nform:valid .ok { color: green }\nbutton:disabled { opacity: .5 }\n';
+    document.head.appendChild(el);
+  }
+
+  function card(b, i) {
+    const c = document.createElement('ytd-card-' + (b % 10));
+    c.className = `card c${(b * 7 + i) % 180} k${(b * 5 + i) % 180} ghost-aware flag-aware role-aware direct-aware`;
+    c.setAttribute('data-i', String(i % 11));
+    c.innerHTML = `<a class="thumb" href="#v${b}-${i}"><img alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></a>
+      <div class="meta"><div class="title">Video ${b}-${i} with a title long enough to wrap onto a second line when the window is narrow</div>
+      <span class="t${i % 9}" data-i="${i % 11}">Channel ${i}</span> <span class="t${(i + 3) % 9}">${i * 13} views</span>
+      <div role="group" aria-hidden="${i % 2 ? 'true' : 'false'}"><span class="host"></span></div>
+      <svg width="24" height="24" viewBox="0 0 24 24" focusable="false"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" fill="#555"/></svg>
+      <div class="flag"></div><button class="b${i % 4}"${i % 3 ? '' : ' disabled'}>Save</button><input type="checkbox" id="cb${b}-${i}"><label for="cb${b}-${i}">Later</label></div>`;
+    return c;
+  }
+
+  // what a component's attached callback reads: sizes and styles, element by element
+  function readLayout(from) {
+    const kids = list.children;
+    let sum = 0;
+    sum += list.getBoundingClientRect().height;
+    for (let i = Math.max(0, kids.length - 8); i < kids.length; i++) {
+      const el = kids[i];
+      sum += el.clientWidth + el.offsetWidth;
+      sum += el.getBoundingClientRect().top;
+      sum += parseFloat(getComputedStyle(el).fontSize) || 0;
+      stats.reads += 4;
+    }
+    for (let i = 0; i < 40; i++) { const el = kids[Math.floor(rnd() * kids.length)]; if (el) { sum += el.getClientRects().length; stats.reads++; } }
+    return sum;
+  }
+
+  let b = 0;
+  function batch() {
+    if (b < 10) addSheet(b);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < CARDS; i++) frag.appendChild(card(b, i));
+    list.appendChild(frag);
+    readLayout();
+    // elements the anchors name: some come, some go (ghost placeholders, a flag, a host under a role)
+    const ghost = document.createElement('ghost-el');
+    list.appendChild(ghost);
+    readLayout();
+    stats.ghosts++;
+    if (b % 2) { list.removeChild(ghost); readLayout(); }
+    const flag = document.createElement('div');
+    flag.className = 'flag';
+    list.firstElementChild.appendChild(flag);
+    readLayout();
+    if (b % 3 === 2) { flag.remove(); readLayout(); }
+    // attributes that toggle on many elements, then a read
+    const kids = list.children;
+    for (let i = 0; i < kids.length; i += 7) { kids[i].setAttribute('aria-hidden', i % 2 ? 'true' : 'false'); kids[i].toggleAttribute('hidden', i % 14 === 0); }
+    readLayout();
+    stats.batches = ++b;
+    if (b < BATCHES) setTimeout(batch, 0);
+    else { window.__boot = { done: true, ms: Math.round(performance.now() - t0), elements: document.getElementsByTagName('*').length, reads: stats.reads, batches: b }; document.title = 'yt-boot done'; }
+  }
+  setTimeout(batch, 0);
+})();
+</script>
+</body>
+</html>

@@ -47,14 +47,117 @@ bool wj_scratch_grow(uint32_t need)
 
 int wren_js_timezone_offset(int64_t time_ms) { return wr_Engine_timezoneOffset((double)time_ms); }
 
+/* ---- the page's own functions (the measuring tools: WREN_JS_PROFILE): every few calls of the interrupt handler (it runs every
+ * JS_INTERRUPT_COUNTER_INIT calls and loop iterations of the interpreter) the stack is read from a new Error's `stack` and
+ * the frames counted by their text ("name (url:line:col)"): self for the innermost, inclusive for each distinct frame of the
+ * first few. wj_profile_dump writes "self<TAB>inclusive<TAB>frame" lines. Off, the handler is as it was. ---- */
+#define WJ_PROF_SLOTS 8192
+#define WJ_PROF_EVERY 4
+#define WJ_PROF_DEPTH 10
+
+typedef struct { char *key; uint32_t self, incl; } wj_prof_slot;
+static wj_prof_slot wj_prof_tab[WJ_PROF_SLOTS];
+static int wj_prof_on;
+static uint32_t wj_prof_calls, wj_prof_samples, wj_prof_used, wj_prof_lost;
+
+static wj_prof_slot *wj_prof_slot_of(const char *s, size_t n)
+{
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < n; i++) { h = (h ^ (uint8_t)s[i]) * 16777619u; }
+    for (uint32_t k = 0; k < WJ_PROF_SLOTS; k++) {
+        wj_prof_slot *e = &wj_prof_tab[(h + k) & (WJ_PROF_SLOTS - 1)];
+        if (!e->key) {
+            if (wj_prof_used >= WJ_PROF_SLOTS * 3 / 4) { wj_prof_lost++; return NULL; }
+            e->key = malloc(n + 1);
+            if (!e->key) { return NULL; }
+            memcpy(e->key, s, n);
+            e->key[n] = 0;
+            wj_prof_used++;
+            return e;
+        }
+        if (strlen(e->key) == n && memcmp(e->key, s, n) == 0) { return e; }
+    }
+    return NULL;
+}
+
+static void wj_prof_sample(JSContext *ctx)
+{
+    JSValue err = JS_NewError(ctx);
+    JSValue st = JS_GetPropertyStr(ctx, err, "stack");
+    size_t len = 0;
+    const char *s = JS_IsString(st) ? JS_ToCStringLen(ctx, &len, st) : NULL;
+    if (s) {
+        const char *seen[WJ_PROF_DEPTH]; size_t seen_n[WJ_PROF_DEPTH]; int nseen = 0;
+        const char *p = s, *end = s + len;
+        int depth = 0;
+        while (p < end && depth < WJ_PROF_DEPTH) {
+            const char *nl = memchr(p, '\n', (size_t)(end - p));
+            const char *le = nl ? nl : end;
+            const char *a = p;
+            while (a < le && *a == ' ') { a++; }
+            if (le - a > 3 && a[0] == 'a' && a[1] == 't' && a[2] == ' ') { a += 3; }
+            size_t n = (size_t)(le - a);
+            if (n > 220) { n = 220; }
+            if (n > 0) {
+                /* distinct frames only (a recursion counts once) */
+                int dup = 0;
+                for (int i = 0; i < nseen; i++) { if (seen_n[i] == n && memcmp(seen[i], a, n) == 0) { dup = 1; break; } }
+                wj_prof_slot *e = dup ? NULL : wj_prof_slot_of(a, n);
+                if (e) { e->incl++; if (depth == 0) { e->self++; } }
+                if (!dup && nseen < WJ_PROF_DEPTH) { seen[nseen] = a; seen_n[nseen] = n; nseen++; }
+                depth++;
+            }
+            p = nl ? nl + 1 : end;
+        }
+        /* a native function on top (exec, test, replace, forEach...): the frames down to the first that is not native, as one
+         * ("native <= native <= caller"): who is behind the time the natives take */
+        if (nseen >= 2 && seen_n[0] > 9 && memcmp(seen[0] + seen_n[0] - 8, "(native)", 8) == 0) {
+            char two[700]; size_t used = 0; int k;
+            for (k = 0; k < nseen && k < 4; k++) {
+                size_t nk = seen_n[k] > 160 ? 160 : seen_n[k];
+                if (used + nk + 4 >= sizeof two) { break; }
+                if (k) { memcpy(two + used, " <= ", 4); used += 4; }
+                memcpy(two + used, seen[k], nk); used += nk;
+                if (!(seen_n[k] > 9 && memcmp(seen[k] + seen_n[k] - 8, "(native)", 8) == 0)) { break; }
+            }
+            wj_prof_slot *e = wj_prof_slot_of(two, used);
+            if (e) { e->self++; e->incl++; }
+        }
+        wj_prof_samples++;
+        JS_FreeCString(ctx, s);
+    }
+    JS_FreeValue(ctx, st);
+    JS_FreeValue(ctx, err);
+}
+
+WJ_EXPORT("wj_profile_set") void wj_profile_set(int32_t on) { wj_prof_on = on; }
+
+WJ_EXPORT("wj_profile_dump") uint32_t wj_profile_dump(uint32_t buf, uint32_t size)
+{
+    char *out = (char *)(uintptr_t)buf;
+    uint32_t n = 0;
+    int w = snprintf(out, size, "samples\t%u\t%u\tfunctions\t%u\tlost\t%u\n", wj_prof_samples, wj_prof_calls, wj_prof_used, wj_prof_lost);
+    if (w < 0 || (uint32_t)w >= size) { return 0; }
+    n = (uint32_t)w;
+    for (uint32_t i = 0; i < WJ_PROF_SLOTS; i++) {
+        wj_prof_slot *e = &wj_prof_tab[i];
+        if (!e->key) { continue; }
+        w = snprintf(out + n, size - n, "%u\t%u\t%s\n", e->self, e->incl, e->key);
+        if (w < 0 || n + (uint32_t)w >= size) { break; }
+        n += (uint32_t)w;
+    }
+    return n;
+}
+
 static int wj_interrupt_handler(JSRuntime *rt, void *opaque)
 {
-    WJ_UNUSED(rt); WJ_UNUSED(opaque);
+    WJ_UNUSED(opaque);
+    if (WJ_UNLIKELY(wj_prof_on) && wj_the_realm.ctx && (++wj_prof_calls % WJ_PROF_EVERY) == 0) { wj_prof_sample(wj_the_realm.ctx); }
+    WJ_UNUSED(rt);
     if (WJ_LIKELY(!wj_interrupt)) { return 0; }
     wj_interrupt_count++;
     return 1;
 }
-
 /* ---- console output (also what the realm uses before the console bindings exist) ---- */
 
 void wj_console_text(int level, const char *text, size_t len)
