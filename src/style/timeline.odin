@@ -710,6 +710,40 @@ apply_run :: proc(r: ^Anim_Run, st: Run_State, dst, scratch: ^Computed, ctx: ^In
 	return r.props
 }
 
+// How long until the values of a running animation change again, when they hold still now: the two keyframes that bound its
+// progress give every animated property the same value (the pause of a loop: `40% { a } 100% { a }`). The timeline then asks for
+// its next tick at the end of that stretch instead of at once, so a page whose only motion is such a loop does not redraw at every
+// frame while the loop rests. ok false: something moves now, or this cannot be told (a property with an implicit 0% or 100% keyframe
+// takes the underlying value, which is not known here).
+@(private)
+hold_ms :: proc(r: ^Anim_Run, st: Run_State) -> (ms: f64, ok: bool) {
+	if !r.frames_ready || len(r.frames) == 0 || !(r.spec.duration > 0) { return 0, false }
+	odd := math.mod(st.iteration, 2) != 0
+	forwards := true
+	switch r.spec.direction {
+	case .Normal: forwards = true
+	case .Reverse: forwards = false
+	case .Alternate: forwards = !odd
+	case .Alternate_Reverse: forwards = odd
+	}
+	x := st.directed
+	left := math.INF_F64   // progress left until the nearest keyframe at which a value may start to move, in the direction the animation runs
+	for p in Prop {
+		if !ps_has(r.props, p) { continue }
+		lo, hi: ^Frame_Value
+		lo_off, hi_off := -1.0, 2.0
+		for &f in r.frames {
+			if !ps_has(f.props, p) { continue }
+			if f.offset <= x && f.offset >= lo_off { lo, lo_off = &f, f.offset }
+			if f.offset > x && f.offset < hi_off { hi, hi_off = &f, f.offset }
+		}
+		if lo == nil || hi == nil || lo.c == nil || hi.c == nil || !prop_equal(lo.c, hi.c, p) { return 0, false }
+		left = min(left, forwards ? hi_off - x : x - lo_off)
+	}
+	if math.is_inf(left) || !(left > 0) { return 0, false }
+	return left * f64(r.spec.duration) + 1, true
+}
+
 ////////////////////////////////
 // The tick
 
@@ -766,7 +800,8 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			if r.spec.play_state == .Running {
 				switch st.phase {
 				case .Before: want(&next, -st.t)
-				case .Active: want(&next, 0)
+				case .Active:
+					if ms, held := hold_ms(r, st); held { want(&next, ms) } else { want(&next, 0) }
 				case .After:
 				}
 			}

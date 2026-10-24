@@ -37,6 +37,17 @@ CARD_STYLE :: `
     background-image: linear-gradient(var(--ang, 115deg), rgba(255, 122, 198, 0) 8%, #ff7ac6 22%, #ffd36e 36%, #7dffb2 50%, #6ec7ff 64%, #b48cff 78%, rgba(180, 140, 255, 0) 92%); }
   .lic .glare { left: 0; top: 0; right: 0; bottom: 0; mix-blend-mode: soft-light;
     background-image: radial-gradient(circle at var(--gx, 30%) var(--gy, 24%), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 55%); }
+  .lic .rel, .lic .sha, .lic .shb, .lic .shc { left: 0; top: 0; right: 0; bottom: 0; }
+  .lic .rel { background-size: 100% 100%; mix-blend-mode: overlay; opacity: 0.4; }
+  .lic .sha, .lic .shb, .lic .shc { background-size: 400% 100%; background-repeat: no-repeat; animation: sheen 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+  .lic .sha, .lic .shb { mask-size: 100% 100%; mask-repeat: no-repeat; mix-blend-mode: screen; }
+  .lic .sha { background-image: linear-gradient(105deg, rgba(150, 215, 255, 0) 59.2%, rgba(150, 215, 255, 0.08) 61.6%, rgba(190, 235, 255, 0.6) 64%, rgba(255, 255, 255, 0) 65%); }
+  .lic .shb { background-image: linear-gradient(105deg, rgba(255, 190, 225, 0) 64%, rgba(255, 215, 235, 0.55) 65.2%, rgba(255, 180, 220, 0.12) 67.4%, rgba(255, 180, 220, 0) 69.6%); }
+  .lic .shc { mix-blend-mode: color-dodge; opacity: 0.32;
+    background-image: linear-gradient(105deg, rgba(255, 255, 255, 0) 62.4%, rgba(255, 120, 200, 0.5) 63.4%, rgba(255, 255, 255, 0.9) 64.6%, rgba(110, 200, 255, 0.5) 65.8%, rgba(255, 255, 255, 0) 66.8%); }
+  .lic.live .sha, .lic.live .shb, .lic.live .shc { animation-play-state: paused; opacity: 0; }
+  @keyframes sheen { 0% { background-position: 100% 0; } 40% { background-position: 50% 0; } 100% { background-position: 50% 0; } }
+  @media (prefers-reduced-motion: reduce) { .lic .sha, .lic .shb, .lic .shc { display: none; } }
   .lic .face { left: 0; top: 0; right: 0; bottom: 0; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
   .lic .top { display: flex; align-items: center; }
   .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
@@ -116,7 +127,11 @@ CARD_SCRIPT :: `
 })();
 `
 
-card_css :: proc() -> string { return CARD_STYLE }
+// The style of the card with the three pictures of its relief (about_card_relief.odin), in the temporary allocator.
+card_css :: proc() -> string {
+	r := card_relief_cached()
+	return strings.concatenate({CARD_STYLE, "\n  .lic .rel { background-image: url(\"", r.emboss, "\"); }\n  .lic .sha { mask-image: url(\"", r.toward, "\"); }\n  .lic .shb { mask-image: url(\"", r.away, "\"); }\n"}, context.temp_allocator)
+}
 
 // The thickness of the card: a real rim, like a bank card's (0.76mm is about 4px at this size; 8 shows from a tilt of 18 degrees), built from flat faces standing
 // edge-on behind the base: the four straight sides, and the rounded corners cut into facets (a quarter circle of CARD_RADIUS in
@@ -188,7 +203,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	e :: proc(s: string) -> string { return escape_html(s) }
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
 	card_walls_html(sb)
-	strings.write_string(sb, "<div class=\"base\"><div class=\"tex\"></div><div class=\"holo\"></div><div class=\"glare\"></div></div>")
+	strings.write_string(sb, "<div class=\"base\"><div class=\"tex\"></div><div class=\"holo\"></div><div class=\"glare\"></div><div class=\"rel\"></div><div class=\"sha\"></div><div class=\"shb\"></div><div class=\"shc\"></div></div>")
 	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><img src=\"%s\" alt=\"\"><b>%s</b><span>%s</span></div>", app_logo_url(), APP_NAME, e(license.edition_title(lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }
