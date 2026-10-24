@@ -134,6 +134,47 @@ not_one:
     return false;
 }
 
+/* The bytes of a candidate for an IndexedDB key (an ArrayBuffer, not a shared one, or a view): 1 with the bytes, 0 when it is
+ * neither or its buffer is detached / the view out of bounds (no exception), -1 with an exception pending. */
+int wj_key_buffer_bytes(JSContext *ctx, JSValueConst v, const uint8_t **ptr, size_t *len)
+{
+    *ptr = NULL;
+    *len = 0;
+    if (!JS_IsObject(v)) { return 0; }
+    JSClassID id = JS_GetClassID(v);
+    JSValue buffer;
+    size_t off = 0, n = 0;
+    if (id == ab_class) {
+        size_t total = 0;
+        uint8_t *p = JS_GetArrayBuffer(ctx, &total, v);
+        if (!p) { JS_FreeValue(ctx, JS_GetException(ctx)); return 0; }
+        *ptr = p;
+        *len = total;
+        return 1;
+    }
+    if (JS_GetTypedArrayType(v) >= 0) {
+        buffer = JS_GetTypedArrayBuffer(ctx, v, &off, &n, NULL);
+        if (JS_IsException(buffer)) { JS_FreeValue(ctx, JS_GetException(ctx)); return 0; }
+    } else if (id == dataview_class) {
+        buffer = JS_Call(ctx, dv_buffer, v, 0, NULL);
+        if (JS_IsException(buffer)) { JS_FreeValue(ctx, JS_GetException(ctx)); return 0; }
+        if (!dv_number(ctx, dv_offset, v, &off) || !dv_number(ctx, dv_length, v, &n)) {
+            JS_FreeValue(ctx, JS_GetException(ctx));
+            JS_FreeValue(ctx, buffer);
+            return 0;
+        }
+    } else {
+        return 0;
+    }
+    size_t total = 0;
+    uint8_t *p = JS_GetArrayBuffer(ctx, &total, buffer);
+    JS_FreeValue(ctx, buffer);   /* the view keeps it alive */
+    if (!p) { JS_FreeValue(ctx, JS_GetException(ctx)); return 0; }
+    if (off > total || n > total - off) { return 0; }
+    *ptr = p + off;
+    *len = n;
+    return 1;
+}
 JSValue wj_arraybuffer_take(JSContext *ctx, uint8_t *p, size_t n)
 {
     JSValue ab = JS_NewArrayBuffer(ctx, p, n, 0, web_ab_realloc, NULL, false);
