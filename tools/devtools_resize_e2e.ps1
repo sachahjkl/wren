@@ -70,7 +70,17 @@ try {
             Wren-Ctl wait load | Out-Null
             $prop = if ($dock -eq 'right') { 'innerWidth' } else { 'innerHeight' }
             $vals = @()
-            $sizes = if ($dock -eq 'right') { 300, 500, 200 } else { 150, 250, 100 }   # (a panel is at most 70 % of the window)
+            # sizes in proportion to the window as it is (a runner's screen may be smaller than the 1280 x 800 asked for; a panel is at least
+            # 100 px and at most 70 % of the window): the whole is what the page leaves with a panel of a size no limit reaches, plus that size
+            Wren-Ctl pref set browser.devtools.size 150 | Out-Null
+            Wren-Ctl wait frames 6 | Out-Null
+            $tot = [double](Wren-Eval "window.$prop") + 150
+            $fr = if ($dock -eq 'right') { 0.30, 0.50, 0.22 } else { 0.32, 0.50, 0.27 }
+            # (the preference is at least 100: a size below it is refused and the value stays; and three sizes at least 40 apart)
+            $c = [Math]::Max(110, [int][Math]::Round($tot * $fr[2])); $a = [Math]::Max($c + 40, [int][Math]::Round($tot * $fr[0])); $b = [Math]::Max($a + 40, [int][Math]::Round($tot * $fr[1]))
+            $b = [Math]::Min($b, [int][Math]::Floor($tot * 0.7))
+            if (($b - $a) -lt 20 -or ($tot - $b) -lt 60) { Write-Host "  docked $dock : the window is too small to try three sizes ($tot px): skipped"; continue }
+            $sizes = @($a, $b, $c)
             foreach ($size in $sizes) {
                 Wren-Ctl pref set browser.devtools.size $size | Out-Null
                 Wren-Ctl wait frames 6 | Out-Null
