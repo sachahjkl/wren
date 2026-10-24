@@ -786,22 +786,19 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				if ui.row(.Start, {}, "###page_and_devtools") {
 					page_view(app, t)
 					devtools_splitter(app, true)
-					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-					devtools_panel(app, t)
+					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 				}
 			case dev_on && dock == .Left:
 				ui.next({width = ui.fill(), height = ui.fill()})
 				if ui.row(.Start, {}, "###devtools_and_page") {
-					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-					devtools_panel(app, t)
+					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 					devtools_splitter(app, true)
 					page_view(app, t)
 				}
 			case dev_on && dock == .Bottom:
 				page_view(app, t)
 				devtools_splitter(app, false)
-				ui.next({width = ui.fill(), height = ui.px(devtools_extent(app, false))})
-				devtools_panel(app, t)
+				devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))})
 			case:
 				page_view(app, t)
 			}
