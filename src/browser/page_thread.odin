@@ -30,6 +30,8 @@ PAGE_THREAD_PREFS := [?]config.Def{
 		description = "When closing the window takes longer than this, the browser logs once a second what the shutdown waits for (the step, the thread, the threads still running) to the standard error and to shutdown.log in the profile."},
 	{name = "browser.shell.shutdown_force_ms", kind = .Int, default = {i = 10000}, bounded = true, min = 0, max = 600000, unit = "ms",
 		description = "When closing the window takes longer than this, the process is ended (after logging what it waited for): a thread that never answers cannot keep a closed window on screen. 0: never forced."},
+	{name = "browser.shell.shutdown_surface_wait_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 600000, unit = "ms",
+		description = "While the browser closes, how long it waits for the window's swap chain to be released. The release waits for the system's compositor, which on a machine whose cores are all busy can take seconds: past this the release goes on by itself and the browser carries on closing. 0: wait as long as it takes."},
 	{name = "browser.shell.page_thread_stack_mb", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1024, unit = "MB", restart = true,
 		description = "Stack of the page thread: a deeply nested document recurses that deep in layout."},
 }

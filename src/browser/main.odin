@@ -1239,6 +1239,7 @@ main :: proc() {
 			render.set_fixed_surface(&app.r, {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)})
 		}
 	}
+	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
 	prof_mark(.UI_Fonts)
