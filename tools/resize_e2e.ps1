@@ -3,7 +3,7 @@
 # message pump inside a chrome frame (a page script or a layout pass running) used to start that loop under it, and its paint ran
 # a full frame inside the chrome frame: the page's world a second time, re-entrantly (a panic in the dev build, a corrupted layout
 # in a release one). Needs the desktop (mouse, a visible window: desktop.lock) and the files of tools\gen_perf_media.ps1.
-#   powershell -NoProfile -File tools\resize_e2e.ps1 [-Exe build\wren.exe] [-Rounds 3] [-Secs 15] [-Page url]
+#   powershell -NoProfile -File tools\resize_e2e.ps1 [-Exe build\wren.exe] [-Rounds 3] [-Secs 15] [-Page url]   (-Page: another page than the player simulator; {origin} is the test server's)
 # One Wren serves every round (the check is about the process living through the drags, not about its start): a round loads the page
 # again after a `wren ctl reset`, waits until the video has played (a condition, not a fixed 9 s) and drags for -Secs; afterwards the
 # process must still answer, and have left no crash report. The Wren has the remote channel on (that is how the waits and the final
@@ -38,7 +38,7 @@ $lock = Enter-WrenLock desktop 'resize_e2e'
 $prof = Join-Path $tmp 'profile'
 $p = $null
 try {
-    $url = if ($Page) { $Page } else { "$($server.Origin)/site/yt-sim.html?src=perf_h264_1080p60" }
+    $url = if ($Page) { $Page.Replace('{origin}', $server.Origin) } else { "$($server.Origin)/site/yt-sim.html?src=perf_h264_1080p60" }
     Section 'start: the Wren, its window shown and placed'
     $name = Start-Wren -Visible -Size 1280x800 -ProfileDir $prof -Pref 'media.autoplay.policy=allow-all', 'blocker.update.enabled=false'
     $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
@@ -51,7 +51,7 @@ try {
         Section "round ${round}: the page, the video playing"
         if ($round -gt 1) { $null = Wren-Ctl reset --timeout 30000 }
         $null = Wren-Ctl nav $url --timeout 60000
-        $null = Wren-Ctl wait function 'var v = document.querySelector("video"); !!v && v.currentTime > 1' --timeout 60000
+        $null = Wren-Ctl wait function 'Array.prototype.some.call(document.querySelectorAll("video"), function (v) { return v.currentTime > 1 })' --timeout 60000
         Section "round ${round}: the drag ($Secs s)"
         $r = New-Object RZ+RECT; [RZ]::GetWindowRect($h, [ref]$r) | Out-Null
         $x0 = $r.R - 3; $y0 = $r.B - 3
@@ -67,7 +67,7 @@ try {
         Section "round ${round}: does it live?"
         $null = Wren-Ctl ping --timeout 10000   # (the modal loop is over: it answers)
         $p.Refresh()
-        $crashes = @(Get-ChildItem (Join-Path $prof 'crashes') -Filter *.txt -ErrorAction SilentlyContinue)
+        $crashes = @(Get-ChildItem (Join-Path $prof 'crashes') -Filter 'crash *.txt' -ErrorAction SilentlyContinue)
         $alive = -not $p.HasExited -and $global:WrenExit -eq 0
         if ($alive -and $crashes.Count -eq 0) { "PASS  round ${round}: the window was dragged for $Secs s while the video played, and lives" }
         else {
