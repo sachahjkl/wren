@@ -114,7 +114,9 @@ The channel is **off by default**; a Wren that was not asked for it has no pipe,
 - `wren --remote` or `wren --remote=<name>`, or `WREN_REMOTE=<name>` in the environment, or the preference
   `browser.remote.enabled` (about:config, applied at the next start).
 - `wren ctl run` and `wren ctl start` start a Wren of this same executable with `--remote=<name> --headless --no-single-instance`
-  and a throwaway profile (removed afterwards; a profile given by `--profile` is never removed).
+  and a throwaway profile (removed afterwards; a profile given by `--profile` is never removed). A throwaway profile starts with
+  `blocker.update.enabled=false` (a Wren that lives 15 s would download the content blocker's lists, 24 MB, from the internet),
+  unless `--pref blocker.update.enabled=...` says otherwise.
 - `--headless`: the window is never shown. It renders all the same (the capture reads the renderer's frame).
 - A driven Wren never hands its addresses to the user's running Wren (`--remote` implies `--no-single-instance`).
 - A status bar item "remote" shows that the channel listens (`browser.remote.indicator`).
