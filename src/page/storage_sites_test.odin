@@ -69,3 +69,52 @@ site_data_is_listed_and_cleared_by_type :: proc(t: ^testing.T) {
 	storage_manager_init(&m, nil, nil, dir)
 	testing.expect_value(t, len(storage_sites(&m)), 0)
 }
+
+@(test)
+local_storage_is_put_back_from_its_images :: proc(t: ^testing.T) {
+	for persisted in ([]bool{true, false}) {
+		dir := fmt.tprintf("%s/wren_images_test_%v", os.get_env("TEMP", context.temp_allocator), persisted)
+		base.remove_tree(dir)
+		m: Storage_Manager
+		storage_manager_init(&m, nil, nil, persisted ? dir : "")
+		a := area_new(&m, "https://a.example", "https://a.example", .Local)
+		a.state = .Loaded
+		area_put(a, "k", "one")
+		a.dirty = true
+		b := area_new(&m, "https://b.example", "https://b.example", .Local)
+		b.state = .Loaded
+		area_put(b, "x", "y")
+		storage_flush(&m, sync_write = true)
+		images := storage_local_images(&m)
+		testing.expect_value(t, len(images), 2)
+
+		// afterwards: one origin changed, one cleared, a new one
+		area_put(a, "k", "two")
+		area_put(a, "more", "z")
+		area_clear(b)
+		c := area_new(&m, "https://c.example", "https://c.example", .Local)
+		c.state = .Loaded
+		area_put(c, "new", "1")
+		a.dirty, c.dirty = true, true
+		storage_flush(&m, sync_write = true)
+
+		storage_restore_local(&m, images)
+		storage_images_destroy(images)
+		// the pages are closed: the areas are read again, from the files (or made from the images)
+		Want :: struct { key, item, value: string }
+		for want in ([]Want{{"https://a.example", "k", "one"}, {"https://b.example", "x", "y"}}) {
+			key := want.key
+			ar := m.areas[key]
+			if ar == nil { ar = area_new(&m, key, key, .Local) }
+			area_load_now(&m, ar)
+			i, ok := ar.index[want.item]
+			testing.expectf(t, ok && ar.items[i].value == want.value && len(ar.items) == 1, "persisted=%v: %s should hold only %s=%s", persisted, key, want.item, want.value)
+		}
+		cr := m.areas["https://c.example"]
+		if cr == nil { cr = area_new(&m, "https://c.example", "https://c.example", .Local) }
+		area_load_now(&m, cr)
+		testing.expectf(t, len(cr.items) == 0, "persisted=%v: the origin that did not exist has nothing", persisted)
+		storage_manager_destroy(&m)
+		base.remove_tree(dir)
+	}
+}
