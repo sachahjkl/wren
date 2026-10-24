@@ -63,6 +63,13 @@ launch :: proc(ctx: ^Context, name, profile: string, hidden: bool, extra: []stri
 		append(&args, "--pref", fmt.tprintf("browser.ui.scale=%.4f", v / 96))
 	}
 	for p in ctx.o.prefs { append(&args, "--pref", p) }
+	// a throwaway profile has no lists and no reason to download them (24 MB from the internet, 15 s after the start, in a Wren that
+	// lives long enough: a test session that reuses its Wren): unless --pref says otherwise
+	if l.temp {
+		asked := false
+		for p in ctx.o.prefs { if strings.has_prefix(p, "blocker.update.enabled=") { asked = true } }
+		if !asked { append(&args, "--pref", "blocker.update.enabled=false") }
+	}
 	for e in extra { append(&args, e) }
 	append(&args, "about:blank")
 	line := strings.builder_make(context.temp_allocator)

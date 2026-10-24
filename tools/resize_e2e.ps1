@@ -1,4 +1,4 @@
-﻿# Live resize while a video plays: the real mouse drags the window's corner back and forth for a while (the system's modal size
+# Live resize while a video plays: the real mouse drags the window's corner back and forth for a while (the system's modal size
 # loop paints the window from WM_PAINT) over examples/site/yt-sim.html playing a 30 s H.264 file, and the process must live. A
 # message pump inside a chrome frame (a page script or a layout pass running) used to start that loop under it, and its paint ran
 # a full frame inside the chrome frame: the page's world a second time, re-entrantly (a panic in the dev build, a corrupted layout
@@ -40,7 +40,7 @@ $p = $null
 try {
     $url = if ($Page) { $Page } else { "$($server.Origin)/site/yt-sim.html?src=perf_h264_1080p60" }
     Section 'start: the Wren, its window shown and placed'
-    $name = Start-Wren -Visible -Size 1280x800 -ProfileDir $prof -Pref 'media.autoplay.policy=allow-all'
+    $name = Start-Wren -Visible -Size 1280x800 -ProfileDir $prof -Pref 'media.autoplay.policy=allow-all', 'blocker.update.enabled=false'
     $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
     $p = Get-Process -Id $wpid
     $sw = [Diagnostics.Stopwatch]::StartNew()

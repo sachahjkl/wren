@@ -13,6 +13,11 @@
   (`screenshot.ps1`, `history_e2e.ps1`) or measure performance (`perf.ps1`, `js_bench.ps1`, `cfg_bench.ps1`) take
   `desktop.lock` / `bench.lock` themselves, only for that part (`tools/test_env.ps1`, which also starts a test server
   on a free block: `Start-WrenTestServer`). A step that needs either goes through those scripts or `Use-WrenLock`.
+- Tests are meant to be quick: a run prints, at its end, the slowest steps and (for the scripts that time themselves with `Section`
+  / `Show-WrenSections` of `tools/test_env.ps1`) the slowest sections, and the job summary of a GitHub run has the same table.
+  Wait for a condition, not for a delay (`wren ctl wait quiet | function`, a file that appears, a process that ends), with a
+  limit; one Wren serves many scenarios, `wren ctl reset` between them ([docs/remote.md](docs/remote.md)); a step that mostly waits
+  is `-Light` in `test_all.ps1`; do not build twice what a run already built (`Test-WrenBuildFresh`, `Invoke-WrenBuildIfStale`).
 - A new web API starts in `api/<module>.widl`; `build.bat` regenerates the bindings, the SDK and the docs, and
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others
