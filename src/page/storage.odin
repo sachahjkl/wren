@@ -50,6 +50,7 @@ Storage_Manager :: struct {
 	pending:     int,                         // background writes not finished
 	ready:       bool,
 	idb:         ^Idb_Host,                   // IndexedDB of the profile, made on first use (idb_host.odin)
+	idb_mu:      sync.Mutex,                  // guards the making of idb (a worker's thread may be the first to need it)
 }
 
 // Storage events delivered to pages (diagnostics, tests).
@@ -71,6 +72,7 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	// every area it could be writing is written again here, the commit gate keeps the newest
 	storage_flush(m, sync_write = true, all = m.pending > 0)
 	idb_host_destroy(m)
+	buckets_destroy()
 	if m.write_timer != base.NIL_HANDLE { host.clear_timer(m.loop, m.write_timer) }
 	for _, a in m.areas { area_free(a) }
 	delete(m.areas)

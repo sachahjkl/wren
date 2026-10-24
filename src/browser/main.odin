@@ -296,6 +296,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_wren_address(target) { show_wren_page(app, t, target, from); return }   // about_wren.odin
 	if license_file { license_open_file(app, t, target); return }
 	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
+	if is_sites_address(target) { hold_release(t); bfcache_take(app, t); show_sites_page(app, t, target, from); return }   // site_data_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.started_ns = host.now_ns(&app.loop)

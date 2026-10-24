@@ -1,0 +1,84 @@
+diff --git a/quickjs.c b/quickjs.c
+index 39290ac..99dd543 100644
+--- a/quickjs.c
++++ b/quickjs.c
+@@ -550,6 +550,7 @@ typedef enum {
+     JS_AUTOINIT_ID_MODULE_NS,
+     JS_AUTOINIT_ID_PROP,
+     JS_AUTOINIT_ID_BYTECODE,
++    JS_AUTOINIT_ID_HOST,   /* WREN: the value is made by a host callback at the first use (JS_DefineHostAutoInitProperty) */
+ } JSAutoInitIDEnum;
+ 
+ enum {
+@@ -6728,12 +6729,12 @@ JSValue JS_NewCFunctionData(JSContext *ctx, JSCFunctionData *func,
+ 
+ static JSContext *js_autoinit_get_realm(JSProperty *pr)
+ {
+-    return (JSContext *)(pr->u.init.realm_and_id & ~3);
++    return (JSContext *)(pr->u.init.realm_and_id & ~7);
+ }
+ 
+ static JSAutoInitIDEnum js_autoinit_get_id(JSProperty *pr)
+ {
+-    return pr->u.init.realm_and_id & 3;
++    return pr->u.init.realm_and_id & 7;
+ }
+ 
+ static void js_autoinit_free(JSRuntime *rt, JSProperty *pr)
+@@ -9137,6 +9138,13 @@ static JSValue js_bytecode_autoinit(JSContext *ctx, JSObject *p, JSAtom atom,
+     return JS_UNDEFINED;
+ }
+ 
++/* WREN: a property made by the browser when a script first reads it (IndexedDB's interfaces: their JavaScript is not in
++   the image of every realm, only in the realms that use them). It reads as a plain data property, descriptors included. */
++static JSValue js_host_autoinit(JSContext *ctx, JSObject *p, JSAtom atom, void *opaque)
++{
++    return ((JSHostAutoInitFunc *)opaque)(ctx, atom);
++}
++
+ /* return the value associated to the autoinit property or an exception */
+ typedef JSValue JSAutoInitFunc(JSContext *ctx, JSObject *p, JSAtom atom, void *opaque);
+ 
+@@ -9145,6 +9153,7 @@ static JSAutoInitFunc *const js_autoinit_func_table[] = {
+     js_module_ns_autoinit, /* JS_AUTOINIT_ID_MODULE_NS */
+     JS_InstantiateFunctionListItem2, /* JS_AUTOINIT_ID_PROP */
+     js_bytecode_autoinit, /* JS_AUTOINIT_ID_BYTECODE */
++    js_host_autoinit, /* JS_AUTOINIT_ID_HOST */
+ };
+ 
+ /* warning: 'prs' is reallocated after it */
+@@ -11627,13 +11636,18 @@ static int JS_DefineAutoInitProperty(JSContext *ctx, JSValueConst this_obj,
+     if (unlikely(!pr))
+         return -1;
+     pr->u.init.realm_and_id = (uintptr_t)JS_DupContext(ctx);
+-    assert((pr->u.init.realm_and_id & 3) == 0);
+-    assert(id <= 3);
++    assert((pr->u.init.realm_and_id & 7) == 0);
++    assert(id <= 7);
+     pr->u.init.realm_and_id |= id;
+     pr->u.init.opaque = opaque;
+     return true;
+ }
+ 
++int JS_DefineHostAutoInitProperty(JSContext *ctx, JSValueConst obj, JSAtom prop, JSHostAutoInitFunc *fn, int flags)
++{
++    return JS_DefineAutoInitProperty(ctx, obj, prop, JS_AUTOINIT_ID_HOST, (void *)fn, flags);
++}
++
+ /* Like JS_DefinePropertyValue but borrows val (does not free it) */
+ static int JS_DefinePropertyValueConst(JSContext *ctx, JSValueConst this_obj,
+                                        JSAtom prop, JSValueConst val, int flags)
+diff --git a/quickjs.h b/quickjs.h
+index b3381b8..ef944af 100644
+--- a/quickjs.h
++++ b/quickjs.h
+@@ -534,6 +534,9 @@ JS_EXTERN void JS_MarkValue(JSRuntime *rt, JSValueConst val,
+                             JS_MarkFunc *mark_func);
+ JS_EXTERN void JS_RunGC(JSRuntime *rt);
+ /* WREN: cb runs at the start of every collection (before any object is marked). */
++/* WREN: defines a data property of obj whose value fn makes on the first read (or write, or descriptor query) */
++typedef JSValue JSHostAutoInitFunc(JSContext *ctx, JSAtom atom);
++JS_EXTERN int JS_DefineHostAutoInitProperty(JSContext *ctx, JSValueConst obj, JSAtom prop, JSHostAutoInitFunc *fn, int flags);
+ JS_EXTERN void JS_SetGCPrologue(JSRuntime *rt, void (*cb)(JSRuntime *rt, void *opaque), void *opaque);
+ /* WREN: reseeds Math.random (a pre-initialized engine would otherwise share one state). */
+ JS_EXTERN void JS_SetRandomState(JSContext *ctx, uint64_t state);

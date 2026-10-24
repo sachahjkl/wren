@@ -1,10 +1,8 @@
 package idb
 
-import "core:os"
 import "core:slice"
 import "core:strings"
 import "core:sync"
-import "wb:base"
 
 // Connections, the open / delete handshake, transactions and the journal writer of the Manager (manager.odin).
 
@@ -105,6 +103,7 @@ conn_try_close :: proc(m: ^Manager, conn: ^Connection) {
 
 // connection.close(): no new transaction; it closes when the running ones have finished.
 close_connection :: proc(c: ^Client, id: u64) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[id]
@@ -117,6 +116,7 @@ close_connection :: proc(c: ^Client, id: u64) -> Error {
 
 // The script's "versionchange" handlers of the connection have run.
 versionchange_done :: proc(c: ^Client, id: u64) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[id]
@@ -203,6 +203,7 @@ check_active :: proc(o: ^Origin, ds: ^Db_State) {
 		}
 		return
 	}
+	if req.kind == .Open && !db_resident(o, req.name) { return }   // an upgrade may touch every store: they are read first
 	req.waiting = false
 	switch req.kind {
 	case .Open: begin_upgrade(o, ds, req)
@@ -302,6 +303,7 @@ tx_new :: proc(m: ^Manager, conn: ^Connection, mode: Tx_Mode, scope: []u32, stri
 		conn.live_txs += 1
 		o := conn.o
 		tx.x = Exec{d = &o.data, db = find_db(&o.data, conn.ds.name), undo = &tx.undo, redo = &tx.redo, settings = &m.settings, quota = m.settings.quota_bytes}
+		if m.dir != "" && !o.alien { tx.x.values = &tx.values }
 		append(&conn.ds.txs, tx)
 	}
 	m.txs[tx.id] = tx
@@ -310,6 +312,8 @@ tx_new :: proc(m: ^Manager, conn: ^Connection, mode: Tx_Mode, scope: []u32, stri
 
 @(private)
 tx_free :: proc(tx: ^Tx) {
+	if tx.x.d != nil { for v in tx.values { delete(v.key, tx.x.d.allocator) } }
+	delete(tx.values)
 	delete(tx.scope)
 	writer_destroy(&tx.redo)
 	delete(tx.undo.entries)
@@ -334,6 +338,7 @@ schedule :: proc(ds: ^Db_State) {
 			if ds.txs[j].state != .Finished && tx_conflicts(ds.txs[j], tx) { blocked = true; break }
 		}
 		if blocked { continue }
+		if !tx_stores_ready(ds.o, tx) { continue }   // (a store that is not in memory is being read)
 		tx.state = .Active
 		push_event(tx.client, Event{kind = .Tx_Started, tx = tx.id})
 	}
@@ -341,18 +346,19 @@ schedule :: proc(ds: ^Db_State) {
 
 // Creates a transaction on a connection. `scope`: ids of object stores. Pending until the scheduler starts it
 // (Tx_Started).
-begin_transaction :: proc(c: ^Client, conn_id: u64, scope: []u32, mode: Tx_Mode, strict: bool) -> (id: u64, err: Error) {
+begin_transaction :: proc(c: ^Client, conn_id: u64, scope: []u32, mode: Tx_Mode, strict: bool) -> (id: u64, started: bool, err: Error) {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[conn_id]
-	if !ok || conn.client != c { return 0, .Not_Found }
-	if conn.closed || conn.close_pending || mode == .Version_Change { return 0, .Invalid_State }
+	if !ok || conn.client != c { return 0, false, .Not_Found }
+	if conn.closed || conn.close_pending || mode == .Version_Change { return 0, false, .Invalid_State }
 	db := find_db(&conn.o.data, conn.ds.name)
-	if db == nil { return 0, .Not_Found }
-	for s in scope { if find_store(db, s) == nil { return 0, .Not_Found } }
+	if db == nil { return 0, false, .Not_Found }
+	for s in scope { if find_store(db, s) == nil { return 0, false, .Not_Found } }
 	tx := tx_new(m, conn, mode, scope, strict)
 	schedule(conn.ds)
-	return tx.id, .None
+	return tx.id, tx.state == .Active, .None
 }
 
 // Ends a transaction. Committed: its undo is dropped and the script hears Tx_Complete; otherwise its changes are taken
@@ -392,6 +398,7 @@ tx_finish :: proc(m: ^Manager, tx: ^Tx, committed: bool, err: Error) {
 	tx_free(tx)
 	schedule(ds)
 	db_pump(o, ds)
+	maybe_checkpoint(m, o, false)
 	maybe_compact(m, o)
 }
 
@@ -400,6 +407,7 @@ tx_rollback :: proc(m: ^Manager, tx: ^Tx) { tx_finish(m, tx, false, .Aborted) }
 
 // transaction.abort() (and a failed request that nobody handled): back out, tell the script.
 tx_abort :: proc(c: ^Client, id: u64, err: Error) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]
@@ -411,6 +419,7 @@ tx_abort :: proc(c: ^Client, id: u64, err: Error) -> Error {
 
 // transaction.commit() or the end of the transaction's last request.
 tx_commit :: proc(c: ^Client, id: u64) -> Error {
+	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	tx, ok := m.txs[id]
@@ -432,123 +441,7 @@ tx_commit_internal :: proc(m: ^Manager, tx: ^Tx) {
 	frame_payload(&data, tx.redo.data[:])
 	tx.state = .Committing
 	append(&o.wq, Write_Item{tx = tx, data = data[:], strict = tx.strict})
-	kick_writer(m, o)
-}
-
-////////////////////////////////
-// The journal writer
-
-@(private)
-Write_Job :: struct {
-	path:    string,
-	offset:  i64,
-	data:    []byte,
-	flush:   bool,
-	replace: bool,
-	items:   [dynamic]^Tx,
-	ok:      bool,
-	life:    ^Life,
-	o:       ^Origin,
-	m:       ^Manager,
-}
-
-@(private)
-kick_writer :: proc(m: ^Manager, o: ^Origin) {
-	if o.writing || len(o.wq) == 0 { return }
-	context.allocator = m.allocator
-	pa := base.process_allocator()
-	job := new(Write_Job, pa)
-	job.path = strings.clone(o.path, pa)
-	job.life, job.o, job.m = m.life, o, m
-	sync.atomic_add(&m.life.refs, 1)
-	job.items = make([dynamic]^Tx, pa)
-	buf := make([dynamic]byte, 0, 1024, pa)
-	if o.wq[0].tx == nil {
-		// a snapshot replaces the file
-		item := o.wq[0]
-		ordered_remove(&o.wq, 0)
-		append(&buf, ..item.data)
-		delete(item.data)
-		job.replace = true
-		job.flush = true
-	} else {
-		job.offset = o.file_len
-		if o.file_len == 0 { h := file_header(); append(&buf, ..h[:]) }
-		taken := 0
-		for taken < len(o.wq) && o.wq[taken].tx != nil && (taken == 0 || len(buf) < m.settings.write_batch_bytes) {
-			item := o.wq[taken]
-			append(&buf, ..item.data)
-			append(&job.items, item.tx)
-			if item.strict || m.settings.durability == .Strict { job.flush = true }
-			delete(item.data)
-			taken += 1
-		}
-		remove_range(&o.wq, 0, taken)
-	}
-	job.data = buf[:]
-	o.writing = true
-	run :: proc(data: rawptr) {
-		j := (^Write_Job)(data)
-		if j.replace {
-			j.ok = replace_file(j.path, j.data, j.flush)
-		} else {
-			j.ok = append_file(j.path, j.offset, j.data, j.flush)
-		}
-	}
-	finish :: proc(data: rawptr) {
-		j := (^Write_Job)(data)
-		pa := base.process_allocator()
-		defer {
-			delete(j.path, pa); delete(j.data, pa); delete(j.items)
-			life_unref(j.life)
-			free(j, pa)
-		}
-		if !j.life.alive { return }
-		m, o := j.m, j.o
-		context.allocator = m.allocator
-		o.writing = false
-		if j.ok {
-			o.file_len = i64(len(j.data)) if j.replace else j.offset + i64(len(j.data))
-			if j.replace { m.stats.snapshots += 1 } else { m.stats.appends += 1 }
-			m.stats.bytes_written += u64(len(j.data))
-		}
-		for tx in j.items { tx_finish(m, tx, j.ok, .Io) }
-		kick_writer(m, o)
-		maybe_compact(m, o)
-	}
-	if m.submit != nil {
-		m.submit(m.submit_user, run, finish, job)
-	} else {
-		run(job)
-		finish(job)
-	}
-}
-
-// Queues a rewrite of the journal from the data when the dead records outweigh the live ones and nothing holds changes
-// that are not committed.
-@(private)
-maybe_compact :: proc(m: ^Manager, o: ^Origin) {
-	if m.dir == "" || o.alien || o.state != .Ready || o.writing || len(o.wq) > 0 { return }
-	limit := m.settings.compact_min_bytes + i64(m.settings.compact_ratio * f64(o.data.bytes))
-	if o.file_len <= limit { return }
-	for _, ds in o.dbs { for tx in ds.txs { if tx.x.changed { return } } }
-	context.allocator = m.allocator
-	snap := snapshot_file(&o.data, m.allocator)
-	append(&o.wq, Write_Item{tx = nil, data = snap})
-	kick_writer(m, o)
-}
-
-// Writes the journal's compaction now if it is due (tests, shutdown).
-manager_compact :: proc(m: ^Manager, origin: string) {
-	context.allocator = m.allocator
-	if o, ok := m.origins[origin]; ok { maybe_compact(m, o) }
-}
-
-// For manager_destroy: an item that never got to the disk is dropped; its transaction counts as committed (the file is
-// rewritten from memory right after).
-@(private)
-fail_or_finish_item :: proc(m: ^Manager, o: ^Origin, it: Write_Item, ok: bool) {
-	if it.tx != nil { tx_finish(m, it.tx, ok, .Io) }
+	request_flush(m, o)
 }
 
 ////////////////////////////////
@@ -557,15 +450,26 @@ fail_or_finish_item :: proc(m: ^Manager, o: ^Origin, it: Write_Item, ok: bool) {
 // Removes everything the origin keeps (Clear site data): connections are closed (the scripts hear "close"), what runs
 // is aborted, requests fail, and the journal is emptied.
 manager_clear_origin :: proc(m: ^Manager, key: string) {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
 	context.allocator = m.allocator
 	o, loaded := m.origins[key]
 	if !loaded {
-		if m.dir != "" { os.remove(origin_key_path(m, key)) }
+		// not in memory: only its files go
+		if m.dir != "" {
+			stem := origin_stem(m, key)
+			slash := strings.last_index_byte(stem, '/')
+			dir, name := stem[:slash], stem[slash + 1:]
+			for n in dir_files_with_prefix(dir, name) {
+				rest := n[len(name):]
+				_, is_j := generation_of(rest, ".widb")
+				_, is_c := generation_of(rest, ".widx")
+				if is_j || is_c || strings.has_suffix(rest, ".tmp") { file_delete(strings.concatenate({dir, "\\", n}, context.temp_allocator)) }
+			}
+		}
 		return
 	}
 	if o.state == .Loading {
-		// answered when the load finishes: nothing was opened yet, the file is removed now and the load result dropped
-		if m.dir != "" { os.remove(o.path) }
+		// answered when the load finishes: nothing was opened yet, the files go at once and the load's result is dropped
 		o.clear_on_load = true
 		return
 	}
@@ -586,13 +490,5 @@ manager_clear_origin :: proc(m: ^Manager, key: string) {
 		for req in ds.queue { push_event(req.client, Event{kind = .Open_Error if req.kind == .Open else .Delete_Error, req = req.id, err = .Aborted}); request_free(req) }
 		clear(&ds.queue)
 	}
-	data_destroy(&o.data)
-	data_init(&o.data, m.allocator)
-	if m.dir != "" && !o.alien {
-		h := file_header()
-		item := Write_Item{tx = nil, data = make([]byte, len(h))}
-		copy(item.data, h[:])
-		append(&o.wq, item)
-		kick_writer(m, o)
-	}
+	if m.dir != "" && !o.alien { origin_wipe(m, o) } else { data_destroy(&o.data); data_init(&o.data, m.allocator) }
 }

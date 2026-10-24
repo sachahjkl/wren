@@ -27,6 +27,7 @@ enum {
     T_ARRAY_BUFFER, T_TYPED_ARRAY, T_DATA_VIEW, T_MAP, T_SET, T_ERROR, T_ARRAY, T_OBJECT,
     T_PORT,   /* a MessagePort of the transfer list: its index among the transferred ports */
     T_BLOB,   /* a Blob or File: is a file, its type, its bytes, and for a File its name and lastModified */
+    T_GEOM,   /* DOMPoint, DOMRect, DOMMatrix (and their ReadOnly forms), ImageData: a kind, then their attributes */
 };
 
 /* runtime/web_blob.c */
@@ -89,6 +90,18 @@ void wj_clone_start(JSContext *ctx)
     ctor_boolean = JS_GetPropertyStr(ctx, g, "Boolean");
     ctor_string = JS_GetPropertyStr(ctx, g, "String");
     ctor_object = JS_GetPropertyStr(ctx, g, "Object");
+}
+
+static JSValue brand(JSContext *ctx, JSValueConst fn, JSValueConst v);
+
+/* The time value of a Date (false:  is not one; no exception pending). */
+bool web_date_time(JSContext *ctx, JSValueConst v, double *t)
+{
+    JSValue tv = brand(ctx, date_get_time, v);
+    if (JS_IsException(tv)) { return false; }
+    bool ok = JS_ToFloat64(ctx, t, tv) == 0;
+    JS_FreeValue(ctx, tv);
+    return ok;
 }
 
 /* Calls a brand-checking built-in: the result, or JS_EXCEPTION (cleared) when `v` is not of its kind. */
@@ -273,6 +286,76 @@ static bool for_each_collect(JSContext *ctx, JSValueConst fn, JSValueConst obj, 
     return true;
 }
 
+/* ---- platform objects with attributes only: DOMPoint, DOMRect, DOMMatrix (and ReadOnly), ImageData ---- */
+
+static const struct { const char *name; } geom_names[] = {
+    {"DOMPointReadOnly"}, {"DOMPoint"}, {"DOMRectReadOnly"}, {"DOMRect"}, {"DOMMatrixReadOnly"}, {"DOMMatrix"}, {"ImageData"},
+};
+#define GEOM_KINDS 7
+static const char *const geom_point[] = {"x", "y", "z", "w"};
+static const char *const geom_rect[] = {"x", "y", "width", "height"};
+static const char *const geom_matrix[] = {"m11", "m12", "m13", "m14", "m21", "m22", "m23", "m24", "m31", "m32", "m33", "m34", "m41", "m42", "m43", "m44"};
+
+static int geom_kind(JSValueConst v)
+{
+    wj_obj *o = wj_obj_of(v);
+    if (!o) { return -1; }
+    const char *n = wj_interfaces[o->iface].name;
+    for (int i = 0; i < GEOM_KINDS; i++) { if (strcmp(geom_names[i].name, n) == 0) { return i; } }
+    return -1;
+}
+
+static bool put_num_prop(ser *s, JSValueConst v, const char *name)
+{
+    JSValue x = JS_GetPropertyStr(s->ctx, v, name);
+    double d = 0;
+    bool ok = !JS_IsException(x) && JS_ToFloat64(s->ctx, &d, x) == 0;
+    JS_FreeValue(s->ctx, x);
+    if (ok) { put_f64(&s->out, d); }
+    return ok;
+}
+
+/* 0: not one of them; 1: written; -1: failed (an exception is pending) */
+static int serialize_geom(ser *s, JSValueConst v)
+{
+    JSContext *ctx = s->ctx;
+    int kind = geom_kind(v);
+    if (kind < 0) { return 0; }
+    if (!remember(s, v)) { return -1; }
+    put_u8(&s->out, T_GEOM);
+    put_u8(&s->out, (uint8_t)kind);
+    bool ok = true;
+    switch (kind) {
+    case 0: case 1: for (int i = 0; i < 4 && ok; i++) { ok = put_num_prop(s, v, geom_point[i]); } break;
+    case 2: case 3: for (int i = 0; i < 4 && ok; i++) { ok = put_num_prop(s, v, geom_rect[i]); } break;
+    case 4: case 5: {
+        JSValue two = JS_GetPropertyStr(ctx, v, "is2D");
+        put_u8(&s->out, JS_ToBool(ctx, two) > 0);
+        JS_FreeValue(ctx, two);
+        for (int i = 0; i < 16 && ok; i++) { ok = put_num_prop(s, v, geom_matrix[i]); }
+        break;
+    }
+    default: {
+        ok = put_num_prop(s, v, "width") && put_num_prop(s, v, "height");
+        if (!ok) { break; }
+        JSValue data = JS_GetPropertyStr(ctx, v, "data");
+        size_t off = 0, len = 0, per = 0, total = 0;
+        JSValue buf = JS_GetTypedArrayBuffer(ctx, data, &off, &len, &per);
+        JS_FreeValue(ctx, data);
+        if (JS_IsException(buf)) { return -1; }
+        uint8_t *bytes = JS_GetArrayBuffer(ctx, &total, buf);
+        if (!bytes || off + len > total) { JS_FreeValue(ctx, buf); return clone_error(ctx, "ImageData could not be cloned.") ? 1 : -1; }
+        put_u64(&s->out, len);
+        put(&s->out, bytes + off, len);
+        JS_FreeValue(ctx, buf);
+        JSValue cs = JS_GetPropertyStr(ctx, v, "colorSpace");
+        ok = !JS_IsException(cs) && put_string(ctx, &s->out, cs);
+        JS_FreeValue(ctx, cs);
+        break;
+    }
+    }
+    return ok ? 1 : -1;
+}
 static bool serialize_object(ser *s, JSValueConst v)
 {
     JSContext *ctx = s->ctx;
@@ -313,6 +396,10 @@ static bool serialize_object(ser *s, JSValueConst v)
             JS_FreeValue(ctx, lm);
         }
         return ok;
+    }
+    {
+        int g = serialize_geom(s, v);
+        if (g != 0) { return g > 0; }
     }
     if (wj_obj_of(v) || JS_VALUE_GET_PTR(v) == JS_VALUE_GET_PTR(wj_the_realm.global)) {
         wj_obj *o = wj_obj_of(v);
@@ -673,6 +760,64 @@ static JSValue construct(JSContext *ctx, JSValueConst ctor, int argc, JSValueCon
     return JS_CallConstructor(ctx, ctor, argc, argv);
 }
 
+/* the attributes of a platform object read back as the arguments of its constructor */
+static JSValue deserialize_geom(deser *d)
+{
+    JSContext *ctx = d->ctx;
+    uint8_t kind;
+    if (!get_u8(d, &kind) || kind >= GEOM_KINDS) { return malformed(ctx); }
+    JSValue ctor = JS_GetPropertyStr(ctx, wj_the_realm.global, geom_names[kind].name);
+    if (JS_IsException(ctor)) { return ctor; }
+    if (!JS_IsFunction(ctx, ctor)) { JS_FreeValue(ctx, ctor); return malformed(ctx); }
+    JSValue args[4];
+    int n = 0;
+    JSValue r = JS_UNDEFINED;
+    double v[16];
+    switch (kind) {
+    case 0: case 1: case 2: case 3:
+        for (int i = 0; i < 4; i++) { if (!get_f64(d, &v[i])) { JS_FreeValue(ctx, ctor); return malformed(ctx); } args[n++] = JS_NewFloat64(ctx, v[i]); }
+        r = JS_CallConstructor(ctx, ctor, n, args);
+        for (int i = 0; i < n; i++) { JS_FreeValue(ctx, args[i]); }
+        break;
+    case 4: case 5: {
+        uint8_t two;
+        if (!get_u8(d, &two)) { JS_FreeValue(ctx, ctor); return malformed(ctx); }
+        for (int i = 0; i < 16; i++) { if (!get_f64(d, &v[i])) { JS_FreeValue(ctx, ctor); return malformed(ctx); } }
+        JSValue arr = JS_NewArray(ctx);
+        if (two) {
+            static const int idx[6] = {0, 1, 4, 5, 12, 13};   /* a b c d e f: m11 m12 m21 m22 m41 m42 */
+            for (int i = 0; i < 6; i++) { JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewFloat64(ctx, v[idx[i]])); }
+        } else {
+            for (int i = 0; i < 16; i++) { JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewFloat64(ctx, v[i])); }
+        }
+        r = JS_CallConstructor(ctx, ctor, 1, &arr);
+        JS_FreeValue(ctx, arr);
+        break;
+    }
+    default: {
+        uint64_t len;
+        if (!get_f64(d, &v[0]) || !get_f64(d, &v[1]) || !get_u64(d, &len) || (uint64_t)(d->end - d->p) < len) { JS_FreeValue(ctx, ctor); return malformed(ctx); }
+        const uint8_t *bytes = d->p;
+        d->p += len;
+        JSValue cs = get_string(d);
+        if (JS_IsException(cs)) { JS_FreeValue(ctx, ctor); return cs; }
+        JSValue ab = JS_NewArrayBufferCopy(ctx, bytes, (size_t)len);
+        JSValue clamped = JS_GetPropertyStr(ctx, wj_the_realm.global, "Uint8ClampedArray");
+        JSValue data = JS_CallConstructor(ctx, clamped, 1, &ab);
+        JS_FreeValue(ctx, clamped);
+        JS_FreeValue(ctx, ab);
+        if (JS_IsException(data)) { JS_FreeValue(ctx, cs); JS_FreeValue(ctx, ctor); return data; }
+        JSValue settings = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, settings, "colorSpace", cs);
+        JSValue a[4] = {data, JS_NewFloat64(ctx, v[0]), JS_NewFloat64(ctx, v[1]), settings};
+        r = JS_CallConstructor(ctx, ctor, 4, a);
+        for (int i = 0; i < 4; i++) { JS_FreeValue(ctx, a[i]); }
+        break;
+    }
+    }
+    JS_FreeValue(ctx, ctor);
+    return r;
+}
 static JSValue deserialize(deser *d)
 {
     JSContext *ctx = d->ctx;
@@ -876,6 +1021,11 @@ static JSValue deserialize(deser *d)
         if (!get_u32(d, &i) || !JS_IsArray(d->ports)) { r = malformed(ctx); break; }
         r = JS_GetPropertyUint32(ctx, d->ports, i);
         if (JS_IsUndefined(r)) { r = malformed(ctx); }
+        break;
+    }
+    case T_GEOM: {
+        r = deserialize_geom(d);
+        if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
         break;
     }
     case T_BLOB: {

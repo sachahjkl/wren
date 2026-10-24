@@ -3,12 +3,13 @@
 // is runtime/web_idb.c; the data, the scheduling of transactions and the journal are the browser's (src/idb), reached
 // through host.call(op, bytes).
 //
-// What lives here: the objects scripts see, argument checks in the specification's order, keys (JavaScript value <->
-// the byte encoding of src/idb/key.odin, ordered by comparing bytes), key paths, the structured clone of values (the
-// engine's serializer, through host.serialize / deserialize), requests and their queue per transaction, the events (an
-// IDB event target of its own: a request's parent is its transaction, whose parent is the connection) and the active /
-// inactive state of transactions (a transaction is active from its creation, or the event of one of its requests, until
-// the microtask checkpoint that follows; the browser calls `cleanup` there).
+// What lives here: the objects scripts see, argument checks in the specification's order, requests and their queue per transaction,
+// the events (an IDB event target of its own: a request's parent is its transaction, whose parent is the connection) and the active /
+// inactive state of transactions (a transaction is active from its creation, or the event of one of its requests, until the microtask
+// checkpoint that follows; the browser calls `cleanup` there). Everything that needs no JavaScript semantics is native, in
+// runtime/web_idb_native.c: keys (JavaScript value <-> the byte encoding of src/idb/key.odin, ordered by comparing bytes), key
+// paths, names, the frames of a transaction's requests and the decoding of their replies, and the structured clone of values (the
+// engine's serializer, through host.serialize / deserialize).
 //
 // What does not: anything stored. Each request of a transaction is executed by the browser when its task comes
 // (host.post), the answer becomes the request's result and an event is fired. Transactions start, complete and abort
@@ -18,7 +19,7 @@
   "use strict";
 
   // ---- the browser's side ----------------------------------------------------------------------------------------
-  const OP = { OPEN: 1, DELETE: 2, LIST: 3, CLOSE: 4, VC_DONE: 5, BEGIN: 6, COMMIT: 7, ABORT: 8, EXEC: 9, TASK: 10, EVENT: 11, CLEANUP: 12, LIMITS: 13 };
+  const OP = { OPEN: 1, DELETE: 2, LIST: 3, CLOSE: 4, VC_DONE: 5, BEGIN: 6, COMMIT: 7, ABORT: 8, EXEC: 9, TASK: 10, EVENT: 11, CLEANUP: 12, LIMITS: 13, ESTIMATE: 15, PERSIST: 16, BUCKETS: 17 };
   const REQ = { GET: 1, COUNT: 2, GET_ALL: 3, CURSOR: 4, PUT: 5, GEN_KEY: 6, DELETE: 7, CLEAR: 8, INDEX_PUT: 9,
     CREATE_STORE: 10, DELETE_STORE: 11, RENAME_STORE: 12, CREATE_INDEX: 13, DELETE_INDEX: 14, RENAME_INDEX: 15, PEEK_KEY: 16 };
   const EV = { TASK: 1, OPEN_UPGRADE: 2, OPEN_DONE: 3, OPEN_ERROR: 4, BLOCKED: 5, VERSION_CHANGE: 6, DELETE_DONE: 7, DELETE_ERROR: 8,
@@ -29,13 +30,9 @@
   const E_ABORTED = 8, E_UNKNOWN = 11;
   const MAX_UV = 9007199254740991;
 
-  const call = host.call, serialize = host.serialize, deserialize = host.deserialize;
+  const call = host.call, serialize = host.serialize, deserialize = host.deserialize, drain = host.drain;
   let DOMEx = null;   // the realm's DOMException (its interface objects exist from start on: the ones of pre-initialization are not the page's)
-  const hasOwn = Object.prototype.hasOwnProperty;
   const isArray = Array.isArray;
-  const isView = ArrayBuffer.isView;
-  const getTime = Date.prototype.getTime;
-  const abByteLength = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, "byteLength").get;
   const mathFloor = Math.floor;
   const PRIVATE = {};
 
@@ -43,48 +40,14 @@
   function fail(code, what) { return dom(ERR_NAME[code] || "UnknownError", what); }
 
   // ---- bytes ------------------------------------------------------------------------------------------------------
-  // Names are kept as WTF-8: a lone surrogate keeps its own 3-byte form (two names differing by one are two names).
-  function utf8(s) {
-    const n = s.length;
-    let ascii = true;
-    for (let i = 0; i < n; i++) { if (s.charCodeAt(i) > 0x7f) { ascii = false; break; } }
-    if (ascii) { const b = new Uint8Array(n); for (let i = 0; i < n; i++) b[i] = s.charCodeAt(i); return b; }
-    const out = [];
-    for (let i = 0; i < n; i++) {
-      let c = s.charCodeAt(i);
-      if (c >= 0xd800 && c <= 0xdbff && i + 1 < n) {
-        const d = s.charCodeAt(i + 1);
-        if (d >= 0xdc00 && d <= 0xdfff) { c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00); i++; }
-      }
-      if (c < 0x80) out.push(c);
-      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
-      else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
-      else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
-    }
-    return new Uint8Array(out);
-  }
+  // Names (WTF-8: a lone surrogate keeps its own 3-byte form), keys (a value <-> the bytes of src/idb/key.odin, ordered by comparing
+  // bytes), key paths on a value and the injection of a generated key: the browser's (runtime/web_idb_keys.c).
+  const { utf8, utf8d, key: keyOf, keyValue: decodeKey, cmp: compareBytes, validPath: validKeyPath, pathKey, canInject, inject } = host;
+  // ... and the execution of requests (what a request is made of, what its reply holds): the frames of src/idb/protocol.odin are
+  // written and read there, the keys and values come back as values.
+  const { execGet, execCount, execGetAll, execPut, execDelete, execClear, execCursor } = host;
 
-  function unitsToString(units) {
-    if (units.length < 4096) return String.fromCharCode.apply(null, units);
-    let s = "";
-    for (let i = 0; i < units.length; i += 4096) s += String.fromCharCode.apply(null, units.slice(i, i + 4096));
-    return s;
-  }
-
-  function utf8d(b) {
-    const units = [];
-    for (let i = 0; i < b.length;) {
-      const c = b[i++];
-      let cp;
-      if (c < 0x80) cp = c;
-      else if (c < 0xe0) cp = ((c & 31) << 6) | (b[i++] & 63);
-      else if (c < 0xf0) { cp = ((c & 15) << 12) | ((b[i] & 63) << 6) | (b[i + 1] & 63); i += 2; }
-      else { cp = ((c & 7) << 18) | ((b[i] & 63) << 12) | ((b[i + 1] & 63) << 6) | (b[i + 2] & 63); i += 3; }
-      if (cp >= 0x10000) { cp -= 0x10000; units.push(0xd800 + (cp >> 10), 0xdc00 + (cp & 1023)); } else units.push(cp);
-    }
-    return unitsToString(units);
-  }
-
+  const fdv = new DataView(new ArrayBuffer(8));
   class Wr {
     constructor() { this.b = new Uint8Array(64); this.n = 0; }
     need(k) {
@@ -105,6 +68,7 @@
     raw(u8) { this.need(u8.length); this.b.set(u8, this.n); this.n += u8.length; }
     bytes(u8) { this.uv(u8.length); this.raw(u8); }
     str(s) { this.bytes(utf8(s)); }
+    f64(v) { this.need(8); fdv.setFloat64(0, v, true); for (let i = 0; i < 8; i++) this.b[this.n++] = fdv.getUint8(i); }
     done() { return this.b.subarray(0, this.n); }
   }
 
@@ -118,169 +82,10 @@
     }
     bytes() { const n = this.uv(); const r = this.b.subarray(this.p, this.p + n); this.p += n; return r; }
     str() { return utf8d(this.bytes()); }
+    f64() { for (let i = 0; i < 8; i++) fdv.setUint8(i, this.b[this.p++]); return fdv.getFloat64(0, true); }
   }
 
-  // ---- keys -------------------------------------------------------------------------------------------------------
-  const dv = new DataView(new ArrayBuffer(8));
-
-  function putNumber(w, tag, v) {
-    dv.setFloat64(0, v === 0 ? 0 : v);
-    w.need(9);
-    w.b[w.n++] = tag;
-    const neg = dv.getUint8(0) & 0x80;
-    for (let i = 0; i < 8; i++) {
-      const x = dv.getUint8(i);
-      w.b[w.n++] = neg ? x ^ 0xff : (i === 0 ? x ^ 0x80 : x);
-    }
-  }
-
-  function putString(w, s) {
-    w.need(2 * s.length + 3);
-    w.b[w.n++] = 0x30;
-    for (let i = 0; i < s.length; i++) {
-      const c = s.charCodeAt(i);
-      if (c >= 0xfffe) { w.b[w.n++] = 0xff; w.b[w.n++] = 0xff; w.b[w.n++] = c === 0xfffe ? 1 : 2; }
-      else { const v = c + 1; w.b[w.n++] = v >> 8; w.b[w.n++] = v & 255; }
-    }
-    w.b[w.n++] = 0;
-    w.b[w.n++] = 0;
-  }
-
-  function putBinary(w, bytes) {
-    w.need(2 * bytes.length + 2);
-    w.b[w.n++] = 0x40;
-    for (let i = 0; i < bytes.length; i++) {
-      const c = bytes[i];
-      w.b[w.n++] = c;
-      if (c === 0) w.b[w.n++] = 0xff;
-    }
-    w.b[w.n++] = 0;
-  }
-
-  function isDate(v) {
-    try { getTime.call(v); return true; } catch { return false; }
-  }
-  function isArrayBuffer(v) {
-    try { abByteLength.call(v); return true; } catch { return false; }
-  }
-
-  // Writes the key of `v` ("convert a value to a key"); false when it is not a valid key (the writer is then unusable).
-  function putKey(w, v, seen) {
-    switch (typeof v) {
-      case "number": if (v !== v) return false; putNumber(w, 0x10, v); return true;
-      case "string": putString(w, v); return true;
-      case "object": {
-        if (v === null) return false;
-        if (isArray(v)) {
-          if (seen.length >= 64 || seen.includes(v)) return false;
-          seen.push(v);
-          w.u8(0x50);
-          const len = v.length;
-          for (let i = 0; i < len; i++) {
-            if (!hasOwn.call(v, i)) return false;
-            if (!putKey(w, v[i], seen)) return false;
-          }
-          w.u8(0);
-          seen.pop();
-          return true;
-        }
-        if (isDate(v)) { const t = getTime.call(v); if (t !== t) return false; putNumber(w, 0x20, t); return true; }
-        // (a detached buffer is not a key)
-        if (isView(v)) {
-          let bytes;
-          try { bytes = new Uint8Array(v.buffer, v.byteOffset, v.byteLength); } catch { return false; }
-          putBinary(w, bytes);
-          return true;
-        }
-        if (isArrayBuffer(v)) {
-          let bytes;
-          try { bytes = new Uint8Array(v); } catch { return false; }
-          putBinary(w, bytes);
-          return true;
-        }
-        return false;
-      }
-    }
-    return false;
-  }
-
-  // The encoded key of a value, or null when it is not a key.
-  function keyOf(v) {
-    const w = new Wr();
-    return putKey(w, v, []) ? w.done() : null;
-  }
-
-  function readNumber(rd) {
-    const neg = !(rd.b[rd.p] & 0x80);   // transformed: a set top bit means it was non-negative
-    for (let i = 0; i < 8; i++) {
-      const x = rd.b[rd.p + i];
-      dv.setUint8(i, neg ? x ^ 0xff : (i === 0 ? x ^ 0x80 : x));
-    }
-    rd.p += 8;
-    return dv.getFloat64(0);
-  }
-
-  function readKey(rd) {
-    const tag = rd.u8();
-    switch (tag) {
-      case 0x10: return readNumber(rd);
-      case 0x20: return new Date(readNumber(rd));
-      case 0x30: {
-        const units = [];
-        for (;;) {
-          const a = rd.b[rd.p], c = rd.b[rd.p + 1];
-          if (a === 0 && c === 0) { rd.p += 2; break; }
-          if (a === 0xff && c === 0xff) { units.push(0xfffe + rd.b[rd.p + 2] - 1); rd.p += 3; }
-          else { units.push(((a << 8) | c) - 1); rd.p += 2; }
-        }
-        return unitsToString(units);
-      }
-      case 0x40: {
-        const out = [];
-        for (;;) {
-          const c = rd.b[rd.p++];
-          if (c === 0) { if (rd.b[rd.p] === 0xff) { rd.p++; out.push(0); continue; } break; }
-          out.push(c);
-        }
-        return new Uint8Array(out).buffer;
-      }
-      case 0x50: {
-        const arr = [];
-        while (rd.b[rd.p] !== 0) arr.push(readKey(rd));
-        rd.p++;
-        return arr;
-      }
-    }
-    return undefined;
-  }
-
-  function decodeKey(bytes) { return readKey(new Rd(bytes, 0)); }
-
-  function compareBytes(a, b) {
-    const n = a.length < b.length ? a.length : b.length;
-    for (let i = 0; i < n; i++) { if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1; }
-    return a.length === b.length ? 0 : (a.length < b.length ? -1 : 1);
-  }
-
-  // ---- key paths --------------------------------------------------------------------------------------------------
-  const IDENT = /^[\p{ID_Start}$_][\p{ID_Continue}$\u200c\u200d]*$/u;
-
-  function validPathString(s) {
-    if (s === "") return true;
-    for (const part of s.split(".")) { if (!IDENT.test(part)) return false; }
-    return true;
-  }
-
-  function validKeyPath(p) {
-    if (typeof p === "string") return validPathString(p);
-    if (isArray(p)) {
-      if (p.length === 0) return false;
-      for (const s of p) { if (typeof s !== "string" || !validPathString(s)) return false; }
-      return true;
-    }
-    return false;
-  }
-
+  // ---- key paths ----------------------------------------------------------------------------------------------------
   // null | string | string[], as bytes for the browser (opaque there) and back
   function packPath(p) {
     const w = new Wr();
@@ -305,97 +110,8 @@
     }
   }
 
-  const FAILURE = Symbol("failure");
-
-  // "Evaluate a key path on a value": FAILURE when a step has no value.
-  function evalPathString(v, path) {
-    if (path === "") return v;
-    let cur = v;
-    for (const id of path.split(".")) {
-      if (typeof cur === "string" && id === "length") { cur = cur.length; continue; }
-      if (isArray(cur) && id === "length") { cur = cur.length; continue; }
-      if (cur !== null && typeof cur === "object") {
-        if (id === "size" || id === "type" || id === "name" || id === "lastModified") {
-          if (typeof Blob === "function" && cur instanceof Blob) {
-            if (id === "size" || id === "type") { cur = cur[id]; continue; }
-            if (typeof File === "function" && cur instanceof File) { cur = cur[id]; continue; }
-          }
-        }
-        if (!hasOwn.call(cur, id)) return FAILURE;
-        cur = cur[id];
-        continue;
-      }
-      return FAILURE;
-    }
-    return cur;
-  }
-
-  // The encoded key a key path gives for a value: undefined (no value at the path), null (not a valid key)
-  function pathKey(v, path) {
-    if (typeof path === "string") {
-      const r = evalPathString(v, path);
-      if (r === FAILURE) return undefined;
-      return keyOf(r);
-    }
-    const w = new Wr();
-    w.u8(0x50);
-    for (const p of path) {
-      const r = evalPathString(v, p);
-      if (r === FAILURE) return undefined;
-      if (!putKey(w, r, [])) return null;
-    }
-    w.u8(0);
-    return w.done();
-  }
-
-  // Index keys of a value (multi-entry: one per distinct valid element of an array result)
-  function indexKeys(v, ix) {
-    const path = ix.keyPath;
-    if (typeof path === "string") {
-      const r = evalPathString(v, path);
-      if (r === FAILURE) return [];
-      if (ix.multiEntry && isArray(r)) {
-        const out = [];
-        const seen = [];
-        for (let i = 0; i < r.length; i++) {
-          if (!hasOwn.call(r, i)) continue;
-          const k = keyOf(r[i]);
-          if (k === null) continue;
-          let dup = false;
-          for (const s of seen) { if (compareBytes(s, k) === 0) { dup = true; break; } }
-          if (!dup) { seen.push(k); out.push(k); }
-        }
-        return out;
-      }
-      const k = keyOf(r);
-      return k === null ? [] : [k];
-    }
-    const k = pathKey(v, path);
-    return k === undefined || k === null ? [] : [k];
-  }
-
-  // Can a generated key be injected at this path of the value? ("check that a key could be injected into a value")
-  function canInject(v, path) {
-    const parts = path === "" ? [] : path.split(".");
-    let cur = v;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (cur === null || typeof cur !== "object") return false;
-      if (!hasOwn.call(cur, parts[i])) { cur = undefined; break; }
-      cur = cur[parts[i]];
-    }
-    if (cur === undefined) return true;
-    return cur !== null && typeof cur === "object";
-  }
-
-  function inject(v, path, key) {
-    const parts = path.split(".");
-    let cur = v;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!hasOwn.call(cur, parts[i])) cur[parts[i]] = {};
-      cur = cur[parts[i]];
-    }
-    Object.defineProperty(cur, parts[parts.length - 1], { value: key, writable: true, enumerable: true, configurable: true });
-  }
+  // The encoded keys an index makes for a value (multi-entry: one per distinct valid element of an array result)
+  function indexKeys(v, ix) { return host.indexKeys(v, ix.keyPath, ix.multiEntry); }
 
   // ---- argument conversions ---------------------------------------------------------------------------------------
   function str(v) { return `${v}`; }
@@ -485,6 +201,8 @@
     if (k === null) throw dom("DataError", "The parameter is not a valid key or key range.");
     return { lower: k, upper: k, lowerOpen: false, upperOpen: false };
   }
+  // A range as the bytes of a request (a flags byte and the bounds; null: unbounded).
+  function packRange(r) { const w = new Wr(); putRange(w, r); return w.done(); }
   function putRange(w, r) {
     if (r === null) { w.u8(0); return; }
     w.u8((r.lower !== null ? 1 : 0) | (r.upper !== null ? 2 : 0) | (r.lowerOpen ? 4 : 0) | (r.upperOpen ? 8 : 0));
@@ -604,6 +322,7 @@
         let cb = l.callback;
         if (l.handler) { cb = s.handlers[type]; if (typeof cb !== "function") continue; }
         st.passive = !!l.passive;
+        listenerDepth++;
         try {
           if (typeof cb === "function") cb.call(t, event);
           else if (cb !== null && typeof cb === "object") {
@@ -615,11 +334,17 @@
           threw = true;
           host.report(e);
         }
+        listenerDepth--;
         st.passive = false;
+        // the browser calls us for an event with nothing else running: the microtasks a listener queued run before the next listener
+        if (inHostEvent && listenerDepth === 0) drain();
       }
     }
     return threw;
   }
+
+  let listenerDepth = 0;   // listeners running (an event dispatched by a script inside one is nested)
+  let inHostEvent = false;   // the browser called us to deliver an event: the stack holds nothing of a script
 
   function removeListener(s, l) {
     l.removed = true;
@@ -846,7 +571,7 @@
   class IDBFactory {
     constructor() { throw new TypeError("Illegal constructor"); }
     open(name, version = undefined) {
-      sOf(factoryState, this);
+      const F = sOf(factoryState, this);
       arity(1, arguments.length, "open", "IDBFactory");
       const n = str(name);
       let v = 0, has = 0;
@@ -858,19 +583,23 @@
         has = 1;
       }
       const w = new Wr();
-      w.str(n); w.uv(v); w.u8(has);
+      w.str(n); w.uv(v); w.u8(has); w.str(F.bucket);
       const rep = call(OP.OPEN, w.done());
-      if (rep[0]) throw fail(rep[0]);
+      if (rep[0] && !(F.bucket !== "" && rep[0] === E_UNKNOWN)) throw fail(rep[0]);
       const req = newRequest(IDBOpenDBRequest.prototype, null, null);
       req.name = n;
+      if (rep[0]) {   // the bucket was deleted: the request fails
+        post(() => openError(req, E_UNKNOWN));
+        return req.wrapper;
+      }
       openReqs.set(new Rd(rep, 1).uv(), req);
       return req.wrapper;
     }
     deleteDatabase(name) {
-      sOf(factoryState, this);
+      const F = sOf(factoryState, this);
       arity(1, arguments.length, "deleteDatabase", "IDBFactory");
       const w = new Wr();
-      w.str(str(name));
+      w.str(str(name)); w.str(F.bucket);
       const rep = call(OP.DELETE, w.done());
       if (rep[0]) throw fail(rep[0]);
       const req = newRequest(IDBOpenDBRequest.prototype, null, null);
@@ -880,8 +609,10 @@
     }
     databases() {
       try {
-        sOf(factoryState, this);
-        const rep = call(OP.LIST);
+        const F = sOf(factoryState, this);
+        const lw = new Wr();
+        lw.str(F.bucket);
+        const rep = call(OP.LIST, lw.done());
         if (rep[0]) throw fail(rep[0]);
         const id = new Rd(rep, 1).uv();
         return new Promise((resolve, reject) => listReqs.set(id, { resolve, reject }));
@@ -988,7 +719,10 @@
       for (const s of scope) w.uv(s.id);
       const rep = call(OP.BEGIN, w.done());
       if (rep[0]) throw fail(rep[0]);
-      return newTransaction(c, new Rd(rep, 1).uv(), m, scope, durability).wrapper;
+      const rd = new Rd(rep, 1);
+      const T = newTransaction(c, rd.uv(), m, scope, durability);
+      if (rd.u8() !== 0) { T.started = true; T.startedEarly = true; }   // (the browser started it at once: its first request need not wait for an event)
+      return T.wrapper;
     }
     close() {
       const c = sOf(dbState, this);
@@ -1173,6 +907,7 @@
   class Failure {
     constructor(code, message) { this.code = code; this.message = message; }
   }
+  host.setFailure(Failure);   // (the browser's side throws it when a request fails)
   function expectOk(rep) {
     if (rep[0]) throw new Failure(rep[0]);
     return new Rd(rep, 1);
@@ -1205,15 +940,14 @@
     try { return serialize(value); } finally { if (T.state === "inactive") T.state = prev; }
   }
 
-  function valueOf(rd) { return deserialize(rd.bytes()); }
-
   function pathOf(S) { return S.meta.keyPath; }
 
   // The index keys of a value, for the indexes of the store as they are when the request runs: the keys taken when the request
   // was made (snap, [index, keys] of the indexes there were: the value was a snapshot then) where there are, else from the
   // clone (an index created since, by a version change transaction whose requests were queued before it).
   function snapIndexKeys(S, value) { return S.meta.indexes.map((ix) => [ix, indexKeys(value, ix)]); }
-  function writeIndexKeys(w, S, snap, bytes) {
+  // The index keys of a record for the browser: [index id, key, index id, key...]
+  function indexKeyList(S, snap, bytes) {
     const list = [];
     let clone = null;
     // (the indexes the browser has now: one made later, or one deleted later, is not for a request that is ahead of it)
@@ -1221,12 +955,10 @@
       let keys = null;
       for (const e of snap) { if (e[0] === ix) { keys = e[1]; break; } }
       if (keys === null) { if (clone === null) clone = deserialize(bytes); keys = indexKeys(clone, ix); }
-      for (const k of keys) list.push([ix.id, k]);
+      for (const k of keys) list.push(ix.id, k);
     }
-    w.uv(list.length);
-    for (const [id, k] of list) { w.uv(id); w.bytes(k); }
+    return list;
   }
-
   function doPut(S, value, key, noOverwrite, what) {
     const T = checkStore(S, true);
     const meta = S.meta;
@@ -1240,21 +972,23 @@
     }
     const bytes = cloneValue(T, value);
     let generate = false;
+    // key paths are read on the clone, not on the value (a getter or a Proxy of the value ran once, in the clone)
+    const evalValue = (typeof value === "object" && value !== null && (kp !== null || meta.indexes.length > 0)) ? deserialize(bytes) : value;
     if (kp !== null) {
-      const k = pathKey(value, kp);
+      const k = pathKey(evalValue, kp);
       if (k === null) throw dom("DataError", "The key path yielded a value that is not a valid key.");
       if (k === undefined) {
         if (!meta.autoIncrement) throw dom("DataError", "Evaluating the object store's key path did not yield a value.");
-        if (typeof kp !== "string" || !canInject(value, kp)) throw dom("DataError", "A key could not be injected into the value.");
+        if (typeof kp !== "string" || !canInject(evalValue, kp)) throw dom("DataError", "A key could not be injected into the value.");
         generate = true;
       } else keyBytes = k;
     }
     const R = newRequest(IDBRequest.prototype, S.wrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     // index keys of the value as it is now (the clone is the snapshot); with a generated key they come from the clone
-    const snapshot = generate ? null : snapIndexKeys(S, value);
+    const snapshot = generate ? null : snapIndexKeys(S, evalValue);
     enqueue(T, R, () => {
-      let kb = keyBytes, vb = bytes, ik = null;
+      let kb = keyBytes, vb = bytes, ik;
       if (generate) {
         // the generator's next key (it moves on with the put, and only if the put succeeds)
         const g = reqWriter(T, REQ.PEEK_KEY, meta.id);
@@ -1262,18 +996,11 @@
         const clone = deserialize(bytes);
         inject(clone, kp, decodeKey(kb));
         vb = serialize(clone);
-        ik = new Wr();
-        writeIndexKeys(ik, S, snapIndexKeys(S, clone), vb);
+        ik = indexKeyList(S, snapIndexKeys(S, clone), vb);
       } else {
-        ik = new Wr();
-        writeIndexKeys(ik, S, snapshot, vb);
+        ik = indexKeyList(S, snapshot, vb);
       }
-      const w = reqWriter(T, REQ.PUT, meta.id);
-      w.u8((noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0) | (generate ? 4 : 0));
-      if (kb !== null) w.bytes(kb);
-      w.bytes(vb);
-      w.raw(ik.done());
-      return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
+      return execPut(T.id, meta.id, (noOverwrite ? 1 : 0) | (kb !== null ? 2 : 0) | (generate ? 4 : 0), kb, vb, ik);
     });
     return R.wrapper;
   }
@@ -1326,19 +1053,11 @@
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
     enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.GET_ALL, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, a.range);
-      w.u8(mode); w.u8((a.backwards ? 1 : 0) | (a.unique ? 2 : 0)); w.uv(a.limit);
-      const rd = expectOk(call(OP.EXEC, w.done()));
-      const n = rd.uv();
-      const out = [];
-      for (let i = 0; i < n; i++) {
-        if (mode === 1) out.push(decodeKey(rd.bytes()));
-        else if (mode === 2) out.push(valueOf(rd));
-        else { const k = decodeKey(rd.bytes()), pk = decodeKey(rd.bytes()); out.push(makeRecord(k, pk, valueOf(rd))); }
-      }
-      return out;
+      const out = execGetAll(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(a.range), mode, (a.backwards ? 1 : 0) | (a.unique ? 2 : 0), a.limit);
+      if (mode !== 3) return out;
+      const records = [];
+      for (let i = 0; i < out.length; i += 3) records.push(makeRecord(out[i], out[i + 1], out[i + 2]));
+      return records;
     });
     return R.wrapper;
   }
@@ -1347,16 +1066,7 @@
     const range = rangeArg(query, false);
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-    enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.GET, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, range);
-      w.u8(keyOnly ? 1 : 0);
-      const rd = expectOk(call(OP.EXEC, w.done()));
-      if (!rd.u8()) return undefined;
-      const pk = rd.bytes();
-      return keyOnly ? decodeKey(pk) : valueOf(rd);
-    });
+    enqueue(T, R, () => execGet(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(range), keyOnly));
     return R.wrapper;
   }
 
@@ -1364,12 +1074,7 @@
     const range = rangeArg(query, true);
     const R = newRequest(IDBRequest.prototype, srcWrapper, T);
     etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-    enqueue(T, R, () => {
-      const w = reqWriter(T, REQ.COUNT, S.meta.id);
-      w.uv(src.index ? src.index.id : 0);
-      putRange(w, range);
-      return expectOk(call(OP.EXEC, w.done())).uv();
-    });
+    enqueue(T, R, () => execCount(T.id, S.meta.id, src.index ? src.index.id : 0, packRange(range)));
     return R.wrapper;
   }
 
@@ -1415,12 +1120,7 @@
       const range = rangeArg(query, false);
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.DELETE, S.meta.id);
-        putRange(w, range);
-        expectOk(call(OP.EXEC, w.done()));
-        return undefined;
-      });
+      enqueue(T, R, () => { execDelete(T.id, S.meta.id, packRange(range)); return undefined; });
       return R.wrapper;
     }
     clear() {
@@ -1428,7 +1128,7 @@
       const T = checkStore(S, true);
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      enqueue(T, R, () => { expectOk(call(OP.EXEC, reqWriter(T, REQ.CLEAR, S.meta.id).done())); return undefined; });
+      enqueue(T, R, () => { execClear(T.id, S.meta.id); return undefined; });
       return R.wrapper;
     }
     get(query) {
@@ -1570,7 +1270,8 @@
         // (a unique index that the records violate: the version change transaction aborts with a ConstraintError)
         if (r2[0]) throw new Failure(r2[0], "Unable to add the index entries.");
       }
-      if (n < 256) break;
+      const more = rd.u8();   // (a piece cut short by its size: the next one goes on)
+      if (n < 256 && more === 0) break;
     }
   }
 
@@ -1704,8 +1405,10 @@
       if (C.index === null) throw dom("InvalidAccessError", "The cursor's source is not an index.");
       if (C.direction === 1 || C.direction === 3) throw dom("InvalidAccessError", "The cursor's direction is a unique one.");
       if (!C.gotValue) throw dom("InvalidStateError", "The cursor is being iterated or has iterated past its end.");
-      const k = keyOf(key), pk = keyOf(primaryKey);
-      if (k === null || pk === null) throw dom("DataError", "The parameter is not a valid key.");
+      const k = keyOf(key);
+      if (k === null) throw dom("DataError", "The parameter is not a valid key.");
+      const pk = keyOf(primaryKey);   // (the first key is checked before the second is read)
+      if (pk === null) throw dom("DataError", "The parameter is not a valid key.");
       const c = compareBytes(k, C.key);
       const fwd = C.direction < 2;
       if ((fwd && (c < 0 || (c === 0 && compareBytes(pk, C.pk) <= 0))) || (!fwd && (c > 0 || (c === 0 && compareBytes(pk, C.pk) >= 0)))) {
@@ -1724,22 +1427,16 @@
       const bytes = cloneValue(T, value);
       const S = C.store;
       const kp = S.meta.keyPath;
+      const evalValue = (typeof value === "object" && value !== null && (kp !== null || S.meta.indexes.length > 0)) ? deserialize(bytes) : value;
       if (kp !== null) {
-        const k = pathKey(value, kp);
+        const k = pathKey(evalValue, kp);
         if (k === null || k === undefined || compareBytes(k, C.pk) !== 0) throw dom("DataError", "The effective key of the value differs from the cursor's primary key.");
       }
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
-      const snapshot = snapIndexKeys(S, value);
+      const snapshot = snapIndexKeys(S, evalValue);
       const pk = C.pk;
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.PUT, S.meta.id);
-        w.u8(2); w.bytes(pk); w.bytes(bytes);
-        const ik = new Wr();
-        writeIndexKeys(ik, S, snapshot, bytes);
-        w.raw(ik.done());
-        return decodeKey(expectOk(call(OP.EXEC, w.done())).bytes());
-      });
+      enqueue(T, R, () => execPut(T.id, S.meta.id, 2, pk, bytes, indexKeyList(S, snapshot, bytes)));
       return R.wrapper;
     }
     delete() {
@@ -1752,12 +1449,7 @@
       const R = newRequest(IDBRequest.prototype, this, T);
       etState.set(R.wrapper, { listeners: [], handlers: Object.create(null) });
       const pk = C.pk;
-      enqueue(T, R, () => {
-        const w = reqWriter(T, REQ.DELETE, C.store.meta.id);
-        putRange(w, { lower: pk, upper: pk, lowerOpen: false, upperOpen: false });
-        expectOk(call(OP.EXEC, w.done()));
-        return undefined;
-      });
+      enqueue(T, R, () => { execDelete(T.id, C.store.meta.id, packRange({ lower: pk, upper: pk, lowerOpen: false, upperOpen: false })); return undefined; });
       return R.wrapper;
     }
   }
@@ -1783,29 +1475,18 @@
   }
 
   function cursorExec(C, T, R, target, targetPk, count) {
-    const w = reqWriter(T, REQ.CURSOR, C.store.meta.id);
-    w.uv(C.index === null ? 0 : C.index.id);
-    putRange(w, C.range);
-    w.u8(C.direction);
-    if (C.key === null) { w.u8(0); w.bytes(new Uint8Array(0)); w.bytes(new Uint8Array(0)); }
-    else { w.u8(1); w.bytes(C.key); w.bytes(C.pk); }
-    if (target !== null) { w.u8(1); w.bytes(target); } else { w.u8(0); w.bytes(new Uint8Array(0)); }
-    if (targetPk !== null) { w.u8(1); w.bytes(targetPk); } else { w.u8(0); w.bytes(new Uint8Array(0)); }
-    w.uv(count);
-    w.u8(C.keyOnly ? 1 : 0);
-    const rd = expectOk(call(OP.EXEC, w.done()));
-    if (!rd.u8()) {
+    const rep = execCursor(T.id, C.store.meta.id, C.index === null ? 0 : C.index.id, packRange(C.range), C.direction, C.key, C.pk, target, targetPk, count, C.keyOnly);
+    if (rep === null) {
       C.key = null; C.pk = null; C.kv = C.pv = NOCACHE; C.value = undefined; C.gotValue = false;
       return null;
     }
-    C.key = rd.bytes().slice();
-    C.pk = rd.bytes().slice();
+    C.key = rep[0];
+    C.pk = rep[1];
     C.kv = C.pv = NOCACHE;
-    C.value = C.keyOnly ? undefined : valueOf(rd);
+    C.value = rep[2];
     C.gotValue = true;
     return C.wrapper;
   }
-
   function openCursor(S, src, T, srcWrapper, query, direction, keyOnly) {
     const range = rangeArg(query, true);
     const dir = DIRECTIONS.indexOf(checkEnum(direction, DIRECTIONS, "IDBCursorDirection"));
@@ -1854,6 +1535,10 @@
   }
 
   function onEvent() {
+    inHostEvent = true;
+    try { onEventInner(); } finally { inHostEvent = false; }
+  }
+  function onEventInner() {
     const rep = call(OP.EVENT);
     const rd = new Rd(rep, 1);
     const kind = rd.u8();
@@ -1941,6 +1626,7 @@
       case EV.TX_STARTED: {
         const T = txs.get(txId);
         if (T === undefined || T.dead) break;
+        if (T.startedEarly) { T.startedEarly = false; break; }
         T.started = true;
         processNext(T);
         if (T.queue.length === 0) maybeCommit(T);
@@ -1988,9 +1674,104 @@
     }
   }
 
+  // ---- navigator.storage, navigator.storageBuckets -----------------------------------------------------------------
+  const smState = new WeakMap(), sbmState = new WeakMap(), sbState = new WeakMap();
+  function bucketCall(op, build) {
+    const w = new Wr();
+    build(w);
+    const rep = call(op, w.done());
+    if (rep[0]) throw fail(rep[0]);
+    return new Rd(rep, 1);
+  }
+  function estimateOf(bucket) {
+    const rd = bucketCall(OP.ESTIMATE, (w) => w.str(bucket));
+    return { usage: rd.uv(), quota: rd.uv() };
+  }
+  function persistOf(bucket, request) {
+    return bucketCall(OP.PERSIST, (w) => { w.str(bucket); w.u8(request ? 1 : 0); }).u8() !== 0;
+  }
+  const notSupported = (what) => Promise.reject(dom("NotSupportedError", what + " is not supported."));
+
+  class StorageManager {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    estimate() { try { sOf(smState, this); return Promise.resolve(estimateOf("")); } catch (e) { return Promise.reject(e); } }
+    persist() { try { sOf(smState, this); return Promise.resolve(persistOf("", true)); } catch (e) { return Promise.reject(e); } }
+    persisted() { try { sOf(smState, this); return Promise.resolve(persistOf("", false)); } catch (e) { return Promise.reject(e); } }
+    getDirectory() { return notSupported("The origin private file system"); }
+  }
+
+  const BUCKET_NAME = /^[a-z0-9][a-z0-9_-]{0,62}$/;
+  function makeBucket(name, info) {
+    const b = Object.create(StorageBucket.prototype);
+    const factory = Object.create(IDBFactory.prototype);
+    factoryState.set(factory, { bucket: name });
+    sbState.set(b, { name, persisted: info.persisted, durability: info.durability, expires: info.expires, factory });
+    return b;
+  }
+  class StorageBucketManager {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    open(name, options = undefined) {
+      try {
+        sOf(sbmState, this);
+        arity(1, arguments.length, "open", "StorageBucketManager");
+        const n = str(name);
+        if (!BUCKET_NAME.test(n)) throw new TypeError("Failed to execute 'open' on 'StorageBucketManager': The bucket name is not valid.");
+        let persisted = false, durability = "", expires = -1;
+        if (options !== undefined && options !== null) {
+          if (typeof options !== "object" && typeof options !== "function") throw new TypeError("The options argument is not of type 'StorageBucketOptions'.");
+          persisted = !!options.persisted;
+          if (options.durability !== undefined) durability = checkEnum(options.durability, ["strict", "relaxed"], "StorageBucketDurability");
+          if (options.expires !== undefined && options.expires !== null) expires = Number(options.expires);
+        }
+        const rd = bucketCall(OP.BUCKETS, (w) => { w.u8(0); w.str(n); w.u8(persisted ? 1 : 0); w.str(durability); w.f64(expires); });
+        const info = { persisted: rd.u8() !== 0, durability: rd.str(), expires: rd.f64() };
+        return Promise.resolve(makeBucket(n, info));
+      } catch (e) { return Promise.reject(e); }
+    }
+    keys() {
+      try {
+        sOf(sbmState, this);
+        const rd = bucketCall(OP.BUCKETS, (w) => w.u8(1));
+        const n = rd.uv(), out = [];
+        for (let i = 0; i < n; i++) { const name = rd.str(); if (name !== "default") out.push(name); }
+        return Promise.resolve(out);
+      } catch (e) { return Promise.reject(e); }
+    }
+    delete(name) {
+      try {
+        sOf(sbmState, this);
+        arity(1, arguments.length, "delete", "StorageBucketManager");
+        const n = str(name);
+        if (!BUCKET_NAME.test(n)) throw new TypeError("Failed to execute 'delete' on 'StorageBucketManager': The bucket name is not valid.");
+        bucketCall(OP.BUCKETS, (w) => { w.u8(2); w.str(n); });
+        return Promise.resolve(undefined);
+      } catch (e) { return Promise.reject(e); }
+    }
+  }
+
+  class StorageBucket {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return sOf(sbState, this).name; }
+    get indexedDB() { return sOf(sbState, this).factory; }
+    persist() { try { const B = sOf(sbState, this); B.persisted = persistOf(B.name, true); return Promise.resolve(B.persisted); } catch (e) { return Promise.reject(e); } }
+    persisted() { try { const B = sOf(sbState, this); return Promise.resolve(persistOf(B.name, false)); } catch (e) { return Promise.reject(e); } }
+    estimate() { try { const B = sOf(sbState, this); return Promise.resolve(estimateOf(B.name)); } catch (e) { return Promise.reject(e); } }
+    durability() { try { return Promise.resolve(sOf(sbState, this).durability); } catch (e) { return Promise.reject(e); } }
+    setExpires(expires) {
+      try {
+        const B = sOf(sbState, this);
+        const ms = Number(expires);
+        B.expires = ms;
+        bucketCall(OP.BUCKETS, (w) => { w.u8(3); w.str(B.name); w.f64(ms); });
+        return Promise.resolve(undefined);
+      } catch (e) { return Promise.reject(e); }
+    }
+    expires() { try { const B = sOf(sbState, this); return Promise.resolve(B.expires < 0 ? null : B.expires); } catch (e) { return Promise.reject(e); } }
+    getDirectory() { return notSupported("The origin private file system"); }
+  }
   // ---- the global ---------------------------------------------------------------------------------------------------
   const factory = Object.create(IDBFactory.prototype);
-  factoryState.set(factory, true);
+  factoryState.set(factory, { bucket: "" });
 
   // The interfaces' operations and attributes are enumerable, like Web IDL's.
   function exposeMembers(cls) {
@@ -2006,18 +1787,17 @@
   }
 
   const all = [IDBRequest, IDBOpenDBRequest, IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex, IDBCursor, IDBCursorWithValue,
-    IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList];
+    IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList, StorageManager, StorageBucketManager, StorageBucket];
+  const classes = {};
   for (const cls of all) {
     exposeMembers(cls);
-    Object.defineProperty(globalThis, cls.name, { value: cls, writable: true, configurable: true, enumerable: false });
+    if (cls !== DOMStringList) classes[cls.name] = cls;   // (the realm's own DOMStringList stays the global one: see start)
   }
-  Object.defineProperty(globalThis, "indexedDB", {
-    get: Object.getOwnPropertyDescriptor({ get indexedDB() { if (this !== undefined && this !== null && this !== globalThis) throw new TypeError("Illegal invocation"); return factory; } }, "indexedDB").get,
-    set: undefined, configurable: true, enumerable: true,
-  });
 
-  // A window's realm starts: the interfaces exist, ours are linked to them.
+  // The realm's interfaces exist (the prelude runs at the first use): ours are linked to them.
   function start() {
+    // the lists of names are DOMStringLists of this realm (instanceof), with their own methods
+    if (typeof globalThis.DOMStringList === "function") Object.setPrototypeOf(DOMStringList.prototype, globalThis.DOMStringList.prototype);
     NativeEvent = Event;
     DOMEx = DOMException;
     // the roots of our event targets inherit from EventTarget itself, with their own addEventListener, removeEventListener and
@@ -2037,6 +1817,9 @@
     Object.defineProperty(IDBPlainEvent.prototype, "constructor", { value: Event, writable: true, configurable: true });
   }
 
-  host.install({ event: onEvent, cleanup, start });
-})(__wren_idb_host);
-delete globalThis.__wren_idb_host;
+  const storage = Object.create(StorageManager.prototype);
+  smState.set(storage, true);
+  const buckets = Object.create(StorageBucketManager.prototype);
+  sbmState.set(buckets, true);
+  return { classes, factory, storage, buckets, hooks: { event: onEvent, cleanup }, start };
+})

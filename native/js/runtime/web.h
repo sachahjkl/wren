@@ -207,6 +207,10 @@ JSValue web_stream_cancel(JSContext *ctx, JSValueConst stream, JSValueConst reas
  * for (FileReader events, MessagePort messages). `data` is kept until then. */
 bool web_queue_task(JSContext *ctx, void (*fn)(JSContext *ctx, JSValueConst data), JSValueConst data);
 
+/* IndexedDB keys (web_idb_keys.c) need these: the bytes of a key buffer, the time of a Date */
+int wj_key_buffer_bytes(JSContext *ctx, JSValueConst v, const uint8_t **ptr, size_t *len);
+bool web_date_time(JSContext *ctx, JSValueConst v, double *t);
+
 /* ---- Blob (web_blob.c) ---- */
 
 /* The bytes of a Blob (or File) where they are, its type: false when `v` is not one. */
