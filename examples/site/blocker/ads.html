@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Blocker test page</title>
 <style>body{font:16px sans-serif;margin:24px} .ad-banner{background:#fc0;padding:20px;margin:10px 0} #log{white-space:pre;font:14px monospace;background:#eee;padding:8px}</style>
 </head><body>
@@ -10,6 +10,8 @@
 <iframe id="adframe" src="http://localhost:8765/site/blocker/adframe.html" width="300" height="100"></iframe>
 <p id="after">Text after the ad slots.</p>
 <div id="log"></div>
+<script id="nodetext">var secretMarker = "AAA-MARKER";</script>
+<script id="nodegone">var goneMarker = "CCC-MARKER";</script>
 <script>window.adblockDetected = true;</script>
 <script src="http://localhost:8765/site/blocker/ad.js"></script>
 <script>
@@ -18,6 +20,10 @@ function line(s){ log.textContent += s + "\n"; }
 line("ad.js ran: " + (window.adScriptRan === true));
 line("adblockDetected: " + window.adblockDetected);
 fetch("http://localhost:8765/site/blocker/track.json").then(function(r){ line("tracker fetch: ok " + r.status); }).catch(function(e){ line("tracker fetch: failed"); });
+setTimeout(function () {
+  line("node text: " + document.getElementById("nodetext").textContent.trim());
+  line("removed node text length: " + document.getElementById("nodegone").textContent.length);
+}, 400);
 fetch("/site/blocker/ok.json").then(function(r){ return r.text(); }).then(function(t){ line("first party fetch: ok"); });
 </script>
 </body></html>
