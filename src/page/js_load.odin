@@ -332,6 +332,7 @@ parser_finish :: proc(p: ^Page) {
 	ps.next = 0
 	s.parse_done = true
 	s.timing.parsed_ms = now_ms(p)
+	if embedder.parsed != nil { embedder.parsed(embedder.user, p) }
 	p.style_stale = true   // stylesheets the reveal kept in place are read again (styles.odin)
 	ready_state_set(p, .Interactive)
 }
@@ -388,6 +389,7 @@ script_prepare :: proc(p: ^Page, el: base.Handle, parser_inserted: bool) {
 	if .Already_Started in flags { return }
 	n := dom.get(d, el)
 	if n == nil { return }
+	if embedder.before_script != nil { embedder.before_script(embedder.user, p, el); if n = dom.get(d, el); n == nil { return } }
 	src, has_src := dom.get_attribute(d, el, "src")
 	text := script_text(d, el)
 	if !has_src && text == "" { return }

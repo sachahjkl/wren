@@ -27,7 +27,7 @@ check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { passes += 1; fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
 
-MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n"
+MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n"
 
 by_id :: proc(d: ^dom.Document, id: string) -> base.Handle {
 	for h in dom.ids_all(d, id) { return h }
@@ -92,6 +92,33 @@ main :: proc() {
 	check(row != nil && row.third_party, "the matrix has the third-party host")
 	headless.close(d)
 
+	// the scriptlets that change the document run natively: no realm is involved
+	{
+		dom_url := testenv.url("http://127.0.0.1:8765/site/blocker/domops.html")
+		dd := load(&e, dom_url)
+		headless.pump(dd, 800)
+		dp := dd.page
+		attr :: proc(p: ^page.Page, id, name: string) -> (string, bool) { return dom.get_attribute(p.doc, by_id(p.doc, id), name) }
+		_, has := attr(dp, "ra1", "data-ad")
+		check(!has, "remove-attr: the attribute is gone")
+		_, has = attr(dp, "ra2", "data-late")
+		check(!has, "remove-attr with stay: an element that arrives later is cleaned too")
+		cls, _ := attr(dp, "rc1", "class")
+		check(cls == "rc keep", fmt.tprintf("remove-class leaves the other classes (%q)", cls))
+		v, _ := attr(dp, "sa", "data-set")
+		check(v == "yes", "set-attr sets the attribute")
+		check(dom.text_content(dp.doc, by_id(dp.doc, "sec")) == "", "remove-node-text empties the node")
+		check(dom.text_content(dp.doc, by_id(dp.doc, "rep")) == "price: 100 USD, 200 USD", "replace-node-text with a regex and $1")
+		href, _ := attr(dp, "lnk", "href")
+		check(href == "https://example.org/page", fmt.tprintf("href-sanitizer takes the link's target (%q)", href))
+		log := log_text(dd)
+		check(strings.contains(log, "flag=FLAG_OFF;"), fmt.tprintf("replace-node-text rewrites an inline script before it runs (%q)", log))
+		check(strings.contains(log, "dyn=FLAG_OFF;"), "...and one inserted later")
+		check(strings.contains(log, "clicked;"), "trusted-click-element clicks the button")
+		check(strings.contains(page.document_cookies(dp), "wb_test=1"), "set-cookie writes the cookie")
+		// (the storage writes need the browser's storage manager: the headless environment has none)
+		headless.close(dd)
+	}
 	// the site is on the whitelist: nothing is blocked or hidden
 	blocker.site_toggle(&b, "127.0.0.1", .Off, true)
 	d = load(&e, url)
