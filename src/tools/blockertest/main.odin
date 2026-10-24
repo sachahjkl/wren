@@ -27,7 +27,7 @@ check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { passes += 1; fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
 
-MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n"
+MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n"
 
 by_id :: proc(d: ^dom.Document, id: string) -> base.Handle {
 	for h in dom.ids_all(d, id) { return h }
@@ -76,6 +76,11 @@ main :: proc() {
 	check(strings.contains(text, "ad.js ran: false"), "the blocked script did not run")
 	check(strings.contains(text, "adblockDetected: false"), "the scriptlet set-constant ran before the page's script")
 	check(strings.contains(text, "tracker fetch: failed"), "the blocked fetch failed")
+	// (the scriptlets that rewrite the text of <script> elements: found among the elements of the tag, once each; the page reads the text 400 ms in)
+	headless.pump(d, 700)
+	text = log_text(d)
+	check(strings.contains(text, "node text: var secretMarker = \"BBB-MARKER\";"), "replace-node-text rewrote the text of a script")
+	check(strings.contains(text, "removed node text length: 0"), "remove-node-text emptied the text of a script")
 	check(strings.contains(text, "first party fetch: ok"), "the first-party fetch went through")
 	if h := by_id(d.page.doc, "ad1"); h != base.NIL_HANDLE {
 		headless.pump(d, 300)

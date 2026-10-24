@@ -78,11 +78,43 @@ function currentScriptMatches(needle) {
 function onReady(f) {
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', f, { once: true }); else f();
 }
+// Runs f now and after the page's changes, at most once per `delay` ms, where the delay is ten times what f took the last time (at least
+// 20 ms): a scriptlet that walks the whole document costs a tenth of the page's time at most, however busy the page is.
 function observe(f, stay) {
-  f();
+  var delay = 20;
+  var run = function () { var t0 = Date.now(); f(); delay = Math.min(2000, Math.max(20, (Date.now() - t0) * 10)); };
+  run();
   if (!stay || typeof MutationObserver === 'undefined') return;
   var t = 0;
-  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; f(); }, 20); }).observe(D.documentElement, { childList: true, subtree: true, attributes: true });
+  new MutationObserver(function () { if (t) return; t = setTimeout(function () { t = 0; run(); }, delay); }).observe(D.documentElement, { childList: true, subtree: true, attributes: true });
+}
+// Calls visit(n) once for each text node that is a direct child of an element named `mn`, as the page adds them (and again for one whose
+// text changes, unless visit changed it: it returns true then). Not a walk of the whole document at every change: the elements are
+// those of the tag, a live list. (A page like YouTube has 10 000 text nodes and changes every few milliseconds while it starts.)
+function eachNodeText(mn, visit) {
+  var seen = new WeakSet(), mine = new WeakSet();
+  var scan = function () {
+    var els = D.getElementsByTagName(mn);
+    for (var i = 0; i < els.length; i++) {
+      for (var n = els[i].firstChild; n; n = n.nextSibling) {
+        if (n.nodeType !== 3 || seen.has(n)) continue;
+        seen.add(n);
+        if (visit(n)) mine.add(n);
+      }
+    }
+  };
+  onReady(function () {
+    try { scan(); } catch (e) {}
+    if (typeof MutationObserver === 'undefined') return;
+    var t = 0;
+    new MutationObserver(function (recs) {
+      for (var i = 0; i < recs.length; i++) {
+        var r = recs[i];
+        if (r.type === 'characterData') { if (mine.has(r.target)) mine.delete(r.target); else seen.delete(r.target); }
+      }
+      if (!t) t = setTimeout(function () { t = 0; try { scan(); } catch (e) {} }, 20);
+    }).observe(D.documentElement, { childList: true, subtree: true, characterData: true });
+  });
 }
 function pruneIn(obj, paths, required, depth) {
   if (!obj || typeof obj !== 'object' || (depth || 0) > 8) return false;
@@ -285,14 +317,17 @@ S['click-element'] = function (selectors, extra, delay) {
 };
 S['remove-node-text'] = function (nodeName, condition) {
   var mn = String(nodeName).toLowerCase(), mc = matcher(condition);
-  var f = function () { try { var w = D.createTreeWalker(D.documentElement, 4); var n, rm = []; while ((n = w.nextNode())) { var par = n.parentNode; if (par && String(par.nodeName).toLowerCase() === mn && mc(n.nodeValue)) rm.push(n); } rm.forEach(function (n) { n.nodeValue = ''; }); } catch (e) {} };
-  onReady(function () { observe(f, true); });
+  eachNodeText(mn, function (n) { if (mc(n.nodeValue)) { n.nodeValue = ''; return true; } return false; });
 };
 S['replace-node-text'] = function (nodeName, pattern, replacement, c1, c2) {
   var mn = String(nodeName).toLowerCase(), re;
   try { var m = /^\/(.+)\/([gimsuy]*)$/.exec(pattern); re = m ? new RegExp(m[1], m[2]) : new RegExp(String(pattern).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'); } catch (e) { return; }
-  var f = function () { try { var w = D.createTreeWalker(D.documentElement, 4); var n; while ((n = w.nextNode())) { var par = n.parentNode; if (par && String(par.nodeName).toLowerCase() === mn && re.test(n.nodeValue)) { re.lastIndex = 0; n.nodeValue = n.nodeValue.replace(re, replacement === undefined ? '' : replacement); } re.lastIndex = 0; } } catch (e) {} };
-  onReady(function () { observe(f, true); });
+  eachNodeText(mn, function (n) {
+    var hit = false;
+    try { var text = n.nodeValue; if (re.test(text)) { re.lastIndex = 0; n.nodeValue = text.replace(re, replacement === undefined ? '' : replacement); hit = true; } } catch (e) {}
+    re.lastIndex = 0;
+    return hit;
+  });
 };
 S['disable-newtab-links'] = function () {
   D.addEventListener('click', function (ev) { var a = ev.target && ev.target.closest && ev.target.closest('a[target="_blank"]'); if (a) { ev.preventDefault(); } }, true);
