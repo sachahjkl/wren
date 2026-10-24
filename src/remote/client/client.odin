@@ -40,8 +40,8 @@ Context :: struct {
 // Options that take a value; every other `--name` must be in BOOL_OPTIONS.
 @(private) VALUE_OPTIONS := [?]string{"remote", "profile", "timeout", "tab-id", "wait", "selector", "rect", "scale", "settle", "size", "dpi",
 	"shot", "name", "out", "tolerance", "code", "button", "steps", "since", "dock", "state", "pos", "max-percent", "eval", "repeat", "speed",
-	"panel", "limit", "settle-ms", "html", "pref", "cwd"}
-@(private) BOOL_OPTIONS := [?]string{"json", "await", "tab", "window", "clear", "right", "double", "visible", "keep", "bytes", "help", "quiet",
+	"panel", "limit", "settle-ms", "html", "pref", "cwd", "idle-ms", "quiet-ms", "max-cpu", "count", "interval", "keep", "url"}
+@(private) BOOL_OPTIONS := [?]string{"json", "await", "tab", "window", "clear", "right", "double", "visible", "bytes", "help", "quiet", "override",
 	"headless", "middle", "all", "timing"}
 
 out :: proc(s: string) { desktop.console_write(s) }
@@ -150,6 +150,10 @@ request :: proc(ctx: ^Context, method, params: string) -> (rep: Reply, code: int
 	p := params
 	if ctx.timeout_ms > 0 && !strings.contains(p, `"timeout"`) {
 		p = p == "" || p == "{}" ? fmt.tprintf(`{{"timeout":%d}}`, ctx.timeout_ms) : strings.concatenate({p[:len(p) - 1], fmt.tprintf(`,"timeout":%d}}`, ctx.timeout_ms)}, context.temp_allocator)
+	}
+	// --idle-ms: how long the network must stay quiet for a wait for idle, for this command (browser.remote.idle_ms otherwise)
+	if ms := opt(&ctx.o, "idle-ms"); ms != "" && !strings.contains(p, `"idleMs"`) {
+		p = p == "" || p == "{}" ? fmt.tprintf(`{{"idleMs":%s}}`, ms) : strings.concatenate({p[:len(p) - 1], fmt.tprintf(`,"idleMs":%s}}`, ms)}, context.temp_allocator)
 	}
 	r, e := call(&ctx.conn, method, p, call_timeout(ctx))
 	switch e {

@@ -1,5 +1,5 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-BasePort n]
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-BasePort n] [-NoAsan]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
 #   default ports. Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
@@ -14,8 +14,10 @@
 # -Jobs n (default: a quarter of the processors, at most 4; 1 with -CI): steps run n at a time, each in its own
 # process, longest first (the durations of the last run, build\test_all_times.txt); each step that needs the test
 # server starts its own (a block of ports and counters of its own). A step's result is printed whole when it ends.
+# Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
+# are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0)
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan)
 if ($CI) { $Quick = $true }
 $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
@@ -52,7 +54,9 @@ function Report($name, $ok, $out, $secs, $port = 0) {
 # -Jobs 1: the step runs now. Otherwise it is queued (with whether it needs the test server) until Flush-Steps.
 $script:queue = New-Object System.Collections.Generic.List[object]
 $script:serverSteps = $false
-function Step($name, [scriptblock]$body) {
+# -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
+# clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
+function Step($name, [scriptblock]$body, [switch]$Light) {
     if ($Jobs -gt 1) {
         # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
         $vars = @{}
@@ -63,7 +67,7 @@ function Step($name, [scriptblock]$body) {
             if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
             elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
         }
-        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars })
+        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light })
         return
     }
     $t0 = Get-Date
@@ -99,18 +103,31 @@ $stepJob = {
 }
 
 # Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
-function Flush-Steps {
+# $NameLike: only the queued steps whose name matches (the others stay queued for a later call)
+function Flush-Steps([string]$NameLike = '*') {
     $pending = New-Object System.Collections.Generic.List[object]
-    foreach ($s in ($script:queue | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
-    $script:queue.Clear()
+    $mine = @($script:queue | Where-Object { $_.Name -like $NameLike })
+    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
+    foreach ($s in $mine) { [void]$script:queue.Remove($s) }
     $running = @{}
     $names = @{}
+    $light = @{}
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
-        while ($running.Count -lt $Jobs -and $pending.Count -gt 0) {
-            $s = $pending[0]; $pending.RemoveAt(0)
+        # the first pending step that may start now (longest first): a normal one while fewer than -Jobs normal ones run, a light one while fewer than -LightJobs do
+        while ($pending.Count -gt 0) {
+            $heavyN = @($running.Keys | Where-Object { -not $light[$_] }).Count
+            $lightN = $running.Count - $heavyN
+            $k = -1
+            for ($i = 0; $i -lt $pending.Count; $i++) {
+                $may = if ($pending[$i].Light) { $lightN -lt $LightJobs } else { $heavyN -lt $Jobs }
+                if ($may) { $k = $i; break }
+            }
+            if ($k -lt 0) { break }
+            $s = $pending[$k]; $pending.RemoveAt($k)
             $j = Start-Job -ScriptBlock $stepJob -ArgumentList $s.Name, $s.Body, $s.Server, $root, $Stack, $slow, [bool]$Quick, [bool]$CI, $BasePort, $s.Vars
             $running[$j.Id] = $j
             $names[$j.Id] = $s.Name
+            $light[$j.Id] = $s.Light
         }
         foreach ($j in @($running.Values)) {
             if ($j.State -eq 'Running' -or $j.State -eq 'NotStarted') { continue }
@@ -128,6 +145,23 @@ function Flush-Steps {
     }
 }
 
+# The end of the run: the slowest steps, and the slowest sections of the scripts that time themselves (so the table is in a CI log too, and in
+# the job summary of a GitHub run).
+function Show-TestTimes {
+    $lines = @('slowest steps (seconds; with -Jobs n they overlap):')
+    foreach ($s in @($script:times.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 15)) { $lines += ('  {0,5} s  {1}' -f $s.Value, $s.Key.Substring(0, [Math]::Min(110, $s.Key.Length))) }
+    if ($env:WREN_TIMINGS_FILE -and (Test-Path $env:WREN_TIMINGS_FILE)) {
+        $rows = foreach ($l in Get-Content $env:WREN_TIMINGS_FILE) { $a = $l -split "`t"; if ($a.Count -eq 3) { [pscustomobject]@{ Script = $a[0]; Section = $a[1]; Seconds = [double]::Parse($a[2], [Globalization.CultureInfo]::InvariantCulture) } } }
+        $top = @($rows | Sort-Object Seconds -Descending | Select-Object -First 20)
+        if ($top.Count -gt 0) {
+            $lines += 'slowest sections of the scripts that time themselves:'
+            foreach ($r in $top) { $lines += ('  {0,6:N1} s  {1}: {2}' -f $r.Seconds, $r.Script, $r.Section) }
+        }
+    }
+    $lines
+    if ($env:GITHUB_STEP_SUMMARY) { try { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (@('### Test times', '```') + $lines + '```') } catch { } }
+}
+
 $timesFile = Join-Path $root 'build\test_all_times.txt'
 $script:times = @{}
 if (Test-Path $timesFile) { foreach ($line in Get-Content $timesFile) { $k, $v = $line -split "`t", 2; if ($v) { $script:times[$k] = [int]$v } } }
@@ -135,6 +169,9 @@ if (Test-Path $timesFile) { foreach ($line in Get-Content $timesFile) { $k, $v =
 New-Item -ItemType Directory -Force build | Out-Null
 # this run's temporary files (several runs at once share no fixed name under %TEMP%)
 $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'build\tmp')).FullName
+# where the time of each script goes (Section / Show-WrenSections in test_env.ps1): the scripts append their sections here, the table is printed at the end
+$env:WREN_TIMINGS_FILE = Join-Path $env:TEMP 'test_all_sections.tsv'
+Remove-Item $env:WREN_TIMINGS_FILE -ErrorAction SilentlyContinue
 # Wasm calls run on the calling thread: every program that runs modules (the JavaScript engine needs 16 MiB of wasm
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
@@ -159,8 +196,11 @@ Step 'developer tools docked: the page area follows the size of the panel, at th
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
 }
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
-    cmd /c build.bat | Out-Null
-    if ($LASTEXITCODE) { return }
+    # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 }
 
@@ -182,7 +222,12 @@ Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capac
     .\build\apiconformance.exe build\apiconformance.wasm
 }
 
-Step 'graphics toolkit pixel tests (layers, projected planes, filters, kept filter results, blend modes, clip shapes, blend spaces, gradients, shadows, retained pictures, text on DirectWrite, color glyphs, COLR interpreter and built-in emoji, masks, precompiled shaders, Slug text; WARP)' { $o = ''; $suites = 'layers', 'planes', 'effects', 'gpufx', 'blend_space', 'gradients', 'shadows', 'retained', 'text', 'color_glyphs', 'colr', 'masks', 'shaders', 'slug'; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } }
+# (layers, projected planes, filters, kept filter results, blend modes, clip shapes, blend spaces, gradients, shadows, retained pictures, text on
+# DirectWrite, color glyphs, COLR interpreter and built-in emoji, masks, precompiled shaders, Slug text; WARP.) The 14 suites are 58 s one after the other:
+# in five steps of about 12 s they go to whichever job is free.
+foreach ($group in 'shadows,text,color_glyphs', 'gpufx,gradients,layers', 'colr,masks,slug', 'planes,effects,retained', 'blend_space,shaders') {
+    Step "graphics toolkit pixel tests: $group (WARP)" { $o = ''; $suites = $group -split ','; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } }
+}
 Step 'graphics toolkit color glyph tests again with the COLR interpreter instead of Direct2D (COLR v0 / v1: gradients, paint trees, text color, async, pictures)' { $o = odin test ext/gui_toolkit/tests/color_glyphs -use-separate-modules $MemCheck -vet -define:COLR_ENGINE=builtin -out:build/toolkit_color_glyphs_builtin_test.exe 2>&1 | Out-String; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 } }
 Step 'graphics toolkit keyboard tests (menus, lists, line edit history, wrapped text; no window)' { odin test ext/gui_toolkit/tests/keyboard -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_keyboard_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'graphics toolkit window chrome tests (title bar hit test and regions, virtual list, wrap cache, scroll curve; no window)' { odin test ext/gui_toolkit/tests/chrome -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_chrome_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -262,8 +307,9 @@ Step 'Web Authentication end-to-end test (webauthntest: create then get from Jav
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
-# what the steps below use is built: the queued steps run before them
-if ($Jobs -gt 1) { Flush-Steps }
+# what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
+# (longest first), instead of the steps below waiting for the slowest of them.
+if ($Jobs -gt 1) { Flush-Steps 'build *' }
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
 # listens on all of them, not after a fixed delay: a slow runner may take longer to start it); otherwise each step
@@ -279,13 +325,13 @@ try {
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\pol.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\pol.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'content blocker end-to-end test (blockertest: blocked script / frame / fetch, element hiding before the first style, scriptlet, whitelist, dynamic rules, journal, counters)' {
         odin build src/tools/blockertest -use-separate-modules -collection:wb=src -collection:toolkit=ext/gui_toolkit -vet $Track -out:build/blockertest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
         $o = .\build\blockertest.exe | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'HTTP cache end-to-end test (cachetest: freshness, revalidation, Vary, cache modes, partitions, invalidation, stale-while-revalidate, disk cache across a restart)' {
         odin build src/tools/cachetest -use-separate-modules -collection:wb=src -vet $Track -out:build/cachetest.exe $Stack
         if ($LASTEXITCODE -ne 0) { return }
@@ -293,7 +339,7 @@ try {
         if (-not $p.WaitForExit(120000 * $slow)) { $p.Kill(); Get-Content build\cat.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\cat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'end-to-end page test' {
         $p = Start-Process .\build\pagetest.exe -ArgumentList 'build\e2e.wasm','examples\site\counter.html','examples\site\counter.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\pt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\pt.txt; $global:LASTEXITCODE = 1; return }
@@ -309,7 +355,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\nat.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\nat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
         odin build src/tools/wsclosetest -use-separate-modules -collection:wb=src -vet $Track -out:build/wsclosetest.exe
         if ($LASTEXITCODE -ne 0) { return }
@@ -317,7 +363,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\wct.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\wct.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'web platform API test (timers, rAF, abort, fetch streams, encoding, crypto, storage, URL, history)' {
         $p = Start-Process .\build\webapitest.exe -ArgumentList 'build\webapitest.wasm' -NoNewWindow -PassThru -RedirectStandardOutput build\wt.txt
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\wt.txt; $global:LASTEXITCODE = 1; return }
@@ -399,7 +445,7 @@ try {
         if (-not $p.WaitForExit(180000 * $slow)) { $p.Kill(); Get-Content build\imt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\imt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -Light
     Step 'web-platform-tests (wpt\suites.txt, pinned; -Quick: a sample; fails on a regression against wpt\expectations)' {
         # the WPT origin of the step's server: the fourth port of its block
         $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-Port', ([int]$env:WREN_TEST_BASE_PORT + 3), '-TimeoutMs', (10000 * $slow))
@@ -443,10 +489,11 @@ Step 'remote control on the check build: a driven session (navigate, script, inp
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     }
 }
-# AddressSanitizer on the unit tests of every package (tools\asan.ps1, about 3 minutes): -CI and full runs.
-if ($CI -or -not $Quick) {
+# AddressSanitizer on the unit tests of every package (tools\asan.ps1, three packages at a time): -CI and full runs, unless -NoAsan (the CI runs
+# it as a job of its own, beside the others).
+if (($CI -or -not $Quick) -and -not $NoAsan) {
     Step 'unit tests under AddressSanitizer (overflows, use after free, double frees; tools\asan.ps1)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3
     }
 }
 if (-not $Quick) {
@@ -467,6 +514,7 @@ if ($Jobs -gt 1) { Flush-Steps }
 Step 'remote control: the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
 if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
+Show-TestTimes
 [IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")
 "failed steps: $failed ($([int]((Get-Date) - $runStart).TotalSeconds) s, -Jobs $Jobs)"
 exit $failed

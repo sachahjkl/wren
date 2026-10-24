@@ -66,3 +66,40 @@ every_command_has_help :: proc(t: ^testing.T) {
 		testing.expect(t, len(e.usage) >= len(e.name) && e.usage[:len(e.name)] == e.name)
 	}
 }
+
+@(test)
+numbered_pictures_keep_their_folder_and_extension :: proc(t: ^testing.T) {
+	testing.expect_value(t, numbered_name("out/vl.png", 3, 40), "out/vl-03.png")
+	testing.expect_value(t, numbered_name("C:\\a.b\\vl", 3, 40), "C:\\a.b\\vl-03")   // (the dot of a folder is not an extension)
+	testing.expect_value(t, numbered_name("out/vl%d.png", 12, 100), "out/vl12.png")
+	testing.expect_value(t, numbered_name("vl.png", 0, 1), "vl-0.png")
+}
+
+@(test)
+the_new_options_are_known :: proc(t: ^testing.T) {
+	o, err := parse_options({"reset", "--keep", "tabs,data", "--url=about:blank", "--wait", "none"})
+	testing.expect_value(t, err, "")
+	testing.expect_value(t, opt(&o, "keep"), "tabs,data")
+	testing.expect_value(t, opt(&o, "url"), "about:blank")
+	o, err = parse_options({"pref", "set", "a.b", "1", "--override", "--idle-ms", "50"})
+	testing.expect_value(t, err, "")
+	testing.expect(t, flag(&o, "override"))
+	testing.expect_value(t, opt_int(&o, "idle-ms", 0), 50)
+	o, err = parse_options({"wait", "quiet", "--quiet-ms=300", "--max-cpu", "10"})
+	testing.expect_value(t, err, "")
+	testing.expect_value(t, opt_int(&o, "quiet-ms", 0), 300)
+	testing.expect_value(t, opt_int(&o, "max-cpu", 0), 10)
+	o, err = parse_options({"shot", "a.png", "--count", "40", "--interval", "25"})
+	testing.expect_value(t, err, "")
+	testing.expect_value(t, opt_int(&o, "count", 1), 40)
+	testing.expect_value(t, opt_int(&o, "interval", 0), 25)
+}
+
+@(test)
+the_state_commands_are_documented :: proc(t: ^testing.T) {
+	for name in ([]string{"reset", "checkpoint", "pref", "wait", "stats", "shot"}) {
+		found := false
+		for e in HELP { if e.name == name { found = true } }
+		testing.expectf(t, found, "no help for %s", name)
+	}
+}

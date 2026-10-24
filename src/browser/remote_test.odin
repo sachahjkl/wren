@@ -1,5 +1,6 @@
 package browser
 
+import "core:encoding/json"
 import "core:fmt"
 import "core:testing"
 import "toolkit:platform"
@@ -92,4 +93,55 @@ contains_all :: proc(s: string, parts: []string) -> bool {
 		if !found { return false }
 	}
 	return true
+}
+
+@(test)
+keep_lists_name_the_parts_to_leave_alone :: proc(t: ^testing.T) {
+	keep, bad := keep_parse(json.String("tabs, data"))
+	testing.expect_value(t, keep, Keep{.Tabs, .Data})
+	testing.expect_value(t, bad, "")
+	arr := make(json.Array, context.temp_allocator)
+	append(&arr, json.String("prefs"), json.String("window"), json.String("history"))
+	keep, bad = keep_parse(arr)
+	testing.expect_value(t, keep, Keep{.Prefs, .Window, .History})
+	testing.expect_value(t, bad, "")
+	_, bad = keep_parse(json.String("tabs,cookies"))
+	testing.expect_value(t, bad, "cookies")
+	clear(&arr)
+	append(&arr, json.Integer(3))
+	_, bad = keep_parse(arr)
+	testing.expect(t, bad != "")
+	keep, bad = keep_parse(json.Null{})
+	testing.expect_value(t, keep, Keep{})
+	testing.expect_value(t, bad, "")
+}
+
+@(test)
+a_wait_for_quiet_needs_a_whole_window_without_work :: proc(t: ^testing.T) {
+	ms :: 1_000_000
+	q: Quiet_Window
+	// the first look opens the window; it holds once quiet_ms have passed with the CPU time moving by at most max
+	testing.expect(t, !quiet_look(&q, false, 0, 100, 400, 20))
+	testing.expect(t, !quiet_look(&q, false, 200 * ms, 105, 400, 20))
+	testing.expect(t, quiet_look(&q, false, 400 * ms, 118, 400, 20))
+	// work restarts it: a load in progress...
+	q = {}
+	testing.expect(t, !quiet_look(&q, false, 0, 100, 400, 20))
+	testing.expect(t, !quiet_look(&q, true, 300 * ms, 100, 400, 20))
+	testing.expect(t, !quiet_look(&q, false, 600 * ms, 100, 400, 20))   // (the window began at 300 ms)
+	testing.expect(t, quiet_look(&q, false, 700 * ms, 100, 400, 20))
+	// ... and so does CPU time over the limit (the window begins again where it was seen)
+	q = {}
+	testing.expect(t, !quiet_look(&q, false, 0, 100, 400, 20))
+	testing.expect(t, !quiet_look(&q, false, 300 * ms, 131, 400, 20))
+	testing.expect(t, !quiet_look(&q, false, 600 * ms, 131, 400, 20))
+	testing.expect(t, quiet_look(&q, false, 700 * ms, 131, 400, 20))
+}
+
+@(test)
+the_process_numbers_are_there :: proc(t: ^testing.T) {
+	cpu, user, kernel := process_cpu_ms()
+	testing.expect(t, cpu > 0 && cpu >= user && cpu >= kernel)
+	testing.expect(t, process_uptime_ms() > 0)
+	testing.expect(t, process_thread_count() >= 1)
 }

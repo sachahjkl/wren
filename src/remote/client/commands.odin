@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
+import "core:time"
 import "wb:remote"
 
 q :: remote.quote
@@ -82,6 +83,8 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "tabs":     return cmd_tabs(ctx)
 	case "tab":      return cmd_tab(ctx, args)
 	case "window":   return cmd_window(ctx)
+	case "reset":    return cmd_reset(ctx, args)
+	case "checkpoint": return cmd_checkpoint(ctx, args)
 	case "cmds":     return cmd_cmds(ctx, args)
 	case "cmd":
 		if len(args) != 1 { return usage(cmd, "usage: cmd <name>   (wren ctl cmds lists the names)") }
@@ -153,11 +156,39 @@ show :: proc(ctx: ^Context, rep: Reply, field: string) -> int {
 	return 0
 }
 
+// shot <file.png> [--count n [--interval ms]]: with --count the files are numbered (a "%d" in the name takes the number, else "-<n>"
+// goes before the extension), taken one after the other over this one connection (a process per picture is 100 ms of start each).
 @(private)
 cmd_shot :: proc(ctx: ^Context, args: []string) -> int {
-	if len(args) != 1 { return usage("shot", "usage: shot <file.png> [--tab|--window|--rect x,y,w,h|--selector css] [--scale n] [--settle frames]") }
+	if len(args) != 1 { return usage("shot", "usage: shot <file.png> [--tab|--window|--rect x,y,w,h|--selector css] [--scale n] [--settle frames] [--count n [--interval ms]]") }
+	count := opt_int(&ctx.o, "count", 1)
+	if count < 1 || count > 10_000 { return usage("shot", "--count is 1 to 10000") }
+	if count == 1 { return shot_one(ctx, args[0]) }
+	interval := time.Duration(opt_int(&ctx.o, "interval", 0)) * time.Millisecond
+	for i in 0 ..< count {
+		if code := shot_one(ctx, numbered_name(args[0], i, count)); code != 0 { return code }
+		if interval > 0 && i + 1 < count { time.sleep(interval) }
+	}
+	return 0
+}
+
+// `name` for picture `i` of `count`: "%d" replaced by the number, else the number before the extension (zero padded to the width of count).
+numbered_name :: proc(name: string, i, count: int) -> string {
+	width := len(fmt.tprintf("%d", count - 1))
+	num := fmt.tprintf("%0*d", width, i)
+	if strings.contains(name, "%d") {
+		s, _ := strings.replace(name, "%d", num, 1, context.temp_allocator)
+		return s
+	}
+	dot := strings.last_index_byte(name, '.')
+	if dot <= max(strings.last_index_any(name, "\\/"), 0) { return strings.concatenate({name, "-", num}, context.temp_allocator) }
+	return strings.concatenate({name[:dot], "-", num, name[dot:]}, context.temp_allocator)
+}
+
+@(private)
+shot_one :: proc(ctx: ^Context, file: string) -> int {
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{%s"path":%s`, tab_param(ctx), q(abs_path(args[0])))
+	fmt.sbprintf(&b, `{{%s"path":%s`, tab_param(ctx), q(abs_path(file)))
 	switch {
 	case opt(&ctx.o, "selector") != "": fmt.sbprintf(&b, `,"target":"selector","selector":%s`, q(opt(&ctx.o, "selector")))
 	case opt(&ctx.o, "rect") != "":
@@ -250,7 +281,7 @@ cmd_scroll :: proc(ctx: ^Context, args: []string) -> int {
 
 @(private)
 cmd_wait :: proc(ctx: ^Context, args: []string) -> int {
-	if len(args) < 1 { return usage("wait", "usage: wait load|idle|stable | wait selector <css> [--visible] | wait function <js> | wait frames [n]") }
+	if len(args) < 1 { return usage("wait", "usage: wait load|idle|stable|quiet | wait selector <css> [--visible] | wait function <js> | wait frames [n]") }
 	what := args[0]
 	b := strings.builder_make(context.temp_allocator)
 	fmt.sbprintf(&b, `{{%s"for":%s`, tab_param(ctx), q(what))
@@ -259,7 +290,10 @@ cmd_wait :: proc(ctx: ^Context, args: []string) -> int {
 	case "function": if len(args) < 2 { return usage("wait", "wait function <js>") }; fmt.sbprintf(&b, `,"expression":%s`, q(strings.join(args[1:], " ", context.temp_allocator)))
 	case "frames":   if len(args) > 1 { fmt.sbprintf(&b, `,"frames":%s`, args[1]) }
 	case "load", "idle", "stable":
-	case: return usage("wait", "wait load|idle|stable|selector|function|frames")
+	case "quiet":
+		if s := opt(&ctx.o, "quiet-ms"); s != "" { fmt.sbprintf(&b, `,"quietMs":%s`, s) }
+		if s := opt(&ctx.o, "max-cpu"); s != "" { fmt.sbprintf(&b, `,"maxCpuMs":%s`, s) }
+	case: return usage("wait", "wait load|idle|stable|quiet|selector|function|frames")
 	}
 	strings.write_byte(&b, '}')
 	return simple(ctx, "Wren.wait", strings.to_string(b))
@@ -316,7 +350,7 @@ cmd_stats :: proc(ctx: ^Context) -> int {
 
 @(private)
 cmd_pref :: proc(ctx: ^Context, args: []string) -> int {
-	if len(args) == 0 { return usage("pref", "usage: pref get <name> | pref set <name> <value> | pref list [prefix]") }
+	if len(args) == 0 { return usage("pref", "usage: pref get <name> | pref set <name> <value> [--override] | pref reset <name> | pref reset --all | pref list [prefix]") }
 	switch args[0] {
 	case "get":
 		if len(args) != 2 { return usage("pref", "usage: pref get <name>") }
@@ -327,7 +361,23 @@ cmd_pref :: proc(ctx: ^Context, args: []string) -> int {
 		outln(s)
 	case "set":
 		if len(args) != 3 { return usage("pref", "usage: pref set <name> <value>") }
-		rep, code := request(ctx, "Wren.setPref", fmt.tprintf(`{{"name":%s,"value":%s}}`, q(args[1]), q(args[2])))
+		rep, code := request(ctx, "Wren.setPref", fmt.tprintf(`{{"name":%s,"value":%s,"override":%v}}`, q(args[1]), q(args[2]), flag(&ctx.o, "override")))
+		if code != 0 { return code }
+		if flag(&ctx.o, "json") { print_json(rep); return 0 }
+		s, _ := remote.param_string(parse_result(rep), "text")
+		outln(s)
+	case "reset":
+		if flag(&ctx.o, "all") {
+			if len(args) != 1 { return usage("pref", "usage: pref reset <name> | pref reset --all") }
+			rep, code := request(ctx, "Wren.resetPref", `{"all":true}`)
+			if code != 0 { return code }
+			if flag(&ctx.o, "json") { print_json(rep); return 0 }
+			n, _ := remote.param_int(parse_result(rep), "restored")
+			outln(fmt.tprintf("%d preference(s) put back", n))
+			return 0
+		}
+		if len(args) != 2 { return usage("pref", "usage: pref reset <name> | pref reset --all") }
+		rep, code := request(ctx, "Wren.resetPref", fmt.tprintf(`{{"name":%s}}`, q(args[1])))
 		if code != 0 { return code }
 		if flag(&ctx.o, "json") { print_json(rep); return 0 }
 		s, _ := remote.param_string(parse_result(rep), "text")
@@ -342,7 +392,7 @@ cmd_pref :: proc(ctx: ^Context, args: []string) -> int {
 			n, _ := remote.param_string(o, "name"); t, _ := remote.param_string(o, "text")
 			outln(fmt.tprintf("%s = %s", n, t))
 		}
-	case: return usage("pref", "get, set or list")
+	case: return usage("pref", "get, set, reset or list")
 	}
 	return 0
 }
@@ -465,5 +515,67 @@ cmd_quit :: proc(ctx: ^Context) -> int {
 	exit, ended := wait_process_exit(pid, 20_000)
 	if !ended { errln("error: Wren did not end within 20 s"); return EXIT_TIMEOUT }
 	if !flag(&ctx.o, "quiet") { outln(fmt.tprintf("exit code %d", exit)) }
+	return 0
+}
+
+// reset [--keep tabs,data,prefs,window,history] [--url address] [--wait load|idle|quiet|none]
+@(private)
+cmd_reset :: proc(ctx: ^Context, args: []string) -> int {
+	if len(args) != 0 { return usage("reset", "usage: reset [--keep tabs,data,prefs,window,history] [--url address] [--wait load|idle|stable|quiet|none]") }
+	b := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&b, `{{"wait":%s`, q(opt(&ctx.o, "wait", "load")))
+	if keep := opt(&ctx.o, "keep"); keep != "" { fmt.sbprintf(&b, `,"keep":%s`, q(keep)) }
+	if u := opt(&ctx.o, "url"); u != "" { fmt.sbprintf(&b, `,"url":%s`, q(u)) }
+	strings.write_byte(&b, '}')
+	rep, code := request(ctx, "Wren.reset", strings.to_string(b))
+	if code != 0 { return code }
+	return show_reset(ctx, rep)
+}
+
+@(private)
+show_reset :: proc(ctx: ^Context, rep: Reply) -> int {
+	if flag(&ctx.o, "json") { print_json(rep); return 0 }
+	if flag(&ctx.o, "quiet") { return 0 }
+	r := parse_result(rep)
+	n :: proc(r: json.Object, key: string) -> int { v, _ := remote.param_int(r, key); return v }
+	win_back, _ := remote.param_bool(r, "windowRestored")
+	outln(fmt.tprintf("%d tab(s) closed, %d cookie(s), %d site(s) of storage, %d cached response(s), %d visit(s) of history, %d preference(s) put back%s, %d command(s) cancelled",
+		n(r, "closedTabs"), n(r, "cookies"), n(r, "sites"), n(r, "cacheEntries"), n(r, "historyVisits"), n(r, "prefsRestored"), win_back ? ", the window put back" : "", n(r, "cancelledOps")))
+	return 0
+}
+
+// checkpoint save|restore|delete <name> | checkpoint list
+@(private)
+cmd_checkpoint :: proc(ctx: ^Context, args: []string) -> int {
+	if len(args) == 0 || (args[0] == "list" && len(args) != 1) || (args[0] != "list" && len(args) != 2) {
+		return usage("checkpoint", "usage: checkpoint save <name> | checkpoint restore <name> [--wait ...] | checkpoint delete <name> | checkpoint list")
+	}
+	switch args[0] {
+	case "save", "delete":
+		rep, code := request(ctx, "Wren.checkpoint", fmt.tprintf(`{{"action":%s,"name":%s}}`, q(args[0]), q(args[1])))
+		if code != 0 { return code }
+		if flag(&ctx.o, "json") { print_json(rep); return 0 }
+		if args[0] == "save" {
+			r := parse_result(rep)
+			tabs, _ := remote.param_int(r, "tabs"); ck, _ := remote.param_int(r, "cookies"); st, _ := remote.param_int(r, "storageOrigins")
+			outln(fmt.tprintf("%s: %d tab(s), %d cookie(s), localStorage of %d origin(s)", args[1], tabs, ck, st))
+		}
+	case "restore":
+		rep, code := request(ctx, "Wren.checkpoint", fmt.tprintf(`{{"action":"restore","name":%s,"wait":%s}}`, q(args[1]), q(opt(&ctx.o, "wait", "load"))))
+		if code != 0 { return code }
+		return show_reset(ctx, rep)
+	case "list":
+		rep, code := request(ctx, "Wren.checkpoint", `{"action":"list"}`)
+		if code != 0 { return code }
+		if flag(&ctx.o, "json") { print_json(rep); return 0 }
+		list, _ := remote.param_array(parse_result(rep), "checkpoints")
+		for item in list {
+			o, _ := item.(json.Object)
+			name, _ := remote.param_string(o, "name")
+			tabs, _ := remote.param_int(o, "tabs"); ck, _ := remote.param_int(o, "cookies"); st, _ := remote.param_int(o, "storageOrigins")
+			outln(fmt.tprintf("%-20s %d tab(s), %d cookie(s), localStorage of %d origin(s)", name, tabs, ck, st))
+		}
+	case: return usage("checkpoint", "save, restore, delete or list")
+	}
 	return 0
 }
