@@ -387,13 +387,11 @@ hex_digit :: proc(c: u8) -> int {
 }
 
 // The text operations on an element whose name matches (or on a text node, for `#text`).
-@(private = "file")
 name_matches :: proc(op: ^Dom_Op, name: string) -> bool {
 	if op.node_re != nil { return jsre_test(op.node_re, name) }
 	return strings.equal_fold(name, op.node_name)
 }
 
-@(private = "file")
 rewrite_text :: proc(op: ^Dom_Op, text: string) -> (out: string, changed: bool) {
 	if op.has_cond && op.kind == .Replace_Text && !needle_test(&op.cond, text) { return text, false }
 	switch op.kind {
