@@ -120,14 +120,23 @@ delete_wstring :: proc(w: win.wstring) { free(rawptr(w), base.process_allocator(
 stop :: proc() {
 	if !srv.running { return }
 	srv.running = false
+	// the threads have one thing left to do, end: they run at the stopper's priority or above while it waits for them (a thread
+	// that waits in the kernel needs a time slice to see its event, and a loaded machine gives them seconds)
+	host.shutdown_step("remote_stop: accept thread")
+	sync.mutex_lock(&srv.mu)
+	for c in srv.conns { if c.thread != nil { win.SetThreadPriority(c.thread.win32_thread, 2) } }
+	sync.mutex_unlock(&srv.mu)
+	win.SetThreadPriority(srv.accept.win32_thread, 2)
 	win.SetEvent(srv.stop_event)
 	thread.join(srv.accept)
 	thread.destroy(srv.accept)
+	host.shutdown_step("remote_stop: client threads")
 	sync.mutex_lock(&srv.mu)
 	conns := srv.conns
 	srv.conns = nil
 	sync.mutex_unlock(&srv.mu)
 	for c in conns { conn_free(c) }
+	host.shutdown_step("remote_stop: files")
 	delete(conns)
 	win.CloseHandle(srv.stop_event)
 	win.LocalFree(srv.sd)
