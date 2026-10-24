@@ -21,9 +21,9 @@ function Run-One([string]$exe, [string]$label, [string]$url, [string[]]$prefs) {
     $prof = Join-Path $tmp 'profile'
     if (Test-Path $prof) { cmd /c "rmdir /s /q `"$prof`"" | Out-Null }
     robocopy $Seed $prof /E /NFL /NDL /NJH /NJS /NP | Out-Null
-    Get-ChildItem $tmp -Filter 'prof*' -ErrorAction SilentlyContinue | Remove-Item -Force
+    Get-ChildItem $tmp -Filter 'jsp*.js.txt' -ErrorAction SilentlyContinue | Remove-Item -Force
     $env:WREN_EXE = (Resolve-Path $exe).Path
-    $env:WREN_JS_PROFILE = Join-Path $tmp 'prof'
+    $env:WREN_JS_PROFILE = Join-Path $tmp 'jsp'
     $null = Start-Wren -Dpi 96 -Size 1280x800 -ProfileDir $prof -Pref $prefs
     $elements = -1; $cpu = -1; $mem = -1
     try {
@@ -44,7 +44,7 @@ function Run-One([string]$exe, [string]$label, [string]$url, [string[]]$prefs) {
     } finally { try { Stop-Wren } catch {} }
     Start-Sleep 2
     $samples = 0; $blocker = 0
-    foreach ($f in Get-ChildItem $tmp -Filter 'prof*.js.txt') {
+    foreach ($f in Get-ChildItem $tmp -Filter 'jsp*.js.txt') {
         $lines = Get-Content $f.FullName
         if ($lines[0] -match '; (\d+) samples\)') { $samples += [int]$Matches[1] }
         $own = 0
