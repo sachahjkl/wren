@@ -391,7 +391,8 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 			name := idb.r_str(&r)
 			if c, ok := ip.buckets[name]; ok {
 				idb.client_destroy(c)
-				delete_key(&ip.buckets, name)
+				deleted, _ := delete_key(&ip.buckets, name)
+				delete(deleted, base.process_allocator())
 			}
 			bucket_delete(sm, ip.key, name)
 		case 3:

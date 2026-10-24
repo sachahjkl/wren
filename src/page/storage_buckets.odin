@@ -83,6 +83,17 @@ int_text :: proc(n: i64) -> string {
 	return strings.clone(string(buf[i:]), context.temp_allocator)
 }
 
+// Frees the registry (the storage manager goes; the files stay).
+buckets_destroy :: proc() {
+	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	s := &buckets_state
+	for x in s.list { delete(x.origin); delete(x.name); delete(x.durability) }
+	delete(s.list)
+	for k in s.persisted { delete(k) }
+	delete(s.persisted)
+	s^ = {}
+}
+
 // The storage key of an origin's bucket (the manager's key for its IndexedDB).
 bucket_key :: proc(origin_key, bucket: string) -> string {
 	if bucket == "" { return origin_key }
@@ -102,7 +113,7 @@ bucket_open :: proc(m: ^Storage_Manager, origin, name: string, persisted: bool, 
 	if i := bucket_find(origin, name); i >= 0 {
 		x := &buckets_state.list[i]
 		if persisted { x.persisted = true }
-		if durability != "" { x.durability = strings.clone(durability) }
+		if durability != "" { delete(x.durability); x.durability = strings.clone(durability) }
 		if expires >= 0 { x.expires = expires }
 		buckets_save(m)
 		return x^, false
@@ -132,9 +143,13 @@ bucket_names :: proc(m: ^Storage_Manager, origin: string) -> []string {
 bucket_delete :: proc(m: ^Storage_Manager, origin, name: string) {
 	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
 	buckets_load(m)
-	if i := bucket_find(origin, name); i >= 0 { ordered_remove(&buckets_state.list, i) }
+	if i := bucket_find(origin, name); i >= 0 {
+		x := buckets_state.list[i]
+		delete(x.origin); delete(x.name); delete(x.durability)
+		ordered_remove(&buckets_state.list, i)
+	}
 	idb_clear_origin(m, bucket_key(origin, name))
-	delete_key(&buckets_state.persisted, bucket_key(origin, name))
+	if k, _ := delete_key(&buckets_state.persisted, bucket_key(origin, name)); k != "" { delete(k) }
 	buckets_save(m)
 }
 
@@ -155,7 +170,10 @@ storage_persisted :: proc(m: ^Storage_Manager, key: string, bucket: string, requ
 		}
 		return false
 	}
-	if request && !buckets_state.persisted[key] { buckets_state.persisted[strings.clone(key)] = true; buckets_save(m) }
+	if request && !buckets_state.persisted[key] {
+		if key in buckets_state.persisted { buckets_state.persisted[key] = true } else { buckets_state.persisted[strings.clone(key)] = true }
+		buckets_save(m)
+	}
 	return buckets_state.persisted[key]
 }
 
