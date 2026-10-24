@@ -166,6 +166,7 @@ wt_start :: proc(rs: Runtime_Settings) -> bool {
 @(private)
 wt_stop :: proc() {
 	if wt.engine == nil { wt.start_failed = false; return }
+	host_profile_write()   // (WREN_HOST_PROFILE: host_profile.odin)
 	if wt.ticker != nil {
 		sync.atomic_store(&wt.ticker_stop, true)
 		sync.atomic_add(&wt.running, 1)   // wakes it

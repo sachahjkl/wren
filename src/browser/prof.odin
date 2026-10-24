@@ -28,6 +28,7 @@ import win "core:sys/windows"
 import "toolkit:render"
 import "toolkit:ui"
 import lay "wb:layout"
+import "wb:page"
 
 foreign import dbghelp "system:dbghelp.lib"
 foreign import kernel32_prof "system:Kernel32.lib"
@@ -150,7 +151,8 @@ foreign dbghelp {
 	SymFromAddr :: proc(process: win.HANDLE, address: u64, displacement: ^u64, symbol: ^SYMBOL_INFO) -> win.BOOL ---
 }
 
-Sample :: struct { rip: u64, phase: Phase, t: i64, from: [2]u64 }   // from: the first two callers inside the executable (WREN_SAMPLE_STACK=1)
+SAMPLE_DEPTH :: 24
+Sample :: struct { rip: u64, phase: Phase, t: i64, from: [SAMPLE_DEPTH]u64 }   // from: the callers inside the executable, innermost first (WREN_SAMPLE_STACK=1)
 
 Prof :: struct {
 	on:        bool,
@@ -228,7 +230,7 @@ prof_init :: proc(app: ^App) {
 		h: win.HANDLE
 		win.DuplicateHandle(win.GetCurrentProcess(), win.GetCurrentThread(), win.GetCurrentProcess(), &h, 0, false, win.DUPLICATE_SAME_ACCESS)
 		prof.target = h
-		prof.samples = make([]Sample, 2_000_000)
+		prof.samples = make([]Sample, 400_000)
 		if os.get_env("WREN_SAMPLE_STACK", context.temp_allocator) == "1" {
 			prof.stacks = true
 			m := win.GetModuleHandleW(nil)
@@ -244,14 +246,14 @@ prof_init :: proc(app: ^App) {
 
 // The first two return addresses of the suspended thread that lie in the executable (the system's frames between are
 // skipped; the unwind uses the unwind tables the system knows, JIT code's included).
-callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [2]u64) {
+callers_in_exe :: proc(ctx: ^win.CONTEXT) -> (out: [SAMPLE_DEPTH]u64) {
 	n := 0
-	for depth in 0 ..< 48 {
+	for depth in 0 ..< 160 {
 		pc := ctx.Rip
 		if pc >= prof.exe_lo && pc < prof.exe_hi && depth > 0 || (depth == 0 && pc >= prof.exe_lo && pc < prof.exe_hi) {
 			out[n] = pc
 			n += 1
-			if n == 2 { return }
+			if n == SAMPLE_DEPTH { return }
 		}
 		base: u64
 		entry := RtlLookupFunctionEntry(pc, &base, nil)
@@ -366,6 +368,8 @@ prof_report :: proc() {
 	report_startup(&sb)
 	report_layout_passes(&sb)
 	video_shell_report(&sb, prof.freq)
+	fmt.sbprintf(&sb, "\n-- %s\n", page.styles_stats_text())
+	fmt.sbprintf(&sb, "%s\n", page.styles_stats_why())
 
 	if prof.sampling && prof.n_samples > 0 { report_samples(&sb) }
 
@@ -556,6 +560,54 @@ report_samples :: proc(sb: ^strings.Builder) {
 		top(sb, by_phase_symbol[p], 15, by_phase[p], "  ")
 	}
 
+	// With WREN_SAMPLE_STACK=1: the samples of work (not waiting) by the functions anywhere on the stack, and what ran below
+	// WREN_SAMPLE_UNDER=<function> (its callees, self and inclusive).
+	if prof.stacks {
+		incl := make(map[string]int, context.temp_allocator)
+		under_name := os.get_env("WREN_SAMPLE_UNDER", context.temp_allocator)
+		under_self := make(map[string]int, context.temp_allocator)
+		under_incl := make(map[string]int, context.temp_allocator)
+		under_total, active := 0, 0
+		names := make([dynamic]string, 0, SAMPLE_DEPTH + 2, context.temp_allocator)
+		for s in prof.samples[:prof.n_samples] {
+			if s.phase == .Idle || s.phase == .Wait || s.phase == .None { continue }
+			active += 1
+			clear(&names)
+			append(&names, cache[s.rip].name)
+			for a in s.from {
+				if a == 0 { break }
+				cs, ok := cache[a]
+				if !ok { cs = resolve(a, proc_h, buf[:]); cache[a] = cs }
+				append(&names, cs.name)
+			}
+			at := -1
+			for nm, i in names {
+				dup := false
+				for j in 0 ..< i { if names[j] == nm { dup = true; break } }
+				if dup { continue }
+				incl[nm] += 1
+				if under_name != "" && at < 0 && nm == under_name { at = i }
+			}
+			if at >= 0 {
+				under_total += 1
+				under_self[names[0]] += 1
+				for i in 0 ..< at {
+					dup := false
+					for j in 0 ..< i { if names[j] == names[i] { dup = true; break } }
+					if !dup { under_incl[names[i]] += 1 }
+				}
+			}
+		}
+		fmt.sbprintf(sb, "\n-- functions on the stack of the samples of work, inclusive (%d samples; the executable's frames only)\n", active)
+		top(sb, incl, 45, active, "  ")
+		if under_name != "" && under_total > 0 {
+			fmt.sbprintf(sb, "\n-- below %s (%d samples): what ran, self\n", under_name, under_total)
+			top(sb, under_self, 25, under_total, "  ")
+			fmt.sbprintf(sb, "\n-- below %s: callees, inclusive\n", under_name)
+			top(sb, under_incl, 30, under_total, "  ")
+		}
+	}
+
 	// the frames whose CPU work (without the wait for the screen) ran past WREN_SLOW_MS (30): what they spent it in. The
 	// averages above bury a script that takes 85 ms once in 5 s.
 	slow_ms := 30.0
@@ -580,7 +632,7 @@ report_samples :: proc(sb: ^strings.Builder) {
 			sym := cache[s.rip]
 			key := fmt.tprintf("%s!%s [%v]", sym.module, sym.name, s.phase)
 			if s.from[0] != 0 {
-				for a in s.from {
+				for a in s.from[:2] {
 					if a == 0 { break }
 					cs, ok := cache[a]
 					if !ok { cs = resolve(a, proc_h, buf[:]); cache[a] = cs }
