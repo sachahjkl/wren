@@ -87,12 +87,28 @@ static JSValue host_report(JSContext *ctx, JSValueConst this_val, int argc, JSVa
     return JS_UNDEFINED;
 }
 
+static JSValue host_is_proxy(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    return JS_NewBool(ctx, argc > 0 && JS_IsProxy(argv[0]));
+}
+
+extern int32_t wj_run_jobs(void);
+
+/* The microtask checkpoint, now: for a script of the prelude that is called with nothing else running (between two listeners). */
+static JSValue host_drain(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv);
+    wj_run_jobs();
+    return JS_UNDEFINED;
+}
+
 static JSValue host_object(JSContext *ctx)
 {
     JSValue o = JS_NewObject(ctx);
     static const struct { const char *name; JSCFunction *fn; int length; } fns[] = {
         {"call", host_call, 2}, {"serialize", host_serialize, 1}, {"deserialize", host_deserialize, 1},
-        {"report", host_report, 1},
+        {"report", host_report, 1}, {"isProxy", host_is_proxy, 1}, {"drain", host_drain, 0},
     };
     for (size_t i = 0; i < sizeof fns / sizeof fns[0]; i++) {
         JS_SetPropertyStr(ctx, o, fns[i].name, JS_NewCFunction(ctx, fns[i].fn, fns[i].name, fns[i].length));
@@ -214,6 +230,21 @@ WJ_EXPORT("wj_idb_cleanup") void wj_idb_cleanup(void) { call_hook("cleanup"); }
 
 int web_idb_start(JSContext *ctx, int kind)
 {
-    WJ_UNUSED(ctx); WJ_UNUSED(kind);
+    WJ_UNUSED(kind);
+    if (!web_is_window()) {
+        /* a worker: indexedDB is an attribute of WorkerGlobalScope (the global inherits it), not of the global itself */
+        JSValue global = wj_the_realm.global;
+        JSValue wgs = JS_GetPropertyStr(ctx, global, "WorkerGlobalScope");
+        JSValue proto = JS_IsObject(wgs) ? JS_GetPropertyStr(ctx, wgs, "prototype") : JS_UNDEFINED;
+        if (JS_IsObject(proto)) {
+            JSAtom a = JS_NewAtom(ctx, "indexedDB");
+            JSValue getter = JS_NewCFunction2(ctx, (JSCFunction *)idb_factory_getter, "get indexedDB", 0, JS_CFUNC_getter, 0);
+            JS_DefinePropertyGetSet(ctx, proto, a, getter, JS_UNDEFINED, JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+            JS_DeleteProperty(ctx, global, a, 0);
+            JS_FreeAtom(ctx, a);
+        }
+        JS_FreeValue(ctx, proto);
+        JS_FreeValue(ctx, wgs);
+    }
     return 0;
 }
