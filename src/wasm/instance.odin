@@ -99,6 +99,7 @@ runtime_destroy :: proc() {
 	defer sync.mutex_unlock(&runtime_lock)
 	context.allocator = base.process_allocator()
 	wt_stop()
+	if wt_abandoned { return }   // a compile still runs on a thread: the process ends with it
 	registry_destroy()
 	runtime_settings_destroy(&settings)
 	settings_set = false
