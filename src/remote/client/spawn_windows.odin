@@ -143,6 +143,7 @@ cmd_run :: proc(ctx: ^Context, args: []string) -> int {
 		w, h, good := parse_size(s)
 		if !good { code = usage("run", "--size WxH"); return code }
 		if _, c := request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h)); c != 0 { code = c; return code }
+		save_initial(ctx)
 	}
 	if len(args) > 0 {
 		wait := opt(&ctx.o, "wait", "load")
@@ -160,6 +161,10 @@ cmd_run :: proc(ctx: ^Context, args: []string) -> int {
 	}
 	return code
 }
+
+// The window has its size: that is the state `reset` puts back (the preferences are the ones the Wren started with).
+@(private)
+save_initial :: proc(ctx: ^Context) { _, _ = call(&ctx.conn, "Wren.checkpoint", `{"action":"save","name":"initial"}`, 5000) }
 
 ////////////////////////////////
 // A session
@@ -190,7 +195,10 @@ cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 	_ = os.write_entire_file(state_file(name), transmute([]byte)state)
 	if s := opt(&ctx.o, "size"); s != "" {
 		w, h, good := parse_size(s)
-		if good { _, _ = request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h)) }
+		if good {
+			_, _ = request(ctx, "Browser.setWindowBounds", fmt.tprintf(`{{"width":%d,"height":%d}}`, w, h))
+			save_initial(ctx)
+		}
 	}
 	if len(args) > 0 {
 		if _, c := request(ctx, "Page.navigate", fmt.tprintf(`{{"url":%s,"wait":%s}}`, q(args[0]), q(opt(&ctx.o, "wait", "load")))); c != 0 { return c }

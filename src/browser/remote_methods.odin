@@ -17,7 +17,10 @@ import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:cookies"
 import "wb:fetch"
+import "wb:host"
+import "wb:httpcache"
 import "wb:images"
 import lay "wb:layout"
 import "wb:page"
@@ -67,6 +70,9 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.network":         return m_network(app, c)
 	case "Wren.getPref":         return m_pref_get(app, c)
 	case "Wren.setPref":         return m_pref_set(app, c)
+	case "Wren.resetPref":       return m_pref_reset(app, c)
+	case "Wren.reset":           return m_reset(app, c)
+	case "Wren.checkpoint":      return m_checkpoint(app, c)
 	case "Wren.listPrefs":       return m_pref_list(app, c)
 	case "Wren.listCommands":    return m_commands(app)
 	case "Wren.runCommand":      return m_command(app, c)
@@ -93,7 +99,6 @@ tab_of :: proc(app: ^App, c: ^Call) -> (^Tab, Reply) {
 	return t, {}
 }
 
-@(private = "file")
 need_string :: proc(c: ^Call, key: string) -> (string, Reply) {
 	s, ok := remote.param_string(c.params, key)
 	if !ok { return "", fail(remote.ERR_PARAMS, fmt.tprintf("parameter %q (a string) is missing", key)) }
@@ -101,28 +106,19 @@ need_string :: proc(c: ^Call, key: string) -> (string, Reply) {
 }
 
 // Builds a JSON object: j_begin, then j_str / j_int / j_num / j_bool / j_raw (key "" inside an array), then j_end.
-@(private = "file")
 j_begin :: proc(b: ^strings.Builder, open: byte = '{') { strings.write_byte(b, open) }
-@(private = "file")
 j_end :: proc(b: ^strings.Builder, close: byte = '}') { strings.write_byte(b, close) }
-@(private = "file")
 j_key :: proc(b: ^strings.Builder, key: string) {
 	s := strings.to_string(b^)
 	if len(s) > 0 && s[len(s) - 1] != '{' && s[len(s) - 1] != '[' { strings.write_byte(b, ',') }
 	if key != "" { remote.write_json_string(b, key); strings.write_byte(b, ':') }
 }
-@(private = "file")
 j_str :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); remote.write_json_string(b, v) }
-@(private = "file")
 j_int :: proc(b: ^strings.Builder, key: string, v: i64) { j_key(b, key); fmt.sbprintf(b, "%d", v) }
-@(private = "file")
 j_num :: proc(b: ^strings.Builder, key: string, v: f64) { j_key(b, key); fmt.sbprintf(b, "%.3f", v) }
-@(private = "file")
 j_bool :: proc(b: ^strings.Builder, key: string, v: bool) { j_key(b, key); strings.write_string(b, v ? "true" : "false") }
-@(private = "file")
 j_raw :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); strings.write_string(b, v) }
 
-@(private = "file")
 builder :: proc() -> strings.Builder { return strings.builder_make(context.temp_allocator) }
 
 // The window rectangle (x, y, w, h) of a laid out element, whether or not it is in view.
@@ -184,7 +180,6 @@ m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	return Reply{deferred = true}
 }
 
-@(private = "file")
 window_state :: proc(app: ^App) -> string {
 	switch {
 	case platform.is_fullscreen(app.win): return "fullscreen"
@@ -213,8 +208,25 @@ m_window_get :: proc(app: ^App) -> Reply {
 // width / height: the client area in pixels (what a capture of the window measures); left / top: the window's corner.
 @(private = "file")
 m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
-	hwnd := app.win.hwnd
 	state, has_state := remote.param_string(c.params, "windowState")
+	if has_state {
+		switch state {
+		case "normal", "minimized", "maximized", "fullscreen":
+		case: return fail(remote.ERR_PARAMS, "windowState: normal, minimized, maximized or fullscreen")
+		}
+	}
+	w, has_w := remote.param_int(c.params, "width")
+	h, has_h := remote.param_int(c.params, "height")
+	left, has_l := remote.param_int(c.params, "left")
+	top, has_t := remote.param_int(c.params, "top")
+	window_apply(app, state, has_state, w, h, left, top, has_w, has_h, has_l, has_t)
+	return m_window_get(app)
+}
+
+// The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
+// the checkpoints of remote_state.odin.
+window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top: int, has_w, has_h, has_l, has_t: bool) {
+	hwnd := app.win.hwnd
 	if has_state {
 		switch state {
 		case "normal":
@@ -224,13 +236,8 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 		case "minimized":  win.ShowWindow(hwnd, win.SW_SHOWMINNOACTIVE)
 		case "maximized":  win.ShowWindow(hwnd, win.SW_SHOWMAXIMIZED)
 		case "fullscreen": if !platform.is_fullscreen(app.win) { toggle_fullscreen(app) }
-		case: return fail(remote.ERR_PARAMS, "windowState: normal, minimized, maximized or fullscreen")
 		}
 	}
-	w, has_w := remote.param_int(c.params, "width")
-	h, has_h := remote.param_int(c.params, "height")
-	left, has_l := remote.param_int(c.params, "left")
-	top, has_t := remote.param_int(c.params, "top")
 	if has_w || has_h || has_l || has_t {
 		rc: win.RECT
 		win.GetWindowRect(hwnd, &rc)
@@ -245,7 +252,6 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 		win.SetWindowPos(hwnd, nil, i32(has_l ? left : int(rc.left)), i32(has_t ? top : int(rc.top)), frame.right - frame.left, frame.bottom - frame.top, flags)
 	}
 	app.frames_requested = max(app.frames_requested, 4)
-	return m_window_get(app)
 }
 
 ////////////////////////////////
@@ -310,18 +316,26 @@ m_target_close :: proc(app: ^App, c: ^Call) -> Reply {
 // Navigation and waiting
 
 // A wait of kind `what` ("load", "idle", "stable") on `t`, answered with `result` (JSON) when it holds.
-@(private = "file")
 start_wait :: proc(app: ^App, c: ^Call, t: ^Tab, what: string, result := "") -> Reply {
 	kind: Remote_Wait
 	switch what {
 	case "load":   kind = .Load
 	case "idle":   kind = .Idle
 	case "stable": kind = .Stable
+	case "quiet":  kind = .Quiet
 	case "none", "": return done(result == "" ? "{}" : result)
-	case: return fail(remote.ERR_PARAMS, "wait: none, load, idle or stable")
+	case: return fail(remote.ERR_PARAMS, "wait: none, load, idle, stable or quiet")
 	}
 	op := op_new(app, c, .Wait, timeout_of(c), what)
 	op.tab, op.wait = t.id, kind
+	op.idle_ms, _ = remote.param_int(c.params, "idleMs")   // 0: browser.remote.idle_ms
+	if kind == .Quiet {
+		// (the window starts at the first look: a wait that begins in the middle of work does not count the work)
+		op.quiet_ms, _ = remote.param_int(c.params, "quietMs", the_remote.cfg.quiet_ms)
+		op.max_cpu, _ = remote.param_float(c.params, "maxCpuMs", f64(the_remote.cfg.quiet_cpu_ms))
+		op.t0 = host.now_ns(&app.loop)
+		op.cpu0, _, _ = process_cpu_ms()
+	}
 	op.result = strings.clone(result)
 	return Reply{deferred = true}
 }
@@ -986,6 +1000,16 @@ m_stats :: proc(app: ^App) -> Reply {
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
 	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
 	j_str(&b, "backend", render.backend_name())
+	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)
+	cpu, cpu_user, cpu_kernel := process_cpu_ms()
+	pc := process_counters()
+	j_int(&b, "pid", i64(win.GetCurrentProcessId())); j_num(&b, "uptimeMs", process_uptime_ms())
+	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
+	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
+	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
+	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
+	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
+	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints)))
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -1048,7 +1072,6 @@ m_network :: proc(app: ^App, c: ^Call) -> Reply {
 ////////////////////////////////
 // Preferences, commands, panels
 
-@(private = "file")
 pref_json :: proc(app: ^App, name: string) -> (string, bool) {
 	i, ok := app.prefs.index[name]
 	if !ok { return "", false }
@@ -1092,9 +1115,12 @@ m_pref_set :: proc(app: ^App, c: ^Call) -> Reply {
 	case json.Null, json.Array, json.Object: return fail(remote.ERR_PARAMS, "\"value\": a string, number or boolean")
 	case: return fail(remote.ERR_PARAMS, "parameter \"value\" is missing")
 	}
-	if err := config.set_from_string(&app.prefs, name, text, .User); err != .None {
+	// override: the command line's layer, which a value given with --pref (at the start of this run) has taken: it is changed, not refused
+	override, _ := remote.param_bool(c.params, "override")
+	if err := config.set_from_string(&app.prefs, name, text, override ? .Command_Line : .User); err != .None {
 		return fail(remote.ERR_FAILED, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
+	remote_reload_settings(app)
 	app.frames_requested = max(app.frames_requested, 3)
 	s, _ := pref_json(app, name)
 	return done(s)

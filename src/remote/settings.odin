@@ -16,6 +16,9 @@ Settings :: struct {
 	settle_frames: int,
 	poll_ms:       int,
 	idle_ms:       int,
+	quiet_ms:      int,
+	quiet_cpu_ms:  int,
+	max_checkpoints: int,
 }
 
 PREFS := [?]config.Def{
@@ -37,6 +40,12 @@ PREFS := [?]config.Def{
 		description = "While a wait or a capture is pending, how often its condition is looked at when nothing else wakes the browser. Nothing runs when no command is waiting."},
 	{name = "browser.remote.idle_ms", kind = .Int, default = {i = 400}, bounded = true, min = 10, max = 60_000, unit = "ms",
 		description = "How long the network must stay quiet (no request in flight) for a wait for `idle` to end."},
+	{name = "browser.remote.quiet_ms", kind = .Int, default = {i = 400}, bounded = true, min = 20, max = 600_000, unit = "ms",
+		description = "How long a wait for `quiet` (`wren ctl wait quiet`) needs the process to be at rest: nothing loading, and at most browser.remote.quiet_cpu_ms of CPU time used in that time. The wait ends when a window that long has held."},
+	{name = "browser.remote.quiet_cpu_ms", kind = .Int, default = {i = 20}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "The most CPU time (all threads) the process may use during the window of a wait for `quiet`. The system adds CPU time up in ticks of about 15.6 ms, so 20 lets one tick through and stops at two."},
+	{name = "browser.remote.max_checkpoints", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 1024,
+		description = "Checkpoints (`wren ctl checkpoint save`) a running Wren keeps at once: each holds the cookies and the localStorage it was taken with, in memory."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }
@@ -52,5 +61,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		settle_frames = int(config.int_of(p, "browser.remote.settle_frames")),
 		poll_ms = int(config.int_of(p, "browser.remote.poll_ms")),
 		idle_ms = int(config.int_of(p, "browser.remote.idle_ms")),
+		quiet_ms = int(config.int_of(p, "browser.remote.quiet_ms")),
+		quiet_cpu_ms = int(config.int_of(p, "browser.remote.quiet_cpu_ms")),
+		max_checkpoints = int(config.int_of(p, "browser.remote.max_checkpoints")),
 	}
 }

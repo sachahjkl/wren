@@ -32,6 +32,15 @@ hsts_destroy :: proc(h: ^Hsts) {
 	h^ = {}
 }
 
+// Forgets every host (`wren ctl reset`); returns how many there were.
+hsts_clear :: proc(h: ^Hsts) -> int {
+	n := len(h.hosts)
+	for k in h.hosts { delete(k, h.allocator) }
+	clear(&h.hosts)
+	if n > 0 { h.dirty = true }
+	return n
+}
+
 now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1_000_000 }
 
 // Processes a Strict-Transport-Security header received over a secure connection from `host`.

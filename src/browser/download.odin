@@ -638,6 +638,11 @@ downloads_active :: proc() -> int {
 	return n
 }
 
+// Stops every download in progress (wren ctl reset).
+downloads_cancel_all :: proc() {
+	for d in dls.list { download_cancel(d) }
+}
+
 // The finished downloads past browser.download.list_max go (never one with work still out).
 @(private = "file")
 downloads_prune :: proc() {
