@@ -286,14 +286,16 @@ public class WinClose {
         "      $cores busy loops running"
         $null = Wait-Until { @($hogs | Where-Object { $_.Refresh(); $_.TotalProcessorTime.TotalMilliseconds -lt 300 }).Count -eq 0 } 30 100
         $url = "$($server.Origin)/site/video.html"
+        # (the video is waited for until it plays or, on a machine whose every core is busy, for a few seconds: the closing is timed either way)
         $playing = 'document.getElementById("round").currentTime > 0.5'
+        $playLimitMs = 3000
         for ($round = 1; $round -le $Rounds; $round++) {
             Section "stress round ${round}: quit with a client connected"
             # 1. wren ctl quit, a client connected, a video playing
             $prof = Join-Path $tmp "stress-quit-$round"
             $name = Start-Wren -Size 800x600 -ProfileDir $prof
             $null = Wren-Ctl nav $url --timeout 60000
-            $null = Wren-Ctl wait function $playing --timeout 60000
+            $null = Wren-Ctl wait function $playing --timeout $playLimitMs
             $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
             $pipe.Connect(10000)
             $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -311,7 +313,7 @@ public class WinClose {
             $name = Start-Wren -Size 800x600 -ProfileDir $prof
             $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
             $null = Wren-Ctl nav $url --timeout 60000
-            $null = Wren-Ctl wait function $playing --timeout 60000
+            $null = Wren-Ctl wait function $playing --timeout $playLimitMs
             $proc = Get-Process -Id $wpid
             $sw = [Diagnostics.Stopwatch]::StartNew()
             $n = [WinClose]::Close([uint32]$wpid)
@@ -348,7 +350,8 @@ if ($Check) {
     try {
         $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
         $url = "$($server.Origin)/site/remote/fixture.htm"
-        $name = Start-Wren -Size 900x600 -ProfileDir $prof
+        # (a Wren that lives 15 s starts downloading the content blocker's lists from the internet: not in a test)
+        $name = Start-Wren -Size 900x600 -ProfileDir $prof -Pref 'blocker.update.enabled=false'
         $script:wrenName = $name
         $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
         $pipe.Connect(2000)
@@ -387,6 +390,7 @@ if ($Check) {
         Start-Sleep -Milliseconds 300
         $pipe.Dispose()   # a client that vanishes in the middle of a wait
         $null = Wren-Ctl wait selector '#never' --timeout 200
+        $null = Wren-Ctl reset   # (the session above left tabs, a window and preferences changed: the scenarios start from a clean Wren, as in the other mode)
         Test-Reset $server
         Test-Checkpoints $server
         $null = Wren-Ctl reset
@@ -570,9 +574,21 @@ try {
     # a second Wren with another profile has a name of its own; the same name is refused
     Section '2i second Wren, taken name'
     $prof2 = Join-Path $tmp 'second'
-    $name2 = Start-Wren -Size 800x600 -ProfileDir $prof2
+    $name2 = Start-Wren -Size 800x600 -ProfileDir $prof2 -Pref 'browser.scroll.key_line_px=33'
     $env:WREN_REMOTE = $name2
     $pid2 = (Wren-Ctl ping --json | ConvertFrom-Json).pid
+    # a value given with --pref: set is refused, --override changes that layer, reset puts the value of the start back (this one is the
+    # Wren with a --pref; the shared one has none)
+    Check '--pref value: read back' ((Wren-Ctl pref get browser.scroll.key_line_px) -eq '33')
+    $null = Wren-Ctl pref set browser.scroll.key_line_px 44
+    Check '--pref value: pref set is refused (the command line decides for the run)' ($global:WrenExit -eq 1 -and $global:WrenErr -match 'command line') "exit $global:WrenExit $global:WrenErr"
+    $null = Wren-Ctl pref set browser.scroll.key_line_px 44 --override
+    Check '--pref value: pref set --override changes it' ((Wren-Ctl pref get browser.scroll.key_line_px) -eq '44')
+    $null = Wren-Ctl reset
+    Check '--pref value: reset puts back the value the Wren started with' ((Wren-Ctl pref get browser.scroll.key_line_px) -eq '33')
+    $null = Wren-Ctl pref set browser.scroll.key_line_px 55 --override
+    $null = Wren-Ctl pref reset browser.scroll.key_line_px
+    Check '--pref value: pref reset <name> too' ((Wren-Ctl pref get browser.scroll.key_line_px) -eq '33')
     Stop-Wren $name2
     $env:WREN_REMOTE = $name
     $pid1 = (Wren-Ctl ping --json | ConvertFrom-Json).pid
