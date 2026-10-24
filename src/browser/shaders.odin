@@ -2,6 +2,8 @@ package browser
 
 import "toolkit:draw"
 import "toolkit:render"
+import "wb:base"
+import "wb:dom"
 import "wb:style"
 
 ////////////////////////////////
@@ -17,7 +19,7 @@ import "wb:style"
 // argument is its default. Where the shader cannot be had (the renderer refused the module, a picture is being recorded) nothing
 // is drawn and the box keeps its CSS background: every page that uses a shader gives it one that reads well without.
 
-Shader_Texture :: enum u8 { None, Card_Normals }
+Shader_Texture :: enum u8 { None, Card_Normals, Card_Engraving }
 
 Shader_Pass :: struct {
 	blend: render.App_Blend,
@@ -43,9 +45,9 @@ CARD_FOIL_HASH :: #load("shaders/card_foil.sha256", string)
 SHADERS := [?]Shader_Def{
 	{
 		name = "card-foil", wgsl = CARD_FOIL_WGSL, dxbc = CARD_FOIL_DXBC, hash = CARD_FOIL_HASH,
-		args = {"sweep", "pointer-x", "pointer-y", "live", "intensity"},
-		defaults = {0.5, 0.5, 0.5, 0, 1},
-		textures = {0 = .Card_Normals},
+		args = {"sweep", "pointer-x", "pointer-y", "live", "intensity", "engrave"},
+		defaults = {0.5, 0.5, 0.5, 0, 1, 0},
+		textures = {0 = .Card_Normals, 1 = .Card_Engraving},
 		passes = CARD_FOIL_PASSES[:],
 	},
 }
@@ -62,6 +64,7 @@ Shader_State :: struct {
 	device:   u64,                  // render.Renderer.device_generation: textures lose their contents with the device
 	handle:   render.App_Shader,
 	textures: [render.MAX_APP_TEXTURES]render.Texture,
+	engraved: u64,                  // hash of the text the engraving texture holds (0: none yet)
 	failed:   bool,                 // the renderer refused it: not tried again until the renderer changes
 	live:     bool,
 }
@@ -80,6 +83,7 @@ shader_ready :: proc(r: ^render.Renderer, i: int) -> ^Shader_State {
 		// a lost device: the renderer made the shader and the textures again under the same handles; their contents are gone
 		st.device = r.device_generation
 		for tk, k in d.textures { if tk != .None { shader_texture_fill(r, tk, st.textures[k]) } }
+		st.engraved = 0   // the engraving is made again by the next paint
 		return st
 	}
 	st^ = {renderer = id, device = r.device_generation, live = true}
@@ -101,6 +105,7 @@ shader_texture :: proc(r: ^render.Renderer, kind: Shader_Texture) -> render.Text
 	switch kind {
 	case .None: return 0
 	case .Card_Normals: tex = render.create_texture_data(r, NORMAL_W, NORMAL_H, .RGBA8, mips = true)
+	case .Card_Engraving: tex = render.create_texture_data(r, ENGRAVE_W, ENGRAVE_H, .RGBA8, mips = true)
 	}
 	if tex != 0 { shader_texture_fill(r, kind, tex) }
 	return tex
@@ -114,12 +119,13 @@ shader_texture_fill :: proc(r: ^render.Renderer, kind: Shader_Texture, tex: rend
 		texels := card_normal_map()
 		defer delete(texels)
 		render.update_texture_data(r, tex, 0, 0, NORMAL_W, NORMAL_H, texels)
+	case .Card_Engraving:   // its text is the box's: made by paint_wren_shader
 	}
 }
 
-// A box's `-wren-shader`, painted over its background in the rounded clip of the bottom background layer. `reduced`: the user asked for less
-// motion (the shader decides what that changes: the card has no sweep then).
-paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rect, radii: [4]f32, scale: f32) {
+// A box's `-wren-shader`, painted over its background in the rounded clip of the bottom background layer. `doc`: its document, for the
+// text a shader engraves (the box's data-engrave attribute) and to tell the page when the shader cannot be had.
+paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rect, radii: [4]f32, scale: f32, doc: ^dom.Document = nil) {
 	sc := cs.wren_shader
 	if sc.name == "" || area.max.x <= area.min.x || area.max.y <= area.min.y { return }
 	idx := -1
@@ -127,7 +133,7 @@ paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rec
 	if idx < 0 { return }
 	def := &SHADERS[idx]
 	st := shader_ready(dc.renderer, idx)
-	if st.failed || st.handle == 0 { return }
+	if st.failed || st.handle == 0 { shader_unavailable(doc, cs); return }
 	// the engine's slots, the pass, then the arguments four to a slot
 	slots: [2 + (style.MAX_SHADER_ARGS + 3) / 4]draw.Vec4
 	reduced: f32 = the_app != nil && the_app.page_settings.style.reduced_motion ? 1 : 0
@@ -138,9 +144,50 @@ paint_wren_shader :: proc(dc: ^draw.Context, cs: ^style.Computed, area: draw.Rec
 		if k < len(sc.args) { v = sc.args[k] }
 		slots[2 + k / 4][k % 4] = v
 	}
+	// the text the shader engraves: made when it changes, for a box that asks for it (the argument "engrave" is not 0)
+	for a, k in def.args {
+		if a != "engrave" || slots[2 + k / 4][k % 4] == 0 { continue }
+		if !engraving_ready(dc, st, def, doc, cs) {
+			slots[2 + k / 4][k % 4] = 0
+			shader_unavailable(doc, cs)   // the page shows its own text
+		}
+	}
 	used := 2 + (nargs + 3) / 4
 	for p, pass in def.passes {
 		slots[1] = {f32(pass), 0, 0, 0}
 		draw.app_shader(dc, st.handle, area, slots[:used], st.textures[:], p.blend, radii)
 	}
+}
+
+// The engraving texture holds the text of the box's data-engrave attribute (made again when it changed). False: it cannot be had (no
+// text on the box, no document, no font): the caller leaves the text to the page.
+@(private = "file")
+engraving_ready :: proc(dc: ^draw.Context, st: ^Shader_State, def: ^Shader_Def, doc: ^dom.Document, cs: ^style.Computed) -> bool {
+	if doc == nil || cs.node == base.NIL_HANDLE || dc.fonts == nil { return false }
+	text, found := dom.get_attribute(doc, cs.node, ENGRAVE_ATTR)
+	if !found || text == "" { return false }
+	h: u64 = 0xcbf29ce484222325
+	for b in transmute([]u8)text { h = (h ~ u64(b)) * 0x100000001b3 }
+	h |= 1
+	if st.engraved == h { return true }
+	for tk, k in def.textures {
+		if tk != .Card_Engraving || st.textures[k] == 0 { continue }
+		texels, ok := card_engraving(dc.fonts, st.renderer, text)
+		if !ok { return false }
+		defer delete(texels)
+		render.update_texture_data(dc.renderer, st.textures[k], 0, 0, ENGRAVE_W, ENGRAVE_H, texels)
+	}
+	st.engraved = h
+	return true
+}
+
+// A page that gives its text to a shader (the licence card) shows it itself when the shader cannot: it asks by an attribute its style reads
+// (.lic[data-shader=off] .face): on the parent of the box. Set once.
+@(private = "file")
+shader_unavailable :: proc(doc: ^dom.Document, cs: ^style.Computed) {
+	if doc == nil || cs.node == base.NIL_HANDLE { return }
+	n := dom.get(doc, cs.node)
+	if n == nil || n.parent == base.NIL_HANDLE { return }
+	if v, ok := dom.get_attribute(doc, n.parent, "data-shader"); ok && v == "off" { return }
+	dom.set_attribute(doc, n.parent, "data-shader", "off")
 }
