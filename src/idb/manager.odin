@@ -216,6 +216,19 @@ manager_init :: proc(m: ^Manager, settings: Settings, dir: string, submit: Submi
 @(private)
 join_path :: proc(a, b: string) -> string { return strings.concatenate({a, "/", b}, context.temp_allocator) }
 
+// The client a connection / a transaction belongs to (nil: unknown).
+conn_client :: proc(m: ^Manager, id: u64) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	if conn, ok := m.conns[id]; ok { return conn.client }
+	return nil
+}
+
+tx_client :: proc(m: ^Manager, id: u64) -> ^Client {
+	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)
+	if tx, ok := m.txs[id]; ok { return tx.client }
+	return nil
+}
+
 // How the manager runs something later on the thread of the shell's loop (the grouping of commits, slices of a remap).
 manager_set_post :: proc(m: ^Manager, post: Post_Proc, user: rawptr) {
 	sync.recursive_mutex_lock(&m.mu); defer sync.recursive_mutex_unlock(&m.mu)

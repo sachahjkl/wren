@@ -18,7 +18,7 @@
   "use strict";
 
   // ---- the browser's side ----------------------------------------------------------------------------------------
-  const OP = { OPEN: 1, DELETE: 2, LIST: 3, CLOSE: 4, VC_DONE: 5, BEGIN: 6, COMMIT: 7, ABORT: 8, EXEC: 9, TASK: 10, EVENT: 11, CLEANUP: 12, LIMITS: 13 };
+  const OP = { OPEN: 1, DELETE: 2, LIST: 3, CLOSE: 4, VC_DONE: 5, BEGIN: 6, COMMIT: 7, ABORT: 8, EXEC: 9, TASK: 10, EVENT: 11, CLEANUP: 12, LIMITS: 13, ESTIMATE: 15, PERSIST: 16, BUCKETS: 17 };
   const REQ = { GET: 1, COUNT: 2, GET_ALL: 3, CURSOR: 4, PUT: 5, GEN_KEY: 6, DELETE: 7, CLEAR: 8, INDEX_PUT: 9,
     CREATE_STORE: 10, DELETE_STORE: 11, RENAME_STORE: 12, CREATE_INDEX: 13, DELETE_INDEX: 14, RENAME_INDEX: 15, PEEK_KEY: 16 };
   const EV = { TASK: 1, OPEN_UPGRADE: 2, OPEN_DONE: 3, OPEN_ERROR: 4, BLOCKED: 5, VERSION_CHANGE: 6, DELETE_DONE: 7, DELETE_ERROR: 8,
@@ -85,6 +85,7 @@
     return unitsToString(units);
   }
 
+  const fdv = new DataView(new ArrayBuffer(8));
   class Wr {
     constructor() { this.b = new Uint8Array(64); this.n = 0; }
     need(k) {
@@ -105,6 +106,7 @@
     raw(u8) { this.need(u8.length); this.b.set(u8, this.n); this.n += u8.length; }
     bytes(u8) { this.uv(u8.length); this.raw(u8); }
     str(s) { this.bytes(utf8(s)); }
+    f64(v) { this.need(8); fdv.setFloat64(0, v, true); for (let i = 0; i < 8; i++) this.b[this.n++] = fdv.getUint8(i); }
     done() { return this.b.subarray(0, this.n); }
   }
 
@@ -118,6 +120,7 @@
     }
     bytes() { const n = this.uv(); const r = this.b.subarray(this.p, this.p + n); this.p += n; return r; }
     str() { return utf8d(this.bytes()); }
+    f64() { for (let i = 0; i < 8; i++) fdv.setUint8(i, this.b[this.p++]); return fdv.getFloat64(0, true); }
   }
 
   // ---- keys -------------------------------------------------------------------------------------------------------
@@ -853,7 +856,7 @@
   class IDBFactory {
     constructor() { throw new TypeError("Illegal constructor"); }
     open(name, version = undefined) {
-      sOf(factoryState, this);
+      const F = sOf(factoryState, this);
       arity(1, arguments.length, "open", "IDBFactory");
       const n = str(name);
       let v = 0, has = 0;
@@ -865,7 +868,7 @@
         has = 1;
       }
       const w = new Wr();
-      w.str(n); w.uv(v); w.u8(has);
+      w.str(n); w.uv(v); w.u8(has); w.str(F.bucket);
       const rep = call(OP.OPEN, w.done());
       if (rep[0]) throw fail(rep[0]);
       const req = newRequest(IDBOpenDBRequest.prototype, null, null);
@@ -874,10 +877,10 @@
       return req.wrapper;
     }
     deleteDatabase(name) {
-      sOf(factoryState, this);
+      const F = sOf(factoryState, this);
       arity(1, arguments.length, "deleteDatabase", "IDBFactory");
       const w = new Wr();
-      w.str(str(name));
+      w.str(str(name)); w.str(F.bucket);
       const rep = call(OP.DELETE, w.done());
       if (rep[0]) throw fail(rep[0]);
       const req = newRequest(IDBOpenDBRequest.prototype, null, null);
@@ -887,8 +890,10 @@
     }
     databases() {
       try {
-        sOf(factoryState, this);
-        const rep = call(OP.LIST);
+        const F = sOf(factoryState, this);
+        const lw = new Wr();
+        lw.str(F.bucket);
+        const rep = call(OP.LIST, lw.done());
         if (rep[0]) throw fail(rep[0]);
         const id = new Rd(rep, 1).uv();
         return new Promise((resolve, reject) => listReqs.set(id, { resolve, reject }));
@@ -2016,9 +2021,104 @@
     }
   }
 
+  // ---- navigator.storage, navigator.storageBuckets -----------------------------------------------------------------
+  const smState = new WeakMap(), sbmState = new WeakMap(), sbState = new WeakMap();
+  function bucketCall(op, build) {
+    const w = new Wr();
+    build(w);
+    const rep = call(op, w.done());
+    if (rep[0]) throw fail(rep[0]);
+    return new Rd(rep, 1);
+  }
+  function estimateOf(bucket) {
+    const rd = bucketCall(OP.ESTIMATE, (w) => w.str(bucket));
+    return { usage: rd.uv(), quota: rd.uv() };
+  }
+  function persistOf(bucket, request) {
+    return bucketCall(OP.PERSIST, (w) => { w.str(bucket); w.u8(request ? 1 : 0); }).u8() !== 0;
+  }
+  const notSupported = (what) => Promise.reject(dom("NotSupportedError", what + " is not supported."));
+
+  class StorageManager {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    estimate() { try { sOf(smState, this); return Promise.resolve(estimateOf("")); } catch (e) { return Promise.reject(e); } }
+    persist() { try { sOf(smState, this); return Promise.resolve(persistOf("", true)); } catch (e) { return Promise.reject(e); } }
+    persisted() { try { sOf(smState, this); return Promise.resolve(persistOf("", false)); } catch (e) { return Promise.reject(e); } }
+    getDirectory() { return notSupported("The origin private file system"); }
+  }
+
+  const BUCKET_NAME = /^[a-z0-9][a-z0-9_-]{0,62}$/;
+  function makeBucket(name, info) {
+    const b = Object.create(StorageBucket.prototype);
+    const factory = Object.create(IDBFactory.prototype);
+    factoryState.set(factory, { bucket: name });
+    sbState.set(b, { name, persisted: info.persisted, durability: info.durability, expires: info.expires, factory });
+    return b;
+  }
+  class StorageBucketManager {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    open(name, options = undefined) {
+      try {
+        sOf(sbmState, this);
+        arity(1, arguments.length, "open", "StorageBucketManager");
+        const n = str(name);
+        if (!BUCKET_NAME.test(n)) throw new TypeError("Failed to execute 'open' on 'StorageBucketManager': The bucket name is not valid.");
+        let persisted = false, durability = "", expires = -1;
+        if (options !== undefined && options !== null) {
+          if (typeof options !== "object" && typeof options !== "function") throw new TypeError("The options argument is not of type 'StorageBucketOptions'.");
+          persisted = !!options.persisted;
+          if (options.durability !== undefined) durability = checkEnum(options.durability, ["strict", "relaxed"], "StorageBucketDurability");
+          if (options.expires !== undefined && options.expires !== null) expires = Number(options.expires);
+        }
+        const rd = bucketCall(OP.BUCKETS, (w) => { w.u8(0); w.str(n); w.u8(persisted ? 1 : 0); w.str(durability); w.f64(expires); });
+        const info = { persisted: rd.u8() !== 0, durability: rd.str(), expires: rd.f64() };
+        return Promise.resolve(makeBucket(n, info));
+      } catch (e) { return Promise.reject(e); }
+    }
+    keys() {
+      try {
+        sOf(sbmState, this);
+        const rd = bucketCall(OP.BUCKETS, (w) => w.u8(1));
+        const n = rd.uv(), out = [];
+        for (let i = 0; i < n; i++) { const name = rd.str(); if (name !== "default") out.push(name); }
+        return Promise.resolve(out);
+      } catch (e) { return Promise.reject(e); }
+    }
+    delete(name) {
+      try {
+        sOf(sbmState, this);
+        arity(1, arguments.length, "delete", "StorageBucketManager");
+        const n = str(name);
+        if (!BUCKET_NAME.test(n)) throw new TypeError("Failed to execute 'delete' on 'StorageBucketManager': The bucket name is not valid.");
+        bucketCall(OP.BUCKETS, (w) => { w.u8(2); w.str(n); });
+        return Promise.resolve(undefined);
+      } catch (e) { return Promise.reject(e); }
+    }
+  }
+
+  class StorageBucket {
+    constructor() { throw new TypeError("Illegal constructor"); }
+    get name() { return sOf(sbState, this).name; }
+    get indexedDB() { return sOf(sbState, this).factory; }
+    persist() { try { const B = sOf(sbState, this); B.persisted = persistOf(B.name, true); return Promise.resolve(B.persisted); } catch (e) { return Promise.reject(e); } }
+    persisted() { try { const B = sOf(sbState, this); return Promise.resolve(persistOf(B.name, false)); } catch (e) { return Promise.reject(e); } }
+    estimate() { try { const B = sOf(sbState, this); return Promise.resolve(estimateOf(B.name)); } catch (e) { return Promise.reject(e); } }
+    durability() { try { return Promise.resolve(sOf(sbState, this).durability); } catch (e) { return Promise.reject(e); } }
+    setExpires(expires) {
+      try {
+        const B = sOf(sbState, this);
+        const ms = Number(expires);
+        B.expires = ms;
+        bucketCall(OP.BUCKETS, (w) => { w.u8(3); w.str(B.name); w.f64(ms); });
+        return Promise.resolve(undefined);
+      } catch (e) { return Promise.reject(e); }
+    }
+    expires() { try { const B = sOf(sbState, this); return Promise.resolve(B.expires < 0 ? null : B.expires); } catch (e) { return Promise.reject(e); } }
+    getDirectory() { return notSupported("The origin private file system"); }
+  }
   // ---- the global ---------------------------------------------------------------------------------------------------
   const factory = Object.create(IDBFactory.prototype);
-  factoryState.set(factory, true);
+  factoryState.set(factory, { bucket: "" });
 
   // The interfaces' operations and attributes are enumerable, like Web IDL's.
   function exposeMembers(cls) {
@@ -2034,7 +2134,7 @@
   }
 
   const all = [IDBRequest, IDBOpenDBRequest, IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex, IDBCursor, IDBCursorWithValue,
-    IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList];
+    IDBKeyRange, IDBVersionChangeEvent, IDBRecord, DOMStringList, StorageManager, StorageBucketManager, StorageBucket];
   const classes = {};
   for (const cls of all) {
     exposeMembers(cls);
@@ -2064,5 +2164,9 @@
     Object.defineProperty(IDBPlainEvent.prototype, "constructor", { value: Event, writable: true, configurable: true });
   }
 
-  return { classes, factory, hooks: { event: onEvent, cleanup }, start };
+  const storage = Object.create(StorageManager.prototype);
+  smState.set(storage, true);
+  const buckets = Object.create(StorageBucketManager.prototype);
+  sbmState.set(buckets, true);
+  return { classes, factory, storage, buckets, hooks: { event: onEvent, cleanup }, start };
 })

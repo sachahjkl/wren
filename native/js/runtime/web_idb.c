@@ -190,12 +190,36 @@ static JSValue idb_factory_getter(JSContext *ctx, JSValueConst this_val)
     return JS_GetPropertyStr(ctx, exports_obj, "factory");
 }
 
+/* get navigator.storage / navigator.storageBuckets (the realm's StorageManager and StorageBucketManager, made by the prelude) */
+static JSValue nav_storage_getter(JSContext *ctx, JSValueConst this_val)
+{
+    WJ_UNUSED(this_val);
+    if (!load_prelude(ctx)) { return JS_EXCEPTION; }
+    return JS_GetPropertyStr(ctx, exports_obj, "storage");
+}
+
+static JSValue nav_buckets_getter(JSContext *ctx, JSValueConst this_val)
+{
+    WJ_UNUSED(this_val);
+    if (!load_prelude(ctx)) { return JS_EXCEPTION; }
+    return JS_GetPropertyStr(ctx, exports_obj, "buckets");
+}
+
+static void define_accessor(JSContext *ctx, JSValueConst proto, const char *name, const char *getter_name, JSValue (*fn)(JSContext *, JSValueConst))
+{
+    JSAtom a = JS_NewAtom(ctx, name);
+    JSValue getter = JS_NewCFunction2(ctx, (JSCFunction *)fn, getter_name, 0, JS_CFUNC_getter, 0);
+    JS_DefinePropertyGetSet(ctx, proto, a, getter, JS_UNDEFINED, JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+    JS_FreeAtom(ctx, a);
+}
+
 /* At pre-initialization (prelude.c): the names of IndexedDB's interfaces on the global, and the accessor. */
 void wj_idb_define_lazy(JSContext *ctx)
 {
     static const char *const names[] = {
         "IDBRequest", "IDBOpenDBRequest", "IDBFactory", "IDBDatabase", "IDBTransaction", "IDBObjectStore", "IDBIndex",
         "IDBCursor", "IDBCursorWithValue", "IDBKeyRange", "IDBVersionChangeEvent", "IDBRecord",
+        "StorageManager", "StorageBucketManager", "StorageBucket",
     };
     JSValue global = JS_GetGlobalObject(ctx);
     for (size_t i = 0; i < sizeof names / sizeof names[0]; i++) {
@@ -231,6 +255,16 @@ WJ_EXPORT("wj_idb_cleanup") void wj_idb_cleanup(void) { call_hook("cleanup"); }
 int web_idb_start(JSContext *ctx, int kind)
 {
     WJ_UNUSED(kind);
+    {   /* navigator.storage and navigator.storageBuckets: on Navigator (a window) or WorkerNavigator (a worker) */
+        JSValue iface = JS_GetPropertyStr(ctx, wj_the_realm.global, web_is_window() ? "Navigator" : "WorkerNavigator");
+        JSValue proto = JS_IsObject(iface) ? JS_GetPropertyStr(ctx, iface, "prototype") : JS_UNDEFINED;
+        if (JS_IsObject(proto)) {
+            define_accessor(ctx, proto, "storage", "get storage", nav_storage_getter);
+            define_accessor(ctx, proto, "storageBuckets", "get storageBuckets", nav_buckets_getter);
+        }
+        JS_FreeValue(ctx, proto);
+        JS_FreeValue(ctx, iface);
+    }
     if (!web_is_window()) {
         /* a worker: indexedDB is an attribute of WorkerGlobalScope (the global inherits it), not of the global itself */
         JSValue global = wj_the_realm.global;

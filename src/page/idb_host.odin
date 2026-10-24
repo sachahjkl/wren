@@ -22,6 +22,7 @@ package page
 // worker's client is signalled to its thread (Worker_Global.idb_wake) and delivered by its loop, one event per task, as
 // for a page. Disk work stays on the blocking pool, which any thread may submit to.
 
+import "core:strings"
 import "core:sync"
 import "core:time"
 import "wb:base"
@@ -36,7 +37,9 @@ Idb_Host :: struct {
 }
 
 Idb_Page :: struct {
-	client:         ^idb.Client,
+	client:         ^idb.Client,   // the origin's own (default bucket)
+	key:            string,        // its storage key (heap)
+	buckets:        map[string]^idb.Client,   // the clients of the storage buckets the realm opened
 	event:          []byte,    // the event being delivered (temporary)
 	last:           [dynamic]byte,   // the reply of the last call: a reply that did not fit the caller's buffer is asked for again (IDB_OP_AGAIN)
 	cleanup_needed: bool,      // the realm wants wj_idb_cleanup after the current microtask checkpoint
@@ -60,6 +63,9 @@ IDB_OP_EVENT      :: 11
 IDB_OP_CLEANUP    :: 12
 IDB_OP_LIMITS     :: 13
 IDB_OP_PRELUDE    :: 14
+IDB_OP_ESTIMATE   :: 15   // bucket -> usage, quota
+IDB_OP_PERSIST    :: 16   // bucket, request -> persisted
+IDB_OP_BUCKETS    :: 17   // 0 open (name, persisted, durability, expires), 1 names, 2 delete (name), 3 set expires (name, ms)
 IDB_OP_AGAIN      :: 0x4000   // or-ed into any operation: do not run it, repeat the last reply
 
 @(private)
@@ -150,8 +156,37 @@ idb_page_of :: proc(p: ^Page) -> (^Idb_Page, Api_Error) {
 	key := p.worker.storage_key if p.worker != nil else storage_origin_key(p)
 	idb.manager_set_settings(&h.m, p.settings.idb)
 	ip.client = idb.client_create(&h.m, key, idb_wake, ip)
+	delete(ip.key)
+	ip.key = strings.clone(key, base.process_allocator())
 	idb_arm(h)
 	return ip, .None
+}
+// The realm's client for a bucket ("": the origin's own), made when first used.
+@(private)
+idb_client_for :: proc(p: ^Page, ip: ^Idb_Page, bucket: string) -> ^idb.Client {
+	if bucket == "" { return ip.client }
+	if c, ok := ip.buckets[bucket]; ok { return c }
+	h := idb_host_of(p)
+	if h == nil { return nil }
+	if ip.buckets == nil { ip.buckets = make(map[string]^idb.Client, base.process_allocator()) }
+	c := idb.client_create(&h.m, bucket_key(ip.key, bucket), idb_wake, ip)
+	ip.buckets[strings.clone(bucket, base.process_allocator())] = c
+	return c
+}
+
+// The clients of a realm: its own and those of its buckets (temporary list).
+@(private)
+idb_clients :: proc(ip: ^Idb_Page) -> []^idb.Client {
+	out := make([dynamic]^idb.Client, context.temp_allocator)
+	if ip.client != nil { append(&out, ip.client) }
+	for _, c in ip.buckets { append(&out, c) }
+	return out[:]
+}
+
+@(private)
+idb_has_events :: proc(ip: ^Idb_Page) -> bool {
+	for c in idb_clients(ip) { if idb.client_has_events(c) { return true } }
+	return false
 }
 // Manager -> page: the client has an event. A task of the page delivers it.
 @(private)
@@ -195,7 +230,10 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 	start := time.tick_now()
 	for n := 0; n < 24; n += 1 {
 		if p.closed || p.web == nil || p.web.idb == nil || p.web.idb.client == nil { return }
-		ev, ok := idb.client_pop(p.web.idb.client)
+		var_c: ^idb.Client
+		ev: idb.Event
+		ok := false
+		for c in idb_clients(p.web.idb) { if idb.client_has_events(c) { ev, ok = idb.client_pop(c); var_c = c; break } }
 		if !ok { return }
 		w := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
 		idb.w_u8(&w, u8(ev.kind))
@@ -203,13 +241,13 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 		idb.w_uv(&w, ev.v1); idb.w_uv(&w, ev.v2); idb.w_uv(&w, ev.a)
 		idb.w_u8(&w, u8(ev.err))
 		idb.w_bytes(&w, ev.data)
-		idb.event_free(p.web.idb.client, &ev)
+		idb.event_free(var_c, &ev)
 		ip.event = w.data[:]
 		if r := js_realm(p); r != nil { js_call(p, r.inst, "wj_idb_event", nil) }
 		ip.event = nil
 		if time.duration_microseconds(time.tick_since(start)) > 1500 { break }
 	}
-	if !p.closed && p.web != nil && p.web.idb != nil && p.web.idb.client != nil && idb.client_has_events(p.web.idb.client) { idb_post_delivery(p) }
+	if !p.closed && p.web != nil && p.web.idb != nil && p.web.idb.client != nil && idb_has_events(p.web.idb) { idb_post_delivery(p) }
 }
 // End of a microtask checkpoint with active transactions: they become inactive (and commit if they have nothing left to do).
 @(private)
@@ -225,6 +263,9 @@ idb_page_closed :: proc(p: ^Page) {
 	ip := p.web.idb
 	if ip == nil { return }
 	if ip.client != nil { idb.client_destroy(ip.client) }
+	for k, c in ip.buckets { idb.client_destroy(c); delete(k, base.process_allocator()) }
+	delete(ip.buckets)
+	delete(ip.key, base.process_allocator())
 	delete(ip.last)
 	free(ip)
 	p.web.idb = nil
@@ -248,6 +289,9 @@ idb_clear_origin :: proc(sm: ^Storage_Manager, origin: string) {
 // never uses IndexedDB does not carry it.
 IDB_PRELUDE_SOURCE :: #load("../../native/js/lazy/idb.js", string)
 
+@(private)
+idb_pick :: proc(a, b: ^idb.Client) -> ^idb.Client { return a if a != nil else b }
+
 Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 	p := c.page
 	if op & ~i32(IDB_OP_AGAIN) == IDB_OP_PRELUDE { return transmute([]u8)string(IDB_PRELUDE_SOURCE), .None }
@@ -264,18 +308,23 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		name := idb.r_str(&r)
 		version := idb.r_uv(&r)
 		has := idb.r_u8(&r) != 0
+		bucket := idb.r_str(&r) if r.pos < len(args) else ""
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		idb.w_uv(&out, idb.open_database(cl, name, version, has))
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.open_database(bc, name, version, has)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
 	case IDB_OP_DELETE:
 		name := idb.r_str(&r)
+		bucket := idb.r_str(&r) if r.pos < len(args) else ""
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		idb.w_uv(&out, idb.delete_database(cl, name))
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.delete_database(bc, name)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
 	case IDB_OP_LIST:
-		idb.w_uv(&out, idb.list_databases(cl))
+		bucket := idb.r_str(&r) if r.pos < len(args) else ""
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.list_databases(bc)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
 	case IDB_OP_CLOSE:
-		status = idb.close_connection(cl, idb.r_uv(&r))
+		id := idb.r_uv(&r)
+		status = idb.close_connection(idb_pick(idb.conn_client(cl.m, id), cl), id)
 	case IDB_OP_VC_DONE:
-		idb.versionchange_done(cl, idb.r_uv(&r))
+		id := idb.r_uv(&r)
+		idb.versionchange_done(idb_pick(idb.conn_client(cl.m, id), cl), id)
 	case IDB_OP_BEGIN:
 		conn := idb.r_uv(&r)
 		mode := idb.r_u8(&r)
@@ -285,21 +334,22 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		scope := make([]u32, n, context.temp_allocator)
 		for i in 0 ..< n { scope[i] = u32(idb.r_uv(&r)) }
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		id, started, e := idb.begin_transaction(cl, conn, scope, idb.Tx_Mode(mode), strict)
+		id, started, e := idb.begin_transaction(idb_pick(idb.conn_client(cl.m, conn), cl), conn, scope, idb.Tx_Mode(mode), strict)
 		status = e
 		idb.w_uv(&out, id)
 		idb.w_u8(&out, 1 if started else 0)   // (it already runs: its event, still to come, tells nothing new)
 	case IDB_OP_COMMIT:
-		status = idb.tx_commit(cl, idb.r_uv(&r))
+		id := idb.r_uv(&r)
+		status = idb.tx_commit(idb_pick(idb.tx_client(cl.m, id), cl), id)
 	case IDB_OP_ABORT:
 		id := idb.r_uv(&r)
 		e := idb.Error(idb.r_u8(&r))
-		status = idb.tx_abort(cl, id, e)
+		status = idb.tx_abort(idb_pick(idb.tx_client(cl.m, id), cl), id, e)
 	case IDB_OP_EXEC:
 		id := idb.r_uv(&r)
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
 		payload := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
-		status = idb.tx_exec(cl, id, args[r.pos:], &payload)
+		status = idb.tx_exec(idb_pick(idb.tx_client(cl.m, id), cl), id, args[r.pos:], &payload)
 		if status == .None { append(&out.data, ..payload.data[:]) }
 	case IDB_OP_TASK:
 		idb.client_post_task(cl, idb.r_uv(&r))
@@ -307,6 +357,48 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		append(&out.data, ..ip.event)
 	case IDB_OP_CLEANUP:
 		ip.cleanup_needed = true
+	case IDB_OP_ESTIMATE:
+		bucket := idb.r_str(&r)
+		sm := p.web.embedder.storage
+		usage, quota: i64
+		if p.worker == nil {
+			usage, quota = storage_estimate(sm, ip.key, bucket, p.settings.idb.quota_bytes, p.settings.web.storage_quota)
+		} else {
+			bytes, _, _ := idb.manager_usage(&sm.idb.m, bucket_key(ip.key, bucket))
+			usage, quota = bytes, p.settings.idb.quota_bytes
+		}
+		idb.w_uv(&out, u64(usage)); idb.w_uv(&out, u64(quota))
+	case IDB_OP_PERSIST:
+		bucket := idb.r_str(&r)
+		request := idb.r_u8(&r) != 0
+		idb.w_u8(&out, 1 if storage_persisted(p.web.embedder.storage, ip.key, bucket, request) else 0)
+	case IDB_OP_BUCKETS:
+		sm := p.web.embedder.storage
+		switch idb.r_u8(&r) {
+		case 0:
+			name := idb.r_str(&r)
+			persisted := idb.r_u8(&r) != 0
+			durability := idb.r_str(&r)
+			expires := idb.r_f64(&r)
+			info, _ := bucket_open(sm, ip.key, name, persisted, durability, expires)
+			idb.w_u8(&out, 1 if info.persisted else 0); idb.w_str(&out, info.durability); idb.w_f64(&out, info.expires)
+		case 1:
+			names := bucket_names(sm, ip.key)
+			idb.w_uv(&out, u64(len(names)))
+			for n in names { idb.w_str(&out, n) }
+		case 2:
+			name := idb.r_str(&r)
+			if c, ok := ip.buckets[name]; ok {
+				idb.client_destroy(c)
+				delete_key(&ip.buckets, name)
+			}
+			bucket_delete(sm, ip.key, name)
+		case 3:
+			name := idb.r_str(&r)
+			bucket_set_expires(sm, ip.key, name, idb.r_f64(&r))
+		case:
+			return nil, Api_Error(WEB_ERR_TYPE)
+		}
 	case IDB_OP_LIMITS:
 		s := &p.settings.idb
 		idb.w_uv(&out, u64(s.max_key_bytes)); idb.w_uv(&out, u64(s.max_value_bytes))
@@ -323,5 +415,8 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 idb_busy :: proc(p: ^Page) -> bool {
 	if p == nil || p.web == nil { return false }
 	ip := p.web.idb
-	return ip != nil && ip.client != nil && (ip.deliver_posted || idb.client_busy(ip.client))
+	if ip == nil || ip.client == nil { return false }
+	if ip.deliver_posted { return true }
+	for c in idb_clients(ip) { if idb.client_busy(c) { return true } }
+	return false
 }
