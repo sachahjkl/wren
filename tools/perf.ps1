@@ -323,7 +323,14 @@ Run 'js_canvas_anim' ('{0}?mode=anim' -f (FileUrl (Join-Path $jsb 'canvas_anim.h
 Run 'js_canvas_big'  ('{0}?mode=big' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
 Run 'js_canvas_idle' ('{0}?mode=idle' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false
 Run 'js_canvas_anim_sample' ('{0}?mode=anim' -f (FileUrl (Join-Path $jsb 'canvas_anim.html'))) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
-# real sites with JavaScript (network: figures depend on the connection; the style and layout phases do not)
+# canvas workloads (examples/jsbench/canvas_bench.html): 10 000 sprites, 3000 paths, 1500 texts, window-sized gradients, a typical
+# 2D game, and a trivial 300 x 150 canvas that must stay as cheap as before. -Prefs '--pref canvas.gpu.enabled=false' (with
+# -Tag _sw) measures the software rasterizer of the same build for comparison
+foreach ($m in 'particles', 'paths', 'text', 'gradients', 'game', 'trivial') {
+    Run "js_canvas_$m" ('{0}?mode={1}' -f (FileUrl (Join-Path $jsb 'canvas_bench.html')), $m) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $false '--pref browser.frame.target_hz=180'
+}foreach ($m in 'particles', 'paths', 'text', 'game') {
+    Run "js_canvas_${m}_sample" ('{0}?mode={1}' -f (FileUrl (Join-Path $jsb 'canvas_bench.html')), $m) { param($h) Start-Sleep 3; Mark; Start-Sleep 8 } $true '--pref browser.frame.target_hz=180'
+}# real sites with JavaScript (network: figures depend on the connection; the style and layout phases do not)
 Run 'site_sacha'   'https://sacha.house/' { param($h) Start-Sleep 10 } $false
 Run 'site_clockin' 'https://clockin.sacha.house/' { param($h) Start-Sleep 10 } $false
 Run 'site_mdn'     'https://developer.mozilla.org/en-US/docs/Web/JavaScript' { param($h) Start-Sleep 12 } $false

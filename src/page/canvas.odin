@@ -60,6 +60,8 @@ Canvas_Backing :: struct {
 	tainted:   bool,                      // drew something the page may not read back
 	seen:      u64,                       // doc.mutations when the attributes were last looked at
 	warned:    bool,
+	virtual:   bool,                      // the bitmap has no pixels: the canvas is drawn on the GPU (canvas2d.Gpu)
+	read_freq: bool,                      // getContext's willReadFrequently: always software
 }
 
 @(private)
@@ -92,6 +94,9 @@ canvas_next_id: u64
 // What the shell provides for text (fonts, shaping, glyph outlines). Set once at start-up; `user` is replaced by the
 // page when a context is made.
 canvas_text_engine: canvas2d.Text_Engine
+
+// The GPU a canvas draws on (the shell sets it when its renderer can); nil: every canvas is drawn in software.
+canvas_gpu_host: ^canvas2d.Gpu_Host
 
 canvas_vt := Object_VTable{
 	name = "Canvas",
@@ -194,9 +199,34 @@ canvas_bitmap :: proc(p: ^Page, w, h: int) -> (bmp: canvas2d.Bitmap, ok: bool) {
 @(private)
 canvas_bitmap_free :: proc(p: ^Page, bmp: ^canvas2d.Bitmap) {
 	if !p.closed {
-		if cp, ok := canvas_pages[p]; ok { cp.bytes -= len(bmp.pix) }
+		if cp, ok := canvas_pages[p]; ok { cp.bytes -= bmp.accounted > 0 ? bmp.accounted : len(bmp.pix) }
 	}
 	canvas2d.bitmap_destroy(bmp)
+}
+
+// A bitmap that is charged like a real one but has no pixels: a canvas drawn on the GPU (its pixels are read back into the
+// bitmap, within what was charged, when something needs them on the CPU).
+@(private)
+canvas_bitmap_virtual :: proc(p: ^Page, w, h: int) -> (bmp: canvas2d.Bitmap, ok: bool) {
+	s := &p.settings.canvas
+	if w < 0 || h < 0 || w > s.max_dimension || h > s.max_dimension || w * h > s.max_pixels { return }
+	cp := canvas_page(p)
+	n := w * h * 4
+	if cp.bytes + n > s.max_page_bytes {
+		canvas_image_cache_trim(p, 0)
+		if cp.bytes + n > s.max_page_bytes { return }
+	}
+	bmp, ok = canvas2d.bitmap_virtual(w, h, n)
+	if ok { cp.bytes += n }
+	return
+}
+
+// Does this canvas draw on the GPU? Not when the page asked for willReadFrequently, when there is no GPU path, or when the
+// canvas is smaller than canvas.gpu.min_pixels (a tiny canvas costs less to draw and upload in software).
+@(private)
+canvas_gpu_wanted :: proc(b: ^Canvas_Backing) -> bool {
+	s := &b.page.settings.canvas
+	return canvas_gpu_host != nil && s.gpu_enabled && !b.read_freq && b.width > 0 && b.height > 0 && b.width * b.height >= s.gpu_min_pixels
 }
 
 @(private)
@@ -249,7 +279,14 @@ canvas_backing_new :: proc(p: ^Page, node: base.Handle, w, h: int) -> ^Canvas_Ba
 @(private)
 canvas_backing_alloc :: proc(b: ^Canvas_Backing) -> bool {
 	p := b.page
-	bmp, ok := canvas_bitmap(p, b.width, b.height)
+	bmp: canvas2d.Bitmap
+	ok := false
+	b.virtual = false
+	if canvas_gpu_wanted(b) {
+		bmp, ok = canvas_bitmap_virtual(p, b.width, b.height)
+		b.virtual = ok
+	}
+	if !ok { bmp, ok = canvas_bitmap(p, b.width, b.height) }
 	b.bmp = bmp
 	if !ok {
 		b.bmp = {}
@@ -259,7 +296,7 @@ canvas_backing_alloc :: proc(b: ^Canvas_Backing) -> bool {
 		return false
 	}
 	b.bmp.opaque = b.opaque
-	canvas2d.bitmap_reset_contents(&b.bmp)
+	if !b.virtual { canvas2d.bitmap_reset_contents(&b.bmp) }
 	return true
 }
 
@@ -314,8 +351,20 @@ canvas_backing_resize :: proc(b: ^Canvas_Backing, w, h: int) {
 	b.width, b.height = w, h
 	canvas_bitmap_free(b.page, &b.bmp)
 	b.warned = false
-	if b.ctx_obj != nil { canvas_backing_alloc(b) }
-	if b.ctx_obj != nil { canvas2d.context_reset(&b.ctx_obj.ctx) }
+	if b.ctx_obj != nil {
+		k := &b.ctx_obj.ctx
+		had := k.gpu != nil
+		canvas_backing_alloc(b)
+		// (the state goes first: clips of a GPU canvas name masks of its Gpu)
+		canvas2d.context_reset(k)
+		switch {
+		case had && b.virtual: canvas2d.gpu_resize(k.gpu, w, h)
+		case had && !b.virtual:
+			canvas2d.gpu_destroy(k.gpu)
+			k.gpu = nil
+		case !had && b.virtual: canvas2d.context_enable_gpu(k, canvas_gpu_host)
+		}
+	}
 	b.tainted = false
 }
 
@@ -324,6 +373,7 @@ canvas_backing_resize :: proc(b: ^Canvas_Backing, w, h: int) {
 cx :: proc(o: ^Canvas_Obj) -> ^canvas2d.Context {
 	if o == nil || o.backing == nil { return nil }
 	canvas_sync(o.backing)
+	canvas2d.gpu_check(&o.ctx)   // (a canvas the GPU gave up on goes back to software)
 	return &o.ctx
 }
 
@@ -359,10 +409,12 @@ canvas_make_context :: proc(c: ^Call, b: ^Canvas_Backing, alpha, read_freq: bool
 	if b.ctx_handle != 0 { return b.ctx_handle }
 	p := c.page
 	b.opaque = !alpha
+	b.read_freq = read_freq
 	canvas_backing_alloc(b)
 	o, h := canvas_new_object(p, c.owner, .Context)
 	o.backing, o.alpha, o.read_freq = b, alpha, read_freq
 	canvas2d.context_init(&o.ctx, &b.bmp, canvas2d.options_of(&p.settings.canvas))
+	if b.virtual { canvas2d.context_enable_gpu(&o.ctx, canvas_gpu_host) }
 	o.ctx.text = canvas_text_engine
 	o.ctx.text.user = p
 	b.ctx_obj, b.ctx_handle = o, h
@@ -377,6 +429,7 @@ Canvas_View :: struct {
 	ok:  bool,
 	id:  u64,                 // the texture key
 	bmp: ^canvas2d.Bitmap,    // premultiplied pixels; version and dirty rectangle say what to upload
+	gpu: ^canvas2d.Gpu,       // non-nil: the canvas is drawn on the GPU, mp only has its size (the shell shows the texture)
 }
 
 // The pixels of a <canvas> element (ok = false: nothing to draw, no script asked for a context or the bitmap could not
@@ -388,7 +441,8 @@ canvas_view :: proc(p: ^Page, node: base.Handle) -> Canvas_View {
 	if !found || b.ctx_obj == nil { return {} }
 	canvas_sync(b)
 	if b.bmp.w == 0 || b.bmp.h == 0 { return {} }
-	return Canvas_View{ok = true, id = b.id, bmp = &b.bmp}
+	canvas2d.gpu_check(&b.ctx_obj.ctx)
+	return Canvas_View{ok = true, id = b.id, bmp = &b.bmp, gpu = b.ctx_obj.ctx.gpu}
 }
 
 // Once per frame: backings of elements the document freed go (their textures with them).
@@ -407,8 +461,18 @@ canvas_generation :: proc(p: ^Page) -> u64 {
 	cp, ok := canvas_pages[p]
 	if !ok { return 0 }
 	g: u64
-	for b in cp.all { g += b.bmp.version }
+	for b in cp.all {
+		g += b.bmp.version
+		if b.ctx_obj != nil && b.ctx_obj.ctx.gpu != nil { g += b.ctx_obj.ctx.gpu.version }
+	}
 	return g
+}
+
+// The pixels of a canvas on the CPU: its own bitmap, or for a canvas drawn on the GPU what the GPU shows now, read back (nil when
+// that could not be done).
+canvas_backing_bitmap :: proc(b: ^Canvas_Backing) -> ^canvas2d.Bitmap {
+	if b.ctx_obj != nil && b.ctx_obj.ctx.gpu != nil { return canvas2d.gpu_bitmap(&b.ctx_obj.ctx) }
+	return &b.bmp
 }
 
 // Ids of the textures to free.

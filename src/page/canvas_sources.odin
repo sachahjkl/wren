@@ -23,9 +23,29 @@ Source_Status :: enum u8 {
 
 Canvas_Source :: struct {
 	status:  Source_Status,
-	bmp:     ^canvas2d.Bitmap,   // premultiplied; borrowed (a canvas, a bitmap, the page's image cache)
+	bmp:     ^canvas2d.Bitmap,   // premultiplied; borrowed (a canvas, a bitmap, the page's image cache). nil for a canvas on the GPU: canvas_source_bitmap reads it back
 	tainted: bool,
 	nat:     [2]f64,             // the size drawImage uses by default: CSS pixels for an <img>, pixels otherwise
+	size:    [2]int,             // the size of its pixels
+	gpu:     ^canvas2d.Gpu,      // a canvas drawn on the GPU
+	backing: ^Canvas_Backing,    // the canvas it is
+	video:   base.Handle,        // a <video> element (its current picture): not NIL_HANDLE
+}
+
+// The pixels of a source on the CPU: a canvas that is drawn on the GPU is read back (nil when that cannot be done).
+canvas_source_bitmap :: proc(s: ^Canvas_Source) -> ^canvas2d.Bitmap {
+	if s.bmp != nil { return s.bmp }
+	if s.backing != nil { s.bmp = canvas_backing_bitmap(s.backing) }
+	return s.bmp
+}
+
+// How a drawImage names a source for a context drawing on the GPU.
+canvas_gpu_source :: proc(p: ^Page, s: ^Canvas_Source) -> canvas2d.Gpu_Source {
+	switch {
+	case s.video != base.NIL_HANDLE: return canvas2d.Gpu_Source{kind = .Video, id = u64(s.video), owner = p, w = s.size.x, h = s.size.y}
+	case s.gpu != nil: return canvas2d.Gpu_Source{kind = .Canvas, canvas = s.gpu, w = s.size.x, h = s.size.y}
+	}
+	return canvas2d.Gpu_Source{kind = .Bitmap, bmp = s.bmp, w = s.size.x, h = s.size.y}
 }
 
 // Resolves a `source` handle of the API: an element (img, canvas, video) or an object (ImageBitmap, OffscreenCanvas).
@@ -38,14 +58,15 @@ canvas_source :: proc(p: ^Page, h: u64) -> Canvas_Source {
 		case .Bitmap:
 			if o.bmp.w == 0 || o.bmp.h == 0 { s.status = .Empty; return s }
 			s.bmp, s.tainted = &o.bmp, o.tainted
+			s.size = {o.bmp.w, o.bmp.h}
 		case .Offscreen:
 			b := o.backing
 			if b == nil || b.width == 0 || b.height == 0 { s.status = .Empty; return s }
 			if b.bmp.w == 0 { s.status = .Pending; return s }
-			s.bmp, s.tainted = &b.bmp, b.tainted
+			canvas_source_of_backing(&s, b)
 		case: s.status = .Bad; return s
 		}
-		s.nat = {f64(s.bmp.w), f64(s.bmp.h)}
+		s.nat = {f64(s.size.x), f64(s.size.y)}
 		return s
 	}
 	if p.doc == nil { s.status = .Bad; return s }
@@ -62,7 +83,7 @@ canvas_source :: proc(p: ^Page, h: u64) -> Canvas_Source {
 		canvas_sync(b)
 		if b.width == 0 || b.height == 0 { s.status = .Empty; return s }
 		if b.bmp.w == 0 { s.status = .Pending; return s }
-		s.bmp, s.tainted = &b.bmp, b.tainted
+		canvas_source_of_backing(&s, b)
 		s.nat = {f64(b.bmp.w), f64(b.bmp.h)}
 	case "img":
 		px := canvas_image_pixels(p, base.Handle(h))
@@ -74,10 +95,18 @@ canvas_source :: proc(p: ^Page, h: u64) -> Canvas_Source {
 		im := canvas_cached_image(p, px)
 		if im == nil { s.status = .Pending; return s }
 		s.bmp, s.tainted = &im.bmp, px.opaque
+		s.size = {im.bmp.w, im.bmp.h}
 		s.nat = {f64(px.natural[0]), f64(px.natural[1])}
 		if s.nat[0] <= 0 || s.nat[1] <= 0 { s.nat = {f64(im.bmp.w), f64(im.bmp.h)} }
-	case "video", "image":
-		s.status = .Pending   // a video's current frame is not available to the canvas (yet)
+	case "video":
+		v, vok := media_view(p, base.Handle(h), false)
+		if !vok || !v.ready || v.width <= 0 || v.height <= 0 { s.status = .Pending; return s }
+		s.video = base.Handle(h)
+		s.size = {v.width, v.height}
+		s.nat = {f64(v.width), f64(v.height)}
+		// (a page's video is the page's own picture: it never taints)
+	case "image":
+		s.status = .Pending
 	case:
 		s.status = .Bad
 	}
@@ -85,6 +114,14 @@ canvas_source :: proc(p: ^Page, h: u64) -> Canvas_Source {
 }
 
 canvas_source_done :: proc(s: ^Canvas_Source) {}
+
+@(private)
+canvas_source_of_backing :: proc(s: ^Canvas_Source, b: ^Canvas_Backing) {
+	s.tainted = b.tainted
+	s.size = {b.bmp.w, b.bmp.h}
+	s.backing = b
+	if b.ctx_obj != nil && b.ctx_obj.ctx.gpu != nil { s.gpu = b.ctx_obj.ctx.gpu } else { s.bmp = &b.bmp }
+}
 
 // The premultiplied copy of a decoded image, converted on first use and again when the decode changed.
 @(private)
@@ -166,7 +203,10 @@ Canvas_createPattern :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, source
 	case .Broken, .Empty: return 0, fail(c, .Invalid_State, "The image argument is a canvas element with a width or height of 0, or a broken image.")
 	case .Bad: return 0, fail(c, .Type, "The provided value is not of a type that can be used as a pattern.")
 	}
-	pat := canvas2d.pattern_create(src.bmp, rx, ry, c.page.settings.canvas.max_page_bytes)
+	sbmp := canvas_source_bitmap(&src)
+	if sbmp == nil && src.video != base.NIL_HANDLE { return 0, fail(c, .Not_Supported, "A video cannot be used as a pattern.") }
+	if sbmp == nil { return 0, fail(c, .Quota, "Not enough memory for the pattern.") }
+	pat := canvas2d.pattern_create(sbmp, rx, ry, c.page.settings.canvas.max_page_bytes)
 	if pat == nil { return 0, fail(c, .Quota, "Not enough memory for the pattern.") }
 	o, h := canvas_new_object(c.page, c.owner, .Pattern)
 	o.pat = pat
@@ -191,10 +231,12 @@ Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, 
 	case .Broken, .Empty: return 0, fail(c, .Invalid_State, "The source image cannot be decoded.")
 	case .Bad: return 0, fail(c, .Type, "The provided value is not of a type that can be made into a bitmap.")
 	}
-	x, y, w, h := 0, 0, src.bmp.w, src.bmp.h
+	sbmp := canvas_source_bitmap(&src)
+	if sbmp == nil { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	x, y, w, h := 0, 0, sbmp.w, sbmp.h
 	if form == 4 {
 		if sw == 0 || sh == 0 || !canvas2d.is_finite(sx + sy + sw + sh) { return 0, fail(c, .Index_Size, "The crop rectangle has a width or height of zero.") }
-		fx, fy := f64(src.bmp.w) / src.nat.x, f64(src.bmp.h) / src.nat.y
+		fx, fy := f64(sbmp.w) / src.nat.x, f64(sbmp.h) / src.nat.y
 		rx, ry, rw, rh := sx * fx, sy * fy, sw * fx, sh * fy
 		if rw < 0 { rx += rw; rw = -rw }
 		if rh < 0 { ry += rh; rh = -rh }
@@ -206,11 +248,11 @@ Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, 
 	for dy in 0 ..< h {
 		sy_ := y + dy
 		row := flip_y ? h - 1 - dy : dy
-		if sy_ < 0 || sy_ >= src.bmp.h { continue }
+		if sy_ < 0 || sy_ >= sbmp.h { continue }
 		for dx in 0 ..< w {
 			sx_ := x + dx
-			if sx_ < 0 || sx_ >= src.bmp.w { continue }
-			copy(o.bmp.pix[(row * w + dx) * 4:][:4], src.bmp.pix[(sy_ * src.bmp.w + sx_) * 4:][:4])
+			if sx_ < 0 || sx_ >= sbmp.w { continue }
+			copy(o.bmp.pix[(row * w + dx) * 4:][:4], sbmp.pix[(sy_ * sbmp.w + sx_) * 4:][:4])
 		}
 	}
 	return handle, .None
@@ -283,9 +325,16 @@ OffscreenCanvas_transferToImageBitmap :: proc(c: ^Call, canvas: Api_OffscreenCan
 	w, h := b.bmp.w, b.bmp.h
 	o, handle, ok := canvas_bitmap_object(c, w, h)
 	if !ok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
-	copy(o.bmp.pix, b.bmp.pix)
+	cur := canvas_backing_bitmap(b)
+	if cur == nil || len(cur.pix) != len(o.bmp.pix) { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	copy(o.bmp.pix, cur.pix)
 	o.tainted = b.tainted
-	canvas2d.bitmap_reset_contents(&b.bmp)
+	// the canvas starts again: transparent (black when opaque)
+	if k := &b.ctx_obj.ctx; k.gpu != nil {
+		canvas2d.gpu_reset(k.gpu)
+	} else {
+		canvas2d.bitmap_reset_contents(&b.bmp)
+	}
 	return handle, .None
 }
 
