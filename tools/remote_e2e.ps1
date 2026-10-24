@@ -22,14 +22,29 @@ $env:WREN_EXE = (Resolve-Path $Exe).Path
 Add-Type -AssemblyName System.Drawing
 
 $script:fail = 0
+$script:failedNames = @()
 function Check([string]$name, [bool]$ok, [string]$detail = '') {
-    if ($ok) { "PASS  $name" } else { "FAIL  $name  $detail"; $script:fail++ }
+    if ($ok) { "PASS  $name" } else { "FAIL  $name  $detail"; $script:fail++; $script:failedNames += $name }
 }
 function Pixel([string]$png, [int]$x, [int]$y) {
     $bmp = New-Object Drawing.Bitmap($png)
     try { $c = $bmp.GetPixel($x, $y); return @($c.R, $c.G, $c.B) } finally { $bmp.Dispose() }
 }
 function Near($a, $b, [int]$tol = 8) { for ($i = 0; $i -lt 3; $i++) { if ([Math]::Abs($a[$i] - $b[$i]) -gt $tol) { return $false } }; return $true }
+# Waits until the process has finished starting: its CPU time moves by less than 25 ms in a second, twice in a row (at most 30 s). A fixed
+# delay is not enough on a busy machine, where the start-up work is still running when the measure of an idle process begins.
+function Wait-Quiet($proc) {
+    $quiet = 0
+    $deadline = (Get-Date).AddSeconds(30)
+    $last = $proc.TotalProcessorTime.TotalMilliseconds
+    while ($quiet -lt 2 -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 1
+        $proc.Refresh()
+        $now = $proc.TotalProcessorTime.TotalMilliseconds
+        if ($now - $last -lt 25) { $quiet++ } else { $quiet = 0 }
+        $last = $now
+    }
+}
 function Pipe-Names { [IO.Directory]::GetFiles('\\.\pipe\') | Where-Object { $_ -like '*wren-remote-*' } }
 
 $tmp = Join-Path $env:TEMP "wren-remote-e2e-$PID"
@@ -100,7 +115,7 @@ public class WinClose {
     $sorted = @($times | Sort-Object)
     if ($sorted.Count -gt 0) { "      closing times under load (ms): $($sorted -join ', ')  max $($sorted[-1])  p95 $($sorted[[Math]::Min($sorted.Count - 1, [int][Math]::Ceiling($sorted.Count * 0.95) - 1)])" }
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-    if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
+    if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
     'remote_e2e -Stress: all closings within the limit'
     exit 0
 }
@@ -226,6 +241,7 @@ try {
     Check 'no remote.json without --remote' (-not (Test-Path (Join-Path $prof0 'remote.json')))
     $null = Wren-Ctl ping --profile $prof0 --timeout 300
     Check 'ctl finds no server (exit 3)' ($global:WrenExit -eq 3) "exit $global:WrenExit"
+    Wait-Quiet $p0
     $c1 = $p0.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $p0.Refresh()
     $idle0 = $p0.TotalProcessorTime.TotalMilliseconds - $c1
     Check 'idle Wren without remote uses < 60 ms CPU in 3 s' ($idle0 -lt 60) "$([int]$idle0) ms"
@@ -314,7 +330,7 @@ try {
 
     # the instance is idle when nothing is asked: no CPU
     $proc = Get-Process -Id $pidOf
-    Start-Sleep -Seconds 1
+    Wait-Quiet $proc
     $a = $proc.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $proc.Refresh()
     $idle1 = $proc.TotalProcessorTime.TotalMilliseconds - $a
     Check 'idle Wren with remote on uses < 60 ms CPU in 3 s' ($idle1 -lt 60) "$([int]$idle1) ms"
@@ -469,5 +485,5 @@ try {
     Check 'and the Wren answers' ($global:WrenExit -eq 0)
 } finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
+if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
 'remote_e2e: all checks passed'
