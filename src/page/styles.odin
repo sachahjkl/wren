@@ -443,9 +443,9 @@ Styles_Stats :: struct {
 	calls, full, dom, state, none: int,
 	full_ns, dom_ns, state_ns, none_ns: i64,
 	full_bytes: i64,   // memory the styles of the full passes took (the arena's use at the end of each)
-	why: map[string]Why_Count,   // the full passes by the reason the incremental one was not enough
+	why: [24]Why_Count,   // the full passes by the reason the incremental one was not enough (the reasons are constant strings)
 }
-Why_Count :: struct { n: int, ns: i64 }
+Why_Count :: struct { why: string, n: int, ns: i64 }
 styles_stats: Styles_Stats
 
 @(private = "file")
@@ -455,10 +455,9 @@ styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
 	switch {
 	case full:
 		s.full += 1; s.full_ns += i64(d)
-		if s.why == nil { s.why = make(map[string]Why_Count, 16, base.process_allocator()) }
-		w := s.why[why]
-		w.n += 1; w.ns += i64(d)
-		s.why[why] = w
+		for &w in s.why {
+			if w.why == why || w.why == "" { w.why = why; w.n += 1; w.ns += i64(d); break }
+		}
 	case dom: s.dom += 1; s.dom_ns += i64(d)
 	case state: s.state += 1; s.state_ns += i64(d)
 	case: s.none += 1; s.none_ns += i64(d)
@@ -474,6 +473,6 @@ styles_stats_text :: proc() -> string {
 }
 styles_stats_why :: proc() -> string {
 	sb := strings.builder_make(context.temp_allocator)
-	for k, v in styles_stats.why { fmt.sbprintf(&sb, "  full pass x %d, %.0f ms: %s\n", v.n, f64(v.ns) / 1e6, k) }
+	for v in styles_stats.why { if v.n > 0 { fmt.sbprintf(&sb, "  full pass x %d, %.0f ms: %s\n", v.n, f64(v.ns) / 1e6, v.why) } }
 	return strings.to_string(sb)
 }
