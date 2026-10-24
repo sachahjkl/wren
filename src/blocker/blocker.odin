@@ -128,6 +128,8 @@ Totals :: struct {
 Blocker :: struct {
 	net_rules: map[string]^Host_Rules,   // rewrite.odin: the response rewrites of each host
 	cfg:        Settings,
+	loader:     ^fetch.Loader,
+	hold_timer: base.Handle,        // the limit of the hold on requests while the first index is compiled (engine_build.odin)
 	loop:       ^host.Loop,
 	client:     ^net.Client,
 	prefs:      ^config.Prefs,
@@ -165,7 +167,7 @@ unix_ms :: proc() -> i64 { return time.time_to_unix_nano(time.now()) / 1_000_000
 // Creates the blocker, loads its configuration and the compiled index (or the built-in base list while the real one is
 // compiled), and installs it on the loader. `profile_dir` is the profile folder ("" keeps everything in memory).
 start :: proc(b: ^Blocker, loop: ^host.Loop, client: ^net.Client, loader: ^fetch.Loader, prefs: ^config.Prefs, profile_dir: string) {
-	b.loop, b.client, b.prefs = loop, client, prefs
+	b.loop, b.client, b.prefs, b.loader = loop, client, prefs, loader
 	b.cfg = settings_from_prefs(prefs)
 	b.tabs = make(map[u64]^Tab_State)
 	b.tab_scopes = make(map[^base.Scope]^Tab_State)
@@ -191,6 +193,7 @@ prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	b := (^Blocker)(user)
 	old := b.cfg
 	b.cfg = settings_from_prefs(p)
+	if !b.cfg.enabled { boot_hold_end(b) }
 	page.embedder.collapse_blocked = b.cfg.collapse
 	if b.cfg.log_capacity != old.log_capacity { journal_resize(&b.journal, b.cfg.log_capacity) }
 	b.conf_ver += 1
@@ -200,6 +203,7 @@ prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 
 shutdown :: proc(b: ^Blocker, loader: ^fetch.Loader) {
 	b.shutting_down = true
+	boot_hold_end(b)
 	loader.interceptor = {}
 	remove_page_hooks(b)
 	if b.watch != 0 { config.unwatch(b.prefs, b.watch) }

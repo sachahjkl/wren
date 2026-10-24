@@ -149,6 +149,8 @@ DEMOS := [?]Demo{
 		"Thousands of text nodes and more arriving every few milliseconds: what the blocker's DOM operations cost on a busy page (tools\\blocker_js.ps1).", true, "", false},
 	{.Performance, "Content blocker: cost of the API hooks", "blocker/hookbench.html",
 		"Per-call cost of a timer, JSON.parse and a defined property with the blocker's hooks (WREN_HOOKBENCH=1 with blockertest).", true, "", false},
+	{.Network, "Content blocker: a YouTube watch page", "blocker/ytwatch.html",
+		"The shape of a watch page: the player data in an inline literal and the answers of /youtubei/v1/player to XHR and fetch; the ad data in them (adPlacements, adSlots, playerAds) is removed before the page reads it.", true, "", false},
 	{.Network, "Content blocker: rewritten responses", "blocker/rewrite.html",
 		"A JSON answer of fetch and XMLHttpRequest and the JSON literal in this page's own markup pruned by the loader before the page reads them.", true, "", false},
 	{.Network, "Content blocker: many blocked requests", "blocker/many.html",

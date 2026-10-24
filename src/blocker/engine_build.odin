@@ -8,6 +8,7 @@ import "core:time"
 import win "core:sys/windows"
 import "wb:adblock"
 import "wb:base"
+import "wb:fetch"
 import "wb:host"
 import "wb:i18n"
 
@@ -171,7 +172,36 @@ engine_boot :: proc(b: ^Blocker) {
 			engine_install(b, make_ref(b, e, ""))
 		}
 	}
-	if b.persist { rebuild(b) }
+	if b.persist {
+		rebuild(b)
+		if b.cfg.enabled && b.upd.job != nil { boot_hold_begin(b) }
+	}
+}
+
+// The real index is not there yet (no valid cache): only the small base list is in force. A request let through now would escape every
+// rule of the lists (the first page of a session, the YouTube player data in it, loaded unfiltered), so the loader parks the requests
+// to the network until the compile job is done, or for at most BOOT_HOLD_MS (a profile with huge lists or a slow disk must not leave
+// the browser without a network).
+BOOT_HOLD_MS :: 20_000
+
+@(private)
+boot_hold_begin :: proc(b: ^Blocker) {
+	if b.loader == nil || b.loop == nil { return }
+	fetch.hold_requests(b.loader, true)
+	b.hold_timer = host.set_timer(b.loop, BOOT_HOLD_MS, 0, boot_hold_timeout, b)
+}
+
+@(private)
+boot_hold_timeout :: proc(data: rawptr) {
+	b := (^Blocker)(data)
+	b.hold_timer = base.NIL_HANDLE
+	boot_hold_end(b)
+}
+
+@(private)
+boot_hold_end :: proc(b: ^Blocker) {
+	if b.hold_timer != base.NIL_HANDLE { host.clear_timer(b.loop, b.hold_timer); b.hold_timer = base.NIL_HANDLE }
+	if b.loader != nil { fetch.hold_requests(b.loader, false) }
 }
 
 @(private)
@@ -376,6 +406,7 @@ compile_done :: proc(data: rawptr) {
 	}
 	if j.thread != nil { host.thread_join(j.thread) }
 	b.upd.job = nil
+	defer boot_hold_end(b)   // after the engine is installed below: the requests parked since start-up go through the real rules
 	now_s := unix_ms() / 1000
 	for jl in j.lists {
 		l := list_by_id(&b.conf, jl.id)

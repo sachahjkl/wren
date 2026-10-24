@@ -107,3 +107,43 @@ test_html_literals :: proc(t: ^testing.T) {
 	cut := `<script>var ytInitialPlayerResponse = {"adPlacements":[1`
 	testing.expect_value(t, run_filter(html_filter_make(rules), []string{cut}), cut)
 }
+
+@(test)
+test_youtube_replace_rules :: proc(t: ^testing.T) {
+	// the rules of uBlock Origin's list, as written in it
+	a1 := split_args(`trusted-replace-xhr-response, /"adPlacements.*?([A-Z]"\}|"\}{2\,4})\}\]\,/, , /playlist\?list=|\/player(?:\?.+)?$|watch\?[tv]=/`)
+	testing.expect_value(t, len(a1), 4)
+	testing.expect_value(t, scriptlet_canonical(a1[0]), "replace-xhr-response")
+	testing.expect_value(t, a1[1], `/"adPlacements.*?([A-Z]"\}|"\}{2,4})\}\],/`)
+	testing.expect_value(t, a1[2], "")
+	testing.expect_value(t, a1[3], `/playlist\?list=|\/player(?:\?.+)?$|watch\?[tv]=/`)
+	body := `{"playabilityStatus":{"status":"OK"},"adPlacements":[{"adPlacementRenderer":{"config":{"adPlacementConfig":{"kind":"START"}},"renderer":{"x":"Y"}}}],"adSlots":[{"a":1}],"adBreakHeartbeatParams":"Q0FB","videoDetails":{"id":"v"}}`
+	re := pattern_regex(a1[1], "g")
+	defer jsre_destroy(re)
+	out, n := jsre_replace(re, body, a1[2], 0, context.temp_allocator)
+	testing.expect_value(t, n, 1)
+	testing.expect_value(t, out, `{"playabilityStatus":{"status":"OK"},"adSlots":[{"a":1}],"adBreakHeartbeatParams":"Q0FB","videoDetails":{"id":"v"}}`)
+	// the second rule: lazy, dot-all, multi-line, a capture put back
+	a2 := split_args(`trusted-replace-xhr-response, /"adPlacements.*?("adSlots"|"adBreakHeartbeatParams")/gms, $1, /\/player(?:\?.+)?$/`)
+	testing.expect_value(t, len(a2), 4)
+	re2 := pattern_regex(a2[1], "g")
+	defer jsre_destroy(re2)
+	out2, n2 := jsre_replace(re2, strings.concatenate({"{\"adPlacements\":[\n{\"a\":1},\n{\"b\":2}],\n\"adSlots\":[]}"}, context.temp_allocator), a2[2], 0, context.temp_allocator)
+	testing.expect_value(t, n2, 1)
+	testing.expect_value(t, out2, `{"adSlots":[]}`)
+	// the same over several kilobytes between the two names
+	big := strings.concatenate({`{"adPlacements":[`, strings.repeat(`{"k":"vvvvvvvvvv"},`, 600), `{}],"adSlots":[]}`}, context.temp_allocator)
+	out3, n3 := jsre_replace(re2, big, a2[2], 0, context.temp_allocator)
+	testing.expect_value(t, n3, 1)
+	testing.expect_value(t, out3, `{"adSlots":[]}`)
+	// the fetch form, with quoted arguments and a bare URL pattern
+	a3 := split_args(`trusted-rpfr, '"adPlacements"', '"no_ads"', player?`)
+	testing.expect_value(t, scriptlet_canonical(a3[0]), "replace-fetch-response")
+	testing.expect_value(t, a3[1], `"adPlacements"`)
+	testing.expect_value(t, a3[2], `"no_ads"`)
+	testing.expect_value(t, a3[3], "player?")
+	// the filter option: `$replace=/"adPlacements"/"no_ads"/`
+	f := replace_filter_make([]string{`/"adPlacements"/"no_ads"/`})
+	got := run_filter(f, []string{`{"adPl`, `acements":[1],"x":2}`})
+	testing.expect_value(t, got, `{"no_ads":[1],"x":2}`)
+}
