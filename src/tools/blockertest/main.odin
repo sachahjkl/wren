@@ -27,7 +27,7 @@ check :: proc(ok: bool, what: string, loc := #caller_location) {
 	if ok { passes += 1; fmt.printf("PASS %s\n", what) } else { fmt.printf("FAIL %s  (line %d)\n", what, loc.line); failures += 1 }
 }
 
-MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n"
+MY_FILTERS :: "||localhost^$third-party\n##.ad-banner\n127.0.0.1##+js(set-constant, adblockDetected, false)\n127.0.0.1##+js(replace-node-text, script, AAA-MARKER, BBB-MARKER)\n127.0.0.1##+js(remove-node-text, script, CCC-MARKER)\n127.0.0.1##+js(remove-attr, data-ad, #ra1)\n127.0.0.1##+js(remove-attr, data-late, #ra2, stay)\n127.0.0.1##+js(remove-class, adclass, #rc1)\n127.0.0.1##+js(set-attr, #sa, data-set, yes)\n127.0.0.1##+js(rmnt, p, /^SECRET/)\n127.0.0.1##+js(rpnt, p, /(\\d+) EUR/g, $1 USD)\n127.0.0.1##+js(rpnt, script, FLAG_ON, FLAG_OFF)\n127.0.0.1##+js(href-sanitizer, #lnk)\n127.0.0.1##+js(trusted-click-element, #clickme)\n127.0.0.1##+js(set-cookie, wb_test, 1)\n127.0.0.1##+js(set-local-storage-item, wb_ls, true)\n127.0.0.1##+js(json-prune-fetch-response, ads, , data.json)\n127.0.0.1##+js(json-prune-xhr-response, ads, , data.json)\n127.0.0.1##+js(trusted-replace-fetch-response, /\"price\":\\s*100/, '\"price\":101', url:data.json)\n127.0.0.1##+js(set-constant, ytInitialPlayerResponse.adPlacements, undefined)\n"
 
 by_id :: proc(d: ^dom.Document, id: string) -> base.Handle {
 	for h in dom.ids_all(d, id) { return h }
@@ -118,6 +118,16 @@ main :: proc() {
 		check(strings.contains(page.document_cookies(dp), "wb_test=1"), "set-cookie writes the cookie")
 		// (the storage writes need the browser's storage manager: the headless environment has none)
 		headless.close(dd)
+	}
+	// responses rewritten by the loader: JSON of fetch and XHR, the JSON literal in the page's own markup
+	{
+		rw := load(&e, testenv.url("http://127.0.0.1:8765/site/blocker/rewrite.html"))
+		headless.pump(rw, 1500)
+		lg := log_text(rw)
+		check(strings.contains(lg, "src:false;"), fmt.tprintf("the literal in the page's markup lost adPlacements before the parser read it (%q)", lg))
+		check(strings.contains(lg, "fetch:keep,price;price=101;"), fmt.tprintf("json-prune-fetch-response and the text replacement (%q)", lg))
+		check(strings.contains(lg, "xhr:keep,price;"), "json-prune-xhr-response")
+		headless.close(rw)
 	}
 	// the site is on the whitelist: nothing is blocked or hidden
 	blocker.site_toggle(&b, "127.0.0.1", .Off, true)

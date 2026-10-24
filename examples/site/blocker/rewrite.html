@@ -1,0 +1,15 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: response rewriting</title></head><body>
+<h1>Responses rewritten before the page reads them</h1>
+<pre id="log"></pre>
+<script>var ytInitialPlayerResponse = {"videoDetails":{"id":"v"},"adPlacements":[{"x":1}],"playerAds":[2]};</script>
+<script>
+var log = document.getElementById('log');
+log.textContent += 'src:' + (document.scripts[0].textContent.indexOf('adPlacements') >= 0) + ';';
+fetch('data.json').then(function (r) { return r.json(); }).then(function (j) {
+  log.textContent += 'fetch:' + Object.keys(j).sort().join(',') + ';price=' + j.price + ';';
+  var x = new XMLHttpRequest();
+  x.open('GET', 'data.json?x=1');
+  x.onload = function () { var j2 = JSON.parse(x.responseText); log.textContent += 'xhr:' + Object.keys(j2).sort().join(',') + ';'; };
+  x.send();
+});
+</script></body></html>

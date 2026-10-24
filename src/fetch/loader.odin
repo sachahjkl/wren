@@ -91,6 +91,8 @@ Task :: struct {
 	collected: [dynamic]byte,
 
 	cache:     Task_Cache,      // the HTTP cache's view of the request (http_cache.odin)
+	filter:    Body_Filter,     // the interceptor's rewrite of the body (intercept.odin)
+	filtered:  [dynamic]byte,   // what the filter produced for the chunk in hand
 
 	obs_id:    u64,             // observe.odin
 	obs_bytes: int,
@@ -210,6 +212,8 @@ release :: proc(l: ^Loader, h: base.Handle) -> bool {
 	delete(t.nonce)
 	delete(t.body)
 	delete(t.collected)
+	delete(t.filtered)
+	if t.filter.destroy != nil { t.filter.destroy(t.filter.user) }
 	if t.scope != nil { base.run_cleanup(t.scope, t.cleanup) }
 	return true
 }
@@ -657,15 +661,18 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 	case .Data:
 		cache_on_data(t, ev.data)
 		if t.initiator != nil && t.destination != .Document { t.initiator.counts.network_bytes += i64(len(ev.data)) }
+		data := ev.data
+		if t.filter.push != nil { clear(&t.filtered); t.filter.push(t.filter.user, data, &t.filtered); data = t.filtered[:] }
 		if t.collect {
-			append(&t.collected, ..ev.data)
-		} else {
-			out := Event{kind = .Data, data = ev.data}
+			append(&t.collected, ..data)
+		} else if len(data) > 0 || t.filter.push == nil {
+			out := Event{kind = .Data, data = data}
 			deliver(t, &out)
 		}
 	case .Done:
 		t.net_req = base.NIL_HANDLE
 		cache_on_done(t)
+		filter_finish(t)
 		out := Event{kind = .Done}
 		if t.obs_net { t.obs_timing.done = ev.timing.done }
 		if t.collect { out.data = t.collected[:] }
@@ -677,6 +684,19 @@ main_event :: proc(user: rawptr, req: base.Handle, ev: ^net.Event) {
 		kind := Error_Kind.Transport
 		if ev.error == net.ERROR_BODY_TOO_LARGE { kind = .Body_Too_Large }
 		fail(t, kind, net.error_text(ev.error, ev.secure_flags), ev.error, ev.secure_flags)
+	}
+}
+
+// The end of a filtered body: what the filter still held goes out before Done.
+@(private)
+filter_finish :: proc(t: ^Task) {
+	if t.filter.push == nil || t.filter.finish == nil { return }
+	clear(&t.filtered)
+	t.filter.finish(t.filter.user, &t.filtered)
+	if len(t.filtered) == 0 { return }
+	if t.collect { append(&t.collected, ..t.filtered[:]) } else {
+		out := Event{kind = .Data, data = t.filtered[:]}
+		deliver(t, &out)
 	}
 }
 
