@@ -30,6 +30,7 @@ CARD_STYLE :: `
   @property --live { syntax: '<number>'; inherits: true; initial-value: 0; }
   @property --bx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
   @property --by { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+  @property --engrave { syntax: '<number>'; inherits: true; initial-value: 1; }
   .cardbox { width: 100%; max-width: 440px; margin: 16px 0 6px; padding: 12px 0; perspective: 900px; }
   .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; color: #eceff7; transform-style: preserve-3d;
     transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --bx 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --by 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
@@ -38,10 +39,14 @@ CARD_STYLE :: `
   .lic .wall { box-sizing: border-box; }
   .lic .base { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26;
     background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16);
-    -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1; animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+    -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
   .lic.live .base { --live: 1; animation-play-state: paused; }
   @keyframes sweep { 0% { --sweep: -0.3; } 40% { --sweep: 1.25; } 100% { --sweep: 1.25; } }
-  @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } }
+  /* the text is engraved by the shader (data-engrave): the page's own text stays in the document (reading, selecting, copying) but is not drawn;
+     it is drawn where the shader is not used: a narrow card, reduced motion, a shader that cannot be had */
+  .lic .face { -webkit-text-fill-color: transparent; }
+  .lic[data-shader=off] .face { -webkit-text-fill-color: currentcolor; }
+  @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } .lic { --engrave: 0; } .lic .face { -webkit-text-fill-color: currentcolor; } }
   .lic .face { left: 0; top: 0; right: 0; bottom: 0; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
   .lic .top { display: flex; align-items: center; }
   .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
@@ -54,7 +59,8 @@ CARD_STYLE :: `
   .lic .meta small { display: block; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(236, 239, 247, 0.5); }
   .lic .meta em { font-style: normal; font-size: 13px; font-variant-numeric: tabular-nums; }
   @media (max-width: 520px) {
-    .lic { aspect-ratio: 1.2; }
+    .lic { aspect-ratio: 1.2; --engrave: 0; }
+    .lic .face { -webkit-text-fill-color: currentcolor; }
     .lic .meta { flex-direction: column; }
     .lic .meta div { margin: 0 0 5px 0; }
   }
@@ -195,7 +201,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	e :: proc(s: string) -> string { return escape_html(s) }
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
 	card_walls_html(sb)
-	strings.write_string(sb, "<div class=\"base\"></div>")
+	fmt.sbprintf(sb, "<div class=\"base\" data-engrave=\"%s\"></div>", e(card_engrave_fields(APP_NAME, license.edition_title(lic.edition), lic.name, lic.email, lic.date, lic.order)))
 	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><img src=\"%s\" alt=\"\"><b>%s</b><span>%s</span></div>", app_logo_url(), APP_NAME, e(license.edition_title(lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }
