@@ -24,7 +24,7 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName", "Froment Software"
-            VALUE "FileDescription", "Wren web browser"
+            VALUE "FileDescription", "Wren"
             VALUE "FileVersion", WREN_VER_STRING
             VALUE "InternalName", "wren"
             VALUE "LegalCopyright", "Copyright (c) 2026 Sacha Froment (Froment Software). MIT License."
