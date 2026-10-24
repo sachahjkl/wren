@@ -111,6 +111,34 @@ csp_directives :: proc(e: ^Engine, req: ^Request, allocator := context.allocator
 	return out[:]
 }
 
+// The `=` arguments (`/search/replacement/flags`) of the filters that match the request, minus the cancelled ones: how the text of
+// its response is to be rewritten.
+replace_args :: proc(e: ^Engine, req: ^Request, allocator := context.allocator) -> []string {
+	if e == nil || class_empty(e, .Replace) { return nil }
+	buf: [MAX_URL]u8
+	c: Ctx
+	ctx_init(&c, req, buf[:])
+	if c.he <= c.hs { return nil }
+	found := make([dynamic]u32, 0, 4, context.temp_allocator)
+	collect_matches(e, .Replace, &c, &found)
+	if len(found) == 0 { return nil }
+	allow := make([dynamic]u32, 0, 4, context.temp_allocator)
+	collect_matches(e, .Replace_Allow, &c, &allow)
+	out := make([dynamic]string, 0, len(found), allocator)
+	for fid in found {
+		arg := cstr_at(e, e.filters[fid].arg_off)
+		cancelled := false
+		for a in allow {
+			aa := cstr_at(e, e.filters[a].arg_off)
+			if aa == "" || aa == arg { cancelled = true; break }
+		}
+		if !cancelled { append(&out, arg) }
+	}
+	return out[:]
+}
+
+has_replace_filters :: proc(e: ^Engine) -> bool { return e != nil && !class_empty(e, .Replace) }
+
 Header_Lookup :: #type proc(user: rawptr, name: string) -> (value: string, ok: bool)
 
 // `$header=name[:value]` filters that match the request and its response headers: the deciding filter or NO_FILTER.

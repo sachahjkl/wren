@@ -16,6 +16,8 @@ Class :: enum u8 {
 	Csp_Allow,
 	Header,             // `$header=`: blocks when a response header matches
 	Header_Allow,
+	Replace,            // `$replace=/search/replacement/flags`: rewrites the text of the response
+	Replace_Allow,
 	Page,               // exceptions that switch filtering off for a whole page: `$document`, `$elemhide`, `$generichide`, `$specifichide`
 }
 CLASS_COUNT :: len(Class)
@@ -203,8 +205,8 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 	pos, neg: Resource_Set
 	has_pos := false
 	exception := .Exception in d.flags
-	redirect_name, redirect_rule, removeparam, csp_arg, header_arg: string
-	has_redirect, has_redirect_rule, has_removeparam, has_csp, has_header := false, false, false, false, false
+	redirect_name, redirect_rule, removeparam, csp_arg, header_arg, replace_arg: string
+	has_redirect, has_redirect_rule, has_removeparam, has_csp, has_header, has_replace := false, false, false, false, false, false
 	match_case := false
 	set_party :: proc(d: ^Net_Draft, third: bool) { d.flags += {third ? .Third_Party : .First_Party} }
 
@@ -306,6 +308,9 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 			case "removeparam", "queryprune":
 				has_removeparam = true; removeparam = value
 				if negated { return false }
+			case "replace":
+				if negated || (!has_value && !exception) { return false }
+				has_replace = true; replace_arg = value
 			case "csp":
 				has_csp = true; csp_arg = value
 			case "header":
@@ -364,6 +369,10 @@ parse_network :: proc(line: string, d: ^Net_Draft) -> bool {
 		if types - {.Inline_Script, .Inline_Font} == {} { types = FRAME_TYPES }
 		d.arg = csp_arg
 		d.class = exception ? .Csp_Allow : .Csp
+	case has_replace:
+		if !has_pos { types = DEFAULT_TYPES + {.Document} }
+		d.arg = replace_arg
+		d.class = exception ? .Replace_Allow : .Replace
 	case has_removeparam:
 		if !has_pos { types = DEFAULT_TYPES + {.Document} }
 		d.arg = removeparam
