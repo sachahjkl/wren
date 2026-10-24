@@ -1182,6 +1182,7 @@ main :: proc() {
 
 	host.loop_init(&app.loop, wake_window, app.win)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
+	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
@@ -1274,7 +1275,7 @@ main :: proc() {
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
-	app.win.on_frame = proc(user: rawptr) { frame((^App)(user)) }
+	app.win.on_frame = proc(user: rawptr) { window_frame((^App)(user)) }   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if !headless_mode { platform.show_window(app.win) }
 	prof_mark(.Loop)
 
@@ -1300,7 +1301,7 @@ main :: proc() {
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
-	if remote_fast_exit { os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
+	if remote_fast_exit { crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
@@ -1435,6 +1436,7 @@ main :: proc() {
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_end()
+	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 	if remote_exit_code != 0 { os.exit(remote_exit_code) }   // Browser.close {exitCode}
 }
