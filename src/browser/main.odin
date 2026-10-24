@@ -1360,6 +1360,8 @@ main :: proc() {
 	blocker_stop(app)   // after the pages are gone, before the loader
 	host.shutdown_step("fetch.loader_destroy")
 	fetch.loader_destroy(&app.loader)
+	host.shutdown_step("page.timeline_shutdown")
+	page.timeline_shutdown()   // the requests the performance timeline still describes (no more events once the loader is gone)
 	host.shutdown_step("http_cache_stop")
 	http_cache_stop(app)   // writes what is pending and the index
 	host.shutdown_step("host.blocking_destroy")

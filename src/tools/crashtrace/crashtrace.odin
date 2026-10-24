@@ -100,6 +100,9 @@ install :: proc "contextless" () {
 	// room for the handler on a thread whose stack is gone (a stack overflow leaves one page: not enough to write a report)
 	guarantee: u32 = 128 * 1024
 	SetThreadStackGuarantee(&guarantee)
+	report_wake = win.CreateEventW(nil, false, false, nil)
+	report_done = win.CreateEventW(nil, true, false, nil)
+	if report_wake != nil && report_done != nil { report_thread = win.CreateThread(nil, 4 << 20, parked_report_thread, nil, 0, nil) }
 	win.SetUnhandledExceptionFilter(on_crash)
 	// What kills a process without the filter being asked: a heap the system found corrupted (0xC0000374) ends it at once, and
 	// a stack overflow often leaves the filter no room. The vectored handler is called first for those two (and for a failed
@@ -135,10 +138,23 @@ on_fatal :: proc "system" (info: ^win.EXCEPTION_POINTERS) -> win.LONG {
 
 // The report is written by a thread of its own, with a stack of its own, while the faulting thread waits: the faulting thread may
 // have none left (a stack overflow), and the dump of a process is best written by a thread that is not the one in trouble.
+// The thread that writes it is made at start-up and parked on an event: a handler that runs on a thread with one page of stack left
+// (a stack overflow on a thread that did not ask for a guarantee) can set an event and wait, where making a thread (what this did
+// before) needs more stack than that on some versions of Windows, and the handler then died of its own access violation, with no report.
+@(private = "file")
+report_wake, report_done: win.HANDLE
+@(private = "file")
+report_thread: win.HANDLE
+
 @(private = "file")
 hand_over :: proc "contextless" (info: ^win.EXCEPTION_POINTERS) {
 	if intrinsics.atomic_exchange(&reported, 1) != 0 { return }
 	pending, pending_thread = info, win.GetCurrentThreadId()
+	if report_thread != nil && report_wake != nil && report_done != nil {
+		win.SetEvent(report_wake)
+		win.WaitForSingleObject(report_done, 60_000)
+		return
+	}
 	h := win.CreateThread(nil, 4 << 20, write_report_thread, nil, 0, nil)
 	if h == nil { write_report_thread(nil); return }   // (no thread to be had: here, as before)
 	win.WaitForSingleObject(h, 60_000)
@@ -148,6 +164,15 @@ hand_over :: proc "contextless" (info: ^win.EXCEPTION_POINTERS) {
 write_report_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	context = runtime.default_context()   // memcheck: not the tracker (the crashing thread may hold its lock)
 	write_report(pending, pending_thread)
+	return 0
+}
+
+// The parked thread: wakes for the one report of the process.
+@(private = "file")
+parked_report_thread :: proc "system" (_: rawptr) -> win.DWORD {
+	win.WaitForSingleObject(report_wake, win.INFINITE)
+	write_report_thread(nil)
+	win.SetEvent(report_done)
 	return 0
 }
 @(private = "file")
