@@ -155,6 +155,9 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 # the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
+Step 'developer tools docked: the page area follows the panel's size, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
+}
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
     cmd /c build.bat | Out-Null
     if ($LASTEXITCODE) { return }
@@ -429,6 +432,9 @@ if ($CI -or -not $Quick) {
 if ($CI -or -not $Quick) {
     Step 'crash reports (tools\crash_e2e.ps1: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
+}
+Step 'developer tools resized (tools\devtools_resize_e2e.ps1: the docked panel has the size the preference gives it; neither the browser window nor the panel's own window is shown stretched while it is resized, read from the screen after each step; the real mouse drags the corner of each window, panel detached)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1
 }
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
