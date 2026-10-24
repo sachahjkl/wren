@@ -233,7 +233,7 @@ Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 
 # ---- 1. nothing is listening when the channel was not asked for, and an idle Wren costs no CPU ------------------------------
 $prof0 = Join-Path $tmp 'plain'
-$p0 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof0, '--no-single-instance', '--headless', 'about:blank'
+$p0 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof0, '--pref', 'blocker.update.enabled=false', '--no-single-instance', '--headless', 'about:blank'
 $started += $p0
 try {
     Start-Sleep -Seconds 3
@@ -382,7 +382,7 @@ try {
     $env:WREN_REMOTE = $name
     $prof3 = Join-Path $tmp 'third'
     $errFile = Join-Path $tmp 'taken.err'
-    $p3 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof3, "--remote=$name", '--no-single-instance', '--headless', 'about:blank' -RedirectStandardError $errFile -RedirectStandardOutput (Join-Path $tmp 'taken.out')
+    $p3 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof3, '--pref', 'blocker.update.enabled=false', "--remote=$name", '--no-single-instance', '--headless', 'about:blank' -RedirectStandardError $errFile -RedirectStandardOutput (Join-Path $tmp 'taken.out')
     $started += $p3
     Start-Sleep -Seconds 3
     Check 'a name taken by another Wren is reported' ((Get-Content $errFile -Raw) -match 'taken')

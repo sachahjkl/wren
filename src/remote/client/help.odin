@@ -13,7 +13,7 @@ HELP := [?]Help_Entry{
 	{"run", "run [--profile dir] [--size WxH] [--dpi n] [--wait load|idle|stable|none] [--eval js] [--shot file.png [--tab|--rect x,y,w,h|--selector css] [--scale n]] [--visible] [--timing] [--pref name=value] [url]",
 		"One call for most needs: starts a Wren of its own (a throwaway profile unless --profile; no window shown unless --visible), loads the address, waits, runs the script, captures, closes it and gives the exit code. --size is the window's client area in pixels, --dpi the interface scale (96 = 100 %, 175 = 182 %)."},
 	{"start", "start [--name n] [--profile dir] [--size WxH] [--dpi n] [--visible] [url]",
-		"Starts a Wren in the background and prints its name; later commands reach it with --remote <name> or WREN_REMOTE=<name>. End it with `stop`."},
+		"Starts a Wren in the background (with a throwaway profile unless --profile, which does not download the blocker's lists: --pref blocker.update.enabled=true turns that on) and prints its name; later commands reach it with --remote <name> or WREN_REMOTE=<name>. End it with `stop`."},
 	{"stop", "stop <name>", "Closes a Wren started by `start` (and ends that process only if it does not close). Removes its throwaway profile."},
 	{"nav", "nav <url> [--wait load|idle|stable|none] [--tab-id id]", "Navigates the current tab and waits (load by default). Prints the address."},
 	{"reload", "reload [--wait ...]", "Reloads the current tab."},

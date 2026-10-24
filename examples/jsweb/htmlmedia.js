@@ -135,7 +135,11 @@ test("<source> children: the first that can play", async () => {
   v.remove();
 });
 
+// a machine without the AV1 video extension (a CI runner) has no decoder for the WebM clips: the tests that need one say so and stop
+const AV1 = document.createElement("video").canPlayType('video/webm; codecs="av01.0.05M.08, opus"') !== "";
+
 test("WebM (AV1 + Opus)", async () => {
+  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
   const { v } = video("/video/f/clip.webm");
   ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
   if (v.error) { console.log("ok no AV1 decoder here: error " + v.error.code); v.remove(); return; }
@@ -186,6 +190,7 @@ test("what is offered: honest about the decoders of this machine", () => {
 });
 
 test("WebM (AV1 + Opus) plays to the end", async () => {
+  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
   const { v } = video("/video/f/clip.webm");
   if (!await until(() => v.readyState >= 3 || v.error, "canplay")) return;
   if (v.error) { console.log("ok no AV1 decoder here: error " + v.error.code); v.remove(); return; }
@@ -199,6 +204,7 @@ test("WebM (AV1 + Opus) plays to the end", async () => {
 });
 
 test("a live WebM (unknown sizes)", async () => {
+  if (!AV1) { console.log("ok no AV1 decoder here"); return; }
   const { v } = video("/video/f/clip_live.webm");
   ok(await until(() => v.readyState >= 1 || v.error, "metadata or an error"), "answered");
   if (!v.error) ok(v.videoWidth === 320, "videoWidth " + v.videoWidth);
