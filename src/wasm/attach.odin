@@ -219,14 +219,28 @@ attach_forget :: proc(inst: ^Instance) {
 	inst.wt.attach_pending = 0
 }
 
-// Stops the compile threads (runtime_destroy).
+// How long the end of the process waits for a module that is being compiled (see attach_stop).
+ATTACH_STOP_WAIT :: 500 * time.Millisecond
+
+// Stops the compile threads (runtime_destroy). False: a compile is still running after ATTACH_STOP_WAIT and nothing was freed:
+// the caller leaves the engine and what it holds to the end of the process (a compile cannot be interrupted, it takes seconds
+// of CPU when the machine is busy, and the process is ending: waiting for it is waiting for nothing). The check build, which
+// tracks every allocation, always waits.
 @(private)
-attach_stop :: proc() {
+attach_stop :: proc() -> bool {
 	sync.mutex_lock(&attach_pool.lock)
 	attach_pool.stopping = true
 	sync.cond_broadcast(&attach_pool.cond)
 	sync.mutex_unlock(&attach_pool.lock)
-	for t in attach_pool.threads { boost_for_join(t); thread.join(t); thread.destroy(t) }
+	for t in attach_pool.threads { boost_for_join(t) }
+	when !base.TRACK_MEMORY {
+		deadline := time.tick_add(time.tick_now(), ATTACH_STOP_WAIT)
+		for t in attach_pool.threads {
+			for !thread.is_done(t) && time.tick_diff(time.tick_now(), deadline) > 0 { time.sleep(time.Millisecond) }
+			if !thread.is_done(t) { return false }
+		}
+	}
+	for t in attach_pool.threads { thread.join(t); thread.destroy(t) }
 	context.allocator = base.process_allocator()
 	for _, job in attach_pool.jobs { attach_job_free(job) }
 	for job in attach_pool.queue { if job.inst == nil { attach_job_free(job) } }
@@ -234,6 +248,7 @@ attach_stop :: proc() {
 	delete(attach_pool.jobs)
 	delete(attach_pool.queue)
 	attach_pool = {}
+	return true
 }
 
 @(private)
