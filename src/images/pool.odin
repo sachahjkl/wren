@@ -10,7 +10,14 @@ package images
 //     page went away, its loop may be gone too) the drain finds nothing and does nothing;
 //   * closing a port disposes of its queued and finished jobs at once and marks running ones, which their thread frees
 //     when it is done with them; `on_done` is never called after `port_close`;
-//   * a job's encoded bytes are a shared, reference-counted Blob, so the cache can let go of them while a decode runs.
+//   * a job's encoded bytes are a shared, reference-counted Blob, so the cache can let go of them while a decode runs;
+//   * a job has one owner at each moment, and whoever submitted it holds a Job_Id, never a pointer to be used later:
+//       before submit               the caller ("job_make")
+//       Queued, Running, Finished   the decoder: the queue, a thread, the port's list of finished jobs. The id is in Decoder.live.
+//       Delivered                   the receiver ("on_done" frees it with job_free); the id left live just before the call
+//       Cancelled                   the thread that runs it, which frees it when it is done (the id left live at the cancel)
+//     job_cancel and job_set_priority take the id and look it up under the decoder's lock: an id that is not live (delivered, cancelled,
+//     its port closed) is not the caller's job any more, and nothing is touched. Every move between those states is made under the lock.
 
 import "base:runtime"
 import "core:sync"
@@ -20,6 +27,7 @@ import "wb:base"
 import "wb:host"
 
 Port_Id :: distinct u64
+Job_Id :: distinct u64   // 0: none (a job refused by submit, or one not submitted)
 
 // Encoded bytes shared between their owner and the jobs reading them. An SVG document is parsed once, by the first job
 // that needs it, and kept here for every later raster of it (native.odin).
@@ -73,6 +81,7 @@ Job :: struct {
 	err:      Error,
 	ms:       f64,              // time spent decoding
 	// internal
+	id:       Job_Id,           // set by submit (the caller's handle for cancelling and for telling its jobs apart in on_done)
 	port:     Port_Id,
 	state:    Job_State,
 	seq:      u64,
@@ -101,6 +110,7 @@ Decoder :: struct {
 	stopping: bool,
 	held:     bool,   // decoder_hold: the threads take no job (tests queue several jobs before any is taken)
 	seq:      u64,
+	live:     map[Job_Id]^Job,   // the jobs a caller may still cancel: submitted and neither delivered, cancelled nor dropped with their port
 	allocator: runtime.Allocator,
 	stats:    Decoder_Stats,
 }
@@ -112,6 +122,12 @@ Decoder_Stats :: struct {
 	busy_ms:     f64,
 	longest_ms:  f64,
 }
+
+// Tests: while set, every decoding thread stops after it took a job (entered is posted) until elease is.
+@(private)
+Gate :: struct { entered, release: sync.Sema }
+@(private)
+decode_gate: ^Gate
 
 @(private)
 dec: ^Decoder
@@ -177,6 +193,7 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
 	d.queue = make([dynamic]^Job)
 	d.running = make([dynamic]^Job)
 	d.threads = make([dynamic]^host.Thread)
+	d.live = make(map[Job_Id]^Job)
 	dec = d
 	for _ in 0 ..< max(threads, 1) {
 		if t := host.thread_start(decoder_thread, d, stack_bytes, .Below_Normal, "wren-image-decode"); t != nil { append(&d.threads, t) }
@@ -231,6 +248,7 @@ decoder_stop :: proc() {
 	delete(d.queue)
 	delete(d.running)
 	delete(d.threads)
+	delete(d.live)
 	free(d)
 }
 
@@ -255,11 +273,11 @@ port_close :: proc(id: Port_Id) {
 	context.allocator = d.allocator
 	for i := 0; i < len(d.queue); {
 		j := d.queue[i]
-		if j.port == id { ordered_remove(&d.queue, i); job_free(j) } else { i += 1 }
+		if j.port == id { ordered_remove(&d.queue, i); delete_key(&d.live, j.id); job_free(j) } else { i += 1 }
 	}
-	for j in d.running { if j.port == id { j.state = .Cancelled } }
+	for j in d.running { if j.port == id { j.state = .Cancelled; delete_key(&d.live, j.id) } }
 	if p, ok := base.pool_remove(&d.ports, base.Handle(id)); ok {
-		for j in p.done { job_free(j) }
+		for j in p.done { delete_key(&d.live, j.id); job_free(j) }
 		delete(p.done)
 	}
 }
@@ -283,52 +301,59 @@ job_free :: proc(j: ^Job) {
 	free(j)
 }
 
-// Queues `j` on the port. False (and `j` freed) when the port or the decoder is gone.
-submit :: proc(id: Port_Id, j: ^Job) -> bool {
+// Queues `j` on the port and returns its id; from now on the decoder owns the job until it is delivered, cancelled or its port closes
+// (the top of this file). 0, and `j` freed, when the port or the decoder is gone.
+submit :: proc(id: Port_Id, j: ^Job) -> Job_Id {
 	d := dec
-	if d == nil { job_free(j); return false }
+	if d == nil { job_free(j); return 0 }
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
 	if d.stopping || base.pool_get(&d.ports, base.Handle(id)) == nil {
 		job_free(j)
-		return false
+		return 0
 	}
 	d.seq += 1
 	j.seq, j.port, j.state = d.seq, id, .Queued
+	j.id = Job_Id(d.seq)
+	d.live[j.id] = j
 	append(&d.queue, j)
 	sync.cond_signal(&d.cond)
-	return true
+	return j.id
 }
 
-// Withdraws a job that was submitted and not delivered yet; the pointer is dead afterwards. Loop thread of its port.
-job_cancel :: proc(j: ^Job) {
+// Withdraws a job that was submitted and not delivered yet. Loop thread of its port. A job that is not live any more (delivered, already
+// cancelled, its port closed) is not the caller's: nothing happens.
+job_cancel :: proc(id: Job_Id) {
 	d := dec
-	if d == nil || j == nil { return }
+	if d == nil || id == 0 { return }
 	sync.mutex_lock(&d.mu)
 	defer sync.mutex_unlock(&d.mu)
+	j, ok := d.live[id]
+	if !ok { return }
+	delete_key(&d.live, id)
+	context.allocator = d.allocator
 	switch j.state {
 	case .Queued:
 		for x, i in d.queue { if x == j { ordered_remove(&d.queue, i); break } }
 		job_free(j)
 	case .Running:
-		j.state = .Cancelled
+		j.state = .Cancelled   // the thread that runs it frees it
 	case .Finished:
 		if p := base.pool_get(&d.ports, base.Handle(j.port)); p != nil {
 			for x, i in p.done { if x == j { ordered_remove(&p.done, i); break } }
 		}
 		job_free(j)
-	case .Delivered, .Cancelled:
+	case .Delivered, .Cancelled:   // (not live: unreachable)
 	}
 }
 
-job_set_priority :: proc(j: ^Job, priority: i32) {
+job_set_priority :: proc(id: Job_Id, priority: i32) {
 	d := dec
-	if d == nil || j == nil { return }
+	if d == nil || id == 0 { return }
 	sync.mutex_lock(&d.mu)
-	j.priority = priority
-	sync.mutex_unlock(&d.mu)
+	defer sync.mutex_unlock(&d.mu)
+	if j, ok := d.live[id]; ok { j.priority = priority }
 }
-
 @(private)
 clone_string :: proc(s: string) -> string {
 	if s == "" { return "" }
@@ -364,6 +389,7 @@ decoder_thread :: proc(data: rawptr) {
 		append(&d.running, j)
 		sync.mutex_unlock(&d.mu)
 
+		if g := sync.atomic_load(&decode_gate); g != nil { sync.sema_post(&g.entered); sync.sema_wait(&g.release) }   // (tests: a job held while it runs)
 		start := time.tick_now()
 		{
 			context.allocator = base.process_allocator()
@@ -408,6 +434,7 @@ port_drain :: proc(data: rawptr) {
 		j := p.done[0]
 		ordered_remove(&p.done, 0)
 		j.state = .Delivered
+		delete_key(&d.live, j.id)   // the receiver's now
 		fn, user := p.on_done, p.user
 		sync.mutex_unlock(&d.mu)
 		fn(user, j)
