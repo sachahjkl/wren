@@ -203,7 +203,7 @@ try {
     Check ($u -match 'latest=99\.0\.0') 'asked once a day: a second start the same day does not ask again'
     Remove-Item "$appdata3\Wren\update.txt"
     $p = Start-Wren $Exe @('--pref', 'browser.update.check_daily=true') $upd @('WREN_DESKTOP_INTEGRATION')   # (GitHub itself, the real latest release)
-    $null = Wait-Until { (Test-Path "$appdata3\Wren\update.txt") -and ((Get-Content "$appdata3\Wren\update.txt" -Raw) -match 'latest=') } 20
+    $null = Wait-Until { (Test-Path "$appdata3\Wren\update.txt") -and ((Get-Content "$appdata3\Wren\update.txt" -Raw) -match 'latest=\d+\.\d+') } 20
     Close-Wren $p
     $u = if (Test-Path "$appdata3\Wren\update.txt") { Get-Content "$appdata3\Wren\update.txt" -Raw } else { '' }
     Check ($u -match 'latest=\d+\.\d+\.\d+' -and $u -match 'url=https://github\.com/') "GitHub's latest release is read: $(($u -split "`n" | Where-Object { $_ -match '^latest=' }) -join '')"
