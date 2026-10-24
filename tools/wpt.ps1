@@ -104,7 +104,7 @@ Push-Location $root
 try {
     # -Quick (a sample of a few dozen tests): one module per package compiles in 5 s instead of 40 s and runs the sample as fast; the whole-program
     # build pays off on a full run (thousands of tests).
-    $modules = if ($Quick) { @('-use-separate-modules') } else { @() }
+    $modules = @(if ($Quick) { '-use-separate-modules' })
     $ok = Invoke-WrenBuildIfStale $exe "wpt $($modules -join ' ')" { & odin build src/tools/wpt -collection:wb=src -vet -o:speed @modules -out:$exe "-extra-linker-flags:/STACK:33554432" }
     if (-not $ok) { throw 'building src\tools\wpt failed' }
     if (-not $NoServer) {

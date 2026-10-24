@@ -2,6 +2,7 @@
 # browser.
 #   powershell -File tools\asan.ps1 [-Packages base,url,...] [-Browser [-Console]] [-Program <package dir>] [-Out build\asan]
 # (-Console: the browser as a console program, its ASan reports on stderr; else set log_path in ASAN_OPTIONS)
+# (-Jobs n: the packages in n processes at a time, each one package on a folder of its own under -Out; the slowest first. 22 packages one after the other are 6 minutes on a runner.)
 # (-Names: only these tests, as ODIN_TEST_NAMES. Default: the unit tests of every package of src\ that test_all runs, with -define:ODIN_TEST_THREADS=1.)
 # Odin's -sanitize:address links LLVM's static ASan runtime with the static C runtime (libcmt); the native libraries
 # (Lexbor, the image decoders, Wasmtime) use the dynamic one (msvcrt), and the static runtime then cannot intercept
@@ -14,7 +15,7 @@
 # (Wasmtime's guard pages already trap there).
 # The browser's ASan build: build\asan\wren_asan.exe (debug, 32 MiB stack, the check build's tracker and script
 # driver); run it through tools\memcheck_e2e.ps1 -Exe build\asan\wren_asan.exe -NoBuild (with ASAN_OPTIONS set).
-param([string[]]$Packages = @(), [switch]$Browser, [string]$Program = '', [string]$Names = '', [switch]$Console, [string]$Out = '')
+param([string[]]$Packages = @(), [switch]$Browser, [string]$Program = '', [string]$Names = '', [switch]$Console, [string]$Out = '', [int]$Jobs = 1)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -22,6 +23,8 @@ if (-not $Out) { $Out = Join-Path $root 'build\asan' }
 New-Item -ItemType Directory -Force $Out | Out-Null
 $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'build\tmp')).FullName
 
+$DefaultPackages = 'layout', 'page', 'browser', 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'forms', 'js', 'webauthn', 'wasm'
+$packageList = @((($Packages -join ',') -split ',' | Where-Object { $_ }))
 # MSVC: the linker and the dynamic ASan runtime of the newest toolset
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 $vs = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
@@ -40,11 +43,48 @@ $Stack = '/STACK:268435456'
 
 # the libraries: those of the browser, which links every package (odin test cannot print its own; a library a test
 # does not use costs nothing)
-$flags = & odin build src/browser @Coll -sanitize:address -debug -define:WREN_CHANNEL=dev -resource:src/browser/wren_dev.rc "-out:$Out\browser_flags.exe" -print-linker-flags 2>&1 | Out-String
+# (a child of -Jobs gets the parent's answer: the question is a 4 s compile of the whole browser)
+$flags = $env:WREN_ASAN_FLAGS
+if (-not $flags) { $flags = & odin build src/browser @Coll -sanitize:address -debug -define:WREN_CHANNEL=dev -resource:src/browser/wren_dev.rc "-out:$Out\browser_flags.exe" -print-linker-flags 2>&1 | Out-String }
 $libs = @([regex]::Matches($flags, '"([^"]+\.(lib|res))"') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notmatch 'clang_rt' } | Select-Object -Unique)
 $libpaths = @([regex]::Matches($flags, '/LIBPATH:"([^"]+)"') | ForEach-Object { "/LIBPATH:$($_.Groups[1].Value)" })
 if ($libs.Count -eq 0) { "FAIL cannot read the browser's libraries: $flags"; exit 1 }
 $libs += 'winmm.lib', 'psapi.lib'   # (what the browser's normal build does not use: layout's benchmarks, the driver's counters)
+
+if ($Jobs -gt 1 -and -not $Browser -and -not $Program) {
+    if ($packageList.Count -eq 0) { $packageList = $DefaultPackages }
+    $env:WREN_ASAN_FLAGS = $flags
+    $running = @{}; $queue = New-Object System.Collections.Generic.Queue[string]
+    foreach ($p in $packageList) { $queue.Enqueue($p) }
+    $failedAll = 0
+    while ($queue.Count -gt 0 -or $running.Count -gt 0) {
+        while ($running.Count -lt $Jobs -and $queue.Count -gt 0) {
+            $p = $queue.Dequeue()
+            $o = Join-Path $Out $p
+            $args2 = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath, '-Packages', $p, '-Out', $o)
+            if ($Names) { $args2 += @('-Names', $Names) }
+            $log = Join-Path $Out "$p.log"
+            $sp = Start-Process powershell -ArgumentList $args2 -PassThru -NoNewWindow -RedirectStandardOutput $log -RedirectStandardError "$log.err"
+            $null = $sp.Handle   # (keeps the handle: without it ExitCode of a process started with redirections reads empty)
+            $running[$p] = [pscustomobject]@{ Process = $sp; Log = $log }
+        }
+        foreach ($p in @($running.Keys)) {
+            $r = $running[$p]
+            if (-not $r.Process.HasExited) { continue }
+            $r.Process.WaitForExit()
+            $text = (Get-Content $r.Log -Raw -ErrorAction SilentlyContinue) + (Get-Content "$($r.Log).err" -Raw -ErrorAction SilentlyContinue)
+            ($text -split "`n" | Where-Object { $_ -notmatch '^failed: \d+\s*$' }) -join "`n"
+            $code = $r.Process.ExitCode
+            if ($code -ne 0 -and $text -notmatch '(?m)^FAIL ') { "FAIL unit tests of $p under AddressSanitizer (the process ended with $code)" }
+            $failedAll += $(if ($code -ne 0) { 1 } else { 0 })
+            $running.Remove($p)
+        }
+        Start-Sleep -Milliseconds 300
+    }
+    "failed: $failedAll"
+    exit $failedAll
+}
+
 
 # Compiles `$target` (odin build or odin test) instrumented, links it with the dynamic runtimes; returns the executable.
 function Build-Asan($verb, $path, $name, [string[]]$extra = @(), $subsystem = 'CONSOLE') {
@@ -74,9 +114,7 @@ if ($Program) {
     "built $exe"
 }
 if ((-not $Browser -and -not $Program) -or $Packages.Count -gt 0) {
-    if ($Packages.Count -eq 0) {
-        $Packages = 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'layout', 'forms', 'js', 'page', 'webauthn', 'wasm', 'browser'
-    }
+    if ($Packages.Count -eq 0) { $Packages = $DefaultPackages }
     foreach ($pkg in (($Packages -join ',') -split ',' | Where-Object { $_ })) {
         $t0 = Get-Date
         try {
