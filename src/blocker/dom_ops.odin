@@ -526,7 +526,7 @@ sweep_all :: proc(p: ^page.Page, hs: ^Doc_Hooks) {
 // Starts the operations of a document: the one-shot writes happen now, the watchers take their first look.
 ops_start :: proc(b: ^Blocker, hs: ^Doc_Hooks, p: ^page.Page) {
 	o := &hs.ops
-	trace("ops_start: %d operations, doc %v", len(o.ops), p.doc != nil)
+
 	if len(o.ops) == 0 || p.doc == nil { return }
 	doc := p.doc
 	if !doc.journal.on { dom.journal_enable(doc, DOM_JOURNAL_MAX) }
@@ -604,7 +604,7 @@ ops_run :: proc(b: ^Blocker, hs: ^Doc_Hooks, p: ^page.Page) {
 	if !o.started || o.running || p.doc == nil || p.closed { return }
 	doc := p.doc
 	if doc.mutations == o.cursor { return }
-	trace("ops_run: %d mutations since %d", doc.mutations - o.cursor, o.cursor)
+
 	o.running = true
 	defer o.running = false
 	entries, ok := dom.journal_since(doc, o.cursor)

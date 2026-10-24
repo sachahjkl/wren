@@ -126,6 +126,7 @@ Totals :: struct {
 }
 
 Blocker :: struct {
+	net_rules: map[string]^Host_Rules,   // rewrite.odin: the response rewrites of each host
 	cfg:        Settings,
 	loop:       ^host.Loop,
 	client:     ^net.Client,
@@ -208,6 +209,8 @@ shutdown :: proc(b: ^Blocker, loader: ^fetch.Loader) {
 	delete(b.docs); delete(b.doc_scopes)
 	for _, t in b.tabs { tab_free(t) }
 	delete(b.tabs); delete(b.tab_scopes)
+	net_rules_clear(b)
+	delete(b.net_rules)
 	if b.engine != nil { engine_ref_drop(b, b.engine); b.engine = nil }
 	dyn_destroy(&b.dyn)
 	journal_destroy(&b.journal)
@@ -611,6 +614,16 @@ response_hook :: proc(user: rawptr, q: ^fetch.Intercept_Query, headers: http.Hea
 			}
 		}
 	}
+	// the response body rewritten natively (rewrite.odin): JSON, XML and text of fetch / XHR answers, the JSON literals of a page's markup
+	if b.cfg.scriptlets && .No_Scriptlets not_in site {
+		switch {
+		case nav || q.destination == .Iframe:
+			pf, _ := adblock.page_flags(b.engine.engine, q.url)
+			if .Document not_in pf { r.filter = rewrite_filter(b, d, q, req.host, pf, headers) }
+		case q.destination == .Empty && d != nil:
+			r.filter = rewrite_filter(b, d, q, d.host, d.page, headers)
+		}
+	}
 	if !adblock.has_response_filters(b.engine.engine) { return }
 	// $header filters
 	lk := Header_Lookup{headers}
@@ -646,6 +659,7 @@ engine_install :: proc(b: ^Blocker, e: ^Engine_Ref) {
 	old := b.engine
 	b.engine = e
 	b.generation += 1
+	net_rules_clear(b)
 	e.generation = b.generation
 	e.refs += 1
 	b.last_env, b.last_doc = nil, nil
