@@ -189,22 +189,28 @@ idb_deliver :: proc(p: ^Page, _: rawptr) {
 	ip := p.web.idb
 	if ip == nil { return }
 	ip.deliver_posted = false
-	if ip.client == nil { return }
-	ev, ok := idb.client_pop(ip.client)
-	if !ok { return }
-	w := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
-	idb.w_u8(&w, u8(ev.kind))
-	idb.w_uv(&w, ev.req); idb.w_uv(&w, ev.conn); idb.w_uv(&w, ev.tx)
-	idb.w_uv(&w, ev.v1); idb.w_uv(&w, ev.v2); idb.w_uv(&w, ev.a)
-	idb.w_u8(&w, u8(ev.err))
-	idb.w_bytes(&w, ev.data)
-	idb.event_free(ip.client, &ev)
-	ip.event = w.data[:]
-	if r := js_realm(p); r != nil { js_call(p, r.inst, "wj_idb_event", nil) }
-	ip.event = nil
-	if p.web.idb != nil && p.web.idb.client != nil && idb.client_has_events(p.web.idb.client) { idb_post_delivery(p) }
+	// The events are delivered one at a time, each followed by its microtask checkpoint (a handler may queue a promise that
+	// closes a connection...), but the events that are already waiting go in the same task of the loop, a bounded number or
+	// for a bounded time: a hand-over to the loop for each costs more than the handlers.
+	start := time.tick_now()
+	for n := 0; n < 24; n += 1 {
+		if p.closed || p.web == nil || p.web.idb == nil || p.web.idb.client == nil { return }
+		ev, ok := idb.client_pop(p.web.idb.client)
+		if !ok { return }
+		w := idb.Writer{data = make([dynamic]byte, context.temp_allocator)}
+		idb.w_u8(&w, u8(ev.kind))
+		idb.w_uv(&w, ev.req); idb.w_uv(&w, ev.conn); idb.w_uv(&w, ev.tx)
+		idb.w_uv(&w, ev.v1); idb.w_uv(&w, ev.v2); idb.w_uv(&w, ev.a)
+		idb.w_u8(&w, u8(ev.err))
+		idb.w_bytes(&w, ev.data)
+		idb.event_free(p.web.idb.client, &ev)
+		ip.event = w.data[:]
+		if r := js_realm(p); r != nil { js_call(p, r.inst, "wj_idb_event", nil) }
+		ip.event = nil
+		if time.duration_microseconds(time.tick_since(start)) > 1500 { break }
+	}
+	if !p.closed && p.web != nil && p.web.idb != nil && p.web.idb.client != nil && idb.client_has_events(p.web.idb.client) { idb_post_delivery(p) }
 }
-
 // End of a microtask checkpoint with active transactions: they become inactive (and commit if they have nothing left to do).
 @(private)
 idb_cleanup :: proc(p: ^Page) {
@@ -279,9 +285,10 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		scope := make([]u32, n, context.temp_allocator)
 		for i in 0 ..< n { scope[i] = u32(idb.r_uv(&r)) }
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		id, e := idb.begin_transaction(cl, conn, scope, idb.Tx_Mode(mode), strict)
+		id, started, e := idb.begin_transaction(cl, conn, scope, idb.Tx_Mode(mode), strict)
 		status = e
 		idb.w_uv(&out, id)
+		idb.w_u8(&out, 1 if started else 0)   // (it already runs: its event, still to come, tells nothing new)
 	case IDB_OP_COMMIT:
 		status = idb.tx_commit(cl, idb.r_uv(&r))
 	case IDB_OP_ABORT:

@@ -10,7 +10,9 @@ import "core:sync"
 //   GET       store, index (0: the store), range, key only        -> found; primary key; value (not for key only)
 //   COUNT     store, index, range                                  -> count
 //   GET_ALL   store, index, range, mode (1 keys, 2 values, 3 key, primary key and value), flags (1 backwards,
-//             2 one record per key), limit (0: all)                -> count; per entry what the mode says
+//             2 one record per key, 4 resume: then the key and primary key to go on after), limit (0: all)
+//                                                                  -> count; per entry what the mode says; more (0, or 1 and the
+//                                                                  key and primary key of the last entry: ask again to resume)
 //   CURSOR    store, index, range, direction (0 next, 1 next unique, 2 prev, 3 prev unique), has current, key, primary
 //             key, has target, target, has target primary key, target primary key, count, key only
 //                                                                  -> found; key; primary key; value (not for key only)
@@ -26,6 +28,9 @@ import "core:sync"
 //   DELETE_STORE store;  RENAME_STORE store, name
 //   CREATE_INDEX store, name, key path, flags (1 unique, 2 multi entry) -> id
 //   DELETE_INDEX store, index;  RENAME_INDEX store, index, name
+
+// A long GET_ALL stops after about this many bytes of reply (it says where to resume): the scripts' side reads it piece by piece.
+GET_ALL_CHUNK_BYTES :: 2 << 20
 
 Request_Op :: enum u8 {
 	None,
@@ -134,9 +139,12 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 		mode := r_u8(&r)
 		flags := r_u8(&r)
 		limit := int(r_uv(&r))
+		resume := flags & 4 != 0
+		cur_key, cur_pk: []byte
+		if resume { cur_key = r_bytes(&r); cur_pk = r_bytes(&r) }
 		if r.bad || mode < 1 || mode > 3 { return .Data }
 		if !found_ix { return .Not_Found }
-		Ctx :: struct { w: ^Writer, d: ^Data, mode: u8, mark: int, n: int, err: Error }
+		Ctx :: struct { w: ^Writer, d: ^Data, mode: u8, mark: int, n: int, err: Error, bytes: int, stopped: bool, last_key, last_pk: []byte }
 		// the count comes first: written after the walk, at the place reserved
 		body: Writer
 		defer writer_destroy(&body)
@@ -149,11 +157,15 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 				if e := w_value(c.d, c.w, rec); e != .None { c.err = e; return false }
 			}
 			c.n += 1
+			c.last_key, c.last_pk = key, pk
+			// a long list comes in pieces: the walk stops here and says where to go on (the script asks again)
+			if len(c.w.data) >= GET_ALL_CHUNK_BYTES { c.stopped = true; return false }
 			return true
 		}
 		if flags & 2 != 0 {
 			// distinct keys only (the unique directions): one record per key, by cursor steps
 			q := Cursor_Request{range = rng, direction = .Prev_Unique if flags & 1 != 0 else .Next_Unique}
+			if resume { q.has_cur, q.cur_key, q.cur_pk = true, cur_key, cur_pk }
 			for limit <= 0 || ctx.n < limit {
 				hit, found := cursor_step(src, q)
 				if !found { break }
@@ -161,12 +173,16 @@ exec_request :: proc(tx: ^Tx, req: []byte, reply: ^Writer) -> Error {
 				q.has_cur, q.cur_key, q.cur_pk = true, hit.key, hit.pk
 			}
 		} else {
-			scan(src, rng, flags & 1 != 0, limit if limit > 0 else -1, visit, &ctx)
+			scan_resume(src, rng, flags & 1 != 0, limit if limit > 0 else -1, resume, cur_key, cur_pk, visit, &ctx)
 		}
 		if ctx.err != .None { return ctx.err }
 		w_uv(reply, u64(ctx.n))
 		append(&reply.data, ..body.data[:])
-	case .Cursor:
+		if ctx.stopped && (limit <= 0 || ctx.n < limit) {
+			w_u8(reply, 1); w_bytes(reply, ctx.last_key); w_bytes(reply, ctx.last_pk)
+		} else {
+			w_u8(reply, 0)
+		}	case .Cursor:
 		src, found_ix := source(s, &r)
 		q: Cursor_Request
 		q.range = r_range(&r)

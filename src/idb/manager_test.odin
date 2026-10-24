@@ -187,7 +187,7 @@ open_and_upgrade :: proc(h: ^Harness, c: ^Client, name: string, version: u64, ha
 
 @(private)
 txn :: proc(c: ^Client, conn: u64, scope: []u32, mode: Tx_Mode) -> u64 {
-	id, _ := begin_transaction(c, conn, scope, mode, false)
+	id, _, _ := begin_transaction(c, conn, scope, mode, false)
 	return id
 }
 

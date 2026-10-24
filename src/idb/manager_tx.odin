@@ -346,19 +346,19 @@ schedule :: proc(ds: ^Db_State) {
 
 // Creates a transaction on a connection. `scope`: ids of object stores. Pending until the scheduler starts it
 // (Tx_Started).
-begin_transaction :: proc(c: ^Client, conn_id: u64, scope: []u32, mode: Tx_Mode, strict: bool) -> (id: u64, err: Error) {
+begin_transaction :: proc(c: ^Client, conn_id: u64, scope: []u32, mode: Tx_Mode, strict: bool) -> (id: u64, started: bool, err: Error) {
 	sync.recursive_mutex_lock(&c.m.mu); defer sync.recursive_mutex_unlock(&c.m.mu)
 	m := c.m
 	context.allocator = m.allocator
 	conn, ok := m.conns[conn_id]
-	if !ok || conn.client != c { return 0, .Not_Found }
-	if conn.closed || conn.close_pending || mode == .Version_Change { return 0, .Invalid_State }
+	if !ok || conn.client != c { return 0, false, .Not_Found }
+	if conn.closed || conn.close_pending || mode == .Version_Change { return 0, false, .Invalid_State }
 	db := find_db(&conn.o.data, conn.ds.name)
-	if db == nil { return 0, .Not_Found }
-	for s in scope { if find_store(db, s) == nil { return 0, .Not_Found } }
+	if db == nil { return 0, false, .Not_Found }
+	for s in scope { if find_store(db, s) == nil { return 0, false, .Not_Found } }
 	tx := tx_new(m, conn, mode, scope, strict)
 	schedule(conn.ds)
-	return tx.id, .None
+	return tx.id, tx.state == .Active, .None
 }
 
 // Ends a transaction. Committed: its undo is dropped and the script hears Tx_Complete; otherwise its changes are taken
