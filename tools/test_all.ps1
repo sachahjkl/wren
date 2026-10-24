@@ -99,10 +99,12 @@ $stepJob = {
 }
 
 # Runs the queued steps, -Jobs at a time, the longest (last time) first; prints each result as it comes.
-function Flush-Steps {
+# $NameLike: only the queued steps whose name matches (the others stay queued for a later call)
+function Flush-Steps([string]$NameLike = '*') {
     $pending = New-Object System.Collections.Generic.List[object]
-    foreach ($s in ($script:queue | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
-    $script:queue.Clear()
+    $mine = @($script:queue | Where-Object { $_.Name -like $NameLike })
+    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
+    foreach ($s in $mine) { [void]$script:queue.Remove($s) }
     $running = @{}
     $names = @{}
     while ($pending.Count -gt 0 -or $running.Count -gt 0) {
@@ -176,8 +178,11 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
-    cmd /c build.bat | Out-Null
-    if ($LASTEXITCODE) { return }
+    # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 }
 
@@ -199,7 +204,12 @@ Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capac
     .\build\apiconformance.exe build\apiconformance.wasm
 }
 
-Step 'graphics toolkit pixel tests (layers, projected planes, filters, kept filter results, blend modes, clip shapes, blend spaces, gradients, shadows, retained pictures, text on DirectWrite, color glyphs, COLR interpreter and built-in emoji, masks, precompiled shaders, Slug text; WARP)' { $o = ''; $suites = 'layers', 'planes', 'effects', 'gpufx', 'blend_space', 'gradients', 'shadows', 'retained', 'text', 'color_glyphs', 'colr', 'masks', 'shaders', 'slug'; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } }
+# (layers, projected planes, filters, kept filter results, blend modes, clip shapes, blend spaces, gradients, shadows, retained pictures, text on
+# DirectWrite, color glyphs, COLR interpreter and built-in emoji, masks, precompiled shaders, Slug text; WARP.) The 14 suites are 58 s one after the other:
+# in five steps of about 12 s they go to whichever job is free.
+foreach ($group in 'shadows,text,color_glyphs', 'gpufx,gradients,layers', 'colr,masks,slug', 'planes,effects,retained', 'blend_space,shaders') {
+    Step "graphics toolkit pixel tests: $group (WARP)" { $o = ''; $suites = $group -split ','; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } }
+}
 Step 'graphics toolkit color glyph tests again with the COLR interpreter instead of Direct2D (COLR v0 / v1: gradients, paint trees, text color, async, pictures)' { $o = odin test ext/gui_toolkit/tests/color_glyphs -use-separate-modules $MemCheck -vet -define:COLR_ENGINE=builtin -out:build/toolkit_color_glyphs_builtin_test.exe 2>&1 | Out-String; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 } }
 Step 'graphics toolkit keyboard tests (menus, lists, line edit history, wrapped text; no window)' { odin test ext/gui_toolkit/tests/keyboard -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_keyboard_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'graphics toolkit window chrome tests (title bar hit test and regions, virtual list, wrap cache, scroll curve; no window)' { odin test ext/gui_toolkit/tests/chrome -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_chrome_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -279,8 +289,9 @@ Step 'Web Authentication end-to-end test (webauthntest: create then get from Jav
     $global:LASTEXITCODE = if ($o -match '(?m)\b0 failure\(s\)') { 0 } else { 1 }
 }
 Step 'build testserver (and its tests: /site/ index, listings, extensionless pages, types)' { Push-Location tools\testserver; go test . 2>&1; if ($LASTEXITCODE -eq 0) { go build -o ..\..\build\testserver.exe . }; Pop-Location }
-# what the steps below use is built: the queued steps run before them
-if ($Jobs -gt 1) { Flush-Steps }
+# what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
+# (longest first), instead of the steps below waiting for the slowest of them.
+if ($Jobs -gt 1) { Flush-Steps 'build *' }
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
 # listens on all of them, not after a fixed delay: a slow runner may take longer to start it); otherwise each step

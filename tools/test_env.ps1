@@ -119,6 +119,56 @@ function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
 
+# Is build\<variant>.exe (default wren) newer than everything it is built from? A test that needs the browser built (the CI built it one step
+# before; a developer built it a minute ago) skips the 40 s that `build.bat` takes even when nothing changed: Odin compiles the whole program every time.
+# The inputs: the sources of the browser and of the toolkit (not their tests), the libraries and the script engine's image build.bat links or
+# embeds, build.bat and odin.version themselves.
+function Test-WrenBuildFresh([string]$Variant = 'wren') {
+    $root = Get-WrenRepoRoot
+    $exe = Join-Path $root "build\$Variant.exe"
+    if (-not (Test-Path $exe)) { return $false }
+    $built = [IO.File]::GetLastWriteTimeUtc($exe)
+    foreach ($f in 'build.bat', 'odin.version', 'build\js\wren_js.wasm', 'build\lexbor\lexbor.lib', 'build\media\wren_media.lib') {
+        $p = Join-Path $root $f
+        if (-not (Test-Path $p) -or [IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
+    }
+    foreach ($dir in 'src', 'ext\gui_toolkit', 'api', 'sdk') {
+        $d = Join-Path $root $dir
+        if (-not (Test-Path $d)) { continue }
+        foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
+            if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
+            if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
+        }
+    }
+    return $true
+}
+
+# Odin compiles a whole program every time (no incremental build): a tool that a run builds twice (test262.ps1 is called twice by test_all)
+# or that is already built does not need it again. Builds `Output` with `Build` (a script block), unless Output is newer than every source of the
+# repository's src and ext\gui_toolkit (tests aside) and was built with the same `Flags` (written beside it, Output.flags).
+function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$Build) {
+    $root = Get-WrenRepoRoot
+    $stamp = "$Output.flags"
+    $fresh = (Test-Path $Output) -and (Test-Path $stamp) -and ([IO.File]::ReadAllText($stamp) -eq $Flags)
+    if ($fresh) {
+        $built = [IO.File]::GetLastWriteTimeUtc($Output)
+        foreach ($dir in 'src', 'ext\gui_toolkit') {
+            $d = Join-Path $root $dir
+            if (-not (Test-Path $d)) { continue }
+            foreach ($p in [IO.Directory]::EnumerateFiles($d, '*', [IO.SearchOption]::AllDirectories)) {
+                if ($p.EndsWith('_test.odin') -or $p.Contains('\tests\') -or $p.Contains('\.git\') -or $p.EndsWith('.md')) { continue }
+                if ([IO.File]::GetLastWriteTimeUtc($p) -gt $built) { $fresh = $false; break }
+            }
+            if (-not $fresh) { break }
+        }
+    }
+    if ($fresh) { return $true }
+    & $Build
+    if ($LASTEXITCODE -ne 0) { return $false }
+    [IO.File]::WriteAllText($stamp, $Flags)
+    return $true
+}
+
 # Where the time of a script goes, section by section (the tests are slow when nobody can see which part is):
 #   Section 'name'      ends the section in progress and starts a new one (a section is a stretch of the script, from one call to the next)
 #   Show-WrenSections   ends the last one and prints "seconds  section" for the script, longest first, with the total and (when
