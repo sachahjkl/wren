@@ -337,6 +337,51 @@ keyframe_animations :: proc(t: ^testing.T) {
 }
 
 @(test)
+a_loop_that_rests_sleeps_until_it_moves_again :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes sweep { 0% { width: 0px } 40% { width: 100px } 100% { width: 100px } }
+		@keyframes grow { from { width: 0px } to { width: 100px } }
+		@keyframes dim { 0% { width: 0px; opacity: 1 } 40% { width: 100px; opacity: 1 } 100% { width: 100px; opacity: 0.5 } }
+		#a { animation: sweep 1000ms linear infinite }
+		#b { animation: grow 1000ms linear infinite }
+		#c { animation: dim 1000ms linear infinite }
+	</style><div id=a></div>`)
+	defer close(&f)
+	tick(&f, 100)
+	testing.expect_value(t, timeline_next_ms(f.tl), 0)   // moving: the next frame
+	tick(&f, 500)
+	testing.expectf(t, close_to(f64(node(&f, "a").width.v), 100), "resting at its end value, got %v", node(&f, "a").width.v)
+	ms := timeline_next_ms(f.tl)
+	testing.expectf(t, ms > 450 && ms <= 502, "asleep until the loop starts again (500 ms), asked for %v", ms)
+	tick(&f, 1010)
+	testing.expect_value(t, timeline_next_ms(f.tl), 0)   // a new iteration: moving again
+	testing.expect(t, node(&f, "a").width.v < 20, "back at the start of the loop")
+}
+
+@(test)
+an_animation_that_always_moves_asks_for_every_frame :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes grow { from { width: 0px } to { width: 100px } }
+		#b { animation: grow 1000ms linear infinite }
+	</style><div id=b></div>`)
+	defer close(&f)
+	tick(&f, 100)
+	tick(&f, 500)
+	testing.expect_value(t, timeline_next_ms(f.tl), 0)
+}
+
+@(test)
+a_loop_whose_width_rests_but_whose_opacity_moves_asks_for_every_frame :: proc(t: ^testing.T) {
+	f := open(`<style>
+		@keyframes dim { 0% { width: 0px; opacity: 1 } 40% { width: 100px; opacity: 1 } 100% { width: 100px; opacity: 0.5 } }
+		#c { animation: dim 1000ms linear infinite }
+	</style><div id=c></div>`)
+	defer close(&f)
+	tick(&f, 100)
+	tick(&f, 700)
+	testing.expect_value(t, timeline_next_ms(f.tl), 0)
+}
+@(test)
 animation_play_state_and_name_changes :: proc(t: ^testing.T) {
 	f := open(`<style>
 		@keyframes grow { from { width: 0px } to { width: 100px } }
