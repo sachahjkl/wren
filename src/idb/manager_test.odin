@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "wb:base"
 
 // A manager whose disk work is queued and run on demand, to see the order things happen in.
 Job :: struct { work, done: proc(rawptr), data: rawptr }
@@ -53,7 +54,7 @@ Harness :: struct {
 harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(Settings) = nil, fresh := true) {
 	h.dir = fmt.aprintf("%s/wren_idb_test/%s", os.get_env("TEMP", context.temp_allocator), name)
 	if fresh {
-		os.remove_all(fmt.tprintf("%s/idb", h.dir))
+		base.remove_tree(fmt.tprintf("%s/idb", h.dir))
 	}
 	s, ok := settings.?
 	if !ok { s = settings_default() }
