@@ -1,0 +1,26 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: API hooks</title></head><body>
+<h1>Scriptlets that change what an API does</h1>
+<pre id="log"></pre>
+<script>
+var log = document.getElementById('log');
+function line(s) { log.textContent += s + ';'; }
+line('const:' + window.hookConst);
+window.hookObj = { inner: 1 };
+line('obj:' + window.hookObj.flag);
+try { var x = window.hookAopr; line('aopr:read'); } catch (e) { line('aopr:threw'); }
+try { window.hookAopw = 1; line('aopw:write'); } catch (e) { line('aopw:threw'); }
+setTimeout(function BLOCKME() { line('timeout:ran'); }, 1);
+setTimeout(function OKFUNC() { line('timeout2:ran'); }, 1);
+document.addEventListener('wbcustom', function DEFUSEME() { line('aeld:ran'); });
+document.addEventListener('wbcustom', function KEEPME() { line('aeld2:ran'); });
+document.dispatchEvent(new Event('wbcustom'));
+var r = JSON.parse('{"adsX":1,"keepX":2}');
+line('json:' + Object.keys(r).join(','));
+fetch('hookblock.json').then(function (res) { return res.text(); }).then(function (t) { line('fetch:' + t); });
+var xh = new XMLHttpRequest();
+xh.open('GET', 'hookblock.xml');
+xh.onload = function () { line('xhr:' + xh.status + ':' + xh.responseText.length); };
+xh.send();
+line('eval:' + typeof eval('1'));
+line('open:' + String(window.open('https://popup.example/x')));
+</script></body></html>

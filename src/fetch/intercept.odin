@@ -42,6 +42,17 @@ Intercept_Result :: struct {
 	body:     []byte,             // Replace (read during the call; copied)
 	new_url:  string,             // Rewrite
 	csp:      []string,           // response: policies to add to the document's answer (`$csp`)
+	filter:   Body_Filter,        // response: rewrites the body on its way to the page (zero: untouched)
+}
+
+// A rewrite of a response body, in the stream: the loader hands every chunk of the (decoded) body to `push`, which appends what the page
+// is to see to `out` (nothing, while it waits for more), and at the end calls `finish` for what it still holds. A filter that does not
+// touch a chunk appends the chunk itself: no state, no copy beyond that. `destroy` frees `user` (called once, always).
+Body_Filter :: struct {
+	user:    rawptr,
+	push:    proc(user: rawptr, chunk: []byte, out: ^[dynamic]byte),
+	finish:  proc(user: rawptr, out: ^[dynamic]byte),
+	destroy: proc(user: rawptr),
 }
 
 Interceptor :: struct {
@@ -114,5 +125,12 @@ intercept_response :: proc(t: ^Task) -> bool {
 		return false
 	}
 	for p in r.csp { http.append_header(&t.raw_headers, "Content-Security-Policy", p) }
+	if r.filter.push != nil {
+		if t.filter.destroy != nil { t.filter.destroy(t.filter.user) }
+		t.filter = r.filter
+		http.delete_header(&t.raw_headers, "content-length")   // the length of what the page will read is not the server's
+		// a collected body is what the cache would store: the page's version of it is not the server's, so it is not stored
+		if t.collect { t.cache.store = false; delete(t.cache.body); t.cache.body = nil }
+	} else if r.filter.destroy != nil { r.filter.destroy(r.filter.user) }
 	return true
 }

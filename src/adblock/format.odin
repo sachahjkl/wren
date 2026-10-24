@@ -4,7 +4,7 @@ package adblock
 // fixed-size records at an 8-byte aligned offset; hash tables are open-addressed with linear probing.
 
 MAGIC   :: [8]u8{'W', 'R', 'E', 'N', 'A', 'B', 'L', 'X'}
-VERSION :: u32(3)
+VERSION :: u32(4)
 
 LAST_BIT :: u32(1) << 31          // marks the last item of a list in an `items` array
 NO_LIST  :: u32(0xFFFFFFFF)

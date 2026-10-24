@@ -108,6 +108,7 @@ Event_Kind :: enum u8 {
 	Blocked,       // a request of a tab was blocked (console line)
 	Changed,       // counters, lists or settings changed: redraw
 	Lists,         // a list update finished
+	Reload,        // a scriptlet asks for the tab to be loaded again (set-cookie-reload)
 }
 
 Event :: struct {
@@ -125,6 +126,7 @@ Totals :: struct {
 }
 
 Blocker :: struct {
+	net_rules: map[string]^Host_Rules,   // rewrite.odin: the response rewrites of each host
 	cfg:        Settings,
 	loop:       ^host.Loop,
 	client:     ^net.Client,
@@ -207,6 +209,8 @@ shutdown :: proc(b: ^Blocker, loader: ^fetch.Loader) {
 	delete(b.docs); delete(b.doc_scopes)
 	for _, t in b.tabs { tab_free(t) }
 	delete(b.tabs); delete(b.tab_scopes)
+	net_rules_clear(b)
+	delete(b.net_rules)
 	if b.engine != nil { engine_ref_drop(b, b.engine); b.engine = nil }
 	dyn_destroy(&b.dyn)
 	journal_destroy(&b.journal)
@@ -610,7 +614,25 @@ response_hook :: proc(user: rawptr, q: ^fetch.Intercept_Query, headers: http.Hea
 			}
 		}
 	}
-	if !adblock.has_response_filters(b.engine.engine) { return }
+	// the response body rewritten natively (rewrite.odin): `$replace=` filters, JSON / XML / text answers of fetch and XHR, the JSON
+	// literals of a page's markup, as the scriptlets of the document's host ask
+	{
+		e := b.engine.engine
+		scr := b.cfg.scriptlets && .No_Scriptlets not_in site
+		replace: []string
+		if adblock.has_replace_filters(e) { replace = adblock.replace_args(e, &req, context.temp_allocator) }
+		host: string
+		pf: adblock.Page_Flags
+		switch {
+		case nav || q.destination == .Iframe:
+			host = req.host
+			pf, _ = adblock.page_flags(e, q.url)
+			if .Document in pf { scr = false }
+		case d != nil:
+			host, pf = d.host, d.page
+		}
+		if scr || len(replace) > 0 { r.filter = rewrite_filter(b, q, host, pf, headers, scr, replace) }
+	}	if !adblock.has_response_filters(b.engine.engine) { return }
 	// $header filters
 	lk := Header_Lookup{headers}
 	fid := adblock.match_response_headers(b.engine.engine, &req, header_lookup, &lk)
@@ -645,6 +667,7 @@ engine_install :: proc(b: ^Blocker, e: ^Engine_Ref) {
 	old := b.engine
 	b.engine = e
 	b.generation += 1
+	net_rules_clear(b)
 	e.generation = b.generation
 	e.refs += 1
 	b.last_env, b.last_doc = nil, nil

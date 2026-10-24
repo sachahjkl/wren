@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Blocker: DOM scriptlets</title></head><body>
+<h1>Scriptlets that change the document</h1>
+<div class="ra" data-ad="x" id="ra1">attribute removed by remove-attr</div>
+<div class="rc adclass keep" id="rc1">class removed by remove-class</div>
+<div id="sa">attribute set by set-attr</div>
+<p id="sec">SECRET: its text is removed by remove-node-text</p>
+<p id="rep">price: 100 EUR, 200 EUR</p>
+<a id="lnk" href="https://tracker.example/go?url=https%3A%2F%2Fexample.org%2Fpage&amp;x=1">a tracking link</a>
+<button id="clickme" onclick="document.getElementById('log').textContent += 'clicked;'">click me</button>
+<pre id="log"></pre>
+<script>var FLAG = "FLAG_ON"; document.getElementById('log').textContent += 'flag=' + FLAG + ';';</script>
+<script>
+// nodes that arrive after the parse
+setTimeout(function () {
+  var d = document.createElement('div'); d.id = 'ra2'; d.setAttribute('data-late', 'x'); document.body.appendChild(d);
+  var s = document.createElement('script'); s.textContent = 'document.getElementById("log").textContent += "dyn=" + "FLAG_ON" + ";";'; document.body.appendChild(s);
+}, 50);
+</script></body></html>

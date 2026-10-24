@@ -420,7 +420,7 @@ builder_build :: proc(b: ^Builder, allocator := context.allocator) -> []byte {
 		case .Redirect:
 			add_filter(&filters, &fclass, &fdraft, &pool, &doms, d, di, .Redirect, d.types, flags)
 			if d.redirect_blocks { add_filter(&filters, &fclass, &fdraft, &pool, &doms, d, di, .Block, d.types, flags) }
-		case .Block, .Redirect_Allow, .Removeparam, .Removeparam_Allow, .Csp, .Csp_Allow, .Header, .Header_Allow, .Page:
+		case .Block, .Redirect_Allow, .Removeparam, .Removeparam_Allow, .Csp, .Csp_Allow, .Header, .Header_Allow, .Page, .Replace, .Replace_Allow:
 			add_filter(&filters, &fclass, &fdraft, &pool, &doms, d, di, d.class, d.types, flags)
 		}
 	}

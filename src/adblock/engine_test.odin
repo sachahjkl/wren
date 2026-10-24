@@ -287,7 +287,7 @@ test_denyallow_and_to :: proc(t: ^testing.T) {
 
 @(test)
 test_invalid_lines :: proc(t: ^testing.T) {
-	e := engine_from_text("||ok.com^\n$unknownoption\n||x.com^$nonsense\n||y.com^$replace=/a/b/\n!comment\n[Adblock Plus 2.0]\n\n||z.com^$domain=\n")
+	e := engine_from_text("||ok.com^\n$unknownoption\n||x.com^$nonsense\n||y.com^$cookie=x\n!comment\n[Adblock Plus 2.0]\n\n||z.com^$domain=\n")
 	defer engine_destroy(e)
 	testing.expect_value(t, engine_filter_count(e), 1)
 	srcs := engine_sources(e, context.temp_allocator)
@@ -327,4 +327,23 @@ test_pathological :: proc(t: ^testing.T) {
 	_ = blocked(e, "data:text/plain,hello", "", .Script)
 	many := strings.repeat("a/", 3000, context.temp_allocator)
 	_ = blocked(e, strings.concatenate({"https://q.org/", many}, context.temp_allocator), "https://s.org/", .Script)
+}
+
+@(test)
+test_replace_filters :: proc(t: ^testing.T) {
+	e := engine_from_text("||api.test/v1/*$xhr,replace=/\"ads\":\\[.*?\\]/\"ads\":[]/g\n@@||api.test/v1/keep$replace\n||all.test^$replace=/x/y/\n@@||all.test^$replace=/x/y/\n||doc.test^$replace=/a/b/i\n")
+	defer engine_destroy(e)
+	testing.expect(t, has_replace_filters(e))
+	r := make_request("https://api.test/v1/list", "https://site.org/", .Xhr)
+	args := replace_args(e, &r, context.temp_allocator)
+	testing.expect_value(t, len(args), 1)
+	if len(args) == 1 { testing.expect_value(t, args[0], "/\"ads\":\\[.*?\\]/\"ads\":[]/g") }
+	r2 := make_request("https://api.test/v1/keep", "https://site.org/", .Xhr)
+	testing.expect_value(t, len(replace_args(e, &r2, context.temp_allocator)), 0)
+	r3 := make_request("https://all.test/a", "https://site.org/", .Xhr)
+	testing.expect_value(t, len(replace_args(e, &r3, context.temp_allocator)), 0)
+	r4 := make_request("https://doc.test/", "https://doc.test/", .Document)
+	testing.expect_value(t, len(replace_args(e, &r4, context.temp_allocator)), 1)
+	r5 := make_request("https://other.test/", "https://site.org/", .Xhr)
+	testing.expect_value(t, len(replace_args(e, &r5, context.temp_allocator)), 0)
 }

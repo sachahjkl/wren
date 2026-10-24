@@ -331,6 +331,12 @@ cache_serve :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.Entry, outcome:
 	cur := base.pool_get(&l.tasks, h)
 	if cur == nil { return }
 	data := body != nil ? body.data : nil
+	if cur.filter.push != nil {
+		clear(&cur.filtered)
+		cur.filter.push(cur.filter.user, data, &cur.filtered)
+		if cur.filter.finish != nil { cur.filter.finish(cur.filter.user, &cur.filtered) }
+		data = cur.filtered[:]
+	}
 	if cur.collect {
 		append(&cur.collected, ..data)
 	} else if len(data) > 0 {
