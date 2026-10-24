@@ -368,7 +368,6 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) {
 				if m.exact && ha.exact && ha.members != nil && !has_flip(m, &ha, a) { continue }
-				if trace_restyle() && flat_parent_element(m.doc, a) == base.NIL_HANDLE { trace_anchors[fmt.tprintf("exact %v unkeyed %v kind %v reach.desc %v keys: classes %v ids %v attrs %v types %v", ha.exact, ha.feat.unkeyed, feat.kind, ha.reach.desc, slice.map_keys(ha.feat.classes, context.temp_allocator), slice.map_keys(ha.feat.ids, context.temp_allocator), slice.map_keys(ha.feat.attrs, context.temp_allocator), slice.map_keys(ha.feat.types, context.temp_allocator))] += 1 }
 				apply(m, a, ha.reach)
 			}
 		}
@@ -739,7 +738,10 @@ attribute_changed_in :: proc(m: ^Marker, ix: ^Inv_Index, ch: Attr_Change, n: ^do
 			if control_groups_used(m.e, ix, m.s) {
 				// only a radio button (its group), a control owned through a form attribute, or a change of what makes it one,
 				// reaches controls we cannot find; the rest reaches the form, fieldsets and select that hold it (scope_controls)
-				if ch.name == "name" || ch.name == "form" || ch.name == "type" || group_control(m.doc, h, n) { m.fail = "form control attribute changed"; return }
+				if ch.name == "name" || ch.name == "form" || ch.name == "type" || group_control(m.doc, h, n) {
+					if trace_restyle() { fmt.eprintfln("form control attribute changed: <%s %s>", n.name, ch.name) }
+					m.fail = "form control attribute changed"; return
+				}
 				mark_form_ancestors(m, h)
 			}
 			apply(m, h, ix.controls)
@@ -844,10 +846,19 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 			}
 		}
 	}
+	// An attribute set on an element that was put into the document in this same batch (createElement, setAttribute, appendChild: how
+	// every component is built) is restyled with it: what its insertion reaches is read from the features it has now. Not so for one that
+	// was taken out and put back (its old place saw the features it had then).
+	fresh: map[base.Handle]struct{}
+	for &en in entries {
+		if en.kind == .Insert { if fresh == nil { fresh = make(map[base.Handle]struct{}, 16, context.temp_allocator) }; fresh[en.node] = {} }
+	}
+	for &en in entries { if en.kind == .Remove && fresh != nil { delete_key(&fresh, en.node) } }
 	for k in attr_order {
 		if m.fail != "" { return }
 		ch := attrs[k]
 		if !connected(doc, ch.h) { continue }
+		if fresh != nil && in_fresh_insert(doc, &fresh, ch.h) { continue }
 		attribute_changed(m, ch)
 	}
 	// the dynamic state moves with the tree: hovered, active or focused elements inserted or removed
@@ -865,8 +876,6 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	}
 }
 
-@(private = "file")
-trace_anchors: map[string]int   // (WREN_RESTYLE_TRACE) the :has() anchors that restyled the root element's subtree, and how often
 @(private = "file")
 trace_roots: map[int]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.odin that marked the root element's whole subtree, and how often
 
@@ -904,8 +913,6 @@ trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 	}
 	for k, v in trace_roots { fmt.eprintfln("    root subtree marked by restyle_dom.odin:%d x %d", k, v) }
 	clear(&trace_roots)
-	for k, v in trace_anchors { fmt.eprintfln("    root restyled by anchor x %d: %s", v, k) }
-	clear(&trace_anchors)
 	fmt.eprintfln("    mutations: %s", len(tally) > 12 ? "(many kinds)" : "")
 	for k, v in tally { fmt.eprintfln("      %d x %s", v, k) }
 	for r, i in rows {
@@ -1670,4 +1677,16 @@ is_below :: proc(doc: ^dom.Document, x, top: base.Handle) -> bool {
 chain_holds :: proc(m: ^Marker, ha: ^Has_Anchor, a, x: base.Handle) -> bool {
 	if !ha.chain { return true }
 	return match_chain(&m.mc, x, ha.cx, len(ha.cx.compounds) - 1, a, 0)
+}
+
+// Is `h` or an ancestor of it among the elements inserted (and not moved) in this batch?
+@(private = "file")
+in_fresh_insert :: proc(doc: ^dom.Document, fresh: ^map[base.Handle]struct{}, h: base.Handle) -> bool {
+	for cur := h; cur != base.NIL_HANDLE; {
+		if cur in fresh { return true }
+		n := dom.get(doc, cur)
+		if n == nil { return false }
+		cur = n.parent
+	}
+	return false
 }

@@ -477,6 +477,12 @@ restyle_dom_forms :: proc(t: ^testing.T) {
 	expect_partial(t, g, "a control inserted outside any form")
 	dom.set_attribute(g.doc, in_, "value", "b")
 	expect_partial(t, g, "its value changed")
+	// a control built the way components are (its type and name set, then put in): its attributes are restyled with it
+	cb := dom.create_element(g.doc, "input")
+	dom.set_attribute(g.doc, cb, "type", "checkbox")
+	dom.set_attribute(g.doc, cb, "name", "n")
+	dom.append_child(g.doc, by_id(g, "d"), cb)
+	expect_partial(t, g, "a control inserted after its type and name were set")
 	dom.set_attribute(g.doc, in_, "name", "b")
 	_, ok3 := restyle_dom(g.eng, g.doc, g.st)
 	testing.expect(t, !ok3 && g.eng.last_restyle.fallback == "form control attribute changed")
