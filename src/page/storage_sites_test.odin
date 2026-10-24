@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:testing"
+import "wb:base"
 
 @(test)
 storage_keys_round_trip_through_file_names :: proc(t: ^testing.T) {
@@ -26,12 +27,12 @@ storage_keys_round_trip_through_file_names :: proc(t: ^testing.T) {
 @(test)
 site_data_is_listed_and_cleared_by_type :: proc(t: ^testing.T) {
 	dir := fmt.tprintf("%s/wren_sites_test", os.get_env("TEMP", context.temp_allocator))
-	os.remove_all(dir)
+	base.remove_tree(dir)
 	m: Storage_Manager
 	storage_manager_init(&m, nil, nil, dir)
 	defer {
 		storage_manager_destroy(&m)
-		os.remove_all(dir)
+		base.remove_tree(dir)
 	}
 	a := area_new(&m, "https://a.example", "https://a.example", .Local)
 	a.state = .Loaded
