@@ -26,7 +26,7 @@ BEGIN
             VALUE "LegalCopyright", "Copyright (c) 2026 Sacha Froment (Froment Software). MIT License."
             VALUE "OriginalFilename", "wren.exe"
             VALUE "ProductName", "Wren"
-            VALUE "ProductVersion", WREN_VER_STRING
+            VALUE "ProductVersion", WREN_VER_PRODUCT
             VALUE "Comments", "https://github.com/sachahjkl/wren"
         END
     END

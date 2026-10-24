@@ -196,7 +196,7 @@ licence_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 @(private = "file")
 build_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	strings.write_string(sb, "<h2>Build</h2>\n<table>\n")
-	row(sb, "Version", APP_VERSION)
+	row(sb, "Version", APP_VERSION_SHOWN)
 	row(sb, "Channel", channel_name())
 	row(sb, "Commit", APP_COMMIT_DATE != "" ? fmt.tprintf("%s (%s)", app_commit(), APP_COMMIT_DATE) : app_commit())
 	row(sb, "Build", build_description())
@@ -250,7 +250,7 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 	page_head(&sb, "About Wren", d.palette, d.state.registered ? card_css() : "")
 	// the name, the version, the tagline, and the maker's signature as the last, small line of the header
 	fmt.sbprintf(&sb, "<div class=\"id\"><img class=\"mark\" src=\"%s\" width=\"96\" height=\"96\" alt=\"\"><div class=\"text\"><h1>%s</h1><p>Version %s%s</p><p class=\"weak\">%s</p>",
-		app_logo_url(), APP_NAME, APP_VERSION, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
+		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, IS_DEV_BUILD ? " (development build)" : "", escape_html(APP_TAGLINE))
 	fmt.sbprintf(&sb, "<p class=\"sig\">by<img src=\"%s\" width=\"16\" height=\"16\" alt=\"\"><a href=\"%s\">Froment Software</a></p></div></div>\n",
 		png_url(FROMENT_LOGO_PNG), FROMENT_URL)
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a licence only supports development.</p>\n")

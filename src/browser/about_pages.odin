@@ -59,7 +59,7 @@ about_pages_html :: proc() -> string {
 	strings.write_string(&sb, "</style>\n</head>\n<body>\n<div class=\"main\">\n")
 	// which build this is: the logo of its channel, the version, the commit (a development build says so)
 	fmt.sbprintf(&sb, "<div class=\"build\"><img src=\"%s\" width=\"64\" height=\"64\" alt=\"\"><div><p class=\"name\">%s %s</p><p class=\"what\">Commit %s%s &middot; build: %s</p>%s</div></div>\n",
-		app_logo_url(), APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE != "" ? fmt.tprintf(", %s", APP_COMMIT_DATE) : "",
+		app_logo_url(), APP_NAME, APP_VERSION_SHOWN, app_commit(), APP_COMMIT_DATE != "" ? fmt.tprintf(", %s", APP_COMMIT_DATE) : "",
 		build_description(), dev_badge_html(with_commit = false))
 	strings.write_string(&sb, "<h1>Built-in pages</h1>\n<p class=\"intro\">The pages of the browser itself. <code>view-source:</code> before an address shows a page's source; a path of this computer (<code>C:\\...</code>, <code>\\\\server\\share</code>) opens the file, or the folder's <code>index.html</code>, or its listing.</p>\n")
 	for p in ABOUT_PAGES {

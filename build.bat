@@ -126,6 +126,8 @@ for /f "delims=" %%i in ('git log -1 --format^=%%cs 2^>nul') do set "WREN_DATE=%
 if not "%WREN_COMMIT%"=="dev" git diff --quiet HEAD -- 2>nul || set "WREN_COMMIT=%WREN_COMMIT%+"
 set "FLAGS=%FLAGS% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "FLAGS=%FLAGS% -define:WREN_COMMIT_DATE=%WREN_DATE%"
+:: a label shown after the version number (about:wren, the menu, the file's Details...): set WREN_VERSION_LABEL=experimental-2026-10-24 before building
+if defined WREN_VERSION_LABEL set "FLAGS=%FLAGS% -define:WREN_VERSION_LABEL=%WREN_VERSION_LABEL%"
 
 set "FLAGS=%FLAGS% -vet -subsystem:windows"
 :: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\wren_prof_wgpu.exe etc. and links wgpu-native

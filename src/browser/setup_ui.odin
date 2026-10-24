@@ -62,7 +62,7 @@ header_texts :: proc(kind: Setup_Kind) -> (title, badge, tone: string, solid: bo
 // "v0.3.0 -> installed version: v0.3.0", the line under the title.
 @(private = "file")
 versions_line :: proc(f: ^Setup_Facts, known: bool) -> string {
-	cur := fmt.tprintf("Current version: v%s", APP_VERSION)
+	cur := fmt.tprintf("Current version: v%s", APP_VERSION_SHOWN)
 	switch {
 	case !known: return cur
 	case !f.inst.exe_present: return fmt.tprintf("%s \u2192 not installed", cur)
