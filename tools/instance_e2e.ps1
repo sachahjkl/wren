@@ -20,6 +20,14 @@ public class IE {
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("ntdll.dll")] public static extern int NtSuspendProcess(IntPtr h);
   [DllImport("ntdll.dll")] public static extern int NtResumeProcess(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  // does the process own the message-only window a second start hands its addresses to (src/instance/instance_windows.odin)?
+  public static bool HasOwnerWindow(uint pid) {
+    IntPtr h = IntPtr.Zero;
+    while ((h = FindWindowEx((IntPtr)(-3), h, "WrenInstanceWindow", null)) != IntPtr.Zero) { uint p; GetWindowThreadProcessId(h, out p); if (p == pid) return true; }
+    return false;
+  }
 }
 "@
 $id = 'i' + [guid]::NewGuid().ToString('N').Substring(0, 6)
@@ -40,8 +48,18 @@ function Wait-Window($p) {
     $sw = [Diagnostics.Stopwatch]::StartNew()
     while (-not $p.HasExited -and $p.MainWindowHandle -eq [IntPtr]::Zero -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 50; $p.Refresh() }
     if ($p.HasExited) { throw "wren exited at once (code $($p.ExitCode))" }
-    Start-Sleep -Milliseconds 800   # (the first frames)
+    # ready for a second start: it owns the window that receives the addresses (not a fixed delay)
+    while (-not $p.HasExited -and -not [IE]::HasOwnerWindow([uint32]$p.Id) -and $sw.ElapsedMilliseconds -lt 15000) { Start-Sleep -Milliseconds 20 }
+    Start-Sleep -Milliseconds 150   # (the first frames)
 }
+# Waits (at most $Seconds) until $Test is true; returns whether it was.
+function Wait-Until([scriptblock]$Test, [double]$Seconds = 10) {
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $Seconds) { if (& $Test) { return $true }; Start-Sleep -Milliseconds 25 }
+    return [bool](& $Test)
+}
+# A start that kept its own window shows one (a start that handed its addresses over ends without ever making one): this is when it has decided.
+function Wait-Decided($p) { $null = Wait-Until { $p.Refresh(); $p.HasExited -or $p.MainWindowHandle -ne [IntPtr]::Zero } 15 }
 function Close-Wren($p) {
     if ($p.HasExited) { return }
     [IE]::PostMessage($p.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null
@@ -56,7 +74,7 @@ $restore = @('--pref', 'browser.session.restore=true')
 
 try {
     $P1 = "$scratch\p1"; $P2 = "$scratch\p2"
-    "1. a second start hands its addresses over and ends with code 0"
+    Section "1 a second start hands its addresses over and ends with code 0"; "1. a second start hands its addresses over and ends with code 0"
     $a = Start-Wren $Exe (@('--profile', $P1) + $restore + @('about:config'))
     Wait-Window $a
     $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -65,45 +83,45 @@ try {
     Check $ended "the second start ended by itself ($([int]$sw.ElapsedMilliseconds) ms)"
     Check ($ended -and $b.ExitCode -eq 0) 'with exit code 0'
     Check (-not $a.HasExited) 'the first one is still running'
-    Start-Sleep -Milliseconds 1200
+    Start-Sleep -Milliseconds 500   # (the first window opens the tabs on its next turn of the loop)
     Close-Wren $a
     $tabs = Tabs $P1
     Check ($tabs -contains 'about:config' -and $tabs -contains 'about:wren' -and $tabs -contains 'about:about') "one tab per address in the first window: $($tabs -join ', ')"
 
-    "2. a minimized window is restored; no address: it just comes forward"
+    Section "2 a minimized window is restored; no address: it just comes forward"; "2. a minimized window is restored; no address: it just comes forward"
     Remove-Item "$P1\session.txt" -ErrorAction SilentlyContinue
     $a = Start-Wren $Exe (@('--profile', $P1) + $restore + @('about:config'))
     Wait-Window $a
     [IE]::ShowWindow($a.MainWindowHandle, 6) | Out-Null   # SW_MINIMIZE
-    Start-Sleep -Milliseconds 600
+    $null = Wait-Until { [IE]::IsIconic($a.MainWindowHandle) } 5
     Check ([IE]::IsIconic($a.MainWindowHandle)) 'the window is minimized'
     $b = Start-Wren $Exe (@('--profile', $P1) + $restore)
     Check ($b.WaitForExit(8000) -and $b.ExitCode -eq 0) 'a start with nothing to open ends with code 0'
-    Start-Sleep -Milliseconds 800
+    $null = Wait-Until { -not [IE]::IsIconic($a.MainWindowHandle) } 5
     Check (-not [IE]::IsIconic($a.MainWindowHandle)) 'and the first window was restored'
     Close-Wren $a
     Check ((Tabs $P1).Count -eq 1) 'no tab was added'
 
-    "3. what must not hand over"
+    Section "3 what must not hand over"; "3. what must not hand over"
     Remove-Item "$P1\session.txt" -ErrorAction SilentlyContinue
     $a = Start-Wren $Exe (@('--profile', $P1) + $restore + @('about:config'))
     Wait-Window $a
     $nw = Start-Wren $Exe (@('--profile', "$scratch\p1nw") + $restore + @('--new-window', 'about:wren'))   # (its own folder, so that two windows do not write one session)
     $other = Start-Wren $Exe (@('--profile', $P2) + $restore + @('about:about'))
-    Start-Sleep -Milliseconds 3500
+    Wait-Decided $nw; Wait-Decided $other
     Check (-not $nw.HasExited) '--new-window: a window of its own'
     Check (-not $other.HasExited) 'another profile: a window of its own'
     $dir = "$scratch\copy"; New-Item -ItemType Directory -Force $dir | Out-Null; Copy-Item $Exe "$dir\wren.exe"
     $copy = Start-Wren "$dir\wren.exe" (@('--profile', $P1) + $restore + @('about:wren'))
-    Start-Sleep -Milliseconds 3500
+    Wait-Decided $copy
     Check (-not $copy.HasExited) 'another executable on the same profile: a window of its own (Setup must be able to replace the installed copy)'
     $env_off = Start-Wren $Exe (@('--profile', $P1) + $restore + @('about:about')) $false
-    Start-Sleep -Milliseconds 3500
+    Wait-Decided $env_off
     Check (-not $env_off.HasExited) 'WREN_SINGLE_INSTANCE=off (what test_env.ps1 sets for every script): a window of its own'
     foreach ($w in @($copy, $env_off, $nw, $other)) { Close-Wren $w }
     Close-Wren $a
 
-    "4. a first Wren that does not answer does not hold the second one"
+    Section "4 a first Wren that does not answer does not hold the second one"; "4. a first Wren that does not answer does not hold the second one"
     $a = Start-Wren $Exe (@('--profile', "$scratch\p4") + $restore + @('about:config'))
     Wait-Window $a
     [IE]::NtSuspendProcess($a.Handle) | Out-Null
@@ -118,13 +136,13 @@ try {
     } finally { [IE]::NtResumeProcess($a.Handle) | Out-Null }
     Close-Wren $b; Close-Wren $a
 
-    "5. a start while the first one is closing: its address is not lost"
+    Section "5 a start while the first one is closing: its address is not lost"; "5. a start while the first one is closing: its address is not lost"
     $P5 = "$scratch\p5"
     $a = Start-Wren $Exe (@('--profile', $P5) + $restore + @('about:config'))
     Wait-Window $a
     [IE]::PostMessage($a.MainWindowHandle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero) | Out-Null   # WM_CLOSE, and at once:
     $b = Start-Wren $Exe (@('--profile', $P5) + $restore + @('about:wren'))
-    Start-Sleep -Milliseconds 4000
+    Wait-Decided $b   # (it took the profile over, or handed its address over and ended)
     $bAlive = -not $b.HasExited
     Check ($bAlive -or $b.ExitCode -eq 0) "the second start either took the profile over or handed its address over (alive=$bAlive)"
     Close-Wren $b; Close-Wren $a
@@ -136,5 +154,6 @@ finally {
     Start-Sleep -Milliseconds 500
     if (Test-Path $scratch) { try { [IO.Directory]::Delete($scratch, $true) } catch { "scratch not deleted: $_" } }
 }
+Show-WrenSections instance_e2e
 if ($failures.Count) { "FAILED: $($failures.Count)"; exit 1 }
 "all scenarios passed"
