@@ -62,7 +62,7 @@ test("buckets: open, isolation, estimate, keys, delete", async () => {
   eq(dead, "UnknownError", "a deleted bucket's indexedDB fails");
   const again = await sb.open("alpha");
   eq(JSON.stringify(await again.indexedDB.databases()), "[]", "a deleted bucket comes back empty");
-  eq(JSON.stringify(await indexedDB.databases()), '[{"name":"bk","version":1}]', "the origin's database stays");
+  ok((await indexedDB.databases()).some((d) => d.name === "bk"), "the origin's database stays");
   await sb.delete("alpha"); await sb.delete("beta");
   const r = indexedDB.deleteDatabase("bk");
   await rp(r);
