@@ -870,9 +870,13 @@
       const w = new Wr();
       w.str(n); w.uv(v); w.u8(has); w.str(F.bucket);
       const rep = call(OP.OPEN, w.done());
-      if (rep[0]) throw fail(rep[0]);
+      if (rep[0] && !(F.bucket !== "" && rep[0] === E_UNKNOWN)) throw fail(rep[0]);
       const req = newRequest(IDBOpenDBRequest.prototype, null, null);
       req.name = n;
+      if (rep[0]) {   // the bucket was deleted: the request fails
+        post(() => openError(req, E_UNKNOWN));
+        return req.wrapper;
+      }
       openReqs.set(new Rd(rep, 1).uv(), req);
       return req.wrapper;
     }
