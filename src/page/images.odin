@@ -55,8 +55,8 @@ Cache_Entry :: struct {
 	err:        images.Error,
 	image:      ^images.Image,    // decoded pixels (maybe at a reduced size); nil when not decoded or dropped
 	generation: u64,              // changes whenever `image` changes
-	probe:      ^images.Job,
-	decode:     ^images.Job,
+	probe:      images.Job_Id,    // the decoder's jobs of this entry, 0 when none: never a pointer (the decoder owns a job until it delivers it; images/pool.odin)
+	decode:     images.Job_Id,
 	decode_w, decode_h: int,      // what the running decode targets (0 = natural size)
 	want_full:  bool,             // decode() asked for the natural size
 	requests:   [dynamic]^Img_Request,   // the page requests that hold it
@@ -66,7 +66,7 @@ Cache_Entry :: struct {
 	accounted:  int,              // bytes counted in the cache's total
 	// SVG: no decoded image, rasters at the sizes it is shown at instead (each its own texture), made one at a time
 	rasters:    [dynamic]Svg_Raster,
-	raster_job: ^images.Job,
+	raster_job: images.Job_Id,
 	raster_w, raster_h: int,
 }
 
@@ -137,9 +137,9 @@ images_shutdown :: proc() {
 
 @(private)
 entry_free :: proc(e: ^Cache_Entry) {
-	if e.probe != nil { images.job_cancel(e.probe) }
-	if e.decode != nil { images.job_cancel(e.decode) }
-	if e.raster_job != nil { images.job_cancel(e.raster_job) }
+	images.job_cancel(e.probe)
+	images.job_cancel(e.decode)
+	images.job_cancel(e.raster_job)
 	for r in e.rasters { images.image_destroy(r.image) }
 	delete(e.rasters)
 	images.blob_release(e.blob)
@@ -207,7 +207,7 @@ cache_enforce :: proc() {
 	for e in list {
 		if cache.bytes <= cache.limit { return }
 		if len(e.rasters) > 0 { svg_drop_rasters(e, true) }
-		if e.image == nil || e.last_shown == cache.epoch || e.decode != nil { continue }
+		if e.image == nil || e.last_shown == cache.epoch || e.decode != 0 { continue }
 		images.image_destroy(e.image)
 		e.image = nil
 		e.generation += 1
@@ -227,18 +227,18 @@ cache_job_done :: proc(user: rawptr, j: ^images.Job) {
 	e := (^Cache_Entry)(j.user)
 	defer images.job_free(j)
 	if j.kind == .Probe {
-		e.probe = nil
+		e.probe = 0
 		e.info, e.err = j.info, j.err
 		e.state = j.err == .None ? .Ready : .Broken
 		entry_notify(e, true)
 		return
 	}
-	if j == e.raster_job {
-		e.raster_job = nil
+	if j.id == e.raster_job {
+		e.raster_job = 0
 		svg_raster_done(e, j)
 		return
 	}
-	e.decode = nil
+	e.decode = 0
 	if j.err != .None {
 		e.err = j.err
 		e.state = .Broken
@@ -284,19 +284,18 @@ entry_want_pixels :: proc(e: ^Cache_Entry, w, h: int, priority: i32) {
 		return have_w >= tw && have_h >= th
 	}
 	if e.image != nil && enough(e.image.width, e.image.height, e.info.width, tw, th) { return }
-	if e.decode != nil {
+	if e.decode != 0 {
 		if enough(e.decode_w == 0 ? e.info.width : e.decode_w, e.decode_h == 0 ? e.info.height : e.decode_h, e.info.width, tw, th) {
 			images.job_set_priority(e.decode, priority)
 			return
 		}
 		images.job_cancel(e.decode)
-		e.decode = nil
+		e.decode = 0
 	}
 	o := decode_options(s, e)
 	o.target_w, o.target_h = tw, th
-	j := images.job_make(.Decode, e.blob, o, priority, e)
-	e.decode, e.decode_w, e.decode_h = j, tw, th
-	if !images.submit(cache.port, j) { e.decode = nil }
+	e.decode_w, e.decode_h = tw, th
+	e.decode = images.submit(cache.port, images.job_make(.Decode, e.blob, o, priority, e))
 }
 
 ////////////////////////////////
@@ -355,7 +354,7 @@ Img_Element :: struct {
 
 Pending_Image_Event :: struct { node: base.Handle, type: string }
 
-Guest_Decode :: struct { job: ^images.Job, promise: u64, owner: u32 }
+Guest_Decode :: struct { job: images.Job_Id, promise: u64, owner: u32 }
 
 Page_Images :: struct {
 	ready:      bool,
@@ -608,9 +607,8 @@ entry_start :: proc(p: ^Page, r: ^Img_Request, data: []byte) {
 	r.entry = e
 	r.state = .Probing
 	entry_account(e)
-	e.probe = images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), 1 << 20, e)
-	if !images.submit(cache.port, e.probe) {
-		e.probe = nil
+	e.probe = images.submit(cache.port, images.job_make(.Probe, e.blob, decode_options(&cache.settings, e), 1 << 20, e))
+	if e.probe == 0 {
 		e.state, e.err = .Broken, .Platform
 		entry_notify(e, true)
 	}
@@ -1247,9 +1245,9 @@ guest_decode_start :: proc(p: ^Page, bytes: []byte, owner: u32) -> u64 {
 	blob := images.blob_make(slice.clone(bytes))
 	j := images.job_make(.Decode, blob, o, 0)
 	images.blob_release(blob)
-	append(&p.images.guest, Guest_Decode{job = j, promise = pr, owner = owner})
-	if !images.submit(p.images.port, j) {
-		pop(&p.images.guest)
+	if id := images.submit(p.images.port, j); id != 0 {
+		append(&p.images.guest, Guest_Decode{job = id, promise = pr, owner = owner})   // (the result comes on this loop: after this)
+	} else {
 		promise_reject(p, pr, WEB_ERR_NOT_SUPPORTED, "the image decoder is unavailable")
 	}
 	return pr
@@ -1261,7 +1259,7 @@ guest_decode_done :: proc(user: rawptr, j: ^images.Job) {
 	defer images.job_free(j)
 	g: Guest_Decode
 	found := false
-	for x, i in p.images.guest { if x.job == j { g, found = x, true; ordered_remove(&p.images.guest, i); break } }
+	for x, i in p.images.guest { if x.job == j.id { g, found = x, true; ordered_remove(&p.images.guest, i); break } }
 	if !found || p.closed { return }
 	if j.err != .None || j.image == nil || len(j.image.frames) == 0 {
 		promise_reject(p, g.promise, WEB_ERR_ENCODING, images.error_message(j.err))
@@ -1294,7 +1292,7 @@ svg_raster_for :: proc(e: ^Cache_Entry, want_w, want_h: int, priority: i32) -> ^
 		d := abs(r.w * r.h - w * h) * (r.w * r.h >= w * h ? 1 : 4)
 		if d < best_d { best, best_d = &r, d }
 	}
-	if e.raster_job != nil {
+	if e.raster_job != 0 {
 		if e.raster_w == w && e.raster_h == h {
 			images.job_set_priority(e.raster_job, priority)
 		}
@@ -1302,9 +1300,8 @@ svg_raster_for :: proc(e: ^Cache_Entry, want_w, want_h: int, priority: i32) -> ^
 	} else if e.blob != nil {
 		o := decode_options(&cache.settings, e)
 		o.target_w, o.target_h = w, h
-		j := images.job_make(.Decode, e.blob, o, priority, e)
-		e.raster_job, e.raster_w, e.raster_h = j, w, h
-		if !images.submit(cache.port, j) { e.raster_job = nil }
+		e.raster_w, e.raster_h = w, h
+		e.raster_job = images.submit(cache.port, images.job_make(.Decode, e.blob, o, priority, e))
 	}
 	if best != nil { best.last_shown = cache.epoch }
 	return best
