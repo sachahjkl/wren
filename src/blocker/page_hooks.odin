@@ -167,6 +167,7 @@ hook_adopted :: proc(user: rawptr, p: ^page.Page) {
 	ensure_cosmetic(b, d)
 	hs.active = true
 	hs.computed = true
+	if p.doc != nil && !p.doc.journal.on { dom.journal_enable(p.doc, DOM_JOURNAL_MAX) }
 	e := d.engine.engine
 	sb := strings.builder_make(context.temp_allocator)
 	for id in d.cosmetic.active {
@@ -190,49 +191,82 @@ hook_adopted :: proc(user: rawptr, p: ^page.Page) {
 	if d.tab != nil && d.top { d.tab.hidden = hs.rules; d.tab.version += 1 }
 }
 
-// Looks up the classes and ids of the DOM that were not seen yet and injects the generic selectors they key.
+// Looks up the classes and ids of the DOM that were not seen yet and injects the generic selectors they key. `scan_dom` walks the whole
+// document (the first time, and when the journal lost entries); `scan_changes` only what the journal says is new since the last pass
+// (inserted subtrees, class and id attributes that changed).
+Scan :: struct { b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, found: [dynamic]u32 }
+
 @(private)
-scan_dom :: proc(b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, p: ^page.Page) {
-	if !d.has_cosmetic || p.doc == nil { return }
-	e := d.engine.engine
-	found := make([dynamic]u32, context.temp_allocator)
-	doc := p.doc
-	if hs.seen == nil { hs.seen = make(map[u32]struct{}) }
-	look :: proc(hs: ^Doc_Hooks, d: ^Doc, e: ^adblock.Engine, prefix: u8, name: string, found: ^[dynamic]u32) {
+scan_element :: proc(s: ^Scan, doc: ^dom.Document, h: base.Handle) {
+	n := dom.get(doc, h)
+	if n == nil || n.kind != .Element { return }
+	e := s.d.engine.engine
+	look :: proc(s: ^Scan, e: ^adblock.Engine, prefix: u8, name: string) {
 		if name == "" { return }
 		key := adblock.class_key(prefix, name)
-		if key in hs.seen { return }
-		hs.seen[key] = {}
-		adblock.cosmetic_keyed(e, &d.cosmetic, key, found)
+		if key in s.hs.seen { return }
+		s.hs.seen[key] = {}
+		adblock.cosmetic_keyed(e, &s.d.cosmetic, key, &s.found)
 	}
-	for h := doc.root; h != base.NIL_HANDLE; h = dom.next_in_tree(doc, h, doc.root) {
-		n := dom.get(doc, h)
-		if n == nil || n.kind != .Element { continue }
-		for a in n.attrs {
-			switch a.name {
-			case "class":
-				v := a.value
-				for len(v) > 0 {
-					for len(v) > 0 && (v[0] == ' ' || v[0] == '\t' || v[0] == '\n' || v[0] == '\r' || v[0] == 0x0c) { v = v[1:] }
-					end := 0
-					for end < len(v) && !(v[end] == ' ' || v[end] == '\t' || v[end] == '\n' || v[end] == '\r' || v[end] == 0x0c) { end += 1 }
-					look(hs, d, e, '.', v[:end], &found)
-					v = v[end:]
-				}
-			case "id": look(hs, d, e, '#', a.value, &found)
+	for a in n.attrs {
+		switch a.name {
+		case "class":
+			v := a.value
+			for len(v) > 0 {
+				for len(v) > 0 && (v[0] == ' ' || v[0] == '\t' || v[0] == '\n' || v[0] == '\r' || v[0] == 0x0c) { v = v[1:] }
+				end := 0
+				for end < len(v) && !(v[end] == ' ' || v[end] == '\t' || v[end] == '\n' || v[end] == '\r' || v[end] == 0x0c) { end += 1 }
+				look(s, e, '.', v[:end])
+				v = v[end:]
 			}
+		case "id": look(s, e, '#', a.value)
 		}
 	}
-	if len(found) == 0 { return }
+}
+
+@(private)
+scan_finish :: proc(s: ^Scan, p: ^page.Page) {
+	if len(s.found) == 0 { return }
+	e := s.d.engine.engine
 	sb := strings.builder_make(context.temp_allocator)
-	for id in found {
-		if hs.rules >= b.cfg.max_selectors { break }
+	for id in s.found {
+		if s.hs.rules >= s.b.cfg.max_selectors { break }
 		if write_hide_rule(&sb, e, id) { continue }   // (keyed filters are never procedural)
-		hs.rules += 1
+		s.hs.rules += 1
 	}
 	add_sheet(p, strings.to_string(sb))
 }
 
+@(private)
+scan_dom :: proc(b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, p: ^page.Page) {
+	if !d.has_cosmetic || p.doc == nil { return }
+	doc := p.doc
+	if hs.seen == nil { hs.seen = make(map[u32]struct{}) }
+	s := Scan{b = b, d = d, hs = hs, found = make([dynamic]u32, context.temp_allocator)}
+	for h := doc.root; h != base.NIL_HANDLE; h = dom.next_in_tree(doc, h, doc.root) { scan_element(&s, doc, h) }
+	scan_finish(&s, p)
+}
+
+@(private)
+scan_changes :: proc(b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, p: ^page.Page, since: u64) {
+	if !d.has_cosmetic || p.doc == nil { return }
+	doc := p.doc
+	entries, ok := dom.journal_since(doc, since)
+	if !ok { scan_dom(b, d, hs, p); return }
+	if hs.seen == nil { hs.seen = make(map[u32]struct{}) }
+	s := Scan{b = b, d = d, hs = hs, found = make([dynamic]u32, context.temp_allocator)}
+	for &e in entries {
+		switch e.kind {
+		case .Insert:
+			if dom.get(doc, e.node) == nil { continue }
+			for h := e.node; h != base.NIL_HANDLE; h = dom.next_in_tree(doc, h, e.node) { scan_element(&s, doc, h) }
+		case .Attribute:
+			if e.name == "class" || e.name == "id" { scan_element(&s, doc, e.node) }
+		case .Text, .Remove, .Reslot:
+		}
+	}
+	scan_finish(&s, p)
+}
 @(private)
 run_procedurals :: proc(b: ^Blocker, d: ^Doc, hs: ^Doc_Hooks, p: ^page.Page) {
 	if len(hs.procs) == 0 || p.engine == nil { return }
@@ -282,10 +316,11 @@ hook_before_styles :: proc(user: rawptr, p: ^page.Page) {
 		}
 		return
 	}
+	since := hs.last_mut
 	hs.last_mut = p.doc.mutations
 	hs.last_run = now_ms()
 	t0 := time.tick_now()
-	scan_dom(b, d, hs, p)
+	scan_changes(b, d, hs, p, since)
 	t1 := time.tick_now()
 	run_procedurals(b, d, hs, p)
 	if ms := f64(time.tick_since(t0)) / 1e6; ms > 3 { trace("pass on %s: %.1f ms (scan %.1f, procedural %d: %.1f)", d.host, ms, f64(time.tick_diff(t0, t1)) / 1e6, len(hs.procs), f64(time.tick_since(t1)) / 1e6) }
