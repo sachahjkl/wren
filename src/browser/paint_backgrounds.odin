@@ -57,6 +57,11 @@ paint_backgrounds :: proc(dc: ^draw.Context, cs: ^style.Computed, b: ^Bg_Boxes, 
 		clip, radii := area_of(b, layer.clip)
 		paint_image_layer(dc, layer, pos_area, clip, radii, scale)
 	}
+	// -wren-shader (built-in pages): over the CSS background, which is also what shows where the shader cannot be had
+	if cs.wren_shader.name != "" {
+		clip, radii := area_of(b, layers[len(layers) - 1].clip)
+		paint_wren_shader(dc, cs, clip, radii, scale)
+	}
 }
 
 // One image layer (a background layer, or a mask layer as one) in its positioning area, painted inside `clip`
