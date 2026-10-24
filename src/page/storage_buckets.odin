@@ -113,6 +113,12 @@ bucket_open :: proc(m: ^Storage_Manager, origin, name: string, persisted: bool, 
 	return x, true
 }
 
+bucket_exists :: proc(m: ^Storage_Manager, origin, name: string) -> bool {
+	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
+	buckets_load(m)
+	return bucket_find(origin, name) >= 0
+}
+
 bucket_names :: proc(m: ^Storage_Manager, origin: string) -> []string {
 	sync.mutex_lock(&buckets_mu); defer sync.mutex_unlock(&buckets_mu)
 	buckets_load(m)

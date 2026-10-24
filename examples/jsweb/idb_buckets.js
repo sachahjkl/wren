@@ -58,6 +58,8 @@ test("buckets: open, isolation, estimate, keys, delete", async () => {
   da.close(); db.close(); dm.close();
   await sb.delete("alpha");
   eq((await sb.keys()).join(","), "beta", "alpha is gone");
+  const dead = await new Promise((resolve) => { const q = a.indexedDB.open("x"); q.onsuccess = () => resolve("opened"); q.onerror = () => resolve(q.error.name); });
+  eq(dead, "UnknownError", "a deleted bucket's indexedDB fails");
   const again = await sb.open("alpha");
   eq(JSON.stringify(await again.indexedDB.databases()), "[]", "a deleted bucket comes back empty");
   eq(JSON.stringify(await indexedDB.databases()), '[{"name":"bk","version":1}]', "the origin's database stays");

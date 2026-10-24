@@ -165,6 +165,7 @@ idb_page_of :: proc(p: ^Page) -> (^Idb_Page, Api_Error) {
 @(private)
 idb_client_for :: proc(p: ^Page, ip: ^Idb_Page, bucket: string) -> ^idb.Client {
 	if bucket == "" { return ip.client }
+	if !bucket_exists(p.web.embedder.storage, ip.key, bucket) { return nil }   // (deleted: its databases are gone)
 	if c, ok := ip.buckets[bucket]; ok { return c }
 	h := idb_host_of(p)
 	if h == nil { return nil }
@@ -310,15 +311,15 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		has := idb.r_u8(&r) != 0
 		bucket := idb.r_str(&r) if r.pos < len(args) else ""
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.open_database(bc, name, version, has)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.open_database(bc, name, version, has)) } else { status = .Unknown; idb.w_uv(&out, 0) }
 	case IDB_OP_DELETE:
 		name := idb.r_str(&r)
 		bucket := idb.r_str(&r) if r.pos < len(args) else ""
 		if r.bad { return nil, Api_Error(WEB_ERR_TYPE) }
-		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.delete_database(bc, name)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.delete_database(bc, name)) } else { status = .Unknown; idb.w_uv(&out, 0) }
 	case IDB_OP_LIST:
 		bucket := idb.r_str(&r) if r.pos < len(args) else ""
-		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.list_databases(bc)) } else { return nil, Api_Error(WEB_ERR_SECURITY) }
+		if bc := idb_client_for(p, ip, bucket); bc != nil { idb.w_uv(&out, idb.list_databases(bc)) } else { status = .Unknown; idb.w_uv(&out, 0) }
 	case IDB_OP_CLOSE:
 		id := idb.r_uv(&r)
 		status = idb.close_connection(idb_pick(idb.conn_client(cl.m, id), cl), id)
