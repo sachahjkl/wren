@@ -379,7 +379,7 @@ process_is :: proc(pid: u32, started: u64) -> bool {
 
 @(private = "file")
 unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
-	context = runtime.default_context()
+	context = runtime.default_context()   // memcheck: not the tracker (a thread of its own, started at the start-up)
 	prev := unclean_text
 	pid, _ := parse_session(prev)
 	st: win.SYSTEMTIME
