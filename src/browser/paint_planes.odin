@@ -403,6 +403,23 @@ flatten4 :: proc(m: style.Matrix4) -> style.Matrix4 {
 	return {m[0], m[1], 0, m[3], m[4], m[5], 0, m[7], 0, 0, 1, 0, m[12], m[13], 0, m[15]}
 }
 
+// What a plane covers for the purposes of ordering and of telling whether planes cut through each other: its layer without the
+// margin the layer was given to hold what spills out of the box (item_ink_local: one device pixel on each side at least, and the
+// rounding of the layer to whole texels). With the margin a thin plane, such as the rim of a coin standing on its edge, seems to
+// reach a pixel beyond where it ends, into the planes it touches, and every plane that touches another is taken to cut through
+// it: the whole context is then split into pieces.
+@(private)
+plane_geometry :: proc(pl: draw.Plane_Layer) -> draw.Plane_Layer {
+	g := pl
+	if pl.scale <= 0 { return g }
+	d := 1 + 1 / pl.scale
+	sz := [2]int{pl.size.x - int(math.ceil(2 * d * pl.scale)), pl.size.y - int(math.ceil(2 * d * pl.scale))}
+	if sz.x < 1 || sz.y < 1 { return g }
+	g.origin += draw.Vec2{d, d}
+	g.size = sz
+	return g
+}
+
 // Closes a plane group's layer: composited now, or kept for its context's root, or (a flat child of a plain plane) set among the
 // parts its parent composites.
 @(private)
@@ -441,13 +458,14 @@ close_plane :: proc(e: ^Effects, og: ^Open_Group) {
 		sc := og.plan.scale
 		o0 := draw.Vec2{math.floor(og.plan.bounds.min.x * sc) / sc, math.floor(og.plan.bounds.min.y * sc) / sc}
 		geom := draw.Plane_Layer{origin = o0, scale = sc, size = {int(math.ceil((og.plan.bounds.max.x - o0.x) * sc)), int(math.ceil((og.plan.bounds.max.y - o0.y) * sc))}}
-		item := draw.Plane_Item{parts = og.parts[:], geom = geom, geom_m = to_mat4(m), skip = cull}
+		item := draw.Plane_Item{parts = og.parts[:], geom = plane_geometry(geom), geom_m = to_mat4(m), skip = cull}
 		finish_plane_item(e, sp, s, item)
 		return
 	}
 	if pl.img.tex == 0 || pl.direct { return }
 	if len(og.backdrop) > 0 && !cull { o.shape = plane_shape(e, og.g, pl) }
 	item := draw.plane_item(pl, to_mat4(m), alpha, o, cull)
+	item.geom = plane_geometry(pl)
 	if sp.ctx == s && !sp.preserve {
 		if cull { draw.discard_plane(e.dc, pl); draw.discard_plane(e.dc, o.shape); return }
 		draw.draw_plane(e.dc, pl, to_mat4(m), alpha, o)
