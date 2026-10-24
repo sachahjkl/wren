@@ -23,31 +23,22 @@ import "wb:license"
 
 @(private = "file")
 CARD_STYLE :: `
+  @property --sweep { syntax: '<number>'; inherits: true; initial-value: 0.42; }
+  @property --live { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --bx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
+  @property --by { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
   .cardbox { width: 100%; max-width: 440px; margin: 16px 0 6px; padding: 12px 0; perspective: 900px; }
   .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; color: #eceff7; transform-style: preserve-3d;
-    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --bx 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --by 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
   .lic.live { transition: none; }
   .lic > div { position: absolute; }
   .lic .wall { box-sizing: border-box; }
   .lic .base { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26;
-    background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16); }
-  .lic .base > div { position: absolute; }
-  .lic .tex { left: 0; top: 0; right: 0; bottom: 0; background-image: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.04) 0px, rgba(255, 255, 255, 0.04) 1px, rgba(255, 255, 255, 0) 1px, rgba(255, 255, 255, 0) 4px); }
-  .lic .holo { left: 0; top: 0; right: 0; bottom: 0; opacity: 0.19; mix-blend-mode: color-dodge; background-size: 240% 240%; background-position: var(--bx, 35%) var(--by, 30%);
-    background-image: linear-gradient(var(--ang, 115deg), rgba(255, 122, 198, 0) 8%, #ff7ac6 22%, #ffd36e 36%, #7dffb2 50%, #6ec7ff 64%, #b48cff 78%, rgba(180, 140, 255, 0) 92%); }
-  .lic .glare { left: 0; top: 0; right: 0; bottom: 0; mix-blend-mode: soft-light;
-    background-image: radial-gradient(circle at var(--gx, 30%) var(--gy, 24%), rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 55%); }
-  .lic .rel, .lic .sha, .lic .shb, .lic .shc { left: 0; top: 0; right: 0; bottom: 0; }
-  .lic .rel { background-size: 100% 100%; mix-blend-mode: overlay; opacity: 0.4; }
-  .lic .sha, .lic .shb, .lic .shc { background-size: 400% 100%; background-repeat: no-repeat; animation: sheen 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
-  .lic .sha, .lic .shb { mask-size: 100% 100%; mask-repeat: no-repeat; mix-blend-mode: screen; }
-  .lic .sha { background-image: linear-gradient(105deg, rgba(150, 215, 255, 0) 59.2%, rgba(150, 215, 255, 0.08) 61.6%, rgba(190, 235, 255, 0.6) 64%, rgba(255, 255, 255, 0) 65%); }
-  .lic .shb { background-image: linear-gradient(105deg, rgba(255, 190, 225, 0) 64%, rgba(255, 215, 235, 0.55) 65.2%, rgba(255, 180, 220, 0.12) 67.4%, rgba(255, 180, 220, 0) 69.6%); }
-  .lic .shc { mix-blend-mode: color-dodge; opacity: 0.32;
-    background-image: linear-gradient(105deg, rgba(255, 255, 255, 0) 62.4%, rgba(255, 120, 200, 0.5) 63.4%, rgba(255, 255, 255, 0.9) 64.6%, rgba(110, 200, 255, 0.5) 65.8%, rgba(255, 255, 255, 0) 66.8%); }
-  .lic.live .sha, .lic.live .shb, .lic.live .shc { animation-play-state: paused; opacity: 0; }
-  @keyframes sheen { 0% { background-position: 100% 0; } 40% { background-position: 50% 0; } 100% { background-position: 50% 0; } }
-  @media (prefers-reduced-motion: reduce) { .lic .sha, .lic .shb, .lic .shc { display: none; } }
+    background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16);
+    -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1; animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+  .lic.live .base { --live: 1; animation-play-state: paused; }
+  @keyframes sweep { 0% { --sweep: -0.3; } 40% { --sweep: 1.25; } 100% { --sweep: 1.25; } }
+  @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } }
   .lic .face { left: 0; top: 0; right: 0; bottom: 0; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
   .lic .top { display: flex; align-items: center; }
   .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
@@ -98,9 +89,6 @@ CARD_SCRIPT :: `
     card.style.transform = "rotateX(" + (-py * 14).toFixed(2) + "deg) rotateY(" + (px * 18).toFixed(2) + "deg)";
     card.style.setProperty("--bx", (50 + px * 50).toFixed(1) + "%");
     card.style.setProperty("--by", (50 + py * 50).toFixed(1) + "%");
-    card.style.setProperty("--ang", (115 + px * 22).toFixed(1) + "deg");
-    card.style.setProperty("--gx", (50 + px * 50).toFixed(1) + "%");
-    card.style.setProperty("--gy", (50 + py * 50).toFixed(1) + "%");
     face.style.transform = "translate3d(" + (-px * 5).toFixed(2) + "px," + (-py * 4).toFixed(2) + "px,18px) scale(0.98)";
     shadow.style.transform = "translate3d(" + (3 - px * 5).toFixed(2) + "px," + (5 - py * 4).toFixed(2) + "px,1px) scale(0.99889)";
     card.style.setProperty("--sgx", (50 + px * 28).toFixed(1) + "%");
@@ -117,6 +105,8 @@ CARD_SCRIPT :: `
     live = false; px = 0; py = 0; queued = false;
     card.className = "lic";
     card.style.transform = "rotateX(0deg) rotateY(0deg)";
+    card.style.setProperty("--bx", "50%");
+    card.style.setProperty("--by", "50%");
     face.style.transform = "translate3d(0px,0px,18px) scale(0.98)";
     shadow.style.transform = "translate3d(3px,5px,1px) scale(0.99889)";
     card.style.setProperty("--sgx", "32%");
@@ -127,11 +117,10 @@ CARD_SCRIPT :: `
 })();
 `
 
-// The style of the card with the three pictures of its relief (about_card_relief.odin), in the temporary allocator.
-card_css :: proc() -> string {
-	r := card_relief_cached()
-	return strings.concatenate({CARD_STYLE, "\n  .lic .rel { background-image: url(\"", r.emboss, "\"); }\n  .lic .sha { mask-image: url(\"", r.toward, "\"); }\n  .lic .shb { mask-image: url(\"", r.away, "\"); }\n"}, context.temp_allocator)
-}
+// The style of the card. Its foil is a shader of the browser (`-wren-shader: card-foil`, shaders.odin, shaders/card_foil.wgsl) lit over the dark
+// background below, which is also what shows where the shader cannot be had; the relief it lights is made natively (about_card_relief.odin)
+// when the card is first painted, so the page carries no picture of it.
+card_css :: proc() -> string { return CARD_STYLE }
 
 // The thickness of the card: a real rim, like a bank card's (0.76mm is about 4px at this size; 8 shows from a tilt of 18 degrees), built from flat faces standing
 // edge-on behind the base: the four straight sides, and the rounded corners cut into facets (a quarter circle of CARD_RADIUS in
@@ -203,7 +192,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	e :: proc(s: string) -> string { return escape_html(s) }
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
 	card_walls_html(sb)
-	strings.write_string(sb, "<div class=\"base\"><div class=\"tex\"></div><div class=\"holo\"></div><div class=\"glare\"></div><div class=\"rel\"></div><div class=\"sha\"></div><div class=\"shb\"></div><div class=\"shc\"></div></div>")
+	strings.write_string(sb, "<div class=\"base\"></div>")
 	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><img src=\"%s\" alt=\"\"><b>%s</b><span>%s</span></div>", app_logo_url(), APP_NAME, e(license.edition_title(lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }

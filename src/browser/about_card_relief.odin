@@ -1,40 +1,71 @@
 package browser
 
-import "core:encoding/base64"
-import "core:fmt"
 import "core:math"
-import "core:sync"
-import "wb:base"
-import "wb:images"
+import "core:thread"
+import "wb:host"
 
 ////////////////////////////////
-// The relief of the licence card: a height field (a guilloche like the ones of banknotes, two rosettes of wavy rings, and a raised
-// frame with a bevel) from which three pictures are made, the way a normal map is used to light a surface:
+// The relief of the licence card: a height field engraved like a banknote (about:wren, shader card-foil, shaders.odin), turned into a
+// NORMAL MAP the shader lights. Made here, natively, when the card is first painted; it lives in a texture of the renderer (no picture
+// in the page, nothing kept on the CPU: made again after a device loss).
 //
-//  - `emboss`: the surface lit from the top left, once for all (white where a slope faces the light, black where it turns away);
-//  - `toward` and `away`: the slopes that face the direction the sheen travels in, and those that turn their back to it, as the alpha
-//    of a white picture. The sheen (a CSS animation, about_card.odin) is a band of light that crosses the card; the light of a point
-//    light moving over a bumpy surface reaches the slopes behind it by one side and the slopes ahead of it by the other, so the band
-//    is drawn twice, a long tail behind it through the mask `toward` and a short glow in front of it through the mask `away`, and the
-//    ridges of the guilloche glint as it passes, instead of a flat band sliding over a flat card.
+// What is engraved (u in [0, 1.586], v in [0, 1], the card's units, 1 = its height):
+//  - a guilloche: two rosettes of wavy concentric rings (the pattern of the notes' backgrounds), fading into each other;
+//  - a frame: a rounded lip that rises to the edge, with a bevel, and a groove running inside it;
+//  - micro-lettering: "WREN" repeated in the frame along the top and the bottom edges, 7 texels tall, cut into the lip as the
+//    microprint of a note is (a 5 x 7 face, two texels to a dot: only a magnifier or a tilt that raking light finds it);
+//  - a grain: fine hash noise on everything, the tooth of the foil (the shader's glitter does not need it, the highlights do).
 //
-// The pictures are made when the page is made (a few milliseconds) as PNG data: URLs in the temporary allocator, like the logo.
+// The texture is RGBA8, 2x the size the card shows at 100 % (880 x 556 for 440 x 278 px), and the channels are the data the shader
+// reads, not a color:
+//     R, G   the normal's x and y (tangent space, y down like the card), 128 = 0; z is rebuilt by the shader
+//     B      the height, 0 (deepest) to 255 (the top of the lip)
+//     A      the cavity: how much the point lies below its surroundings (ambient occlusion of the engraving: the lines are dark)
 
-RELIEF_W :: 440
-RELIEF_H :: 278   // (the card's ratio, 1.586)
+NORMAL_W :: 880
+NORMAL_H :: 556
+CARD_ASPECT :: 1.586
 
-// The direction the sheen travels in (CSS angle 105deg: a little below the horizontal, to the right), in the picture's pixels.
-@(private = "file") SHEEN_DX :: 0.9659258
-@(private = "file") SHEEN_DY :: 0.2588190
+// How steep the engraving is made (the height field has no unit: this scales its slopes into normals).
+@(private = "file") SLOPE :: 2.0
 
-Card_Relief :: struct {
-	emboss, toward, away: string,   // data: URLs
+@(private = "file") GLYPHS := [4][7]string{
+	{"X...X", "X...X", "X...X", "X.X.X", "X.X.X", "XX.XX", "X...X"},   // W
+	{"XXXX.", "X...X", "X...X", "XXXX.", "X.X..", "X..X.", "X...X"},   // R
+	{"XXXXX", "X....", "X....", "XXXX.", "X....", "X....", "XXXXX"},   // E
+	{"X...X", "XX..X", "XX..X", "X.X.X", "X..XX", "X..XX", "X...X"},   // N
+}
+
+// Dots of the micro-lettering: texels per dot, columns per letter (5 + a gap), the word: 4 letters and a gap of 3 columns.
+@(private = "file") DOT :: 2
+@(private = "file") PITCH :: 6
+@(private = "file") WORD :: 4 * PITCH + 3
+
+// Whether texel (x, y) of a band of micro-lettering is a dot of the lettering. `x`: texels from the start of the line.
+@(private = "file")
+letter_dot :: proc(x, y: int) -> bool {
+	if x < 0 || y < 0 || y >= 7 * DOT { return false }
+	col := (x / DOT) % WORD
+	if col >= 4 * PITCH { return false }
+	c, within := col / PITCH, col % PITCH
+	if within >= 5 { return false }
+	return GLYPHS[c][y / DOT][within] == 'X'
 }
 
 @(private = "file")
-height_at :: proc(u, v: f64) -> f64 {
-	// u in [0, 1.586], v in [0, 1]
-	ring :: proc(u, v, cx, cy, rings, wobble, lobes, phase: f64) -> (h, w: f64) {
+hash2 :: proc(x, y: int) -> f32 {
+	h := u32(x) * 374761393 + u32(y) * 668265263
+	h = (h ~ (h >> 13)) * 1274126177
+	h ~= h >> 16
+	return f32(h & 0xffff) / 65535
+}
+
+// The height of the engraving at a texel (the pattern above, without the grain).
+@(private = "file")
+height_at :: proc(x, y: int) -> f32 {
+	u := (f32(x) + 0.5) / NORMAL_H
+	v := (f32(y) + 0.5) / NORMAL_H
+	ring :: proc(u, v, cx, cy, rings, wobble, lobes, phase: f32) -> (h, w: f32) {
 		dx, dy := u - cx, v - cy
 		r := math.sqrt(dx * dx + dy * dy)
 		a := math.atan2(dy, dx)
@@ -42,78 +73,102 @@ height_at :: proc(u, v: f64) -> f64 {
 		w = math.exp(-r * r / 0.30)
 		return
 	}
-	h1, w1 := ring(u, v, 0.46, 0.50, 30, 2.4, 9, 1.3)
-	h2, w2 := ring(u, v, 1.22, 0.64, 24, 1.8, 7, 0.4)
-	h := (h1 * w1 + h2 * w2) / (w1 + w2 + 0.05) * 0.5
-	// the frame: raised, with a bevel
-	edge := min(min(u, 1.586 - u), min(v, 1 - v))
+	h1, w1 := ring(u, v, 0.46, 0.50, 58, 3.2, 9, 1.3)
+	h2, w2 := ring(u, v, 1.22, 0.64, 46, 2.4, 7, 0.4)
+	h := (h1 * w1 + h2 * w2) / (w1 + w2 + 0.05) * 0.30
+	edge := min(min(u, CARD_ASPECT - u), min(v, 1 - v))
+	// the lip: a rounded rise to the edge
 	bevel := 1 - clamp(edge / 0.04, 0, 1)
-	h += bevel * bevel * 1.6
-	// the inner groove of the frame
+	h += bevel * bevel * 1.8
+	// the groove inside the lip
 	g := (edge - 0.055) / 0.006
-	h -= 0.6 * math.exp(-g * g)
+	h -= 0.55 * math.exp(-g * g)
+	// the micro-lettering, cut into the lip along the top and the bottom edges (below 0.07 from a corner: the radius)
+	if u > 0.075 && u < CARD_ASPECT - 0.075 {
+		band :: 8     // texels from the edge to the first row of the lettering (0.0135 of the height)
+		start :: 42   // and from the left edge to the first letter
+		if letter_dot(x - start, y - band) || letter_dot(x - start + 3 * DOT, (NORMAL_H - 1 - y) - band) { h -= 0.7 }
+	}
 	return h
 }
 
-// Makes the three pictures. `allocator` holds the strings.
-card_relief :: proc(allocator := context.temp_allocator) -> Card_Relief {
-	W, H :: RELIEF_W, RELIEF_H
-	hf := make([]f32, W * H, context.temp_allocator)
-	for y in 0 ..< H {
-		for x in 0 ..< W {
-			hf[y * W + x] = f32(height_at((f64(x) + 0.5) / f64(H), (f64(y) + 0.5) / f64(H)))   // (square pixels: both axes in units of the height)
+Fill_Rows :: struct {
+	hf:     []f32,
+	y0, y1: int,
+}
+
+@(private = "file")
+fill_rows :: proc(t: ^thread.Thread) {
+	job := (^Fill_Rows)(t.data)
+	for y in job.y0 ..< job.y1 {
+		for x in 0 ..< NORMAL_W {
+			job.hf[y * NORMAL_W + x] = height_at(x, y) + (hash2(x, y) - 0.5) * 0.10   // the grain
 		}
 	}
-	// slopes by central differences
-	nd := make([]f32, W * H, context.temp_allocator)   // along the sheen's direction
-	ne := make([]f32, W * H, context.temp_allocator)   // towards the light of the embossing
-	nd_max, ne_max: f32 = 1e-6, 1e-6
-	LX, LY :: -0.6, -0.8   // the embossing light comes from the top left
+}
+
+// The normal map: NORMAL_W x NORMAL_H texels of RGBA8 (see above), in `allocator`. The same bytes every time.
+card_normal_map :: proc(allocator := context.allocator) -> []u8 {
+	W, H :: NORMAL_W, NORMAL_H
+	hf := make([]f32, W * H, allocator)
+	defer delete(hf)
+	// the height field, in bands of rows on a few threads (about 100 ms on one: the card should not stall the page when it first shows)
+	workers := clamp(host.processor_count(), 1, 8)
+	jobs := make([]Fill_Rows, workers, allocator)
+	defer delete(jobs)
+	threads := make([]^thread.Thread, workers, allocator)
+	defer delete(threads)
+	for i in 0 ..< workers {
+		jobs[i] = Fill_Rows{hf = hf, y0 = H * i / workers, y1 = H * (i + 1) / workers}
+		threads[i] = thread.create(fill_rows)
+		threads[i].data = &jobs[i]
+		thread.start(threads[i])
+	}
+	for t in threads {
+		thread.join(t)
+		thread.destroy(t)
+	}
+
+	// the cavity: the height field against its own blur (a box of 13 x 13, two passes)
+	R :: 6
+	tmp := make([]f32, W * H, allocator)
+	defer delete(tmp)
+	blur := make([]f32, W * H, allocator)
+	defer delete(blur)
+	for y in 0 ..< H {
+		for x in 0 ..< W {
+			s: f32
+			for k in -R ..= R { s += hf[y * W + clamp(x + k, 0, W - 1)] }
+			tmp[y * W + x] = s / (2 * R + 1)
+		}
+	}
+	for y in 0 ..< H {
+		for x in 0 ..< W {
+			s: f32
+			for k in -R ..= R { s += tmp[clamp(y + k, 0, H - 1) * W + x] }
+			blur[y * W + x] = s / (2 * R + 1)
+		}
+	}
+	lo, hi := f32(1e9), f32(-1e9)
+	for h in hf { lo, hi = min(lo, h), max(hi, h) }
+
+	out := make([]u8, W * H * 4, allocator)
 	for y in 0 ..< H {
 		for x in 0 ..< W {
 			xm, xp := max(x - 1, 0), min(x + 1, W - 1)
 			ym, yp := max(y - 1, 0), min(y + 1, H - 1)
-			gx := (hf[y * W + xp] - hf[y * W + xm]) / f32(xp - xm)
-			gy := (hf[yp * W + x] - hf[ym * W + x]) / f32(yp - ym)
-			d := -(gx * SHEEN_DX + gy * SHEEN_DY)   // the normal's component along the direction of the sheen
-			e := -(gx * LX + gy * LY)                // minus the slope along the light: > 0 where the surface faces it
-			nd[y * W + x], ne[y * W + x] = d, e
-			nd_max, ne_max = max(nd_max, abs(d)), max(ne_max, abs(e))
+			// a 3 x 3 Sobel: the grain would make a one-texel difference too rough to light
+			gx := (hf[ym * W + xp] + 2 * hf[y * W + xp] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[y * W + xm] - hf[yp * W + xm]) / (8 * f32(xp - xm) * 0.5)
+			gy := (hf[yp * W + xm] + 2 * hf[yp * W + x] + hf[yp * W + xp] - hf[ym * W + xm] - 2 * hf[ym * W + x] - hf[ym * W + xp]) / (8 * f32(yp - ym) * 0.5)
+			nx, ny, nz := -gx * SLOPE, -gy * SLOPE, f32(1)
+			inv := 1 / math.sqrt(nx * nx + ny * ny + nz * nz)
+			nx, ny = nx * inv, ny * inv
+			i := (y * W + x) * 4
+			out[i + 0] = u8(clamp(128 + nx * 127, 0, 255))
+			out[i + 1] = u8(clamp(128 + ny * 127, 0, 255))
+			out[i + 2] = u8(clamp((hf[y * W + x] - lo) / (hi - lo) * 255, 0, 255))
+			out[i + 3] = u8(clamp((blur[y * W + x] - hf[y * W + x]) * 2.4 * 255, 0, 255))
 		}
 	}
-	emboss := make([]u8, W * H * 4, context.temp_allocator)
-	toward := make([]u8, W * H * 4, context.temp_allocator)
-	away := make([]u8, W * H * 4, context.temp_allocator)
-	for i in 0 ..< W * H {
-		d := clamp(nd[i] / (0.55 * nd_max), -1, 1)
-		t, a := f32(math.pow(f64(max(d, 0)), 0.7)), f32(math.pow(f64(max(-d, 0)), 0.7))
-		toward[i * 4 + 0], toward[i * 4 + 1], toward[i * 4 + 2], toward[i * 4 + 3] = 255, 255, 255, u8(t * 255)
-		away[i * 4 + 0], away[i * 4 + 1], away[i * 4 + 2], away[i * 4 + 3] = 255, 255, 255, u8(a * 255)
-		e := clamp(ne[i] / (0.6 * ne_max), -1, 1)
-		c: u8 = e > 0 ? 255 : 0
-		emboss[i * 4 + 0], emboss[i * 4 + 1], emboss[i * 4 + 2], emboss[i * 4 + 3] = c, c, c, u8(abs(e) * 200)
-	}
-	url :: proc(rgba: []u8, allocator := context.temp_allocator) -> string {
-		png, ok := images.encode_rgba(rgba, RELIEF_W, RELIEF_H, .Png, 0, false)
-		if !ok { return "" }
-		defer delete(png)
-		return fmt.aprintf("data:image/png;base64,%s", base64.encode(png, allocator = context.temp_allocator), allocator = allocator)
-	}
-	return Card_Relief{emboss = url(emboss, allocator), toward = url(toward, allocator), away = url(away, allocator)}
-}
-
-@(private = "file") relief_cache: Card_Relief
-@(private = "file") relief_lock: sync.Mutex
-
-// The pictures, made once (the first time a licence card is shown) and kept for the life of the program: they are what a licence card
-// needs on every build of the page, a few hundred kilobytes, and they do not depend on anything. Held by the process allocator, outside the
-// allocator the tests and the check build follow.
-card_relief_cached :: proc() -> Card_Relief {
-	sync.lock(&relief_lock)
-	defer sync.unlock(&relief_lock)
-	if relief_cache.emboss == "" {
-		context.allocator = base.process_allocator()
-		relief_cache = card_relief(context.allocator)
-	}
-	return relief_cache
+	return out
 }
