@@ -128,6 +128,23 @@ function Flush-Steps {
     }
 }
 
+# The end of the run: the slowest steps, and the slowest sections of the scripts that time themselves (so the table is in a CI log too, and in
+# the job summary of a GitHub run).
+function Show-TestTimes {
+    $lines = @('slowest steps (seconds; with -Jobs n they overlap):')
+    foreach ($s in @($script:times.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 15)) { $lines += ('  {0,5} s  {1}' -f $s.Value, $s.Key.Substring(0, [Math]::Min(110, $s.Key.Length))) }
+    if ($env:WREN_TIMINGS_FILE -and (Test-Path $env:WREN_TIMINGS_FILE)) {
+        $rows = foreach ($l in Get-Content $env:WREN_TIMINGS_FILE) { $a = $l -split "`t"; if ($a.Count -eq 3) { [pscustomobject]@{ Script = $a[0]; Section = $a[1]; Seconds = [double]::Parse($a[2], [Globalization.CultureInfo]::InvariantCulture) } } }
+        $top = @($rows | Sort-Object Seconds -Descending | Select-Object -First 20)
+        if ($top.Count -gt 0) {
+            $lines += 'slowest sections of the scripts that time themselves:'
+            foreach ($r in $top) { $lines += ('  {0,6:N1} s  {1}: {2}' -f $r.Seconds, $r.Script, $r.Section) }
+        }
+    }
+    $lines
+    if ($env:GITHUB_STEP_SUMMARY) { try { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (@('### Test times', '```') + $lines + '```') } catch { } }
+}
+
 $timesFile = Join-Path $root 'build\test_all_times.txt'
 $script:times = @{}
 if (Test-Path $timesFile) { foreach ($line in Get-Content $timesFile) { $k, $v = $line -split "`t", 2; if ($v) { $script:times[$k] = [int]$v } } }
@@ -135,6 +152,9 @@ if (Test-Path $timesFile) { foreach ($line in Get-Content $timesFile) { $k, $v =
 New-Item -ItemType Directory -Force build | Out-Null
 # this run's temporary files (several runs at once share no fixed name under %TEMP%)
 $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'build\tmp')).FullName
+# where the time of each script goes (Section / Show-WrenSections in test_env.ps1): the scripts append their sections here, the table is printed at the end
+$env:WREN_TIMINGS_FILE = Join-Path $env:TEMP 'test_all_sections.tsv'
+Remove-Item $env:WREN_TIMINGS_FILE -ErrorAction SilentlyContinue
 # Wasm calls run on the calling thread: every program that runs modules (the JavaScript engine needs 16 MiB of wasm
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
@@ -461,6 +481,7 @@ if ($Jobs -gt 1) { Flush-Steps }
 Step 'remote control: the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
 if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
+Show-TestTimes
 [IO.File]::WriteAllText($timesFile, (($script:times.Keys | Sort-Object | ForEach-Object { "$_`t$($script:times[$_])" }) -join "`n") + "`n")
 "failed steps: $failed ($([int]((Get-Date) - $runStart).TotalSeconds) s, -Jobs $Jobs)"
 exit $failed

@@ -119,6 +119,39 @@ function Stop-WrenTestServer($Server) {
     if ($Server -and $Server.Process) { Stop-Process -Id $Server.Process.Id -Force -ErrorAction SilentlyContinue; $Server.Process.WaitForExit(5000) | Out-Null }
 }
 
+# Where the time of a script goes, section by section (the tests are slow when nobody can see which part is):
+#   Section 'name'      ends the section in progress and starts a new one (a section is a stretch of the script, from one call to the next)
+#   Show-WrenSections   ends the last one and prints "seconds  section" for the script, longest first, with the total and (when
+#                       wrenctl.ps1 is loaded) how many `wren ctl` processes were started and for how long
+# When $env:WREN_TIMINGS_FILE names a file (tools\test_all.ps1 sets it), every section is appended to it as "script<TAB>section<TAB>seconds"
+# and test_all prints the longest ones at the end of the run (and in the job summary of a GitHub run): the table is there in a CI log too.
+$global:WrenSections = New-Object Collections.Generic.List[object]
+$global:WrenSectionName = $null
+$global:WrenSectionClock = [Diagnostics.Stopwatch]::StartNew()
+$global:WrenSectionScript = if ($MyInvocation.PSCommandPath) { [IO.Path]::GetFileNameWithoutExtension($MyInvocation.PSCommandPath) } else { 'script' }
+function Close-WrenSection {
+    if ($null -eq $global:WrenSectionName) { return }
+    $global:WrenSections.Add([pscustomobject]@{ Section = $global:WrenSectionName; Seconds = [Math]::Round($global:WrenSectionClock.Elapsed.TotalSeconds, 2) })
+    $global:WrenSectionName = $null
+}
+function Section([string]$Name) {
+    Close-WrenSection
+    $global:WrenSectionName = $Name
+    $global:WrenSectionClock.Restart()
+}
+function Show-WrenSections([string]$Title = '') {
+    Close-WrenSection
+    if ($global:WrenSections.Count -eq 0) { return }
+    $scr = if ($Title) { $Title } else { $global:WrenSectionScript }
+    $total = ($global:WrenSections | Measure-Object Seconds -Sum).Sum
+    "sections of ${scr}: $([Math]::Round($total, 1)) s in $($global:WrenSections.Count) sections" + $(if ($null -ne $global:WrenCtlCalls) { "; $($global:WrenCtlCalls) wren ctl processes started, $([Math]::Round($global:WrenCtlMs / 1000.0, 1)) s in them" } else { '' })
+    foreach ($s in ($global:WrenSections | Sort-Object Seconds -Descending)) { '  {0,7:N2} s  {1}' -f $s.Seconds, $s.Section }
+    if ($env:WREN_TIMINGS_FILE) {
+        try { [IO.File]::AppendAllText($env:WREN_TIMINGS_FILE, (($global:WrenSections | ForEach-Object { "$scr`t$($_.Section)`t$($_.Seconds)" }) -join "`n") + "`n") } catch { }
+    }
+    $global:WrenSections.Clear()
+}
+
 # No script that sources this file (tests, captures, measurements, the agents' runs) lets a Wren integrate itself with the machine's desktop:
 # Setup's offer at the start (setup.odin), the system watcher of the integration (desktop_shell.odin) and the update check (update_check.odin) read this variable. (--desktop-integration=... on the command line still works.)
 $env:WREN_DESKTOP_INTEGRATION = 'off'

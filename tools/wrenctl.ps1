@@ -20,6 +20,9 @@
 $script:WrenExe = if ($env:WREN_EXE) { $env:WREN_EXE } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'build\wren.exe' }
 $global:WrenExit = 0
 $global:WrenErr = ''
+# how many `wren ctl` processes the script started and how long they took (Show-WrenSections in test_env.ps1 prints them)
+$global:WrenCtlCalls = 0
+$global:WrenCtlMs = 0
 
 # A path as PowerShell means it (relative to the current location, which is not the process's current folder).
 function Resolve-PathHere([string]$p) { return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($p) }
@@ -45,6 +48,8 @@ function Wren-Ctl {
     $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
     $psi.CreateNoWindow = $true
     $psi.WorkingDirectory = (Get-Location).ProviderPath
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $global:WrenCtlCalls++
     $p = [Diagnostics.Process]::Start($psi)
     $errTask = $p.StandardError.ReadToEndAsync()
     $outTask = $p.StandardOutput.ReadToEndAsync()
@@ -52,11 +57,13 @@ function Wren-Ctl {
         # (only the process this call started)
         try { $p.Kill() } catch {}
         $global:WrenExit = 2; $global:WrenErr = "wren ctl did not end in $TimeoutSec s"
+        $global:WrenCtlMs += $clock.ElapsedMilliseconds
         return ''
     }
     $p.WaitForExit()
     $global:WrenExit = $p.ExitCode
     $global:WrenErr = $errTask.Result.TrimEnd()
+    $global:WrenCtlMs += $clock.ElapsedMilliseconds
     return $outTask.Result.TrimEnd("`r", "`n")
 }
 
