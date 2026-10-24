@@ -154,6 +154,9 @@ foreign dbghelp {
 SAMPLE_DEPTH :: 24
 Sample :: struct { rip: u64, phase: Phase, t: i64, from: [SAMPLE_DEPTH]u64 }   // from: the callers inside the executable, innermost first (WREN_SAMPLE_STACK=1)
 
+// A sample of one of the process's other threads (WREN_SAMPLE_THREADS=1): where it was, and who called (the executable's frames).
+Osample :: struct { tid: u32, rip: u64, from: [SAMPLE_DEPTH]u64 }
+
 Prof :: struct {
 	on:        bool,
 	freq:      f64,
@@ -169,6 +172,10 @@ Prof :: struct {
 	target:    win.HANDLE,
 	sampler:   ^thread.Thread,
 	stacks:    bool,             // the sampler also unwinds the stack (WREN_SAMPLE_STACK=1)
+	osamples:  []Osample,        // the other threads, one at a time in turn (WREN_SAMPLE_THREADS=1)
+	n_osamples: int,
+	osampler:  ^thread.Thread,
+	main_tid:  u32,
 	exe_lo, exe_hi: u64,
 	cpu0_user, cpu0_kernel: u64,
 	wall0:     i64,
@@ -241,6 +248,12 @@ prof_init :: proc(app: ^App) {
 		prof.sampling = true
 		prof.sampler = thread.create(sampler_proc)
 		thread.start(prof.sampler)
+		if os.get_env("WREN_SAMPLE_THREADS", context.temp_allocator) == "1" {
+			prof.main_tid = win.GetCurrentThreadId()
+			prof.osamples = make([]Osample, 600_000)
+			prof.osampler = thread.create(other_sampler_proc)
+			thread.start(prof.osampler)
+		}
 	}
 }
 
@@ -336,11 +349,139 @@ module_of :: proc(addr: u64) -> string {
 	return name
 }
 
+// WREN_SAMPLE_THREADS=1: every millisecond one of the other threads of the process, in turn, is stopped and its instruction
+// pointer and callers read (the main thread has its own sampler). A thread is sampled about 1000 / (threads) times a second.
+other_sampler_proc :: proc(_: ^thread.Thread) {
+	pid := win.GetCurrentProcessId()
+	me := win.GetCurrentThreadId()
+	ids := make([dynamic]u32, 0, 128)
+	next_refresh: i64
+	turn := 0
+	for !sync.atomic_load(&prof.stop) {
+		win.Sleep(1)
+		now := qpc()
+		if now >= next_refresh {
+			next_refresh = now + i64(prof.freq / 2)
+			clear(&ids)
+			snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPTHREAD, 0)
+			if snap != win.INVALID_HANDLE_VALUE {
+				te: win.THREADENTRY32
+				te.dwSize = size_of(te)
+				ok := win.Thread32First(snap, &te)
+				for ok {
+					if te.th32OwnerProcessID == pid && te.th32ThreadID != me && te.th32ThreadID != prof.main_tid { append(&ids, te.th32ThreadID) }
+					ok = win.Thread32Next(snap, &te)
+				}
+				win.CloseHandle(snap)
+			}
+		}
+		if len(ids) == 0 { continue }
+		tid := ids[turn % len(ids)]
+		turn += 1
+		if tid == sync.atomic_load(&sampler_tid) { continue }
+		h := win.OpenThread(0x2 | 0x8 | 0x800, false, tid)   // SUSPEND_RESUME | GET_CONTEXT | QUERY_LIMITED_INFORMATION
+		if h == nil { continue }
+		got := false
+		s: Osample
+		if win.SuspendThread(h) != ~u32(0) {
+			ctx: win.CONTEXT
+			ctx.ContextFlags = CONTEXT_FULL_AMD64
+			if win.GetThreadContext(h, &ctx) {
+				s = Osample{tid = tid, rip = u64(ctx.Rip)}
+				s.from = callers_in_exe(&ctx)
+				got = true
+			}
+			win.ResumeThread(h)
+		}
+		if got && prof.n_osamples < len(prof.osamples) {
+			prof.osamples[prof.n_osamples] = s
+			prof.n_osamples += 1
+		}
+		win.CloseHandle(h)
+	}
+}
+
+@(private = "file")
+sampler_tid: u32
+
+// The other threads' samples: per thread, how much of it was spent waiting and the functions it was in when it was not, with who
+// called them. A thread that spins in the kernel (a yield, a zero-timeout wait) shows as "running" in a system call.
+report_threads :: proc(sb: ^strings.Builder) {
+	proc_h := win.GetCurrentProcess()
+	SymSetOptions(0x2 | 0x4)
+	SymInitialize(proc_h, ".;build", true)
+	buf: [768]u8
+	cache := make(map[u64]string, context.temp_allocator)
+	sym :: proc(addr: u64, proc_h: win.HANDLE, buf: []u8, cache: ^map[u64]string) -> string {
+		if s, ok := cache[addr]; ok { return s }
+		info := (^SYMBOL_INFO)(raw_data(buf))
+		info^ = {}
+		info.SizeOfStruct = size_of(SYMBOL_INFO)
+		info.MaxNameLen = u32(len(buf) - size_of(SYMBOL_INFO))
+		disp: u64
+		r: string
+		if SymFromAddr(proc_h, addr, &disp, info) {
+			r = fmt.tprintf("%s!%s", module_of(addr), string(cstring(&info.Name[0])))
+		} else {
+			r = fmt.tprintf("%s+0x%x", module_of(addr), addr & 0xffff)
+		}
+		r = strings.clone(r, context.temp_allocator)
+		cache[addr] = r
+		return r
+	}
+	waiting :: proc(name: string) -> bool {
+		for w in ([]string{"WaitForAlertByThread", "WaitForSingleObject", "WaitForMultipleObjects", "RemoveIoCompletion", "WaitForWorkViaWorkerFactory", "WaitOnAddress", "MsgWaitForMultipleObjects", "GetMessage", "WaitForKeyedEvent", "ZwWaitForAlertByThreadId", "SleepEx"}) {
+			if strings.contains(name, w) { return true }
+		}
+		return false
+	}
+	Thread_Row :: struct { tid: u32, total, wait: int, by: map[string]int }
+	rows := make(map[u32]^Thread_Row, context.temp_allocator)
+	for s in prof.osamples[:prof.n_osamples] {
+		r, ok := rows[s.tid]
+		if !ok {
+			r = new(Thread_Row, context.temp_allocator)
+			r.tid = s.tid
+			r.by = make(map[string]int, context.temp_allocator)
+			rows[s.tid] = r
+		}
+		r.total += 1
+		top := sym(s.rip, proc_h, buf[:], &cache)
+		if waiting(top) { r.wait += 1; continue }
+		key := top
+		for j in 0 ..< 3 {
+			a := s.from[j]
+			if a == 0 { break }
+			key = fmt.tprintf("%s <- %s", key, sym(a, proc_h, buf[:], &cache))
+		}
+		r.by[key] += 1
+	}
+	list := make([dynamic]^Thread_Row, context.temp_allocator)
+	for _, r in rows { append(&list, r) }
+	slice.sort_by(list[:], proc(a, b: ^Thread_Row) -> bool { return a.total - a.wait > b.total - b.wait })
+	fmt.sbprintf(sb, "\n=== the other threads (WREN_SAMPLE_THREADS=1): %d samples of %d threads; the busiest first (running = not in a wait) ===\n", prof.n_osamples, len(list))
+	running_all := 0
+	for r in list { running_all += r.total - r.wait }
+	fmt.sbprintf(sb, "all threads: %d of %d samples were not in a wait (%.1f %%)\n", running_all, prof.n_osamples, f64(running_all) * 100 / f64(max(prof.n_osamples, 1)))
+	for r, i in list {
+		if i >= 12 { break }
+		fmt.sbprintf(sb, "\n  thread %d: %d samples, running %d (%.0f %%)\n", r.tid, r.total, r.total - r.wait, f64(r.total - r.wait) * 100 / f64(max(r.total, 1)))
+		Row :: struct { k: string, v: int }
+		items := make([dynamic]Row, context.temp_allocator)
+		for k, v in r.by { append(&items, Row{k, v}) }
+		slice.sort_by(items[:], proc(a, b: Row) -> bool { return a.v > b.v })
+		for it, j in items {
+			if j >= 7 { break }
+			fmt.sbprintf(sb, "    %5.1f %%  %s\n", f64(it.v) * 100 / f64(max(r.total - r.wait, 1)), it.k)
+		}
+	}
+}
 prof_report :: proc() {
 	if !prof.on { return }
 	latency_probe_report()   // shell_latency.odin
 	sync.atomic_store(&prof.stop, true)
 	if prof.sampler != nil { thread.join(prof.sampler) }
+	if prof.osampler != nil { thread.join(prof.osampler) }
 	wall := f64(qpc() - prof.wall0) / prof.freq
 	u, k := process_cpu()
 	cpu_user, cpu_kernel := f64(u - prof.cpu0_user) / 1e7, f64(k - prof.cpu0_kernel) / 1e7
@@ -372,6 +513,7 @@ prof_report :: proc() {
 	fmt.sbprintf(&sb, "%s\n", page.styles_stats_why())
 
 	if prof.sampling && prof.n_samples > 0 { report_samples(&sb) }
+	if prof.n_osamples > 0 { report_threads(&sb) }
 
 	_ = os.write_entire_file(strings.concatenate({prof.out, ".txt"}, context.temp_allocator), transmute([]byte)strings.to_string(sb))
 

@@ -143,6 +143,8 @@ Marker :: struct {
 	walked:  map[Walk_Key]bool,   // positional walks from an element, forward or backward, per index
 	emptied: map[Walk_Key]bool,   // children_removed per parent, per index
 	keyed:   map[[2]u64]bool,      // (element, key set) subtrees scanned by mark_keyed
+	flips:   map[Flip_Key]bool,    // has_flip answered in this pass
+	exact:   bool,                 // the members of the exact anchors can be used
 }
 
 @(private = "file")
@@ -365,6 +367,8 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
 			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) {
+				if m.exact && ha.exact && ha.members != nil && !has_flip(m, &ha, a) { continue }
+				if trace_restyle() && flat_parent_element(m.doc, a) == base.NIL_HANDLE { trace_anchors[fmt.tprintf("exact %v unkeyed %v kind %v reach.desc %v keys: classes %v ids %v attrs %v types %v", ha.exact, ha.feat.unkeyed, feat.kind, ha.reach.desc, slice.map_keys(ha.feat.classes, context.temp_allocator), slice.map_keys(ha.feat.ids, context.temp_allocator), slice.map_keys(ha.feat.attrs, context.temp_allocator), slice.map_keys(ha.feat.types, context.temp_allocator))] += 1 }
 				apply(m, a, ha.reach)
 			}
 		}
@@ -862,6 +866,8 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 }
 
 @(private = "file")
+trace_anchors: map[string]int   // (WREN_RESTYLE_TRACE) the :has() anchors that restyled the root element's subtree, and how often
+@(private = "file")
 trace_roots: map[int]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.odin that marked the root element's whole subtree, and how often
 
 // WREN_RESTYLE_TRACE=1: what made a restyle too big to scope, on standard error (for the measuring tools): the mutations, and the
@@ -898,6 +904,8 @@ trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 	}
 	for k, v in trace_roots { fmt.eprintfln("    root subtree marked by restyle_dom.odin:%d x %d", k, v) }
 	clear(&trace_roots)
+	for k, v in trace_anchors { fmt.eprintfln("    root restyled by anchor x %d: %s", v, k) }
+	clear(&trace_anchors)
 	fmt.eprintfln("    mutations: %s", len(tally) > 12 ? "(many kinds)" : "")
 	for k, v in tally { fmt.eprintfln("      %d x %s", v, k) }
 	for r, i in rows {
@@ -1123,13 +1131,15 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return fail(e, "memory left by partial restyles") }
 	ix := inv_index(e)
 	if ix.give_up { return fail(e, "selectors nested too deep") }
-	if !shadows && ix.uses_has { watch_sync(ix, doc) }
+	exact := false   // the members of the exact :has() anchors are of the document before these mutations (watch_sync was made by a pass that came before)
+	if !shadows && ix.uses_has { exact = !watch_sync(ix, doc) }
 
 	m := Marker{e = e, s = s, doc = doc, ix = ix, shadows = shadows}
 	m.marks = make(map[base.Handle]u8, 64, context.temp_allocator)
 	m.removed = make([dynamic]base.Handle, 0, 4, context.temp_allocator)
 	m.walked = make(map[Walk_Key]bool, 16, context.temp_allocator)
 	m.emptied = make(map[Walk_Key]bool, 4, context.temp_allocator)
+	m.flips = make(map[Flip_Key]bool, 16, context.temp_allocator)
 	match_ctx_init(&m.mc, doc, s.state, context.temp_allocator)
 	w := Walker{e = e, s = s, doc = doc, marks = &m.marks}
 	w.p = pass_make(e, s, doc, s.state)
@@ -1144,6 +1154,8 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		}
 	}
 	clear(&e.shadow.changed)
+	m.exact = exact
+	members_prepare(&m, entries)
 	mark_mutations(&m, entries)
 	if m.fail != "" { return fail(e, m.fail) }
 	work := estimate(&m)
@@ -1474,4 +1486,188 @@ container_changed :: proc(old, nc: ^Computed) -> bool {
 		a, b = a.parent, b.parent
 	}
 	return false
+}
+
+////////////////////////////////
+// Exact :has() anchors: members, and whether an anchor's answer flipped
+
+@(private = "file")
+Flip_Key :: struct { ha: rawptr, a: base.Handle }
+
+// An attribute named `name` changed: could it change whether an element matches the argument of `ha`?
+@(private = "file")
+arg_reads_attr :: proc(ha: ^Has_Anchor, name: string) -> bool {
+	for sp in ha.arg.simples {
+		switch sp.kind {
+		case .Id: if name == "id" { return true }
+		case .Class: if name == "class" { return true }
+		case .Attribute: if strings.equal_fold(sp.name, name) { return true }
+		case .Type, .Universal, .Pseudo_Class, .Nesting:
+		}
+	}
+	return false
+}
+
+// Before the mutations are looked at: for each exact anchor the members that came (inserted subtrees that hold what its argument
+// names, attributes that now match) and the parents members may have left (removed subtrees that held it, attributes that stopped
+// matching): what has_flip needs. The members that stayed are in the set; those gone are dropped when met.
+@(private = "file")
+members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
+	ix := m.ix
+	if m.shadows || !ix.uses_has || !m.exact { return }
+	any := false
+	for &ha in ix.has_anchors {
+		if ha.exact && ha.members != nil { any = true; clear(&ha.members.added); clear(&ha.members.removed) }
+	}
+	if !any { return }
+	doc := m.doc
+	known_mask :: proc(ha: ^Has_Anchor) -> u64 { return ha.last_mask & ~dom.WATCH_KNOWN }
+	for &en in entries {
+		switch en.kind {
+		case .Insert:
+			n := dom.get(doc, en.node)
+			if n == nil || n.kind != .Element || !connected(doc, en.node) { continue }
+			w := dom.subtree_watch(doc, en.node)
+			for &ha in ix.has_anchors {
+				if !ha.exact || ha.members == nil { continue }
+				if w & known_mask(&ha) != known_mask(&ha) { continue }   // a key of its argument is not in the subtree
+				stack := make([dynamic]base.Handle, 0, 32, context.temp_allocator)
+				append(&stack, en.node)
+				for len(stack) > 0 {
+					x := pop(&stack)
+					xn := dom.get(doc, x)
+					if xn == nil || xn.kind != .Element { continue }
+					// (also one the set already had: it was taken out of the tree and put back, maybe somewhere else)
+					if matches_compound(&m.mc, x, ha.arg) {
+						ha.members.set[x] = {}
+						append(&ha.members.added, x)
+					}
+					for ch := xn.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+				}
+			}
+		case .Remove:
+			known := en.watch & dom.WATCH_KNOWN != 0 && en.watch_gen == doc.journal.watch.gen
+			for &ha in ix.has_anchors {
+				if !ha.exact || ha.members == nil { continue }
+				if known && en.watch & known_mask(&ha) != known_mask(&ha) { continue }
+				append(&ha.members.removed, en.parent)
+			}
+		case .Attribute:
+			n := dom.get(doc, en.node)
+			if n == nil || n.kind != .Element { continue }
+			for &ha in ix.has_anchors {
+				if !ha.exact || ha.members == nil { continue }
+				// an attribute the chain reads, on an element that has members below it: any answer may have flipped
+				if ha.chain && !ha.members.dirty && chain_reads_attr(&ha, en.name) {
+					for x in ha.members.set { if x != en.node && is_below(doc, x, en.node) { ha.members.dirty = true; break } }
+				}
+				if !arg_reads_attr(&ha, en.name) { continue }
+				was := en.node in ha.members.set
+				now := connected(doc, en.node) && matches_compound(&m.mc, en.node, ha.arg)
+				if now && !was {
+					ha.members.set[en.node] = {}
+					append(&ha.members.added, en.node)
+				} else if !now && was {
+					delete_key(&ha.members.set, en.node)
+					append(&ha.members.removed, n.parent)
+				}
+			}
+		case .Text, .Reslot:
+		}
+	}
+}
+
+// Did the answer of `:has(arg)` of the anchor `a` change with the mutations of this pass? A member that was there and is there
+// still under `a` (a child of it for :has(> arg)) settles it: true before and after. Else it is true now if some member that came is
+// under `a`, and was true before if some member left from under it (a parent it left is `a` or below it; one already gone leaves the
+// question open: a flip is assumed).
+@(private = "file")
+has_flip :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
+	if ha.members.dirty { return true }
+	key := Flip_Key{ha, a}
+	if r, ok := m.flips[key]; ok { return r }
+	r := has_flip_scan(m, ha, a)
+	m.flips[key] = r
+	return r
+}
+
+@(private = "file")
+has_flip_scan :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
+	doc := m.doc
+	mem := ha.members
+	valid :: proc(m: ^Marker, x: base.Handle) -> bool { return dom.get(m.doc, x) != nil && connected(m.doc, x) }
+	// x is under a (a child of it when child_only)
+	under :: proc(m: ^Marker, ha: ^Has_Anchor, a, x: base.Handle) -> bool {
+		xn := dom.get(m.doc, x)
+		if xn == nil { return false }
+		if ha.child_only { return xn.parent == a }
+		for cur := xn.parent; cur != base.NIL_HANDLE; {
+			if cur == a { return true }
+			cn := dom.get(m.doc, cur)
+			if cn == nil { return false }
+			cur = cn.parent
+		}
+		return false
+	}
+	is_added :: proc(mem: ^Has_Members, x: base.Handle) -> bool {
+		for y in mem.added { if y == x { return true } }
+		return false
+	}
+	gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+	stayed := false
+	for x in mem.set {
+		if dom.get(doc, x) == nil { append(&gone, x); continue }
+		if is_added(mem, x) { continue }
+		if !valid(m, x) { continue }
+		if under(m, ha, a, x) && chain_holds(m, ha, a, x) { stayed = true; break }
+	}
+	for x in gone { delete_key(&mem.set, x) }
+	if stayed { return false }
+	now := false
+	for x in mem.added { if valid(m, x) && under(m, ha, a, x) && chain_holds(m, ha, a, x) { now = true; break } }
+	before := false
+	for p in mem.removed {
+		if p == a { before = true; break }
+		pn := dom.get(doc, p)
+		if pn == nil { before = true; break }   // not known where it was
+		if ha.child_only { continue }
+		for cur := pn.parent; cur != base.NIL_HANDLE; {
+			if cur == a { before = true; break }
+			cn := dom.get(doc, cur)
+			if cn == nil { break }
+			cur = cn.parent
+		}
+		if before { break }
+	}
+	return now != before
+}
+
+// Could a change of attribute `name` change what the chain of `ha` matches (an element's class, id or attribute it tests)?
+@(private = "file")
+chain_reads_attr :: proc(ha: ^Has_Anchor, name: string) -> bool {
+	if name == "class" { return len(ha.feat.classes) > 0 }
+	if name == "id" { return len(ha.feat.ids) > 0 }
+	for k in ha.feat.attrs { if strings.equal_fold(k, name) { return true } }
+	return false
+}
+
+// Is `x` below `top` in the tree (strictly)?
+@(private = "file")
+is_below :: proc(doc: ^dom.Document, x, top: base.Handle) -> bool {
+	xn := dom.get(doc, x)
+	if xn == nil { return false }
+	for cur := xn.parent; cur != base.NIL_HANDLE; {
+		if cur == top { return true }
+		cn := dom.get(doc, cur)
+		if cn == nil { return false }
+		cur = cn.parent
+	}
+	return false
+}
+
+// For a chain: does member `x` (under the anchor `a`) satisfy the whole of the relative selector? A single compound: it does.
+@(private = "file")
+chain_holds :: proc(m: ^Marker, ha: ^Has_Anchor, a, x: base.Handle) -> bool {
+	if !ha.chain { return true }
+	return match_chain(&m.mc, x, ha.cx, len(ha.cx.compounds) - 1, a, 0)
 }
