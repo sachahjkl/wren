@@ -208,7 +208,7 @@ paint_item :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View
 	switch it.kind {
 	case .Box:
 		if page_render.bare != nil && page_render.bare(page_render.content_user, d, it.node) { return }
-		paint_box(l, dc, v, it, r, origin)
+		paint_box(l, dc, d, v, it, r, origin)
 	case .Inline_Box: paint_inline_box(l, dc, v, it, r, origin)
 	case .Text: paint_text(l, dc, it, r, off)
 	case .Marker: paint_marker(l, dc, it, r, off)
@@ -242,7 +242,7 @@ corner_radii :: proc(cs: ^style.Computed, r: draw.Rect, scale: f32) -> [4]f32 {
 no_radius :: proc(r: [4]f32) -> bool { return r == {0, 0, 0, 0} }
 
 @(private = "file")
-paint_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, origin: draw.Vec2) {
+paint_box :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, v: ^lay.View, it: ^lay.Display_Item, r: draw.Rect, origin: draw.Vec2) {
 	cs := it.cs
 	if cs == nil { return }
 	b := &l.boxes[it.box]
@@ -255,7 +255,7 @@ paint_box :: proc(l: ^Layout, dc: ^draw.Context, v: ^lay.View, it: ^lay.Display_
 	boxes := bg_boxes(r, radii, widths, b.padding)
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, false) }
 	if .No_Background not_in it.flags && it.box != canvas_source_box(l) {
-		if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale) }
+		if background_clips_text(cs) { paint_backgrounds_text(l, dc, v, it, &boxes, origin) } else { paint_backgrounds(dc, cs, &boxes, l.scale, d) }
 	}
 	if len(cs.box_shadow) > 0 { paint_box_shadows(dc, cs, r, radii, boxes.padding, boxes.padding_radii, l.scale, true) }
 	if widths == {} { return }
