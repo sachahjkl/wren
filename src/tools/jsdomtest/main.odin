@@ -29,6 +29,7 @@ import "wb:tools/testenv"
 PAGES_DIR :: "examples/jsdom"
 VIEW_W :: 800
 VIEW_H :: 600
+view_extra: f64   // a test widens the viewport script sees (fullscreen.odin: the resize event)
 
 failures: int
 passes: int
@@ -73,7 +74,7 @@ layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 
 layout_viewport :: proc(user: rawptr, p: ^page.Page) -> page.Viewport {
 	lh := (^Layout_Host)(user)
-	return page.Viewport{width = VIEW_W, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
+	return page.Viewport{width = VIEW_W + view_extra, height = VIEW_H, scale = 1, scroll_x = lh.scroll[0], scroll_y = lh.scroll[1]}
 }
 
 layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
@@ -142,6 +143,7 @@ main :: proc() {
 	h, herr := os.read_entire_file(filepath.join({PAGES_DIR, "harness.js"}, context.temp_allocator) or_else "", context.allocator)
 	if herr != nil { fmt.eprintln("cannot read examples/jsdom/harness.js (run from the repository root)"); os.exit(2) }
 	harness = string(h)
+	fullscreen_test_setup()   // fullscreen.odin: a window that records what it is asked
 
 	// the pages named on the command line, or every page of the folder
 	names := make([dynamic]string)
@@ -169,9 +171,11 @@ main :: proc() {
 		case "leaks.html": leak_checks(p)
 		case "layout.html": layout_cost_checks(p)
 		case "events.html": browser_event_checks(p)
+		case "fullscreen.html": fullscreen_checks(p)
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
 		page.page_close(p)
+		if name == "fullscreen.html" { fullscreen_closed_checks() }
 		lay.destroy(&lh.l)
 		free(lh)
 		delete(src)

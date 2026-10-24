@@ -2,6 +2,7 @@ package page
 
 import "core:fmt"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:dom"
 import "wb:fetch"
@@ -372,6 +373,8 @@ decode_css :: proc(data: []byte, max_bytes: int) -> []byte {
 // The result is cached; its `serial` changes exactly when some computed style changed, which is what layout watches.
 styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Styled {
 	e := p.engine
+	t0 := time.tick_now()
+	if embedder.before_styles != nil && p.worker == nil { embedder.before_styles(embedder.user, p) }   // (embedder.odin)
 	env := style.media_env_from(&e.settings, f64(viewport_w), f64(viewport_h), dppx, style.os_appearance().dark)
 	env.scripting = e.settings.scripting   // (scripting: enabled) / (scripting: none)
 	style.engine_set_environment(e, env)
@@ -379,25 +382,26 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 
 	now := document_time_ms(p)
 	full := p.styled == nil || p.style_stale || e.dirty || e.restyle_needed
+	why := p.styled == nil ? "no styles yet" : p.style_stale ? "the page's styles were marked stale" : e.dirty ? "style rules changed (a sheet came or went)" : e.restyle_needed ? "an environment change asked for one" : ""
 	partial, dom_partial := false, false
 	if !full && (p.styled.mutations != p.doc.mutations || e.shadow.dirty) {
-		full = true
+		full, why = true, "shadow tree rules changed"
 		if e.settings.inc_enabled {
 			owners := make([dynamic]base.Handle, 0, len(p.link_loads), context.temp_allocator)
 			for o in p.link_loads { append(&owners, o) }
 			if style.dom_touches_sheets(e, p.doc, p.styled, owners[:]) { sync_styles(p) }
 			if !e.dirty {
-				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true }
-			}
+				if _, ok := style.restyle_dom(e, p.doc, p.styled, style_threads(p)); ok { full, dom_partial = false, true } else { why = e.last_restyle.fallback }
+			} else { why = "a changed element carries style rules (<style>, <link>)" }
 		}
 	}
-	if !full && !style.state_equal(p.style_state, p.styled.state) {
-		if _, ok := style.restyle_state(e, p.doc, p.styled, p.style_state); !ok { full = true } else { partial = true }
+	if !full && !style.state_equal(effective_state(p), p.styled.state) {
+		if _, ok := style.restyle_state(e, p.doc, p.styled, effective_state(p)); !ok { full = true } else { partial = true }
 	}
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		old := p.styled
-		p.styled = style.compute_styles(e, p.doc, p.style_state, style_threads(p), p.settings.threads.style_min_nodes)
+		p.styled = style.compute_styles(e, p.doc, effective_state(p), style_threads(p), p.settings.threads.style_min_nodes)
 		// what changed for an incremental layout (only when one asked: set_layout_journal)
 		if old != nil && p.doc.nodes.count >= p.settings.threads.style_min_nodes {
 			style.journal_diff(old, p.styled, style_threads(p))
@@ -414,6 +418,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 		if e.settings.inc_enabled {
 			if !p.doc.journal.on { dom.journal_enable(p.doc, e.settings.inc_journal) }
 			p.doc.journal.max = max(p.doc.journal.max, e.settings.inc_journal)
+			style.watch_prepare(e, p.doc)   // (what removed subtrees held, for the :has() anchors: dom.Watch)
 		}
 	} else if partial || dom_partial {
 		style.timeline_restyled_dom(p.anim.timeline, p.doc, p.styled, now)
@@ -428,5 +433,46 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	}
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
+	styles_note(full, dom_partial, partial, time.tick_since(t0), why)
+	if full { styles_stats.full_bytes += i64(p.styled.arena.total_used) }
 	return p.styled
+}
+// What the style passes cost, for the profile report (prof.odin) and the measuring scripts: how many passes of each kind and
+// the time they took, and the engine's rebuilds (style.rebuild_total).
+Styles_Stats :: struct {
+	calls, full, dom, state, none: int,
+	full_ns, dom_ns, state_ns, none_ns: i64,
+	full_bytes: i64,   // memory the styles of the full passes took (the arena's use at the end of each)
+	why: [24]Why_Count,   // the full passes by the reason the incremental one was not enough (the reasons are constant strings)
+}
+Why_Count :: struct { why: string, n: int, ns: i64 }
+styles_stats: Styles_Stats
+
+@(private = "file")
+styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
+	s := &styles_stats
+	s.calls += 1
+	switch {
+	case full:
+		s.full += 1; s.full_ns += i64(d)
+		for &w in s.why {
+			if w.why == why || w.why == "" { w.why = why; w.n += 1; w.ns += i64(d); break }
+		}
+	case dom: s.dom += 1; s.dom_ns += i64(d)
+	case state: s.state += 1; s.state_ns += i64(d)
+	case: s.none += 1; s.none_ns += i64(d)
+	}
+}
+
+styles_stats_text :: proc() -> string {
+	s := styles_stats
+	r := style.rebuild_total
+	return fmt.tprintf("style passes: %d | full %d (%.0f ms, %.0f MB of styles made) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average\nlayouts forced by scripts' readings (geometry, computed style; style passes included): %d, %.0f ms",
+		s.calls, s.full, f64(s.full_ns) / 1e6, f64(s.full_bytes) / 1048576, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
+		r.n, f64(r.ns) / 1e6, f64(r.sheets) / f64(max(r.n, 1)), forced_layouts.n, f64(forced_layouts.ns) / 1e6)
+}
+styles_stats_why :: proc() -> string {
+	sb := strings.builder_make(context.temp_allocator)
+	for v in styles_stats.why { if v.n > 0 { fmt.sbprintf(&sb, "  full pass x %d, %.0f ms: %s\n", v.n, f64(v.ns) / 1e6, v.why) } }
+	return strings.to_string(sb)
 }

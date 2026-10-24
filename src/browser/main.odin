@@ -73,11 +73,13 @@ Doc_Load :: struct {
 	action:     Doc_Action,              // what the answer is shown as (download.odin doc_action)
 	cache:      fetch.Cache_Mode,        // the document's cache mode; Reload: its subresources too (http_cache_ui.odin)
 	from_cache: fetch.Cache_Outcome,     // where the document came from (the status bar says so)
+	started_ns: i64,                     // the loop clock when the navigation began (Navigation Timing)
+	response_ns: i64,                    // ... and when the head of the answer arrived
 }
 
 Load_Failure :: enum u8 { None, Other, Tls }
 
-Tab_Kind :: enum u8 { Web, Config, History }   // History: about:history (history_ui.odin)
+Tab_Kind :: enum u8 { Web, Config, History, Blocker }   // Blocker: about:blocker (blocker_dashboard.odin)   // History: about:history (history_ui.odin)
 
 Tab :: struct {
 	id:       u64,           // unique for the process: keys its boxes of the tab strip (tab_strip.odin)
@@ -93,7 +95,8 @@ Tab :: struct {
 	status:   string,
 	console:  [dynamic]string,
 	console_added: u64,         // lines ever added to console: line i of it is number console_added - len + i (devtools_console.odin)
-	net:      Net_Log,         // the document's requests, for the Network tab (devtools_network.odin)
+	net:      Net_Log,         // the document's requests, for the Network tab (devtools_net_model.odin)
+	conlog:   Con_Log,         // what the Console tab keeps beside the lines: their times, kinds, counts (devtools_console_log.odin)
 	layout:   Layout,
 	scroll:   f32,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
@@ -190,6 +193,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.title = strings.clone("New tab")
 	append(&app.tabs, t)
 	tab_history_limits(app, t)
+	blocker_tab_new(app, t)   // blocker_shell.odin
 	return t
 }
 
@@ -221,20 +225,13 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 	for l in t.console { delete(l) }
 	delete(t.console)
 	net_log_destroy(&t.net)
+	console_log_destroy(t)
 	layout_destroy(&t.layout)
 	smooth_destroy(&t.smooth)
 	free(t)
 }
 
-tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) {
-	prefix := level == .Error ? "error: " : level == .Warn ? "warn: " : ""
-	append(&t.console, fmt.aprintf("%s%s", prefix, message))
-	t.console_added += 1
-	for len(t.console) > the_app.cfg.console_max_lines {
-		delete(t.console[0])
-		ordered_remove(&t.console, 0)
-	}
-}
+tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
 	if the_remote.active && remote_take_console(message) { return }   // (an answer of a remote script, not a message)
@@ -292,6 +289,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
+	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if target == HOME_URL { show_home(app, t); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
@@ -301,6 +299,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_sites_address(target) { hold_release(t); bfcache_take(app, t); show_sites_page(app, t, target, from); return }   // site_data_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
+	load.started_ns = host.now_ns(&app.loop)
 	load.pushed = pushed
 	load.cache = cache
 	shown := target
@@ -313,6 +312,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	hold_begin(app, t, target)
+	load_measure_begin(app, t, target)   // blocker_measure.odin
 	t.kind = .Web
 	t.nav = base.scope_make("navigation", t.scope)
 	base.on_close(t.nav, load_closed, load)
@@ -322,8 +322,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	t.scroll = 0
 	delete(t.fragment_seen)
 	t.fragment_seen = ""   // a new document scrolls to its fragment again
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url)
 	t.url = strings.clone(shown)
 	delete(t.title)
@@ -446,8 +445,7 @@ show_config :: proc(app: ^App, t: ^Tab) {
 	t.page, t.load, t.kind = nil, nil, .Config
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url); t.url = strings.clone("about:config")
 	delete(t.title); t.title = strings.clone("Configuration")
 	set_status(t, "about:config")
@@ -515,6 +513,11 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if cur := page.session_current(&t.session); cur != nil && !load.view_source && cur.url != r.url { page.session_replace(&t.session, r.url, set_state = false); sync_history(t) }
 		load.page = page.page_create(&app.loop, &app.loader, &app.page_settings, t.nav, r.url, console_sink, t)
 		if load.cache == .Reload { load.page.env.cache_override = .Reload }   // Ctrl+F5: everything it loads, from the network
+		load.response_ns = host.now_ns(&app.loop)
+		page.set_navigation_timing(load.page, {
+			start_ns = load.started_ns, response_ns = load.response_ns, reload = load.cache == .Reload || load.cache == .No_Cache,
+			status = r.status, from_cache = r.cache == .Hit, mime = load.mime, redirects = r.redirected ? 1 : 0,
+		})
 		attach_page(app, t, load.page)
 		t.page = load.page
 		if !load.view_source && r.status < 400 { global_history_visit(app, t, r.url, "") }
@@ -559,6 +562,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 
 	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
 	load.bytes = len(data)
+	page.navigation_response_end(p, host.now_ns(&app.loop), len(data))
 	page.parse_document(p, data, load.charset, document_parsed, load)
 }
 
@@ -747,10 +751,13 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		config_page(&app.config_view, &app.prefs)
 	} else if t != nil && t.kind == .History {
 		history_page(app, t)   // history_ui.odin
+	} else if t != nil && t.kind == .Blocker {
+		blocker_page(app, t)   // blocker_dashboard.odin
 	} else {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
 		page_area_focus(app, t, pb)
+		blocker_picker_frame(app, t)   // blocker_picker.odin
 	}
 }
 
@@ -769,7 +776,8 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
 				if ui.row(.Center) { address_row(app, t) }
 			}
-			find_bar(app, t)
+			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
+			if !elem_fs { find_bar(app, t) }
 			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 			dock, dev_on := devtools_dock(app, t)
 			switch {
@@ -781,6 +789,14 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
 					devtools_panel(app, t)
 				}
+			case dev_on && dock == .Left:
+				ui.next({width = ui.fill(), height = ui.fill()})
+				if ui.row(.Start, {}, "###devtools_and_page") {
+					ui.next({width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+					devtools_panel(app, t)
+					devtools_splitter(app, true)
+					page_view(app, t)
+				}
 			case dev_on && dock == .Bottom:
 				page_view(app, t)
 				devtools_splitter(app, false)
@@ -790,7 +806,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				page_view(app, t)
 			}
 			// status bar (status_bar.odin)
-			status_bar_build(app, t)
+			if !elem_fs { status_bar_build(app, t) }
 			fullscreen_bars(app, t)
 			devtools_floating(app, t)   // over the page when it is undocked
 		}
@@ -835,7 +851,9 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
+		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
 		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
@@ -1016,11 +1034,13 @@ frame :: proc(app: ^App, idled := false) {
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
+	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
 	selection_shell_frame(app)
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
 	prof_end(.Input)
 
+	fullscreen_shell_settle(app)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
@@ -1036,6 +1056,7 @@ frame :: proc(app: ^App, idled := false) {
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
+	fullscreen_shell_frame(app)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
 	page_snapshot_wanted = ran > 0
@@ -1162,6 +1183,7 @@ main :: proc() {
 
 	host.loop_init(&app.loop, wake_window, app.win)
 	instance_begin(app)   // instance_shell.odin: the window that takes the second starts' addresses
+	crashtrace.begin_session()   // (a session that ended without a report: crashes\unclean exit <date>.txt at this start)
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	appearance_init(app)   // before any settings are derived: `system` colors, auto color scheme
 	ns := net.settings_from_prefs(&app.prefs)
@@ -1171,6 +1193,7 @@ main :: proc() {
 	app.profile = fetch.profile_make(fetch.settings_from_prefs(&app.prefs), cookies.settings_from_prefs(&app.prefs))
 	http_cache_start(app)   // http_cache_ui.odin: the profile's HTTP cache (its index loads on a thread meanwhile)
 	fetch.loader_init(&app.loader, &app.loop, &app.client, &app.blocking, &app.profile)
+	blocker_start(app)   // blocker_shell.odin: the content blocker listens to the loader from here on
 	page.storage_manager_init(&app.storage, &app.loop, &app.blocking, app.cfg.persist_profile ? app.profile_dir : "")
 	app.page_settings = page.settings_from_prefs(&app.prefs)
 	{
@@ -1217,6 +1240,7 @@ main :: proc() {
 			render.set_fixed_surface(&app.r, {int(mi.rcMonitor.right - mi.rcMonitor.left), int(mi.rcMonitor.bottom - mi.rcMonitor.top)})
 		}
 	}
+	render.set_teardown_wait(&app.r, int(config.int_of(&app.prefs, "browser.shell.shutdown_surface_wait_ms")))   // (see the preference: the compositor may be slow to let go of the surface)
 	prof_mark(.Renderer)
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
 	prof_mark(.UI_Fonts)
@@ -1243,6 +1267,7 @@ main :: proc() {
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
+	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
@@ -1252,14 +1277,14 @@ main :: proc() {
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.user = app
-	app.win.on_frame = proc(user: rawptr) { frame((^App)(user)) }
+	app.win.on_frame = proc(user: rawptr) { window_frame((^App)(user)) }   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if !headless_mode { platform.show_window(app.win) }
 	prof_mark(.Loop)
 
 	for !platform.is_closed(app.win) {
 		idled := false
-		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) {
-			timeout := ui.wake_ms(&app.ui_state)
+		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) && !devtools_window_busy() {
+			timeout := devtools_window_timeout(ui.wake_ms(&app.ui_state))
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 			prof_begin(.Idle)
 			platform.wait_event(app.win, memcheck_wake(memory_trim_wake(timeout)))
@@ -1267,6 +1292,7 @@ main :: proc() {
 			idled = true
 		}
 		frame(app, idled)
+		devtools_window_tick(app)   // devtools_window.odin: the panel in a window of its own
 		memcheck_drive(app)   // memcheck.odin: the check build's script, if any
 		memory_trim_tick(app)   // memory_trim.odin
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
@@ -1277,15 +1303,17 @@ main :: proc() {
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
-	if remote_fast_exit { os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
+	if remote_fast_exit { crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
 	prof_report()
+	wasm.host_profile_write()   // (WREN_HOST_PROFILE: before the pages are freed; the runtime's end writes it again)
 	host.shutdown_step("desktop_shell_shutdown")
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
 	host.shutdown_step("shell_frames_destroy")
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
+	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
 	host.shutdown_step("session capture")
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")
@@ -1328,6 +1356,8 @@ main :: proc() {
 	page.images_shutdown()   // the image cache and its decoding threads
 	host.shutdown_step("page.fonts_shutdown")
 	page.fonts_shutdown()    // the decoded web fonts kept for every page
+	host.shutdown_step("blocker_stop")
+	blocker_stop(app)   // after the pages are gone, before the loader
 	host.shutdown_step("fetch.loader_destroy")
 	fetch.loader_destroy(&app.loader)
 	host.shutdown_step("http_cache_stop")
@@ -1409,6 +1439,7 @@ main :: proc() {
 	host.shutdown_step("instance_release")
 	instance_release()   // instance_shell.odin: the profile is written and free: a start that waited becomes the owner (before the watchdog's stop, which can wait for its next tick)
 	host.shutdown_end()
+	crashtrace.end_session()   // a clean end (a watchdog's exit or a kill leaves the file: the next start reports it)
 	memcheck_exit(profile_dir)   // memcheck.odin: the leak report of the check build
 	if remote_exit_code != 0 { os.exit(remote_exit_code) }   // Browser.close {exitCode}
 }

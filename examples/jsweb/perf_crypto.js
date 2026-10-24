@@ -21,7 +21,7 @@ test("performance", () => {
   eq(performance.getEntriesByType("mark").map(e => e.name).join(), "m1,m2", "getEntriesByType");
   eq(performance.getEntriesByName("span")[0].entryType, "measure", "getEntriesByName");
   eq(performance.getEntriesByName("m1", "measure").length, 0, "getEntriesByName with a type");
-  eq(performance.getEntries().length, 4, "getEntries");
+  eq(performance.getEntries().filter(e => e.entryType === "mark" || e.entryType === "measure").length, 4, "getEntries");
   eq(performance.getEntriesByName("m1")[0].detail.k, 1, "detail kept with the entry");
   eq(JSON.stringify(performance.getEntriesByName("span")[0].toJSON().name), '"span"', "entry toJSON");
   ok(typeof performance.toJSON().timeOrigin === "number", "performance.toJSON");
@@ -31,10 +31,10 @@ test("performance", () => {
   eq(performance.getEntriesByType("mark").length, 1, "clearMarks(name)");
   performance.clearMarks();
   performance.clearMeasures();
-  eq(performance.getEntries().length, 0, "clear all");
+  eq(performance.getEntries().filter(e => e.entryType === "mark" || e.entryType === "measure").length, 0, "clear all");
   const pm = new PerformanceMark("free");
   eq(pm.name, "free", "PerformanceMark constructor");
-  eq(performance.getEntries().length, 0, "...does not record");
+  eq(performance.getEntries().filter(e => e.entryType === "mark" || e.entryType === "measure").length, 0, "...does not record");
 });
 
 test("crypto", async () => {

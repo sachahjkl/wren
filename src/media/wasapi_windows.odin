@@ -286,11 +286,23 @@ wasapi_set_gain :: proc(o: ^Audio_Output, gain: f32) { sync.atomic_store(&(^Wasa
 @(private)
 wasapi_failed :: proc(o: ^Audio_Output) -> bool { return sync.atomic_load(&(^Wasapi)(o.impl).failed) != 0 }
 
+foreign import avrt "system:Avrt.lib"
+@(default_calling_convention = "system", private = "file")
+foreign avrt {
+	AvSetMmThreadCharacteristicsW :: proc(task: win.LPCWSTR, index: ^u32) -> win.HANDLE ---
+	AvRevertMmThreadCharacteristics :: proc(h: win.HANDLE) -> win.BOOL ---
+}
+
 @(private)
 wasapi_thread :: proc(data: rawptr) {
 	name_current_thread("wren-audio-out")
 	w := (^Wasapi)(data)
 	com_thread_init()
+	// the Multimedia Class Scheduler Service: the system keeps CPU for this thread (and boosts it) whatever else is busy, so a
+	// page's long script or a style pass on every core does not make the sound glitch
+	task_index: u32
+	mm := AvSetMmThreadCharacteristicsW(win.L("Pro Audio"), &task_index)
+	defer if mm != nil { AvRevertMmThreadCharacteristics(mm) }
 	for sync.atomic_load(&w.quit) == 0 {
 		win.WaitForSingleObject(w.event, 100)
 		if sync.atomic_load(&w.quit) != 0 { break }

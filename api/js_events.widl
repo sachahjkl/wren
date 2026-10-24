@@ -17,6 +17,8 @@ partial module events {
   bool Event_bubbles(Event event);
   /// event.cancelable
   bool Event_cancelable(Event event);
+  /// event.composed: whether the event crosses shadow boundaries (the browser's UI events, fullscreenchange...).
+  bool Event_composed(Event event);
   /// event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.
   i32 Event_eventPhase(Event event);
   /// event.timeStamp, on the performance.now() timeline of the page.

@@ -348,6 +348,7 @@ Pass :: struct {
 	own_depth: u16,
 	ctx_cache: map[base.Handle]Elem_Ctx,
 	host_ctx:  map[base.Handle]Elem_Ctx,
+	fs_chain:  map[base.Handle]struct{},   // the ancestors of the fullscreen element (host-including), when there is one
 }
 
 @(private)
@@ -592,6 +593,7 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		c.anim_vars = list
 	}
 	finish_style(&cx, h)
+	if len(p.fs_chain) > 0 { if _, above := p.fs_chain[h]; above { fullscreen_ancestor_reset(c) } }
 	if e.container_dependent || c.container_type != .Normal || (parent != nil && parent.containers != nil) {
 		c.containers = container_chain(e, c, parent, a)
 	}
@@ -705,6 +707,21 @@ finish_style :: proc(cx: ^Cx, h: base.Handle) {
 	}
 }
 
+// An ancestor of the fullscreen element, as the top layer would leave it for the element: no stacking context of its own,
+// and nothing that makes it the containing block of a fixed box.
+@(private)
+fullscreen_ancestor_reset :: proc(c: ^Computed) {
+	c.z_auto = true
+	c.transform, c.translate, c.rotate, c.scale = nil, {}, {}, {}
+	c.perspective = 0
+	c.filter, c.backdrop_filter, c.clip_path = nil, nil, nil
+	c.opacity = 1
+	c.isolation, c.mix_blend_mode = {}, {}
+	c.will_change = nil
+	c.contain = {}
+	c.mask_images = nil
+}
+
 // The names of custom properties declared by text parsed into the temp allocator (a style attribute, hints) become
 // keys of the element's Custom_Props, which live as long as the style pass: they are copied into the pass's memory.
 @(private)
@@ -733,6 +750,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 	if len(p.lists[2]) > 0 { after_entries = make([dynamic]Entry, context.temp_allocator); append(&after_entries, ..p.lists[2][:]) }
 	if len(p.lists[3]) > 0 { selection_entries = make([dynamic]Entry, context.temp_allocator); append(&selection_entries, ..p.lists[3][:]) }
 	c := build_style(p, h, parent, p.lists[0][:], inline_rule)
+	if len(p.e.forced_hidden) > 0 { if h in p.e.forced_hidden { c.display = .None } }
 
 	for i in 1 ..< 3 {
 		entries := i == 1 ? before_entries : after_entries
@@ -755,6 +773,12 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
 	p.alloc = s.alloc
 	match_ctx_init(&p.mc, doc, state)
+	// the fullscreen element is in the top layer: what its ancestors would do to it (a stacking context under a masthead,
+	// a transform or filter that makes them its containing block) does not apply (fullscreen_ancestor_reset)
+	if state.fullscreen != base.NIL_HANDLE && dom.get(doc, state.fullscreen) != nil {
+		p.fs_chain = make(map[base.Handle]struct{})
+		for cur := dom.parent_or_host(doc, state.fullscreen); cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) { p.fs_chain[cur] = {} }
+	}
 	p.touched = make([dynamic]Prop)
 	for i in 0 ..< 4 { p.lists[i] = make([dynamic]Entry) }
 	return p
@@ -764,6 +788,7 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 pass_destroy :: proc(p: ^Pass) {
 	stats_merge(p.e, p.stats)
 	match_ctx_destroy(&p.mc)
+	delete(p.fs_chain)
 	delete(p.touched)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
 	virtual.arena_destroy(&p.scratch)
@@ -955,7 +980,7 @@ update_canvas :: proc(s: ^Styled, doc: ^dom.Document) {
 // Partial restyle after a change of dynamic state
 
 state_equal :: proc(a, b: State) -> bool {
-	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.focus_visible == b.focus_visible && a.target_id == b.target_id
+	return a.hover == b.hover && a.active == b.active && a.focus == b.focus && a.focus_visible == b.focus_visible && a.target_id == b.target_id && a.fullscreen == b.fullscreen && a.visited == b.visited
 }
 
 @(private)
@@ -964,6 +989,8 @@ changed_kinds :: proc(old, new: State) -> (k: State_Kinds) {
 	if old.active != new.active { k += {.Active} }
 	if old.focus != new.focus || old.focus_visible != new.focus_visible { k += {.Focus} }
 	if old.target_id != new.target_id { k += {.Target} }
+	if old.fullscreen != new.fullscreen { k += {.Fullscreen} }
+	if old.visited != new.visited { k += {.Visited} }
 	return
 }
 
@@ -1023,6 +1050,21 @@ restyle_state :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, new_state: Sta
 				}
 			}
 		}
+	}
+	if .Fullscreen in kinds {
+		if old.fullscreen != base.NIL_HANDLE { changed_els[old.fullscreen] = true }   // :fullscreen is exact
+		if new_state.fullscreen != base.NIL_HANDLE { changed_els[new_state.fullscreen] = true }
+		// ... and what is above it, which the top layer frees of its stacking contexts and transforms (fullscreen_ancestor_reset)
+		for f in ([2]base.Handle{old.fullscreen, new_state.fullscreen}) {
+			if f == base.NIL_HANDLE { continue }
+			for cur := dom.parent_or_host(doc, f); cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) {
+				if n := dom.get(doc, cur); n != nil && n.kind == .Element { changed_els[cur] = true }
+			}
+		}
+	}
+	if .Visited in kinds {
+		if old.visited != base.NIL_HANDLE { changed_els[old.visited] = true }
+		if new_state.visited != base.NIL_HANDLE { changed_els[new_state.visited] = true }
 	}
 	if .Target in kinds {
 		if old.target_id != "" { if h := dom.find_by_id(doc, old.target_id); h != base.NIL_HANDLE { changed_els[h] = true } }

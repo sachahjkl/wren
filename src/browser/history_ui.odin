@@ -27,7 +27,7 @@ import "wb:page"
 HISTORY_URL :: "about:history"
 
 is_builtin_address :: proc(a: string) -> bool {
-	return a == "about:config" || is_history_address(a) || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL || is_wren_address(a)
+	return a == "about:config" || is_blocker_address(a) || is_history_address(a) || a == HOME_URL || a == DEMOS_URL || a == ABOUT_URL || is_wren_address(a)
 }
 
 History_Row_Kind :: enum u8 { Day, Visit }
@@ -82,8 +82,7 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	t.page, t.load, t.kind = nil, nil, .History
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)

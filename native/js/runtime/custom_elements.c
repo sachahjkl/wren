@@ -37,8 +37,24 @@ static JSValue host_define(JSContext *ctx, JSValueConst this_val, int argc, JSVa
 static uint64_t rd_u64(const uint8_t *p) { uint64_t v = 0; for (int i = 7; i >= 0; i--) { v = v << 8 | p[i]; } return v; }
 static uint32_t rd_u32(const uint8_t *p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
 
-/* take(): the queued reactions as [kind, element, name, oldValue, newValue] arrays (null for absent values) */
+static JSValue host_take_records(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+
+/* take(): the queued reactions as [kind, element, name, oldValue, newValue] arrays (null for absent values).
+ * No collection runs while the records are made: the elements that were removed (a disconnectedCallback) are wrapped one
+ * by one, and a collection in between would free the wrappers of the ones not wrapped yet (they are detached, nothing
+ * references them), so that a new wrapper, without its definition, would be made for them and their callbacks would
+ * not run. */
 static JSValue host_take(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSRuntime *rt = JS_GetRuntime(ctx);
+    size_t threshold = JS_GetGCThreshold(rt);
+    JS_SetGCThreshold(rt, (size_t)-1);
+    JSValue out = host_take_records(ctx, this_val, argc, argv);
+    JS_SetGCThreshold(rt, threshold);
+    return out;
+}
+
+static JSValue host_take_records(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv);
     /* the take empties the queue: the buffer is sized first (no second call to learn the size) */

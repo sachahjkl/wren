@@ -19,12 +19,12 @@ Pseudo :: enum u8 {
 	// logical
 	Not, Is, Where, Has,
 	// user action / state
-	Hover, Active, Focus, Focus_Visible, Focus_Within, Link, Any_Link, Visited, Target,
+	Hover, Active, Focus, Focus_Visible, Focus_Within, Link, Any_Link, Visited, Target, Fullscreen,
 	Checked, Disabled, Enabled, Required, Optional, Read_Only, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
 	// other
 	Lang, Dir, Scope, Defined, Open,
-	Never,          // valid, but matches nothing in this engine's documents: :popover-open, :fullscreen...
+	Never,          // valid, but matches nothing in this engine's documents: :popover-open, :modal...
 	// shadow trees (CSS Scoping): :host, :host(<compound>) (argument in `list`), :host-context(<compound>); :state(x)
 	// (a custom element's custom state, ElementInternals.states; the name in `name`); :has-slotted
 	Host, Host_Context, State, Has_Slotted,
@@ -428,7 +428,8 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "-webkit-any-link": return .Any_Link, true
 	case "host": return .Host, true
 	case "has-slotted": return .Has_Slotted, true
-	case "popover-open", "modal", "fullscreen", "-webkit-full-screen", "picture-in-picture",
+	case "fullscreen", "-webkit-full-screen": return .Fullscreen, true
+	case "popover-open", "modal", "picture-in-picture",
 	     "playing", "paused", "seeking", "buffering", "stalled", "muted", "volume-locked", "current", "past", "future",
 	     "target-current", "active-view-transition", "xr-overlay":
 		return .Never, true

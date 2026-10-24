@@ -89,6 +89,7 @@ Request_Desc :: struct {
 	script:          Script_Type,       // destination Script / Worker: a Wasm module (default) or JavaScript (script_type.odin)
 	parser_inserted: bool,              // a script the parser inserted (CSP 'strict-dynamic' trusts only the others)
 	cache:           Cache_Mode,        // Request.cache (http_cache.odin)
+	ping:            bool,              // a beacon: filters see it as ping, not as a fetch
 }
 
 // The "environment settings object" of a document: who is asking.
@@ -105,6 +106,7 @@ Environment :: struct {
 	violation_user:  rawptr,
 	cache_override:  Cache_Mode,        // the mode of this document's requests that ask for the default (a reload without the cache)
 	counts:          Fetch_Counts,      // what this document's requests cost (status bar, measurements)
+	tag:             u64,               // the content blocker's handle for the document's tab (copied by environment_clone; intercept.odin)
 }
 
 // The requests of a document by where their responses came from (http_cache.odin), and the body bytes the network
@@ -139,6 +141,7 @@ environment_clone :: proc(e: Environment) -> Environment {
 	c.secure_context = e.secure_context
 	c.referrer_policy = e.referrer_policy
 	c.file_root = strings.clone(e.file_root)
+	c.tag = e.tag
 	return c
 }
 
@@ -227,6 +230,7 @@ Error_Kind :: enum u8 {
 	Unsupported,
 	Aborted,
 	Not_Cached,             // cache mode only-if-cached and nothing stored
+	Blocked_By_Client,      // the content blocker refused it (net::ERR_BLOCKED_BY_CLIENT; detail names the rule), or the developer tools' request blocking (or their offline mode) stopped it
 }
 
 Event :: struct {

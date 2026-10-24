@@ -135,6 +135,15 @@ DEMOS := [?]Demo{
 	{.JavaScript, "Web APIs from JavaScript", "/jsweb/demo",
 		"One row per API, run in the page's realm: <code>fetch</code> and response streams, <code>XMLHttpRequest</code>, <code>AbortSignal.timeout</code>, <code>URL</code>, <code>TextEncoder</code>, <code>crypto.subtle</code>, <code>localStorage</code>, <code>history.pushState</code>, <code>FileReader</code>, <code>structuredClone</code>, <code>MessageChannel</code>, <code>WebSocket</code> and <code>EventSource</code>.", true, "", false},
 
+	{.Network, "Content blocker: ads and trackers", "blocker/ads.html",
+		"A page with simulated ads: a script, an image, a frame and a fetch from a third-party host, an <code>.ad-banner</code> element and an anti-blocker check. With the content blocker on (and the filters of <code>build\\tp1</code>-style My filters), the requests are blocked and the banner is hidden before the first paint.", true, "", false},
+	{.Network, "Content blocker: ad frame", "blocker/adframe.html",
+		"The frame that blocker/ads.html embeds from a third-party host: a red box, collapsed when the blocker stops it.", true, "", false},
+	{.Network, "Content blocker: many blocked requests", "blocker/many.html",
+		"Starts 130 image requests (<code>?n=</code> sets the number) to a third-party host that the blocker stops: the badge of the shield counts them (99+ above ninety-nine).", true, "", false},
+	{.Network, "Content blocker: blocked script in the head", "blocker/headblock.html",
+		"A script in the head that the blocker stops: the page must paint at once instead of waiting for it.", true, "", false},
+
 	{.Network, "Content-Security-Policy", "/site-csp/counter.html",
 		"The counter page served with a policy that allows scripts only from unreachable hosts: its Wasm module is blocked, and the violation is reported.", true, "", false},
 	{.Network, "Cookies and redirects", "/start",
@@ -144,8 +153,16 @@ DEMOS := [?]Demo{
 		"A module builds about 10 000 elements, then changes one span's text every 16 ms: only that paragraph is laid out again.", false, "", false},
 	{.Performance, "Class toggled every frame", "mutation_class.html",
 		"A class toggled every 16 ms on a section among 10 000 elements: only what its rules reach is restyled and laid out again.", false, "", false},
+	{.Images, "Fullscreen API", "fullscreen.html",
+		"<code>requestFullscreen()</code> on a video, a styled card (<code>:fullscreen</code>) and two frames (one refused by <code>allow=\"fullscreen 'none'\"</code>): the window fills the screen without tabs, address bar or status bar; Esc or F11 leave; <code>fullscreenchange</code> and <code>fullscreenerror</code> are logged. A click is needed, as in other browsers.", true, "", false},
 	{.Performance, "Video benchmark", "video-bench.html",
 		"The page of the profiler's video scenarios (<code>tools\\perf.ps1 -Only video_idle,video_play,video_mse</code>): <code>?mode=idle</code> a paused video, <code>play</code> a looping one, <code>mse</code> the same through Media Source Extensions, <code>none</code> the page alone. A paused video draws no frame; a playing one one per picture.", true, "", false},
+	{.Performance, "Player simulator", "yt-sim.html",
+		"What a YouTube watch page costs, without the network (<code>tools\\perf.ps1 -Only yt_h264_1080p60,yt_av1_1080p30,yt_short</code>): a player with the state classes and bare <code>:has()</code> rules the real one toggles, a progress bar moved on every animation frame, MSE with separate audio and video buffers and ~4 000 elements around it. Needs the 1080p files of <code>tools\\gen_perf_media.ps1</code>.", true, "", false},
+	{.Performance, "Start-up of a heavy page", "yt-boot.html",
+		"What the main thread does while a single-page app starts, without the network (<code>tools\\perf.ps1 -Only yt_boot</code>): component styles added as <style> elements while the page is built in batches of custom-element cards, layout read between the batches, <code>:has()</code> anchors on a tag, a class and a chain, form controls, toggling attributes. The profile report says how many style passes were full and why. <code>?batches=14&amp;cards=50</code> sizes it.", true, "", false},
+	{.Network, "Developer tools: sockets, streams, workers, media", "devtools/dt4.html",
+		"The page the developer tools' Network tab is shown with (<code>tools\\perf.ps1 -Only dt_network_idle</code>): a WebSocket echo with a subprotocol, a Server-Sent Events stream, a worker that fetches, images, a web font, a video and fetches. Open the panel (F12) on Network and choose a request: Messages, Preview, the speed profiles.", true, "", false},
 	{.Performance, "200 large images", "images/many.html",
 		"200 images of 1000 x 1000 pixels made by the server, shown at 80 px: decoding never runs on the interface thread.", true, "", false},
 	{.Performance, "Slow stylesheet", "firstpaint-slow.html",
@@ -388,8 +405,7 @@ show_demos :: proc(app: ^App, t: ^Tab) {
 	layout_reset(&t.layout)
 	t.scroll_target = base.NIL_HANDLE
 	t.scroll = 0
-	for l in t.console { delete(l) }
-	clear(&t.console)
+	console_reset(t)
 	page.load_html(t.page, transmute([]byte)demos_html(app))
 	delete(t.url); t.url = strings.clone(DEMOS_URL)
 	delete(t.title); t.title = strings.clone("Demos and tests")

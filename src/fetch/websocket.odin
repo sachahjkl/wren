@@ -15,6 +15,7 @@ package fetch
 import "core:fmt"
 import "core:strings"
 import "wb:base"
+import "wb:host"
 import "wb:cookies"
 import "wb:csp"
 import "wb:http"
@@ -106,8 +107,23 @@ websocket_close_check :: proc(code: int, has_code: bool, reason: string) -> Clos
 // Connecting
 
 @(private)
+Ws_Delayed :: struct {
+	out:   bool,   // a message of the page, not yet sent
+	due:   f64,
+	ev:    Socket_Event,   // what the page is to be told (strings and data owned)
+}
+
+// The socket's record in the fetch layer: what its policy and its observer need, kept until the transport lets go of it.
+@(private)
 Ws_Ctx :: struct {
 	loader:    ^Loader,
+	sock:      base.Handle,
+	obs_id:    u64,
+	link:      ^net.Throttle_Link,
+	queue:     [dynamic]Ws_Delayed,   // events held back by the link, by when they are due
+	timer:     base.Handle,
+	last_in, last_out: f64,   // when the last held message of each direction is due (a direction keeps its order)
+	ended:     bool,           // the observer was told the socket is over
 	env:       ^Environment,
 	target:    url.URL,
 	protocols: []string,
@@ -128,6 +144,12 @@ http_origin_of :: proc(u: url.URL, allocator := context.temp_allocator) -> url.O
 websocket_policy_check :: proc(l: ^Loader, env: ^Environment, u: ^url.URL) -> (err: Error_Kind, detail: string) {
 	p := l.profile
 	if u.scheme != "ws" && u.scheme != "wss" { return .Bad_Scheme, "not a WebSocket URL" }
+	if l.interceptor.request != nil {
+		q := Intercept_Query{url = u.href, method = "GET", destination = .Empty, mode = .Cors, initiator = env, websocket = true}
+		r: Intercept_Result
+		l.interceptor.request(l.interceptor.user, &q, &r)
+		if r.action == .Block { return .Blocked_By_Client, r.reason != "" ? r.reason : "blocked by the content blocker" }
+	}
 	csp_on := env != nil && p.settings.csp && len(env.policies.policies) > 0
 	if u.scheme == "ws" && !url.is_potentially_trustworthy(u^) {
 		upgrade := csp_on && csp.has_directive(&env.policies, "upgrade-insecure-requests")
@@ -161,6 +183,12 @@ websocket_connect :: proc(l: ^Loader, d: Socket_Desc) -> (sock: base.Handle, err
 	u, ok := url.parse_absolute(d.url)
 	if !ok { return base.NIL_HANDLE, .Bad_URL, "invalid WebSocket URL" }
 	if e, why := websocket_policy_check(l, d.initiator, &u); e != .None {
+		if l.observer.event != nil {
+			l.next_obs += 1
+			id := l.next_obs
+			observe_id(l, id, Observed{kind = .Ws_Started, method = "GET", url = d.url, scope = d.scope, destination = .Empty, initiator_url = d.initiator != nil ? d.initiator.location.href : ""})
+			observe_id(l, id, Observed{kind = .Failed, error = e, detail = why})
+		}
 		url.destroy(&u)
 		return base.NIL_HANDLE, e, why
 	}
@@ -169,6 +197,12 @@ websocket_connect :: proc(l: ^Loader, d: Socket_Desc) -> (sock: base.Handle, err
 
 	ctx := new(Ws_Ctx)
 	ctx.loader, ctx.env, ctx.target, ctx.on_event, ctx.user = l, env, u, d.on_event, d.user
+	if l.observer.event != nil {
+		l.next_obs += 1
+		ctx.obs_id = l.next_obs
+	}
+	ctx.link = link_of(l, d.scope)
+	if !net.link_active(ctx.link) { ctx.link = nil }
 	ctx.protocols = make([]string, len(d.protocols))
 	for s, i in d.protocols { ctx.protocols[i] = strings.clone(s) }
 
@@ -207,21 +241,129 @@ websocket_connect :: proc(l: ^Loader, d: Socket_Desc) -> (sock: base.Handle, err
 		http.append_header(&h, "Sec-Fetch-Site", site)
 	}
 
+	if ctx.obs_id != 0 {
+		observe_id(l, ctx.obs_id, Observed{kind = .Ws_Started, method = "GET", url = u.href, scope = d.scope, destination = .Empty, initiator_url = env != nil ? env.location.href : "",
+			headers = join_headers(h), detail = strings.join(ctx.protocols, ", ", context.temp_allocator)})
+	}
 	sock = net.websocket_open(l.net, {
 		url = u.href, headers = join_headers(h), on_event = ws_net_event, user = ctx, free_user = ws_ctx_free,
 		scope = d.scope, limits = d.limits,
 	})
+	ctx.sock = sock
+	if l.ws_ctx == nil { l.ws_ctx = make(map[base.Handle]^Ws_Ctx) }
+	l.ws_ctx[sock] = ctx
 	return sock, .None, ""
 }
 
-websocket_send :: proc(l: ^Loader, sock: base.Handle, data: []byte, binary: bool) -> bool { return net.websocket_send(l.net, sock, data, binary) }
-websocket_close :: proc(l: ^Loader, sock: base.Handle, code: u16, reason: string) -> bool { return net.websocket_close(l.net, sock, code, reason) }
+@(private)
+ws_ctx_of :: proc(l: ^Loader, sock: base.Handle) -> ^Ws_Ctx {
+	if l.ws_ctx == nil { return nil }
+	return l.ws_ctx[sock]
+}
+
+@(private)
+ws_now :: proc(l: ^Loader) -> f64 { return f64(host.now_ns(l.loop)) / 1e6 }
+
+websocket_send :: proc(l: ^Loader, sock: base.Handle, data: []byte, binary: bool) -> bool {
+	ctx := ws_ctx_of(l, sock)
+	if ctx != nil && ctx.link != nil {
+		// a message goes up the link: it reaches the transport when the bytes before it are through, and after the latency
+		now := ws_now(l)
+		due := max(net.link_schedule(ctx.link, now, len(data), true) + f64(ctx.link.latency_ms), ctx.last_out)
+		if due > now + 0.5 || len(ctx.queue) > 0 {
+			ctx.last_out = due
+			ws_hold(ctx, Ws_Delayed{out = true, due = due, ev = Socket_Event{kind = .Message, data = slice_clone(data), binary = binary}})
+			return true
+		}
+	}
+	if ctx != nil { observe_id(l, ctx.obs_id, Observed{kind = .Ws_Frame, data = data, binary = binary, outgoing = true}) }
+	return net.websocket_send(l.net, sock, data, binary)
+}
+
+websocket_close :: proc(l: ^Loader, sock: base.Handle, code: u16, reason: string) -> bool {
+	ctx := ws_ctx_of(l, sock)
+	if ctx != nil && ctx.link != nil && ctx.last_out > ws_now(l) {
+		// after the messages still on their way up
+		ws_hold(ctx, Ws_Delayed{out = true, due = ctx.last_out, ev = Socket_Event{kind = .Closing, code = code, reason = strings.clone(reason)}})
+		return true
+	}
+	if ctx != nil { observe_id(l, ctx.obs_id, Observed{kind = .Ws_Frame, outgoing = true, detail = fmt.tprintf("close %d %s", code, reason)}) }
+	return net.websocket_close(l.net, sock, code, reason)
+}
+
 websocket_abort :: proc(l: ^Loader, sock: base.Handle) -> bool { return net.websocket_abort(l.net, sock) }
-websocket_buffered :: proc(l: ^Loader, sock: base.Handle) -> int { return net.websocket_buffered(l.net, sock) }
+
+websocket_buffered :: proc(l: ^Loader, sock: base.Handle) -> int {
+	n := net.websocket_buffered(l.net, sock)
+	if ctx := ws_ctx_of(l, sock); ctx != nil { for d in ctx.queue { if d.out { n += len(d.ev.data) } } }
+	return n
+}
+
+@(private)
+slice_clone :: proc(b: []byte) -> []byte {
+	if len(b) == 0 { return nil }
+	out := make([]byte, len(b))
+	copy(out, b)
+	return out
+}
+
+@(private)
+ws_delayed_free :: proc(d: ^Ws_Delayed) {
+	delete(d.ev.data); delete(d.ev.protocol); delete(d.ev.reason); delete(d.ev.detail); delete(d.ev.extensions)
+	d^ = {}
+}
+
+// Puts an event in the queue by its due time (after the ones due at the same moment) and arms the timer for the first.
+@(private)
+ws_hold :: proc(ctx: ^Ws_Ctx, d: Ws_Delayed) {
+	at := len(ctx.queue)
+	for i in 0 ..< len(ctx.queue) { if ctx.queue[i].due > d.due { at = i; break } }
+	inject_at(&ctx.queue, at, d)
+	ws_arm(ctx)
+}
+
+@(private)
+ws_arm :: proc(ctx: ^Ws_Ctx) {
+	if ctx.timer != base.NIL_HANDLE { host.clear_timer(ctx.loader.loop, ctx.timer); ctx.timer = base.NIL_HANDLE }
+	if len(ctx.queue) == 0 { return }
+	ctx.timer = host.set_timer(ctx.loader.loop, max(ctx.queue[0].due - ws_now(ctx.loader), 0), 0, ws_fire, ctx)
+}
+
+// The timer: the first held event goes on its way (up to the transport, or down to the page).
+@(private)
+ws_fire :: proc(data: rawptr) {
+	ctx := (^Ws_Ctx)(data)
+	ctx.timer = base.NIL_HANDLE
+	if len(ctx.queue) == 0 { return }
+	d := ctx.queue[0]
+	ordered_remove(&ctx.queue, 0)
+	l, sock := ctx.loader, ctx.sock
+	ws_arm(ctx)   // before delivering: the page may drop the socket, and the record's release clears this timer
+	defer ws_delayed_free(&d)
+	if d.out {
+		#partial switch d.ev.kind {
+		case .Message:
+			observe_id(l, ctx.obs_id, Observed{kind = .Ws_Frame, data = d.ev.data, binary = d.ev.binary, outgoing = true})
+			net.websocket_send(l.net, sock, d.ev.data, d.ev.binary)
+		case .Closing:
+			observe_id(l, ctx.obs_id, Observed{kind = .Ws_Frame, outgoing = true, detail = fmt.tprintf("close %d %s", d.ev.code, d.ev.reason)})
+			net.websocket_close(l.net, sock, d.ev.code, d.ev.reason)
+		}
+		return
+	}
+	ev := d.ev
+	ctx_deliver_now(ctx, sock, &ev)
+}
 
 @(private)
 ws_ctx_free :: proc(user: rawptr) {
 	ctx := (^Ws_Ctx)(user)
+	l := ctx.loader
+	if ctx.timer != base.NIL_HANDLE { host.clear_timer(l.loop, ctx.timer) }
+	for &d in ctx.queue { ws_delayed_free(&d) }
+	delete(ctx.queue)
+	if !ctx.ended { observe_id(l, ctx.obs_id, Observed{kind = .Ws_Closed, status = 1006, detail = "the connection was dropped"}) }
+	if l.ws_ctx != nil { delete_key(&l.ws_ctx, ctx.sock) }
 	url.destroy(&ctx.target)
 	for s in ctx.protocols { delete(s) }
 	delete(ctx.protocols)
@@ -271,9 +413,12 @@ ws_net_event :: proc(user: rawptr, sock: base.Handle, ev: ^net.Ws_Event) {
 			if v, found := http.get_header(raw, "strict-transport-security"); found { hsts_note(&l.profile.hsts, ctx.target.host, v, now_ms()) }
 		}
 		v := check_websocket_handshake(ev.status, raw, ctx.protocols)
+		observe_id(l, ctx.obs_id, Observed{kind = .Ws_Response, status = ev.status, headers = ev.headers, protocol = v.protocol})
 		if !v.ok {
 			on, u := ctx.on_event, ctx.user
 			reason := strings.clone(v.reason, context.temp_allocator)
+			ctx.ended = true
+			observe_id(l, ctx.obs_id, Observed{kind = .Failed, error = .Transport, detail = reason})
 			net.websocket_abort(l.net, sock)   // frees ctx
 			out := Socket_Event{kind = .Failed, error = .Transport, detail = reason}
 			if on != nil { on(u, sock, &out) }
@@ -282,27 +427,64 @@ ws_net_event :: proc(user: rawptr, sock: base.Handle, ev: ^net.Ws_Event) {
 		protocol := strings.clone(v.protocol, context.temp_allocator)
 		if !net.websocket_accept(l.net, sock) { return }   // a Failed event follows
 		out := Socket_Event{kind = .Open, protocol = protocol}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	case .Message:
 		out := Socket_Event{kind = .Message, data = ev.data, binary = ev.binary}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	case .Sent:
 		out := Socket_Event{kind = .Sent, sent = ev.sent}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	case .Closing:
 		out := Socket_Event{kind = .Closing, code = ev.code, reason = ev.reason}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	case .Closed:
 		out := Socket_Event{kind = .Closed, code = ev.code, reason = ev.reason, clean = ev.clean, net_code = ev.error}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	case .Failed:
 		out := Socket_Event{kind = .Failed, error = .Transport, detail = websocket_error_text(ev.error, ev.secure_flags), net_code = ev.error, net_flags = ev.secure_flags}
-		ctx_deliver(ctx, sock, &out)
+		ctx_incoming(ctx, sock, &out)
 	}
 }
 
+// What comes from the transport goes to the page: at once, or through the link (a message is paced by its size, the open
+// event waits the latency; whatever follows a held event is held too, so the order never changes).
 @(private)
-ctx_deliver :: proc(ctx: ^Ws_Ctx, sock: base.Handle, ev: ^Socket_Event) {
+ctx_incoming :: proc(ctx: ^Ws_Ctx, sock: base.Handle, ev: ^Socket_Event) {
+	if ctx.link != nil {
+		l := ctx.loader
+		now := ws_now(l)
+		due := now
+		#partial switch ev.kind {
+		case .Message: due = net.link_schedule(ctx.link, now, len(ev.data), false)
+		case .Open:    due = now + f64(ctx.link.latency_ms)
+		}
+		due = max(due, ctx.last_in)
+		if due > now + 0.5 || len(ctx.queue) > 0 {
+			ctx.last_in = due
+			d := Ws_Delayed{due = due, ev = ev^}
+			d.ev.data, d.ev.protocol, d.ev.reason, d.ev.detail, d.ev.extensions = slice_clone(ev.data), strings.clone(ev.protocol), strings.clone(ev.reason), strings.clone(ev.detail), strings.clone(ev.extensions)
+			ws_hold(ctx, d)
+			return
+		}
+	}
+	ctx_deliver_now(ctx, sock, ev)
+}
+
+@(private)
+ctx_deliver_now :: proc(ctx: ^Ws_Ctx, sock: base.Handle, ev: ^Socket_Event) {
+	l, id := ctx.loader, ctx.obs_id
+	if id != 0 && l.observer.event != nil {
+		#partial switch ev.kind {
+		case .Message: observe_id(l, id, Observed{kind = .Ws_Frame, data = ev.data, binary = ev.binary})
+		case .Closing: observe_id(l, id, Observed{kind = .Ws_Frame, detail = fmt.tprintf("close %d %s", ev.code, ev.reason)})
+		case .Closed:
+			ctx.ended = true
+			observe_id(l, id, Observed{kind = .Ws_Closed, status = int(ev.code), detail = ev.reason, clean = ev.clean})
+		case .Failed:
+			ctx.ended = true
+			observe_id(l, id, Observed{kind = .Failed, error = ev.error, detail = ev.detail})
+		}
+	}
 	if ctx.on_event != nil { ctx.on_event(ctx.user, sock, ev) }
 }
 

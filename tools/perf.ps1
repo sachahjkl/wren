@@ -349,3 +349,69 @@ if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'video_*' -and $_ -ne
         Run 'video_play_sample' "$vb`?mode=play" { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $true
     } finally { Stop-WrenTestServer $srv }
 }
+
+# YouTube's watch page without the network (examples/site/yt-sim.html, files of tools\gen_perf_media.ps1, made on first use):
+# a player that toggles state classes under bare :has() rules, a progress bar moved every animation frame, MSE with separate
+# audio and video buffers, ~4 000 elements around it. The report's "video" section says how the pictures reached the screen
+# (pictures dropped, cadence, stutters). yt_*_task adds an 80 ms busy callback every 5 s (the player's periodic work), yt_*_wheel
+# scrolls the page meanwhile (comments, suggestions), yt_*_prog plays the file without MSE.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_*' })) {
+    if (-not (Test-Path (Join-Path $site 'media\video\perf_short_1080x1920_a.mp4'))) { & powershell -NoProfile -File (Join-Path $PSScriptRoot 'gen_perf_media.ps1') }
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $yt = "$($srv.Origin)/site/yt-sim.html"
+        $ytp = '--pref media.autoplay.policy=allow-all --pref browser.profile.persist=false'   # (nothing restored from, nor written to, a profile)
+        $play = { param($h) Start-Sleep 12; Mark; Start-Sleep 10 }
+        Run 'yt_h264_1080p60'      "$yt`?src=perf_h264_1080p60" $play $false $ytp
+        Run 'yt_h264_1080p60_prog' "$yt`?src=perf_h264_1080p60&mse=0" $play $false $ytp
+        Run 'yt_av1_1080p30'       "$yt`?src=perf_av1_1080p30&codecs=av01.0.08M.08" $play $false $ytp
+        Run 'yt_short'             "$yt`?src=perf_short_1080x1920" $play $false $ytp
+        Run 'yt_h264_1080p60_task' "$yt`?src=perf_h264_1080p60&task=80" $play $false $ytp
+        Run 'yt_h264_1080p60_wheel' "$yt`?src=perf_h264_1080p60" { param($h) Start-Sleep 12; Mark; WheelStream $h 10000 16 -360 } $false $ytp
+        # the player over the whole window, the window itself fullscreen (F11): the video alone is visible
+        Run 'yt_h264_1080p60_fs' "$yt`?src=perf_h264_1080p60&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $false $ytp
+        Run 'yt_av1_1080p30_fs' "$yt`?src=perf_av1_1080p30&codecs=av01.0.08M.08&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $false $ytp
+        Run 'yt_h264_1080p60_fs_sample' "$yt`?src=perf_h264_1080p60&fs=1" { param($h) Start-Sleep 3; Key $h 0x7A; Start-Sleep 9; Mark; Start-Sleep 10 } $true $ytp
+        Run 'yt_h264_1080p60_sample' "$yt`?src=perf_h264_1080p60" $play $true $ytp
+    } finally { Stop-WrenTestServer $srv }
+}
+# The start-up of a heavy single-page app without the network (examples/site/yt-boot.html: component styles added while the page is built
+# in batches, forced layout reads between them, :has() anchors on a tag, a class and a chain, form controls, toggling attributes): the
+# report's "style passes" says how many were full and why, "layouts forced by scripts' readings" what they cost, and the page's own
+# window.__boot the time it took. yt_boot_sample: with the sampling profile of the main thread.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'yt_boot*' })) {
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $ytb = "$($srv.Origin)/site/yt-boot.html"
+        $ytp = '--pref browser.profile.persist=false'
+        Run 'yt_boot'        "$ytb`?batches=14&cards=50" { param($h) Start-Sleep 9 } $false $ytp
+        Run 'yt_boot_sample' "$ytb`?batches=14&cards=50" { param($h) Start-Sleep 9 } $true $ytp
+    } finally { Stop-WrenTestServer $srv }
+}
+# The developer tools (browser.devtools.*) open on each tab, left alone (frames per second must be 0 once the page has settled)
+# and, for the console, with 100 000 lines kept and scrolled. The page of the sockets, the stream, the worker and the media
+# (examples/site/devtools) gives the Network tab something to list; the console page logs lines in a loop.
+if ($Only.Count -eq 0 -or ($Only | Where-Object { $_ -like 'dt_*' })) {
+    $dtc = Join-Path $out 'dt_console.html'
+    [IO.File]::WriteAllText($dtc, "<!doctype html><meta charset=utf-8><title>dt_console</title><script>for (var i = 0; i < 100000; i++) console.log('line', i, {a: i, b: [1, 2, 3]});</script><p>100 000 console lines</p>")
+    $srv = Start-WrenTestServer
+    try {
+        $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
+        $dtp = "$($srv.Origin)/site/devtools/dt4.html"
+        Run 'dt_closed_idle' $dtp { param($h) Start-Sleep 6; Mark; Start-Sleep 8 } $false   # the same page, the panel closed: what the page itself costs
+        $dts = Join-Path $out 'dt_static.html'
+        [IO.File]::WriteAllText($dts, '<!doctype html><meta charset=utf-8><title>dt_static</title><h1>Nothing moves</h1><p>A static page for the panel at rest.</p>')
+        foreach ($tab in 'console', 'elements', 'network', 'application', 'performance', 'memory') {
+            Run "dt_static_${tab}_idle" (FileUrl $dts) { param($h) Start-Sleep 5; Mark; Start-Sleep 8 } $false "--pref browser.devtools.visible=true --pref browser.devtools.tab=$tab"
+        }
+        foreach ($tab in 'console', 'elements', 'network', 'application', 'performance', 'memory') {
+            Run "dt_${tab}_idle" $dtp { param($h) Start-Sleep 6; Mark; Start-Sleep 8 } $false "--pref browser.devtools.visible=true --pref browser.devtools.tab=$tab"
+        }
+        $cons = '--pref browser.devtools.visible=true --pref browser.devtools.tab=console --pref browser.console.max_lines=100000'
+        Run 'dt_console100k_idle' (FileUrl $dtc) { param($h) Start-Sleep 12; Mark; Start-Sleep 8 } $false $cons
+        Run 'dt_console100k_scroll' (FileUrl $dtc) { param($h) Start-Sleep 12; Mark; $c = Client $h; $sw = [Diagnostics.Stopwatch]::StartNew(); while ($sw.ElapsedMilliseconds -lt 8000) { Wheel $h ($c.R / 2) ([int]($c.B * 0.85)) (-3); Start-Sleep -Milliseconds 16 } } $false $cons
+        Run 'dt_network_throttled' $dtp { param($h) Start-Sleep 4; Mark; Start-Sleep 10 } $false '--pref browser.devtools.visible=true --pref browser.devtools.tab=network --pref browser.devtools.network.throttle=slow_3g'
+    } finally { Stop-WrenTestServer $srv }
+}

@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>layout first</title></head>
+<body style="margin:0">
+<!-- tools\remote_e2e.ps1 (layout first): the first thing this page does is read its layout (a script before any frame of the page was made), with
+     absolutely positioned replaced elements in it: the natural size of its image must be this page's (not yet known), never that of an image
+     of the page before at the same place of the tree (layout-sized.htm: 77 x 33). -->
+<img id="a" style="position:absolute;left:10px;top:10px" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" alt="">
+<video id="v" style="position:absolute;left:10px;top:60px" muted></video>
+<svg id="s" style="position:absolute;left:10px;top:120px" viewBox="0 0 10 5"></svg>
+<script>
+  addEventListener("unload", () => {});   // (a page with an unload handler is not kept in the back-forward cache: it is freed when left)
+  window.first = document.getElementById("a").getBoundingClientRect().width + ":" + document.getElementById("v").getBoundingClientRect().width;
+</script>
+</body></html>

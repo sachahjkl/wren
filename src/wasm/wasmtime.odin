@@ -19,7 +19,7 @@ foreign import wasmtime_lib {
 	"system:kernel32.lib",
 	"system:msvcrt.lib",
 	"system:ucrt.lib",
-	"system:vcruntime.lib",
+	"system:libvcruntime.lib",
 }
 
 wt_config     :: distinct rawptr

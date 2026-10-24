@@ -1,13 +1,17 @@
 package browser
 
-// The developer tools: a native view of the chrome (not a page), docked under the page, at its right, or floating over
-// it, with three tabs (Console, Elements, Network). F12 / Ctrl+Shift+I open and close it, Ctrl+Shift+J opens the Console;
-// "Inspect" in the page's context menu opens Elements on the element under the pointer. The tabs are in
-// devtools_console.odin, devtools_elements.odin and devtools_network.odin.
+// The developer tools: a native view of the chrome (not a page), docked under the page, at its right or its left, or
+// floating over it, with tabs (Console, Elements, Network, Application, Performance, Memory). F12 / Ctrl+Shift+I open and
+// close it, Ctrl+Shift+J opens the Console, Ctrl+Shift+C picks an element of the page; "Inspect" in the page's context menu
+// opens Elements on the element under the pointer. The tabs are in devtools_console.odin, devtools_elements.odin,
+// devtools_network.odin, devtools_application.odin, devtools_performance.odin and devtools_memory.odin; the interface
+// parts they share (icons, buttons, lists, the filter field) are in devtools_kit.odin and devtools_icons.odin.
 //
-// State and preferences: browser.devtools.visible / dock / tab / size. The panel takes room from the page (build_ui puts it
-// next to the page's box, so page_rect shrinks and the layout follows); floating, it is a box over the page that is moved by its
-// title and resized by its corner, and takes the pointer where it is (devtools_captures).
+// State and preferences: browser.devtools.* (visible, dock, tab, size, font size, density, and what each tab keeps: its
+// filters, its columns, its panes). The panel takes room from the page (build_ui puts it next to the page's box, so
+// page_rect shrinks and the layout follows); floating, it is a box over the page that is moved by its header and
+// resized by its corner, and takes the pointer where it is (devtools_captures). Closed, it costs nothing: nothing is
+// built, and the loader's observer keeps only what the Network tab needs for the tabs that have requests.
 //
 // The panel reads what the shell owns (the tab's console lines, its request log); what it shows of the page's document is
 // copied while the page is not running (shell_nested: a chrome frame made while a script holds the thread reads nothing
@@ -23,26 +27,46 @@ import "wb:base"
 import "wb:config"
 import "wb:page"
 
-Dev_Dock :: enum u8 { Bottom, Right, Floating }
-Dev_Panel :: enum u8 { Console, Elements, Network }
+Dev_Dock :: enum u8 { Bottom, Right, Left, Floating }
+Dev_Panel :: enum u8 { Console, Elements, Network, Application, Performance, Memory }
 
-DEV_DOCK_NAMES := [Dev_Dock]string{.Bottom = "bottom", .Right = "right", .Floating = "floating"}
-DEV_PANEL_NAMES := [Dev_Panel]string{.Console = "console", .Elements = "elements", .Network = "network"}
-DEV_PANEL_TITLES := [Dev_Panel]string{.Console = "Console", .Elements = "Elements", .Network = "Network"}
-DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock at the bottom", .Right = "Dock at the right", .Floating = "Undock into a floating panel"}
+DEV_DOCK_NAMES := [Dev_Dock]string{.Bottom = "bottom", .Right = "right", .Left = "left", .Floating = "floating"}
+DEV_PANEL_NAMES := [Dev_Panel]string{.Console = "console", .Elements = "elements", .Network = "network", .Application = "application", .Performance = "performance", .Memory = "memory"}
+DEV_PANEL_TITLES := [Dev_Panel]string{.Console = "Console", .Elements = "Elements", .Network = "Network", .Application = "Application", .Performance = "Performance", .Memory = "Memory"}
+DEV_PANEL_ICONS := [Dev_Panel]Dt_Icon{.Console = .Tab_Console, .Elements = .Tab_Elements, .Network = .Tab_Network, .Application = .Tab_Application, .Performance = .Tab_Performance, .Memory = .Tab_Memory}
+DEV_DOCK_TITLES := [Dev_Dock]string{.Bottom = "Dock to bottom", .Right = "Dock to right", .Left = "Dock to left", .Floating = "Undock into a floating panel"}
+// The commands (commands.odin) that dock the panel: their shortcuts are shown in the menus.
+DEV_DOCK_COMMANDS := [Dev_Dock]string{.Bottom = "view.devtools_dock_bottom", .Right = "view.devtools_dock_right", .Left = "view.devtools_dock_left", .Floating = "view.devtools_dock_floating"}
+
+// The first shortcut of a command, as a menu shows it ("" when it has none).
+cmd_key :: proc(name: string) -> string {
+	c := command(name)
+	return c == nil ? "" : command_shortcut_text(c)
+}
+
+DEV_DOCK_ICONS := [Dev_Dock]Dt_Icon{.Bottom = .Dock_Bottom, .Right = .Dock_Right, .Left = .Dock_Left, .Floating = .Float}
 
 DEVTOOLS_PREFS := [?]config.Def{
 	{name = "browser.devtools.visible", kind = .Bool, default = {b = false},
-		description = "Show the developer tools: a panel with the page's console, its document tree and its requests (F12, Ctrl+Shift+I)."},
-	{name = "browser.devtools.dock", kind = .String, default = {s = "bottom"}, choices = {"bottom", "right", "floating"},
-		description = "Where the developer tools sit: under the page, at its right, or in a panel over it that can be moved and resized."},
-	{name = "browser.devtools.tab", kind = .String, default = {s = "console"}, choices = {"console", "elements", "network"},
+		description = "Show the developer tools: a panel with the page's console, its document tree, its requests and its storage (F12, Ctrl+Shift+I)."},
+	{name = "browser.devtools.dock", kind = .String, default = {s = "bottom"}, choices = {"bottom", "right", "left", "floating"},
+		description = "Where the developer tools sit: under the page, at its right or its left, or in a panel over it that can be moved and resized."},
+	{name = "browser.devtools.tab", kind = .String, default = {s = "console"}, choices = {"console", "elements", "network", "application", "performance", "memory"},
 		description = "The tab of the developer tools that is shown."},
 	{name = "browser.devtools.size", kind = .Float, default = {f = 300}, bounded = true, min = 100, max = 4000, unit = "px",
-		description = "Height of the developer tools when they sit under the page, width when they sit at its right (CSS pixels)."},
+		description = "Height of the developer tools when they sit under the page, width when they sit at its side (CSS pixels)."},
+	{name = "browser.devtools.font_size", kind = .Float, default = {f = 12}, bounded = true, min = 8, max = 24, unit = "px",
+		description = "Size of the text of the developer tools (CSS pixels). Ctrl and the plus, minus or zero keys change it while the panel has the pointer."},
+	{name = "browser.devtools.density", kind = .String, default = {s = "compact"}, choices = {"compact", "comfortable"},
+		description = "How tightly the developer tools' rows and toolbars are spaced."},
 }
 
-register_devtools_prefs :: proc(p: ^config.Prefs) { config.register(p, DEVTOOLS_PREFS[:]) }
+register_devtools_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, DEVTOOLS_PREFS[:])
+	console_register_prefs(p)
+	network_register_prefs(p)
+	elements_register_prefs(p)
+}
 
 Dev_Drag :: enum u8 { None, Size, Move, Corner }
 
@@ -50,16 +74,25 @@ Devtools :: struct {
 	visible:   bool,
 	dock:      Dev_Dock,
 	panel:     Dev_Panel,
-	size:      f32,                // logical px: the height (bottom) or the width (right)
+	size:      f32,                // logical px: the height (bottom) or the width (side)
+	font_pt:   f32,
+	density:   Dt_Density,
 	float_pos: [2]f32,             // floating: from the window's top left, logical px
 	float_size: [2]f32,
 	float_set: bool,               // the floating panel has a place (else: made when first shown)
 	drag:      Dev_Drag,
 	drag_from: [2]f32,             // the size / place when the drag began
 	panel_rect: draw.Rect,         // where the floating panel was drawn last frame
+	rect:      draw.Rect,          // where the panel was drawn last frame, docked or not
 	watch:     int,
+	picking:   bool,               // the element picker (Ctrl+Shift+C) is on: the page shows the element under the pointer
+	hover_tab: int,
 	con:       Dev_Console,
 	els:       Dev_Elements,
+	net:       Dev_Network,
+	app:       Dev_Application,
+	perf:      Dev_Performance,
+	mem:       Dev_Memory,
 }
 
 dev: Devtools
@@ -68,14 +101,18 @@ devtools_init :: proc(app: ^App) {
 	devtools_apply_prefs(&app.prefs)
 	if app.cfg.show_console && !dev.visible { dev.visible, dev.panel = true, .Console }   // browser.console.visible: the older way to ask for it
 	dev.watch = config.watch(&app.prefs, "browser.devtools.", proc(user: rawptr, name: string, p: ^config.Prefs) { devtools_apply_prefs(p) }, app)
-	app.loader.observer = {user = app, event = net_observe}   // devtools_network.odin
+	app.loader.observer = {user = app, event = net_observe, block = net_blocked, throttle = net_link_for}   // devtools_net_model.odin, devtools_network.odin
 }
 
 devtools_destroy :: proc(app: ^App) {
+	devtools_window_destroy(app)
 	config.unwatch(&app.prefs, dev.watch)
 	console_panel_destroy()
 	elements_destroy()
-	net_destroy()
+	network_destroy()
+	application_destroy()
+	performance_destroy()
+	memory_destroy()
 	dev = {}
 }
 
@@ -85,6 +122,11 @@ devtools_apply_prefs :: proc(p: ^config.Prefs) {
 	for name, d in DEV_DOCK_NAMES { if name == dock { dev.dock = d } }
 	for name, d in DEV_PANEL_NAMES { if name == panel { dev.panel = d } }
 	if dev.drag == .None { dev.size = f32(config.float_of(p, "browser.devtools.size")) }
+	dev.font_pt = f32(config.float_of(p, "browser.devtools.font_size"))
+	dev.density = config.string_of(p, "browser.devtools.density") == "comfortable" ? .Comfortable : .Compact
+	console_apply_prefs(p)
+	network_apply_prefs(p)
+	if the_app != nil { console_arm_all(the_app) }   // (the pages describe their console arguments while the panel is open)
 }
 
 // What the panel's own state asks of the preferences (they are what is saved, and what about:config shows).
@@ -102,8 +144,20 @@ set_pref_string :: proc(app: ^App, name, value: string) {
 	}
 }
 
+// A preference of any kind from its text (what a menu of the panel sets).
+dev_set_pref :: proc(app: ^App, name: string, value: string) {
+	if err := config.set_from_string(&app.prefs, name, value, .User); err != .None {
+		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+	}
+}
+
+dev_toggle_pref :: proc(app: ^App, name: string) {
+	dev_set_pref(app, name, config.bool_of(&app.prefs, name) ? "false" : "true")
+}
+
 devtools_toggle :: proc(app: ^App) {
 	dev.visible = !dev.visible
+	if !dev.visible { dev.picking = false }
 	set_pref_bool(app, "browser.devtools.visible", dev.visible)
 	app.frames_requested = max(app.frames_requested, 3)
 }
@@ -127,9 +181,23 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	app.frames_requested = max(app.frames_requested, 3)
 }
 
+// Ctrl+Shift+C: opens the Elements tab and starts (or stops) picking an element in the page.
+devtools_pick :: proc(app: ^App) {
+	if !dev.visible || dev.panel != .Elements { devtools_open(app, .Elements) }
+	dev.picking = !dev.picking
+	app.frames_requested = max(app.frames_requested, 3)
+}
+
+// Ctrl and + / - / 0: the text of the panel larger, smaller, as it was.
+devtools_zoom :: proc(app: ^App, step: f32) {
+	pt := step == 0 ? 12 : clamp(dev.font_pt + step, 8, 24)
+	dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt))
+	app.frames_requested = max(app.frames_requested, 2)
+}
+
 // Whether the panel is shown for `t` (a web page), and where.
 devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
-	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) { return {}, false }
+	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) || devtools_detached() { return {}, false }
 	return dev.dock, true
 }
 
@@ -137,62 +205,288 @@ devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
 // The panel
 
 // The panel under the box `next` sized: a header (tabs, dock, close) and the tab's content.
-devtools_panel :: proc(app: ^App, t: ^Tab) {
-	em := ui.font_size()
-	if ui.column(.Start, {.Draw_Background}, "###dt_panel") {
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
-		devtools_header(app, t)
-		ui.next({width = ui.fill(), height = ui.fill()})
-		if ui.column(.Start, {.Clip}, "###dt_body") {
-			switch dev.panel {
-			case .Console:  console_panel(app, t)
-			case .Elements: elements_panel(app, t)
-			case .Network:  network_panel(app, t)
+devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_Mod{}) {
+	dt_begin(app)
+	ui.set_menu_item_height(dev.density == .Comfortable ? 2.1 : 1.85)   // dense menus for the panel's own (toolkit 0.19)
+	defer ui.set_menu_item_height(0)
+	if ui.style({font_size = dtm.fs, text_pad = dt_px(4)}) {
+		flags := ui.Box_Flags{.Draw_Background}
+		if floating { flags += {.Draw_Border, .Draw_Shadow} }
+		mod := place
+		mod.axis, mod.radius = .Y, 0
+		if floating { mod.border = dtc.border }
+		ui.next(mod)
+		panel := ui.build_box(flags, "###dt_panel")
+		dev.rect = panel.rect
+		if ui.parent(panel) {
+			devtools_header(app, t, floating)
+			ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
+			body := ui.build_box({.Clip}, "###dt_body")
+			if ui.parent(body) {
+				switch dev.panel {
+				case .Console:     console_panel(app, t)
+				case .Elements:    elements_panel(app, t)
+				case .Network:     network_panel(app, t)
+				case .Application: application_panel(app, t)
+				case .Performance: performance_panel(app, t)
+				case .Memory:      memory_panel(app, t)
+				}
 			}
 		}
+		net_media_frame_end()   // a media that was not previewed this frame is closed
 	}
 }
 
+// The text size of the panel by Ctrl+wheel and Ctrl +, -, 0 while the pointer is over it: these events are the panel's
+// (the chrome's shortcuts would zoom the page, the toolkit's lists would scroll). Called by main.odin's frame with the
+// events of the frame; returns the others.
+devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
+	if !dev.visible && net_media_active() { net_media_release() }
+	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
+	if !dev.visible || dev.rect.max.x <= dev.rect.min.x || ui.ctx_menu_any_open() { return events }
+	taken := false
+	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
+	for e in events {
+		take := false
+		#partial switch e.kind {
+		case .Scroll:
+			if .Ctrl in e.mods && draw.rect_contains(dev.rect, e.pos) {
+				take = true
+				if e.delta.y != 0 { devtools_zoom(app, e.delta.y < 0 ? 1 : -1) }
+			}
+		case .Key_Press:
+			if (e.mods == {.Ctrl} || e.mods == {.Ctrl, .Shift}) && draw.rect_contains(dev.rect, ui.mouse_pos()) {
+				#partial switch e.key {
+				case .Equal, .Num_Add: take = true; devtools_zoom(app, 1)
+				case .Minus, .Num_Subtract: take = true; devtools_zoom(app, -1)
+				case .N0: take = true; devtools_zoom(app, 0)
+				}
+			}
+		}
+		if take { taken = true } else { append(&out, e) }
+	}
+	return taken ? out[:] : events
+}
+
+Dev_Tab_Info :: struct {
+	badges: [2]string,
+	tones:  [2]draw.Color,
+	count:  int,
+}
+
 @(private = "file")
-devtools_header :: proc(app: ^App, t: ^Tab) {
-	em := ui.font_size()
-	if ui.row(.Center, {}, "###dt_header") {
-		sel := int(dev.panel)
-		names: [len(Dev_Panel)]string
-		for p in Dev_Panel { names[int(p)] = DEV_PANEL_TITLES[p] }
-		ui.next({width = ui.children_sum(), height = ui.pct(1)})
-		if ui.row(.Start, {}, "###dt_tabs") {
-			if ui.tabs("###dt_tab", names[:], nil, &sel) {
-				dev.panel = Dev_Panel(sel)
+Tab_Draw :: struct {
+	icon:  Dt_Icon,
+	label: string,
+	on, hot, down: bool,
+	t:     f32,          // the underline's growth (0..1)
+	badges: [2]string,
+	tones:  [2]draw.Color,
+	badge_w: [2]f32,
+	label_w: f32,
+	warn:   bool,         // a dot on the icon: the tab is held to a network speed
+}
+
+@(private = "file")
+tab_width :: proc(label: string, icon_w: f32, badges: [2]string) -> (w, lw: f32, bw: [2]f32) {
+	lw = dt_w(dtm.ui_font, dtm.fs, label)
+	w = dt_px(8) + icon_w + dt_px(5) + lw + dt_px(8)
+	for b, i in badges {
+		if b == "" { continue }
+		bw[i] = max(dt_w(dtm.ui_font, dtm.fs * 0.82, b) + dt_px(8), dtm.fs * 1.12)
+		w += bw[i] + dt_px(4)
+	}
+	return
+}
+
+@(private = "file")
+tab_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Tab_Draw)(user)
+	r := b.rect
+	cy := (r.min.y + r.max.y) * 0.5
+	if d.down { draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.press, dtm.radius) } else if d.hot && !d.on {
+		draw.rect(dc, {{r.min.x, r.min.y + dt_px(3)}, {r.max.x, r.max.y - dt_px(3)}}, dtc.hover, dtm.radius)
+	}
+	col := d.on ? dtc.text : (d.hot ? dtc.text : dtc.weak)
+	x := r.min.x + dt_px(8)
+	dt_icon(dc, d.icon, {math.round(x + dtm.icon * 0.5), cy}, dtm.icon, d.on ? dtc.accent : col, dtm.sc)
+	if d.warn { rr := dt_px(3); draw.rect(dc, {{x + dtm.icon - rr, cy - dtm.icon * 0.5 - rr * 0.3}, {x + dtm.icon + rr, cy - dtm.icon * 0.5 + rr * 1.7}}, draw.Color{0.93, 0.62, 0.10, 1}, rr) }
+	x += dtm.icon + dt_px(5)
+	x += dt_text(dc, dtm.ui_font, dtm.fs, x, cy, col, d.label) + dt_px(4)
+	for bt, i in d.badges {
+		if bt == "" { continue }
+		w := d.badge_w[i]
+		bh := dtm.fs * 1.12
+		draw.rect(dc, {{x, cy - bh * 0.5}, {x + w, cy + bh * 0.5}}, d.tones[i], bh * 0.5)
+		tw := dt_w(dtm.ui_font, dtm.fs * 0.82, bt)
+		dt_text(dc, dtm.ui_font, dtm.fs * 0.82, x + (w - tw) * 0.5, cy, draw.Color{1, 1, 1, 1}, bt)
+		x += w + dt_px(4)
+	}
+	if d.t > 0.01 {
+		w := (r.max.x - r.min.x - dt_px(6)) * d.t
+		cx := (r.min.x + r.max.x) * 0.5
+		th := dt_px(2)
+		draw.rect(dc, {{cx - w * 0.5, r.max.y - th}, {cx + w * 0.5, r.max.y}}, dtc.accent, 0)
+	}
+}
+
+// The numbers the tabs show next to their names.
+@(private = "file")
+tab_info :: proc(t: ^Tab, p: Dev_Panel) -> (badges: [2]string, tones: [2]draw.Color) {
+	if t == nil { return }
+	#partial switch p {
+	case .Console:
+		e, w := console_counts(t)
+		if e > 0 { badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", e)), dtc.bad }
+		if w > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", w)), draw.Color{0.80, 0.55, 0.05, 1} }
+	case .Network:
+		n := len(t.net.entries)
+		if n > 0 {
+			errs := 0
+			for &e in t.net.entries { if e.failed || e.status >= 400 { errs += 1 } }
+			badges[0], tones[0] = dt_frame_str(fmt.tprintf("%d", n)), with_alpha(dtc.weak, 0.55)
+			if errs > 0 { badges[1], tones[1] = dt_frame_str(fmt.tprintf("%d", errs)), dtc.bad }
+		}
+	}
+	return
+}
+
+@(private = "file")
+devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
+	if dt_bar("###dt_header", dtm.tab) {
+		hdr := ui.parent_box()
+		// a floating panel is moved by its header: this box takes the press under the buttons
+		dt_gap(2)
+		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key("view.devtools_pick"), on = dev.picking)
+		if pick.clicked { devtools_pick(app) }
+		dt_vsep("###dt_hs0")
+		dt_gap(2)
+
+		// the tabs that fit, then a chevron for the others
+		right_w := dtm.btn * 3 + dt_px(8) * 4 + dtm.line
+		avail := hdr.size.x > 0 ? hdr.size.x - right_w - dtm.btn - dt_px(10) - dtm.line : 1e9
+		hidden: [len(Dev_Panel)]bool
+		used: f32
+		count := 0
+		for p in Dev_Panel {
+			bs, tones := tab_info(t, p)
+			w, lw, bw := tab_width(DEV_PANEL_TITLES[p], dtm.icon, bs)
+			if (used + w > avail && count > 0 && p != dev.panel) {
+				hidden[p] = true
+				continue
+			}
+			used += w
+			count += 1
+			on := dev.panel == p
+			key := ui.key_from_string(ui.parent_box().key, fmt.tprintf("###dt_tab_%d", int(p)))
+			grow := ui.anim(ui.key_from_string(key, "t"), on ? 1 : 0, 34)
+			ui.next({width = ui.px(math.round(w)), height = ui.pct(1), cursor = .Arrow})
+			tb := ui.build_box({.Clickable, .Focusable}, fmt.tprintf("###dt_tab_%d", int(p)))
+			sig := ui.signal(tb)
+			d := ui.frame_new(Tab_Draw)
+			d.icon, d.label, d.on, d.hot, d.down, d.t = DEV_PANEL_ICONS[p], DEV_PANEL_TITLES[p], on, sig.hovering, sig.dragging && sig.hovering, grow
+			d.badges, d.tones, d.badge_w, d.label_w = bs, tones, bw, lw
+			d.warn = p == .Network && net_profile_active(net_profile_of(t))
+			tb.custom, tb.custom_user = tab_paint, d
+			if sig.clicked && !on {
+				dev.panel = p
+				if p != .Elements { dev.picking = false }
 				devtools_save(app)
 				app.frames_requested = max(app.frames_requested, 2)
 			}
+			dt_tip(sig, DEV_PANEL_TITLES[p])
 		}
-		// a floating panel is moved by its header
-		ui.next({width = ui.fill(), height = ui.pct(1)})
-		hb := ui.build_box({.Clickable}, "###dt_grab")
-		hs := ui.signal(hb)
-		if dev.dock == .Floating { hb.cursor = .Move; devtools_float_drag(app, hs, .Move) }
-		if ui.parent(hb) { ui.spacer(ui.fill()) }
-
-		ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
-		dock_btn := ui.button("Dock###dt_dock")
-		key := ui.key_from_string(dock_btn.box.parent.key, "###dt_dock_menu")
-		if dock_btn.clicked { ui.ctx_menu_open_rect(key, dock_btn.box.rect, dock_btn.box.key) }
-		if ui.ctx_menu(key) {
-			for d in Dev_Dock {
-				title := DEV_DOCK_TITLES[d]
-				if ui.menu_item(title, checked = dev.dock == d).clicked { devtools_set_dock(app, d); ui.ctx_menu_close() }
+		any_hidden := false
+		for h in hidden { if h { any_hidden = true } }
+		if any_hidden {
+			key := ui.key_from_u64(ui.key_from_string(ui.parent_box().key, "###dt_more"), 0xd0d0)
+			sig := dt_btn("###dt_more", .Chevron_Right, tooltip = "More tabs", on = ui.ctx_menu_is_open(key))
+			if sig.clicked {
+				if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, sig.box.rect, sig.box.key) }
+			}
+			if ui.ctx_menu(key) {
+				for p in Dev_Panel {
+					if !hidden[p] { continue }
+					if ui.menu_item(fmt.tprintf("%s###dt_more_%d", DEV_PANEL_TITLES[p], int(p)), icon = "", checked = dev.panel == p).clicked {
+						dev.panel = p
+						devtools_save(app)
+					}
+				}
 			}
 		}
-		ui.spacer(ui.px(em * 0.3))
-		cs := ui.dense(em * 1.8)
-		ui.next({width = ui.px(cs), height = ui.px(cs), radius = em * CHROME_BUTTON_RADIUS})
-		close := ui.icon_button("###dt_close", GLYPH_CLOSE)
-		tip(close, "Close the developer tools (F12)")
-		if close.clicked { devtools_toggle(app) }
-		ui.spacer(ui.px(em * 0.4))
+
+		// what is left of the header: a floating panel is moved by it
+		ui.next({width = ui.fill(), height = ui.pct(1)})
+		grab := ui.build_box({.Clickable}, "###dt_grab")
+		gs := ui.signal(grab)
+		if dev.dock == .Floating { grab.cursor = .Move; devtools_float_drag(app, gs, .Move) }
+
+		// settings, dock, close
+		skey := dt_menu_btn("###dt_settings", .Kebab, tooltip = "Customize and control the developer tools", caret = false)
+		if ui.ctx_menu(skey, dt_px(230)) { devtools_settings_menu(app, t) }
+		dkey := dt_menu_btn("###dt_dock", DEV_DOCK_ICONS[dev.dock], tooltip = "Dock side", caret = false)
+		if ui.ctx_menu(dkey, dt_px(240)) {
+			for d in Dev_Dock {
+				if ui.menu_item(fmt.tprintf("%s###dt_dock_%d", DEV_DOCK_TITLES[d], int(d)), cmd_key(DEV_DOCK_COMMANDS[d]), checked = dev.dock == d && !devtools_detached(), icon = "").clicked { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) }
+			}
+			ui.menu_separator()
+			if devtools_detached() {
+				if ui.menu_item("Dock back into the browser window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_attach(app) }
+			} else {
+				if ui.menu_item("Open in a separate window###dt_dock_win", cmd_key("view.devtools_detach")).clicked { devtools_detach(app) }
+			}
+		}
+		dt_gap(2)
+		dt_vsep("###dt_hs1")
+		dt_gap(2)
+		if dt_btn("###dt_close", .Close, tooltip = "Close the developer tools", shortcut = "F12").clicked { devtools_toggle(app) }
+		dt_gap(2)
 	}
+	_ = floating
+}
+
+@(private = "file")
+devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
+	if ui.menu_submenu("Text size###dt_m_size") {
+		for pt in ([?]f32{10, 11, 12, 13, 14, 16, 18}) {
+			if ui.menu_item(fmt.tprintf("%g px###dt_m_pt%g", pt, pt), checked = dev.font_pt == pt).clicked { dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt)) }
+		}
+		ui.menu_separator()
+		if ui.menu_item("Larger###dt_m_big", "Ctrl +").clicked { devtools_zoom(app, 1) }
+		if ui.menu_item("Smaller###dt_m_small", "Ctrl \u2212").clicked { devtools_zoom(app, -1) }
+		if ui.menu_item("Reset###dt_m_reset", "Ctrl 0").clicked { devtools_zoom(app, 0) }
+	}
+	if ui.menu_submenu("Density###dt_m_density") {
+		if ui.menu_item("Compact###dt_m_dc", checked = dev.density == .Compact).clicked { dev_set_pref(app, "browser.devtools.density", "compact") }
+		if ui.menu_item("Comfortable###dt_m_dm", checked = dev.density == .Comfortable).clicked { dev_set_pref(app, "browser.devtools.density", "comfortable") }
+	}
+	if ui.menu_submenu("Theme###dt_m_theme") {
+		ui.menu_heading("The panel follows the browser's theme")
+		for np, i in ui.NAMED_PALETTES {
+			if ui.menu_item(fmt.tprintf("%s###dt_m_th%d", np.name, i), checked = strings.equal_fold(app.cfg.ui_theme, np.name)).clicked { dev_set_pref(app, "browser.ui.theme", np.name) }
+		}
+	}
+	ui.menu_separator()
+	#partial switch dev.panel {
+	case .Console: console_settings_items(app, t)
+	case .Network: network_settings_items(app, t)
+	}
+	ui.menu_separator()
+	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key("view.devtools_pick")).clicked { devtools_pick(app) }
+	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
+	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
+	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools") }
+	if ui.menu_item("Close the developer tools###dt_m_close", "F12").clicked { devtools_toggle(app) }
+}
+
+// Sizes, columns and panes as they came.
+devtools_reset_layout :: proc(app: ^App) {
+	dev_set_pref(app, "browser.devtools.size", "300")
+	dev_set_pref(app, "browser.devtools.font_size", "12")
+	dev_set_pref(app, "browser.devtools.density", "compact")
+	network_reset_layout(app)
+	elements_reset_layout(app)
+	app.frames_requested = max(app.frames_requested, 2)
 }
 
 ////////////////////////////////
@@ -204,39 +498,20 @@ devtools_extent :: proc(app: ^App, vertical: bool) -> f32 {
 	return clamp(dev.size * ui.scale(), 80, math.max(room * 0.7, 80))
 }
 
-// The list at its end, for `n` rows: its heights of the last frame, an average for the rows added since. (A list that
-// follows its end does so while it was at the end when rows came, and stops when the user scrolls away from it.)
-dev_scroll_end :: proc(l: ^ui.Virtual_List, n: int) {
-	known := len(l.offsets) - 1
-	total: f32
-	if known >= 0 { total = l.offsets[known] }
-	if n > known { total += f32(n - math.max(known, 0)) * l.est }
-	view_h: f32
-	if b := ui.box_from_key(l.key); b != nil { view_h = b.size.y }
-	ui.vlist_scroll_to(l, math.max(total - view_h, 0))
-}
-
-// Whether the list's view is at its end (as of last frame's layout).
-dev_at_end :: proc(l: ^ui.Virtual_List, em: f32) -> bool {
-	b := ui.box_from_key(l.key)
-	if b == nil || len(l.offsets) == 0 { return true }
-	return b.view_off.y + b.size.y >= l.offsets[len(l.offsets) - 1] - em * 2
-}
-
 // A bar between the page and the panel: dragging it resizes the panel.
 devtools_splitter :: proc(app: ^App, vertical: bool) {
-	em := ui.font_size()
-	thick := math.max(math.round(em * 0.3), 4)
-	ui.next({width = vertical ? ui.px(thick) : ui.fill(), height = vertical ? ui.fill() : ui.px(thick), cursor = vertical ? .Resize_H : .Resize_V})
+	grab := dt_px(5)
+	ui.next({width = vertical ? ui.px(grab) : ui.fill(), height = vertical ? ui.fill() : ui.px(grab), cursor = vertical ? .Resize_H : .Resize_V})
 	b := ui.build_box({.Clickable}, "###dt_split")
 	sig := ui.signal(b)
-	line := ui.frame_new(draw.Color)
-	line^ = ui.color("border")
-	if sig.hovering || dev.drag == .Size { line.a = math.min(line.a + 0.4, 1) }
+	line := ui.frame_new(Split_Draw)
+	hot := sig.hovering || dev.drag == .Size
+	line^ = {col = hot ? ui.color("accent") : ui.color("border"), thick = hot ? 2 : 1}
 	b.custom, b.custom_user = devtools_split_draw, line
 	if sig.pressed { dev.drag, dev.drag_from = .Size, {dev.size, 0} }
 	if sig.dragging && dev.drag == .Size {
 		delta := vertical ? sig.drag_delta.x : sig.drag_delta.y
+		if dev.dock == .Left { delta = -delta }
 		room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
 		dev.size = clamp(dev.drag_from[0] - delta / ui.scale(), 80, math.max(room / ui.scale() - 160, 80))
 		app.frames_requested = max(app.frames_requested, 2)
@@ -248,15 +523,20 @@ devtools_splitter :: proc(app: ^App, vertical: bool) {
 }
 
 @(private = "file")
+Split_Draw :: struct { col: draw.Color, thick: f32 }
+
+@(private = "file")
 devtools_split_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	c := (^draw.Color)(user)^
+	d := (^Split_Draw)(user)
+	c := d.col
 	r := b.rect
+	th := max(math.round(ui.scale()), 1) * d.thick
 	if r.max.x - r.min.x < r.max.y - r.min.y {
-		x := (r.min.x + r.max.x) * 0.5
-		draw.rect(dc, {{x - 0.5, r.min.y}, {x + 0.5, r.max.y}}, c)
+		x := math.round((r.min.x + r.max.x) * 0.5)
+		draw.rect(dc, {{x - th * 0.5, r.min.y}, {x + th * 0.5, r.max.y}}, c)
 	} else {
-		y := (r.min.y + r.max.y) * 0.5
-		draw.rect(dc, {{r.min.x, y - 0.5}, {r.max.x, y + 0.5}}, c)
+		y := math.round((r.min.y + r.max.y) * 0.5)
+		draw.rect(dc, {{r.min.x, y - th * 0.5}, {r.max.x, y + th * 0.5}}, c)
 	}
 }
 
@@ -298,21 +578,39 @@ devtools_floating :: proc(app: ^App, t: ^Tab) {
 	}
 	dev.float_size = {clamp(dev.float_size[0], 260, math.max(win.x, 260)), clamp(dev.float_size[1], 160, math.max(win.y, 160))}
 	dev.float_pos = {clamp(dev.float_pos[0], 0, math.max(win.x - dev.float_size[0], 0)), clamp(dev.float_pos[1], 0, math.max(win.y - dev.float_size[1], 0))}
-	ui.next({width = ui.px(dev.float_size[0] * sc), height = ui.px(dev.float_size[1] * sc), fixed_x = dev.float_pos[0] * sc, fixed_y = dev.float_pos[1] * sc, border = ui.color("border")})
-	devtools_panel(app, t)
+	devtools_panel(app, t, true, {width = ui.px(dev.float_size[0] * sc), height = ui.px(dev.float_size[1] * sc), fixed_x = dev.float_pos[0] * sc, fixed_y = dev.float_pos[1] * sc})
 	if b := ui.box_from_key(ui.key_from_string(ui.parent_box().key, "###dt_panel")); b != nil {
 		dev.panel_rect = b.rect
 		// the corner: a grip that resizes
 		g := math.round(ui.font_size() * 1.1)
 		ui.next({width = ui.px(g), height = ui.px(g), fixed_x = b.rect.max.x - b.rect.min.x - g, fixed_y = b.rect.max.y - b.rect.min.y - g, cursor = .Resize_NWSE})
 		gb := ui.build_box({.Clickable}, "###dt_corner")
-		devtools_float_drag(app, ui.signal(gb), .Corner)
+		gs := ui.signal(gb)
+		d := ui.frame_new(Dt_Btn_Draw)
+		d.hot = gs.hovering || dev.drag == .Corner
+		gb.custom, gb.custom_user = corner_grip_draw, d
+		devtools_float_drag(app, gs, .Corner)
+	}
+}
+
+@(private = "file")
+corner_grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Dt_Btn_Draw)(user)
+	r := b.rect
+	s := max(math.round(ui.scale()), 1)
+	col := d.hot ? dtc.accent : dtc.faint
+	for i in 0 ..< 3 {
+		for j in 0 ..= i {
+			x := r.max.x - 2 * s - f32(j) * 3 * s
+			y := r.max.y - 2 * s - f32(i - j) * 3 * s
+			draw.rect(dc, {{x - s, y - s}, {x, y}}, col)
+		}
 	}
 }
 
 // The floating panel takes the pointer where it is: the page under it gets nothing.
 devtools_captures :: proc(pos: draw.Vec2) -> bool {
-	return dev.visible && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
+	return dev.visible && !devtools_detached() && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
 }
 
 ////////////////////////////////
@@ -323,6 +621,7 @@ devtools_captures :: proc(pos: draw.Vec2) -> bool {
 devtools_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect) {
 	if !dev.visible || dev.panel != .Elements || t == nil || t.page == nil || t.kind != .Web { return }
 	h := dev.els.hover != base.NIL_HANDLE ? dev.els.hover : dev.els.selected
+	if dev.picking { h = dev.els.picked }
 	if h == base.NIL_HANDLE { return }
 	elements_overlay(app, t, dc, area, h)
 }
@@ -332,6 +631,16 @@ devtools_inspect :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	if t == nil || t.page == nil { return }
 	devtools_open(app, .Elements)
 	elements_select(t, h)
+}
+
+// A preference of the registry, read where the panel needs it.
+config_string :: proc(app: ^App, name: string) -> string { return config.string_of(&app.prefs, name) }
+config_int :: proc(app: ^App, name: string) -> i64 { return config.int_of(&app.prefs, name) }
+config_float :: proc(app: ^App, name: string) -> f64 { return config.float_of(&app.prefs, name) }
+
+// A float preference set while a drag goes on (no toast on a refused value).
+set_pref_quiet :: proc(app: ^App, name: string, v: f32) {
+	_ = config.set_from_string(&app.prefs, name, fmt.tprintf("%.3f", v), .User)
 }
 
 _ :: page

@@ -315,13 +315,17 @@ media_schedule_load :: proc(el: ^Media_Element) {
 	p := el.page
 	el.load_ticket += 1
 	el.network_state = NETWORK_NO_SOURCE   // (until the algorithm decides)
+	// the synchronous part of the load algorithm: what play() promised before is aborted, the element is paused
+	for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the play() request was interrupted by a new load request") }
+	clear(&el.pending_play)
+	el.paused = true
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		tok := (^Media_Notice)(data)
 		defer free(tok)
 		if pg == nil || pg.closed || pg.media == nil { return }
 		el, ok := pg.media.elements[tok.node]
 		if !ok || el.serial != tok.serial || el.load_ticket != tok.ticket { return }   // (a later request supersedes)
-		media_load(el)
+		media_load(el, true)
 	}, new_clone(Media_Notice{node = el.node, serial = el.serial, ticket = el.load_ticket}))
 }
 // Aborts a load in progress and releases everything it made.
@@ -346,16 +350,19 @@ media_teardown :: proc(el: ^Media_Element) {
 
 // HTML "media element load algorithm", and the resource selection algorithm after it.
 @(private)
-media_load :: proc(el: ^Media_Element) {
+media_load :: proc(el: ^Media_Element, scheduled := false) {
 	p := el.page
 	if p.closed { return }
 	st := &p.settings.media
 	had_resource := el.network_state != NETWORK_EMPTY && (el.kind != .None || el.current_src != "")
 	media_teardown(el)
 	el.load_gen += 1
-	// pending play() promises are rejected with AbortError
-	for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the play() request was interrupted by a new load request") }
-	clear(&el.pending_play)
+	// pending play() promises are rejected with AbortError (a scheduled load did that when it was scheduled, and what play()
+	// asked since belongs to this load: video.src = url; video.play() is how every player starts)
+	if !scheduled {
+		for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the play() request was interrupted by a new load request") }
+		clear(&el.pending_play)
+	}
 	if had_resource {
 		media_fire(el, "emptied")
 	}
@@ -369,8 +376,8 @@ media_load :: proc(el: ^Media_Element) {
 	el.duration = math.nan_f64()
 	el.position = 0
 	clear(&el.played)
-	if !el.paused { el.paused = true }
-	el.autoplay_ok = true
+	if !el.paused && !scheduled { el.paused = true }
+	if !scheduled || el.paused { el.autoplay_ok = true }
 	delete(el.current_src); el.current_src = ""
 	el.network_state = NETWORK_NO_SOURCE
 	if !st.enabled {
@@ -646,6 +653,8 @@ media_make_player :: proc(el: ^Media_Element) {
 	if el.rate != 1 { media.player_set_rate(el.player, el.rate) }
 	// the position the element holds (a seek before the metadata) is where playback starts
 	if el.position > 0 { media.player_seek(el.player, media.seconds_time(el.position)) }
+	// play() came before the player existed (video.src = url; video.play(): the load runs after it): it plays now
+	if !el.paused { media.player_play(el.player); media_arm_timer(el) }
 }
 
 // Called by the player from any of its threads.
@@ -1167,7 +1176,7 @@ Media_View :: struct {
 }
 
 // What the shell paints for a <video>: the current picture and the state its controls show.
-media_view :: proc(p: ^Page, node: base.Handle, present := true) -> (v: Media_View, ok: bool) {
+media_view :: proc(p: ^Page, node: base.Handle, present := true, ahead_ns: i64 = 0) -> (v: Media_View, ok: bool) {
 	if p == nil || p.closed || p.media == nil { return {}, false }
 	el, found := p.media.elements[node]
 	if !found { return {}, false }
@@ -1181,7 +1190,7 @@ media_view :: proc(p: ^Page, node: base.Handle, present := true) -> (v: Media_Vi
 	if el.player == nil { return v, true }
 	media.player_tick(el.player)
 	if present {
-		v.frame, v.changed = media.player_present(el.player)
+		v.frame, v.changed = media.player_present(el.player, ahead_ns)
 		v.changed = v.changed || el.unseen
 		el.unseen = false
 		el.viewed_ms = page_now_ms(p)
@@ -1189,11 +1198,19 @@ media_view :: proc(p: ^Page, node: base.Handle, present := true) -> (v: Media_Vi
 	v.position = media.time_seconds(media.player_time(el.player))
 	if el.seeking { v.position = el.position }
 	_, v.stalled, _, _ = media.player_state(el.player)
-	if due, has := media.player_next_due(el.player); has { v.next_due_ns = due }
+	if due, has := media.player_next_due(el.player, ahead_ns); has { v.next_due_ns = due }
 	s := media.player_stats(el.player)
 	v.hardware, v.decoder, v.dropped, v.decoded = s.hardware, s.decoder, s.dropped, s.decoded
 	if v.frame != nil && v.changed { el.paint_gen += 1 }
 	return v, true
+}
+
+// The player's internal state as text (the profile report).
+media_debug :: proc(p: ^Page, node: base.Handle) -> string {
+	if p == nil || p.media == nil { return "" }
+	el, found := p.media.elements[node]
+	if !found || el.player == nil { return "" }
+	return fmt.tprintf("element: paused %v ready %d network %d load_gen %d pending_play %d | %s", el.paused, el.ready_state, el.network_state, el.load_gen, len(el.pending_play), media.player_debug(el.player))
 }
 
 // The shell's "is this a playing video": the intrinsic size for layout, from the metadata.

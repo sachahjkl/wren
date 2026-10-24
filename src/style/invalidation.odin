@@ -1,6 +1,11 @@
 package style
 
+import "base:runtime"
+import "core:mem/virtual"
+import "core:slice"
 import "core:strings"
+import "core:sync"
+import "wb:base"
 import "wb:css"
 import "wb:dom"
 
@@ -23,6 +28,7 @@ Reach :: struct {
 	all_next: bool,   // all of E's following element siblings
 	all_prev: bool,   // all of E's preceding element siblings
 	sib_desc: bool,   // the siblings above with their descendants
+	set:      u32,    // desc and sib_desc: only the elements the key set (subject_keys) names can be affected (0: any)
 }
 
 @(private)
@@ -30,10 +36,17 @@ reach_any :: proc(r: Reach) -> bool { return r.self || r.desc || r.next > 0 || r
 
 @(private)
 reach_union :: proc(a, b: Reach) -> Reach {
-	return Reach{
+	r := Reach{
 		self = a.self || b.self, desc = a.desc || b.desc, next = max(a.next, b.next), all_next = a.all_next || b.all_next,
 		all_prev = a.all_prev || b.all_prev, sib_desc = a.sib_desc || b.sib_desc,
 	}
+	sa, sb := a.desc || a.sib_desc, b.desc || b.sib_desc
+	switch {
+	case sa && sb: r.set = key_sets_union(a.set, b.set)
+	case sa: r.set = a.set
+	case sb: r.set = b.set
+	}
+	return r
 }
 
 // Reach of `outer` (from an element X to the final subject) applied to every element `inner` reaches from E (X).
@@ -60,6 +73,7 @@ reach_compose :: proc(inner, outer: Reach) -> Reach {
 	}
 	if inner.sib_desc { out.sib_desc = true }
 	if out.next > 64 { out.next, out.all_next = 0, true }
+	if out.desc || out.sib_desc { out.set = outer.set }   // (whatever it reaches, the subject is the outer selector's)
 	return out
 }
 
@@ -88,10 +102,43 @@ reach_from :: proc(c: ^css.Complex, k: int) -> Reach {
 Has_Anchor :: struct {
 	compound: css.Compound,
 	reach:    Reach,
+	feat:     Has_Feat,
+	hops:     int,   // how many levels above a changed element the anchor can be (-1: any: the argument has a descendant combinator)
+	// :has(<compound>) or :has(> <compound>) of tags, ids, classes and attributes only: whether the anchor matches is whether some
+	// element under it (a child) matches the compound, so the elements that do are kept (members) and a change of the tree or of
+	// attributes restyles the anchor's subtree only if the answer flipped (restyle_dom.odin has_flip), not at every insertion of
+	// an element that holds the feature (YouTube: :has(yt-icon-shape) ..., restyled the whole page about as often as it changed)
+	// A chain (:has([role] .x), :has(.a > .b:not([hidden])): compounds joined by descendant and child combinators) keeps the elements
+	// that match its last compound; the others must be tested against the chain (match_chain) and a change of an attribute the chain
+	// reads on an ancestor of a member may flip the answer without a member coming or going (Has_Members.dirty).
+	exact:      bool,
+	child_only: bool,
+	chain:      bool,
+	cx:         ^css.Complex,
+	arg:        css.Compound,    // the last compound
+	last_mask:  u64,             // its keys in the document's Watch
+	members:    ^Has_Members,
+}
+
+Has_Members :: struct {
+	set:     map[base.Handle]struct{},   // the elements that match the argument, as of the last pass (those gone or detached are dropped when met)
+	added:   [dynamic]base.Handle,       // this batch of mutations: members that came (inserted subtrees, attributes that now match)
+	removed: [dynamic]base.Handle,       // this batch: the parents members may have left (a removed subtree that held the features, an attribute that stopped matching)
+	dirty:   bool,                       // this batch: an attribute the chain reads changed on an ancestor of a member: any answer may have flipped
+}
+
+// The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
+// cannot change whether the anchor matches.
+Has_Feat :: struct {
+	classes, ids, attrs, types: map[string]bool,
+	mask:     u64,    // their bits of the document's dom.Watch (watch_sync): a subtree that holds none of them cannot make the anchor match
+	unkeyed:  bool,   // the argument also asks something a key does not name (*, :not(), :nth-child(), a sibling combinator): any element may change it
 }
 
 Inv_Index :: struct {
 	rebuilds:   u64,                // the engine rebuild this was made for
+	watched:    ^dom.Document,      // the document whose Watch has the features of the anchors (watch_sync), and its generation
+	watched_gen: u32,
 	ready:      bool,
 	by_class:   map[string]Reach,
 	by_id:      map[string]Reach,
@@ -111,6 +158,7 @@ Inv_Index :: struct {
 	uses_control_groups: bool,
 	uses_has:   bool,
 	has_anchors: [dynamic]Has_Anchor,
+	collect:    ^Has_Feat,          // while an anchor's :has() argument is analyzed: where its features are noted too
 	has_classes, has_ids, has_attrs: map[string]bool,   // features tested inside :has()
 	has_sibling: bool,              // :has() arguments reach siblings (anchors include earlier siblings)
 	has_empty:  bool,               // :empty or :placeholder-shown inside :has()
@@ -128,6 +176,14 @@ inv_free :: proc(ix: ^Inv_Index) {
 	for k in ix.has_attrs { delete(k) }
 	delete(ix.by_class); delete(ix.by_id); delete(ix.by_attr); delete(ix.by_tag)
 	delete(ix.has_classes); delete(ix.has_ids); delete(ix.has_attrs)
+	for &ha in ix.has_anchors {
+		for k in ha.feat.classes { delete(k) }
+		for k in ha.feat.ids { delete(k) }
+		for k in ha.feat.attrs { delete(k) }
+		for k in ha.feat.types { delete(k) }
+		if ha.members != nil { delete(ha.members.set); delete(ha.members.added); delete(ha.members.removed); free(ha.members) }
+		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs); delete(ha.feat.types)
+	}
 	delete(ix.has_anchors)
 	ix^ = {}
 }
@@ -168,7 +224,7 @@ inv_index_of :: proc(e: ^Engine, rs: ^Rule_Set) -> ^Inv_Index {
 	ix.ready = true
 	ix.has_anchors = make([dynamic]Has_Anchor)
 	visit :: proc(ix: ^Inv_Index, list: [dynamic]Entry) {
-		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true}, false, 0) }
+		for &ent in list { analyze_complex(ix, ent.complex, Reach{self = true, set = subject_keys(ent.complex)}, false, 0) }
 	}
 	for _, l in rs.index.by_id { visit(ix, l) }
 	for _, l in rs.index.by_class { visit(ix, l) }
@@ -202,8 +258,8 @@ analyze_list :: proc(ix: ^Inv_Index, list: ^css.Selector_List, outer: Reach, in_
 analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: bool, depth: int) {
 	if depth > MAX_DEPTH { ix.give_up = true; return }
 	if in_has {
-		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { ix.has_sibling = true }
-		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true } }
+		if c.relative && (c.leading == .Next_Sibling || c.leading == .Subsequent_Sibling) { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } }
+		for cb in c.combinators { if cb == .Next_Sibling || cb == .Subsequent_Sibling { ix.has_sibling = true; if ix.collect != nil { ix.collect.unkeyed = true } } }
 	}
 	for j in 0 ..< len(c.combinators) {
 		if c.combinators[j] == .Next_Sibling || c.combinators[j] == .Subsequent_Sibling {
@@ -219,6 +275,7 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 			if analyze_simple(ix, &s, comp, total, in_has, depth) { keyed = true }
 		}
 		if !keyed && !in_has { ix.keyless = reach_union(ix.keyless, total) }
+		if !keyed && in_has && ix.collect != nil { ix.collect.unkeyed = true }
 	}
 }
 
@@ -226,19 +283,19 @@ analyze_complex :: proc(ix: ^Inv_Index, c: ^css.Complex, outer: Reach, in_has: b
 @(private = "file")
 analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total: Reach, in_has: bool, depth: int) -> bool {
 	attr_dep :: proc(ix: ^Inv_Index, name: string, r: Reach, in_has: bool) {
-		if in_has { flag(&ix.has_attrs, name) } else { merge(&ix.by_attr, name, r) }
+		if in_has { flag(&ix.has_attrs, name); if ix.collect != nil { flag(&ix.collect.attrs, name) } } else { merge(&ix.by_attr, name, r) }
 	}
 	subtree := reach_compose(Reach{self = true, desc = true}, total)   // read on an ancestor too (lang, dir, fieldset)
 	switch s.kind {
 	case .Type:
-		if !in_has { merge(&ix.by_tag, s.name, total) }
+		if !in_has { merge(&ix.by_tag, s.name, total) } else if ix.collect != nil { flag(&ix.collect.types, s.name) }
 		return true
 	case .Universal:
 	case .Id:
-		if in_has { flag(&ix.has_ids, s.name) } else { merge(&ix.by_id, s.name, total) }
+		if in_has { flag(&ix.has_ids, s.name); if ix.collect != nil { flag(&ix.collect.ids, s.name) } } else { merge(&ix.by_id, s.name, total) }
 		return true
 	case .Class:
-		if in_has { flag(&ix.has_classes, s.name) } else { merge(&ix.by_class, s.name, total) }
+		if in_has { flag(&ix.has_classes, s.name); if ix.collect != nil { flag(&ix.collect.classes, s.name) } } else { merge(&ix.by_class, s.name, total) }
 		return true
 	case .Attribute:
 		attr_dep(ix, s.name, total, in_has)
@@ -264,8 +321,27 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 			analyze_list(ix, s.list, total, in_has, depth)
 		case .Has:
 			ix.uses_has = true
-			if !in_has { append(&ix.has_anchors, Has_Anchor{compound = comp, reach = total}) }
-			analyze_list(ix, s.list, total, true, depth)
+			if !in_has {
+				feat: Has_Feat
+				saved := ix.collect
+				ix.collect = &feat
+				analyze_list(ix, s.list, total, true, depth)
+				ix.collect = saved
+				ha := Has_Anchor{compound = comp, reach = total, feat = feat, hops = has_hops(s.list)}
+				if s.list != nil && len(s.list^) == 1 && !feat.unkeyed {
+					c := &s.list^[0]
+					if len(c.compounds) > 0 && (c.leading == .Descendant || c.leading == .Child) && c.pseudo_element == .None && c.slotted == nil {
+						last := c.compounds[len(c.compounds) - 1]
+						ok := len(last.simples) > 0 && plain_compound(last, false)
+						for k in 0 ..< len(c.compounds) - 1 { if !plain_compound(c.compounds[k], true) { ok = false } }
+						for cb in c.combinators { if cb != .Descendant && cb != .Child { ok = false } }
+						if ok { ha.exact, ha.child_only, ha.chain, ha.cx, ha.arg = true, c.leading == .Child && len(c.compounds) == 1, len(c.compounds) > 1, c, last }
+					}
+				}
+				append(&ix.has_anchors, ha)
+			} else {
+				analyze_list(ix, s.list, total, true, depth)
+			}
 		case .Host: analyze_list(ix, s.list, total, in_has, depth)
 		case .Host_Context: analyze_list(ix, s.list, subtree, in_has, depth)
 		case .State, .Defined: attr_dep(ix, STATE_ATTRIBUTE, total, in_has)
@@ -298,4 +374,246 @@ analyze_simple :: proc(ix: ^Inv_Index, s: ^css.Simple, comp: css.Compound, total
 		}
 	}
 	return false
+}
+
+// How far above the element that changed an anchor of this :has() argument can be: the number of child combinators the
+// longest relative selector has (`:has(> .a)` 1, `:has(> .a > .b)` 2, `:has(+ .a)` 0: a sibling is not a level), -1 when
+// any of them has a descendant combinator or a nested selector list (:is, :not...) whose own combinators are not read here.
+@(private = "file")
+has_hops :: proc(list: ^css.Selector_List) -> int {
+	if list == nil { return -1 }
+	most := 0
+	for &c in list^ {
+		n := 0
+		if c.relative && c.leading == .Descendant { return -1 }
+		if c.relative && c.leading == .Child { n += 1 }
+		for cb in c.combinators {
+			switch cb {
+			case .Descendant: return -1
+			case .Child: n += 1
+			case .Next_Sibling, .Subsequent_Sibling:
+			}
+		}
+		for comp in c.compounds {
+			for sp in comp.simples { if sp.list != nil || sp.kind == .Nesting { return -1 } }
+		}
+		most = max(most, n)
+	}
+	return most
+}
+////////////////////////////////
+// Subject keys
+
+// An element that can be a rule's subject has the subject compound's class, id or type: a change that reaches a whole
+// subtree (`.a .b`: .a changed) only needs the elements of it that carry the subject's key looked at, not every one
+// restyled. A key set is an interned list of such keys (class, id or type names), the Reach holds its number; unions of
+// reaches union their sets. Process-wide and never freed (bounded by the names the sheets use; interned, so a rebuild
+// of the same rules adds nothing); a lock because pages' engines run on their own threads.
+Subject_Key_Kind :: enum u8 { Class, Id, Type }
+Subject_Key :: struct { kind: Subject_Key_Kind, name: string }
+
+@(private = "file")
+Key_Sets :: struct {
+	mu:    sync.Mutex,
+	arena: virtual.Arena,
+	ready: bool,
+	sets:  [dynamic][]Subject_Key,   // set n is sets[n - 1]
+	index: map[string]u32,           // canonical text -> number
+	single: [Subject_Key_Kind]map[string]u32,   // the one-key sets by name (the rules' subjects: found without building their text)
+}
+
+@(private = "file")
+key_sets: Key_Sets
+
+@(private = "file")
+key_sets_init :: proc() {
+	if key_sets.ready { return }
+	_ = virtual.arena_init_growing(&key_sets.arena)
+	a := virtual.arena_allocator(&key_sets.arena)
+	key_sets.sets = make([dynamic][]Subject_Key, a)
+	key_sets.index = make(map[string]u32, 64, a)
+	for &m in key_sets.single { m = make(map[string]u32, 64, a) }
+	key_sets.ready = true
+}
+
+@(private = "file")
+key_text :: proc(keys: []Subject_Key, a: runtime.Allocator) -> string {
+	sb := strings.builder_make(a)
+	for k in keys { strings.write_byte(&sb, u8(k.kind) + '0'); strings.write_string(&sb, k.name); strings.write_byte(&sb, 0) }
+	return strings.to_string(sb)
+}
+
+// The number of the (sorted, distinct) key list, made when new.
+@(private = "file")
+key_sets_intern :: proc(keys: []Subject_Key) -> u32 {
+	key_sets_init()
+	text := key_text(keys, context.temp_allocator)
+	if n, ok := key_sets.index[text]; ok { return n }
+	a := virtual.arena_allocator(&key_sets.arena)
+	own := make([]Subject_Key, len(keys), a)
+	for k, i in keys { own[i] = Subject_Key{k.kind, strings.clone(k.name, a)} }
+	append(&key_sets.sets, own)
+	n := u32(len(key_sets.sets))
+	key_sets.index[strings.clone(text, a)] = n
+	return n
+}
+
+@(private)
+key_sets_union :: proc(x, y: u32) -> u32 {
+	if x == 0 || y == 0 { return 0 }   // (one of them is unrestricted)
+	if x == y { return x }
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	a, b := key_sets.sets[x - 1], key_sets.sets[y - 1]
+	all := make([dynamic]Subject_Key, 0, len(a) + len(b), context.temp_allocator)
+	for k in a { append(&all, k) }
+	for k in b {
+		dup := false
+		for e in all { if e.kind == k.kind && e.name == k.name { dup = true; break } }
+		if !dup { append(&all, k) }
+	}
+	slice.sort_by(all[:], proc(p, q: Subject_Key) -> bool { return p.kind != q.kind ? p.kind < q.kind : p.name < q.name })
+	if len(all) > 64 { return 0 }   // (a set that large filters little)
+	return key_sets_intern(all[:])
+}
+
+// The keys of a set (valid for the process' life).
+@(private)
+key_set_keys :: proc(n: u32) -> []Subject_Key {
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	if n == 0 || int(n) > len(key_sets.sets) { return nil }
+	return key_sets.sets[n - 1]
+}
+
+@(private = "file")
+key_rank :: proc(k: Subject_Key_Kind) -> int {
+	switch k {
+	case .Id: return 0
+	case .Class: return 1
+	case .Type: return 2
+	}
+	return 3
+}
+
+// The key set of a selector's subject: one required class, id or type of its last compound (an id, else a class, else a
+// type). 0 when there is none (`*`, only attributes or pseudo-classes).
+@(private)
+subject_keys :: proc(c: ^css.Complex) -> u32 {
+	if len(c.compounds) == 0 { return 0 }
+	comp := c.compounds[len(c.compounds) - 1]
+	best: Subject_Key
+	have := false
+	for s in comp.simples {
+		k: Subject_Key
+		switch s.kind {
+		case .Id: k = {.Id, s.name}
+		case .Class: k = {.Class, s.name}
+		case .Type: k = {.Type, s.name}
+		case .Universal, .Attribute, .Pseudo_Class, .Nesting: continue
+		}
+		// the rarest first: an id, then a class, then a tag
+		if !have || key_rank(k.kind) < key_rank(best.kind) { best, have = k, true }
+	}
+	if !have { return 0 }
+	sync.mutex_lock(&key_sets.mu)
+	defer sync.mutex_unlock(&key_sets.mu)
+	key_sets_init()
+	if n, ok := key_sets.single[best.kind][best.name]; ok { return n }
+	n := key_sets_intern([]Subject_Key{best})
+	key_sets.single[best.kind][strings.clone(best.name, virtual.arena_allocator(&key_sets.arena))] = n
+	return n
+}
+
+// Gives `doc` the features the :has() anchors of `ix` ask about (dom.Watch: what its journal says about removed subtrees), each
+// anchor its mask of them, and each exact anchor its members (the elements that match its argument now). Once per index and
+// document (true then: the members are of the document as it is now, not as it was when the mutations of the restyle that asks began:
+// they cannot say what flipped); `force` (after a full pass, which took the changes since the last restyle without telling the members) the members again.
+watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh: bool) {
+	fresh = !(ix.watched == doc && ix.watched_gen == doc.journal.watch.gen)
+	if !fresh && !force { return }
+	if fresh {
+		dom.watch_reset(doc)
+		for &ha in ix.has_anchors {
+			m: u64
+			for k in ha.feat.classes { m |= dom.watch_bit(doc, .Class, k) }
+			for k in ha.feat.ids { m |= dom.watch_bit(doc, .Id, k) }
+			for k in ha.feat.attrs { m |= dom.watch_bit(doc, .Attr, strings.to_lower(k, context.temp_allocator)) }
+			for k in ha.feat.types { m |= dom.watch_bit(doc, .Tag, strings.to_lower(k, context.temp_allocator)) }
+			ha.feat.mask = m
+			if ha.exact {
+				lm: u64
+				for sp in ha.arg.simples {
+					#partial switch sp.kind {
+					case .Type: lm |= dom.watch_bit(doc, .Tag, strings.to_lower(sp.name, context.temp_allocator))
+					case .Id: lm |= dom.watch_bit(doc, .Id, sp.name)
+					case .Class: lm |= dom.watch_bit(doc, .Class, sp.name)
+					case .Attribute: lm |= dom.watch_bit(doc, .Attr, strings.to_lower(sp.name, context.temp_allocator))
+					}
+				}
+				ha.last_mask = lm
+			}
+		}
+		ix.watched, ix.watched_gen = doc, doc.journal.watch.gen
+	}
+	members_scan(ix, doc)
+	return
+}
+
+// The members of the exact anchors: one walk of the document.
+@(private = "file")
+members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
+	any := false
+	for &ha in ix.has_anchors {
+		if !ha.exact { continue }
+		if ha.members == nil { ha.members = new(Has_Members) }
+		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed)
+		ha.members.dirty = false
+		any = true
+	}
+	if !any { return }
+	mc: Match_Ctx
+	match_ctx_init(&mc, doc, State{}, context.temp_allocator)
+	stack := make([dynamic]base.Handle, 0, 64, context.temp_allocator)
+	append(&stack, doc.root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := dom.get(doc, h)
+		if n == nil { continue }
+		if n.kind == .Element {
+			for &ha in ix.has_anchors { if ha.exact && matches_compound(&mc, h, ha.arg) { ha.members.set[h] = {} } }
+		}
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+	}
+}
+
+// After a full pass: the watch is made then, so that the removals that follow say what they held, and the members are taken
+// again. Documents with shadow trees are not watched (their anchors are in the indexes of the trees).
+watch_prepare :: proc(e: ^Engine, doc: ^dom.Document) {
+	if len(e.shadow.of_root) > 0 || dom.has_shadow_trees(doc) || !doc.journal.on { return }
+	ix := inv_index(e)
+	if ix.give_up || !ix.uses_has { return }
+	_ = watch_sync(ix, doc, true)
+}
+
+// A compound of tags, ids, classes and attributes, and (unless `last`) :not() / :is() / :where() of such: what it matches depends on
+// the element alone and on the attributes the index lists for the :has(), nothing else (no positions, no state, no :has()).
+@(private = "file")
+plain_compound :: proc(comp: css.Compound, allow_logical: bool) -> bool {
+	for sp in comp.simples {
+		#partial switch sp.kind {
+		case .Type, .Id, .Class, .Attribute, .Universal:
+		case .Pseudo_Class:
+			if !allow_logical || sp.list == nil { return false }
+			#partial switch sp.pseudo {
+			case .Not, .Is, .Where:
+				for &cx in sp.list^ {
+					if len(cx.combinators) > 0 || len(cx.compounds) != 1 || !plain_compound(cx.compounds[0], true) { return false }
+				}
+			case: return false
+			}
+		case: return false
+		}
+	}
+	return true
 }

@@ -1,0 +1,9 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Many blocked requests</title></head><body>
+<h1>Many blocked requests</h1><p id="n">starting</p>
+<script>
+// n images (130 by default) from a third-party host that the blocker's filter stops: the badge of the icon counts them
+var N = Number((location.search.match(/n=(\d+)/) || [0, 130])[1]);
+for (var i = 0; i < N; i++) { var im = new Image(); im.src = "http://localhost:8765/site/blocker/pixel.gif?n=" + i; }
+document.getElementById("n").textContent = N + " requests to localhost (third party) were started";
+</script></body></html>
+

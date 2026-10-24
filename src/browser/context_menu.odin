@@ -20,6 +20,7 @@ import "wb:dom"
 import "wb:fetch"
 import "wb:forms"
 import "wb:host"
+import "wb:i18n"
 import lay "wb:layout"
 import "wb:page"
 import "wb:url"
@@ -278,6 +279,13 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
 		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { page_info_request = true }
 	}
+	if _, filtered := blocker_page_host(t); filtered && bl.started && bl.b.cfg.enabled {
+		sep(&groups)
+		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
+		res := r.image != "" ? r.image : r.link
+		if ui.menu_item(i18n.tr("Block this resource"), enabled = res != "").clicked { blocker_block_resource(app, res) }
+		if ui.menu_item(i18n.tr("Content blocker panel…")).clicked { blocker_panel_request = true }
+	}
 	if r.target != base.NIL_HANDLE || groups == 0 {
 		ui.menu_separator()
 		if ui.menu_item("Inspect", "Ctrl+Shift+I").clicked { devtools_inspect(app, t, r.target != base.NIL_HANDLE ? r.target : p.body); return }
@@ -448,6 +456,17 @@ save_as :: proc(app: ^App, address, suggested: string) {
 	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
 }
 
+// Asks where to save `data` (the system's Save dialog, on a worker thread), then writes it there: what the browser already
+// holds (a network log as HAR, a response body), with no download.
+save_data_as :: proc(app: ^App, suggested: string, data: []byte) {
+	job := new(Save_Job)
+	job.app = app
+	job.suggested = strings.clone(suggested)
+	job.bytes = make([]byte, len(data))
+	copy(job.bytes, data)
+	host.run_blocking(&app.blocking, save_dialog_work, save_dialog_done, job)
+}
+
 @(private = "file")
 save_job_free :: proc(job: ^Save_Job) {
 	delete(job.url); delete(job.suggested); delete(job.path); delete(job.bytes); delete(job.message)
@@ -490,6 +509,19 @@ save_dialog_done :: proc(data: rawptr) {
 	job := (^Save_Job)(data)
 	app := job.app
 	if job.path == "" { save_job_free(job); return }
+	if job.url == "" {
+		// data the browser holds: written without a download
+		host.run_blocking(&app.blocking, proc(data: rawptr) {
+			j := (^Save_Job)(data)
+			j.ok = os.write_entire_file(j.path, j.bytes) == nil
+		}, proc(data: rawptr) {
+			j := (^Save_Job)(data)
+			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
+			j.app.frames_requested = max(j.app.frames_requested, 3)
+			save_job_free(j)
+		}, job)
+		return
+	}
 	set_status_all(app, fmt.tprintf("Downloading %s…", job.url))
 	job.task = fetch.start(&app.loader, {
 		request = {url = job.url, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Empty},

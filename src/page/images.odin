@@ -327,6 +327,7 @@ Img_Request :: struct {
 	opaque:     bool,
 	mime:       string,        // owned
 	nosniff:    bool,
+	blocked:    bool,          // the content blocker stopped it (embedder.odin)
 }
 
 // What an element shows: a request chosen by source selection, with the density of the candidate.
@@ -550,6 +551,9 @@ images_pump :: proc(p: ^Page) {
 }
 
 @(private)
+EMPTY_IMAGE_RESPONSE :: "empty response"
+
+@(private)
 image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	r := (^Img_Request)(user)
 	p := r.page
@@ -569,6 +573,7 @@ image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	case .Failed:
 		r.task = base.NIL_HANDLE
 		p.images.loading -= 1
+		r.blocked = ev.error == .Blocked_By_Client
 		request_fail(r, ev.detail)
 		images_pump(p)
 	case .Done:
@@ -576,7 +581,7 @@ image_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		p.images.loading -= 1
 		defer images_pump(p)
 		if r.bad_status { request_fail(r, fmt.tprintf("HTTP %d", r.status)); return }
-		if len(ev.data) == 0 { request_fail(r, "empty response"); return }
+		if len(ev.data) == 0 { request_fail(r, EMPTY_IMAGE_RESPONSE); return }
 		entry_start(p, r, ev.data)
 	}
 }
@@ -617,7 +622,9 @@ request_fail :: proc(r: ^Img_Request, why: string) {
 	r.state = .Broken
 	delete(r.error)
 	r.error = strings.clone(why)
-	log(r.page, .Warn, fmt.tprintf("image %s: %s", r.url, why))
+	// an empty body (204 No Content: the connectivity pings pages make with new Image().src) is an error event and nothing
+	// else, as in other browsers
+	if why != EMPTY_IMAGE_RESPONSE { log(r.page, .Warn, fmt.tprintf("image %s: %s", r.url, why)) }
 	request_settled(r)
 }
 
@@ -629,7 +636,10 @@ request_settled :: proc(r: ^Img_Request) {
 	p.images.pixels = next_serial()
 	if r.state == .Broken && r.entry != nil && r.error == "" { r.error = strings.clone(images.error_message(r.entry.err)) }
 	for _, el in p.images.elements {
-		if el.current == r || el.pending == r { element_settle(p, el) }
+		if el.current == r || el.pending == r {
+			if r.blocked && embedder.collapse_blocked && p.engine != nil { style.engine_set_hidden(p.engine, el.node, true) }   // no empty box (embedder.odin)
+			element_settle(p, el)
+		}
 	}
 }
 

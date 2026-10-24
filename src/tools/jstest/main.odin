@@ -100,6 +100,34 @@ main :: proc() {
 		page.page_close(p)
 	}
 
+	fmt.println("-- the developer tools: console arguments described while the panel is open")
+	{
+		p := load(process, `<!doctype html><body><div id=n class="c"></div><script>
+console.log("plain", {a: 1});
+</script></body>`)
+		check(len(logs) == 1 && logs[0] == "plain [object Object]" || len(logs) == 1 && strings.has_prefix(logs[0], "plain"), "closed: one line per call, nothing described")
+		page.dev_console_arm(p, 65536)
+		logs_clear()
+		page.js_console_eval(p, `console.log("hi %s", "Ada", {k: [1, 2]}, new Map([[1, 2]]), document.getElementById("n"))`)
+		described := false
+		for l in logs { if strings.has_prefix(l, "\x01dt:") && strings.contains(l, `"c":"Map"`) && strings.contains(l, `<div id=\"n\" class=\"c\">`) && strings.contains(l, `"k"`) { described = true } }
+		check(described, "armed: the call is described (object, Map, DOM node) in a private line before its own")
+		logs_clear()
+		page.js_console_eval(p, `1 + 1`)
+		check(logged("2"), "a console expression prints its value as a line")
+		check(len(logs) >= 2 && strings.has_prefix(logs[0], "\x01dt:") && strings.contains(logs[0], `"l":"result"`), "and describes it as a result")
+		logs_clear()
+		page.dev_console_complete(p, "Math")
+		check(len(logs) == 1 && strings.has_prefix(logs[0], "\x01dtc:") && strings.contains(logs[0], `"floor"`), "completion asks the realm for the members of an expression")
+		page.dev_console_arm(p, 0)
+		logs_clear()
+		page.js_console_eval(p, `console.log({z: 1})`)
+		described = false
+		for l in logs { if strings.has_prefix(l, "\x01") { described = true } }
+		check(!described && logged("{ z: 1 }"), "disarmed: no description, the line as it was")
+		page.page_close(p)
+	}
+
 	fmt.println("-- DOM bindings: tree, attributes, wrappers")
 	{
 		p := load(process, `<!doctype html><body><div id=a class=c></div><script>
@@ -236,7 +264,7 @@ var po = new PerformanceObserver((list, obs) => {
 });
 po.observe({ type: "mark", buffered: true });
 po.observe({ type: "measure" });
-new PerformanceObserver(() => {}).observe({ type: "paint" });
+new PerformanceObserver(() => {}).observe({ type: "longtask" });
 performance.mark("m2");
 performance.measure("ms", "early", "m2");
 console.log("types", PerformanceObserver.supportedEntryTypes.join(), PerformanceObserver.supportedEntryTypes === PerformanceObserver.supportedEntryTypes, Object.isFrozen(PerformanceObserver.supportedEntryTypes));
@@ -249,12 +277,12 @@ console.log("take", p2.takeRecords().length);
 p2.disconnect();
 </script></body>`)
 		settle()
-		check(logged("types mark,measure true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
+		check(logged("types event,first-input,mark,measure,navigation,paint,resource true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
 		check(logged("mixed InvalidModificationError") && logged("empty TypeError"), "observe(): the errors of Performance Timeline")
 		check(logged("take 1") && !logged("p2 called"), "takeRecords empties the buffer, disconnect stops delivery")
 		check(logged("po mark:early,measure:ms,mark:m2,mark:m3 true 3 1"), "buffered entries, then new marks and measures, delivered by one task in start time order")
 		warned := false
-		for l in logs { if strings.contains(l, "'paint' does not exist") { warned = true } }
+		for l in logs { if strings.contains(l, "'longtask' does not exist") { warned = true } }
 		check(warned, "an unsupported entry type is ignored with a warning")
 		page.page_close(p)
 	}

@@ -70,6 +70,7 @@ cache_usable :: proc(t: ^Task) -> ^httpcache.Cache {
 cache_task_init :: proc(t: ^Task, r: Request_Desc) {
 	t.cache.mode = r.cache
 	if t.cache.mode == .Default && r.initiator != nil { t.cache.mode = r.initiator.cache_override }
+	if t.cache.mode == .Default && t.loader.observer.no_cache { t.cache.mode = .No_Store }   // the developer tools' Disable cache
 	if t.cache.mode == .Default {
 		for n in ([]string{"if-modified-since", "if-none-match", "if-unmodified-since", "if-match", "if-range"}) {
 			if http.has_header(t.headers, n) { t.cache.mode = .No_Store; break }
@@ -599,6 +600,7 @@ cache_peek :: proc(l: ^Loader, r: Request_Desc) -> Cache_Peek {
 	if c == nil || !c.settings.enabled || !httpcache.is_ready(c) { return .None }
 	mode := r.cache
 	if mode == .Default && r.initiator != nil { mode = r.initiator.cache_override }
+	if mode == .Default && l.observer.no_cache { mode = .No_Store }
 	if mode == .No_Store || mode == .Reload { return .None }
 	u, ok := url.parse_absolute(r.url, context.temp_allocator)
 	if !ok || (u.scheme != "http" && u.scheme != "https") { return .None }

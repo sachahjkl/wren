@@ -36,10 +36,32 @@ Shutdown :: struct {
 	warn_ms:    int,
 	force_ms:   int,
 	watchdog:   ^Thread,
+	done:       [160]Step_Time,   // the steps that ended, in order (the slowest are named when the teardown was slow)
+	done_count: int,
 }
 
 @(private = "file")
+Step_Time :: struct {
+	name: [48]u8,
+	len:  int,
+	ms:   f64,
+}
+
+// A teardown at least this long names its slowest steps when it ends, whether or not the watchdog had to speak.
+SLOW_SUMMARY_MS :: 1000
+
+@(private = "file")
 sd: Shutdown
+
+@(private = "file")
+ABOVE_NORMAL_PRIORITY_CLASS :: 0x00008000
+
+foreign import kernel32_sd "system:Kernel32.lib"
+
+@(default_calling_convention = "system", private = "file")
+foreign kernel32_sd {
+	SetPriorityClass :: proc(process: win.HANDLE, priority_class: win.DWORD) -> win.BOOL ---
+}
 
 @(private = "file")
 fixed_copy :: proc(dst: []u8, s: string) -> int {
@@ -58,15 +80,31 @@ shutdown_begin :: proc(log_path: string, warn_ms := 2000, force_ms := 10_000) {
 	sd.log_path = strings.clone(log_path)
 	sd.log = strings.builder_make()
 	sd.warn_ms, sd.force_ms = warn_ms, force_ms
+	// The process is ending and wants to be gone: it runs above normal priority from here on, so that every thread it has to wake
+	// (the ones it joins, the pipe's, the decoders', the compositor's helpers) is not made to queue behind other programs' busy
+	// loops. With every core saturated, each hand-over of the teardown cost up to several seconds (measured: 4 to 8 s in one step,
+	// 25 s in all with the forced exit); at this class none of them waits for a time slice.
+	SetPriorityClass(win.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)
 	sd.watchdog = thread_start(shutdown_watchdog, nil, name = "wren-shutdown-watchdog")
 }
 
 shutdown_step :: proc(name: string) {
 	if !sd.active { return }
 	sync.mutex_lock(&sd.mu)
+	step_finished()
 	sd.step_len = fixed_copy(sd.step[:], name)
 	sd.step_start = time.tick_now()
 	sync.mutex_unlock(&sd.mu)
+}
+
+// Notes the step that was running as finished now (sd.mu held).
+@(private = "file")
+step_finished :: proc() {
+	if sd.step_len == 0 || sd.done_count >= len(sd.done) { return }
+	d := &sd.done[sd.done_count]
+	d.len = fixed_copy(d.name[:], string(sd.step[:sd.step_len]))
+	d.ms = time.duration_milliseconds(time.tick_since(sd.step_start))
+	sd.done_count += 1
 }
 
 // Stops the watchdog. Anything the teardown waited for beyond `warn_ms` has been reported by then.
@@ -75,8 +113,26 @@ shutdown_end :: proc() {
 	sync.atomic_store(&sd.stop, true)
 	thread_join(sd.watchdog)
 	elapsed := time.duration_milliseconds(time.tick_since(sd.start))
+	sync.mutex_lock(&sd.mu)
+	step_finished()
+	sync.mutex_unlock(&sd.mu)
 	if int(elapsed) >= sd.warn_ms {
 		shutdown_line(fmt.tprintf("shutdown: finished after %.1f s", elapsed / 1000))
+	}
+	if int(elapsed) >= SLOW_SUMMARY_MS {
+		// the three steps that took longest, longest first
+		order := make([dynamic]int, context.temp_allocator)
+		for i in 0 ..< sd.done_count { append(&order, i) }
+		for i in 1 ..< len(order) {
+			for j := i; j > 0 && sd.done[order[j]].ms > sd.done[order[j - 1]].ms; j -= 1 { order[j], order[j - 1] = order[j - 1], order[j] }
+		}
+		b := strings.builder_make(context.temp_allocator)
+		fmt.sbprintf(&b, "shutdown: %.2f s in all; slowest steps:", elapsed / 1000)
+		for i in 0 ..< min(3, len(order)) {
+			d := &sd.done[order[i]]
+			fmt.sbprintf(&b, "%s %q %.0f ms", i > 0 ? "," : "", string(d.name[:d.len]), d.ms)
+		}
+		shutdown_line(strings.to_string(b))
 	}
 	delete(sd.log_path)
 	strings.builder_destroy(&sd.log)

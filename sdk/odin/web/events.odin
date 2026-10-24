@@ -104,6 +104,7 @@ foreign _m_events {
 	@(link_name = "Event_isLive") _Event_isLive :: proc(event: u64) -> i32 ---
 	@(link_name = "Event_bubbles") _Event_bubbles :: proc(event: Event) -> i32 ---
 	@(link_name = "Event_cancelable") _Event_cancelable :: proc(event: Event) -> i32 ---
+	@(link_name = "Event_composed") _Event_composed :: proc(event: Event) -> i32 ---
 	@(link_name = "Event_eventPhase") _Event_eventPhase :: proc(event: Event) -> i32 ---
 	@(link_name = "Event_timeStamp") _Event_timeStamp :: proc(event: Event) -> f64 ---
 	@(link_name = "Event_isTrusted") _Event_isTrusted :: proc(event: Event) -> i32 ---
@@ -378,6 +379,11 @@ Event_bubbles :: proc "contextless" (event: Event) -> bool {
 // event.cancelable
 Event_cancelable :: proc "contextless" (event: Event) -> bool {
 	return _Event_cancelable(event) != 0
+}
+
+// event.composed: whether the event crosses shadow boundaries (the browser's UI events, fullscreenchange...).
+Event_composed :: proc "contextless" (event: Event) -> bool {
+	return _Event_composed(event) != 0
 }
 
 // event.eventPhase: 0 none, 1 capturing, 2 at target, 3 bubbling.

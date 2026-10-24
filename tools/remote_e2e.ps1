@@ -3,10 +3,15 @@
 # asked for and costs nothing at rest, two instances do not meet, a taken name is an error, a client that vanishes or sends
 # too much does not hurt, closing with clients connected).
 #   powershell -NoProfile -File tools\remote_e2e.ps1 [-Exe build\wren.exe]
+#   powershell -NoProfile -File tools\remote_e2e.ps1 -Stress 16   only the closing, with 16 busy loops saturating the machine (-Stress -1: every
+#                                                              logical processor; -Rounds n, default 3): wren ctl quit with a client connected, and the
+#                                                              window closed as the X button does, each with a video playing, must end within -CloseLimitMs
+#                                                              (8 s) with no forced exit. A close that waits for a thread of lower priority starved by the
+#                                                              load fails here (the disk cache's writer did: ten seconds).
 #   powershell -NoProfile -File tools\remote_e2e.ps1 -Check     the same kind of session on the check build (build.bat check: every
 #                                                              allocation tracked): it must exit with nothing left allocated
 # Nothing here takes the desktop: the window is never shown and the capture is read from the renderer's frame.
-param([string]$Exe = '', [switch]$Check)
+param([string]$Exe = '', [switch]$Check, [int]$Stress = 0, [int]$Rounds = 3, [int]$CloseLimitMs = 8000)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot\test_env.ps1"
@@ -17,19 +22,103 @@ $env:WREN_EXE = (Resolve-Path $Exe).Path
 Add-Type -AssemblyName System.Drawing
 
 $script:fail = 0
+$script:failedNames = @()
 function Check([string]$name, [bool]$ok, [string]$detail = '') {
-    if ($ok) { "PASS  $name" } else { "FAIL  $name  $detail"; $script:fail++ }
+    if ($ok) { "PASS  $name" } else { "FAIL  $name  $detail"; $script:fail++; $script:failedNames += $name }
 }
 function Pixel([string]$png, [int]$x, [int]$y) {
     $bmp = New-Object Drawing.Bitmap($png)
     try { $c = $bmp.GetPixel($x, $y); return @($c.R, $c.G, $c.B) } finally { $bmp.Dispose() }
 }
 function Near($a, $b, [int]$tol = 8) { for ($i = 0; $i -lt 3; $i++) { if ([Math]::Abs($a[$i] - $b[$i]) -gt $tol) { return $false } }; return $true }
+# Waits until the process has finished starting: its CPU time moves by less than 25 ms in a second, twice in a row (at most 30 s). A fixed
+# delay is not enough on a busy machine, where the start-up work is still running when the measure of an idle process begins.
+function Wait-Quiet($proc) {
+    $quiet = 0
+    $deadline = (Get-Date).AddSeconds(30)
+    $last = $proc.TotalProcessorTime.TotalMilliseconds
+    while ($quiet -lt 2 -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Seconds 1
+        $proc.Refresh()
+        $now = $proc.TotalProcessorTime.TotalMilliseconds
+        if ($now - $last -lt 25) { $quiet++ } else { $quiet = 0 }
+        $last = $now
+    }
+}
 function Pipe-Names { [IO.Directory]::GetFiles('\\.\pipe\') | Where-Object { $_ -like '*wren-remote-*' } }
 
 $tmp = Join-Path $env:TEMP "wren-remote-e2e-$PID"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 $started = @()   # processes this script started (and the only ones it ends)
+
+if ($Stress -ne 0) {
+    Add-Type @"
+using System; using System.Runtime.InteropServices;
+public class WinClose {
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc p, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern bool PostMessage(IntPtr h, uint m, IntPtr w, IntPtr l);
+  // WM_CLOSE to every top-level window of the process: what the close button of the title bar sends
+  public static int Close(uint pid) { int n = 0; EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); if (p == pid) { PostMessage(h, 0x10, IntPtr.Zero, IntPtr.Zero); n++; } return true; }, IntPtr.Zero); return n; }
+}
+"@
+    $cores = if ($Stress -lt 0) { [Environment]::ProcessorCount } else { $Stress }
+    $hogs = @()
+    $times = @()
+    $server = Start-WrenTestServer
+    try {
+        for ($i = 0; $i -lt $cores; $i++) { $hogs += Start-Process -PassThru -WindowStyle Hidden -FilePath powershell -ArgumentList '-NoProfile', '-Command', 'while ($true) { }' }
+        "      $cores busy loops running"
+        Start-Sleep -Seconds 2
+        $url = "$($server.Origin)/site/video.html"
+        for ($round = 1; $round -le $Rounds; $round++) {
+            # 1. wren ctl quit, a client connected, a video playing
+            $prof = Join-Path $tmp "stress-quit-$round"
+            $name = Start-Wren -Size 800x600 -ProfileDir $prof
+            $null = Wren-Ctl nav $url --timeout 60000
+            Start-Sleep -Milliseconds 1500
+            $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
+            $pipe.Connect(10000)
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $q = Wren-Ctl quit --code 3 --timeout 60000
+            $ms = $sw.ElapsedMilliseconds; $times += $ms
+            $pipe.Dispose()
+            $log = Join-Path $prof 'shutdown.log'
+            $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
+            Check "round ${round}: quit with a client connected and a video playing: $ms ms" ($global:WrenExit -eq 0 -and $q -match 'exit code 3' -and $ms -lt $CloseLimitMs -and -not $forced) "$q | $global:WrenErr | forced=$forced"
+            if (Test-Path $log) { (Get-Content $log | Select-Object -First 14 | ForEach-Object { "      shutdown.log: " + $_.Substring(0, [Math]::Min(300, $_.Length)) }) -join "`n" }
+            Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
+            # 2. the window closed as the X button does
+            $prof = Join-Path $tmp "stress-x-$round"
+            $name = Start-Wren -Size 800x600 -ProfileDir $prof
+            $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
+            $null = Wren-Ctl nav $url --timeout 60000
+            Start-Sleep -Milliseconds 1500
+            $proc = Get-Process -Id $wpid
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $n = [WinClose]::Close([uint32]$wpid)
+            $ended = $proc.WaitForExit(40000)
+            $ms = $sw.ElapsedMilliseconds; $times += $ms
+            $log = Join-Path $prof 'shutdown.log'
+            $forced = (Test-Path $log) -and ((Get-Content $log -Raw) -match 'ending the process')
+            Check "round ${round}: the window closed (WM_CLOSE to $n window(s)) with a video playing: $ms ms" ($ended -and $ms -lt $CloseLimitMs -and -not $forced) "ended=$ended forced=$forced"
+            if (-not $ended) { Stop-Process -Id $wpid -Force }
+            if (Test-Path $log) { (Get-Content $log | Select-Object -First 14 | ForEach-Object { "      shutdown.log: " + $_.Substring(0, [Math]::Min(300, $_.Length)) }) -join "`n" }
+            Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
+        }
+    } finally {
+        foreach ($h in $hogs) { Stop-Process -Id $h.Id -Force -ErrorAction SilentlyContinue }
+        Stop-WrenTestServer $server
+        if ($env:WREN_REMOTE) { Stop-Wren }
+    }
+    $sorted = @($times | Sort-Object)
+    if ($sorted.Count -gt 0) { "      closing times under load (ms): $($sorted -join ', ')  max $($sorted[-1])  p95 $($sorted[[Math]::Min($sorted.Count - 1, [int][Math]::Ceiling($sorted.Count * 0.95) - 1)])" }
+    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
+    'remote_e2e -Stress: all closings within the limit'
+    exit 0
+}
 
 if ($Check) {
     # a session that touches every part of the channel, then a normal exit: the tracker lists what is still allocated
@@ -85,7 +174,58 @@ if ($Check) {
         Remove-Item Env:\WREN_MEMTRACK_FAIL -ErrorAction SilentlyContinue
         if ($env:WREN_REMOTE) { Stop-Wren }
     }
-    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    # ---- 4. a playing video is a plane of the page's paint order: the same picture every frame ------------------------------------
+# examples/site/remote/video-layers.htm: a video in a rounded overflow:hidden box, a fixed dialog (z-index) and a bar over it, a
+# rotated half-transparent rounded video, and a script that keeps the thread busy a few ms every frame (so that frames are made
+# under it, as under a player's). Forty captures in a row while it plays: in each the box's corners are rounded, the dialog and
+# the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
+    $null = Wren-Ctl wait idle
+    Start-Sleep 2
+    $n = 40
+    $shots = @()
+    for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    $badCorner = 0; $badDialog = 0; $badBar = 0
+    $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
+    $bmps = @()
+    foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
+    try {
+        foreach ($b in $bmps) {
+            $c = $b.GetPixel(45, 45); $d = $b.GetPixel(300, 150); $bar = $b.GetPixel(200, 255)
+            if (-not ($c.R -gt 200 -and $c.R -lt 240 -and [Math]::Abs($c.R - $c.G) -lt 4 -and [Math]::Abs($c.R - $c.B) -lt 4)) { $badCorner++ }
+            if (-not ($d.R -gt 190 -and $d.G -lt 70 -and $d.B -lt 70)) { $badDialog++ }
+            if (-not ($bar.B -gt 180 -and $bar.R -lt 60 -and $bar.G -lt 110)) { $badBar++ }
+        }
+        Check "video layers: $n captures, the box's corner is rounded in all (missing in $badCorner)" ($badCorner -eq 0)
+        Check "video layers: the dialog is above the video in all (hidden in $badDialog)" ($badDialog -eq 0)
+        Check "video layers: the bar is above the video in all (hidden in $badBar)" ($badBar -eq 0)
+        # frame to frame: regions that are not the video must not change at all (the dialog, the bar, the corners)
+        $regions = @(@(236, 96, 250, 108), @(60, 242, 360, 26), @(41, 41, 14, 14), @(425, 41, 14, 14), @(41, 265, 14, 14), @(425, 265, 14, 14))
+        $changed = 0
+        for ($i = 1; $i -lt $n; $i++) {
+            $diff = $false
+            foreach ($r in $regions) {
+                for ($y = $r[1]; $y -lt $r[1] + $r[3] -and -not $diff; $y += 3) {
+                    for ($x = $r[0]; $x -lt $r[0] + $r[2]; $x += 3) {
+                        $p = $bmps[$i - 1].GetPixel($x, $y); $q = $bmps[$i].GetPixel($x, $y)
+                        if ($p.ToArgb() -ne $q.ToArgb()) { $diff = $true; break }
+                    }
+                }
+                if ($diff) { break }
+            }
+            if ($diff) { $changed++ }
+        }
+        Check "video layers: nothing but the video changes between two captures (changed in $changed of $($n - 1))" ($changed -eq 0)
+        # the video moves at all (the test is of a playing video)
+        $moves = 0
+        for ($i = 1; $i -lt $n; $i++) { if ($bmps[$i - 1].GetPixel(120, 120).ToArgb() -ne $bmps[$i].GetPixel(120, 120).ToArgb() -or $bmps[$i - 1].GetPixel(330, 220).ToArgb() -ne $bmps[$i].GetPixel(330, 220).ToArgb()) { $moves++ } }
+        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
+    } finally { foreach ($b in $bmps) { $b.Dispose() } }
+} finally { Stop-Wren; Stop-WrenTestServer $server }
+Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
     if ($script:fail -gt 0) { exit 1 }
     'remote_e2e -Check: clean'
     exit 0
@@ -101,6 +241,7 @@ try {
     Check 'no remote.json without --remote' (-not (Test-Path (Join-Path $prof0 'remote.json')))
     $null = Wren-Ctl ping --profile $prof0 --timeout 300
     Check 'ctl finds no server (exit 3)' ($global:WrenExit -eq 3) "exit $global:WrenExit"
+    Wait-Quiet $p0
     $c1 = $p0.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $p0.Refresh()
     $idle0 = $p0.TotalProcessorTime.TotalMilliseconds - $c1
     Check 'idle Wren without remote uses < 60 ms CPU in 3 s' ($idle0 -lt 60) "$([int]$idle0) ms"
@@ -189,7 +330,7 @@ try {
 
     # the instance is idle when nothing is asked: no CPU
     $proc = Get-Process -Id $pidOf
-    Start-Sleep -Seconds 1
+    Wait-Quiet $proc
     $a = $proc.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $proc.Refresh()
     $idle1 = $proc.TotalProcessorTime.TotalMilliseconds - $a
     Check 'idle Wren with remote on uses < 60 ms CPU in 3 s' ($idle1 -lt 60) "$([int]$idle1) ms"
@@ -276,6 +417,73 @@ try {
     "      run took $runMs ms (start, load, wait idle, eval, capture, close)"
 } finally { Stop-WrenTestServer $server }
 
+# ---- 4. a playing video is a plane of the page's paint order: the same picture every frame ------------------------------------
+# examples/site/remote/video-layers.htm: a video in a rounded overflow:hidden box, a fixed dialog (z-index) and a bar over it, a
+# rotated half-transparent rounded video, and a script that keeps the thread busy a few ms every frame (so that frames are made
+# under it, as under a player's). Forty captures in a row while it plays: in each the box's corners are rounded, the dialog and
+# the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
+    $null = Wren-Ctl wait idle
+    Start-Sleep 2
+    $n = 40
+    $shots = @()
+    for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    $badCorner = 0; $badDialog = 0; $badBar = 0
+    $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
+    $bmps = @()
+    foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
+    try {
+        foreach ($b in $bmps) {
+            $c = $b.GetPixel(45, 45); $d = $b.GetPixel(300, 150); $bar = $b.GetPixel(200, 255)
+            if (-not ($c.R -gt 200 -and $c.R -lt 240 -and [Math]::Abs($c.R - $c.G) -lt 4 -and [Math]::Abs($c.R - $c.B) -lt 4)) { $badCorner++ }
+            if (-not ($d.R -gt 190 -and $d.G -lt 70 -and $d.B -lt 70)) { $badDialog++ }
+            if (-not ($bar.B -gt 180 -and $bar.R -lt 60 -and $bar.G -lt 110)) { $badBar++ }
+        }
+        Check "video layers: $n captures, the box's corner is rounded in all (missing in $badCorner)" ($badCorner -eq 0)
+        Check "video layers: the dialog is above the video in all (hidden in $badDialog)" ($badDialog -eq 0)
+        Check "video layers: the bar is above the video in all (hidden in $badBar)" ($badBar -eq 0)
+        # frame to frame: regions that are not the video must not change at all (the dialog, the bar, the corners)
+        $regions = @(@(236, 96, 250, 108), @(60, 242, 360, 26), @(41, 41, 14, 14), @(425, 41, 14, 14), @(41, 265, 14, 14), @(425, 265, 14, 14))
+        $changed = 0
+        for ($i = 1; $i -lt $n; $i++) {
+            $diff = $false
+            foreach ($r in $regions) {
+                for ($y = $r[1]; $y -lt $r[1] + $r[3] -and -not $diff; $y += 3) {
+                    for ($x = $r[0]; $x -lt $r[0] + $r[2]; $x += 3) {
+                        $p = $bmps[$i - 1].GetPixel($x, $y); $q = $bmps[$i].GetPixel($x, $y)
+                        if ($p.ToArgb() -ne $q.ToArgb()) { $diff = $true; break }
+                    }
+                }
+                if ($diff) { break }
+            }
+            if ($diff) { $changed++ }
+        }
+        Check "video layers: nothing but the video changes between two captures (changed in $changed of $($n - 1))" ($changed -eq 0)
+        # the video moves at all (the test is of a playing video)
+        $moves = 0
+        for ($i = 1; $i -lt $n; $i++) { if ($bmps[$i - 1].GetPixel(120, 120).ToArgb() -ne $bmps[$i].GetPixel(120, 120).ToArgb() -or $bmps[$i - 1].GetPixel(330, 220).ToArgb() -ne $bmps[$i].GetPixel(330, 220).ToArgb()) { $moves++ } }
+        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
+    } finally { foreach ($b in $bmps) { $b.Dispose() } }
+} finally { Stop-Wren; Stop-WrenTestServer $server }
+# ---- 5. a layout read by a script in a page just navigated to uses that page's images, videos and SVG ------------------------------
+# The shell's "page whose natural sizes layout reads" was set by the frame's own layout only: a layout forced by a script (the first
+# thing a page does) before any frame of the new page read the previous frame's page: another document (an image of the page before
+# at the same place of the tree gave its size: 77 x 33) or one already freed (an access violation in shell_intrinsic, on youtube.com's
+# watch page). The page after a page with an image of 77 x 33 reads its own image's width at once: never 77.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 800x500 -Url "$($server.Origin)/site/remote/layout-sized.htm"
+    $null = Wren-Ctl wait idle
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/layout-first.htm" --wait idle
+    $first = Wren-Eval 'window.first'
+    Check "layout read first by a script: the image's width is this page's, not the page before's 77 (got $first)" ($first -match '^\d' -and $first -notmatch '^77:') "exit $global:WrenExit $global:WrenErr"
+    $null = Wren-Ctl ping
+    Check 'and the Wren answers' ($global:WrenExit -eq 0)
+} finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
+if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
 'remote_e2e: all checks passed'

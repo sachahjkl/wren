@@ -13,6 +13,7 @@ package page
 
 import "core:math"
 import "core:strings"
+import "core:time"
 import "wb:base"
 import "wb:dom"
 import lay "wb:layout"
@@ -60,8 +61,11 @@ layout_updates :: proc(p: ^Page) -> u64 { return p.jsdom != nil ? p.jsdom.layout
 @(private)
 styles_clean :: proc(p: ^Page) -> bool {
 	if p.styled == nil || p.style_stale || p.engine == nil || p.engine.dirty || p.engine.restyle_needed || p.engine.shadow.dirty { return false }
-	return p.styled.mutations == p.doc.mutations && style.state_equal(p.style_state, p.styled.state)
+	return p.styled.mutations == p.doc.mutations && style.state_equal(effective_state(p), p.styled.state)
 }
+
+// Layouts a script's reading forced (the style pass and layout of the page up to date), and what they took: for the profile report.
+forced_layouts: struct { n: int, ns: i64 }
 
 // The layout as it is now (brought up to date if needed) and the viewport; nil without an embedder.
 js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
@@ -77,7 +81,10 @@ js_layout_now :: proc(p: ^Page) -> (^lay.Layout, Viewport) {
 		return jl.result, vp
 	}
 	jl.updates += 1
+	t0 := time.tick_now()
 	jl.result = jl.embedder.update(jl.embedder.user, p)
+	forced_layouts.n += 1
+	forced_layouts.ns += i64(time.tick_since(t0))
 	jl.mutations = p.doc.mutations
 	jl.serial = p.styled != nil ? p.styled.serial : 0
 	jl.vp = vp

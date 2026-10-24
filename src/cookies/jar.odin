@@ -35,6 +35,23 @@ free_cookie :: proc(j: ^Jar, c: ^Cookie) {
 	c^ = {}
 }
 
+// The jar's cookie `name` of `domain` and `path` removed (the developer tools' Application tab). False when there is none.
+remove :: proc(j: ^Jar, name, domain, path: string) -> bool {
+	i := find(j, name, domain, path)
+	if i < 0 { return false }
+	remove_at(j, i)
+	return true
+}
+
+// A cookie's value replaced, keeping everything else about it.
+set_value :: proc(j: ^Jar, name, domain, path, value: string) -> bool {
+	i := find(j, name, domain, path)
+	if i < 0 { return false }
+	delete(j.cookies[i].value, j.allocator)
+	j.cookies[i].value = strings.clone(value, j.allocator)
+	j.dirty = true
+	return true
+}
 count :: proc(j: ^Jar) -> int { return len(j.cookies) }
 
 now_ms :: proc() -> i64 { return time.to_unix_nanoseconds(time.now()) / 1_000_000 }

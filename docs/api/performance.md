@@ -12,13 +12,28 @@ Exposed to: Window, Worker. Source: `api/performance.widl`.
 
 ### enum `PerformanceEntryType` : i32
 
-The entries a query matches (Any: both).
+The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
+timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
 
 | member | value | |
 |---|---:|---|
 | `Any` | 0 |  |%!(EXTRA false)
 | `Mark` | 1 |  |%!(EXTRA false)
 | `Measure` | 2 |  |%!(EXTRA false)
+| `Navigation` | 3 |  |%!(EXTRA false)
+| `Resource` | 4 |  |%!(EXTRA false)
+| `Paint` | 5 |  |%!(EXTRA false)
+| `Event` | 6 |  |%!(EXTRA false)
+| `First_Input` | 7 |  |%!(EXTRA false)
+
+### callback `TimelineCallback`
+
+```
+void TimelineCallback(i32 user, i32 kinds)
+```
+
+A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
+has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
 
 ## Functions
 
@@ -152,4 +167,65 @@ void Performance_clearMeasures(string name = "")
 performance.clearMeasures(name): "" clears all.
 
 Host: `Performance_clearMeasures :: proc(c: ^Call, name: string)`
+
+### `Performance_timeline`
+
+```
+string Performance_timeline(PerformanceEntryType entry_type, u64 from_seq = 0)
+```
+
+The timeline entries of `entry_type` (Navigation, Resource, Paint, Event or First_Input) whose sequence number is at
+least `from_seq`, in order, as a JSON array of objects with the members of the entry's interface (name, startTime,
+duration, initiatorType, responseStart...) and `seq`. A kept entry never changes; the buffers drop their oldest
+entries (performance.resource_timing_entries...).
+
+Host: `Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string`
+
+### `Performance_timelineNextSeq`
+
+```
+u64 Performance_timelineNextSeq(PerformanceEntryType entry_type)
+```
+
+The sequence number the next entry of this kind will have.
+
+Host: `Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64`
+
+### `Performance_timelineInterest`
+
+```
+void Performance_timelineInterest(u32 kinds)
+```
+
+The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
+
+Host: `Performance_timelineInterest :: proc(c: ^Call, kinds: u32)`
+
+### `Performance_onTimeline`
+
+```
+void Performance_onTimeline(TimelineCallback callback, i32 user = 0)
+```
+
+Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
+
+Host: `Performance_onTimeline :: proc(c: ^Call, callback: u32, user: i32)`
+
+### `Performance_setResourceTimingBufferSize`
+
+```
+void Performance_setResourceTimingBufferSize(u32 entries)
+```
+
+performance.setResourceTimingBufferSize(n) / performance.clearResourceTimings().
+
+Host: `Performance_setResourceTimingBufferSize :: proc(c: ^Call, entries: u32)`
+
+### `Performance_clearResourceTimings`
+
+```
+void Performance_clearResourceTimings()
+```
+
+Host: `Performance_clearResourceTimings :: proc(c: ^Call)`
 
