@@ -1249,6 +1249,7 @@ main :: proc() {
 	images_shell_init(app)
 	canvas_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
+	canvas_gpu_init(app)
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
 	frames_shell_init(app)   // frames_shell.odin: nested documents laid out, painted and given input

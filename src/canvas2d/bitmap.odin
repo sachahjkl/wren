@@ -18,7 +18,12 @@ Bitmap :: struct {
 	dirty_max: [2]int,
 	opaque:    bool,   // getContext("2d", { alpha: false }): alpha is always 1, the canvas is composited over black
 	allocator: runtime.Allocator,
+	uid:       u64,    // names the bitmap for the GPU's cache of uploaded sources (0: not a bitmap made by bitmap_create)
+	accounted: int,    // bytes the owner charged to a budget for it (a GPU canvas charges what its pixels would take)
 }
+
+@(private)
+next_bitmap_uid: u64
 
 // A transparent bitmap. false: a side is over MAX_SIDE, the byte count would overflow or pass `max_bytes`, or the
 // memory could not be had (the bitmap is then empty: 0 x 0).
@@ -33,8 +38,18 @@ bitmap_create :: proc(w, h: int, max_bytes := max(int), allocator := context.all
 		if err != nil { return }
 	}
 	b.w, b.h = w, h
+	next_bitmap_uid += 1
+	b.uid = next_bitmap_uid
 	bitmap_touch_all(&b)
 	return b, true
+}
+
+// A bitmap with a size but no pixels: a canvas drawn on the GPU (its pixels are read back into `pix` when something needs
+// them). `accounted` is what the owner charged for it.
+bitmap_virtual :: proc(w, h: int, accounted: int) -> (b: Bitmap, ok: bool) {
+	if w < 0 || h < 0 || w > MAX_SIDE || h > MAX_SIDE { return }
+	next_bitmap_uid += 1
+	return Bitmap{w = w, h = h, uid = next_bitmap_uid, accounted = accounted, allocator = context.allocator}, true
 }
 
 bitmap_destroy :: proc(b: ^Bitmap) {
