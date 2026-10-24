@@ -19,6 +19,7 @@ if (-not $Exe) { $Exe = Join-Path $root $(if ($Check) { 'build\wren_check.exe' }
 if ($Check -and -not (Test-Path $Exe)) { cmd /c "build.bat check" | Out-Host; if ($LASTEXITCODE) { 'FAIL building the check build'; exit 1 } }
 $env:WREN_EXE = (Resolve-Path $Exe).Path
 . "$PSScriptRoot\wrenctl.ps1"
+Section '0 script start: Add-Type, helpers'
 Add-Type -AssemblyName System.Drawing
 
 $script:fail = 0
@@ -68,12 +69,13 @@ public class WinClose {
     $times = @()
     $server = Start-WrenTestServer
     try {
+        Section 'stress: start the busy loops'
         for ($i = 0; $i -lt $cores; $i++) { $hogs += Start-Process -PassThru -WindowStyle Hidden -FilePath powershell -ArgumentList '-NoProfile', '-Command', 'while ($true) { }' }
         "      $cores busy loops running"
         Start-Sleep -Seconds 2
         $url = "$($server.Origin)/site/video.html"
         for ($round = 1; $round -le $Rounds; $round++) {
-            # 1. wren ctl quit, a client connected, a video playing
+            Section "stress round ${round}: quit with a client connected"
             $prof = Join-Path $tmp "stress-quit-$round"
             $name = Start-Wren -Size 800x600 -ProfileDir $prof
             $null = Wren-Ctl nav $url --timeout 60000
@@ -89,7 +91,7 @@ public class WinClose {
             Check "round ${round}: quit with a client connected and a video playing: $ms ms" ($global:WrenExit -eq 0 -and $q -match 'exit code 3' -and $ms -lt $CloseLimitMs -and -not $forced) "$q | $global:WrenErr | forced=$forced"
             if (Test-Path $log) { (Get-Content $log | Select-Object -First 14 | ForEach-Object { "      shutdown.log: " + $_.Substring(0, [Math]::Min(300, $_.Length)) }) -join "`n" }
             Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
-            # 2. the window closed as the X button does
+            Section "stress round ${round}: the window closed (WM_CLOSE)"
             $prof = Join-Path $tmp "stress-x-$round"
             $name = Start-Wren -Size 800x600 -ProfileDir $prof
             $wpid = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
@@ -115,6 +117,7 @@ public class WinClose {
     $sorted = @($times | Sort-Object)
     if ($sorted.Count -gt 0) { "      closing times under load (ms): $($sorted -join ', ')  max $($sorted[-1])  p95 $($sorted[[Math]::Min($sorted.Count - 1, [int][Math]::Ceiling($sorted.Count * 0.95) - 1)])" }
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    Show-WrenSections 'remote_e2e -Stress'
     if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
     'remote_e2e -Stress: all closings within the limit'
     exit 0
@@ -122,6 +125,7 @@ public class WinClose {
 
 if ($Check) {
     # a session that touches every part of the channel, then a normal exit: the tracker lists what is still allocated
+    Section 'check: a session that touches the whole channel, then exit'
     $prof = Join-Path $tmp 'check-profile'
     $env:WREN_MEMTRACK_FAIL = '1'
     $server = Start-WrenTestServer
@@ -182,12 +186,15 @@ if ($Check) {
 $server = Start-WrenTestServer
 try {
     $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    Section '4a video layers: start, wait idle, 2 s sleep'
     $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
     $null = Wren-Ctl wait idle
     Start-Sleep 2
+    Section '4b video layers: 40 captures'
     $n = 40
     $shots = @()
     for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    Section '4c video layers: pixels of the 40 captures (PowerShell GetPixel)'
     $badCorner = 0; $badDialog = 0; $badBar = 0
     $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
     $bmps = @()
@@ -226,6 +233,7 @@ try {
     } finally { foreach ($b in $bmps) { $b.Dispose() } }
 } finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+    Show-WrenSections 'remote_e2e -Check'
     if ($script:fail -gt 0) { exit 1 }
     'remote_e2e -Check: clean'
     exit 0
@@ -236,12 +244,16 @@ $prof0 = Join-Path $tmp 'plain'
 $p0 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof0, '--no-single-instance', '--headless', 'about:blank'
 $started += $p0
 try {
+    Section '1a plain Wren: start and the fixed 3 s wait'
     Start-Sleep -Seconds 3
+    Section '1b plain Wren: files, ctl finds no server'
     $beforePipes = @(Pipe-Names).Count
     Check 'no remote.json without --remote' (-not (Test-Path (Join-Path $prof0 'remote.json')))
     $null = Wren-Ctl ping --profile $prof0 --timeout 300
     Check 'ctl finds no server (exit 3)' ($global:WrenExit -eq 3) "exit $global:WrenExit"
+    Section '1c plain Wren: Wait-Quiet'
     Wait-Quiet $p0
+    Section '1d plain Wren: 3 s of idle CPU'
     $c1 = $p0.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $p0.Refresh()
     $idle0 = $p0.TotalProcessorTime.TotalMilliseconds - $c1
     Check 'idle Wren without remote uses < 60 ms CPU in 3 s' ($idle0 -lt 60) "$([int]$idle0) ms"
@@ -251,6 +263,7 @@ try {
 $server = Start-WrenTestServer
 try {
     $url = "$($server.Origin)/site/remote/fixture.htm"
+    Section '2a driven Wren: start, window, nav, eval'
     $name = Start-Wren -Size 1000x700
     $pidOf = [int]((Wren-Ctl ping --json | ConvertFrom-Json).pid)
     Check 'start gives a name and the server answers' ($name -and $pidOf -gt 0)
@@ -266,6 +279,7 @@ try {
     Check 'a script error is exit 1 with the stack' ($global:WrenExit -eq 1 -and $global:WrenErr -match 'boom') "exit $global:WrenExit $global:WrenErr"
     Check 'await waits for a promise' ((Wren-Ctl eval 'new Promise(r => setTimeout(() => r(42), 80))' --await) -eq '42')
 
+    Section '2b driven Wren: box, click, type, console, wait'
     $box = Wren-Ctl box '#box' --json | ConvertFrom-Json
     Check 'box of an element' ($box.found -and $box.width -eq 200 -and $box.height -eq 100)
 
@@ -286,7 +300,7 @@ try {
     $null = Wren-Ctl wait selector '#nothing-here' --timeout 300
     Check 'wait for a missing element times out (exit 2)' ($global:WrenExit -eq 2) "exit $global:WrenExit"
 
-    # capture, from the render target: the red box, the page, an element, scaled
+    Section '2c driven Wren: captures and their pixels'
     $shot = Join-Path $tmp 'full.png'
     $sw = [Diagnostics.Stopwatch]::StartNew(); $null = Wren-Shot $shot; $shotMs = $sw.ElapsedMilliseconds
     $img = New-Object Drawing.Bitmap($shot); $w = $img.Width; $h = $img.Height; $img.Dispose()
@@ -309,6 +323,7 @@ try {
     "      capture of the window took $shotMs ms (process start included)"
 
     # window covered, hidden, moved far off the screen: the capture does not care
+    Section '2d driven Wren: window off screen, minimized'
     $null = Wren-Ctl window --pos '-30000,-30000'
     $off = Join-Path $tmp 'off.png'
     $null = Wren-Shot $off
@@ -319,7 +334,7 @@ try {
     Check 'capture of a minimized window' ($global:WrenExit -eq 0) "$global:WrenErr"
     $null = Wren-Ctl window --state normal
 
-    # tabs, commands, preferences
+    Section '2e driven Wren: tabs, cmds, prefs, stats'
     $null = Wren-Ctl tab new 'about:blank'
     Check 'a second tab' ((Wren-Ctl tabs).Split("`n").Count -eq 2)
     Check 'a command of the registry runs' ((Wren-Ctl cmds) -match 'tab.new')
@@ -329,12 +344,15 @@ try {
     Check 'stats' ($st.tabs -eq 2 -and $st.workingSetBytes -gt 0)
 
     # the instance is idle when nothing is asked: no CPU
+    Section '2f driven Wren: Wait-Quiet'
     $proc = Get-Process -Id $pidOf
     Wait-Quiet $proc
+    Section '2g driven Wren: 3 s of idle CPU'
     $a = $proc.TotalProcessorTime.TotalMilliseconds; Start-Sleep -Seconds 3; $proc.Refresh()
     $idle1 = $proc.TotalProcessorTime.TotalMilliseconds - $a
     Check 'idle Wren with remote on uses < 60 ms CPU in 3 s' ($idle1 -lt 60) "$([int]$idle1) ms"
 
+    Section '2h driven Wren: raw protocol, vanishing client, giant request, ACL'
     # raw protocol: a request line, an unknown method, a bad line; a client that vanishes in the middle of a wait
     $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
     $pipe.Connect(2000)
@@ -370,6 +388,7 @@ try {
     $others = @($acl | Where-Object { try { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]) -ne $me } catch { $true } })
     Check 'the pipe lets in this user only' ($acl.Count -ge 1 -and $others.Count -eq 0) (($acl | ForEach-Object { $_.IdentityReference }) -join ',')
 
+    Section '2i second Wren, taken name (fixed 3 s wait)'
     # a second Wren with another profile has a name of its own; the same name is refused
     $prof2 = Join-Path $tmp 'second'
     $name2 = Start-Wren -Size 800x600 -ProfileDir $prof2
@@ -389,7 +408,7 @@ try {
     Check 'the first instance still answers under that name' ((Wren-Ctl ping --json | ConvertFrom-Json).pid -eq $pidOf)
     if (-not $p3.HasExited) { Stop-Process -Id $p3.Id -Force }
 
-    # closing with a client connected, and the exit code
+    Section '2j quit with a client connected'
     $pipe = New-Object IO.Pipes.NamedPipeClientStream('.', "wren-remote-$name", [IO.Pipes.PipeDirection]::InOut)
     $pipe.Connect(2000)
     $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -405,6 +424,7 @@ try {
     Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue
 }
 
+Section '3 wren ctl run (one call)'
 # ---- 3. `run`: the one-call form ------------------------------------------------------------------------------------------------
 $server = Start-WrenTestServer
 try {
@@ -425,12 +445,15 @@ try {
 $server = Start-WrenTestServer
 try {
     $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    Section '4a video layers: start, wait idle, 2 s sleep'
     $null = Start-Wren -Dpi 96 -Size 1000x500 -Url "$($server.Origin)/site/remote/video-layers.htm"
     $null = Wren-Ctl wait idle
     Start-Sleep 2
+    Section '4b video layers: 40 captures'
     $n = 40
     $shots = @()
     for ($i = 0; $i -lt $n; $i++) { $f = Join-Path $tmp "vl$i.png"; $null = Wren-Ctl shot $f --tab; $shots += $f; Start-Sleep -Milliseconds 25 }
+    Section '4c video layers: pixels of the 40 captures (PowerShell GetPixel)'
     $badCorner = 0; $badDialog = 0; $badBar = 0
     $strict = @()   # regions that are never the video: the dialog, the bar, the box's four corners (outside the rounding)
     $bmps = @()
@@ -476,6 +499,7 @@ try {
 $server = Start-WrenTestServer
 try {
     $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    Section '5 layout read by a script after a navigation'
     $null = Start-Wren -Dpi 96 -Size 800x500 -Url "$($server.Origin)/site/remote/layout-sized.htm"
     $null = Wren-Ctl wait idle
     $null = Wren-Ctl nav "$($server.Origin)/site/remote/layout-first.htm" --wait idle
@@ -485,5 +509,6 @@ try {
     Check 'and the Wren answers' ($global:WrenExit -eq 0)
 } finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+Show-WrenSections remote_e2e
 if ($script:fail -gt 0) { "$script:fail check(s) failed: " + ($script:failedNames -join " | "); exit 1 }
 'remote_e2e: all checks passed'
