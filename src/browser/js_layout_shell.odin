@@ -30,6 +30,11 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	ls := &page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
+	// natural sizes of images, canvases, videos and inline SVG come from the page being laid out. A layout asked for by a
+	// script before any frame of this page made it the shell's page (the first read of a layout in a page just navigated to)
+	// read the page of the previous frame: another document, or one already freed.
+	prev := images_shell_page_swap(p)
+	defer images_shell_page_swap(prev)
 	fonts_gen := u64(t.web_fonts)
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile

@@ -378,6 +378,22 @@ try {
         Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
     } finally { foreach ($b in $bmps) { $b.Dispose() } }
 } finally { Stop-Wren; Stop-WrenTestServer $server }
+# ---- 5. a layout read by a script in a page just navigated to uses that page's images, videos and SVG ------------------------------
+# The shell's "page whose natural sizes layout reads" was set by the frame's own layout only: a layout forced by a script (the first
+# thing a page does) before any frame of the new page read the previous frame's page: another document (an image of the page before
+# at the same place of the tree gave its size: 77 x 33) or one already freed (an access violation in shell_intrinsic, on youtube.com's
+# watch page). The page after a page with an image of 77 x 33 reads its own image's width at once: never 77.
+$server = Start-WrenTestServer
+try {
+    $env:WREN_TEST_BASE_PORT = "$($server.BasePort)"
+    $null = Start-Wren -Dpi 96 -Size 800x500 -Url "$($server.Origin)/site/remote/layout-sized.htm"
+    $null = Wren-Ctl wait idle
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/layout-first.htm" --wait idle
+    $first = Wren-Eval 'window.first'
+    Check "layout read first by a script: the image's width is this page's, not the page before's 77 (got $first)" ($first -match '^\d' -and $first -notmatch '^77:') "exit $global:WrenExit $global:WrenErr"
+    $null = Wren-Ctl ping
+    Check 'and the Wren answers' ($global:WrenExit -eq 0)
+} finally { Stop-Wren; Stop-WrenTestServer $server }
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 if ($script:fail -gt 0) { "$script:fail check(s) failed"; exit 1 }
 'remote_e2e: all checks passed'
