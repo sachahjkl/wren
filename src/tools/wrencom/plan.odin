@@ -35,9 +35,11 @@ CLI_FLAG :: "--cli"
 // the integration (`--desktop-integration=install|remove|status`, or the flag and its value as two arguments), which
 // main.odin looks for anywhere in the line.
 console_command :: proc(args: []string) -> bool {
-	if len(args) > 0 && args[0] == "ctl" { return true }
+	if len(args) > 0 && (args[0] == "ctl" || args[0] == "help" || args[0] == "version") { return true }
 	for a in args {
 		if a == "--desktop-integration" || strings.has_prefix(a, "--desktop-integration=") { return true }
+		// the version and the usage (browser/cli_usage.odin): flags that can stand anywhere, like the integration's
+		if a == "--version" || a == "-V" || a == "--help" || a == "-h" || a == "-?" { return true }
 	}
 	return false
 }
