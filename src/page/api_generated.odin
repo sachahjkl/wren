@@ -291,6 +291,30 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// A live DataTransfer: its handle and what lookup_DataTransfer found.
+Api_DataTransfer :: struct {
+	handle: u64,
+	data:   ^Drag_Store,
+}
+
+// A live LocalFile: its handle and what lookup_LocalFile found.
+Api_LocalFile :: struct {
+	handle: u64,
+	data:   ^Local_File,
+}
+
+// DataTransferItem.kind
+Api_DragItemKind :: enum i32 {
+	String = 0,
+	File = 1,
+}
+
+// The size and time of a file.
+Api_LocalFileInfo :: struct {
+	size: i64,
+	last_modified: f64,
+}
+
 // The numeric details of a UI event.
 Api_UiEventData :: struct {
 	client_x: f64,
@@ -313,6 +337,39 @@ Api_UiEventData :: struct {
 	location: u32,
 	repeat: u32,
 	delta_mode: u32,
+	pointer_id: i32,
+	pointer_type: u32,
+	is_primary: u32,
+	pressure: f64,
+	tangential_pressure: f64,
+	width: f64,
+	height: f64,
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
+
+// A Touch of a TouchEvent.
+Api_TouchPoint :: struct {
+	identifier: i32,
+	target: u64,
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	radius_x: f64,
+	radius_y: f64,
+	rotation_angle: f64,
+	force: f64,
+}
+
+// The lists of a TouchEvent.
+Api_TouchListKind :: enum i32 {
+	Touches = 0,
+	Target_Touches = 1,
+	Changed_Touches = 2,
 }
 
 // A rectangle (DOMRect).
@@ -640,6 +697,12 @@ _valid_ScrollRestoration :: #force_inline proc "contextless" (v: i32) -> bool { 
 
 @(private = "file")
 _valid_ConsoleLevel :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4: return true }; return false }
+
+@(private = "file")
+_valid_DragItemKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
+
+@(private = "file")
+_valid_TouchListKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_InlineScriptKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
@@ -9881,6 +9944,792 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	return nil
 }
 
+// DataTransfer_create :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_dnd_DataTransfer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := DataTransfer_create(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// DataTransfer_get_dropEffect :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_dropEffect", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_get_dropEffect: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_get_dropEffect: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_get_dropEffect(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_set_dropEffect :: proc(c: ^Call, dt: Api_DataTransfer, value: string)
+@(private = "file")
+_t_dnd_DataTransfer_set_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_dropEffect", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_set_dropEffect: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_set_dropEffect: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_set_dropEffect(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_get_effectAllowed :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_effectAllowed", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_get_effectAllowed: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_get_effectAllowed: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_get_effectAllowed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_set_effectAllowed :: proc(c: ^Call, dt: Api_DataTransfer, value: string)
+@(private = "file")
+_t_dnd_DataTransfer_set_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_effectAllowed", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_set_effectAllowed: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_set_effectAllowed: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_set_effectAllowed(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_getData :: proc(c: ^Call, dt: Api_DataTransfer, format: string) -> string
+@(private = "file")
+_t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_getData", "format") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_getData", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_getData: argument format is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_getData: argument format is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_getData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_getData: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_getData(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_setData :: proc(c: ^Call, dt: Api_DataTransfer, format: string, data: string)
+@(private = "file")
+_t_dnd_DataTransfer_setData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_setData", "format") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_setData", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_setData: argument format is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument format is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_setData: argument data is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument data is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_setData(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_clearData :: proc(c: ^Call, dt: Api_DataTransfer, format: Maybe(string))
+@(private = "file")
+_t_dnd_DataTransfer_clearData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_clearData", "format") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_clearData: argument format is not valid UTF-8") }
+			return wasm.trap_new("dnd.DataTransfer_clearData: argument format is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_clearData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_clearData: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_clearData(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_setDragImage :: proc(c: ^Call, dt: Api_DataTransfer, image: Api_Element, x: i32, y: i32)
+@(private = "file")
+_t_dnd_DataTransfer_setDragImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setDragImage: argument image is not a live Element") }
+		return wasm.trap_new("dnd.DataTransfer_setDragImage: argument image is not a live Element")
+	}
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	DataTransfer_setDragImage(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_typeList :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_typeList", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_typeList: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_typeList: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_typeList(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemCount :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_itemCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemCount: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_itemCount: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_itemCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// DataTransfer_itemKind :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (Api_DragItemKind, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemKind", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemKind: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemKind(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), i32(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_itemType :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemType", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dnd.DataTransfer_itemType: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemType(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemString :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemString", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dnd.DataTransfer_itemString: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemString(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemFile :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemFile", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemFile: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemFile(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addString :: proc(c: ^Call, dt: Api_DataTransfer, data: string, type: string) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addString", "data") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addString", "type") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addString: argument data is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addString: argument type is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addString: argument dt is not a live DataTransfer")
+	}
+	_err := DataTransfer_addString(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addFile :: proc(c: ^Call, dt: Api_DataTransfer, file: Api_LocalFile) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addFile: argument dt is not a live DataTransfer")
+	}
+	_p1 := Api_LocalFile{handle = u64(a[1].i64)}
+	_p1.data = lookup_LocalFile(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addFile: argument file is not a live LocalFile")
+	}
+	_err := DataTransfer_addFile(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addBytes :: proc(c: ^Call, dt: Api_DataTransfer, name: string, type: string, data: []u8, last_modified: f64) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "name") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "type") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addBytes: argument name is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addBytes: argument type is not valid UTF-8")
+	}
+	_p3 := _s3[:_n3]
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addBytes: argument dt is not a live DataTransfer")
+	}
+	_p4 := a[7].f64
+	_err := DataTransfer_addBytes(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_removeItem :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_removeItem: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_err := DataTransfer_removeItem(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_clearItems :: proc(c: ^Call, dt: Api_DataTransfer) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_clearItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_clearItems: argument dt is not a live DataTransfer")
+	}
+	_err := DataTransfer_clearItems(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_fileCount :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_fileCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_fileCount: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_fileCount: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_fileCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// DataTransfer_file :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_file", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_file: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_file(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_mode :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_mode: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_mode: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_mode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// LocalFile_name :: proc(c: ^Call, file: Api_LocalFile) -> string
+@(private = "file")
+_t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_name", "result buffer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_name: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_name: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_name(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LocalFile_type :: proc(c: ^Call, file: Api_LocalFile) -> string
+@(private = "file")
+_t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_type", "result buffer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_type: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_type: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_type(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LocalFile_info :: proc(c: ^Call, file: Api_LocalFile) -> Api_LocalFileInfo
+@(private = "file")
+_t_dnd_LocalFile_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 16)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_info", "result pointer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_info: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_info: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^i64)(&_rs[0]), _r.size)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.last_modified)
+	return nil
+}
+
+// LocalFile_read :: proc(c: ^Call, file: Api_LocalFile, offset: i64, into: []u8) -> (i64, Api_Error)
+@(private = "file")
+_t_dnd_LocalFile_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "into") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "result pointer") }
+	_p2 := _s2[:_n2]
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.LocalFile_read: argument file is not a live LocalFile")
+	}
+	_p1 := a[1].i64
+	_r, _err := LocalFile_read(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DragEvent_dataTransfer :: proc(c: ^Call, event: Api_Event) -> u64
+@(private = "file")
+_t_dnd_DragEvent_dataTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DragEvent_dataTransfer: argument event is not a live Event") }
+		return wasm.trap_new("dnd.DragEvent_dataTransfer: argument event is not a live Event")
+	}
+	_r := DragEvent_dataTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// InputFiles_count :: proc(c: ^Call, input: Api_Element) -> i32
+@(private = "file")
+_t_dnd_InputFiles_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.InputFiles_count: argument input is not a live Element") }
+		return wasm.trap_new("dnd.InputFiles_count: argument input is not a live Element")
+	}
+	_r := InputFiles_count(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// InputFiles_item :: proc(c: ^Call, input: Api_Element, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_InputFiles_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.InputFiles_item", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_item: argument input is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r, _err := InputFiles_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// InputFiles_assign :: proc(c: ^Call, input: Api_Element, from: Api_DataTransfer) -> Api_Error
+@(private = "file")
+_t_dnd_InputFiles_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_assign: argument input is not a live Element")
+	}
+	_p1 := Api_DataTransfer{handle = u64(a[1].i64)}
+	_p1.data = lookup_DataTransfer(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_assign: argument from is not a live DataTransfer")
+	}
+	_err := InputFiles_assign(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Document_readyState :: proc(c: ^Call) -> string
 @(private = "file")
 _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -12608,13 +13457,148 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 	return nil
 }
 
+// TouchEvent_count :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind) -> i32
+@(private = "file")
+_t_events_TouchEvent_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.TouchEvent_count: argument event is not a live Event") }
+		return wasm.trap_new("events.TouchEvent_count: argument event is not a live Event")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_TouchListKind(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "events.TouchEvent_count: argument list is not a TouchListKind") }
+		return wasm.trap_new("events.TouchEvent_count: argument list is not a TouchListKind")
+	}
+	_p1 := Api_TouchListKind(_e1)
+	_r := TouchEvent_count(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// TouchEvent_touch :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind, index: i32) -> (Api_TouchPoint, Api_Error)
+@(private = "file")
+_t_events_TouchEvent_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 96)
+	if !_rk { return wasm.trap_bounds(&f, "events.TouchEvent_touch", "result pointer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.TouchEvent_touch: argument event is not a live Event")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_TouchListKind(_e1) {
+		return _fail_status(&c, a, .Invalid_Argument, "events.TouchEvent_touch: argument list is not a TouchListKind")
+	}
+	_p1 := Api_TouchListKind(_e1)
+	_p2 := a[2].i32
+	_r, _err := TouchEvent_touch(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(&_rs[0]), _r.identifier)
+	intrinsics.unaligned_store((^u64)(&_rs[8]), _r.target)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.client_x)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.client_y)
+	intrinsics.unaligned_store((^f64)(&_rs[32]), _r.screen_x)
+	intrinsics.unaligned_store((^f64)(&_rs[40]), _r.screen_y)
+	intrinsics.unaligned_store((^f64)(&_rs[48]), _r.page_x)
+	intrinsics.unaligned_store((^f64)(&_rs[56]), _r.page_y)
+	intrinsics.unaligned_store((^f64)(&_rs[64]), _r.radius_x)
+	intrinsics.unaligned_store((^f64)(&_rs[72]), _r.radius_y)
+	intrinsics.unaligned_store((^f64)(&_rs[80]), _r.rotation_angle)
+	intrinsics.unaligned_store((^f64)(&_rs[88]), _r.force)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_set :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error
+@(private = "file")
+_t_events_PointerCapture_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.PointerCapture_set: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := PointerCapture_set(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_release :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error
+@(private = "file")
+_t_events_PointerCapture_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.PointerCapture_release: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := PointerCapture_release(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_has :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> bool
+@(private = "file")
+_t_events_PointerCapture_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.PointerCapture_has: argument element is not a live Element") }
+		return wasm.trap_new("events.PointerCapture_has: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r := PointerCapture_has(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData
 @(private = "file")
 _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 128)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 200)
 	if !_rk { return wasm.trap_bounds(&f, "events.Event_uiData", "result pointer") }
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12645,6 +13629,16 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	intrinsics.unaligned_store((^u32)(&_rs[116]), _r.location)
 	intrinsics.unaligned_store((^u32)(&_rs[120]), _r.repeat)
 	intrinsics.unaligned_store((^u32)(&_rs[124]), _r.delta_mode)
+	intrinsics.unaligned_store((^i32)(&_rs[128]), _r.pointer_id)
+	intrinsics.unaligned_store((^u32)(&_rs[132]), _r.pointer_type)
+	intrinsics.unaligned_store((^u32)(&_rs[136]), _r.is_primary)
+	intrinsics.unaligned_store((^f64)(&_rs[144]), _r.pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[152]), _r.tangential_pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[160]), _r.width)
+	intrinsics.unaligned_store((^f64)(&_rs[168]), _r.height)
+	intrinsics.unaligned_store((^f64)(&_rs[176]), _r.tilt_x)
+	intrinsics.unaligned_store((^f64)(&_rs[184]), _r.tilt_y)
+	intrinsics.unaligned_store((^f64)(&_rs[192]), _r.twist)
 	return nil
 }
 
@@ -23037,6 +24031,37 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "CustomElements_release", fn = _t_dom_CustomElements_release, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CustomElements_create", fn = _t_dom_CustomElements_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_setCustomState", fn = _t_dom_Element_setCustomState, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_create", fn = _t_dnd_DataTransfer_create, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_get_dropEffect", fn = _t_dnd_DataTransfer_get_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_set_dropEffect", fn = _t_dnd_DataTransfer_set_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_get_effectAllowed", fn = _t_dnd_DataTransfer_get_effectAllowed, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_set_effectAllowed", fn = _t_dnd_DataTransfer_set_effectAllowed, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_getData", fn = _t_dnd_DataTransfer_getData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_setData", fn = _t_dnd_DataTransfer_setData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_clearData", fn = _t_dnd_DataTransfer_clearData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_setDragImage", fn = _t_dnd_DataTransfer_setDragImage, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_typeList", fn = _t_dnd_DataTransfer_typeList, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemCount", fn = _t_dnd_DataTransfer_itemCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_itemKind", fn = _t_dnd_DataTransfer_itemKind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_itemType", fn = _t_dnd_DataTransfer_itemType, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemString", fn = _t_dnd_DataTransfer_itemString, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemFile", fn = _t_dnd_DataTransfer_itemFile, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addString", fn = _t_dnd_DataTransfer_addString, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addFile", fn = _t_dnd_DataTransfer_addFile, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addBytes", fn = _t_dnd_DataTransfer_addBytes, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .F64}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .F64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_removeItem", fn = _t_dnd_DataTransfer_removeItem, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_clearItems", fn = _t_dnd_DataTransfer_clearItems, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_fileCount", fn = _t_dnd_DataTransfer_fileCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_file", fn = _t_dnd_DataTransfer_file, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_mode", fn = _t_dnd_DataTransfer_mode, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "LocalFile_name", fn = _t_dnd_LocalFile_name, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_type", fn = _t_dnd_LocalFile_type, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_info", fn = _t_dnd_LocalFile_info, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "LocalFile_read", fn = _t_dnd_LocalFile_read, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DragEvent_dataTransfer", fn = _t_dnd_DragEvent_dataTransfer, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "InputFiles_count", fn = _t_dnd_InputFiles_count, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "InputFiles_item", fn = _t_dnd_InputFiles_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "InputFiles_assign", fn = _t_dnd_InputFiles_assign, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_readyState", fn = _t_dom_Document_readyState, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_currentScript", fn = _t_dom_Document_currentScript, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Window_document", fn = _t_dom_Window_document, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
@@ -23138,6 +24163,11 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "HTMLAnchorElement_text", fn = _t_dom_HTMLAnchorElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLAnchorElement_set_text", fn = _t_dom_HTMLAnchorElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "HTMLTemplateElement_content", fn = _t_dom_HTMLTemplateElement_content, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "TouchEvent_count", fn = _t_events_TouchEvent_count, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "TouchEvent_touch", fn = _t_events_TouchEvent_touch, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_set", fn = _t_events_PointerCapture_set, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_release", fn = _t_events_PointerCapture_release, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_has", fn = _t_events_PointerCapture_has, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_uiData", fn = _t_events_Event_uiData, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "events", name = "UiEvent_key", fn = _t_events_UiEvent_key, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "UiEvent_code", fn = _t_events_UiEvent_code, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

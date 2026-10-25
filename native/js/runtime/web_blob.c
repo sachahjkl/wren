@@ -12,22 +12,67 @@
 
 typedef struct blob_store { uint32_t refs; size_t len; uint8_t data[]; } blob_store;
 
+/* A file of the browser behind a File the page was given (a drop, an <input type=file>): read on demand by the slice
+ * that needs it (File.slice(a, b).arrayBuffer() reads b - a bytes), shared by the slices, released with the last. */
+typedef struct host_file { uint32_t refs; uint64_t handle; } host_file;
+
 typedef struct web_blob {
-    blob_store *store;
-    size_t      offset, len;
+    blob_store *store;         /* NULL for a host file not read yet */
+    host_file  *hf;            /* the browser's file, when the bytes come from there */
+    size_t      offset, len;   /* in the store, or in the host file while store is NULL */
     JSValue     type;          /* string */
     JSValue     name;          /* File: string, else undefined */
     double      last_modified;
 } web_blob;
+
+static void host_file_unref(host_file *hf)
+{
+    if (hf && --hf->refs == 0) { wr_Object_release(hf->handle); free(hf); }
+}
 
 static void blob_free(void *p)
 {
     web_blob *b = p;
     JSRuntime *rt = web_rt();
     if (b->store && --b->store->refs == 0) { free(b->store); }
+    host_file_unref(b->hf);
     JS_FreeValueRT(rt, b->type);
     JS_FreeValueRT(rt, b->name);
     free(b);
+}
+
+/* The bytes of a host file's slice into a store of their own (once): false when the file cannot be read (gone,
+ * changed, too large for the engine's memory). */
+static bool blob_load(web_blob *b)
+{
+    if (b->store || !b->hf) { return true; }
+    blob_store *s = malloc(sizeof *s + (b->len ? b->len : 1));
+    if (!s) { return false; }
+    s->refs = 1;
+    s->len = b->len;
+    size_t got = 0;
+    while (got < b->len) {
+        size_t chunk = b->len - got > (1u << 30) ? (1u << 30) : b->len - got;
+        int64_t n = 0;
+        if (wr_LocalFile_read(b->hf->handle, (int64_t)(b->offset + got), s->data + got, (uint32_t)chunk, &n) < 0 || n <= 0) { free(s); return false; }
+        got += (size_t)n;
+    }
+    b->store = s;
+    b->offset = 0;
+    return true;
+}
+
+/* The bytes of a Blob (read from the browser's file first when needed); NULL with *ok = false when that failed. */
+static const uint8_t *blob_ptr(web_blob *b, bool *ok)
+{
+    *ok = blob_load(b);
+    if (!*ok) { return NULL; }
+    return b->store ? b->store->data + b->offset : (const uint8_t *)"";
+}
+
+static JSValue not_readable(JSContext *ctx)
+{
+    return web_promise_rejected(ctx, web_dom_exception(ctx, "NotReadableError", "The requested file could not be read, typically due to permission problems that have occurred after a reference to a file was acquired."));
 }
 
 static void blob_mark(void *rt, void *p, void *mark_func)
@@ -47,9 +92,19 @@ bool web_blob_bytes(JSValueConst v, const uint8_t **ptr, size_t *len)
 {
     web_blob *b = blob_of(v);
     if (!b) { return false; }
-    *ptr = b->store ? b->store->data + b->offset : (const uint8_t *)"";
-    *len = b->len;
+    bool ok;
+    const uint8_t *p = blob_ptr(b, &ok);
+    /* (a file that cannot be read gives no bytes: the caller sends or reads an empty body) */
+    *ptr = ok ? p : (const uint8_t *)"";
+    *len = ok ? b->len : 0;
     return true;
+}
+
+/* Whether the Blob's bytes can be had (a host file is read now): FileReader reports NotReadableError otherwise. */
+static bool blob_readable(JSValueConst v)
+{
+    web_blob *b = blob_of(v);
+    return b && blob_load(b);
 }
 
 JSValue web_blob_type(JSContext *ctx, JSValueConst v)
@@ -117,6 +172,48 @@ JSValue web_file_new(JSContext *ctx, const uint8_t *p, size_t n, const char *typ
     b->name = JS_NewStringLen(ctx, name ? name : "", name ? name_len : 0);
     b->last_modified = last_modified;
     return f;
+}
+
+/* A File for a file of the browser (module dnd's LocalFile, taken: released with the last Blob that reads it). */
+JSValue web_file_from_host(JSContext *ctx, uint64_t local_file)
+{
+    if (!local_file) { return JS_NULL; }
+    host_file *hf = malloc(sizeof *hf);
+    if (!hf) { wr_Object_release(local_file); return JS_ThrowOutOfMemory(ctx); }
+    hf->refs = 1;
+    hf->handle = local_file;
+    wr_LocalFileInfo info = {0};
+    wr_LocalFile_info(local_file, &info);
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_LocalFile_type(local_file, wj_scratch.data, wj_scratch.cap));
+    JSValue type = normalize_type(ctx, n > 0 ? (const char *)wj_scratch.data : "", n > 0 ? (size_t)n : 0);
+    JSValue f = blob_make(ctx, WJ_IFACE_File, JS_UNDEFINED, NULL, 0, info.size > 0 ? (size_t)info.size : 0, type);
+    if (JS_IsException(f)) { host_file_unref(hf); return f; }
+    web_blob *b = blob_of(f);
+    b->hf = hf;
+    WJ_FETCH_STRING(n, wr_LocalFile_name(local_file, wj_scratch.data, wj_scratch.cap));
+    b->name = JS_NewStringLen(ctx, n > 0 ? (const char *)wj_scratch.data : "", n > 0 ? (size_t)n : 0);
+    b->last_modified = info.last_modified;
+    return f;
+}
+
+/* The browser's file behind a File (0 for a File made by the page, or one already read: the bytes then go by value). */
+uint64_t web_file_host(JSValueConst v)
+{
+    web_blob *b = blob_of(v);
+    return b && b->hf && !b->store && b->offset == 0 ? b->hf->handle : 0;
+}
+
+/* name, type, lastModified of a File (for DataTransferItemList.add(file)) */
+bool web_file_meta(JSContext *ctx, JSValueConst v, wj_str *name, wj_str *type, double *last_modified)
+{
+    web_blob *b = blob_of(v);
+    if (!b) { return false; }
+    *last_modified = b->last_modified;
+    if (!JS_IsString(b->name)) { name->ptr = ""; name->len = 0; name->owned = false; }
+    else if (!wj_to_str(ctx, b->name, name, 0, NULL)) { return false; }
+    if (!wj_to_str(ctx, b->type, type, 0, NULL)) { wj_str_free(ctx, name); return false; }
+    return true;
 }
 
 /* ---- constructor: blob parts ---- */
@@ -290,7 +387,10 @@ JSValue wjr_Blob_slice(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     size_t s = relative(start, b->len), e = relative(end, b->len);
     if (e < s) { e = s; }
     if (b->store) { b->store->refs++; }
-    return blob_make(ctx, WJ_IFACE_Blob, JS_UNDEFINED, b->store, b->offset + s, e - s, type);
+    JSValue r = blob_make(ctx, WJ_IFACE_Blob, JS_UNDEFINED, b->store, b->offset + s, e - s, type);
+    /* a host file not read yet: the slice reads its own part when asked */
+    if (!JS_IsException(r) && !b->store && b->hf) { web_blob *nb = blob_of(r); nb->hf = b->hf; b->hf->refs++; }
+    return r;
 }
 
 JSValue wjr_Blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -298,7 +398,10 @@ JSValue wjr_Blob_text(JSContext *ctx, JSValueConst this_val, int argc, JSValueCo
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
     if (!b) { return web_promise_reject_pending(ctx); }
-    JSValue s = web_utf8_string(ctx, b->store ? b->store->data + b->offset : (const uint8_t *)"", b->len, true);
+    bool ok;
+    const uint8_t *bytes = blob_ptr(b, &ok);
+    if (!ok) { return not_readable(ctx); }
+    JSValue s = web_utf8_string(ctx, bytes, b->len, true);
     if (JS_IsException(s)) { return web_promise_reject_pending(ctx); }
     JSValue p = web_promise_resolved(ctx, s);
     JS_FreeValue(ctx, s);
@@ -310,7 +413,10 @@ JSValue wjr_Blob_arrayBuffer(JSContext *ctx, JSValueConst this_val, int argc, JS
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
     if (!b) { return web_promise_reject_pending(ctx); }
-    JSValue ab = JS_NewArrayBufferCopy(ctx, b->store ? b->store->data + b->offset : NULL, b->len);
+    bool ok;
+    const uint8_t *bytes = blob_ptr(b, &ok);
+    if (!ok) { return not_readable(ctx); }
+    JSValue ab = JS_NewArrayBufferCopy(ctx, b->len ? bytes : NULL, b->len);
     if (JS_IsException(ab)) { return web_promise_reject_pending(ctx); }
     JSValue p = web_promise_resolved(ctx, ab);
     JS_FreeValue(ctx, ab);
@@ -322,7 +428,10 @@ JSValue wjr_Blob_bytes(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
     if (!b) { return web_promise_reject_pending(ctx); }
-    JSValue u8 = JS_NewUint8ArrayCopy(ctx, b->store ? b->store->data + b->offset : (const uint8_t *)"", b->len);
+    bool ok;
+    const uint8_t *bytes = blob_ptr(b, &ok);
+    if (!ok) { return not_readable(ctx); }
+    JSValue u8 = JS_NewUint8ArrayCopy(ctx, bytes, b->len);
     if (JS_IsException(u8)) { return web_promise_reject_pending(ctx); }
     JSValue p = web_promise_resolved(ctx, u8);
     JS_FreeValue(ctx, u8);
@@ -334,7 +443,10 @@ JSValue wjr_Blob_stream(JSContext *ctx, JSValueConst this_val, int argc, JSValue
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
     if (!b) { return JS_EXCEPTION; }
-    return web_stream_from_bytes(ctx, b->store ? b->store->data + b->offset : NULL, b->len);
+    bool ok;
+    const uint8_t *bytes = blob_ptr(b, &ok);
+    if (!ok) { return wj_throw_dom(ctx, "NotReadableError", "The requested file could not be read."); }
+    return web_stream_from_bytes(ctx, b->len ? bytes : NULL, b->len);
 }
 
 /* textStream(): the text in one chunk (the bytes decoded as UTF-8) */
@@ -343,7 +455,10 @@ JSValue wjr_Blob_textStream(JSContext *ctx, JSValueConst this_val, int argc, JSV
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     web_blob *b = web_this_impl(ctx, this_val, WJ_IFACE_Blob);
     if (!b) { return JS_EXCEPTION; }
-    JSValue text = web_utf8_string(ctx, b->store ? b->store->data + b->offset : (const uint8_t *)"", b->len, true);
+    bool ok;
+    const uint8_t *bytes = blob_ptr(b, &ok);
+    if (!ok) { return wj_throw_dom(ctx, "NotReadableError", "The requested file could not be read."); }
+    JSValue text = web_utf8_string(ctx, bytes, b->len, true);
     if (JS_IsException(text)) { return text; }
     JSValue s = web_stream_of(ctx, text);
     JS_FreeValue(ctx, text);
@@ -573,9 +688,11 @@ static void fr_run(JSContext *ctx, JSValueConst data)
     if (!r || (uint32_t)g != r->generation || r->state != FR_LOADING) { JS_FreeValue(ctx, target); return; }
     const uint8_t *p;
     size_t n = 0;
+    bool readable = blob_readable(r->blob);
     web_blob_bytes(r->blob, &p, &n);
     JSValue res;
-    switch (r->format) {
+    if (!readable) { res = JS_ThrowInternalError(ctx, "not readable"); }
+    else switch (r->format) {
     case FR_ARRAYBUFFER: res = JS_NewArrayBufferCopy(ctx, p, n); break;
     case FR_BINARY: res = binary_string(ctx, p, n); break;
     case FR_TEXT: res = fr_text(ctx, r, p, n); break;
@@ -623,9 +740,7 @@ static JSValue fr_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     bool queued = web_queue_task(ctx, fr_run, data);
     JS_FreeValue(ctx, data);
     if (!queued) { return JS_EXCEPTION; }
-    size_t n = 0;
-    const uint8_t *p;
-    web_blob_bytes(argv[0], &p, &n);
+    size_t n = blob_of(argv[0])->len;   /* (a host file is read by the task, not now) */
     fr_progress(ctx, this_val, "loadstart", 0, (double)n);
     return JS_UNDEFINED;
 }

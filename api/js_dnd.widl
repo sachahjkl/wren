@@ -1,0 +1,89 @@
+/// HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a
+/// DataTransfer (its items, its mode, dropEffect and effectAllowed, the drag image), the files a page was given (by a
+/// drop, an <input type=file>) as browser objects read on demand, and HTMLInputElement.files. The store's mode follows
+/// the event being dispatched (HTML "drag data store mode"): read/write in dragstart, read-only in drop, protected
+/// otherwise (types and kinds are visible, data and files are not).
+[Exposed=Window]
+module dnd {
+  handle DataTransfer : Object = Drag_Store via lookup_DataTransfer;
+  handle LocalFile : Object = Local_File via lookup_LocalFile;
+
+  /// DataTransferItem.kind
+  enum DragItemKind : i32 { String, File }
+
+  /// The size and time of a file.
+  struct LocalFileInfo {
+    /// bytes
+    i64 size;
+    /// File.lastModified (ms since the epoch)
+    f64 last_modified;
+  }
+
+  /// new DataTransfer(): an empty store in read/write mode.
+  DataTransfer DataTransfer_create();
+  /// dataTransfer.dropEffect ("none", "copy", "link", "move")
+  string DataTransfer_get_dropEffect(DataTransfer dt);
+  /// Values other than the four are ignored.
+  void DataTransfer_set_dropEffect(DataTransfer dt, string value);
+  /// dataTransfer.effectAllowed
+  string DataTransfer_get_effectAllowed(DataTransfer dt);
+  /// Ignored outside read/write mode and for a value that is not one of the nine.
+  void DataTransfer_set_effectAllowed(DataTransfer dt, string value);
+  /// getData(format): "" in protected mode or when absent ("text" is text/plain, "url" the first URL of text/uri-list).
+  string DataTransfer_getData(DataTransfer dt, string format);
+  /// setData(format, data): ignored outside read/write mode.
+  void DataTransfer_setData(DataTransfer dt, string format, string data);
+  /// clearData(format): every string item, or those of the format; ignored outside read/write mode.
+  void DataTransfer_clearData(DataTransfer dt, optional string format);
+  /// setDragImage(image, x, y): ignored outside read/write mode.
+  void DataTransfer_setDragImage(DataTransfer dt, Element image, i32 x, i32 y);
+  /// The types, in order, separated by "\n" ("Files" last when there are files).
+  string DataTransfer_typeList(DataTransfer dt);
+  /// The number of items (DataTransferItemList.length; 0 in disabled mode).
+  i32 DataTransfer_itemCount(DataTransfer dt);
+  /// An item's kind (Invalid_Argument past the end).
+  DragItemKind DataTransfer_itemKind(DataTransfer dt, i32 index) raises;
+  /// An item's type.
+  string DataTransfer_itemType(DataTransfer dt, i32 index) raises;
+  /// A string item's data (Invalid_State in protected mode).
+  string DataTransfer_itemString(DataTransfer dt, i32 index) raises;
+  /// A file item's file (0: not a file, or protected mode).
+  LocalFile DataTransfer_itemFile(DataTransfer dt, i32 index) raises;
+  /// items.add(data, type): Invalid_State outside read/write mode, Not_Supported when a string item of the type exists.
+  void DataTransfer_addString(DataTransfer dt, string data, string type) raises;
+  /// items.add(file) for a file of the browser (a dropped or chosen one).
+  void DataTransfer_addFile(DataTransfer dt, LocalFile file) raises;
+  /// items.add(file) for a File made by the page: its bytes are copied (Quota past the page's memory limit).
+  void DataTransfer_addBytes(DataTransfer dt, string name, string type, bytes data, f64 last_modified) raises;
+  /// items.remove(index): Invalid_State outside read/write mode.
+  void DataTransfer_removeItem(DataTransfer dt, i32 index) raises;
+  /// items.clear(): Invalid_State outside read/write mode.
+  void DataTransfer_clearItems(DataTransfer dt) raises;
+  /// The files (dataTransfer.files: none outside read/write and read-only mode).
+  i32 DataTransfer_fileCount(DataTransfer dt);
+  /// One of them.
+  LocalFile DataTransfer_file(DataTransfer dt, i32 index) raises;
+  /// The mode: 0 protected, 1 read/write, 2 read-only.
+  i32 DataTransfer_mode(DataTransfer dt);
+
+  /// A file's name (no directory).
+  string LocalFile_name(LocalFile file);
+  /// Its MIME type ("" when unknown).
+  string LocalFile_type(LocalFile file);
+  /// Its size and time.
+  LocalFileInfo LocalFile_info(LocalFile file);
+  /// Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
+  /// changed since it was given: File API "NotReadableError").
+  i64 LocalFile_read(LocalFile file, i64 offset, out bytes into) raises;
+
+  /// DragEvent.dataTransfer of an event the browser dispatches (0 for another event).
+  DataTransfer DragEvent_dataTransfer(Event event);
+
+  /// input.files.length (0 for an element that is not a file input).
+  i32 InputFiles_count(Element input);
+  /// input.files[index]
+  LocalFile InputFiles_item(Element input, i32 index) raises;
+  /// input.files = dataTransfer.files: the store's files become the input's selection (Invalid_State for an element
+  /// that is not a file input).
+  void InputFiles_assign(Element input, DataTransfer from) raises;
+}
