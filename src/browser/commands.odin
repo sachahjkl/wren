@@ -216,6 +216,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "tab.move_left", title = "Move tab left", category = "Tabs", keys = keys(&r.arena, {key = .Page_Up, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, -1) }})
+	add(r, {name = "tab.restore_crashed", title = "Restore the tabs of the session that crashed", category = "Tabs", keywords = "crash recovery reopen saved",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return recovery.backup != "" },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})
 
 	// --- navigation
 	add(r, {name = "nav.back", title = "Back", category = "Navigation", glyph = GLYPH_BACK, keywords = "history previous page", keys = keys(&r.arena, {key = .Left, mods = alt}),

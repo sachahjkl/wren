@@ -11,7 +11,8 @@ package browser
 // The file is plain text, versioned, written to a temporary file then moved over the old one (a crash in between leaves
 // the old one). Fields are tab-separated and escaped (field_escape). Reading is forgiving: unknown lines are skipped, a
 // line too long or a URL that does not parse is dropped, the tab count is capped, and a file without the header (or not
-// a session file at all) restores nothing. Version 1 files (addresses only) are read too.
+// a session file at all) restores nothing. Version 1 files (addresses only) are read too. After an abnormal end
+// crash_recovery.odin writes the same format to recovery.txt, whatever browser.session.restore says.
 //
 //     wren-session 2
 //     current 1
@@ -104,7 +105,8 @@ session_serialize_tabs :: proc(tabs: []Session_Tab, current: int, max_url_bytes,
 }
 
 // The tabs of a session file (pure). `ok` false when it is not one.
-session_parse_tabs :: proc(text: string, max_tabs, max_url_bytes: int, allocator := context.temp_allocator) -> (tabs: []Session_Tab, current: int, ok: bool) {
+// `max_entries` (when above 0) caps the entries read for a tab: a file that was not written by this program can hold millions.
+session_parse_tabs :: proc(text: string, max_tabs, max_url_bytes: int, allocator := context.temp_allocator, max_entries := 0) -> (tabs: []Session_Tab, current: int, ok: bool) {
 	out := make([dynamic]Session_Tab, allocator)
 	entries := make([dynamic]page.Saved_Entry, allocator)
 	rest := text
@@ -135,7 +137,7 @@ session_parse_tabs :: proc(text: string, max_tabs, max_url_bytes: int, allocator
 			append(&out, Session_Tab{url = strings.clone(u, allocator)})
 			skipping = false
 		case strings.has_prefix(line, "e\t"):
-			if skipping || len(out) == 0 { continue }
+			if skipping || len(out) == 0 || (max_entries > 0 && len(entries) >= max_entries) { continue }
 			f := strings.split(line[2:], "\t", context.temp_allocator)
 			if len(f) < 13 { continue }
 			e: page.Saved_Entry
@@ -198,15 +200,20 @@ session_tab_of :: proc(t: ^Tab) -> Session_Tab {
 	return st
 }
 
+// The text of the session as the tabs are now (temporary allocator): where each tab was left is captured first.
+session_text :: proc(app: ^App) -> string {
+	tabs := make([]Session_Tab, len(app.tabs), context.temp_allocator)
+	for t, i in app.tabs {
+		entry_capture_current(app, t)
+		tabs[i] = session_tab_of(t)
+	}
+	return session_serialize_tabs(tabs, app.current, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+}
+
 // Writes the session when it changed (profile_save: autosave and exit).
 session_save :: proc(app: ^App) {
 	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.restore") { return }
-	tabs := make([]Session_Tab, len(app.tabs), context.temp_allocator)
-	for t, i in app.tabs {
-		entry_capture_current(app, t)   // where each tab is now
-		tabs[i] = session_tab_of(t)
-	}
-	text := session_serialize_tabs(tabs, app.current, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+	text := session_text(app)
 	if text == session_last { return }
 	path := session_path(app)
 	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
@@ -231,6 +238,14 @@ session_load :: proc(app: ^App) -> (tabs: []Session_Tab, current: int) {
 session_restore :: proc(app: ^App) -> bool {
 	tabs, current := session_load(app)
 	if len(tabs) == 0 { return false }
+	session_open_tabs(app, tabs, current)
+	return true
+}
+
+// Adds a tab for each saved one after the tabs there are (crash_recovery.odin uses it for a snapshot too); `current` is
+// the index, among `tabs`, of the one to show. Returns the index of the first tab added.
+session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int) -> (first: int) {
+	first = len(app.tabs)
 	w := &app.page_settings.web
 	for st in tabs {
 		t := tab_new(app)
@@ -247,9 +262,9 @@ session_restore :: proc(app: ^App) -> bool {
 		}
 		if page.session_current(&t.session) == nil { history_push(t, st.url) }
 	}
-	app.current = current
+	app.current = first + clamp(current, 0, max(len(tabs) - 1, 0))
 	session_lazy_load(app)
-	return true
+	return
 }
 
 // The current tab, if restored and not loaded yet, loads now: its current entry, where it was left.

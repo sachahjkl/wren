@@ -229,6 +229,7 @@ tab_select :: proc(app: ^App, i: int) {
 	app.current = i
 	ui.field_set(&app.address, app.tabs[i].url)
 	app.frames_requested = max(app.frames_requested, 2)
+	recovery_touch(app)
 }
 
 // The page area is a Tab stop of the chrome: Tab from the address bar gives the page the keyboard (its first focusable
@@ -260,6 +261,7 @@ tab_move_current :: proc(app: ^App, delta: int) {
 	if to < 0 || to >= len(app.tabs) { return }
 	app.current = list_move(app.tabs[:], app.current, to, app.current)
 	app.frames_requested = max(app.frames_requested, 2)
+	recovery_touch(app)
 }
 
 ////////////////////////////////
