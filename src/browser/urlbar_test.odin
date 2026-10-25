@@ -3,6 +3,7 @@ package browser
 import "base:runtime"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "core:testing"
@@ -361,6 +362,8 @@ urlbar_speed :: proc(t: ^testing.T) {
 	worst, total: f64
 	typed := "developer.mozilla.org/en"
 	n := 0
+	samples := make([dynamic]f64)
+	defer delete(samples)
 	for round in 0 ..< 3 {
 		x.prev_valid = false
 		for i in 1 ..= len(typed) {
@@ -368,7 +371,7 @@ urlbar_speed :: proc(t: ^testing.T) {
 			m := url_index_query(&x, typed[:i], 12)
 			_, _, _, _ = url_autofill(&x, typed[:i], m)
 			ms := time.duration_milliseconds(time.tick_since(s))
-			if round > 0 { worst = max(worst, ms); total += ms; n += 1 }
+			if round > 0 { worst = max(worst, ms); total += ms; n += 1; append(&samples, ms) }
 			free_all(context.temp_allocator)
 		}
 	}
@@ -391,6 +394,13 @@ urlbar_speed :: proc(t: ^testing.T) {
 	} else when ODIN_OPTIMIZATION_MODE == .Speed {
 		testing.expect(t, worst < 2, "under 2 ms per letter")
 	} else {
-		testing.expect(t, worst < 20, "under 20 ms per letter in a debug build")
+		// A debug build on a shared runner: one query can lose its time slice (the CI measured a mean of 0.77 ms with a
+		// single 24 ms query among 48). A real slowdown (a scan of every entry per letter) moves the mean and the whole
+		// distribution, so the mean and the 90th percentile are strict and the single worst only has a wide bound.
+		slice.sort(samples[:])
+		p90 := samples[len(samples) * 9 / 10]
+		testing.expectf(t, total / f64(n) < 5, "mean under 5 ms per letter in a debug build: %.3f", total / f64(n))
+		testing.expectf(t, p90 < 20, "90th percentile under 20 ms per letter in a debug build: %.3f", p90)
+		testing.expectf(t, worst < 250, "worst under 250 ms per letter in a debug build: %.3f", worst)
 	}
 }
