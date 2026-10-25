@@ -16,6 +16,13 @@ $file = Join-Path $tmp 'dnd_e2e_drop.txt'
 [IO.File]::WriteAllText($file, 'dropped bytes')
 $page = 'file:///' + ((Join-Path $root 'examples\dnd\dnd.html') -replace '\\', '/')
 $fails = 0
+# "WxH@x,y" of the system's drag picture against what is expected in CSS px times the device pixel ratio (a pixel of
+# rounding either way)
+function Near-Image([string]$got, [double[]]$css, [double]$dpr) {
+  if ($got -notmatch '^(\d+)x(\d+)@(-?\d+),(-?\d+)$') { return $false }
+  for ($i = 0; $i -lt 4; $i++) { if ([math]::Abs([double]$Matches[$i + 1] - $css[$i] * $dpr) -gt 1) { return $false } }
+  return $true
+}
 function Expect([bool]$ok, [string]$what, [string]$got) {
   if ($ok) { "PASS $what" } else { "FAIL $what (got: $got)"; $script:fails++ }
 }
@@ -47,6 +54,51 @@ try {
 
   Wren-Ctl eval "scrollTo(0, 0); 'ok'" | Out-Null
   Start-Sleep -Milliseconds 100
+  $dpr = [double](Wren-Ctl eval 'devicePixelRatio')
+
+  # out of the window and back onto the zone: the system's drag (through the window's own drop target, never the real
+  # mouse) brings drop to the page before dragend, which carries the drop's effect; the ghost of the element went with it
+  Wren-Ctl eval "log.length = 0; 'ok'" | Out-Null
+  Wren-Ctl drag '50,30' '-300,30' '100,150' --steps 8 | Out-Null
+  Start-Sleep -Milliseconds 200
+  $log = Wren-Ctl eval "log.join(' | ')"
+  $iDrop = $log.IndexOf('drop@zone'); $iEnd = $log.IndexOf('dragend@src')
+  Expect ($iDrop -ge 0 -and $iEnd -gt $iDrop) 'out of the window and back: drop before dragend' $log
+  Expect ($log -match 'dragend@src effect=copy') '... dragend with the effect of the drop' $log
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  Expect (Near-Image $st.dragImage @(100, 40, 40, 20) $dpr) "the ghost of the dragged element (100x40 grabbed at 40,20) went to the system's drag" $st.dragImage
+
+  # setDragImage with a canvas: its pixels, its hot spot
+  Wren-Ctl eval "log.length = 0; useImage = true; 'ok'" | Out-Null
+  Wren-Ctl drag '50,30' '-300,30' '100,150' --steps 8 | Out-Null
+  Start-Sleep -Milliseconds 200
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  Expect (Near-Image $st.dragImage @(20, 10, 5, 4) $dpr) "setDragImage(canvas, 5, 4) is the system's picture" $st.dragImage
+  Wren-Ctl eval "useImage = false; 'ok'" | Out-Null
+
+  # selected text of a field dragged into another: moved (deleteByDrag, insertFromDrop), dragend with move
+  Wren-Ctl eval "log.length = 0; in1.focus(); in1.setSelectionRange(0, 5); 'ok'" | Out-Null
+  Wren-Ctl drag '362,112' '450,162' --steps 6 | Out-Null
+  Start-Sleep -Milliseconds 200
+  $vals = Wren-Ctl eval "in1.value + '|' + in2.value"
+  $log = Wren-Ctl eval "log.join(' | ')"
+  Expect ($vals -eq ' world|hello') 'a field selection dragged to another field moves the text' "$vals / $log"
+  Expect ($log -match 'beforeinput@in1 deleteByDrag' -and $log -match 'input@in2 insertFromDrop' -and $log -match 'dragend@in1 effect=move') '... with deleteByDrag, insertFromDrop and dragend move' $log
+
+  # a file dropped on a file input (no script): it takes it, input and change
+  Wren-Ctl eval "log.length = 0; 'ok'" | Out-Null
+  Wren-Ctl drop $file --at '450,265' | Out-Null
+  Start-Sleep -Milliseconds 300
+  $fin = Wren-Ctl eval "fin.files.length + ' ' + (fin.files[0] && fin.files[0].name) + ' ' + location.pathname.endsWith('dnd.html')"
+  $log = Wren-Ctl eval "log.join(' | ')"
+  Expect ($fin -eq '1 dnd_e2e_drop.txt true') 'a file dropped on <input type=file> fills it (the page stays)' $fin
+  Expect ($log -match 'input@fin' -and $log -match 'change@fin') '... with input and change' $log
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  $net0 = $st.prefsNetApplied
+  Wren-Ctl pref set browser.tabs.sidebar_width 300 | Out-Null
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  Expect ($st.prefsNetApplied -eq $net0) 'writing browser.tabs.sidebar_width configures nothing of the network again' "$net0 -> $($st.prefsNetApplied)"
+
   Wren-Ctl drop $file --at '100,300' | Out-Null
   Start-Sleep -Milliseconds 800
   $href = Wren-Ctl eval 'location.href'

@@ -14,6 +14,7 @@ Edit_Kind :: enum u8 {
 	Delete_Backward, Delete_Forward, Delete_Word_Backward, Delete_Word_Forward,
 	Delete_Line_Backward, Delete_Line_Forward, Delete_By_Cut,
 	History_Undo, History_Redo,
+	Insert_From_Drop, Delete_By_Drag,   // text dropped into the field / dragged out of it (moved)
 }
 
 EDIT_INPUT_TYPES := [Edit_Kind]string{
@@ -23,6 +24,7 @@ EDIT_INPUT_TYPES := [Edit_Kind]string{
 	.Delete_Word_Backward = "deleteWordBackward", .Delete_Word_Forward = "deleteWordForward",
 	.Delete_Line_Backward = "deleteSoftLineBackward", .Delete_Line_Forward = "deleteSoftLineForward",
 	.Delete_By_Cut = "deleteByCut", .History_Undo = "historyUndo", .History_Redo = "historyRedo",
+	.Insert_From_Drop = "insertFromDrop", .Delete_By_Drag = "deleteByDrag",
 }
 
 Move_Unit :: enum u8 { Char, Word, Line_Edge, Line, Doc_Edge }
@@ -277,7 +279,7 @@ plan_edit :: proc(f: ^Forms, h: base.Handle, kind: Edit_Kind, text: string) -> (
 	a, b, _ := selection(f, h)
 	multiline := is_multiline(f, h)
 	switch kind {
-	case .Insert_Text, .Insert_From_Paste, .Insert_Replacement, .Insert_Line_Break:
+	case .Insert_Text, .Insert_From_Paste, .Insert_Replacement, .Insert_Line_Break, .Insert_From_Drop:
 		ins := kind == .Insert_Line_Break ? "\n" : text
 		ins = multiline ? normalize_newlines(ins) : strip_newlines(normalize_newlines(ins))
 		if kind == .Insert_Line_Break && !multiline { return }
@@ -292,7 +294,7 @@ plan_edit :: proc(f: ^Forms, h: base.Handle, kind: Edit_Kind, text: string) -> (
 		if ins == "" && a == b { return }
 		out = strings.concatenate({s[:a], ins, s[b:]}, context.temp_allocator)
 		return out, a + len(ins), ins, true
-	case .Delete_Backward, .Delete_Forward, .Delete_Word_Backward, .Delete_Word_Forward, .Delete_Line_Backward, .Delete_Line_Forward, .Delete_By_Cut:
+	case .Delete_Backward, .Delete_Forward, .Delete_Word_Backward, .Delete_Word_Forward, .Delete_Line_Backward, .Delete_Line_Forward, .Delete_By_Cut, .Delete_By_Drag:
 		da, db := a, b
 		if a == b {
 			#partial switch kind {
@@ -302,7 +304,7 @@ plan_edit :: proc(f: ^Forms, h: base.Handle, kind: Edit_Kind, text: string) -> (
 			case .Delete_Word_Forward: db = word_next(s, b)
 			case .Delete_Line_Backward: da = multiline ? line_start(s, a) : 0
 			case .Delete_Line_Forward: db = multiline ? line_end(s, b) : len(s)
-			case .Delete_By_Cut: return
+			case .Delete_By_Cut, .Delete_By_Drag: return
 			}
 		}
 		if da == db { return }

@@ -249,7 +249,7 @@ item_to_source :: proc(shown, source: string, off: int) -> int {
 	return len(source)
 }
 
-@(private)
+// A byte offset in the DOM text to the same place in the text layout shows (the drop caret, a caret).
 source_to_item :: proc(shown, source: string, off: int) -> int {
 	if raw_data(shown) == raw_data(source) && len(shown) == len(source) { return clamp(off, 0, len(shown)) }
 	return item_to_source(source, shown, off)   // the same rune walk the other way
