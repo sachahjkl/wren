@@ -60,6 +60,56 @@
     intersectionRect: { x: 0, y: 0, width: 0, height: 0 }, isIntersecting: false, isVisible: false, intersectionRatio: 0, target: document.body });
   t("the entry constructor", init.boundingClientRect.width === 3 && init.rootBounds === null && init.target === document.body);
   throws("a required member missing", () => new IntersectionObserverEntry({ time: 1 }), "TypeError");
+  class MyEntry extends IntersectionObserverEntry {}
+  const mine = new MyEntry({ time: 1, rootBounds: { width: 5 }, boundingClientRect: {}, intersectionRect: {}, isIntersecting: true, isVisible: false, intersectionRatio: 1, target: document.body });
+  t("an entry can be subclassed", mine instanceof MyEntry && mine.time === 1 && mine.rootBounds.width === 5 && mine.isIntersecting);
+
+  eq("a single threshold", new IntersectionObserver(() => {}, { threshold: 0.5 }).thresholds.join(), "0.5");
+  eq("no threshold: 0", new IntersectionObserver(() => {}, { threshold: [] }).thresholds.join(), "0");
+  eq("delay and trackVisibility", (o => o.delay + "," + o.trackVisibility)(new IntersectionObserver(() => {}, { delay: 100.7, trackVisibility: 1 })), "100,true");
+  throws("a threshold that is not finite", () => new IntersectionObserver(() => {}, { threshold: NaN }), "TypeError");
+  throws("a scrollMargin in em", () => new IntersectionObserver(() => {}, { scrollMargin: "1em" }), "SyntaxError");
+  eq("margins in percent and pixels", new IntersectionObserver(() => {}, { rootMargin: "10% 5px" }).rootMargin, "10% 5px 10% 5px");
+
+  // the clip of an ancestor (overflow other than visible) cuts the target
+  const clip = document.createElement("div");
+  clip.style.cssText = "position:absolute;left:0;top:0;width:100px;height:50px;overflow:hidden";
+  const inner = document.createElement("div");
+  inner.style.cssText = "width:100px;height:200px";
+  clip.appendChild(inner);
+  document.body.appendChild(clip);
+  const got = [];
+  const ic = new IntersectionObserver(es => es.forEach(e => got.push(e)), { threshold: [0, 0.25, 0.5] });
+  ic.observe(inner);
+  await frame();
+  await frame();
+  eq("an ancestor's clip cuts the target", got.length === 1 && got[0].intersectionRect.height + "/" + got[0].intersectionRatio + "/" + got[0].boundingClientRect.height, "50/0.25/200");
+  clip.style.height = "150px";
+  await frame();
+  await frame();
+  eq("a threshold crossed by a change of the clip", got.length === 2 && got[1].intersectionRatio, 0.75);
+  ic.disconnect();
+
+  // a root element: its box grown by rootMargin (percentages of its size); what is not inside it is not rendered for it
+  const rootEl = document.createElement("div");
+  rootEl.style.cssText = "position:absolute;left:300px;top:0;width:100px;height:100px;overflow:auto";
+  const kid = document.createElement("div");
+  kid.style.cssText = "height:50px;margin-top:80px";
+  rootEl.appendChild(kid);
+  document.body.appendChild(rootEl);
+  const gr = [];
+  const ir = new IntersectionObserver(es => es.forEach(e => gr.push(e)), { root: rootEl, rootMargin: "50%" });
+  eq("the root and its margin", ir.root === rootEl && ir.rootMargin, "50% 50% 50% 50%");
+  ir.observe(kid);
+  ir.observe(document.getElementById("top"));
+  await frame();
+  await frame();
+  const byId = (id, k) => gr.filter(e => e.target.id === id || (id === "" && e.target === kid))[k || 0];
+  const ek = byId("");
+  t("an element root: its box grown by the margin", gr.length === 2 && ek && ek.rootBounds.x === 250 && ek.rootBounds.width === 200 && ek.isIntersecting && ek.intersectionRatio === 1);
+  const et = byId("top");
+  t("a target outside the root element is not rendered for it", et && !et.isIntersecting && et.rootBounds === null);
+  ir.disconnect();
   done();
 })();
 </script>

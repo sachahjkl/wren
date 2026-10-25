@@ -55,7 +55,7 @@ function not exposed to workers is not instantiated.
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
 | [`crypto`](crypto.md) | 4 | Window | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
 | [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
-| [`dom`](dom.md) | 356 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
+| [`dom`](dom.md) | 365 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
 | [`events`](events.md) | 39 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
@@ -76,10 +76,10 @@ function not exposed to workers is not instantiated.
 | [`performance`](performance.md) | 19 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`ports`](ports.md) | 8 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
 | [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
-| [`timers`](timers.md) | 12 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
+| [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
 | [`url`](url.md) | 18 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
 | [`web`](web.md) | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1039 imports in 940 functions.
+1047 imports in 948 functions.

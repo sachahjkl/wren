@@ -13,6 +13,8 @@ import lay "wb:layout"
 
 Layout_Observers :: struct {
 	resize:       [dynamic]^Resize_Observer,         // in creation order
+	intersection: [dynamic]^Intersection_Observer,
+	io_task:      bool,                              // the task that delivers intersection entries is queued
 }
 
 // The layout of one stretch of the rendering update, read once: the view (where every space is for the viewport and the
@@ -50,13 +52,16 @@ obs_geometry :: proc(f: ^Obs_Frame, h: base.Handle) -> Element_Geometry {
 observers_refresh :: proc(p: ^Page) {
 	w := p.web
 	if w == nil { return }
-	w.ro_active = false
+	w.ro_active, w.io_active = false, false
 	for ro in w.observers.resize { if len(ro.targets) > 0 { w.ro_active = true; break } }
+	for io in w.observers.intersection { if len(io.targets) > 0 { w.io_active = true; break } }
 	if !w.ro_active { w.ro_pending = false }
+	if !w.io_active { w.io_pending = false }
 }
 
 @(private)
 layout_observers_destroy :: proc(w: ^Web_State) {
 	delete(w.observers.resize)
+	delete(w.observers.intersection)
 	w.observers = {}
 }

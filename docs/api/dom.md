@@ -3355,6 +3355,99 @@ contentBoxSize, devicePixelContentBoxSize, and the content rect's left and top.
 
 Host: `ResizeObserver_takeEntries :: proc(c: ^Call, observer: u64) -> []u8`
 
+### `IntersectionObserver_create`
+
+```
+Object IntersectionObserver_create(MicrotaskCallback notify, i32 user, u64 root, string root_margin, string scroll_margin, bytes thresholds) raises
+```
+
+new IntersectionObserver: `root` is the root element or document (0: the viewport), `thresholds` the f64 values
+ascending (already checked to be in [0, 1]); `notify(user)` runs, from a task of the page, when entries were queued,
+and takes them with IntersectionObserver_takeRecords. Syntax when a margin is not one to four lengths in px or %.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `IntersectionObserver_create :: proc(c: ^Call, notify: u32, user: i32, root: u64, root_margin: string, scroll_margin: string, thresholds: []u8) -> (u64, Api_Error)`
+
+### `IntersectionObserver_rootMargin`
+
+```
+string IntersectionObserver_rootMargin(u64 observer)
+```
+
+observer.rootMargin / scrollMargin: the four sides, each a number and its unit ("10px 0px 10px 0px").
+
+Host: `IntersectionObserver_rootMargin :: proc(c: ^Call, observer: u64) -> string`
+
+### `IntersectionObserver_scrollMargin`
+
+```
+string IntersectionObserver_scrollMargin(u64 observer)
+```
+
+Host: `IntersectionObserver_scrollMargin :: proc(c: ^Call, observer: u64) -> string`
+
+### `IntersectionObserver_observe`
+
+```
+void IntersectionObserver_observe(u64 observer, Element target) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `IntersectionObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Element) -> Api_Error`
+
+### `IntersectionObserver_unobserve`
+
+```
+void IntersectionObserver_unobserve(u64 observer, Element target)
+```
+
+Host: `IntersectionObserver_unobserve :: proc(c: ^Call, observer: u64, target: Api_Element)`
+
+### `IntersectionObserver_disconnect`
+
+```
+void IntersectionObserver_disconnect(u64 observer)
+```
+
+observer.disconnect(): no more targets; the entries already queued stay for takeRecords.
+
+Host: `IntersectionObserver_disconnect :: proc(c: ^Call, observer: u64)`
+
+### `IntersectionObserver_observed`
+
+```
+u32 IntersectionObserver_observed(u64 observer)
+```
+
+How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+
+Host: `IntersectionObserver_observed :: proc(c: ^Call, observer: u64) -> u32`
+
+### `IntersectionObserver_takeRecords`
+
+```
+bytes IntersectionObserver_takeRecords(u64 observer)
+```
+
+The entries waiting, 128 bytes each, little endian: target u64, time f64, intersectionRatio f64, flags u32 (bit 0
+isIntersecting, bit 1 isVisible, bit 2 rootBounds is not null), 4 bytes of 0, then twelve f64: rootBounds,
+boundingClientRect and intersectionRect as x, y, width, height. Nothing changes until IntersectionObserver_release,
+so a call that did not fit can be made again.
+
+Host: `IntersectionObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8`
+
+### `IntersectionObserver_release`
+
+```
+void IntersectionObserver_release(u64 observer)
+```
+
+The engine made the entries it took: they leave the queue (and the pins of their targets go).
+
+Host: `IntersectionObserver_release :: proc(c: ^Call, observer: u64)`
+
 ### `Window_print`
 
 ```
