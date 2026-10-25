@@ -153,7 +153,7 @@ Walk_Key :: struct { h: base.Handle, ix: ^Inv_Index, dir: u8 }
 @(private = "file")
 mark :: proc(m: ^Marker, h: base.Handle, sub: bool, loc := #caller_location) {
 	if !is_element_node(m.doc, h) { return }
-	if sub && trace_restyle() && flat_parent_element(m.doc, h) == base.NIL_HANDLE { trace_roots[int(loc.line)] += 1 }
+	if sub && trace_restyle() && flat_parent_element(m.doc, h) == base.NIL_HANDLE { trace_roots[fmt.aprintf("%d %s", loc.line, trace_note)] += 1 }
 	bits := m.marks[h]
 	nb := bits | (sub ? M_SUB : M_SELF)
 	if nb == bits { return }
@@ -367,8 +367,11 @@ has_invalidate :: proc(m: ^Marker, x: base.Handle, self: bool, feat := Has_Chang
 			// `:not(:has(.a))` is every element's candidate: without this every class change restyled the document)
 			if !has_tests(ha.feat, feat) { continue }
 			if anchor_could_match(&m.mc, a, ha.compound) {
+				trace_why = "not exact, or no members"
 				if m.exact && ha.exact && ha.members != nil && !has_flip(m, &ha, a) { continue }
+				if trace_restyle() { trace_note = fmt.tprintf(":has() anchor why=%s exact=%v chain=%v unkeyed=%v hops=%d classes=%s attrs=%s ids=%s types=%s", trace_why, ha.exact, ha.chain, ha.feat.unkeyed, ha.hops, trace_keys(ha.feat.classes), trace_keys(ha.feat.attrs), trace_keys(ha.feat.ids), trace_keys(ha.feat.types)) }
 				apply(m, a, ha.reach)
+				trace_note = ""
 			}
 		}
 	}
@@ -877,7 +880,11 @@ mark_mutations :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 }
 
 @(private = "file")
-trace_roots: map[int]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.odin that marked the root element's whole subtree, and how often
+trace_roots: map[string]int   // (WREN_RESTYLE_TRACE) the lines of restyle_dom.odin that marked the root element's whole subtree (with the :has() anchor, when it was one), and how often
+@(private = "file")
+trace_note: string            // (WREN_RESTYLE_TRACE) the :has() anchor being applied
+@(private = "file")
+trace_why: string             // (WREN_RESTYLE_TRACE) why has_flip answered that the answer of an anchor flipped
 
 // WREN_RESTYLE_TRACE=1: what made a restyle too big to scope, on standard error (for the measuring tools): the mutations, and the
 // elements whose whole subtree was marked, the biggest first.
@@ -886,6 +893,14 @@ trace_restyle :: proc() -> bool {
 	@(static) known, on: bool
 	if !known { known = true; on = os.get_env("WREN_RESTYLE_TRACE", context.temp_allocator) != "" }
 	return on
+}
+
+@(private = "file")
+trace_keys :: proc(set: map[string]bool) -> string {
+	keys := make([dynamic]string, 0, len(set), context.temp_allocator)
+	for k in set { append(&keys, k) }
+	slice.sort(keys[:])
+	return len(keys) > 6 ? fmt.tprintf("%v+%d", keys[:6], len(keys) - 6) : fmt.tprintf("%v", keys[:])
 }
 
 @(private = "file")
@@ -911,7 +926,7 @@ trace_marks :: proc(m: ^Marker, work: int, entries: []dom.Journal_Entry) {
 		n := dom.get(m.doc, en.node)
 		tally[fmt.tprintf("%v of <%s> %s", en.kind, n != nil ? n.name : "(gone)", en.name)] += 1
 	}
-	for k, v in trace_roots { fmt.eprintfln("    root subtree marked by restyle_dom.odin:%d x %d", k, v) }
+	for k, v in trace_roots { fmt.eprintfln("    root subtree marked by restyle_dom.odin:%s x %d", k, v) }
 	clear(&trace_roots)
 	fmt.eprintfln("    mutations: %s", len(tally) > 12 ? "(many kinds)" : "")
 	for k, v in tally { fmt.eprintfln("      %d x %s", v, k) }
@@ -1170,6 +1185,8 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		if trace_restyle() { trace_marks(&m, work, entries) }
 		return fail(e, "too much changed")
 	}
+
+	members_commit(&m)
 
 	// from here on the styles change
 	for h in m.removed {
@@ -1525,7 +1542,14 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 	if m.shadows || !ix.uses_has || !m.exact { return }
 	any := false
 	for &ha in ix.has_anchors {
-		if ha.exact && ha.members != nil { any = true; clear(&ha.members.added); clear(&ha.members.removed) }
+		if ha.exact && ha.members != nil {
+			any = true
+			clear(&ha.members.added); clear(&ha.members.removed)
+			ha.members.head_touched, ha.members.lost_held, ha.members.dirty = false, false, false   // (dirty is of this batch: left set, every later batch assumed a flip)
+			if ha.first_mask != 0 {
+				for &en in entries { if en.kind == .Attribute && compound_reads_attr(ha.cx.compounds[0], en.name) { ha.members.head_touched = true; break } }
+			}
+		}
 	}
 	if !any { return }
 	doc := m.doc
@@ -1549,6 +1573,7 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 					if matches_compound(&m.mc, x, ha.arg) {
 						ha.members.set[x] = {}
 						append(&ha.members.added, x)
+						if ha.first_mask != 0 { member_held(m, &ha, x, true) }
 					}
 					for ch := xn.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
 				}
@@ -1568,6 +1593,7 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 				// an attribute the chain reads, on an element that has members below it: any answer may have flipped
 				if ha.chain && !ha.members.dirty && chain_reads_attr(&ha, en.name) {
 					for x in ha.members.set { if x != en.node && is_below(doc, x, en.node) { ha.members.dirty = true; break } }
+					if ha.members.dirty && trace_restyle() { trace_roots[fmt.aprintf("dirty by [%s] of <%s> %s -> %s", en.name, n.name, en.had_old ? en.old : "(none)", dom.get_attribute(doc, en.node, en.name) or_else "(none)")] += 1 }
 				}
 				if !arg_reads_attr(&ha, en.name) { continue }
 				was := en.node in ha.members.set
@@ -1575,12 +1601,47 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 				if now && !was {
 					ha.members.set[en.node] = {}
 					append(&ha.members.added, en.node)
+					if ha.first_mask != 0 { member_held(m, &ha, en.node, true) }
 				} else if !now && was {
 					delete_key(&ha.members.set, en.node)
 					append(&ha.members.removed, n.parent)
+					if en.node in ha.members.held { ha.members.lost_held = true; delete_key(&ha.members.held, en.node) }
 				}
 			}
 		case .Text, .Reslot:
+		}
+	}
+	// members taken out of the tree (removed with a subtree, destroyed): did one of them have a [role]-like head above it?
+	for &ha in ix.has_anchors {
+		if !ha.exact || ha.members == nil || ha.first_mask == 0 || len(ha.members.removed) == 0 { continue }
+		gone := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+		for x in ha.members.held {
+			if dom.get(doc, x) == nil || !connected(doc, x) { append(&gone, x) }
+		}
+		for x in gone { ha.members.lost_held = true; delete_key(&ha.members.held, x) }
+	}
+}
+
+// Whether member `x` of a two-compound chain has an element above it that matches the first compound, as of the document now (`moved`:
+// x was in the set already, put back somewhere: where it was counts as lost).
+@(private = "file")
+member_held :: proc(m: ^Marker, ha: ^Has_Anchor, x: base.Handle, moved: bool) {
+	mem := ha.members
+	if moved && x in mem.held { mem.lost_held = true }
+	if chain_head_above(&m.mc, m.doc, ha, dom.get(m.doc, x).parent) { mem.held[x] = {} } else { delete_key(&mem.held, x) }
+}
+
+// Once the mutations are marked: the members' standing under the first compound, taken again if an attribute it reads changed (an
+// ancestor may have gained or lost it without any member coming or going).
+@(private = "file")
+members_commit :: proc(m: ^Marker) {
+	ix := m.ix
+	if m.shadows || !ix.uses_has || !m.exact { return }
+	for &ha in ix.has_anchors {
+		if !ha.exact || ha.members == nil || ha.first_mask == 0 || !(ha.members.head_touched || ha.members.dirty) { continue }
+		clear(&ha.members.held)
+		for x in ha.members.set {
+			if dom.get(m.doc, x) != nil && connected(m.doc, x) { member_held(m, &ha, x, false) }
 		}
 	}
 }
@@ -1591,7 +1652,8 @@ members_prepare :: proc(m: ^Marker, entries: []dom.Journal_Entry) {
 // question open: a flip is assumed).
 @(private = "file")
 has_flip :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
-	if ha.members.dirty { return true }
+	trace_why = "none (not exact, or no members)"
+	if ha.members.dirty { trace_why = "dirty"; return true }
 	key := Flip_Key{ha, a}
 	if r, ok := m.flips[key]; ok { return r }
 	r := has_flip_scan(m, ha, a)
@@ -1632,15 +1694,17 @@ has_flip_scan :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
 	for x in gone { delete_key(&mem.set, x) }
 	if stayed { return false }
 	now := false
-	for x in mem.added { if valid(m, x) && under(m, ha, a, x) && chain_holds(m, ha, a, x) { now = true; break } }
+	for x in mem.added { if valid(m, x) && under(m, ha, a, x) && chain_holds(m, ha, a, x) { now = true; trace_why = "a member came"; break } }
 	before := false
+	// (a two-compound chain: only a member that was under a head can have made the answer true, see Has_Members.held)
 	for p in mem.removed {
-		if p == a { before = true; break }
+		if ha.first_mask != 0 && !mem.lost_held { break }
+		if p == a { before = true; trace_why = "a member left the anchor"; break }
 		pn := dom.get(doc, p)
-		if pn == nil { before = true; break }   // not known where it was
+		if pn == nil { before = true; trace_why = "a member left, its parent is gone"; break }   // not known where it was
 		if ha.child_only { continue }
 		for cur := pn.parent; cur != base.NIL_HANDLE; {
-			if cur == a { before = true; break }
+			if cur == a { before = true; trace_why = "a member left under the anchor"; break }
 			cn := dom.get(doc, cur)
 			if cn == nil { break }
 			cur = cn.parent
@@ -1650,12 +1714,29 @@ has_flip_scan :: proc(m: ^Marker, ha: ^Has_Anchor, a: base.Handle) -> bool {
 	return now != before
 }
 
-// Could a change of attribute `name` change what the chain of `ha` matches (an element's class, id or attribute it tests)?
+// Could a change of attribute `name` on an element ABOVE a member change what the chain of `ha` matches? Only the compounds before
+// the last one match ancestors of the member (the last is the member itself, whose attributes keep the members up to date): a
+// class on the member (YouTube: `.ytwChannelBlocksViewModelHost` in `:has([role]:not([aria-hidden]) .ytwChannelBlocksViewModelHost)`)
+// is not read on an ancestor, so a class change there restyled the whole document for nothing.
 @(private = "file")
 chain_reads_attr :: proc(ha: ^Has_Anchor, name: string) -> bool {
-	if name == "class" { return len(ha.feat.classes) > 0 }
-	if name == "id" { return len(ha.feat.ids) > 0 }
-	for k in ha.feat.attrs { if strings.equal_fold(k, name) { return true } }
+	if ha.cx == nil { return false }
+	for comp in ha.cx.compounds[:len(ha.cx.compounds) - 1] { if compound_reads_attr(comp, name) { return true } }
+	return false
+}
+
+@(private = "file")
+compound_reads_attr :: proc(comp: css.Compound, name: string) -> bool {
+	for sp in comp.simples {
+		switch sp.kind {
+		case .Id: if name == "id" { return true }
+		case .Class: if name == "class" { return true }
+		case .Attribute: if strings.equal_fold(sp.name, name) { return true }
+		case .Pseudo_Class:
+			if sp.list != nil { for &cx in sp.list^ { for c in cx.compounds { if compound_reads_attr(c, name) { return true } } } }
+		case .Type, .Universal, .Nesting:
+		}
+	}
 	return false
 }
 
