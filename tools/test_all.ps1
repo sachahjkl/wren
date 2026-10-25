@@ -246,6 +246,13 @@ Step 'wren ctl stop ends the Wren it started and nothing else (tools\ctl_stop_e2
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\ctl_stop_e2e.ps1
 }
+Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1: a Wren ended by its own process id leaves running.txt and recovery.txt, the next start restores the tabs, a restoring start that ends too is followed by a blank page and the tabs kept in a file, a normal end removes both files, a Wren that still runs is not taken for a crash)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_recovery_e2e.ps1
+}
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null
