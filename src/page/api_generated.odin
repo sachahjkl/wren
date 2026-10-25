@@ -389,6 +389,23 @@ Api_SelectionState :: struct {
 	kind: u32,
 }
 
+// A live FsEntry: its handle and what lookup_FsEntry found.
+Api_FsEntry :: struct {
+	handle: u64,
+	data:   ^Fs_Entry,
+}
+
+// A live FsReader: its handle and what lookup_FsReader found.
+Api_FsReader :: struct {
+	handle: u64,
+	data:   ^Fs_Reader,
+}
+
+// What an entry is.
+Api_FsEntryInfo :: struct {
+	is_dir: bool,
+}
+
 // What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
 // attribute (script-src-attr), a javascript: URL.
 Api_InlineScriptKind :: enum i32 {
@@ -17617,6 +17634,252 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	return nil
 }
 
+// DataTransfer_itemEntry :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_entries_DataTransfer_itemEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "entries.DataTransfer_itemEntry", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "entries.DataTransfer_itemEntry: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemEntry(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// FsEntry_info :: proc(c: ^Call, entry: Api_FsEntry) -> Api_FsEntryInfo
+@(private = "file")
+_t_entries_FsEntry_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "entries.FsEntry_info", "result pointer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_info: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_info: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^u8)(&_rs[0]), u8(1 if _r.is_dir else 0))
+	return nil
+}
+
+// FsEntry_name :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_name", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_name: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_name: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_name(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_fullPath :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_fullPath", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_fullPath: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_fullPath: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_fullPath(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_filesystemName :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_filesystemName", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_filesystemName: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_filesystemName: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_filesystemName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_parent :: proc(c: ^Call, entry: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_parent: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_parent: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_parent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_file :: proc(c: ^Call, entry: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_file: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_file: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_file(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_lookup :: proc(c: ^Call, dir: Api_FsEntry, path: string, directory: bool) -> u64
+@(private = "file")
+_t_entries_FsEntry_lookup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "entries.FsEntry_lookup", "path") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "entries.FsEntry_lookup: argument path is not valid UTF-8") }
+		return wasm.trap_new("entries.FsEntry_lookup: argument path is not valid UTF-8")
+	}
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_lookup: argument dir is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_lookup: argument dir is not a live FsEntry")
+	}
+	_p2 := a[3].i32 != 0
+	_r := FsEntry_lookup(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_createReader :: proc(c: ^Call, dir: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_createReader :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_createReader: argument dir is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_createReader: argument dir is not a live FsEntry")
+	}
+	_r := FsEntry_createReader(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsReader_read :: proc(c: ^Call, reader: Api_FsReader) -> u64
+@(private = "file")
+_t_entries_FsReader_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsReader{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsReader(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsReader_read: argument reader is not a live FsReader") }
+		return wasm.trap_new("entries.FsReader_read: argument reader is not a live FsReader")
+	}
+	_r := FsReader_read(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsReader_entry :: proc(c: ^Call, reader: Api_FsReader, index: i32) -> u64
+@(private = "file")
+_t_entries_FsReader_entry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsReader{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsReader(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsReader_entry: argument reader is not a live FsReader") }
+		return wasm.trap_new("entries.FsReader_entry: argument reader is not a live FsReader")
+	}
+	_p1 := a[1].i32
+	_r := FsReader_entry(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error)
 @(private = "file")
 _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -19617,6 +19880,20 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Navigator_maxTouchPoints :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_navigator_Navigator_maxTouchPoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Navigator_maxTouchPoints(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
 	return nil
 }
 
@@ -24346,6 +24623,17 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DOMParser_parseHTMLNode", fn = _t_dom_DOMParser_parseHTMLNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DOMImplementation_createDocumentType", fn = _t_dom_DOMImplementation_createDocumentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_partOf", fn = _t_dom_Document_partOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "DataTransfer_itemEntry", fn = _t_entries_DataTransfer_itemEntry, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "entries", name = "FsEntry_info", fn = _t_entries_FsEntry_info, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "entries", name = "FsEntry_name", fn = _t_entries_FsEntry_name, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_fullPath", fn = _t_entries_FsEntry_fullPath, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_filesystemName", fn = _t_entries_FsEntry_filesystemName, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_parent", fn = _t_entries_FsEntry_parent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_file", fn = _t_entries_FsEntry_file, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_lookup", fn = _t_entries_FsEntry_lookup, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_createReader", fn = _t_entries_FsEntry_createReader, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsReader_read", fn = _t_entries_FsReader_read, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsReader_entry", fn = _t_entries_FsReader_entry, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "EventTarget_dispatchEngineEvent", fn = _t_events_EventTarget_dispatchEngineEvent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_engineId", fn = _t_events_Event_engineId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "Event_interface", fn = _t_events_Event_interface, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -24444,6 +24732,7 @@ api_imports := [?]wasm.Import{
 	{module = "navigator", name = "Navigator_get", fn = _t_navigator_Navigator_get, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Navigator_hardwareConcurrency", fn = _t_navigator_Navigator_hardwareConcurrency, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "Navigator_maxTouchPoints", fn = _t_navigator_Navigator_maxTouchPoints, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_cookieEnabled", fn = _t_navigator_Navigator_cookieEnabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Beacon_send", fn = _t_navigator_Beacon_send, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Clipboard_writeText", fn = _t_navigator_Clipboard_writeText, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
