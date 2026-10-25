@@ -256,7 +256,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			if res.hovered >= 0 { graph_tooltip(res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
 			ui.spacer(ui.px(em * 0.3))
 		case .Fps:
-			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames.", hud.cfg.window_ms))
+			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz (frames aim for %s Hz).", hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), fmt_hz(pacer.hz, c)))
 		case .Cpu:
 			text := n.frames > 0 ? fmt.tprintf("CPU %s ms###sb_cpu", fmt_ms(n.cpu_mean, c)) : "CPU -- ms###sb_cpu"
 			tone := "weak"

@@ -183,8 +183,11 @@ setup_build :: proc(app: ^App) {
 	if stp.width_em == 0 { stp.width_em = 46 }
 	width := clamp(math.round(stp.width_em * em), min(36 * em, max_w), max_w)
 	inner := width - 2 * pad
-	// placed higher than the middle (a third of the room left over is above it); at the top when it takes the whole window
-	top := stp.fit_h > 0 ? max((win_h - stp.fit_h) * 0.35, em * 0.6) : win_h * 0.08
+	// placed near the top, and not moved by its own content: centred on its height, it jumped when the first frame (height not known
+	// yet) became the second, and again when the disk was read and "Loading" became the real state. It only moves up when it would
+	// not fit under that line.
+	top := win_h * 0.12
+	if stp.fit_h > 0 && top + stp.fit_h > win_h { top = max(win_h - stp.fit_h, em * 0.6) }
 	open := true
 	if ui.modal("setup", width, &open, top / win_h) {
 		if ui.style({radius = 0}) { setup_frame(app, width, inner, pad, win_h) }
