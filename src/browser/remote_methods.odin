@@ -427,7 +427,7 @@ m_evaluate :: proc(app: ^App, c: ^Call) -> Reply {
 		return rep
 	}
 	op := op_new(app, c, .Eval, timeout_of(c), "script")
-	op.eval_id = id
+	op.eval_id, op.tab = id, t.id   // (its answer counts from this tab only)
 	return Reply{deferred = true}
 }
 

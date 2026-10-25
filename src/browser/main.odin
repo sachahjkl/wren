@@ -235,7 +235,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
-	if the_remote.active && remote_take_console(message) { return }   // (an answer of a remote script, not a message)
+	if the_remote.active && remote_take_console(message, (^Tab)(user).id) { return }   // (an answer of a remote script, not a message)
 	t := (^Tab)(user)
 	tab_log(t, level, message)
 	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", remote.quote(message))) }
