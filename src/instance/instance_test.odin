@@ -170,6 +170,8 @@ instance_a_silent_owner_does_not_hold_the_second_start :: proc(t: ^testing.T) {
 	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
 	d, th := owner_begin(key, `C:\a\wren.exe`, pump = false)   // has the window, never answers
 	defer owner_end(d, th)
+	// (on the CI the second start got First once, which means the owner had not taken the profile: say so, instead of a misleading outcome)
+	if !testing.expect(t, d.started, "the owner thread took the profile before the second start is tried") { return }
 	t0 := time.tick_now()
 	outcome, _ := acquire(key, `C:\a\wren.exe`, Message{exe = `C:\a\wren.exe`, addresses = {"about:config"}}, 700)
 	testing.expect_value(t, outcome, Outcome.Unresponsive)
