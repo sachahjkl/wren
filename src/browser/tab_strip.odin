@@ -373,7 +373,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if !(classic && strip.drag_active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		if !strip.drag_active && abs(sig.drag_delta.x) > favs.cfg.drag_threshold * dpi {
+		if !strip.drag_active && max(abs(sig.drag_delta.x), favs.cfg.drag_detach ? abs(sig.drag_delta.y) : 0) > favs.cfg.drag_threshold * dpi {   // (straight down starts a drag too: it may leave the bar)
 			strip.drag_active, strip.drag_id = true, t.id
 			press_x := ui.mouse_pos().x - sig.drag_delta.x
 			strip.drag_grab = press_x - area.rect.min.x - slot   // where the pointer holds the tab

@@ -376,7 +376,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_w, inset: f32, collapsed: bool, a
 
 	// drag to reorder, along Y
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		if !strip.drag_active && abs(sig.drag_delta.y) > favs.cfg.drag_threshold * dpi {
+		if !strip.drag_active && max(abs(sig.drag_delta.y), favs.cfg.drag_detach ? abs(sig.drag_delta.x) : 0) > favs.cfg.drag_threshold * dpi {   // (straight out sideways starts a drag too: it may leave the bar)
 			strip.drag_active, strip.drag_id = true, t.id
 			press_y := ui.mouse_pos().y - sig.drag_delta.y
 			strip.drag_grab = press_y - area.rect.min.y + area.view_off.y - slot   // where the pointer holds the row
