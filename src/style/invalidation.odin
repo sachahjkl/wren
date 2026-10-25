@@ -117,6 +117,10 @@ Has_Anchor :: struct {
 	cx:         ^css.Complex,
 	arg:        css.Compound,    // the last compound
 	last_mask:  u64,             // its keys in the document's Watch
+	// A chain of two compounds (`:has([role]:not([aria-hidden]) .x)`): the keys the first one requires, in the Watch. A member removed
+	// from a subtree that held none of them, and with no element above that matches the first compound, was not part of an answer that
+	// was true (restyle_dom.odin members_prepare). 0: not such a chain, or no key to test.
+	first_mask: u64,
 	members:    ^Has_Members,
 }
 
@@ -125,6 +129,25 @@ Has_Members :: struct {
 	added:   [dynamic]base.Handle,       // this batch of mutations: members that came (inserted subtrees, attributes that now match)
 	removed: [dynamic]base.Handle,       // this batch: the parents members may have left (a removed subtree that held the features, an attribute that stopped matching)
 	dirty:   bool,                       // this batch: an attribute the chain reads changed on an ancestor of a member: any answer may have flipped
+	// Two-compound chains (first_mask != 0): the members that had an element matching the first compound above them as of the end of the
+	// previous batch (an over-approximation of "the answer was true because of this member"). A member that leaves (removed, moved,
+	// no longer matching) and was not in it cannot have flipped an answer from true to false: `:has([role]:not([aria-hidden]) .x)`
+	// on YouTube has members that come and go without ever being under a [role], and each departure restyled the whole page.
+	held:         map[base.Handle]struct{},
+	lost_held:    bool,                  // this batch: a member that was in `held` left
+	head_touched: bool,                  // this batch: an attribute the first compound reads changed somewhere (held is taken again once the batch is done)
+}
+
+// Does `p` or one of its ancestors match the first compound of the two-compound chain of `ha`? (A parent already destroyed: unknown, yes.)
+@(private)
+chain_head_above :: proc(mc: ^Match_Ctx, doc: ^dom.Document, ha: ^Has_Anchor, p: base.Handle) -> bool {
+	for cur := p; cur != base.NIL_HANDLE; {
+		n := dom.get(doc, cur)
+		if n == nil { return true }
+		if n.kind == .Element && matches_compound(mc, cur, ha.cx.compounds[0]) { return true }
+		cur = n.parent
+	}
+	return false
 }
 
 // The features the :has() argument of one anchor tests: a change of any other feature of an element under the anchor
@@ -181,7 +204,7 @@ inv_free :: proc(ix: ^Inv_Index) {
 		for k in ha.feat.ids { delete(k) }
 		for k in ha.feat.attrs { delete(k) }
 		for k in ha.feat.types { delete(k) }
-		if ha.members != nil { delete(ha.members.set); delete(ha.members.added); delete(ha.members.removed); free(ha.members) }
+		if ha.members != nil { delete(ha.members.set); delete(ha.members.added); delete(ha.members.removed); delete(ha.members.held); free(ha.members) }
 		delete(ha.feat.classes); delete(ha.feat.ids); delete(ha.feat.attrs); delete(ha.feat.types)
 	}
 	delete(ix.has_anchors)
@@ -552,6 +575,19 @@ watch_sync :: proc(ix: ^Inv_Index, doc: ^dom.Document, force := false) -> (fresh
 					}
 				}
 				ha.last_mask = lm
+				ha.first_mask = 0
+				if ha.chain && ha.cx != nil && len(ha.cx.compounds) == 2 {
+					fm: u64
+					for sp in ha.cx.compounds[0].simples {
+						#partial switch sp.kind {
+						case .Type: fm |= dom.watch_bit(doc, .Tag, strings.to_lower(sp.name, context.temp_allocator))
+						case .Id: fm |= dom.watch_bit(doc, .Id, sp.name)
+						case .Class: fm |= dom.watch_bit(doc, .Class, sp.name)
+						case .Attribute: fm |= dom.watch_bit(doc, .Attr, strings.to_lower(sp.name, context.temp_allocator))
+						}
+					}
+					ha.first_mask = fm
+				}
 			}
 		}
 		ix.watched, ix.watched_gen = doc, doc.journal.watch.gen
@@ -567,8 +603,8 @@ members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
 	for &ha in ix.has_anchors {
 		if !ha.exact { continue }
 		if ha.members == nil { ha.members = new(Has_Members) }
-		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed)
-		ha.members.dirty = false
+		clear(&ha.members.set); clear(&ha.members.added); clear(&ha.members.removed); clear(&ha.members.held)
+		ha.members.dirty, ha.members.lost_held, ha.members.head_touched = false, false, false
 		any = true
 	}
 	if !any { return }
@@ -584,6 +620,10 @@ members_scan :: proc(ix: ^Inv_Index, doc: ^dom.Document) {
 			for &ha in ix.has_anchors { if ha.exact && matches_compound(&mc, h, ha.arg) { ha.members.set[h] = {} } }
 		}
 		for ch := n.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next { append(&stack, ch) }
+	}
+	for &ha in ix.has_anchors {
+		if !ha.exact || ha.first_mask == 0 { continue }
+		for x in ha.members.set { if chain_head_above(&mc, doc, &ha, dom.get(doc, x).parent) { ha.members.held[x] = {} } }
 	}
 }
 

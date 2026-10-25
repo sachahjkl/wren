@@ -1042,7 +1042,12 @@ frame :: proc(app: ^App, idled := false) {
 	// a wake that brought nothing (a timer of the system for the window, a message of no consequence): no frame. (It
 	// was one, and the status bar counted it, and armed its settle wake again: two frames every half second, forever.)
 	// (a timed wake of the toolkit's, a caret blink or a tooltip delay, always draws)
-	if idled && len(events) == 0 && ran == 0 && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
+	// (callbacks that changed nothing are `quiet` and not counted in `ran`: the page may still have changed meanwhile, or want a frame)
+	page_wants_frame := false
+	if t := current_tab(app); t != nil && t.page != nil {
+		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
+	}
+	if idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
