@@ -757,7 +757,7 @@ journal_menu_items :: proc(app: ^App, t: ^Tab) {
 		ui.toast(.Good, i18n.tr("Rule added: * %s * allow"), host)
 	}
 	ui.menu_separator()
-	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "").clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator)) }
+	if ui.menu_item(i18n.tr("Open the document"), enabled = e.doc != "").clicked { tab_open(app, strings.clone(e.doc, context.temp_allocator), origin = .Replay) }
 }
 
 dash_add_filter :: proc(app: ^App, line: string) {

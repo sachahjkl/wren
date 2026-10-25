@@ -14,7 +14,7 @@ VIEW_SOURCE_MAX :: 8 << 20   // bytes of source shown (the rest is cut, with a n
 // Opens the source of the tab's page in a new tab.
 view_source :: proc(app: ^App, t: ^Tab) {
 	if t == nil || t.kind != .Web || t.url == "" || strings.has_prefix(t.url, VIEW_SOURCE) { return }
-	open_in_new_tab(app, strings.concatenate({VIEW_SOURCE, t.url}, context.temp_allocator))
+	open_in_new_tab(app, strings.concatenate({VIEW_SOURCE, t.url}, context.temp_allocator), origin = .Replay)
 }
 
 @(private = "file")

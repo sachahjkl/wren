@@ -132,7 +132,7 @@ instance_open :: proc(data: rawptr) {
 	if app == nil { return }
 	first := -1
 	for a in d.addresses {
-		tab_open(app, a)
+		tab_open(app, a, origin = .User)
 		if first < 0 { first = app.current }
 	}
 	// the first of the new tabs is shown (the others wait, as with files dropped on the window)

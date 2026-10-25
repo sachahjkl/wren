@@ -22,6 +22,7 @@ import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:desktop"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
@@ -170,19 +171,43 @@ download_file_name :: proc(suggested, address, mime: string, max_bytes := 200, a
 	if ext == "" || len(ext) > 12 {
 		if e := extension_of_mime(mime); e != "" { out = strings.concatenate({out, e}, context.temp_allocator); ext = e }
 	}
-	// device names, with or without an extension
-	stem := out[:len(out) - len(ext)]
-	upper := strings.to_upper(strings.trim_right(stem, " "), context.temp_allocator)
-	reserved := upper == "CON" || upper == "PRN" || upper == "AUX" || upper == "NUL" || upper == "CONIN$" || upper == "CONOUT$" ||
-		(len(upper) == 4 && (strings.has_prefix(upper, "COM") || strings.has_prefix(upper, "LPT")) && upper[3] >= '0' && upper[3] <= '9')
-	if reserved { out = strings.concatenate({"_", out}, context.temp_allocator); stem = out[:len(out) - len(ext)] }
-	if len(out) > max_bytes {
-		keep := max(max_bytes - len(ext), 1)
-		cut := keep
-		for cut > 0 && (stem[cut] & 0xC0) == 0x80 { cut -= 1 }   // never in the middle of a character
-		out = strings.concatenate({stem[:cut], ext}, context.temp_allocator)
-	}
+	out = fit_file_name(out, max_bytes)
+	// device names, with or without extensions (Windows reads the part before the first dot: con.tar.gz is CON); the prefix
+	// is one byte more, and what it makes cannot be a device
+	if is_device_name(out) { out = fit_file_name(strings.concatenate({"_", out}, context.temp_allocator), max_bytes) }
 	return strings.clone(out, allocator)
+}
+
+// `name` in at most `max_bytes` bytes (one at least): whole characters only, the extension kept when it fits (one as long
+// as the limit is not one: the name is then cut as a whole), no dot or space left at the end of what is cut.
+@(private = "file")
+fit_file_name :: proc(name: string, max_bytes: int) -> string {
+	limit := max(max_bytes, 1)
+	if len(name) <= limit { return name }
+	ext := filepath.ext(name)
+	if len(ext) >= limit { ext = "" }
+	stem := name[:len(name) - len(ext)]
+	cut := min(limit - len(ext), len(stem))
+	for cut > 0 && cut < len(stem) && (stem[cut] & 0xC0) == 0x80 { cut -= 1 }
+	head := strings.trim_right(stem[:cut], " .")
+	if head == "" && ext == "" { return "_" }
+	return strings.concatenate({head, ext}, context.temp_allocator)
+}
+
+// CON, PRN, AUX, NUL, CONIN$, CONOUT$, COM0-9 and LPT0-9 (also with the superscript digits ¹ ² ³), whatever follows the first dot.
+@(private = "file")
+is_device_name :: proc(name: string) -> bool {
+	base := name
+	if i := strings.index_byte(name, '.'); i >= 0 { base = name[:i] }
+	upper := strings.to_upper(strings.trim_right(base, " "), context.temp_allocator)
+	switch upper {
+	case "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$": return true
+	}
+	if strings.has_prefix(upper, "COM") || strings.has_prefix(upper, "LPT") {
+		digit := upper[3:]
+		return (len(digit) == 1 && digit[0] >= '0' && digit[0] <= '9') || digit == "\u00b9" || digit == "\u00b2" || digit == "\u00b3"
+	}
+	return false
 }
 
 @(private = "file")
@@ -421,7 +446,7 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 	}
 	if cur := page.session_current(&t.session); cur != nil && bfcache_restore(app, t, cur) { return }
 	if e := page_session_current(t); e != "" {
-		navigate(app, t, e, record = false, restore = true)
+		navigate(app, t, e, record = false, restore = true, origin = .Replay)
 		return
 	}
 	if len(app.tabs) > 1 {
@@ -713,7 +738,9 @@ human_bytes :: proc(n: i64) -> string {
 @(private = "file")
 show_in_folder :: proc(path: string) {
 	args := win.utf8_to_wstring(fmt.tprintf("/select,\"%s\"", path), context.temp_allocator)
-	win.ShellExecuteW(nil, win.L("open"), win.L("explorer.exe"), args, nil, win.SW_SHOWNORMAL)
+	explorer := desktop.system_file("explorer.exe", .Windows)   // (a full path: a bare name is looked for in the working directory first)
+	if explorer == "" { return }
+	win.ShellExecuteW(nil, win.L("open"), win.utf8_to_wstring(explorer, context.temp_allocator), args, nil, win.SW_SHOWNORMAL)
 }
 
 downloads_init :: proc(app: ^App) { download_cfg(app) }

@@ -274,7 +274,8 @@ ck_read_directory :: proc(f: File, journal_size: i64, allocator: runtime.Allocat
 	jl, _ := endian.get_u64(head[8:], .Little)
 	dl, _ := endian.get_u32(head[16:], .Little)
 	dcrc, _ := endian.get_u32(head[20:], .Little)
-	if i64(dl) > size - CK_HEADER || i64(jl) > journal_size || jl < HEADER_SIZE { return }
+	// (compared as unsigned: a 64-bit length with the top bit set is negative as an i64 and passed these tests)
+	if i64(dl) > size - CK_HEADER || journal_size < 0 || jl > u64(journal_size) || jl < HEADER_SIZE { return }
 	raw := make([]byte, int(dl), context.temp_allocator)
 	if !file_read_at(f, CK_HEADER, raw) { return }
 	if hash.crc32(raw) != dcrc { return }
@@ -284,25 +285,29 @@ ck_read_directory :: proc(f: File, journal_size: i64, allocator: runtime.Allocat
 	schema := r_bytes(&r)
 	dir.schema = make([]byte, len(schema), allocator)
 	copy(dir.schema, schema)
-	nd := int(r_uv(&r))
-	if r.bad || nd > len(raw) { delete(dir.schema, allocator); return }
+	nd_u := r_uv(&r)
+	if r.bad || nd_u > u64(len(raw)) { delete(dir.schema, allocator); return }
+	nd := int(nd_u)
 	dir.next_ids = make([dynamic]Ck_Next, 0, nd, allocator)
 	for _ in 0 ..< nd {
 		name := r_str(&r)
 		append(&dir.next_ids, Ck_Next{db = clone_str(name, allocator), store = u32(r_uv(&r)), index = u32(r_uv(&r))})
 	}
-	ns := int(r_uv(&r))
-	if r.bad || ns > len(raw) { ck_dir_destroy(&dir, allocator); return }
+	ns_u := r_uv(&r)
+	if r.bad || ns_u > u64(len(raw)) { ck_dir_destroy(&dir, allocator); return }
+	ns := int(ns_u)
 	dir.entries = make([dynamic]Ck_Entry, 0, ns, allocator)
 	base := i64(CK_HEADER) + i64(dl)
 	for _ in 0 ..< ns {
 		name := r_str(&r)
 		e := Ck_Entry{db = clone_str(name, allocator), store = u32(r_uv(&r))}
-		e.section.off = base + i64(r_uv(&r))
-		e.section.len = i64(r_uv(&r))
-		e.section.count = int(r_uv(&r))
-		e.bytes = i64(r_uv(&r))
-		if r.bad || e.section.off + e.section.len > size { delete(e.db, allocator); ck_dir_destroy(&dir, allocator); return }
+		// (every number is checked as unsigned against the file before it is turned into a signed offset or length that sums can overflow)
+		rel, length, count, bytes := r_uv(&r), r_uv(&r), r_uv(&r), r_uv(&r)
+		avail := u64(size - base)
+		if r.bad || base > size || rel > avail || length > avail - rel || count > length || bytes > 1 << 62 {
+			delete(e.db, allocator); ck_dir_destroy(&dir, allocator); return
+		}
+		e.section.off, e.section.len, e.section.count, e.bytes = base + i64(rel), i64(length), int(count), i64(bytes)
 		append(&dir.entries, e)
 	}
 	if r.bad { ck_dir_destroy(&dir, allocator); return }

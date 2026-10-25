@@ -77,13 +77,15 @@ windows_cleanup_later :: proc(files: []string, folder: string, pid: u32) -> bool
 	text := cleanup_script(files, folder, pid)
 	if werr := os.write_entire_file(script, text); werr != nil { return false }
 
-	command := fmt.tprintf("cmd.exe /d /c \"\"%s\"\"", script)
+	shell := system_file("cmd.exe", .System)   // (by its full path: a bare name is looked for in the working directory first)
+	if shell == "" { return false }
+	command := fmt.tprintf("\"%s\" /d /c \"\"%s\"\"", shell, script)
 	cmd := win.utf8_to_utf16(command, context.temp_allocator)
 	cmd = append_nul(cmd)
 	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW), dwFlags = win.STARTF_USESHOWWINDOW, wShowWindow = u16(win.SW_HIDE)}
 	pi: win.PROCESS_INFORMATION
 	flags := win.DWORD(win.CREATE_NO_WINDOW)   // (a hidden console of its own: the tools it runs inherit it and show nothing)
-	if !win.CreateProcessW(nil, cstring16(raw_data(cmd)), nil, nil, false, flags, nil, nil, &si, &pi) { return false }
+	if !win.CreateProcessW(win.utf8_to_wstring(shell, context.temp_allocator), cstring16(raw_data(cmd)), nil, nil, false, flags, nil, nil, &si, &pi) { return false }
 	win.CloseHandle(pi.hThread)
 	win.CloseHandle(pi.hProcess)
 	return true

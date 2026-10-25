@@ -9,11 +9,14 @@ package browser
 //     that carry an input) becomes an `Remote_Op`. Ops are looked at after each frame and when their one timer fires; the
 //     timer exists only while an op needs to be looked at without anything else waking the loop (a deadline, a GPU copy
 //     to read), and does not draw a frame.
-//   * Script runs in the page through its console: the wrapper prints one line with a secret prefix that
-//     `remote_take_console` takes before the tab's console sees it (so a result cannot be forged by a page without knowing
-//     the prefix of this run, and never shows in the console).
+//   * Script runs in the page through its console: the wrapper prints one line starting with REMOTE_ANSWER that
+//     `remote_take_console` takes before the tab's console sees it. That mark is not a secret and nothing relies on it being
+//     one: the line goes through `console.log` of the page, which the page can replace (a prefix made secret was read by a
+//     page that did so, and then forged answers). What authenticates an answer is where it comes from: the tab the question
+//     was asked in, an id that is waiting, the first answer only; and what it says is data from the page (JSON checked
+//     before it is put in a reply, so that it can never add a line to the protocol). A page can lie about the value of
+//     what it is asked, as it can lie to its own scripts; it can do nothing to another tab or to the client.
 
-import "core:crypto"
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
@@ -87,11 +90,13 @@ Remote :: struct {
 	timer:      base.Handle,
 	timer_at:   i64,
 	frame_no:   u64,
-	prefix:     string,     // owned: what an eval result's console line starts with
 	eval_next:  int,
-	sync_id:    int,        // an eval whose answer is wanted at once, and what it said
+	sync_id:    int,        // an eval whose answer is wanted at once (of the tab sync_tab), and what it said
+	sync_tab:   u64,
 	sync_text:  string,
 	sync_done:  bool,
+	start_id:   int,        // an eval being started (its answer may come before its command is waiting), in tab start_tab
+	start_tab:  u64,
 	stash_id:   int,        // an answer that came while its command was still starting
 	stash_text: string,
 	exit_code:  int,
@@ -154,9 +159,6 @@ remote_start :: proc(app: ^App, requested: bool, arg_name: string) {
 	}
 	r.active, r.started = true, true
 	r.name = strings.clone(name)
-	nonce: [12]byte
-	crypto.rand_bytes(nonce[:])
-	r.prefix = strings.clone(fmt.tprintf("\x01wren-remote:%x:", nonce[:]))
 	r.timer = base.NIL_HANDLE
 	if !remote.write_info(app.profile_dir, name, APP_VERSION) { r.error = strings.clone(i18n.tr("Remote control: cannot write remote.json in the profile")) }
 	remote_take_baseline(app)
@@ -185,7 +187,7 @@ remote_stop :: proc(app: ^App) {
 	delete(r.ops)
 	delete(r.subs)
 	delete(r.loaded)
-	delete(r.name); delete(r.prefix); delete(r.error); delete(r.sync_text)
+	delete(r.name); delete(r.error); delete(r.sync_text)
 	delete(r.stash_text)
 	remote_recording_destroy(&r.rec)
 	remote_state_free()
@@ -395,28 +397,34 @@ remote_loaded_events :: proc(app: ^App) {
 ////////////////////////////////
 // Script through the console
 
-// `message` came from a page's console: is it the answer of one of our scripts?
-remote_take_console :: proc(message: string) -> bool {
+// What an answer's console line starts with (the page sees it: see the top of this file). Not a secret.
+REMOTE_ANSWER :: "\x01wren-remote:"
+
+// `message` came from the console of the tab `tab` (its id): is it the answer of one of our scripts? True when it is marked as
+// one (it is then kept out of the console, whoever wrote it); it counts only if it answers a question asked in that tab that
+// still waits for its answer, and only the first answer does.
+remote_take_console :: proc(message: string, tab: u64) -> bool {
 	r := &the_remote
-	if !r.active || r.prefix == "" || !strings.has_prefix(message, r.prefix) { return false }
-	payload := message[len(r.prefix):]
+	if !r.active || !strings.has_prefix(message, REMOTE_ANSWER) { return false }
+	payload := message[len(REMOTE_ANSWER):]
 	v, err := json.parse(transmute([]byte)payload, json.Specification.JSON, true, context.temp_allocator)
 	if err != .None { return true }
 	obj, is_obj := v.(json.Object)
 	if !is_obj { return true }
 	id, _ := remote.param_int(obj, "id")
-	if id == r.sync_id && !r.sync_done {
+	if id == r.sync_id && tab == r.sync_tab && !r.sync_done {
 		r.sync_text, r.sync_done = strings.clone(payload), true
 		return true
 	}
 	for op in r.ops {
-		if op.kind == .Eval && op.eval_id == id {
+		if op.kind == .Eval && op.eval_id == id && op.tab == tab {
 			op_finish(op, eval_reply(obj))
 			return true
 		}
 	}
-	delete(r.stash_text)
-	r.stash_id, r.stash_text = id, strings.clone(payload)   // (its command is still starting: it picks this up)
+	if id == r.start_id && tab == r.start_tab && r.stash_id != id {
+		r.stash_id, r.stash_text = id, strings.clone(payload)   // (its command is still starting: it picks this up)
+	}
 	return true
 }
 
@@ -441,14 +449,16 @@ eval_reply :: proc(obj: json.Object) -> Reply {
 	t, _ := remote.param_string(obj, "t")
 	v, has := remote.param_string(obj, "v")
 	if !has || t == "undefined" { return done(fmt.tprintf(`{{"result":{{"type":"undefined"}}}}`)) }
+	// (the value is put in the reply as it is: it must be one JSON value on one line, whatever the page wrote)
+	if !json_value_line(v) { return fail(remote.ERR_FAILED, "the page answered with something that is not a JSON value on one line") }
 	return done(fmt.tprintf(`{{"result":{{"type":%s,"value":%s}}}}`, remote.quote(t), v))
 }
 
-// The JavaScript that runs `expression` (indirect eval, so its completion value is the result) and prints the outcome with
-// the secret prefix. With `await`, a promise is waited for.
+// The JavaScript that runs `expression` (indirect eval, so its completion value is the result) and prints the outcome after
+// REMOTE_ANSWER. With `await`, a promise is waited for.
 eval_source :: proc(id: int, expression: string, await: bool) -> string {
 	return fmt.tprintf(`(function(){{var N=%s,I=%d;function E(e){{var r={{name:"Error",message:"",stack:""}};try{{if(e&&typeof e==="object"){{r.name=String(e.name||"Error");r.message=String(e.message===undefined?"":e.message);r.stack=String(e.stack||"")}}else{{r.message=String(e)}}}}catch(x){{r.message="(unprintable)"}}return r}}function S(v){{var t=typeof v;if(v===undefined)return{{t:"undefined"}};if(t==="function"||t==="symbol"||t==="bigint")return{{t:t,v:JSON.stringify(String(v))}};try{{var j=JSON.stringify(v);if(j===undefined)return{{t:t,v:"null"}};return{{t:v===null?"null":Array.isArray(v)?"array":t,v:j}}}}catch(x){{return{{t:"object",v:JSON.stringify(String(v))}}}}}}function O(o){{o.id=I;console.log(N+JSON.stringify(o))}}try{{var r=(0,eval)(%s);if(%v&&r&&typeof r.then==="function"){{r.then(function(v){{var s=S(v);s.ok=1;O(s)}},function(e){{O({{ok:0,e:E(e)}})}})}}else{{var s=S(r);s.ok=1;O(s)}}}}catch(e){{O({{ok:0,e:E(e)}})}}}})()`,
-		remote.quote(the_remote.prefix), id, remote.quote(expression), await)
+		remote.quote(REMOTE_ANSWER), id, remote.quote(expression), await)
 }
 
 // Runs `expression` in the tab's page. The answer is the console line `remote_take_console` takes: at once for a plain value
@@ -459,6 +469,8 @@ eval_start :: proc(t: ^Tab, expression: string, await: bool) -> (id: int, ran: b
 	r.eval_next += 1
 	id = r.eval_next
 	src := eval_source(id, expression, await)
+	r.start_id, r.start_tab = id, t.id
+	defer r.start_id, r.start_tab = 0, 0
 	if st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1); st == .Trapped { return id, false }
 	page.js_checkpoint(t.page)
 	return id, true
@@ -470,7 +482,7 @@ eval_sync :: proc(t: ^Tab, expression: string) -> (value: string, type: string, 
 	if t == nil || t.page == nil { return "", "", "the tab has no page" }
 	r.eval_next += 1
 	id := r.eval_next
-	r.sync_id, r.sync_done = id, false
+	r.sync_id, r.sync_tab, r.sync_done = id, t.id, false
 	delete(r.sync_text); r.sync_text = ""
 	src := eval_source(id, expression, false)
 	st := page.js_run(t.page, transmute([]byte)src, "wren-remote", 1)

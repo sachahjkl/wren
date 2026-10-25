@@ -90,10 +90,10 @@ blocker_set_site_enabled :: proc(app: ^App, t: ^Tab, host: string, on: bool) {
 blocker_open_dashboard :: proc(app: ^App, tab_name := "") {
 	address := tab_name == "" ? "about:blocker" : strings.concatenate({"about:blocker#", tab_name}, context.temp_allocator)
 	if t := current_tab(app); t != nil && t.kind == .Blocker {
-		navigate(app, t, address)
+		navigate(app, t, address, origin = .User)
 		return
 	}
-	tab_open(app, address)
+	tab_open(app, address, origin = .User)
 }
 
 _ :: fetch

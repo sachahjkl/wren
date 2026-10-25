@@ -533,7 +533,7 @@ tab_history_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) 
 @(private = "file")
 tab_history_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bool) {
 	t := current_tab(app)
-	if new_tab || t == nil { open_in_new_tab(app, key) } else { navigate(app, t, strings.clone(key, context.temp_allocator)) }
+	if new_tab || t == nil { open_in_new_tab(app, key, origin = .User) } else { navigate(app, t, strings.clone(key, context.temp_allocator), origin = .User) }
 }
 
 @(private = "file")
@@ -861,7 +861,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		key := strings.concatenate({"cmd:", c.name}, context.temp_allocator)
 		palette_close(app)
 		usage_note(app, key)
-		if new_tab && c.url != "" { open_in_new_tab(app, c.url) } else { command_run(app, current_tab(app), c) }
+		if new_tab && c.url != "" { open_in_new_tab(app, c.url, origin = .User) } else { command_run(app, current_tab(app), c) }
 	case .Tab:
 		palette_close(app)
 		for x, k in app.tabs { if x.id == r.tab_id { tab_select(app, k); break } }
@@ -871,7 +871,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		for k := len(closed_tabs) - 1; k >= 0; k -= 1 {
 			if closed_tabs[k] == address { delete(closed_tabs[k]); ordered_remove(&closed_tabs, k); break }
 		}
-		open_in_new_tab(app, address)
+		open_in_new_tab(app, address, origin = .User)
 	case .Pref:
 		e := config.entry(&app.prefs, r.ref)
 		name := strings.clone(e.def.name, context.temp_allocator)
@@ -884,7 +884,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		}
 		palette_close(app)
 		dest := t
-		if new_tab || dest == nil { dest = tab_open(app, "about:config") } else { navigate(app, dest, "about:config") }
+		if new_tab || dest == nil { dest = tab_open(app, "about:config", origin = .User) } else { navigate(app, dest, "about:config", origin = .User) }
 		ui.field_set(&app.config_view.search, name)
 		app.config_view.focus_list = true
 	case .Source:

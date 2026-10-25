@@ -3,7 +3,9 @@ package client
 
 // Starting a Wren of its own: `wren ctl run` (one call: start, load, capture, close), `wren ctl start` / `stop` (a session
 // that later commands connect to). The instance is this same executable, started with --remote=<name>; the client only ever
-// ends the process it started (by its pid and handle), never one found by name.
+// ends the process it started, never one found by name: by the handle it holds in `run`, and in `stop` by a handle to the
+// process whose creation time and program are the ones written down at `start` (a pid alone is not an identity: Windows gives
+// the number of a process that ended to the next one that starts).
 
 import "core:encoding/json"
 import "core:fmt"
@@ -13,6 +15,40 @@ import "core:time"
 import win "core:sys/windows"
 import "wb:remote"
 
+foreign import kernel32 "system:Kernel32.lib"
+
+@(default_calling_convention = "system")
+foreign kernel32 {
+	QueryFullProcessImageNameW :: proc(hProcess: win.HANDLE, dwFlags: win.DWORD, lpExeName: win.LPWSTR, lpdwSize: ^win.DWORD) -> win.BOOL ---
+}
+
+// Who a process is, for telling it again later: when it was created (FILETIME) and the program it runs (full path).
+Identity :: struct {
+	created: u64,
+	image:   string,
+}
+
+// The identity of the process behind `h` (opened with PROCESS_QUERY_LIMITED_INFORMATION at least). ok false: it cannot be read.
+identity_of :: proc(h: win.HANDLE, allocator := context.temp_allocator) -> (id: Identity, ok: bool) {
+	c, e, k, u: win.FILETIME
+	if !win.GetProcessTimes(h, &c, &e, &k, &u) { return {}, false }
+	buf: [1024]u16
+	size := win.DWORD(len(buf))
+	if !QueryFullProcessImageNameW(h, 0, &buf[0], &size) { return {}, false }
+	image, err := win.utf16_to_utf8(buf[:size], allocator)
+	if err != nil { return {}, false }
+	return {created = u64(c.dwHighDateTime) << 32 | u64(c.dwLowDateTime), image = image}, true
+}
+
+// Is `now` the process that `recorded` says (same creation time to the tick, same program, as Windows spells paths: case and the
+// kind of slash do not tell two programs apart)? A record with no creation time or no program (a session file of an older
+// `wren ctl`) names nobody.
+same_process :: proc(recorded, now: Identity) -> bool {
+	if recorded.created == 0 || recorded.image == "" || recorded.created != now.created { return false }
+	a, _ := strings.replace_all(recorded.image, "/", `\`, context.temp_allocator)
+	b, _ := strings.replace_all(now.image, "/", `\`, context.temp_allocator)
+	return strings.equal_fold(a, b)
+}
 Launched :: struct {
 	process:   win.HANDLE,
 	pid:       int,
@@ -201,7 +237,9 @@ cmd_start :: proc(ctx: ^Context, args: []string) -> int {
 		return EXIT_NO_SERVER
 	}
 	_ = os.make_directory_all(state_dir())
-	state := fmt.tprintf(`{{"name":%s,"pid":%d,"profile":%s,"temp":%v}}`, q(name), l.pid, q(l.profile), l.temp)
+	// (who the process is, now that its handle is open: `stop` ends nothing it cannot tell again by this)
+	who, _ := identity_of(l.process)
+	state := fmt.tprintf(`{{"name":%s,"pid":%d,"created":%d,"image":%s,"profile":%s,"temp":%v}}`, q(name), l.pid, who.created, q(who.image), q(l.profile), l.temp)
 	_ = os.write_entire_file(state_file(name), transmute([]byte)state)
 	if s := opt(&ctx.o, "size"); s != "" {
 		w, h, good := parse_size(s)
@@ -227,6 +265,8 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 	v, _ := json.parse(data, json.Specification.JSON, true, context.temp_allocator)
 	st, _ := v.(json.Object)
 	pid, _ := remote.param_int(st, "pid")
+	created, _ := remote.param_int(st, "created")   // (FILETIME ticks fit an i64 until the year 30828)
+	image, _ := remote.param_string(st, "image")
 	profile, _ := remote.param_string(st, "profile")
 	temp, _ := remote.param_bool(st, "temp")
 	if connect(&ctx.conn, name, 500) {
@@ -236,16 +276,20 @@ cmd_stop :: proc(ctx: ^Context, args: []string) -> int {
 		ctx.connected = false
 	}
 	code := 0
-	if _, ended := wait_process_exit(pid, 15_000); !ended {
-		// the pid we started and wrote down: nothing else is ended
-		h := win.OpenProcess(win.PROCESS_TERMINATE | win.SYNCHRONIZE, false, win.DWORD(pid))
-		if h != nil {
+	// One handle, opened once, to a process that is checked to be the one `start` made: it is what is waited for and, as a last
+	// resort, ended. The number alone may be another program's by now (the Wren ended long ago and Windows reused it).
+	h := pid > 0 ? win.OpenProcess(win.PROCESS_TERMINATE | win.SYNCHRONIZE | win.PROCESS_QUERY_LIMITED_INFORMATION, false, win.DWORD(pid)) : nil
+	if h != nil {
+		defer win.CloseHandle(h)
+		now, readable := identity_of(h)
+		if !readable || !same_process({created = u64(created), image = image}, now) {
+			errln(fmt.tprintf("wren ctl: process %d is not the Wren that %q started (it ended, and the number is another program's now): left alone", pid, name))
+		} else if win.WaitForSingleObject(h, 15_000) != win.WAIT_OBJECT_0 {
 			errln("wren ctl: Wren did not close in time: ending it")
 			win.TerminateProcess(h, 1)
 			win.WaitForSingleObject(h, 5000)
-			win.CloseHandle(h)
+			code = EXIT_TIMEOUT
 		}
-		code = EXIT_TIMEOUT
 	}
 	if temp && strings.contains(profile, "wren-ctl") { _ = os.remove_all(profile) }
 	_ = os.remove(state_file(name))

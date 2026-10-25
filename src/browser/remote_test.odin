@@ -72,11 +72,11 @@ a_scaled_capture_is_encoded_from_the_scaled_picture :: proc(t: ^testing.T) {
 }
 
 @(test)
-the_script_wrapper_carries_the_prefix_the_id_and_the_text :: proc(t: ^testing.T) {
-	the_remote.prefix = "\x01p:"
-	defer the_remote.prefix = ""
+the_script_wrapper_carries_the_mark_the_id_and_the_text :: proc(t: ^testing.T) {
 	src := eval_source(7, `1 + "q\""`, true)
-	testing.expect(t, contains_all(src, {`"\u0001p:"`, "I=7", `(0,eval)("1 + \"q\\\"\"")`, "true&&r&&typeof r.then"}))
+	testing.expect(t, contains_all(src, {`"\u0001wren-remote:"`, "I=7", `(0,eval)("1 + \"q\\\"\"")`, "true&&r&&typeof r.then"}))
+	// nothing in it is per run: a page that reads the line learns nothing it could use
+	testing.expect_value(t, src, eval_source(7, `1 + "q\""`, true))
 	// braces balance: the wrapper is one expression
 	depth := 0
 	for c in src { if c == '{' { depth += 1 } else if c == '}' { depth -= 1 } }

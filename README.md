@@ -215,7 +215,7 @@ of its files (`file.directory.*` in `about:config`); `about:about` lists the bui
 
 Useful command-line options: `--profile DIR` (another profile directory; the default is `%APPDATA%\Wren`),
 `--pref name=value` (any preference of `about:config`, for example `--pref javascript.enabled=false`),
-`--policy FILE`.
+`--policy FILE` (without it, `policies.txt` beside `wren.exe` is read, never one in the working directory).
 
 Keys: Ctrl+T / Ctrl+W tabs, Ctrl+L address bar, Ctrl+F find, Ctrl+Plus / Minus / 0 zoom, Ctrl+U view source,
 Ctrl+B status bar, Ctrl+Shift+B frame statistics, F11 full screen. The tabs sit in the title bar

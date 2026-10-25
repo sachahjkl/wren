@@ -123,7 +123,6 @@ owner_start :: proc(o: ^Owner, handler: Handler, user: rawptr) -> bool {
 }
 
 // Does this process run with an elevated token (as administrator)?
-@(private = "file")
 is_elevated :: proc() -> bool {
 	token: win.HANDLE
 	if !win.OpenProcessToken(win.GetCurrentProcess(), win.TOKEN_QUERY, &token) { return false }
