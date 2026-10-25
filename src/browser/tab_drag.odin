@@ -12,7 +12,6 @@ package browser
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
 
 import "core:math"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -66,9 +65,8 @@ tab_dragging :: proc() -> bool { return tab_drag.active }
 
 @(private = "file")
 client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
-	pt := win.POINT{0, 0}
-	win.ClientToScreen(w.win.hwnd, &pt)
-	return {f32(pt.x), f32(pt.y)}
+	o := platform.client_origin(w.win)
+	return {f32(o[0]), f32(o[1])}
 }
 
 // The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Called
@@ -100,7 +98,7 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 		#partial switch ev.kind {
 		case .Mouse_Move, .Mouse_Release:
 			screen := client_origin(app.active) + ev.pos
-			if carried.win != nil { win.SetWindowPos(carried.win.hwnd, nil, i32(screen.x) - i32(tab_drag.grab.x), i32(screen.y) - i32(tab_drag.grab.y), 0, 0, win.SWP_NOSIZE | win.SWP_NOZORDER | win.SWP_NOACTIVATE) }
+			if carried.win != nil { platform.move_window(carried.win, int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y) }
 			dest, at := tab_drop_target(app, carried, client_origin(app.active) + ev.pos)
 			for w in app.windows { w.drop_hint = 0 }
 			if dest != nil && ev.kind == .Mouse_Move {

@@ -157,6 +157,9 @@ status_left_fit :: proc(items: []Status_Left_Item, avail, sep_w: f32, measure: p
 
 @(private = "file") left_width_seen: f32   // the left part's width in the frame before (to draw again when it changes)
 
+// (a window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
+status_bar_window_local :: proc() { window_local(&left_width_seen) }
+
 @(private = "file")
 status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 	p := t.page
