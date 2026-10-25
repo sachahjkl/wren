@@ -8,7 +8,7 @@
 /* ---- life cycle: the parts, called in this order (weak: a part not linked is skipped) ---- */
 
 #define WEB_PARTS(X) X(buffer) X(encoding) X(url) X(abort) X(blob) X(stream) X(fetch) X(xhr) X(storage) X(location) \
-    X(navigator) X(perf) X(crypto) X(media) X(socket) X(message) X(credentials) X(clipboard) X(resize) X(compat) X(idb)
+    X(navigator) X(perf) X(crypto) X(media) X(socket) X(message) X(credentials) X(clipboard) X(compat) X(idb)
 #define WEB_DECLARE(name) __attribute__((weak)) int web_##name##_preinit(JSContext *ctx); \
                           __attribute__((weak)) int web_##name##_start(JSContext *ctx, int kind);
 WEB_PARTS(WEB_DECLARE)
@@ -41,6 +41,18 @@ bool web_dict_get(JSContext *ctx, JSValueConst dict, const char *name, JSValue *
     if (JS_IsException(v)) { return false; }
     *out = v;
     return true;
+}
+
+bool web_freeze(JSContext *ctx, JSValueConst v)
+{
+    JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
+    JSValue freeze = JS_GetPropertyStr(ctx, object, "freeze");
+    JSValue frozen = JS_Call(ctx, freeze, object, 1, &v);
+    JS_FreeValue(ctx, freeze);
+    JS_FreeValue(ctx, object);
+    bool ok = !JS_IsException(frozen);
+    JS_FreeValue(ctx, frozen);
+    return ok;
 }
 
 char *web_strndup(const char *p, size_t n)

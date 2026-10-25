@@ -28,14 +28,10 @@ int wj_run_preludes(JSContext *ctx)
     JS_SetPropertyStr(ctx, global, "__wren_ce_host", wj_ce_host_object(ctx));
     extern JSValue wj_shadow_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
-    extern JSValue wj_io_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_io_host", wj_io_host_object(ctx));
     extern JSValue wj_frames_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_frames_host", wj_frames_host_object(ctx));
     extern JSValue wj_clipboard_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_clipboard_host", wj_clipboard_host_object(ctx));
-    extern JSValue wj_resize_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_resize_host", wj_resize_host_object(ctx));
     extern JSValue wj_compat_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_compat_host", wj_compat_host_object(ctx));
     JS_FreeValue(ctx, global);

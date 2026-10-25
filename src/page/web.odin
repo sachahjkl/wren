@@ -76,6 +76,7 @@ Web_State :: struct {
 	io_pending:      bool,      // ... and one is wanted soon (a target was just observed): a frame is requested
 	ro_active:       bool,      // some ResizeObserver observes a target: each rendering update runs the resize observations
 	ro_pending:      bool,      // ... and one is wanted soon (a target was just observed): a frame is requested
+	observers:       Layout_Observers,   // the page's ResizeObservers and IntersectionObservers (js_observers.odin)
 	scroll_pending:  bool,      // a script scrolled something: its scroll event wants a frame (scroll_events.odin)
 	idle:            [dynamic]Idle_Callback,
 	next_idle_id:    u64,
@@ -152,6 +153,7 @@ web_destroy :: proc(p: ^Page) {
 	delete(w.frozen_tasks)
 	delete(w.frozen_timers)
 	delete(w.frames)
+	layout_observers_destroy(w)
 	delete(w.idle)
 	delete(w.history_state)
 	delete(w.embedder.tab_key)

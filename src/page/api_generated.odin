@@ -16867,32 +16867,6 @@ _t_events_EventTarget_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
-// IntersectionObservers_schedule :: proc(c: ^Call, observing: bool)
-@(private = "file")
-_t_timers_IntersectionObservers_schedule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
-	context = wasm.default_context()
-	c := api_begin(f.inst)
-	_p0 := a[0].i32 != 0
-	IntersectionObservers_schedule(&c, _p0)
-	api_end(&c)
-	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
-	return nil
-}
-
-// ResizeObservers_schedule :: proc(c: ^Call, observing: bool)
-@(private = "file")
-_t_timers_ResizeObservers_schedule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
-	context = wasm.default_context()
-	c := api_begin(f.inst)
-	_p0 := a[0].i32 != 0
-	ResizeObservers_schedule(&c, _p0)
-	api_end(&c)
-	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
-	return nil
-}
-
 // Document_writeMarkup :: proc(c: ^Call, markup: string) -> Api_Error
 @(private = "file")
 _t_scripts_Document_writeMarkup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -17275,6 +17249,289 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	}
 	copy(_os[:_on], transmute([]u8)_r)
 	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ResizeObserver_create :: proc(c: ^Call, notify: u32, user: i32) -> u64
+@(private = "file")
+_t_dom_ResizeObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_r := ResizeObserver_create(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ResizeObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Element, box: i32) -> Api_Error
+@(private = "file")
+_t_dom_ResizeObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.ResizeObserver_observe: argument target is not a live Element")
+	}
+	_p2 := a[2].i32
+	_err := ResizeObserver_observe(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ResizeObserver_unobserve :: proc(c: ^Call, observer: u64, target: Api_Element)
+@(private = "file")
+_t_dom_ResizeObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.ResizeObserver_unobserve: argument target is not a live Element") }
+		return wasm.trap_new("dom.ResizeObserver_unobserve: argument target is not a live Element")
+	}
+	ResizeObserver_unobserve(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ResizeObserver_disconnect :: proc(c: ^Call, observer: u64)
+@(private = "file")
+_t_dom_ResizeObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	ResizeObserver_disconnect(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ResizeObserver_observed :: proc(c: ^Call, observer: u64) -> u32
+@(private = "file")
+_t_dom_ResizeObserver_observed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := ResizeObserver_observed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// ResizeObserver_takeEntries :: proc(c: ^Call, observer: u64) -> []u8
+@(private = "file")
+_t_dom_ResizeObserver_takeEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.ResizeObserver_takeEntries", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := ResizeObserver_takeEntries(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// IntersectionObserver_create :: proc(c: ^Call, notify: u32, user: i32, root: u64, root_margin: string, scroll_margin: string, thresholds: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_IntersectionObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dom.IntersectionObserver_create", "root_margin") }
+	_n4 := wasm.addr(&f, a[6])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[5]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "dom.IntersectionObserver_create", "scroll_margin") }
+	_n5 := wasm.addr(&f, a[8])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[7]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "dom.IntersectionObserver_create", "thresholds") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[9]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.IntersectionObserver_create", "result pointer") }
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "dom.IntersectionObserver_create: argument root_margin is not valid UTF-8")
+	}
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "dom.IntersectionObserver_create: argument scroll_margin is not valid UTF-8")
+	}
+	_p5 := _s5[:_n5]
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_p2 := u64(a[2].i64)
+	_r, _err := IntersectionObserver_create(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// IntersectionObserver_rootMargin :: proc(c: ^Call, observer: u64) -> string
+@(private = "file")
+_t_dom_IntersectionObserver_rootMargin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_rootMargin", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := IntersectionObserver_rootMargin(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// IntersectionObserver_scrollMargin :: proc(c: ^Call, observer: u64) -> string
+@(private = "file")
+_t_dom_IntersectionObserver_scrollMargin :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_scrollMargin", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := IntersectionObserver_scrollMargin(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// IntersectionObserver_observe :: proc(c: ^Call, observer: u64, target: Api_Element) -> Api_Error
+@(private = "file")
+_t_dom_IntersectionObserver_observe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.IntersectionObserver_observe: argument target is not a live Element")
+	}
+	_err := IntersectionObserver_observe(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// IntersectionObserver_unobserve :: proc(c: ^Call, observer: u64, target: Api_Element)
+@(private = "file")
+_t_dom_IntersectionObserver_unobserve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.IntersectionObserver_unobserve: argument target is not a live Element") }
+		return wasm.trap_new("dom.IntersectionObserver_unobserve: argument target is not a live Element")
+	}
+	IntersectionObserver_unobserve(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// IntersectionObserver_disconnect :: proc(c: ^Call, observer: u64)
+@(private = "file")
+_t_dom_IntersectionObserver_disconnect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	IntersectionObserver_disconnect(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// IntersectionObserver_observed :: proc(c: ^Call, observer: u64) -> u32
+@(private = "file")
+_t_dom_IntersectionObserver_observed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := IntersectionObserver_observed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// IntersectionObserver_takeRecords :: proc(c: ^Call, observer: u64) -> []u8
+@(private = "file")
+_t_dom_IntersectionObserver_takeRecords :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.IntersectionObserver_takeRecords", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := IntersectionObserver_takeRecords(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// IntersectionObserver_release :: proc(c: ^Call, observer: u64)
+@(private = "file")
+_t_dom_IntersectionObserver_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	IntersectionObserver_release(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
 
@@ -23071,8 +23328,6 @@ api_imports := [?]wasm.Import{
 	{module = "events", name = "Event_isTrusted", fn = _t_events_Event_isTrusted, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_propagationStopped", fn = _t_events_Event_propagationStopped, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "EventTarget_create", fn = _t_events_EventTarget_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
-	{module = "timers", name = "IntersectionObservers_schedule", fn = _t_timers_IntersectionObservers_schedule, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
-	{module = "timers", name = "ResizeObservers_schedule", fn = _t_timers_ResizeObservers_schedule, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "scripts", name = "Document_writeMarkup", fn = _t_scripts_Document_writeMarkup, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "Document_openStream", fn = _t_scripts_Document_openStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "Document_closeStream", fn = _t_scripts_Document_closeStream, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
@@ -23091,6 +23346,21 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "Worker_postSerialized", fn = _t_scripts_Worker_postSerialized, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "DedicatedWorkerGlobalScope_postSerialized", fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ResizeObserver_create", fn = _t_dom_ResizeObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "ResizeObserver_observe", fn = _t_dom_ResizeObserver_observe, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ResizeObserver_unobserve", fn = _t_dom_ResizeObserver_unobserve, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "ResizeObserver_disconnect", fn = _t_dom_ResizeObserver_disconnect, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "ResizeObserver_observed", fn = _t_dom_ResizeObserver_observed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "ResizeObserver_takeEntries", fn = _t_dom_ResizeObserver_takeEntries, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "IntersectionObserver_create", fn = _t_dom_IntersectionObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "IntersectionObserver_rootMargin", fn = _t_dom_IntersectionObserver_rootMargin, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "IntersectionObserver_scrollMargin", fn = _t_dom_IntersectionObserver_scrollMargin, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "IntersectionObserver_observe", fn = _t_dom_IntersectionObserver_observe, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "IntersectionObserver_unobserve", fn = _t_dom_IntersectionObserver_unobserve, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "IntersectionObserver_disconnect", fn = _t_dom_IntersectionObserver_disconnect, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "dom", name = "IntersectionObserver_observed", fn = _t_dom_IntersectionObserver_observed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "IntersectionObserver_takeRecords", fn = _t_dom_IntersectionObserver_takeRecords, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "IntersectionObserver_release", fn = _t_dom_IntersectionObserver_release, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Window_print", fn = _t_dom_Window_print, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "dom", name = "Element_attachShadowInit", fn = _t_dom_Element_attachShadowInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CustomElements_disable", fn = _t_dom_CustomElements_disable, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, wide_results = []wasm.Val_Kind{}},

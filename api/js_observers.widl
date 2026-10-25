@@ -1,0 +1,43 @@
+/// ResizeObserver and IntersectionObserver for JavaScript (src/page/js_observers.odin, js_resize_observer.odin,
+/// js_intersection_observer.odin; engine side native/js/runtime/web_resize.c, intersection.c).
+///
+/// The browser keeps the observations: which element is observed by which observer, with what box, and what was last
+/// reported. It measures them from the layout at each rendering update, after the animation frame callbacks and before
+/// the paint, and calls the observer's `notify(user)` in the engine when there is something to deliver; the engine takes
+/// the entries and runs the script's callback. The targets are pinned while they are observed.
+partial module dom {
+  /// new ResizeObserver: `notify(user)` runs, inside a rendering update, when some target's observed box changed; it
+  /// takes the entries with ResizeObserver_takeEntries.
+  Object ResizeObserver_create(MicrotaskCallback notify, i32 user);
+  /// observer.observe(target, { box }): box 0 content-box, 1 border-box, 2 device-pixel-content-box. Observing a target
+  /// again with the same box does nothing; with another, the observation starts over.
+  void ResizeObserver_observe(u64 observer, Element target, i32 box) raises;
+  void ResizeObserver_unobserve(u64 observer, Element target);
+  void ResizeObserver_disconnect(u64 observer);
+  /// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+  u32 ResizeObserver_observed(u64 observer);
+  /// The entries being delivered, 72 bytes each, little endian: target u64, then eight f64: borderBoxSize (inline, block),
+  /// contentBoxSize, devicePixelContentBoxSize, and the content rect's left and top.
+  bytes ResizeObserver_takeEntries(u64 observer);
+
+  /// new IntersectionObserver: `root` is the root element or document (0: the viewport), `thresholds` the f64 values
+  /// ascending (already checked to be in [0, 1]); `notify(user)` runs, from a task of the page, when entries were queued,
+  /// and takes them with IntersectionObserver_takeRecords. Syntax when a margin is not one to four lengths in px or %.
+  Object IntersectionObserver_create(MicrotaskCallback notify, i32 user, u64 root, string root_margin, string scroll_margin, bytes thresholds) raises;
+  /// observer.rootMargin / scrollMargin: the four sides, each a number and its unit ("10px 0px 10px 0px").
+  string IntersectionObserver_rootMargin(u64 observer);
+  string IntersectionObserver_scrollMargin(u64 observer);
+  void IntersectionObserver_observe(u64 observer, Element target) raises;
+  void IntersectionObserver_unobserve(u64 observer, Element target);
+  /// observer.disconnect(): no more targets; the entries already queued stay for takeRecords.
+  void IntersectionObserver_disconnect(u64 observer);
+  /// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+  u32 IntersectionObserver_observed(u64 observer);
+  /// The entries waiting, 128 bytes each, little endian: target u64, time f64, intersectionRatio f64, flags u32 (bit 0
+  /// isIntersecting, bit 1 isVisible, bit 2 rootBounds is not null), 4 bytes of 0, then twelve f64: rootBounds,
+  /// boundingClientRect and intersectionRect as x, y, width, height. Nothing changes until IntersectionObserver_release,
+  /// so a call that did not fit can be made again.
+  bytes IntersectionObserver_takeRecords(u64 observer);
+  /// The engine made the entries it took: they leave the queue (and the pins of their targets go).
+  void IntersectionObserver_release(u64 observer);
+}

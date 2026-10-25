@@ -121,7 +121,14 @@ element_geometry :: proc(p: ^Page, h: base.Handle) -> (Element_Geometry, ^lay.La
 	if l == nil || !l.valid { return g, l, vp }
 	s := f32(vp.scale)
 	r, ok := lay.box_of(l, h, {f32(vp.width) * s, f32(vp.height) * s}, f32(vp.scroll_y) * s)
-	if !ok { return g, l, vp }
+	return geometry_of_rects(l, vp, h, r, ok), l, vp
+}
+
+// The geometry of `h` from the rects the layout gave (lay.box_of, or lay.box_of_view for the observers).
+@(private)
+geometry_of_rects :: proc(l: ^lay.Layout, vp: Viewport, h: base.Handle, r: lay.Box_Rects, ok: bool) -> (g: Element_Geometry) {
+	if !ok { return }
+	s := f32(vp.scale)
 	g.ok = true
 	sc :: proc(r: lay.Rect, s: f32) -> lay.Rect { return lay.Rect{r.min / s, r.max / s} }
 	g.border, g.padding, g.content = sc(r.border, s), sc(r.padding, s), sc(r.content, s)
@@ -129,7 +136,7 @@ element_geometry :: proc(p: ^Page, h: base.Handle) -> (Element_Geometry, ^lay.La
 	g.client = Api_DomRect{x = f64(b.min.x) - vp.scroll_x, y = f64(b.min.y) - vp.scroll_y, width = f64(b.max.x - b.min.x), height = f64(b.max.y - b.min.y)}
 	g.fixed = r.fixed
 	if bi := lay.box_index(l, h); bi != lay.NONE { g.box = &l.boxes[bi] }
-	return g, l, vp
+	return
 }
 
 // The used box sizes for getComputedStyle.

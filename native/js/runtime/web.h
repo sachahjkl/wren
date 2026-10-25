@@ -59,6 +59,9 @@ bool web_dict_get(JSContext *ctx, JSValueConst dict, const char *name, JSValue *
 /* A dictionary argument must be undefined, null or an object (Web IDL); TypeError otherwise. */
 bool web_dict_check(JSContext *ctx, JSValueConst dict, const char *what);
 
+/* Object.freeze(v): a FrozenArray. False with an exception pending. */
+bool web_freeze(JSContext *ctx, JSValueConst v);
+
 /* ---- strings ---- */
 
 /* USVString: like wj_to_str, lone surrogates become U+FFFD (the engine's UTF-8 keeps them as 3-byte sequences). */

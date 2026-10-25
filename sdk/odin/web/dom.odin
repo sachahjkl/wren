@@ -340,6 +340,21 @@ foreign _m_dom {
 	@(link_name = "DOMParser_parseHTMLNode") _DOMParser_parseHTMLNode :: proc(html: [^]u8, html_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
+	@(link_name = "ResizeObserver_create") _ResizeObserver_create :: proc(notify: MicrotaskCallback, user: i32) -> Object ---
+	@(link_name = "ResizeObserver_observe") _ResizeObserver_observe :: proc(observer: u64, target: u64, box: i32) -> Error ---
+	@(link_name = "ResizeObserver_unobserve") _ResizeObserver_unobserve :: proc(observer: u64, target: u64) ---
+	@(link_name = "ResizeObserver_disconnect") _ResizeObserver_disconnect :: proc(observer: u64) ---
+	@(link_name = "ResizeObserver_observed") _ResizeObserver_observed :: proc(observer: u64) -> u32 ---
+	@(link_name = "ResizeObserver_takeEntries") _ResizeObserver_takeEntries :: proc(observer: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "IntersectionObserver_create") _IntersectionObserver_create :: proc(notify: MicrotaskCallback, user: i32, root: u64, root_margin: [^]u8, root_margin_len: u32, scroll_margin: [^]u8, scroll_margin_len: u32, thresholds: [^]u8, thresholds_len: u32, _ret: ^Object) -> Error ---
+	@(link_name = "IntersectionObserver_rootMargin") _IntersectionObserver_rootMargin :: proc(observer: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "IntersectionObserver_scrollMargin") _IntersectionObserver_scrollMargin :: proc(observer: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "IntersectionObserver_observe") _IntersectionObserver_observe :: proc(observer: u64, target: u64) -> Error ---
+	@(link_name = "IntersectionObserver_unobserve") _IntersectionObserver_unobserve :: proc(observer: u64, target: u64) ---
+	@(link_name = "IntersectionObserver_disconnect") _IntersectionObserver_disconnect :: proc(observer: u64) ---
+	@(link_name = "IntersectionObserver_observed") _IntersectionObserver_observed :: proc(observer: u64) -> u32 ---
+	@(link_name = "IntersectionObserver_takeRecords") _IntersectionObserver_takeRecords :: proc(observer: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "IntersectionObserver_release") _IntersectionObserver_release :: proc(observer: u64) ---
 	@(link_name = "Window_print") _Window_print :: proc() ---
 	@(link_name = "Element_attachShadowInit") _Element_attachShadowInit :: proc(element: u64, mode: u32, delegates_focus: i32, slot_assignment: u32, clonable: i32, serializable: i32, _ret: ^Node) -> Error ---
 	@(link_name = "CustomElements_disable") _CustomElements_disable :: proc(name: [^]u8, name_len: u32, shadow: i32, internals: i32) ---
@@ -3866,6 +3881,181 @@ DOMImplementation_createDocumentType :: proc "contextless" (name: string, public
 // 3 doctype. 0 when there is none.
 Document_partOf :: proc "contextless" (document: $T_document, which: i32) -> Node where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
 	return _Document_partOf(u64(document), which)
+}
+
+// new ResizeObserver: `notify(user)` runs, inside a rendering update, when some target's observed box changed; it
+// takes the entries with ResizeObserver_takeEntries.
+ResizeObserver_create :: proc "contextless" (notify: MicrotaskCallback, user: i32) -> Object {
+	return _ResizeObserver_create(notify, user)
+}
+
+// observer.observe(target, { box }): box 0 content-box, 1 border-box, 2 device-pixel-content-box. Observing a target
+// again with the same box does nothing; with another, the observation starts over.
+ResizeObserver_observe :: proc "contextless" (observer: u64, target: $T_target, box: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	return _ResizeObserver_observe(observer, u64(target), box)
+}
+
+ResizeObserver_unobserve :: proc "contextless" (observer: u64, target: $T_target) where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	_ResizeObserver_unobserve(observer, u64(target))
+}
+
+ResizeObserver_disconnect :: proc "contextless" (observer: u64) {
+	_ResizeObserver_disconnect(observer)
+}
+
+// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+ResizeObserver_observed :: proc "contextless" (observer: u64) -> u32 {
+	return _ResizeObserver_observed(observer)
+}
+
+// The entries being delivered, 72 bytes each, little endian: target u64, then eight f64: borderBoxSize (inline, block),
+// contentBoxSize, devicePixelContentBoxSize, and the content rect's left and top.
+ResizeObserver_takeEntries :: proc "contextless" (observer: u64, buf: []u8) -> ([]u8, Error) {
+	n := _ResizeObserver_takeEntries(observer, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of ResizeObserver_takeEntries's result.
+ResizeObserver_takeEntries_len :: proc "contextless" (observer: u64) -> (int, Error) {
+	n := _ResizeObserver_takeEntries(observer, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ResizeObserver_takeEntries's result in a buffer allocated to fit.
+ResizeObserver_takeEntries_alloc :: proc(observer: u64, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ResizeObserver_takeEntries(observer, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// new IntersectionObserver: `root` is the root element or document (0: the viewport), `thresholds` the f64 values
+// ascending (already checked to be in [0, 1]); `notify(user)` runs, from a task of the page, when entries were queued,
+// and takes them with IntersectionObserver_takeRecords. Syntax when a margin is not one to four lengths in px or %.
+IntersectionObserver_create :: proc "contextless" (notify: MicrotaskCallback, user: i32, root: u64, root_margin: string, scroll_margin: string, thresholds: []u8) -> (result: Object, err: Error) {
+	err = _IntersectionObserver_create(notify, user, root, raw_data(root_margin), u32(len(root_margin)), raw_data(scroll_margin), u32(len(scroll_margin)), raw_data(thresholds), u32(len(thresholds)), &result)
+	return
+}
+
+// observer.rootMargin / scrollMargin: the four sides, each a number and its unit ("10px 0px 10px 0px").
+IntersectionObserver_rootMargin :: proc "contextless" (observer: u64, buf: []u8) -> (string, Error) {
+	n := _IntersectionObserver_rootMargin(observer, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of IntersectionObserver_rootMargin's result.
+IntersectionObserver_rootMargin_len :: proc "contextless" (observer: u64) -> (int, Error) {
+	n := _IntersectionObserver_rootMargin(observer, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// IntersectionObserver_rootMargin's result in a buffer allocated to fit.
+IntersectionObserver_rootMargin_alloc :: proc(observer: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _IntersectionObserver_rootMargin(observer, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+IntersectionObserver_scrollMargin :: proc "contextless" (observer: u64, buf: []u8) -> (string, Error) {
+	n := _IntersectionObserver_scrollMargin(observer, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of IntersectionObserver_scrollMargin's result.
+IntersectionObserver_scrollMargin_len :: proc "contextless" (observer: u64) -> (int, Error) {
+	n := _IntersectionObserver_scrollMargin(observer, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// IntersectionObserver_scrollMargin's result in a buffer allocated to fit.
+IntersectionObserver_scrollMargin_alloc :: proc(observer: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _IntersectionObserver_scrollMargin(observer, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+IntersectionObserver_observe :: proc "contextless" (observer: u64, target: $T_target) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	return _IntersectionObserver_observe(observer, u64(target))
+}
+
+IntersectionObserver_unobserve :: proc "contextless" (observer: u64, target: $T_target) where intrinsics.type_is_integer(intrinsics.type_core_type(T_target)) && size_of(T_target) == 8 {
+	_IntersectionObserver_unobserve(observer, u64(target))
+}
+
+// observer.disconnect(): no more targets; the entries already queued stay for takeRecords.
+IntersectionObserver_disconnect :: proc "contextless" (observer: u64) {
+	_IntersectionObserver_disconnect(observer)
+}
+
+// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+IntersectionObserver_observed :: proc "contextless" (observer: u64) -> u32 {
+	return _IntersectionObserver_observed(observer)
+}
+
+// The entries waiting, 128 bytes each, little endian: target u64, time f64, intersectionRatio f64, flags u32 (bit 0
+// isIntersecting, bit 1 isVisible, bit 2 rootBounds is not null), 4 bytes of 0, then twelve f64: rootBounds,
+// boundingClientRect and intersectionRect as x, y, width, height. Nothing changes until IntersectionObserver_release,
+// so a call that did not fit can be made again.
+IntersectionObserver_takeRecords :: proc "contextless" (observer: u64, buf: []u8) -> ([]u8, Error) {
+	n := _IntersectionObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of IntersectionObserver_takeRecords's result.
+IntersectionObserver_takeRecords_len :: proc "contextless" (observer: u64) -> (int, Error) {
+	n := _IntersectionObserver_takeRecords(observer, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// IntersectionObserver_takeRecords's result in a buffer allocated to fit.
+IntersectionObserver_takeRecords_alloc :: proc(observer: u64, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _IntersectionObserver_takeRecords(observer, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The engine made the entries it took: they leave the queue (and the pins of their targets go).
+IntersectionObserver_release :: proc "contextless" (observer: u64) {
+	_IntersectionObserver_release(observer)
 }
 
 // window.print().
