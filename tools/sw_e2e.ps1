@@ -42,6 +42,8 @@ try {
   Expect ($msgs -eq 'pong:ping') 'postMessage both ways (the worker answers through event.source)' $msgs
   $bc = Wren-Ctl eval 'new Promise((ok) => { const a = new BroadcastChannel("t"), b = new BroadcastChannel("t"); b.onmessage = (e) => { ok(e.data + " " + e.origin); a.close(); b.close(); }; a.postMessage("hello"); })' --await
   Expect ($bc -eq "hello $($srv.Origin)") 'BroadcastChannel: a message to another channel of the same name, with the origin' $bc
+  $oc = Wren-Ctl eval 'new Promise((ok) => { const src = "const c = new OffscreenCanvas(40, 30); const g = c.getContext(\"2d\"); g.fillStyle = \"#f00\"; g.fillRect(0, 0, 40, 30); const px = g.getImageData(5, 5, 1, 1).data; c.convertToBlob().then((b) => postMessage(px[0] + \",\" + px[3] + \" \" + b.type + \" \" + (b.size > 0)));"; const w = new Worker("data:text/javascript," + encodeURIComponent(src)); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); })' --await
+  Expect ($oc -eq '255,255 image/png true') 'OffscreenCanvas in a worker: drawn, read back, encoded' $oc
   $coi = Wren-Ctl eval 'String(crossOriginIsolated)'
   Expect ($coi -eq 'false') 'crossOriginIsolated is false (realms share no memory)' $coi
 
