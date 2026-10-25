@@ -24,6 +24,7 @@ open_doc :: proc(src: string, configure: proc(s: ^Settings) = nil) -> Doc {
 	settings_destroy(&s)
 	sync_document_sheets(d.eng, d.doc, "about:test")
 	d.st = compute_styles(d.eng, d.doc, {})
+	d.eng.restyle_needed = false   // (the page clears it after its full pass)
 	return d
 }
 
@@ -234,8 +235,9 @@ container_queries :: proc(t: ^testing.T) {
 	sizes[dom.find_by_id(d.doc, "w")] = {250, 40}
 	sizes[dom.find_by_id(d.doc, "s")] = {60, 80}
 	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "new sizes ask for a restyle")
-	testing.expect(t, d.eng.restyle_needed, "restyle_needed")
-	restyle_doc(&d)
+	testing.expect(t, !d.eng.restyle_needed && len(d.eng.container_pending) == 2, "the two containers are restyled, not the document")
+	_, ok := restyle_containers(d.eng, d.doc, d.st)
+	testing.expectf(t, ok && len(d.eng.container_pending) == 0, "the containers' subtrees are restyled in place (%s)", d.eng.last_restyle.fallback)
 	t1 := el(&d, "t")
 	testing.expect(t, t1.padding[.Left].v == 1 && t1.padding[.Right].v == 3, "card is 250px wide")
 	testing.expect(t, close_to(t1.font_size, 25), "10cqw of a 250px container")
@@ -243,8 +245,54 @@ container_queries :: proc(t: ^testing.T) {
 	testing.expect(t, !engine_set_container_sizes(d.eng, sizes), "the same sizes change nothing")
 	sizes[dom.find_by_id(d.doc, "w")] = {500, 40}
 	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "a wider container")
-	restyle_doc(&d)
+	testing.expect(t, len(d.eng.container_pending) == 1, "only the container that changed")
+	changed, ok2 := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok2 && changed, "a wider container changes its descendants")
 	testing.expect(t, el(&d, "t").padding[.Left].v == 2 && el(&d, "t").padding[.Right].v == 0, "now 500px wide")
+	testing.expect(t, close_to(el(&d, "t").font_size, 50), "10cqw of a 500px container")
+
+	// what a full pass makes of the same sizes: every element equal to the partially restyled one
+	full := compute_styles(d.eng, d.doc, {})
+	defer styled_destroy(full)
+	for id in ([?]string{"w", "t", "s", "t2"}) {
+		h := dom.find_by_id(d.doc, id)
+		testing.expectf(t, computed_equal(style_of(d.st, h), style_of(full, h)), "%s: the partial restyle equals a full pass", id)
+	}
+}
+
+@(test)
+container_queries_whole_document :: proc(t: ^testing.T) {
+	// style.container_queries.partial off: a change of a container's size restyles the whole document, as before
+	d := open_doc(`<style>.wrap { container-type: inline-size } .t { font-size: 10cqw }</style><div class=wrap id=w><p class=t id=t></p></div>`,
+		proc(s: ^Settings) { s.cq_partial = false })
+	defer close_doc(&d)
+	sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+	sizes[dom.find_by_id(d.doc, "w")] = {250, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "new sizes")
+	testing.expect(t, d.eng.restyle_needed && len(d.eng.container_pending) == 0, "the document is restyled")
+	restyle_doc(&d)
+	testing.expect(t, close_to(el(&d, "t").font_size, 25), "10cqw of a 250px container")
+}
+
+@(test)
+container_restyle_leaves_the_rest :: proc(t: ^testing.T) {
+	// a container's subtree is restyled; the records of every element outside it are the very ones of before
+	d := open_doc(`<style>.wrap { container-type: inline-size } .t { font-size: 10cqw } p { margin: 3px }</style>
+		<div id=o><p id=out>x</p></div><div class=wrap id=w><p class=t id=t></p></div><div id=a><p id=after>y</p></div>`)
+	defer close_doc(&d)
+	before_out, before_after, before_t := el(&d, "out"), el(&d, "after"), el(&d, "t")
+	sizes := make(map[base.Handle][2]f32, context.temp_allocator)
+	sizes[dom.find_by_id(d.doc, "w")] = {300, 40}
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes), "the container has a size")
+	serial := d.st.serial
+	changed, ok := restyle_containers(d.eng, d.doc, d.st)
+	testing.expect(t, ok && changed, "restyled in place")
+	testing.expect(t, d.st.serial != serial, "the pass has a new serial: layout sees the change")
+	testing.expect(t, el(&d, "out") == before_out && el(&d, "after") == before_after, "outside the container nothing was made again")
+	testing.expect(t, el(&d, "t") != before_t && close_to(el(&d, "t").font_size, 30), "inside it the style follows the size")
+	// a container that no longer has a box (not in the sizes) cannot be scoped: the whole document is restyled
+	delete_key(&sizes, dom.find_by_id(d.doc, "w"))
+	testing.expect(t, engine_set_container_sizes(d.eng, sizes) && d.eng.restyle_needed, "a container that left the list asks for a full pass")
 }
 
 @(test)
