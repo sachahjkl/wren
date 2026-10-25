@@ -195,6 +195,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	append(&app.tabs, t)
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
+	recovery_touch(app)   // crash_recovery.odin
 	return t
 }
 
@@ -208,6 +209,7 @@ tab_close :: proc(app: ^App, index: int) {
 	page.storage_drop_session(&app.storage, key)   // (once its page is gone)
 	if len(app.tabs) == 0 { tab_open(app) } else { app.current = clamp(app.current, 0, len(app.tabs) - 1) }
 	if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
+	recovery_touch(app)
 }
 
 // Frees a tab taken out of the strip (closed, or at exit): its page and everything the shell keeps for it.
@@ -361,6 +363,7 @@ sync_history :: proc(t: ^Tab) {
 	clear(&t.history)
 	for e in t.session.entries { append(&t.history, strings.clone(e.url)) }
 	t.hist = t.session.index
+	recovery_touch(the_app)   // (every change of a tab's history: a navigation, back, forward, a redirect)
 }
 
 go_history :: proc(app: ^App, t: ^Tab, delta: int) {
@@ -391,6 +394,7 @@ same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
 	delete(t.url)
 	t.url = strings.clone(address)
 	if current_tab(app) == t { ui.field_set(&app.address, address) }
+	recovery_touch(app)
 }
 
 // sessionStorage partition of a tab (dropped when the tab closes).
@@ -599,6 +603,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 		delete(t.title)
 		t.title = strings.clone(title)
 	}
+	recovery_touch(app)   // (the document is there: its title and, a moment later, where it is scrolled)
 	set_status(t, fmt.tprintf("HTTP %d%s, %d bytes (%s), %d nodes", load.status, cache_status_suffix(load.from_cache), load.bytes, d.encoding, r.nodes))
 	start_scripts(app, load)
 	page.scripts_start(p)   // JavaScript (js_scripts.odin)
@@ -791,7 +796,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 				toolbar_row(app, t)   // chrome_style.odin
 			}
 			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
-			if !elem_fs { find_bar(app, t) }
+			if !elem_fs { crash_banner(app); find_bar(app, t) }   // crash_banner.odin
 			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
 			dock, dev_on := devtools_dock(app, t)
 			switch {
@@ -1192,6 +1197,7 @@ main :: proc() {
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
 	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
+	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
 
 	// Start-up order: the renderer's start-up (device, shader compilation) is by far the longest step and needs only the
 	// window. Before it: fonts on a thread of their own (fonts_preload_start), then the network, the page machinery and
@@ -1238,10 +1244,12 @@ main :: proc() {
 	prof_mark(.Shell)
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
-	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
-	if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
-		for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
-		app.current = len(app.tabs) - len(rest)
+	if !recovery_open(app, rest[:]) {   // crash_recovery.odin: the tabs of a session that ended abnormally (the command line's addresses follow them)
+		if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
+		if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
+			for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
+			app.current = len(app.tabs) - len(rest)
+		}
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
@@ -1322,7 +1330,7 @@ main :: proc() {
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
-	if remote_fast_exit { crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
+	if remote_fast_exit { recovery_end(app); crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
@@ -1337,6 +1345,8 @@ main :: proc() {
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")
 	profile_save(app, force = true)
+	host.shutdown_step("recovery_end")
+	recovery_end(app)   // crash_recovery.odin: a normal end removes the marker and the snapshot
 	host.shutdown_step("bfcache_shutdown")
 	bfcache_shutdown(app)
 	host.shutdown_step("tab_free")
@@ -1435,6 +1445,7 @@ main :: proc() {
 	console_eval_destroy()
 	host.shutdown_step("session_destroy")
 	session_destroy()
+	recovery_destroy()
 	host.shutdown_step("palette_destroy")
 	palette_destroy()   // palette.odin (and the command registry)
 	host.shutdown_step("ui.destroy")

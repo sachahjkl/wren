@@ -198,6 +198,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			app.current = list_move(app.tabs[:], move_from, move_to, app.current)
 			strip.follow_id = app.tabs[app.current].id   // no jump of the scroll while dragging
 			app.frames_requested = max(app.frames_requested, 2)
+			recovery_touch(app)
 		}
 		any_turning := false
 		for t in app.tabs {
