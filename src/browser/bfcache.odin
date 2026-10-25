@@ -18,7 +18,6 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "core:time"
-import "toolkit:ui"
 import "wb:base"
 import "wb:host"
 import "wb:page"
@@ -224,7 +223,7 @@ bfcache_forget :: proc(t: ^Tab, entry: u64) {
 }
 
 tab_by_id :: proc(app: ^App, id: u64) -> ^Tab {
-	for t in app.tabs { if t.id == id { return t } }
+	for t in tabs_all(app) { if t.id == id { return t } }
 	return nil
 }
 
@@ -268,7 +267,7 @@ bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool 
 	tab_icon_destroy(&t.icon)
 	console_reset(t)
 	set_status(t, "Restored from the back/forward cache")
-	if current_tab(app) == t { ui.field_set(&app.address, t.url) }
+	address_set(app, t, t.url)
 	bf_entry_free(e, close = false)
 	bf.restores += 1
 	global_history_visit(app, t, t.url, t.title)

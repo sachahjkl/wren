@@ -171,8 +171,10 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	defer page_render_test_unlock()
 	app := new(App)
 	defer free(app)
-	ui.init(&app.ui_state, nil, nil)
-	defer ui.destroy(&app.ui_state)
+	app.ui_state = new(ui.State)
+	defer free(app.ui_state)
+	ui.init(app.ui_state, nil, nil)
+	defer ui.destroy(app.ui_state)
 	tab := new(Tab)
 	defer free(tab)
 	tab.kind = .History

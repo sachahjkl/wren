@@ -455,7 +455,7 @@ show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notic
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(strings.has_prefix(shown, LICENSES_URL) ? "Licences" : "About Wren")
 	set_status(t, shown)
-	ui.field_set(&app.address, shown)
+	address_set(app, t, shown)
 	if choose { license_choose_file(app, t) }
 }
 

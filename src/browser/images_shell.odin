@@ -188,7 +188,7 @@ release_texture :: proc(id: u64) {
 // Once per frame, after the loop ran: every tab's images follow its document (downloads start in background tabs too),
 // textures of evicted images go.
 images_shell_frame :: proc(app: ^App) {
-	for tab in app.tabs { if tab.page != nil && tab.kind == .Web { page.images_sync(tab.page); page.canvas_frame(tab.page) } }
+	for tab in tabs_all(app) { if tab.page != nil && tab.kind == .Web { page.images_sync(tab.page); page.canvas_frame(tab.page) } }
 	clear(&shell.evicted)
 	page.images_drain_evicted(&shell.evicted)
 	page.canvas_drain_released(&shell.evicted)   // (canvases of closed pages and freed elements: their textures)

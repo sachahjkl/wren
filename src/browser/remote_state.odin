@@ -113,7 +113,7 @@ quiet_look :: proc(q: ^Quiet_Window, busy: bool, now_ns: i64, cpu_ms: f64, quiet
 // process busy by looking.)
 remote_busy :: proc(app: ^App) -> bool {
 	if fetch.in_flight(&app.loader) > 0 { return true }
-	for t in app.tabs {
+	for t in tabs_all(app) {
 		if !tab_loaded(app, t, false) { return true }
 	}
 	return false
@@ -307,7 +307,7 @@ m_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	if .Window not_in keep && r.baseline != nil { sum.window = window_restore(app, r.baseline.window) }
 	clear(&r.loaded)
-	for t in app.tabs { r.loaded[t.id] = tab_loaded(app, t) }
+	for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
 	app.frames_requested = max(app.frames_requested, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, tab, what, reset_summary_json(sum, tab != nil ? fmt.tprintf(`,"tabId":%d`, tab.id) : ""))
@@ -404,7 +404,7 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	if cur != nil { ui.field_set(&app.address, cur.url) }
 	r := &the_remote
 	clear(&r.loaded)
-	for t in app.tabs { r.loaded[t.id] = false }
+	for t in tabs_all(app) { r.loaded[t.id] = false }
 	app.frames_requested = max(app.frames_requested, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, cur, what, reset_summary_json(sum, fmt.tprintf(`,"tabs":%d`, len(cp.tabs))))

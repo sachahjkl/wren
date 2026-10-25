@@ -86,7 +86,7 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 	delete(t.url); t.url = strings.clone(address)
 	delete(t.title); t.title = strings.clone("History")
 	set_status(t, HISTORY_URL)
-	ui.field_set(&app.address, address)
+	address_set(app, t, address)
 	if address == HISTORY_URL + "#tree" { hview.mode = 1 }
 	page.session_set_title(&t.session, "History")
 	if !hview.keep_tree || tab_by_id(app, hview.tree_tab) == nil { hview.tree_tab = t.id }
@@ -99,12 +99,12 @@ show_history :: proc(app: ^App, t: ^Tab, address := HISTORY_URL) {
 open_history :: proc(app: ^App, from: ^Tab, tree: bool) {
 	if from != nil { hview.tree_tab, hview.keep_tree = from.id, true }
 	hview.mode = tree ? 1 : 0
-	for x, i in app.tabs {
+	for x in tabs_all(app) {
 		if x.kind == .History {
 			hview.keep_tree = false
-			tab_select(app, i)
+			tab_reveal(app, x)
 			a := tree ? HISTORY_URL + "#tree" : HISTORY_URL
-			if x.url != a { delete(x.url); x.url = strings.clone(a); ui.field_set(&app.address, a) }
+			if x.url != a { delete(x.url); x.url = strings.clone(a); address_set(app, x, a) }
 			return
 		}
 	}
@@ -307,7 +307,7 @@ history_page :: proc(app: ^App, t: ^Tab) {
 					// the address says which part is shown (a reload keeps it)
 					a := hview.mode == 1 ? HISTORY_URL + "#tree" : HISTORY_URL
 					delete(t.url); t.url = strings.clone(a)
-					if current_tab(app) == t { ui.field_set(&app.address, a) }
+					address_set(app, t, a)
 					page.session_replace(&t.session, a, set_state = false)
 					sync_history(t)
 				}
@@ -474,7 +474,8 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	names := make([dynamic]string, context.temp_allocator)
 	sel := 0
-	for x, i in app.tabs {
+	all := tabs_all(app)
+	for x, i in all {
 		append(&names, fmt.tprintf("%d. %s", i + 1, safe_label(x.title, 40)))
 		if x.id == hview.tree_tab { sel = i }
 	}
@@ -484,7 +485,7 @@ tree_toolbar :: proc(app: ^App, t: ^Tab) {
 	}
 	ui.spacer(ui.px(em * 0.4))
 	ui.next({width = ui.px(em * 13), height = ui.px(ui.dense(em * 2))})
-	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(app.tabs) { hview.tree_tab = app.tabs[sel].id }
+	if ui.dropdown("###h_tab", names[:], &sel) && sel < len(all) { hview.tree_tab = all[sel].id }
 	ui.spacer(ui.px(em * 1.0))
 	history_tree_toolbar(app)   // history_tree.odin: the layout switch
 	ui.spacer(ui.fill())

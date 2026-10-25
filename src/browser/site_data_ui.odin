@@ -3,7 +3,6 @@ package browser
 import "core:fmt"
 import "core:slice"
 import "core:strings"
-import "toolkit:ui"
 import "wb:base"
 import "wb:cookies"
 import "wb:httpcache"
@@ -272,5 +271,5 @@ show_sites_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone(i18n.tr("Site data"))
 	set_status(t, notice != "" ? notice : SITES_URL)
-	ui.field_set(&app.address, shown)
+	address_set(app, t, shown)
 }

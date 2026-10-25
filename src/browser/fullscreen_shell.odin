@@ -75,7 +75,7 @@ fullscreen_settle_arm :: proc(app: ^App, top: ^page.Page, tab_id: u64, changes: 
 fullscreen_shell_settle :: proc(app: ^App) {
 	if !settle.armed { return }
 	tab_of: ^Tab
-	for tab in app.tabs { if tab.id == settle.tab_id { tab_of = tab; break } }
+	for tab in tabs_all(app) { if tab.id == settle.tab_id { tab_of = tab; break } }
 	if tab_of == nil || tab_of.page == nil || page.page_id(tab_of.page) != settle.page_id || !page.fullscreen_waiting(tab_of.page) {
 		settle.armed = false
 		return
@@ -130,7 +130,7 @@ fullscreen_scroll_tick :: proc(app: ^App) {
 	if !sback.active { return }
 	sback.frames += 1
 	tab_of: ^Tab
-	for tab in app.tabs { if tab.id == sback.tab_id { tab_of = tab; break } }
+	for tab in tabs_all(app) { if tab.id == sback.tab_id { tab_of = tab; break } }
 	if tab_of == nil || tab_of.page == nil || page.page_id(tab_of.page) != sback.page_id || sback.frames > 60 { sback.active = false; return }
 	// (the page is laid out at the window's size of the frame before: one frame after the window changed)
 	if sback.resized && sback.frames < 30 {
@@ -174,7 +174,7 @@ fullscreen_shell_frame :: proc(app: ^App) {
 	t := current_tab(app)
 	if t != nil && t.id == fshell.tab_id && t.page != nil && page.page_id(t.page) == fshell.page_id && page.fullscreen_active(t.page) { return }
 	// another tab is shown, or the document was replaced, closed or dropped it
-	for tab in app.tabs {
+	for tab in tabs_all(app) {
 		if tab.id == fshell.tab_id && tab.page != nil && page.page_id(tab.page) == fshell.page_id { page.fullscreen_exit(tab.page); break }
 	}
 	fullscreen_shell_reset(app)

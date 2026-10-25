@@ -369,7 +369,7 @@ page_cursor_events :: proc(app: ^App, events: []platform.Event) {
 
 // The window's cursor for this frame (after the chrome's build): the page's over the page area, else the chrome's.
 window_cursor_apply :: proc(app: ^App) {
-	st := &app.ui_state
+	st := app.ui_state
 	wc := Window_Cursor{keyword = ui.cursor(st)}
 	pos := ui.mouse_pos()
 	if pcs.dragging && page_tab(app) != nil {

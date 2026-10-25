@@ -252,7 +252,7 @@ selection_shell_frame :: proc(app: ^App) {
 	dt := f32(clamp(time.duration_seconds(time.tick_diff(sshell.last_tick, now)), 0, 0.1))
 	sshell.last_tick = now
 	t := current_tab(app)
-	for tab in app.tabs { if tab.page != nil { page.selection_flush(tab.page) } }
+	for tab in tabs_all(app) { if tab.page != nil { page.selection_flush(tab.page) } }
 	if t == nil || t.page == nil || t.kind != .Web { sshell.down = false; return }
 	if sshell.pending && layout_fresh(t) {
 		sshell.pending = false

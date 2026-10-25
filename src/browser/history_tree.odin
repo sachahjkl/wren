@@ -643,7 +643,7 @@ minimap_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // about:history's tab tree part.
 history_tree_view :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	st := &app.ui_state
+	st := app.ui_state
 	now := st.frame_ms
 	dt := f32(clamp((now - tview.last_ms) / 1000, 0, 0.1))
 	tview.last_ms = now
@@ -782,7 +782,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 					if e := page.session_find(&t.session, dr.node); e != nil {
 						if dr.button == .Left {
 							tview.drag = {}
-							for x, i in app.tabs { if x == t { tab_select(app, i) } }
+							tab_reveal(app, t)
 							go_entry(app, t, e)
 							return
 						}
@@ -1084,7 +1084,7 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 		address := strings.clone(e.url, context.temp_allocator)
 		if ui.menu_item("Go to this page", enabled = e != page.session_current(&t.session)).clicked {
 			ui.ctx_menu_close()
-			for x, i in app.tabs { if x == t { tab_select(app, i) } }
+			tab_reveal(app, t)
 			go_entry(app, t, e)
 			return
 		}

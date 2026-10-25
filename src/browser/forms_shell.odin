@@ -160,7 +160,7 @@ double_click_ms :: proc(app: ^App) -> f64 {
 // the forms model changed, the lifetime of the validation bubble.
 forms_shell_frame :: proc(app: ^App) {
 	fview.frame += 1
-	for tab in app.tabs {
+	for tab in tabs_all(app) {
 		if tab.page == nil || tab.page.formctl == nil || tab.page.formctl.embedder.navigate != nil { continue }
 		page.set_forms_embedder(tab.page, page.Forms_Embedder{
 			user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
@@ -1447,7 +1447,7 @@ forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event,
 
 @(private = "file")
 tab_of_page :: proc(app: ^App, p: ^page.Page) -> ^Tab {
-	for t in app.tabs { if t.page == p { return t } }
+	for t in tabs_all(app) { if t.page == p { return t } }
 	return nil
 }
 
