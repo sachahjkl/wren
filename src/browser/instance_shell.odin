@@ -74,6 +74,10 @@ instance_early :: proc(app: ^App, rest: []string, setup, new_window: bool) {
 	}
 }
 
+// Whether this process holds the profile's single instance mutex: no other Wren of the same executable runs on the profile, so
+// what the last run left in it (crash_recovery.odin's marker) is not a running Wren's.
+instance_owns_profile :: proc() -> bool { return inst.mine }
+
 // Once the event loop exists: the window that takes the second starts' messages.
 instance_begin :: proc(app: ^App) {
 	if inst.mine && !instance.owner_start(&inst.owner, instance_handler, app) {
