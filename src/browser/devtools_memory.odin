@@ -92,7 +92,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		{"Pictures", cur.pictures, proc(s: Mem_Sample) -> f64 { return s.pictures }, true, "Display lists the compositor keeps"},
 		{"GPU textures", cur.gpu, proc(s: Mem_Sample) -> f64 { return s.gpu }, true, "Images, glyphs and layers on the graphics card"},
 	}
-	room := dev.rect.max.x - dev.rect.min.x
+	room := dev_width()
 	cols := max(int(room / dt_px(250)), 1)
 	tile_w := (room - dt_px(24)) / f32(cols) - dt_px(8)
 	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})

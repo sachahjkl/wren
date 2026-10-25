@@ -874,6 +874,7 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	if e.dirty { engine_rebuild(e, doc) }
 	shadow_prepare(e, doc)
 	clear(&e.shadow.changed)   // a full pass covers whatever changed
+	clear(&e.container_pending)
 	s := styled_make(e, doc, state)
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them

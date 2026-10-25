@@ -398,6 +398,11 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	if !full && !style.state_equal(effective_state(p), p.styled.state) {
 		if _, ok := style.restyle_state(e, p.doc, p.styled, effective_state(p)); !ok { full = true } else { partial = true }
 	}
+	cq_partial := false
+	if !full && len(e.container_pending) > 0 {
+		// a container's size changed after the last layout: only its subtree can read it (style/container.odin)
+		if _, ok := style.restyle_containers(e, p.doc, p.styled); ok { cq_partial = true } else { full, why = true, e.last_restyle.fallback }
+	}
 	if full {
 		if p.styled == nil || p.style_stale || p.styled.mutations != p.doc.mutations { sync_styles(p) }
 		old := p.styled
@@ -420,7 +425,7 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 			p.doc.journal.max = max(p.doc.journal.max, e.settings.inc_journal)
 			style.watch_prepare(e, p.doc)   // (what removed subtrees held, for the :has() anchors: dom.Watch)
 		}
-	} else if partial || dom_partial {
+	} else if partial || dom_partial || cq_partial {
 		style.timeline_restyled_dom(p.anim.timeline, p.doc, p.styled, now)
 		if dom_partial {
 			fonts_sync(p)
@@ -433,15 +438,15 @@ styles :: proc(p: ^Page, viewport_w, viewport_h: f32, dppx: f64) -> ^style.Style
 	}
 	style.timeline_tick(p.anim.timeline, p.doc, p.styled, now)
 	animations_after_tick(p)
-	styles_note(full, dom_partial, partial, time.tick_since(t0), why)
+	styles_note(full, dom_partial, partial, cq_partial, time.tick_since(t0), why)
 	if full { styles_stats.full_bytes += i64(p.styled.arena.total_used) }
 	return p.styled
 }
 // What the style passes cost, for the profile report (prof.odin) and the measuring scripts: how many passes of each kind and
 // the time they took, and the engine's rebuilds (style.rebuild_total).
 Styles_Stats :: struct {
-	calls, full, dom, state, none: int,
-	full_ns, dom_ns, state_ns, none_ns: i64,
+	calls, full, dom, state, none, cq: int,   // cq: partial after a container's size changed
+	full_ns, dom_ns, state_ns, none_ns, cq_ns: i64,
 	full_bytes: i64,   // memory the styles of the full passes took (the arena's use at the end of each)
 	why: [24]Why_Count,   // the full passes by the reason the incremental one was not enough (the reasons are constant strings)
 }
@@ -449,7 +454,7 @@ Why_Count :: struct { why: string, n: int, ns: i64 }
 styles_stats: Styles_Stats
 
 @(private = "file")
-styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
+styles_note :: proc(full, dom, state, cq: bool, d: time.Duration, why: string) {
 	s := &styles_stats
 	s.calls += 1
 	switch {
@@ -458,6 +463,7 @@ styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
 		for &w in s.why {
 			if w.why == why || w.why == "" { w.why = why; w.n += 1; w.ns += i64(d); break }
 		}
+	case cq: s.cq += 1; s.cq_ns += i64(d)
 	case dom: s.dom += 1; s.dom_ns += i64(d)
 	case state: s.state += 1; s.state_ns += i64(d)
 	case: s.none += 1; s.none_ns += i64(d)
@@ -467,8 +473,8 @@ styles_note :: proc(full, dom, state: bool, d: time.Duration, why: string) {
 styles_stats_text :: proc() -> string {
 	s := styles_stats
 	r := style.rebuild_total
-	return fmt.tprintf("style passes: %d | full %d (%.0f ms, %.0f MB of styles made) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average\nlayouts forced by scripts' readings (geometry, computed style; style passes included): %d, %.0f ms",
-		s.calls, s.full, f64(s.full_ns) / 1e6, f64(s.full_bytes) / 1048576, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
+	return fmt.tprintf("style passes: %d | full %d (%.0f ms, %.0f MB of styles made) | partial after DOM changes %d (%.0f ms) | partial after state changes %d (%.0f ms) | partial after container sizes %d (%.0f ms) | nothing to do %d (%.0f ms)\nstyle engine rebuilds (every sheet flattened again): %d, %.0f ms, %.1f sheets on average\nlayouts forced by scripts' readings (geometry, computed style; style passes included): %d, %.0f ms",
+		s.calls, s.full, f64(s.full_ns) / 1e6, f64(s.full_bytes) / 1048576, s.dom, f64(s.dom_ns) / 1e6, s.state, f64(s.state_ns) / 1e6, s.cq, f64(s.cq_ns) / 1e6, s.none, f64(s.none_ns) / 1e6,
 		r.n, f64(r.ns) / 1e6, f64(r.sheets) / f64(max(r.n, 1)), forced_layouts.n, f64(forced_layouts.ns) / 1e6)
 }
 styles_stats_why :: proc() -> string {

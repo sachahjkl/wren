@@ -1,8 +1,10 @@
 package style
 
+import "core:slice"
 import "core:strings"
 import "wb:base"
 import "wb:css"
+import "wb:dom"
 
 // Container queries (CSS Containment 3): container-type / container-name, @container rules and cq units.
 //
@@ -40,19 +42,77 @@ Cq_Cond :: struct {
 // Records the content-box sizes (CSS px) of the elements that are query containers. Returns true when a query or a cq
 // unit may now resolve differently: the caller restyles (the engine has set `restyle_needed`) and lays out again.
 engine_set_container_sizes :: proc(e: ^Engine, sizes: map[base.Handle][2]f32) -> bool {
-	same := len(sizes) == len(e.container_sizes)
-	if same {
-		for h, s in sizes {
-			old, ok := e.container_sizes[h]
-			if !ok || abs(old.x - s.x) > 0.01 || abs(old.y - s.y) > 0.01 { same = false; break }
-		}
+	// the containers whose size is new or differs; one that is gone from the list (hidden, removed) cannot be restyled
+	// by its subtree: the whole document is
+	changed := make([dynamic]base.Handle, 0, 4, context.temp_allocator)
+	for h, s in sizes {
+		old, ok := e.container_sizes[h]
+		if !ok || abs(old.x - s.x) > 0.01 || abs(old.y - s.y) > 0.01 { append(&changed, h) }
 	}
-	if same { return false }
+	gone := false
+	for h in e.container_sizes { if h not_in sizes { gone = true; break } }
+	if len(changed) == 0 && !gone { return false }
 	clear(&e.container_sizes)
 	for h, s in sizes { e.container_sizes[h] = s }
 	if !e.container_dependent { return false }
-	e.restyle_needed = true
+	if gone || !e.settings.cq_partial || !e.settings.inc_enabled {
+		e.restyle_needed = true
+		clear(&e.container_pending)
+		return true
+	}
+	for h in changed { if !slice.contains(e.container_pending[:], h) { append(&e.container_pending, h) } }
 	return true
+}
+
+// Restyles the subtrees of the containers whose size changed (engine_set_container_sizes) in place: a query or a cq unit
+// looks at an ancestor container only, so nothing outside those subtrees can differ. The container itself is restyled too
+// (its record carries the chain of containers, with the sizes, that its children read). ok = false: it cannot be scoped
+// (nothing was kept of the work in progress that a full pass would not make again), and the caller does a full pass;
+// `changed`: some computed style differs (s.serial changed then).
+restyle_containers :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled) -> (changed: bool, ok: bool) {
+	if len(e.container_pending) == 0 { return false, true }
+	if e.dirty { return cq_fail(e, "rules changed") }
+	if e.restyle_needed { return cq_fail(e, "a full pass is due") }
+	if s.mutations != doc.mutations { return cq_fail(e, "the document changed") }
+	if int(s.arena.total_used) - int(s.base_used) + s.partial_bytes > e.settings.restyle_waste_bytes { return cq_fail(e, "memory left by partial restyles") }
+	shadows := dom.has_shadow_trees(doc)
+	p := pass_make(e, s, doc, s.state)
+	defer pass_destroy(p)
+	p.compare = true
+	pending := make(map[base.Handle]bool, len(e.container_pending), context.temp_allocator)
+	for h in e.container_pending { pending[h] = true }
+	clear(&e.container_pending)
+	for r in pending {
+		n := dom.get(doc, r)
+		if n == nil || n.kind != .Element || base_style_of(s, r) == nil { return cq_fail(e, "a container left the document") }
+		if shadows && !dom.in_flat_tree(doc, r) { return cq_fail(e, "a container left the flat tree") }
+		// inside another container's subtree that is restyled anyway
+		covered := false
+		for anc := flat_parent_element(doc, r); anc != base.NIL_HANDLE; anc = flat_parent_element(doc, anc) {
+			if pending[anc] { covered = true; break }
+		}
+		if covered { continue }
+		par := flat_parent_element(doc, r)
+		if par == base.NIL_HANDLE { return cq_fail(e, "the root element is a container") }
+		bloom: Bloom
+		for anc := par; anc != base.NIL_HANDLE; anc = flat_parent_element(doc, anc) { bloom_add_element(&bloom, dom.get(doc, anc)) }
+		style_subtree(p, r, base_style_of(s, par), bloom, root_ctx = node_ctx(p, r))
+		if p.unscoped { return cq_fail(e, "a counter is reached") }
+	}
+	if p.changed {
+		styled_serial += 1
+		s.serial = styled_serial
+		if p.layout_changed { s.layout_serial = s.serial }
+		journal_stamp(s)
+		update_canvas(s, doc)
+	}
+	return p.changed, true
+}
+
+@(private = "file")
+cq_fail :: proc(e: ^Engine, why: string) -> (bool, bool) {
+	e.last_restyle.fallback = why
+	return false, false
 }
 
 // Some rule or value of the documents depends on container sizes.

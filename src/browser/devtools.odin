@@ -84,6 +84,8 @@ Devtools :: struct {
 	drag_from: [2]f32,             // the size / place when the drag began
 	panel_rect: draw.Rect,         // where the floating panel was drawn last frame
 	rect:      draw.Rect,          // where the panel was drawn last frame, docked or not
+	room:      draw.Vec2,          // its size in the frame being built (dev_width, dev_height); 0: not known before layout
+	room_checks, room_wrong: int,  // frames whose room was compared with the layout's result, and those where it differed
 	watch:     int,
 	picking:   bool,               // the element picker (Ctrl+Shift+C) is on: the page shows the element under the pointer
 	hover_tab: int,
@@ -204,9 +206,31 @@ devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
 ////////////////////////////////
 // The panel
 
-// The panel under the box `next` sized: a header (tabs, dock, close) and the tab's content.
-devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_Mod{}) {
+// The panel's size in the frame being built. A box's own rect and size are those of the LAST frame's layout: a panel that
+// sizes its columns, tabs and fields from them is one frame behind a splitter or a window being dragged (its content looks
+// like the previous width, squeezed or stretched into the new box). The size the panel was asked for is known before
+// layout: pixels as given, else `fill` (what the caller's room is: the window), else the last frame's.
+dev_width :: proc() -> f32 { return dev.room.x > 0 ? dev.room.x : dev.rect.max.x - dev.rect.min.x }
+dev_height :: proc() -> f32 { return dev.room.y > 0 ? dev.room.y : dev.rect.max.y - dev.rect.min.y }
+
+dev_room_of :: proc(place: ui.Style_Mod, fill: draw.Vec2) -> draw.Vec2 {
+	room := fill
+	if w, ok := place.width.?; ok && w.kind == .Pixels { room.x = w.value }
+	if h, ok := place.height.?; ok && h.kind == .Pixels { room.y = h.value }
+	return room
+}
+
+// The panel under the box `next` sized: a header (tabs, dock, close) and the tab's content. `fill`: the room a side that is
+// not in pixels takes (the window's size where the panel fills it; 0 where it is not known before layout).
+devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_Mod{}, fill := draw.Vec2{}) {
 	dt_begin(app)
+	// the check behind dev_width: what the last frame took for the panel's width is the width its layout gave the box (the
+	// box as it is now, before this build, is that layout's); counted for the tests (stats: devtoolsRoomWrong)
+	if pb := ui.box_from_key(ui.key_from_string(ui.parent_box().key, "###dt_panel")); pb != nil && dev.room.x > 0 && pb.rect.max.x > pb.rect.min.x {
+		dev.room_checks += 1
+		if abs((pb.rect.max.x - pb.rect.min.x) - dev.room.x) > 1.5 { dev.room_wrong += 1 }
+	}
+	dev.room = dev_room_of(place, fill)
 	ui.set_menu_item_height(dev.density == .Comfortable ? 2.1 : 1.85)   // dense menus for the panel's own (toolkit 0.19)
 	defer ui.set_menu_item_height(0)
 	if ui.style({font_size = dtm.fs, text_pad = dt_px(4)}) {
@@ -354,7 +378,6 @@ tab_info :: proc(t: ^Tab, p: Dev_Panel) -> (badges: [2]string, tones: [2]draw.Co
 @(private = "file")
 devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 	if dt_bar("###dt_header", dtm.tab) {
-		hdr := ui.parent_box()
 		// a floating panel is moved by its header: this box takes the press under the buttons
 		dt_gap(2)
 		pick := dt_btn("###dt_pick", .Inspect, tooltip = "Select an element in the page to inspect it", shortcut = cmd_key("view.devtools_pick"), on = dev.picking)
@@ -364,7 +387,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 
 		// the tabs that fit, then a chevron for the others
 		right_w := dtm.btn * 3 + dt_px(8) * 4 + dtm.line
-		avail := hdr.size.x > 0 ? hdr.size.x - right_w - dtm.btn - dt_px(10) - dtm.line : 1e9
+		avail := dev_width() > 0 ? dev_width() - right_w - dtm.btn - dt_px(10) - dtm.line : 1e9
 		hidden: [len(Dev_Panel)]bool
 		used: f32
 		count := 0
