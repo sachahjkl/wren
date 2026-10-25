@@ -57,7 +57,7 @@ function not exposed to workers is not instantiated.
 | [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
 | [`dom`](dom.md) | 365 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
-| [`events`](events.md) | 39 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
+| [`events`](events.md) | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
 | [`fetch`](fetch.md) | 10 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
@@ -67,6 +67,7 @@ function not exposed to workers is not instantiated.
 | [`idb`](idb.md) | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
+| [`dnd`](dnd.md) | 31 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
 | [`scripts`](scripts.md) | 18 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
 | [`navigator`](navigator.md) | 7 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
@@ -82,4 +83,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1047 imports in 948 functions.
+1083 imports in 984 functions.

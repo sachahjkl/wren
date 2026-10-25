@@ -223,6 +223,12 @@ JSValue web_blob_type(JSContext *ctx, JSValueConst v);
 JSValue web_blob_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len);
 /* A new File */
 JSValue web_file_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len, const char *name, size_t name_len, double last_modified);
+/* A File for a file of the browser (module dnd's LocalFile handle, taken), read on demand; null for 0. */
+JSValue web_file_from_host(JSContext *ctx, uint64_t local_file);
+/* The browser's file behind a File not read yet (0 otherwise). */
+uint64_t web_file_host(JSValueConst v);
+/* A File's name, type (owned: wj_str_free) and lastModified; false when `v` is not a Blob (or with an exception). */
+bool web_file_meta(JSContext *ctx, JSValueConst v, wj_str *name, wj_str *type, double *last_modified);
 /* The Blob a blob: URL of this realm stands for (URL.createObjectURL), or undefined. */
 JSValue web_blob_url_lookup(JSContext *ctx, const char *url, size_t n);
 

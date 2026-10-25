@@ -74,6 +74,7 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.wait":            return m_wait(app, c)
 	case "Wren.click":           return m_click(app, c)
 	case "Wren.drag":            return m_drag(app, c)
+	case "Wren.drop":            return m_drop(app, c)
 	case "Wren.type":            return m_type(app, c)
 	case "Wren.key":             return m_key(app, c)
 	case "Wren.stats":           return m_stats(app, c)
@@ -689,6 +690,14 @@ scale_rgba :: proc(src: []u8, w, h: int, scale: f32) -> (out: []u8, nw, nh: int)
 
 @(private = "file")
 inject :: proc(app: ^App, ev: platform.Event) {
+	// the buttons held, as a real device's events carry them (e.buttons, a drag that needs the left button held)
+	@(static) held: platform.Mouse_Buttons
+	ev := ev
+	#partial switch ev.kind {
+	case .Mouse_Press: held += {ev.button}
+	case .Mouse_Release: held -= {ev.button}
+	}
+	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(app.win, ev)
 	the_remote.inputs += 1
 	app.frames_requested = max(app.frames_requested, 4)
@@ -810,6 +819,32 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	case:
 		op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, op.pos.x, op.pos.y)))
 	}
+}
+
+// Wren.drop {x, y, files: [paths], text, url, html, leave}: another application's drag over the window, through the
+// toolkit's drop target path (platform.drop_inject): enter, over, then the drop at (x, y) (with `leave`: it leaves
+// instead). The reply says what the window answered (the effect the app set).
+@(private = "file")
+m_drop :: proc(app: ^App, c: ^Call) -> Reply {
+	pos, ok := point_of(app, c, "x", "y")
+	if !ok { return fail(remote.ERR_PARAMS, "x and y are missing") }
+	d: platform.Drag_Data
+	defer delete(d.files)
+	if arr, has := remote.param_array(c.params, "files"); has {
+		for v in arr { if s, is := v.(json.String); is { append(&d.files, string(s)) } }
+	}
+	d.text, _ = remote.param_string(c.params, "text")
+	d.url, _ = remote.param_string(c.params, "url")
+	d.html, _ = remote.param_string(c.params, "html")
+	if platform.drag_data_empty(d) { return fail(remote.ERR_PARAMS, "give files, text, url or html") }
+	leave, _ := remote.param_bool(c.params, "leave")
+	mods := mods_of(c)
+	if !platform.drop_inject(app.win, .Drop_Enter, pos, &d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
+	platform.drop_inject(app.win, .Drop_Over, pos, mods = mods)
+	platform.drop_inject(app.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
+	the_remote.inputs += 1
+	app.frames_requested = max(app.frames_requested, 4)
+	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
 }
 
 // Wren.drag {x, y, toX, toY, steps, button}

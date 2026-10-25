@@ -331,6 +331,21 @@ JSValue wjr_DOMTokenList_replace(JSContext *ctx, JSValueConst this_val, int argc
 JSValue wjr_DOMTokenList_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_DOMTokenList_supports(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMTokenList_toggle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItemList_add(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItemList_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItemList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DataTransferItemList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_DataTransferItemList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_DataTransferItemList_remove(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItem_getAsFile(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItem_getAsString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransferItem_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DataTransferItem_get_type(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DataTransferItem_webkitGetAsEntry(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransfer_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DataTransfer_get_files(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DataTransfer_get_items(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DataTransfer_get_types(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DocumentFragment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -374,6 +389,8 @@ JSValue wjr_Document_set_location(JSContext *ctx, JSValueConst this_val, JSValue
 JSValue wjr_Document_static_parseHTMLUnsafe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_writeln(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DragEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DragEvent_get_dataTransfer(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ElementCSSInlineStyle_get_style(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ElementInternals_get_shadowRoot(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ElementInternals_get_states(JSContext *ctx, JSValueConst this_val);
@@ -440,6 +457,10 @@ JSValue wjr_Event_set_cancelBubble(JSContext *ctx, JSValueConst this_val, JSValu
 JSValue wjr_Event_set_returnValue(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Event_stopImmediatePropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Event_stopPropagation(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_FileList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_FileList_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_FileReader_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FileReader_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FileReader_get_error(JSContext *ctx, JSValueConst this_val);
@@ -565,6 +586,7 @@ JSValue wjr_HTMLImageElement_set_loading(JSContext *ctx, JSValueConst this_val, 
 JSValue wjr_HTMLImageElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLImageElement_set_width(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_get_autocomplete(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLInputElement_get_files(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLInputElement_get_formAction(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLInputElement_get_formEnctype(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLInputElement_get_formMethod(JSContext *ctx, JSValueConst this_val);
@@ -576,6 +598,7 @@ JSValue wjr_HTMLInputElement_get_width(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLInputElement_setRangeText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLInputElement_setSelectionRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLInputElement_set_autocomplete(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLInputElement_set_files(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_formAction(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_formEnctype(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLInputElement_set_formMethod(JSContext *ctx, JSValueConst this_val, JSValueConst v);
@@ -1223,6 +1246,35 @@ JSValue wjr_Text_constructor(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TimeRanges_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TouchEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TouchEvent_getModifierState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TouchEvent_get_altKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_changedTouches(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_ctrlKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_metaKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_shiftKey(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_targetTouches(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchEvent_get_touches(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TouchList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_TouchList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_TouchList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_Touch_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Touch_get_altitudeAngle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_azimuthAngle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_clientX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_clientY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_force(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_identifier(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_pageX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_pageY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_radiusX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_radiusY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_rotationAngle(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_screenX(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_screenY(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_target(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Touch_get_touchType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TreeWalker_firstChild(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TreeWalker_get_currentNode(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TreeWalker_get_filter(JSContext *ctx, JSValueConst this_val);
@@ -2487,6 +2539,115 @@ static JSValue wjg_Crypto_randomUUID(JSContext *ctx, JSValueConst this_val, int 
     WJ_FETCH_STRING(n, wr_Crypto_randomUUID(wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "Crypto.randomUUID"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DataTransfer.dropEffect -> dnd.DataTransfer_get_dropEffect */
+static JSValue wjg_DataTransfer_get_dropEffect(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DataTransfer_get_dropEffect(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "DataTransfer.dropEffect"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DataTransfer.dropEffect = v -> dnd.DataTransfer_set_dropEffect */
+static JSValue wjg_DataTransfer_set_dropEffect(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_DataTransfer_set_dropEffect(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* DataTransfer.effectAllowed -> dnd.DataTransfer_get_effectAllowed */
+static JSValue wjg_DataTransfer_get_effectAllowed(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DataTransfer_get_effectAllowed(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "DataTransfer.effectAllowed"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DataTransfer.effectAllowed = v -> dnd.DataTransfer_set_effectAllowed */
+static JSValue wjg_DataTransfer_set_effectAllowed(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValueConst argv[1] = {v};
+    int argc = 1;
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
+    wr_DataTransfer_set_effectAllowed(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
+}
+
+/* DataTransfer.setDragImage() -> dnd.DataTransfer_setDragImage */
+static JSValue wjg_DataTransfer_setDragImage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 3) { return wj_throw_arity(ctx, "DataTransfer.setDragImage", 3, argc); }
+    uint64_t a0 = 0;
+    if (!wj_to_handle(ctx, wj_arg(argc, argv, 0), 237, false, &a0, "DataTransfer.setDragImage: argument 1 is not of type 'Element'")) { return JS_EXCEPTION; }
+    int32_t a1 = 0;
+    if (!wj_to_int32(ctx, wj_arg(argc, argv, 1), &a1, 32, 0)) { return JS_EXCEPTION; }
+    int32_t a2 = 0;
+    if (!wj_to_int32(ctx, wj_arg(argc, argv, 2), &a2, 32, 0)) { return JS_EXCEPTION; }
+    wr_DataTransfer_setDragImage(self->handle, a0, a1, a2);
+    return JS_UNDEFINED;
+}
+
+/* DataTransfer.getData() -> dnd.DataTransfer_getData */
+static JSValue wjg_DataTransfer_getData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "DataTransfer.getData", 1, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_DataTransfer_getData(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, wj_scratch.data, wj_scratch.cap));
+    wj_str_free(ctx, &a0);
+    if (n < 0) { return wj_throw_status(ctx, n, "DataTransfer.getData"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
+/* DataTransfer.setData() -> dnd.DataTransfer_setData */
+static JSValue wjg_DataTransfer_setData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 2) { return wj_throw_arity(ctx, "DataTransfer.setData", 2, argc); }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
+    wj_str a1;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 1), &a1, 0, "")) { wj_str_free(ctx, &a0); return JS_EXCEPTION; }
+    wr_DataTransfer_setData(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len, (const uint8_t *)(a1.ptr ? a1.ptr : ""), (uint32_t)a1.len);
+    wj_str_free(ctx, &a0);
+    wj_str_free(ctx, &a1);
+    return JS_UNDEFINED;
+}
+
+/* DataTransfer.clearData() -> dnd.DataTransfer_clearData */
+static JSValue wjg_DataTransfer_clearData(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 113);
+    if (!self) { return JS_EXCEPTION; }
+    wj_str a0;
+    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, WJ_STR_OPTIONAL, "")) { return JS_EXCEPTION; }
+    wr_DataTransfer_clearData(self->handle, (const uint8_t *)a0.ptr, a0.ptr ? (uint32_t)a0.len : WR_ABSENT);
+    wj_str_free(ctx, &a0);
+    return JS_UNDEFINED;
 }
 
 static JSValue wjg_ElementInternals_get_role(JSContext *ctx, JSValueConst this_val) { return wj_reflect_get(ctx, this_val, 117, "role", WJ_REFLECT_NULLABLE_STRING, 0, 0, 0, 0); }
@@ -12334,28 +12495,28 @@ static const wj_member wj_m_DOMTokenList[] = {
     { "toString", WJ_M_METHOD, 0, 0, wj_stringifier, wjr_DOMTokenList_get_value, NULL, 0 },
 };
 static const wj_member wj_m_DataTransfer[] = {
-    { "dropEffect", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "effectAllowed", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "items", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 23, NULL, NULL, NULL, 0 },
-    { "setDragImage", WJ_M_METHOD, 0, 3, NULL, NULL, NULL, 0 },
-    { "types", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getData", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "setData", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "clearData", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "files", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 24, NULL, NULL, NULL, 0 },
+    { "dropEffect", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DataTransfer_get_dropEffect, wjg_DataTransfer_set_dropEffect, 0 },
+    { "effectAllowed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_DataTransfer_get_effectAllowed, wjg_DataTransfer_set_effectAllowed, 0 },
+    { "items", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 23, NULL, wjr_DataTransfer_get_items, NULL, 0 },
+    { "setDragImage", WJ_M_METHOD, 0, 3, wjg_DataTransfer_setDragImage, NULL, NULL, 0 },
+    { "types", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DataTransfer_get_types, NULL, 0 },
+    { "getData", WJ_M_METHOD, 0, 1, wjg_DataTransfer_getData, NULL, NULL, 0 },
+    { "setData", WJ_M_METHOD, 0, 2, wjg_DataTransfer_setData, NULL, NULL, 0 },
+    { "clearData", WJ_M_METHOD, 0, 0, wjg_DataTransfer_clearData, NULL, NULL, 0 },
+    { "files", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 24, NULL, wjr_DataTransfer_get_files, NULL, 0 },
 };
 static const wj_member wj_m_DataTransferItem[] = {
-    { "webkitGetAsEntry", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getAsString", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "getAsFile", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "webkitGetAsEntry", WJ_M_METHOD, 0, 0, wjr_DataTransferItem_webkitGetAsEntry, NULL, NULL, 0 },
+    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DataTransferItem_get_kind, NULL, 0 },
+    { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DataTransferItem_get_type, NULL, 0 },
+    { "getAsString", WJ_M_METHOD, 0, 1, wjr_DataTransferItem_getAsString, NULL, NULL, 0 },
+    { "getAsFile", WJ_M_METHOD, 0, 0, wjr_DataTransferItem_getAsFile, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DataTransferItemList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "add", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "remove", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "clear", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DataTransferItemList_get_length, NULL, 0 },
+    { "add", WJ_M_METHOD, 0, 1, wjr_DataTransferItemList_add, NULL, NULL, 0 },
+    { "remove", WJ_M_METHOD, 0, 1, wjr_DataTransferItemList_remove, NULL, NULL, 0 },
+    { "clear", WJ_M_METHOD, 0, 0, wjr_DataTransferItemList_clear, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DecompressionStream[] = {
     { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -12687,7 +12848,7 @@ static const wj_member wj_m_MouseEvent[] = {
     { "initMouseEvent", WJ_M_METHOD, 0, 1, wjr_MouseEvent_initMouseEvent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DragEvent[] = {
-    { "dataTransfer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "dataTransfer", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DragEvent_get_dataTransfer, NULL, 0 },
 };
 static const wj_member wj_m_PointerEvent[] = {
     { "pointerId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PointerEvent_get_pointerId, NULL, 0 },
@@ -12721,14 +12882,14 @@ static const wj_member wj_m_TextEvent[] = {
     { "initTextEvent", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TouchEvent[] = {
-    { "touches", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "targetTouches", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "changedTouches", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getModifierState", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "touches", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_touches, NULL, 0 },
+    { "targetTouches", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_targetTouches, NULL, 0 },
+    { "changedTouches", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_changedTouches, NULL, 0 },
+    { "altKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_altKey, NULL, 0 },
+    { "metaKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_metaKey, NULL, 0 },
+    { "ctrlKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_ctrlKey, NULL, 0 },
+    { "shiftKey", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchEvent_get_shiftKey, NULL, 0 },
+    { "getModifierState", WJ_M_METHOD, 0, 1, wjr_TouchEvent_getModifierState, NULL, NULL, 0 },
 };
 static const wj_member wj_m_EventCounts[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -14183,7 +14344,7 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "dirName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_dirName, wjg_HTMLInputElement_set_dirName, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_disabled, wjg_HTMLInputElement_set_disabled, 0 },
     { "form", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_form, NULL, 0 },
-    { "files", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "files", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_files, wjr_HTMLInputElement_set_files, 0 },
     { "formAction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formAction, wjr_HTMLInputElement_set_formAction, 0 },
     { "formEnctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formEnctype, wjr_HTMLInputElement_set_formEnctype, 0 },
     { "formMethod", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLInputElement_get_formMethod, wjr_HTMLInputElement_set_formMethod, 0 },
@@ -15754,8 +15915,8 @@ static const wj_member wj_m_FetchLaterResult[] = {
     { "activated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileList[] = {
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_FileList_item, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileList_get_length, NULL, 0 },
 };
 static const wj_member wj_m_FileReaderSync[] = {
     { "readAsArrayBuffer", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -17029,25 +17190,25 @@ static const wj_member wj_m_TimeRanges[] = {
     { "end", WJ_M_METHOD, 0, 1, wjr_TimeRanges_end, NULL, NULL, 0 },
 };
 static const wj_member wj_m_Touch[] = {
-    { "identifier", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "screenX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "screenY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "clientY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pageX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "pageY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "radiusX", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "radiusY", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotationAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "force", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "altitudeAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "azimuthAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "touchType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "identifier", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_identifier, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_target, NULL, 0 },
+    { "screenX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_screenX, NULL, 0 },
+    { "screenY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_screenY, NULL, 0 },
+    { "clientX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_clientX, NULL, 0 },
+    { "clientY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_clientY, NULL, 0 },
+    { "pageX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_pageX, NULL, 0 },
+    { "pageY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_pageY, NULL, 0 },
+    { "radiusX", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_radiusX, NULL, 0 },
+    { "radiusY", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_radiusY, NULL, 0 },
+    { "rotationAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_rotationAngle, NULL, 0 },
+    { "force", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_force, NULL, 0 },
+    { "altitudeAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_altitudeAngle, NULL, 0 },
+    { "azimuthAngle", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_azimuthAngle, NULL, 0 },
+    { "touchType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Touch_get_touchType, NULL, 0 },
 };
 static const wj_member wj_m_TouchList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TouchList_get_length, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_TouchList_item, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TransformStream[] = {
     { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -17760,17 +17921,17 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMTokenList, .n_members = 10, .subtree_end = 113,
       .index_get = wjr_DOMTokenList_index_get, .length_get = wjr_DOMTokenList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DataTransfer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DataTransfer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DataTransfer_constructor,
       .members = wj_m_DataTransfer, .n_members = 9, .subtree_end = 114,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DataTransferItem", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DataTransferItem", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DataTransferItem, .n_members = 5, .subtree_end = 115,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DataTransferItemList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "DataTransferItemList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_DataTransferItemList, .n_members = 4, .subtree_end = 116,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_DataTransferItemList_index_get, .length_get = wjr_DataTransferItemList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "DecompressionStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
       .members = wj_m_DecompressionStream, .n_members = 2, .subtree_end = 117,
@@ -17964,7 +18125,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MouseEvent, .n_members = 21, .subtree_end = 167,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DragEvent", .parent = 163, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "DragEvent", .parent = 163, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_DragEvent_constructor,
       .members = wj_m_DragEvent, .n_members = 1, .subtree_end = 165,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -17980,7 +18141,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextEvent, .n_members = 2, .subtree_end = 168,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TouchEvent", .parent = 158, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_NAMED, .ctor_length = 1, .ctor = NULL,
+    { .name = "TouchEvent", .parent = 158, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_NAMED, .ctor_length = 1, .ctor = wjr_TouchEvent_constructor,
       .members = wj_m_TouchEvent, .n_members = 8, .subtree_end = 169,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18816,9 +18977,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_FetchLaterResult, .n_members = 1, .subtree_end = 377,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileList, .n_members = 2, .subtree_end = 378,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_FileList_index_get, .length_get = wjr_FileList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileReaderSync", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileReaderSync, .n_members = 4, .subtree_end = 379,
@@ -19424,13 +19585,13 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TimeRanges, .n_members = 3, .subtree_end = 529,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Touch", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "Touch", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Touch_constructor,
       .members = wj_m_Touch, .n_members = 15, .subtree_end = 530,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TouchList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "TouchList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TouchList, .n_members = 2, .subtree_end = 531,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_TouchList_index_get, .length_get = wjr_TouchList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TransformStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TransformStream, .n_members = 2, .subtree_end = 532,

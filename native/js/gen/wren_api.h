@@ -198,6 +198,20 @@ enum wr_ConsoleLevel {
 
 /* module dom (partial): types */
 
+/* module dnd: types */
+typedef uint64_t wr_DataTransfer;
+typedef uint64_t wr_LocalFile;
+// DataTransferItem.kind
+enum wr_DragItemKind {
+    wr_DragItemKind_String = 0,
+    wr_DragItemKind_File = 1,
+};
+// The size and time of a file.
+typedef struct wr_LocalFileInfo {
+    int64_t size;
+    double last_modified;
+} wr_LocalFileInfo;
+
 /* module dom (partial): types */
 
 /* module dom (partial): types */
@@ -229,7 +243,38 @@ typedef struct wr_UiEventData {
     uint32_t location;
     uint32_t repeat;
     uint32_t delta_mode;
+    int32_t pointer_id;
+    uint32_t pointer_type;
+    uint32_t is_primary;
+    double pressure;
+    double tangential_pressure;
+    double width;
+    double height;
+    double tilt_x;
+    double tilt_y;
+    double twist;
 } wr_UiEventData;
+// A Touch of a TouchEvent.
+typedef struct wr_TouchPoint {
+    int32_t identifier;
+    uint64_t target;
+    double client_x;
+    double client_y;
+    double screen_x;
+    double screen_y;
+    double page_x;
+    double page_y;
+    double radius_x;
+    double radius_y;
+    double rotation_angle;
+    double force;
+} wr_TouchPoint;
+// The lists of a TouchEvent.
+enum wr_TouchListKind {
+    wr_TouchListKind_Touches = 0,
+    wr_TouchListKind_Target_Touches = 1,
+    wr_TouchListKind_Changed_Touches = 2,
+};
 
 /* module dom (partial): types */
 
@@ -1670,6 +1715,17 @@ WR_IMPORT("events", "MouseEvent_clientY") double wr_MouseEvent_clientY(uint64_t 
 WR_IMPORT("events", "MouseEvent_button") int32_t wr_MouseEvent_button(uint64_t event);
 // KeyboardEvent.keyCode
 WR_IMPORT("events", "KeyboardEvent_keyCode") int32_t wr_KeyboardEvent_keyCode(uint64_t event);
+// The number of touches in a list of a TouchEvent the browser dispatches (0 for another event).
+WR_IMPORT("events", "TouchEvent_count") int32_t wr_TouchEvent_count(uint64_t event, int32_t list);
+// A touch of that list (Invalid_Argument past its end).
+WR_IMPORT("events", "TouchEvent_touch") int32_t wr_TouchEvent_touch(uint64_t event, int32_t list, int32_t index, wr_TouchPoint *_ret);
+// Element.setPointerCapture(pointerId): Not_Found for a pointer that is not active, Invalid_State for an element
+// that is not connected. The capture takes effect at the pointer's next event (gotpointercapture).
+WR_IMPORT("events", "PointerCapture_set") int32_t wr_PointerCapture_set(uint64_t element, int32_t pointer_id);
+// Element.releasePointerCapture(pointerId): Not_Found for a pointer that is not active.
+WR_IMPORT("events", "PointerCapture_release") int32_t wr_PointerCapture_release(uint64_t element, int32_t pointer_id);
+// Element.hasPointerCapture(pointerId)
+WR_IMPORT("events", "PointerCapture_has") int32_t wr_PointerCapture_has(uint64_t element, int32_t pointer_id);
 // The details of a UI event being dispatched.
 WR_IMPORT("events", "Event_uiData") void wr_Event_uiData(uint64_t event, wr_UiEventData *_ret);
 // KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
@@ -2125,6 +2181,72 @@ WR_IMPORT("js", "Node_unpin") void wr_Node_unpin(uint64_t node);
 // tree, else the handle of its topmost ancestor (itself when it has none), 0 for a dead handle. The engine keeps the
 // wrappers of one tree alive together.
 WR_IMPORT("js", "Node_treeRoots") void wr_Node_treeRoots(const uint64_t *nodes, uint32_t nodes_len, uint8_t *roots, uint32_t roots_cap);
+
+/* module dnd */
+// new DataTransfer(): an empty store in read/write mode.
+WR_IMPORT("dnd", "DataTransfer_create") uint64_t wr_DataTransfer_create(void);
+// dataTransfer.dropEffect ("none", "copy", "link", "move")
+WR_IMPORT("dnd", "DataTransfer_get_dropEffect") int32_t wr_DataTransfer_get_dropEffect(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// Values other than the four are ignored.
+WR_IMPORT("dnd", "DataTransfer_set_dropEffect") void wr_DataTransfer_set_dropEffect(uint64_t dt, const uint8_t *value, uint32_t value_len);
+// dataTransfer.effectAllowed
+WR_IMPORT("dnd", "DataTransfer_get_effectAllowed") int32_t wr_DataTransfer_get_effectAllowed(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// Ignored outside read/write mode and for a value that is not one of the nine.
+WR_IMPORT("dnd", "DataTransfer_set_effectAllowed") void wr_DataTransfer_set_effectAllowed(uint64_t dt, const uint8_t *value, uint32_t value_len);
+// getData(format): "" in protected mode or when absent ("text" is text/plain, "url" the first URL of text/uri-list).
+WR_IMPORT("dnd", "DataTransfer_getData") int32_t wr_DataTransfer_getData(uint64_t dt, const uint8_t *format, uint32_t format_len, uint8_t *_buf, uint32_t _cap);
+// setData(format, data): ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_setData") void wr_DataTransfer_setData(uint64_t dt, const uint8_t *format, uint32_t format_len, const uint8_t *data, uint32_t data_len);
+// clearData(format): every string item, or those of the format; ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_clearData") void wr_DataTransfer_clearData(uint64_t dt, const uint8_t *format, uint32_t format_len);
+// setDragImage(image, x, y): ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_setDragImage") void wr_DataTransfer_setDragImage(uint64_t dt, uint64_t image, int32_t x, int32_t y);
+// The types, in order, separated by "\n" ("Files" last when there are files).
+WR_IMPORT("dnd", "DataTransfer_typeList") int32_t wr_DataTransfer_typeList(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// The number of items (DataTransferItemList.length; 0 in disabled mode).
+WR_IMPORT("dnd", "DataTransfer_itemCount") int32_t wr_DataTransfer_itemCount(uint64_t dt);
+// An item's kind (Invalid_Argument past the end).
+WR_IMPORT("dnd", "DataTransfer_itemKind") int32_t wr_DataTransfer_itemKind(uint64_t dt, int32_t index, int32_t *_ret);
+// An item's type.
+WR_IMPORT("dnd", "DataTransfer_itemType") int32_t wr_DataTransfer_itemType(uint64_t dt, int32_t index, uint8_t *_buf, uint32_t _cap);
+// A string item's data (Invalid_State in protected mode).
+WR_IMPORT("dnd", "DataTransfer_itemString") int32_t wr_DataTransfer_itemString(uint64_t dt, int32_t index, uint8_t *_buf, uint32_t _cap);
+// A file item's file (0: not a file, or protected mode).
+WR_IMPORT("dnd", "DataTransfer_itemFile") int32_t wr_DataTransfer_itemFile(uint64_t dt, int32_t index, uint64_t *_ret);
+// items.add(data, type): Invalid_State outside read/write mode, Not_Supported when a string item of the type exists.
+WR_IMPORT("dnd", "DataTransfer_addString") int32_t wr_DataTransfer_addString(uint64_t dt, const uint8_t *data, uint32_t data_len, const uint8_t *type, uint32_t type_len);
+// items.add(file) for a file of the browser (a dropped or chosen one).
+WR_IMPORT("dnd", "DataTransfer_addFile") int32_t wr_DataTransfer_addFile(uint64_t dt, uint64_t file);
+// items.add(file) for a File made by the page: its bytes are copied (Quota past the page's memory limit).
+WR_IMPORT("dnd", "DataTransfer_addBytes") int32_t wr_DataTransfer_addBytes(uint64_t dt, const uint8_t *name, uint32_t name_len, const uint8_t *type, uint32_t type_len, const uint8_t *data, uint32_t data_len, double last_modified);
+// items.remove(index): Invalid_State outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_removeItem") int32_t wr_DataTransfer_removeItem(uint64_t dt, int32_t index);
+// items.clear(): Invalid_State outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_clearItems") int32_t wr_DataTransfer_clearItems(uint64_t dt);
+// The files (dataTransfer.files: none outside read/write and read-only mode).
+WR_IMPORT("dnd", "DataTransfer_fileCount") int32_t wr_DataTransfer_fileCount(uint64_t dt);
+// One of them.
+WR_IMPORT("dnd", "DataTransfer_file") int32_t wr_DataTransfer_file(uint64_t dt, int32_t index, uint64_t *_ret);
+// The mode: 0 protected, 1 read/write, 2 read-only.
+WR_IMPORT("dnd", "DataTransfer_mode") int32_t wr_DataTransfer_mode(uint64_t dt);
+// A file's name (no directory).
+WR_IMPORT("dnd", "LocalFile_name") int32_t wr_LocalFile_name(uint64_t file, uint8_t *_buf, uint32_t _cap);
+// Its MIME type ("" when unknown).
+WR_IMPORT("dnd", "LocalFile_type") int32_t wr_LocalFile_type(uint64_t file, uint8_t *_buf, uint32_t _cap);
+// Its size and time.
+WR_IMPORT("dnd", "LocalFile_info") void wr_LocalFile_info(uint64_t file, wr_LocalFileInfo *_ret);
+// Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
+// changed since it was given: File API "NotReadableError").
+WR_IMPORT("dnd", "LocalFile_read") int32_t wr_LocalFile_read(uint64_t file, int64_t offset, uint8_t *into, uint32_t into_cap, int64_t *_ret);
+// DragEvent.dataTransfer of an event the browser dispatches (0 for another event).
+WR_IMPORT("dnd", "DragEvent_dataTransfer") uint64_t wr_DragEvent_dataTransfer(uint64_t event);
+// input.files.length (0 for an element that is not a file input).
+WR_IMPORT("dnd", "InputFiles_count") int32_t wr_InputFiles_count(uint64_t input);
+// input.files[index]
+WR_IMPORT("dnd", "InputFiles_item") int32_t wr_InputFiles_item(uint64_t input, int32_t index, uint64_t *_ret);
+// input.files = dataTransfer.files: the store's files become the input's selection (Invalid_State for an element
+// that is not a file input).
+WR_IMPORT("dnd", "InputFiles_assign") int32_t wr_InputFiles_assign(uint64_t input, uint64_t from);
 
 /* module scripts */
 // document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document

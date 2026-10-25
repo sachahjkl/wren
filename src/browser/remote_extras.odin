@@ -67,7 +67,8 @@ event_json :: proc(b: ^strings.Builder, re: Rec_Event) {
 	case .Scroll:      fmt.sbprintf(b, `,"x":%.1f,"y":%.1f,"dx":%.3f,"dy":%.3f`, e.pos.x, e.pos.y, e.delta.x, e.delta.y)
 	case .Key_Press, .Key_Release: fmt.sbprintf(b, `,"key":"%v"`, e.key)
 	case .Text:        strings.write_string(b, `,"text":`); remote.write_json_string(b, fmt.tprintf("%c", e.text))
-	case .None, .Mouse_Leave, .Close, .Activate:
+	case .Pointer_Down, .Pointer_Move, .Pointer_Up, .Pointer_Cancel, .Drop_Enter, .Drop_Over, .Drop: fmt.sbprintf(b, `,"x":%.1f,"y":%.1f`, e.pos.x, e.pos.y)
+	case .None, .Mouse_Leave, .Close, .Activate, .Drop_Leave:
 	}
 	if e.mods != {} { fmt.sbprintf(b, `,"mods":%d`, (.Ctrl in e.mods ? 1 : 0) | (.Shift in e.mods ? 2 : 0) | (.Alt in e.mods ? 4 : 0)) }
 	strings.write_byte(b, '}')
