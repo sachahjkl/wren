@@ -867,6 +867,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
+		if ev.kind == .Mouse_Release && ev.button == .Left { sshell.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
@@ -903,10 +904,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
+			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
 			local := ev.pos - app.page_rect.min + {0, t.scroll}
 			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
-			dragged := selection_pointer_up(app, t, ev)
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if t.page == nil { return }
 			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }

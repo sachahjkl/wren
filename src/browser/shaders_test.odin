@@ -218,7 +218,7 @@ the_card_turns_over_with_real_3d_and_has_no_turn_where_motion_is_reduced :: proc
 		"@property --rx", "@property --ry", "--rx 0.55s", "var(--rx) var(--ry)"}) {
 		testing.expectf(t, strings.contains(css, want), "the card's style lacks %q", want)
 	}
-	testing.expect_value(t, strings.count(css, "backface-visibility: hidden"), 3)   // the foil, the lettering and the back
+	testing.expect_value(t, strings.count(css, "backface-visibility: hidden"), 4)   // the foil, the logo, the lettering and the back
 	// reduced motion and a narrow card: no back, no button (the script does not make it ready either)
 	reduced := css[strings.index(css, "@media (prefers-reduced-motion: reduce)"):]
 	reduced = reduced[:strings.index(reduced, "\n")]

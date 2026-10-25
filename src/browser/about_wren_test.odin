@@ -159,6 +159,16 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, !strings.contains(html, `class="tick"`), "no bordered box for the tick")
 	testing.expect(t, !strings.contains(html, "setInterval") && !strings.contains(html, "requestAnimationFrame(loop"), "the card's script never loops: no frame at rest")
+	// the logo is printed on the card: one picture, outside the layer whose parallax the pointer moves (it floated and snapped back on release),
+	// and what does slide eases with the card
+	card := html[strings.index(html, `class="cardbox"`):]
+	testing.expect_value(t, strings.count(card[:strings.index(card, "<script>")], "<img"), 1)
+	logo, face := strings.index(card, `<img class="logo"`), strings.index(card, `<div class="face">`)
+	testing.expect(t, logo >= 0 && logo < face && !strings.contains(card[face:strings.index(card, `class="seal"`)], "<img"), "the logo is not in the face")
+	testing.expect(t, strings.contains(html, ".lic .logo { position: absolute;") && !strings.contains(html[strings.index(html, ".lic .logo {"):][:240], ", 18px"), "the logo is in the base's plane, not lifted")
+	for want in ([]string{"function follow(ms)", "face.style.transition = s; shadow.style.transition = s;", ".lic .face {", "transition: transform 0.55s", ".lic.live .face, .lic.live .seal .shadow { transition: none; }"}) {
+		testing.expectf(t, strings.contains(html, want), "the parallax layers do not ease with the card: lacks %q", want)
+	}
 	// every page has the beta notice
 	testing.expect(t, strings.contains(html, "Wren is a beta under development."))
 }

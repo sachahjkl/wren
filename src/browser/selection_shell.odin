@@ -226,6 +226,9 @@ extend_to :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 selection_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	if ev.button != .Left { return false }
 	was := sshell.down && sshell.moved && sshell.selected_by_drag
+	// a press that was waiting for a fresh layout (selection_shell_frame) is over with its release: started later it would open a gesture
+	// with the button already up, and the next moves would select text
+	sshell.pending = false
 	sshell.down = false
 	return was
 }
