@@ -548,10 +548,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
 } -UiOnly
 Step 'developer tools resized (tools\devtools_resize_e2e.ps1: the docked panel has the size the preference gives it; neither the browser window nor the window of the panel is shown stretched while it is resized, read from the screen after each step; the real mouse drags the corner of each window, panel detached)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1
-}
+} -UiOnly
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
-}
+} -UiOnly
 Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     }
