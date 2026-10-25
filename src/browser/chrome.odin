@@ -155,6 +155,15 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	if ui.row(.Center, {}, "###address_bar") {
 		// rounded like the popovers and menus of the chrome (popups: em * 0.5)
 		field := ui.Style_Mod{width = ui.pct(1), height = ui.pct(1), radius = em * 0.5}
+		if classic_on() {
+			// the bar draws the field's frame (white, hollow, outlined: toolbar_draw's neighbour) and the field only its text
+			cf := ui.frame_new(Classic_Field)
+			cf^ = {c = classic_colors_frame(app), radius = em * CHROME_BUTTON_RADIUS}
+			bar := ui.parent_box()
+			bar.custom, bar.custom_user = field_frame_draw, cf
+			field.radius = cf.radius
+			field.bg, field.border = draw.Color{}, draw.Color{}
+		}
 		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
 		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
@@ -307,6 +316,11 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			chip_segment.divider = ui.color("border")
 			f := ui.color("background")   // a translucent field: what shows is the field over the window
 			chip_segment.under = draw.mix(window_bg, draw.Color{f.r, f.g, f.b, 1}, f.a)
+			if classic_on() {
+				cc := classic_colors_frame(app)
+				chip_segment.divider = cc.field_edge
+				chip_segment.under = ui.srgb_step(cc.field_top, cc.field, 0.5)
+			}
 		}
 		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(security_chip_width), height = ui.px(height)})
 		ui.custom("###sec_segment", chip_segment_draw, &chip_segment)
@@ -564,6 +578,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.console")
 			menu_command(app, t, "view.full_screen")
 			menu_command(app, t, "view.tabs_in_title_bar")
+			menu_command(app, t, "view.chrome_style.classic")
+			menu_command(app, t, "view.chrome_style.modern")
 		}
 		menu_command(app, t, "browser.command_palette")
 		menu_command(app, t, "browser.settings")
