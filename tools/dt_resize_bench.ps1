@@ -8,7 +8,7 @@
 # test server with some requests) | heavy (10 000 elements). -Only takes names or wildcards.
 # Input is posted to the window (no desktop.lock), as tools\perf.ps1 does; each run holds bench.lock.
 param([string[]]$Only = @(), [string]$Tag = '', [int]$Passes = 1, [string]$Exe = 'wren_prof.exe', [switch]$Sample, [int]$Secs = 6,
-      [string[]]$Pref = @(), [string]$Out = '', [switch]$Real)
+      [string[]]$Pref = @(), [string]$Out = '', [switch]$Real, [string]$Site = '', [string[]]$Tabs = @(), [string[]]$OnlyPages = @())
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $outDir = if ($Out) { $Out } else { Join-Path $root 'build\dtbench' }
@@ -49,6 +49,8 @@ public class DB {
 Add-Type -AssemblyName System.Drawing
 $script:WrenExe = Join-Path $root "build\$Exe"
 $Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$Tabs = @($Tabs | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$OnlyPages = @($OnlyPages | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 
 function Pct($v, $p) { if ($v.Count -eq 0) { return 0 }; $s = @($v | Sort-Object); $s[[Math]::Min($s.Count - 1, [Math]::Max(0, [int][Math]::Ceiling($s.Count * $p / 100) - 1))] }
 function Rnd($x, $n = 1) { [math]::Round([double]$x, $n) }
@@ -248,7 +250,10 @@ try {
     $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
     $light = "$($srv.Origin)/site/devtools/dt4.html"
     $pages = [ordered]@{ light = $light; heavy = (FileUrl $heavy); reflow = (FileUrl $reflow); wrap = (FileUrl $wrap) }
-    $tabs = 'console', 'elements', 'network'
+    # -Site: a real site (and about:home) among the pages; -Tabs: only these panels; -OnlyPages: only these pages
+    if ($Site) { $pages['site'] = $Site; $pages['home'] = 'about:home' }
+    if ($OnlyPages.Count -gt 0) { foreach ($k in @($pages.Keys)) { if ($OnlyPages -notcontains $k) { $pages.Remove($k) } } }
+    $tabs = if ($Tabs.Count -gt 0) { $Tabs } else { 'console', 'elements', 'network' }
     foreach ($pg in $pages.Keys) {
         $url = $pages[$pg]
         $settle = if ($pg -ne 'light') { 9 } else { 5 }
