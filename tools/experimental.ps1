@@ -7,7 +7,8 @@
 #   powershell -File tools\experimental.ps1 -NoBuild         pack what build\wren.exe is (a release built with the label)
 #   -Label experimental-2026-10-25   the label after the version (default: experimental-<today>)
 #   -Notes file.md                   known limits to put in the notes, instead of the default ones
-#   -Vault dir|none                  where a copy of the zip, the notes and the link are kept (default: the vault's folder; none: no copy)
+#   -Vault dir                       keep the notes and the link (a few lines of text, never the zip or the exe) in that folder; by default nothing is kept:
+#                                    an experimental build is thrown away, it is in build\experimental (not tracked by git) and at its link
 #
 # What it does, in order: build.bat release with WREN_VERSION_LABEL and WREN_ACCEPT_DEV_LICENSE_KEY (build.bat); tools\package.ps1
 # (the one file wren-<version>-<label>-windows-x64.exe and its SHA-256); a demonstration licence made with the development key
@@ -20,7 +21,7 @@ param(
     [switch]$NoUpload,
     [switch]$NoVerify,
     [string]$Notes = '',
-    [string]$Vault = 'E:\Drive\Privaté\notes\Notes de Sacha\OpenCode\2026-10-22 - Worktrees Wren et page support\Release experimentale'
+    [string]$Vault = ''
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -167,11 +168,10 @@ if (-not $NoUpload) {
     if ($head -notmatch 'HTTP/\S+ 200') { Say "WARNING: the link does not answer 200 yet ($($head.Split("`n")[0].Trim()))" } else { Say 'the link answers 200' }
 }
 
-# ---- 7. a copy where the notes of the session live
-if ($Vault -ne '' -and $Vault -ne 'none' -and (Test-Path (Split-Path $Vault -Parent))) {
+# ---- 7. only if asked: the notes and the link (text), not the build
+if ($Vault -ne '') {
     $dest = Join-Path $Vault (Get-Date -Format 'yyyy-MM-dd HHmm')
     New-Item -ItemType Directory -Force $dest | Out-Null
-    Copy-Item $zip $dest
     Copy-Item "$stage\README.txt" "$dest\NOTES.txt"
     $info = "$base`r`nzip sha256: $zipSha`r`nexe sha256: $sha`r`ncommit: $commit`r`nlink: $link`r`n"
     [IO.File]::WriteAllText("$dest\LIEN.txt", $info, (New-Object Text.UTF8Encoding $false))
