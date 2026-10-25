@@ -409,7 +409,8 @@ title_fade_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	step := f.width / f32(n)
 	for k in 0 ..< n {
 		x1 := r.max.x - f32(n - 1 - k) * step
-		slice := draw.Rect{{x1 - step, t.box.rect.min.y}, {x1, t.box.rect.max.y}}
+		// (from under the light hairline along the top: laid over it, the fade hid it and it came back in a cut where the fade ends)
+		slice := draw.Rect{{x1 - step, t.box.rect.min.y + t.m.edge}, {x1, t.box.rect.max.y}}
 		a := f32(k + 1) / f32(n)
 		vgradient(dc, slice, t.box.rect.min.y, t.box.rect.max.y, t.top, t.bot, {1, 1, 1, a * a * (3 - 2 * a)})
 	}
