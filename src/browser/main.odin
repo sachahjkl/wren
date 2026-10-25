@@ -1099,6 +1099,12 @@ frame :: proc(app: ^App, idled := false) {
 		if app.frames_requested > asked { windows_spill(app, app.frames_requested) }
 	}
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
+	// a window whose last tab just left (a move: the window closes at the end of the pass) has nothing to build
+	if len(app.tabs) == 0 && len(app.windows) > 1 {
+		shell_page_phase_end(app, nil)
+		free_all(context.temp_allocator)
+		return
+	}
 	prof_end(.Loop)
 	// a wake that brought nothing (a timer of the system for the window, a message of no consequence): no frame. (It
 	// was one, and the status bar counted it, and armed its settle wake again: two frames every half second, forever.)
