@@ -68,7 +68,9 @@ $script:queue = New-Object System.Collections.Generic.List[object]
 $script:serverSteps = $false
 # -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
 # clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
-function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly) {
+# -Weight s: about how many seconds the step takes on a CI runner, for the order of a run that has no durations of a last run (a fresh checkout
+# has no build\test_all_times.txt): the longest steps start first, so that none is left alone at the end.
+function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly, [int]$Weight = 0) {
     if ($UiOnly -and -not $Ui) {
         $short = ($name -split ' [(]')[0]
         "ui: skipped, run with -Ui (test_all.ps1 -Ui, or WREN_UI_TESTS=1): $short"
@@ -84,7 +86,7 @@ function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly) {
             if ($val -is [string] -or $val -is [int] -or $val -is [bool]) { $vars[$n] = $val }
             elseif ($val -is [array] -and @($val | Where-Object { $_ -isnot [string] }).Count -eq 0) { $vars[$n] = [string[]]$val }
         }
-        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light })
+        $script:queue.Add([pscustomobject]@{ Name = $name; Body = $body.ToString(); Server = $script:serverSteps; Vars = $vars; Light = [bool]$Light; Weight = $Weight })
         return
     }
     $t0 = Get-Date
@@ -124,7 +126,7 @@ $stepJob = {
 function Flush-Steps([string]$NameLike = '*') {
     $pending = New-Object System.Collections.Generic.List[object]
     $mine = @($script:queue | Where-Object { $_.Name -like $NameLike })
-    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } else { -60 } })) { $pending.Add($s) }
+    foreach ($s in ($mine | Sort-Object { if ($script:times.ContainsKey($_.Name)) { -$script:times[$_.Name] } elseif ($_.Weight -gt 0) { -$_.Weight } else { -60 } })) { $pending.Add($s) }
     foreach ($s in $mine) { [void]$script:queue.Remove($s) }
     $running = @{}
     $names = @{}
@@ -211,65 +213,42 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'developer tools docked: the page area follows the size of the panel, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
 }
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
     # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
-}
+} -Weight 60
 Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
 }
 Step 'the console launcher wren.com (tools\wrencom_e2e.ps1: from a terminal wren ctl gives its output and exit code, redirections and pipes included; an address lets go at once; it dies with its child and will not start itself; Setup writes it beside wren.exe with the PATH entry and takes it away with it)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\wrencom_e2e.ps1
 }
 Step 'a program of the working directory never runs in place of the system''s (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for the Windows record; one planted beside the document must not run)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\planted_program_e2e.ps1
 }
 Step 'what a page can do to the answers of wren ctl eval (tools\remote_page_e2e.ps1: it sees the line, so the line holds no secret; another tab''s forgery and a value with a line break change nothing)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_page_e2e.ps1
-}
+} -Weight 15
 Step 'wren ctl stop ends the Wren it started and nothing else (tools\ctl_stop_e2e.ps1: a session file whose pid is another program''s now, or that does not say who the process was, leaves that program alone)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\ctl_stop_e2e.ps1
 }
 Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1: a Wren ended by its own process id leaves running.txt and recovery.txt, the next start restores the tabs, a restoring start that ends too is followed by a blank page and the tabs kept in a file, a normal end removes both files, a Wren that still runs is not taken for a crash)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_recovery_e2e.ps1
 } -UiOnly
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
-    if (-not (Test-WrenBuildFresh)) {
-        cmd /c build.bat | Out-Null
-        if ($LASTEXITCODE) { return }
-    }
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\nav_trust_e2e.ps1
-}
+} -Weight 20
 
 Step 'unit tests: wasm' { odin test src/wasm -use-separate-modules $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/bindgen_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -280,7 +259,7 @@ Step 'process allocators: no runtime.default_context / heap_allocator / default_
     $global:LASTEXITCODE = $hits.Count
 }
 Step 'generated web API up to date (bindgen -check)' { odin run src/tools/bindgen -collection:wb=src -vet -out:build/bindgen_check.exe $Stack -- -check }   # (its own exe: build.bat, which a parallel step runs, writes build\bindgen.exe)
-Step 'test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\tools\test262\known_failures.txt does not list), then the JIT: examples\jsbench\jitcheck.js interpreted and compiled (every function and loop at once, synchronously and with the step path) and test262 the same way (one step: both runs build and write build\test262)' { $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\test262.ps1', '-NoNative'); if ($Quick) { $a += '-Quick' }; powershell @a; if ($LASTEXITCODE) { return }; odin build src/tools/jsengine -use-separate-modules -collection:wb=src -vet -o:speed -out:build\jsengine_jit.exe $Stack; if ($LASTEXITCODE) { return }; & build\jsengine_jit.exe verify -image build\js\wren_js.wasm -jit -jit-threshold 1 -jit-loop 1 -jit-sync examples\jsbench\jitcheck.js; if ($LASTEXITCODE) { return }; & build\jsengine_jit.exe verify -image build\js\wren_js.wasm -jit -jit-threshold 1 -jit-loop 1 -jit-sync -jit-step examples\jsbench\jitcheck.js; if ($LASTEXITCODE) { return }; $a += @('-Jit', '-JitSync', '-JitThreshold', '2', '-JitLoop', '1'); powershell @a }
+Step 'test262 in the Wasm engine (-Quick: every 25th test; fails on a failure src\tools\test262\known_failures.txt does not list), then the JIT: examples\jsbench\jitcheck.js interpreted and compiled (every function and loop at once, synchronously and with the step path) and test262 the same way (one step: both runs build and write build\test262)' { $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\test262.ps1', '-NoNative'); if ($Quick) { $a += '-Quick' }; powershell @a; if ($LASTEXITCODE) { return }; odin build src/tools/jsengine -use-separate-modules -collection:wb=src -vet -o:speed -out:build\jsengine_jit.exe $Stack; if ($LASTEXITCODE) { return }; & build\jsengine_jit.exe verify -image build\js\wren_js.wasm -jit -jit-threshold 1 -jit-loop 1 -jit-sync examples\jsbench\jitcheck.js; if ($LASTEXITCODE) { return }; & build\jsengine_jit.exe verify -image build\js\wren_js.wasm -jit -jit-threshold 1 -jit-loop 1 -jit-sync -jit-step examples\jsbench\jitcheck.js; if ($LASTEXITCODE) { return }; $a += @('-Jit', '-JitSync', '-JitThreshold', '2', '-JitLoop', '1'); powershell @a } -Weight 114
 Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capacity)' {
     odin build examples/apiconformance -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -out:build/apiconformance.wasm -o:size
     if ($LASTEXITCODE -ne 0) { return }
@@ -293,7 +272,7 @@ Step 'web API conformance (generated cases: bounds, UTF-8, handles, enums, capac
 # DirectWrite, color glyphs, COLR interpreter and built-in emoji, masks, precompiled shaders, Slug text; WARP.) The 14 suites are 58 s one after the other:
 # in five steps of about 12 s they go to whichever job is free.
 foreach ($group in 'shadows,text,color_glyphs', 'gpufx,gradients,layers', 'colr,masks,slug', 'planes,effects,retained', 'blend_space,shaders') {
-    Step "graphics toolkit pixel tests: $group (WARP)" { $o = ''; $suites = $group -split ','; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } }
+    Step "graphics toolkit pixel tests: $group (WARP)" { $o = ''; $suites = $group -split ','; foreach ($t in $suites) { $o += odin test "ext/gui_toolkit/tests/$t" -use-separate-modules $MemCheck -vet -out:"build/toolkit_${t}_test.exe" 2>&1 | Out-String }; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if (([regex]::Matches($o, 'All tests were successful|The test was successful')).Count -eq $suites.Count) { 0 } else { 1 } } -Weight 20
 }
 Step 'graphics toolkit color glyph tests again with the COLR interpreter instead of Direct2D (COLR v0 / v1: gradients, paint trees, text color, async, pictures)' { $o = odin test ext/gui_toolkit/tests/color_glyphs -use-separate-modules $MemCheck -vet -define:COLR_ENGINE=builtin -out:build/toolkit_color_glyphs_builtin_test.exe 2>&1 | Out-String; $o -replace 'All tests were successful', 'passed'; $global:LASTEXITCODE = if ($o -match 'All tests were successful') { 0 } else { 1 } }
 Step 'graphics toolkit keyboard tests (menus, lists, line edit history, wrapped text; no window)' { odin test ext/gui_toolkit/tests/keyboard -use-separate-modules $MemCheck -vet -define:ODIN_TEST_THREADS=1 -out:build/toolkit_keyboard_test.exe 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -308,7 +287,7 @@ Step 'build guest mutation.wasm' { odin build examples/mutation -target:freestan
 Step 'build guest mutation_class.wasm' { odin build examples/mutation_class -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:examples/site/mutation_class.wasm -o:size }
 Step 'build formstest' { odin build src/tools/formstest -use-separate-modules -collection:wb=src -vet $Track -out:build/formstest.exe $Stack }
 Step 'build pagetest' { odin build src/tools/pagetest -use-separate-modules -collection:wb=src -vet $Track -out:build/pagetest.exe $Stack }
-Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { odin build src/tools/jstest -use-separate-modules -collection:wb=src -vet $Track -out:build/jstest.exe -o:speed $Stack; if ($LASTEXITCODE -eq 0) { .\build\jstest.exe } }
+Step 'JavaScript in pages (jstest: realm, scripts, bindings, events, wrappers and node lifetime, bytecode cache, interruption)' { odin build src/tools/jstest -use-separate-modules -collection:wb=src -vet $Track -out:build/jstest.exe -o:speed $Stack; if ($LASTEXITCODE -eq 0) { .\build\jstest.exe } } -Weight 48
 Step 'build policytest' { odin build src/tools/policytest -use-separate-modules -collection:wb=src -vet $Track -out:build/policytest.exe $Stack }
 Step 'build web API test (guest + tool)' { odin build examples/webapitest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/webapitest.wasm -o:size; if ($LASTEXITCODE -eq 0) { odin build src/tools/webapitest -use-separate-modules -collection:wb=src -vet $Track -out:build/webapitest.exe $Stack } }
 Step 'build fetch' { odin build src/tools/fetch -use-separate-modules -collection:wb=src -vet -out:build/fetch.exe $Stack }
@@ -377,6 +356,27 @@ Step 'build testserver (and its tests: /site/ index, listings, extensionless pag
 # what the steps below use is built: the builds run now. The other queued steps stay queued and run with the steps below, in one batch
 # (longest first), instead of the steps below waiting for the slowest of them.
 if ($Jobs -gt 1) { Flush-Steps 'build *' }
+
+# The browser's check build (build.bat check: every allocation tracked): -CI and full runs. Two steps use it, each with a test server of its own
+# (they need none of this run's): they are queued here, not at the end, so that they run in the one batch below with the long steps (a step
+# that is alone at the end of a run keeps the others' slots idle). Both get the program from Ensure-WrenBuild (test_env.ps1): the first to need it
+# builds it, the other waits for that build, nothing else does (two build.bat at once refuse each other's files).
+#  1. it drives itself through a session and through tabs opened and closed by the dozen (tools\memcheck_e2e.ps1, tools\endurance.ps1): nothing
+#     may be left allocated at exit, nor grow while it runs. It opens a window (no input of the desktop's); the endurance run is the long one in
+#     full runs (400 tabs, the native memory too).
+#  2. the remote control channel (every allocation tracked): a session that touches the whole channel exits with nothing allocated.
+if ($CI -or -not $Quick) {
+    Step 'browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\memcheck_e2e.ps1 -TimeoutSec (300 * $slow)
+        if ($LASTEXITCODE) { return }
+        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\endurance.ps1', '-NoBuild', '-TimeoutSec', (1800 * $slow))
+        if ($Quick) { $a += @('-Cycles', '8', '-Warmup', '3', '-NoNative') }
+        powershell @a
+    } -Weight 120
+    Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
+        powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
+    } -Weight 30
+}
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it
 # listens on all of them, not after a fixed delay: a slow runner may take longer to start it); otherwise each step
@@ -518,7 +518,7 @@ try {
         $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\wpt.ps1', '-NoServer', '-Port', ([int]$env:WREN_TEST_BASE_PORT + 3), '-TimeoutMs', (10000 * $slow))
         if ($Quick) { $a += '-Quick' }
         powershell @a
-    }
+    } -Weight 50
     if ($Jobs -gt 1) { Flush-Steps }
 } finally {
     Stop-WrenTestServer $srv
@@ -528,20 +528,7 @@ try {
     Get-Job | Where-Object { $_.Id -ne $script:watchdog.Id } | Remove-Job -Force -ErrorAction SilentlyContinue
 }
 
-# The browser's check build (build.bat check: every allocation tracked) drives itself through a session and through
-# tabs opened and closed by the dozen (tools\memcheck_e2e.ps1, tools\endurance.ps1): nothing may be left allocated at
-# exit, nor grow while it runs. It opens a window (no input of the desktop's): with -CI, and in full runs, where the
-# endurance run is the long one (400 tabs, the native memory too).
-if ($CI -or -not $Quick) {
-    Step 'browser check build: a scripted session (tabs, JavaScript, images, forms, back/forward cache, palette, history) exits with nothing allocated; tabs opened and closed by the dozen leave nothing growing (tracked bytes, handles; the native memory too in full runs)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\memcheck_e2e.ps1 -TimeoutSec (300 * $slow)
-        if ($LASTEXITCODE) { return }
-        $a = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'tools\endurance.ps1', '-NoBuild', '-TimeoutSec', (1800 * $slow))
-        if ($Quick) { $a += @('-Cycles', '8', '-Warmup', '3', '-NoNative') }
-        powershell @a
-    }
-}
-# The remote control channel on the check build (every allocation tracked): the same session exits with nothing allocated.
+# The steps that need a desktop and are asked for with -Ui (they are skipped otherwise).
 if ($CI -or -not $Quick) {
     Step 'crash reports (tools\crash_e2e.ps1: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
@@ -552,9 +539,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
 } -UiOnly
-Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
-        powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
-    }
 }
 # AddressSanitizer on the unit tests of every package (tools\asan.ps1, three packages at a time): -CI and full runs, unless -NoAsan (the CI runs
 # it as a job of its own, beside the others).

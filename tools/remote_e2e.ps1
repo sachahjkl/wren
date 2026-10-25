@@ -24,7 +24,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot\test_env.ps1"
 if (-not $Exe) { $Exe = Join-Path $root $(if ($Check) { 'build\wren_check.exe' } else { 'build\wren.exe' }) }
-if ($Check -and -not (Test-Path $Exe)) { cmd /c "build.bat check" | Out-Host; if ($LASTEXITCODE) { 'FAIL building the check build'; exit 1 } }
+if ($Check -and $Exe -eq (Join-Path $root 'build\wren_check.exe')) {
+    # (built unless newer than its sources, and never beside another build of this tree: memcheck_e2e.ps1 needs the same program)
+    if (-not (Ensure-WrenBuild 'check')) { $global:WrenBuildOutput; 'FAIL building the check build'; exit 1 }
+}
 $env:WREN_EXE = (Resolve-Path $Exe).Path
 . "$PSScriptRoot\wrenctl.ps1"
 Section '0 script start: Add-Type, helpers'
