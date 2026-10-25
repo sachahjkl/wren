@@ -237,12 +237,12 @@ tab_select :: proc(app: ^App, i: int) {
 page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 	if page_focus_leave_backward {
 		page_focus_leave_backward = false
-		ui.focus_step(&app.ui_state, pb.key, -1)
+		ui.focus_step(app.ui_state, pb.key, -1)
 		return
 	}
 	if ui.focus_key() != pb.key { return }
 	ui.set_focus(0)
-	forms_focus_from_chrome(app, t, ui.tab_direction(&app.ui_state) < 0 ? -1 : 1)
+	forms_focus_from_chrome(app, t, ui.tab_direction(app.ui_state) < 0 ? -1 : 1)
 }
 
 // Set by the page's context menu: open the page information popup of the security chip.
@@ -270,6 +270,8 @@ tab_move_current :: proc(app: ^App, delta: int) {
 // Width of the security chip at the last layout (the address field leaves it that much room).
 @(private = "file")
 security_chip_width: f32
+
+chrome_window_local :: proc() { window_local(&security_chip_width) }   // (a window's own: windows.odin)
 
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.

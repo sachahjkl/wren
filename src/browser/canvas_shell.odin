@@ -23,7 +23,7 @@ canvas_shell_init :: proc(app: ^App) {
 			pf := &page_render.fonts
 			// the page's own web fonts, whichever tab is drawn now
 			old := pf.scope
-			for t in app.tabs { if t.page == p { page_fonts_scope(pf, t); break } }
+			for t in tabs_all(app) { if t.page == p { page_fonts_scope(pf, t); break } }
 			defer page_fonts_scope(pf, old)
 			req := lay.Font_Request{
 				families = spec.families, weight = spec.weight, italic = spec.italic,

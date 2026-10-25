@@ -45,7 +45,7 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 	switch ev.kind {
 	case .Blocked:
 		if bl.b.cfg.console && ev.tab != 0 {
-			for t in app.tabs {
+			for t in tabs_all(app) {
 				if t.id != ev.tab { continue }
 				rule := ev.rule != "" ? fmt.tprintf(" (%s)", ev.rule) : ""
 				tab_log(t, .Warn, fmt.tprintf("Failed to load resource: net::ERR_BLOCKED_BY_CLIENT %s%s", ev.url, rule))
@@ -56,7 +56,7 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 	case .Changed, .Lists:
 		app.frames_requested = max(app.frames_requested, 1)
 	case .Reload:
-		for t in app.tabs { if t.id == ev.tab && t.kind == .Web { reload(app, t); break } }
+		for t in tabs_all(app) { if t.id == ev.tab && t.kind == .Web { reload(app, t); break } }
 	}
 }
 

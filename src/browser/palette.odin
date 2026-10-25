@@ -520,7 +520,7 @@ palette_remove_source :: proc(name: string) {
 @(private = "file")
 tab_history_items :: proc(user: rawptr, app: ^App, out: ^[dynamic]Palette_Item) {
 	seen := make(map[string]bool, 64, context.temp_allocator)
-	for t in app.tabs {
+	for t in tabs_all(app) {
 		for i := len(t.history) - 1; i >= 0; i -= 1 {
 			u := t.history[i]
 			if u == "" || u in seen { continue }
@@ -539,7 +539,7 @@ tab_history_activate :: proc(user: rawptr, app: ^App, key: string, new_tab: bool
 @(private = "file")
 tab_history_version :: proc(user: rawptr, app: ^App) -> u64 {
 	h: u64 = 0xcbf29ce484222325
-	for t in app.tabs { h = (h ~ t.id) * 0x100000001b3; h = (h ~ u64(len(t.history))) * 0x100000001b3; h = (h ~ u64(t.hist)) * 0x100000001b3 }
+	for t in tabs_all(app) { h = (h ~ t.id) * 0x100000001b3; h = (h ~ u64(len(t.history))) * 0x100000001b3; h = (h ~ u64(t.hist)) * 0x100000001b3 }
 	return h
 }
 
@@ -584,6 +584,7 @@ Palette_Row :: struct {
 
 Palette_State :: struct {
 	open:          bool,
+	window:        int,             // the window it is open in (Browser_Window.id)
 	field:         ui.Text_Field,
 	opened:        time.Tick,
 	focus_pending: bool,
@@ -609,7 +610,8 @@ Palette_State :: struct {
 
 cpal: Palette_State
 
-palette_open :: proc() -> bool { return cpal.open }
+// (The palette belongs to the window it was opened in: the others show nothing of it.)
+palette_open :: proc() -> bool { return cpal.open && the_app != nil && the_app.active != nil && cpal.window == the_app.active.id }
 
 palette_destroy :: proc() {
 	ui.field_destroy(&cpal.field)
@@ -647,6 +649,7 @@ palette_show :: proc(app: ^App, text := "") {
 	usage_load(app)
 	ui.ctx_menu_close()
 	cpal.open = true
+	cpal.window = app.active != nil ? app.active.id : 0
 	ui.field_set(&cpal.field, text)
 	cpal.sel, cpal.first, cpal.scroll_acc = 0, 0, 0
 	cpal.cache_valid = false
@@ -669,7 +672,7 @@ palette_close :: proc(app: ^App) {
 }
 
 // While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
-palette_captures :: proc(pos: draw.Vec2) -> bool { return cpal.open }
+palette_captures :: proc(pos: draw.Vec2) -> bool { return palette_open() }
 
 @(private = "file")
 fnv :: proc(h: u64, s: string) -> u64 {
@@ -689,7 +692,7 @@ results_key :: proc(app: ^App) -> u64 {
 	h = mix(h, u64(app.current))
 	h = mix(h, cpal.usage.version)
 	h = mix(h, u64(len(closed_tabs)))
-	for t in app.tabs { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
+	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
 	t := current_tab(app)
 	for &c, i in commands() { if command_enabled(app, t, &c) { h = mix(h, u64(i) + 1) } }
 	for s in cpal.sources { h = fnv(h, s.name); if s.version != nil { h = mix(h, s.version(s.user, app)) } else { h = mix(h, u64(ui.now_ms())) } }
@@ -739,7 +742,7 @@ palette_collect :: proc(app: ^App, text: string) {
 		}
 	}
 	if mode == .All || mode == .Tabs {
-		for tab in app.tabs {
+		for tab in tabs_all(app) {
 			s, lo, hi, ok := match(&fq, tab.title, tab.url)
 			if !ok { continue }
 			push({kind = .Tab, tab_id = tab.id, title = tab.title, detail = tab.url, category = "Tab", score = s, range_lo = lo, range_hi = hi}, &order)
@@ -864,7 +867,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		if new_tab && c.url != "" { open_in_new_tab(app, c.url, origin = .User) } else { command_run(app, current_tab(app), c) }
 	case .Tab:
 		palette_close(app)
-		for x, k in app.tabs { if x.id == r.tab_id { tab_select(app, k); break } }
+		if x := tab_by_id(app, r.tab_id); x != nil { tab_reveal(app, x) }
 	case .Closed_Tab:
 		address := strings.clone(r.key, context.temp_allocator)
 		palette_close(app)
@@ -928,7 +931,7 @@ label_id :: proc(text, suffix: string) -> string {
 
 // Builds the palette over the window (after the chrome, the page and the menus). Nothing when it is closed.
 palette_build :: proc(app: ^App) {
-	if !cpal.open { return }
+	if !palette_open() { return }
 	palette_ready(app)
 	em := ui.font_size()
 	win_w, win_h := f32(app.win.size.x), f32(app.win.size.y)
@@ -1096,7 +1099,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 		ident = u64(r.index)
 	case .Tab:
 		ident = r.tab_id
-		for x, k in app.tabs { if x.id == r.tab_id && k == app.current { state = "current" } }
+		if x := tab_by_id(app, r.tab_id); x != nil && x == current_tab(app) { state = "current" }
 	case .Closed_Tab:
 		ident = u64(r.index)
 	case .Pref:
@@ -1135,7 +1138,7 @@ palette_row :: proc(app: ^App, t: ^Tab, i: int, w, rh, pad: f32, cols: [2]f32, m
 				switch {
 				case r.kind == .Tab:
 					tab: ^Tab
-					for x in app.tabs { if x.id == r.tab_id { tab = x } }
+					tab = tab_by_id(app, r.tab_id)
 					ui.next({width = ui.px(isz), height = ui.pct(1)})
 					if tab != nil { ui.custom("###ticon", tab_icon_draw, tab_icon_of(app, tab, f32(tab_icon_px(app)))) } else { ui.build_box({}, "###ticon") }
 				case checked:

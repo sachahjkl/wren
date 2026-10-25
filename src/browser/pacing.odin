@@ -250,8 +250,8 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 	// chain keeps it on screen)
 	cause := Resize_Frame_Cause.Page
 	switch {
-	case ui.needs_frame(&app.ui_state): cause = .Ui_Animation
-	case ui.wake_due(&app.ui_state): cause = .Ui_Timer
+	case ui.needs_frame(app.ui_state): cause = .Ui_Animation
+	case ui.wake_due(app.ui_state): cause = .Ui_Timer
 	}
 	wants := page_wants || cause != .Page
 	// a step is a frame at a size not drawn yet (the window's size against the renderer's: pacer_wait only sees a size

@@ -67,7 +67,7 @@ devtools_window_make :: proc(app: ^App) {
 	platform.set_dark_title(w, pal_ok ? pal.dark : true)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
-	ui.use(&app.ui_state)
+	ui.use(app.ui_state)
 	dev_win = dw
 	dev.visible = true
 	platform.show_window(w)
@@ -82,7 +82,7 @@ devtools_attach :: proc(app: ^App) {
 	if dw == nil { return }
 	dev_win = nil
 	ui.destroy(&dw.ui)
-	ui.use(&app.ui_state)
+	ui.use(app.ui_state)
 	render.surface_destroy(&app.r, &dw.surf)
 	platform.destroy_window(dw.win)
 	delete(dw.title)
@@ -121,6 +121,7 @@ devtools_window_tick :: proc(app: ^App) {
 devtools_window_loop_frame :: proc(app: ^App) {
 	devtools_window_frame(app)
 	if chrome_frames.nested || platform.is_closed(app.win) { return }
+	app.pass_first = true
 	frame(app, true)   // (idled: it returns at once when there is nothing to draw nor to run)
 	if app.frames_requested > 0 { app.frames_requested -= 1 }
 }
@@ -172,7 +173,7 @@ devtools_window_frame :: proc(app: ^App) {
 	present_start := qpc()
 	render.frame_end(&app.r, !resizing)
 	prof_window_frame(frame_start, present_start)   // prof.odin: the window's frames of a profile run
-	ui.use(&app.ui_state)
+	ui.use(app.ui_state)
 }
 
 

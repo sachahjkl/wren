@@ -4,7 +4,6 @@ import "core:encoding/base64"
 import "core:fmt"
 import "core:strings"
 import "toolkit:render"
-import "toolkit:ui"
 import "wb:base"
 import "wb:page"
 
@@ -194,5 +193,5 @@ show_home :: proc(app: ^App, t: ^Tab) {
 	delete(t.url); t.url = strings.clone(HOME_URL)
 	delete(t.title); t.title = strings.clone("New tab")
 	set_status(t, fmt.tprintf("%s %s", APP_NAME, APP_VERSION))
-	ui.field_set(&app.address, "")   // the start page shows an empty address bar
+	address_set(app, t, "")   // the start page shows an empty address bar
 }

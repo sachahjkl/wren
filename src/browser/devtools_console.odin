@@ -852,5 +852,5 @@ console_arm_all :: proc(app: ^App) {
 	want := dev.visible && con_prefs.max_payload > 0 ? con_prefs.max_payload : 0
 	if want == page.dev_console_max { return }
 	page.dev_console_max = want
-	for t in app.tabs { if t.page != nil { page.dev_console_arm(t.page, want) } }
+	for t in tabs_all(app) { if t.page != nil { page.dev_console_arm(t.page, want) } }
 }

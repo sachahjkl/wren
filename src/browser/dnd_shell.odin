@@ -87,6 +87,10 @@ dnd_init :: proc(app: ^App) {
 	dnd.ole = platform.drop_target_enable(app.win, true)
 }
 
+// Another window of the browser (windows.odin) is a drop target too, as the first one is.
+dnd_window_attach :: proc(w: ^platform.Window) { if dnd.ole { platform.drop_target_enable(w, true) } }
+dnd_window_detach :: proc(w: ^platform.Window) { if dnd.ole { platform.drop_target_enable(w, false) } }
+
 dnd_destroy :: proc(app: ^App) {
 	dnd_image_end(app)
 	if dnd.ole && app.win != nil { platform.drop_target_enable(app.win, false) }

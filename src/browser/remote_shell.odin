@@ -388,7 +388,7 @@ op_polls :: proc(op: ^Remote_Op) -> bool {
 remote_loaded_events :: proc(app: ^App) {
 	r := &the_remote
 	if len(r.subs) == 0 { return }
-	for t in app.tabs {
+	for t in tabs_all(app) {
 		now := tab_loaded(app, t)
 		was := r.loaded[t.id]
 		if now != was {
@@ -556,8 +556,7 @@ tab_stable :: proc(app: ^App, t: ^Tab) -> bool {
 
 // The tab an op is about (nil: it was closed).
 op_tab :: proc(app: ^App, id: u64) -> ^Tab {
-	for t in app.tabs { if t.id == id { return t } }
-	return nil
+	return tab_by_id(app, id)
 }
 
 @(private = "file")

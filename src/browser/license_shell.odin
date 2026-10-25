@@ -230,7 +230,7 @@ license_choose_file :: proc(app: ^App, t: ^Tab) {
 		defer { delete(job.path); free(job) }
 		if !job.ok { return }
 		app := job.app
-		for tab in app.tabs {
+		for tab in tabs_all(app) {
 			if tab.id != job.tab { continue }
 			notice := license_install_file(app, job.path)
 			show_wren_page(app, tab, WREN_URL, notice = notice)
