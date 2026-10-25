@@ -120,8 +120,17 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 	if ui.active_key() == 0 { strip.drag_id, strip.drag_active = 0, false }   // the button went up (wherever)
 	favicon_frame()
 
+	classic := classic_on()
+	cg: Classic_Geom
+	cc: ^Classic_Colors
+	if classic {
+		cg = classic_geom(em, dpi, h, chrome_cfg.slope_deg)
+		cc = classic_colors_frame(app)
+	}
+
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center})
 	bar := ui.build_box(integrated ? {.Window_Caption} : {}, "###tabstrip")
+	if classic { bar.custom, bar.custom_user = strip_bar_draw, cc }
 	if ui.parent(bar) {
 		lead: f32
 		if integrated {
@@ -137,35 +146,52 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		// are counted
 		new_w := math.round(em * 2.4)
 		buttons := integrated ? 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi) : 0
-		fixed := lead + new_w + em * 0.3 + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4)
+		// classic: each tab is `overlap` wider than its pitch (it covers the next one's left foot) and the strip keeps the
+		// room of the feet's flare at both ends
+		extra := classic ? cg.d.ext * 2 : 0
+		fixed := lead + new_w + em * 0.3 + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
 		avail := max(f32(app.win.size.x) - fixed, em * 4)
 		n := len(app.tabs)
-		w := math.round(tab_width(avail, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
-		area_w := min(f32(n) * w, avail)
+		w := math.round(tab_width(avail - cg.overlap, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
+		vis := min(f32(n) * w + cg.overlap, avail)   // what the tabs show of the strip, flares apart
+		view_w := vis - cg.overlap                   // (what strip_offset calls the width: the pitches' share)
+		area_w := vis + extra
 		cur_id := app.tabs[app.current].id
 		follow := cur_id != strip.follow_id || n != strip.follow_n
 		strip.follow_id, strip.follow_n = cur_id, n
-		strip.offset = strip_offset(strip.offset, n, w, area_w, app.current, follow)
+		strip.offset = strip_offset(strip.offset, n, w, view_w, app.current, follow)
 
 		ui.next({width = ui.px(area_w), height = ui.pct(1), axis = .X})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
 		strip.area_key = area.key
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
-			strip.offset = strip_offset(strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, area_w, app.current, false)
+			strip.offset = strip_offset(strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, app.current, false)
 			app.frames_requested = max(app.frames_requested, 2)
 		}
 		move_from, move_to := -1, -1
 		if ui.parent(area) {
-			// the dragged tab is built last: it draws over the others
+			// the dragged tab is built last: it draws over the others (classic: the current one just before it, as it
+			// is the one in front of the others, and the clicks go to what is drawn on top)
 			dragged := -1
 			for t, i in app.tabs {
-				if strip.drag_active && t.id == strip.drag_id { dragged = i; continue }
-				r := tab_box(app, i, w, area, &move_from, &move_to)
-				if r == .Closed { return true }
+				if strip.drag_active && t.id == strip.drag_id { dragged = i; break }
 			}
-			if dragged >= 0 {
-				if tab_box(app, dragged, w, area, &move_from, &move_to) == .Closed { return true }
+			if classic {
+				order := make([dynamic]int, 0, n, context.temp_allocator)
+				tab_stack_order(n, app.current, dragged, &order)
+				for i in order {
+					if tab_box(app, i, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
+				}
+			} else {
+				for _, i in app.tabs {
+					if i == dragged { continue }
+					r := tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
+					if r == .Closed { return true }
+				}
+				if dragged >= 0 {
+					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
+				}
 			}
 		}
 		if move_from >= 0 {
@@ -181,8 +207,13 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if any_turning { spinner_wake(app) }
 
 		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
-		add := ui.icon_button("###newtab", GLYPH_ADD)
+		add: ui.Signal
+		if classic {
+			add = classic_new_tab_button(app, &cg, cc, h, new_w + extra * 0.5)
+		} else {
+			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
+			add = ui.icon_button("###newtab", GLYPH_ADD)
+		}
 		tip(add, "New tab (Ctrl+T)")
 		if add.clicked { tab_open_new(app) }
 		ui.spacer(ui.fill())   // drags the window
@@ -206,7 +237,8 @@ Tab_Look :: struct {
 
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
 @(private = "file")
-tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^int) -> Tab_Result {
+tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^int, cg: ^Classic_Geom, cc: ^Classic_Colors) -> Tab_Result {
+	classic := cc != nil
 	t := app.tabs[i]
 	n := len(app.tabs)
 	em := ui.font_size()
@@ -223,27 +255,55 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		x = math.round(ui.anim(ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), slot, 30, slot))
 	}
 	prev := ui.prev_box(id)
-	inside := prev != nil && draw.rect_contains(prev.rect, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
+	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
 	if !on { ui.push_tags("weak") }
 	defer if !on { ui.pop_tags() }
-	ui.next({fixed_x = x, fixed_y = 0, width = ui.px(w), height = ui.pct(1), axis = .X, cross = .Center, radius = em * 0.45})
-	// lit under the pointer, also while it is on the tab's close button
-	ui.push_tags("tab")
-	b := ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
-	ui.pop_tags()
+	b: ^ui.Box
+	paint: ^Classic_Tab
+	if classic {
+		// the box holds the whole trapezoid and the flare of its feet; its hit shape is the trapezoid (slant)
+		m := cg.m
+		m.w = w + cg.overlap
+		d := tab_dims(m)
+		ui.next({fixed_x = x, fixed_y = cg.margin, width = ui.px(d.box_w), height = ui.px(cg.h), axis = .X, cross = .Center})
+		ui.push_tags("tab")
+		b = ui.build_box({.Clickable, .Focusable, .Hot_Within}, id)
+		ui.pop_tags()
+		b.slant = tab_slant(d)
+		paint = ui.frame_new(Classic_Tab)
+		paint.m, paint.c, paint.box, paint.dragging = m, cc, b, dragging
+		paint.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
+		paint.hover = ui.anim(ui.key_from_string(b.key, "hov"), inside && !on ? 1 : 0, 40)
+		idle_top, idle_bot := ui.srgb_step(cc.idle_top, cc.hot_top, paint.hover), ui.srgb_step(cc.idle_bot, cc.hot_bot, paint.hover)
+		paint.top = ui.srgb_step(idle_top, cc.lit_top, paint.selected)
+		paint.bot = ui.srgb_step(idle_bot, cc.lit_mid, paint.selected)
+		b.custom, b.custom_user = classic_tab_draw, paint
+	} else {
+		ui.next({fixed_x = x, fixed_y = 0, width = ui.px(w), height = ui.pct(1), axis = .X, cross = .Center, radius = em * 0.45})
+		// lit under the pointer, also while it is on the tab's close button
+		ui.push_tags("tab")
+		b = ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
+		ui.pop_tags()
+		look := ui.frame_new(Tab_Look)
+		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
+		look.accent = ui.color("accent")
+		look.divider = ui.color("border")
+		look.hot = inside
+		next_on := i + 1 == app.current
+		look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
+		b.custom, b.custom_user = tab_look_draw, look
+	}
 	b.cursor = .Arrow
-	look := ui.frame_new(Tab_Look)
-	look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
-	look.accent = ui.color("accent")
-	look.divider = ui.color("border")
-	look.hot = inside
-	next_on := i + 1 == app.current
-	look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
-	b.custom, b.custom_user = tab_look_draw, look
 	closed := false
 	if ui.parent(b) {
-		pad := math.round(em * 0.65)
+		// classic: the content stays clear of the sloped sides (half the lean is at the middle of the tab's height)
+		side: f32
+		if classic {
+			d := tab_dims(paint.m)
+			side = d.ext + d.run * 0.5
+		}
+		pad := classic ? side + math.round(em * 0.45) : math.round(em * 0.65)
 		ui.spacer(ui.px(pad))
 		isz := f32(tab_icon_px(app))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
@@ -251,8 +311,21 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		ui.spacer(ui.px(math.round(em * 0.5)))
 		title := t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
-		ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-		ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+		if classic {
+			// the title is cut by its box (clip) and fades out into the tab's gradient instead of ending in dots
+			ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center})
+			tb := ui.build_box({.Clip}, "###titlebox")
+			if ui.parent(tb) {
+				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+				lb := ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+				fade := ui.frame_new(Title_Fade)
+				fade^ = {tab = paint, width = em * 1.7}
+				lb.custom, lb.custom_user = title_fade_draw, fade
+			}
+		} else {
+			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+		}
 		show_close := on || inside || w >= favs.cfg.close_min_em * em
 		if show_close {
 			cs := math.round(em * 1.45)
@@ -271,14 +344,15 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 				if c.clicked { closed = true }
 			}
 		}
-		ui.spacer(ui.px(math.round(em * 0.35)))
+		// (classic: the next tab covers this one's right foot: the content stops before its slope)
+		ui.spacer(ui.px(classic ? tab_dims(paint.m).ext + max(cg.overlap - tab_dims(paint.m).run * 0.5, tab_dims(paint.m).run * 0.5) + math.round(em * 0.2) : math.round(em * 0.35)))
 	}
 	if closed { tab_close(app, i); return .Closed }
 	sig := ui.signal(b)
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
-	tip(sig, t.title)
+	if !(classic && strip.drag_active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder
 	if sig.dragging && favs.cfg.drag_reorder && n > 1 {
 		if !strip.drag_active && abs(sig.drag_delta.x) > favs.cfg.drag_threshold * dpi {

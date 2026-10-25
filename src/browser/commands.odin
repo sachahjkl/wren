@@ -362,6 +362,16 @@ commands_build :: proc(r: ^Command_Registry) {
 			}})
 	}
 
+	for style in ([2]string{"classic", "modern"}) {
+		add(r, {name = fmt.aprintf("view.chrome_style.%s", style, allocator = a), category = "View", arg = style,
+			title = style == "classic" ? i18n.tr("Appearance: classic tabs") : i18n.tr("Appearance: modern tabs"),
+			keywords = "chrome tabs style look trapezoid sloped angular gradient flat pill appearance interface",
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == classic_on() },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) {
+				if err := config.set_from_string(&app.prefs, "browser.ui.chrome_style", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.chrome_style: %s", config.set_error_text(err)) }
+			}})
+	}
+
 	// --- browser
 	add(r, {name = "browser.command_palette", title = "Command palette…", category = "Browser", keys = keys(&r.arena, {key = .P, mods = cs}, {key = .K, mods = ctrl, pref = "browser.palette.ctrl_k"}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_toggle(app) }})
