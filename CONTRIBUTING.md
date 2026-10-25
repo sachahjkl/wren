@@ -25,6 +25,10 @@
   it they say `perf: skipped, run with -Perf`. In Odin, `if base.perf_skip("what") { return }` (`src/base/perf.odin`); in a script,
   `Check-Perf` / `Test-WrenPerf` (`tools/test_env.ps1`). What stays in the CI is correctness (results, states, protocols, leaks,
   crashes) and waits with a generous time limit that only ends a failing run.
+- UI end-to-end steps are opt-in too: a step that drives real windows and processes, or decodes heavy images under a time limit,
+  needs a desktop and a machine of known speed; a shared runner failed them at random. Mark it `-UiOnly` in `test_all.ps1`: it runs
+  with `powershell -NoProfile -File tools\test_all.ps1 -Ui` (or `WREN_UI_TESTS=1`), never on the CI (`-CI` or the `CI` variable win),
+  and says `ui: skipped, run with -Ui` otherwise. The logic such a step checks keeps its unit tests, which the CI runs.
 - A new web API starts in `api/<module>.widl`; `build.bat` regenerates the bindings, the SDK and the docs, and
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others
