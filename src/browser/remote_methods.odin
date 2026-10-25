@@ -1158,7 +1158,18 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
 	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
 	j_bool(&b, "dropTarget", platform.drop_target_enabled(app.win))
+	{
+		lp := dnd_last_picture
+		j_str(&b, "dragPicture", lp.size.x > 0 ? fmt.tprintf("%dx%d@%d,%d rgba=%d,%d,%d,%d", lp.size.x, lp.size.y, lp.hot.x, lp.hot.y, lp.middle[0], lp.middle[1], lp.middle[2], lp.middle[3]) : "")
+	}
 	j_int(&b, "resizeEchoesSkipped", i64(pacer.echoes_skipped))
+	{
+		// the frames of resize bursts that were made, by cause, and the events of those made for events
+		sb := strings.builder_make(context.temp_allocator)
+		for n, c in pacer.resize_causes { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", c, n) } }
+		for n, k in pacer.resize_event_kinds { if n > 0 { fmt.sbprintf(&sb, "ev.%v=%d ", k, n) } }
+		j_str(&b, "resizeFrameCauses", strings.trim_space(strings.to_string(sb)))
+	}
 	if sz, hot, held := platform.drag_image_held(app.win); held { j_str(&b, "dragImage", fmt.tprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y)) } else { j_str(&b, "dragImage", "") }
 	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
 	j_int(&b, "prefsNetApplied", i64(prefs_apply_counts[.Net])); j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))

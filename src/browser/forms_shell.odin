@@ -605,7 +605,8 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fview.frame}
 	pt.proj, pt.proj_inv, pt.proj_ok = painted_projection(dc, xf)
 	if fview.page_id != f.id { clear(&fview.painted); clear(&fview.scroll); fview.page_id = f.id }
-	fview.painted[node] = pt
+	// (a picture of the page painted off the screen, a drag image: not where the pointer finds the control)
+	if !draw.offscreen_active(dc) { fview.painted[node] = pt }
 	focused := f.focus == node && fview.page_focus
 	disabled := forms.is_disabled(f, node)
 	if disabled { draw.push_alpha(dc, 0.55) }
@@ -680,7 +681,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 					icon := draw.Rect{{content.max.x - room, (content.min.y + content.max.y - room) * 0.5}, {content.max.x, (content.min.y + content.max.y + room) * 0.5}}
 					picker_indicator(dc, icon, fg, t == .Time, scale)
 					pt.content.max.x = max(pt.content.min.x, pt.content.max.x - room - 4 * scale)
-					fview.painted[node] = pt
+					if !draw.offscreen_active(dc) { fview.painted[node] = pt }
 				}
 				if !focused {
 					if shown := date_field_display(t, forms.value(f, node)); shown != "" {

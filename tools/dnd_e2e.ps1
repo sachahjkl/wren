@@ -74,7 +74,24 @@ try {
   Start-Sleep -Milliseconds 200
   $st = Wren-Ctl stats --json | ConvertFrom-Json
   Expect (Near-Image $st.dragImage @(20, 10, 5, 4) $dpr) "setDragImage(canvas, 5, 4) is the system's picture" $st.dragImage
+  # setDragImage of an element 1000 px above the page: painted alone offscreen (its orange, opaque)
+  Wren-Ctl eval "useImage = 'far'; 'ok'" | Out-Null
+  Wren-Ctl drag '50,30' '-300,30' '100,150' --steps 8 | Out-Null
+  Start-Sleep -Milliseconds 200
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  Expect ((Near-Image $st.dragImage @(60, 30, 6, 3) $dpr) -and $st.dragPicture -match 'rgba=255,136,0,255$') 'setDragImage of an element off the screen: painted alone' "$($st.dragImage) / $($st.dragPicture)"
   Wren-Ctl eval "useImage = false; 'ok'" | Out-Null
+
+  # selected text of the document dragged: a picture of the selection (its lines highlighted), not the system's cursor
+  Wren-Ctl eval "log.length = 0; const r = document.createRange(); r.selectNodeContents(txt); getSelection().removeAllRanges(); getSelection().addRange(r); 'ok'" | Out-Null
+  Wren-Ctl drag '360,212' '-300,212' '100,150' --steps 8 | Out-Null
+  Start-Sleep -Milliseconds 200
+  $st = Wren-Ctl stats --json | ConvertFrom-Json
+  $log = Wren-Ctl eval "log.join(' | ')"
+  $selOk = $st.dragPicture -match '^(\d+)x(\d+)@' -and [int]$Matches[1] -ge 100 * $dpr -and [int]$Matches[2] -ge 18 * $dpr -and $st.dragPicture -notmatch ',0$'
+  Expect ($selOk -and $st.dragImage -ne '') 'a selection of the document dragged: a picture of its text for the system' "$($st.dragImage) / $($st.dragPicture)"
+  Expect ($log -match 'drop@zone files=0 text=select this text') '... and its text dropped on the zone' $log
+  Wren-Ctl eval "getSelection().removeAllRanges(); 'ok'" | Out-Null
 
   # selected text of a field dragged into another: moved (deleteByDrag, insertFromDrop), dragend with move
   Wren-Ctl eval "log.length = 0; in1.focus(); in1.setSelectionRange(0, 5); 'ok'" | Out-Null
