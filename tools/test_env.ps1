@@ -98,6 +98,31 @@ function Get-WrenPreferredBasePort([string]$Root = (Get-WrenRepoRoot)) {
     return 20000 + [int]($h % 900) * 10
 }
 
+# Builds build\testserver.exe when it is missing or older than a source of tools\testserver, one builder at a time (a named mutex: the steps
+# that run side by side wait for it and find it built). A server that runs holds its exe: the build then fails to replace it, and that
+# one stays (it is the build of a run that began before the sources changed).
+function Ensure-WrenTestServer([string]$root, [string]$Exe) {
+    $src = Join-Path $root 'tools\testserver'
+    $stale = {
+        if (-not (Test-Path $Exe)) { return $true }
+        $built = [IO.File]::GetLastWriteTimeUtc($Exe)
+        foreach ($f in [IO.Directory]::EnumerateFiles($src, '*', [IO.SearchOption]::AllDirectories)) {
+            if (($f.EndsWith('.go') -or $f.EndsWith('go.mod') -or $f.EndsWith('go.sum')) -and [IO.File]::GetLastWriteTimeUtc($f) -gt $built) { return $true }
+        }
+        return $false
+    }
+    if (-not (& $stale)) { return }
+    $sha = [Security.Cryptography.SHA1]::Create()
+    $key = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant().TrimEnd('\')))) -replace '-', '').Substring(0, 16)
+    $mutex = New-Object Threading.Mutex($false, "wren_testserver_build_$key")
+    try {
+        try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
+        if (-not (& $stale)) { return }
+        Push-Location $src
+        try { go build -o $Exe . 2>&1 | Out-Null } finally { Pop-Location }
+    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
+}
+
 # Starts build\testserver.exe (from the repository root: it serves examples\ from there) on the first free block of
 # ports from -BasePort (default: this worktree's), and returns { Process; BasePort; Origin } once it listens.
 # -WptOnly: the WPT origin alone (-BasePort is then its http port). Stop it with Stop-WrenTestServer.
@@ -106,12 +131,10 @@ function Start-WrenTestServer([int]$BasePort = 0, [string]$Exe = '', [switch]$Wp
     if ($BasePort -le 0) { $BasePort = Get-WrenPreferredBasePort $root }
     if (-not $Exe) {
         $Exe = Join-Path $root 'build\testserver.exe'
-        # a fresh checkout (CI) has not built it yet: a test that needs it does not depend on the order of test_all's steps
-        if (-not (Test-Path $Exe)) {
-            Push-Location (Join-Path $root 'tools\testserver')
-            try { go build -o $Exe . 2>&1 | Out-Null } finally { Pop-Location }
-            if (-not (Test-Path $Exe)) { throw "build\testserver.exe is missing and 'go build' of tools\testserver did not make it" }
-        }
+        # a fresh checkout (CI) has not built it yet, and a worktree whose build\ is old holds a server that lacks the routes of the tests
+        # (a 404 on /video/f/ made the video checks time out): a test that needs it does not depend on the order of test_all's steps
+        Ensure-WrenTestServer $root $Exe
+        if (-not (Test-Path $Exe)) { throw "build\testserver.exe is missing and 'go build' of tools\testserver did not make it" }
     }
     $portFile = Join-Path ([IO.Path]::GetTempPath()) "wren_testserver_${PID}_$([guid]::NewGuid().ToString('N')).port"
     $a = if ($WptOnly) { @('-wpt-only', '-wpt-port', $BasePort) } else { @('-base-port', $BasePort) }
