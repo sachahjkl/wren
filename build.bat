@@ -128,6 +128,8 @@ set "FLAGS=%FLAGS% -define:WREN_COMMIT=%WREN_COMMIT%"
 if defined WREN_DATE set "FLAGS=%FLAGS% -define:WREN_COMMIT_DATE=%WREN_DATE%"
 :: a label shown after the version number (about:wren, the menu, the file's Details...): set WREN_VERSION_LABEL=experimental-2026-10-24 before building
 if defined WREN_VERSION_LABEL set "FLAGS=%FLAGS% -define:WREN_VERSION_LABEL=%WREN_VERSION_LABEL%"
+:: an experimental build also accepts the licences of the development key pair (public on purpose, worth nothing: tools\experimental.ps1 hands a demonstration licence out with it)
+if defined WREN_ACCEPT_DEV_LICENSE_KEY set "FLAGS=%FLAGS% -define:WREN_ACCEPT_DEV_LICENSE_KEY=true"
 
 set "FLAGS=%FLAGS% -vet -subsystem:windows"
 :: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\wren_prof_wgpu.exe etc. and links wgpu-native

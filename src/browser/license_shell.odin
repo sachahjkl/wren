@@ -40,16 +40,20 @@ License_State :: struct {
 @(private = "file") memory_text: [license.MAX_TEXT]u8
 @(private = "file") memory_len: int
 
+// An experimental build (tools\experimental.ps1: build.bat with WREN_ACCEPT_DEV_LICENSE_KEY=1) accepts the development pair's licences too, so that
+// the demonstration licence it is handed out with shows its card with no setting. A release never does.
+@(private = "file") ACCEPT_DEV_LICENSE_KEY :: IS_DEV_BUILD || #config(WREN_ACCEPT_DEV_LICENSE_KEY, false)
+
 license_public_key :: proc(app: ^App) -> string {
 	if k := strings.trim_space(config.string_of(&app.prefs, "browser.license.public_key")); k != "" { return k }
 	return license.PRODUCTION_PUBLIC_KEY
 }
 
 // Checks a licence with the key in force; a development build also accepts the development pair's licences (tools\license.ps1
-// issue -dev), so that a build being tried shows the card without settings. A release only knows the production key.
+// issue -dev), so that a build being tried shows the card without settings. A release only knows the production key (an experimental build: see ACCEPT_DEV_LICENSE_KEY).
 license_check :: proc(app: ^App, text: string, allocator := context.allocator) -> (license.License, license.Error) {
 	lic, err := license.verify(text, license_public_key(app), allocator)
-	when IS_DEV_BUILD {
+	when ACCEPT_DEV_LICENSE_KEY {
 		if err != .None {
 			if dev, dev_err := license.verify(text, license.DEV_PUBLIC_KEY, allocator); dev_err == .None {
 				license.license_destroy(&lic)
