@@ -6,6 +6,7 @@ import "core:time"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 import "wb:page"
 
 // A tree with branches: a b c / b d / a e, plus a long chain under e.
@@ -225,6 +226,13 @@ tree_large_model_is_cheap :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(m.nodes), 5000)
 	out := make([dynamic]i32)
 	defer delete(out)
+	if base.perf_skip("tree_large_model_is_cheap: the time of the model and of a cull") {
+		tree_cull(m.nodes[:], .Horizontal, {-1e9, -1e9}, {1e9, 1e9}, &out)
+		testing.expect_value(t, len(out), 5000)
+		tree_cull(m.nodes[:], .Horizontal, {100, 100}, {180, 140}, &out)
+		testing.expect(t, len(out) < 5000, "a cull keeps the nodes in view only")
+		return
+	}
 	start = time.tick_now()
 	for _ in 0 ..< 100 { tree_cull(m.nodes[:], .Horizontal, {100, 100}, {180, 140}, &out) }
 	cull_ms := time.duration_milliseconds(time.tick_since(start)) / 100

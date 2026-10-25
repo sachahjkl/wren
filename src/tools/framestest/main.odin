@@ -166,9 +166,11 @@ private_bytes :: proc() -> int {
 	return int(c.PrivateUsage)
 }
 
-// Numbers, not checks: the time a frame takes to have a running document, and the memory it holds.
+// Numbers, not checks: the time a frame takes to have a running document, and the memory it holds. A performance run
+// (tools\test_all.ps1 -Perf): it checks nothing, so a run without the option skips it.
 measurements :: proc() {
 	fmt.println("-- measurements")
+	if base.perf_skip("framestest: the time and memory of 20 srcdoc frames") { return }
 	N :: 20
 	// warm-up: the engine's code and the first realm's costs are not a frame's
 	{

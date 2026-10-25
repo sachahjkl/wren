@@ -3,6 +3,7 @@ package media
 
 import "core:testing"
 import "core:time"
+import "wb:base"
 
 @(test)
 the_silent_output_plays_what_it_is_given_at_the_pace_of_the_clock :: proc(t: ^testing.T) {
@@ -16,7 +17,11 @@ the_silent_output_plays_what_it_is_given_at_the_pace_of_the_clock :: proc(t: ^te
 	o.start(o)
 	time.sleep(40 * time.Millisecond)
 	f, _ = o.position(o)
-	testing.expectf(t, f > 1000 && f < 4800, "40 ms into 100 ms of audio: %d frames played", f)
+	testing.expectf(t, f > 1000, "40 ms into 100 ms of audio: %d frames played (it plays, 21 ms at least went by)", f)
+	// not all of it yet: a window of time (a loaded machine oversleeps), so a performance test
+	if !base.perf_skip("audio_null: 40 ms into 100 ms of audio is not all played yet") {
+		testing.expectf(t, f < 4800, "40 ms into 100 ms of audio: %d frames played (not all)", f)
+	}
 	time.sleep(150 * time.Millisecond)
 	f, _ = o.position(o)
 	testing.expect_value(t, f, i64(4800))   // what was written, no more: silence the device plays does not count

@@ -1,5 +1,5 @@
 # Runs every test of the project: unit tests, the end-to-end page test, the network stress script.
-#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-BasePort n] [-NoAsan]
+#   powershell -File tools\test_all.ps1 [-Quick] [-CI] [-Jobs n] [-LightJobs n] [-BasePort n] [-NoAsan] [-Perf]
 #   (-Quick skips the long network stress; -CI, for continuous integration runners: -Quick, end-to-end timeouts x3 for
 #   slow shared machines, the whole output of a failed step instead of its last lines, one step at a time on the
 #   default ports. Nothing here reaches the internet, and with -Quick nothing opens a window: the end-to-end tests use
@@ -17,8 +17,15 @@
 # Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
 # are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan)
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf)
 if ($CI) { $Quick = $true }
+# -Perf (or WREN_PERF=1 in the environment): the tests that measure time (a duration, a CPU time, a frame count in a window of time, the
+# closing of the browser under load...) run and print their measures; without it they are skipped with "perf: skipped, run with -Perf".
+# Never on a CI machine (-CI, or the CI variable): its specs are unknown. The steps inherit WREN_PERF. The steps run one at a time
+# (-Jobs 1 unless -Jobs is given): parallel steps would skew the measures.
+if ($Perf -or $env:WREN_PERF -eq '1' -or $env:WREN_PERF -eq 'true') { $Perf = $true }
+if ($Perf -and ($CI -or $env:CI)) { 'perf: -Perf / WREN_PERF ignored on the CI (the performance tests never run there)'; $Perf = $false }
+if ($Perf) { $env:WREN_PERF = '1'; if ($Jobs -le 0) { $Jobs = 1 } } else { Remove-Item Env:\WREN_PERF -ErrorAction SilentlyContinue }
 $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -31,7 +38,7 @@ $failed = 0
 $runStart = Get-Date
 # No step is ever run twice: a test checks properties (order, counts, state), never a wall-clock duration, so a slow
 # shared runner takes longer but gets the same result. Waits for something that must come have generous bounds that
-# only end a failing run.
+# only end a failing run. What does assert on time is a performance test, behind -Perf (see the top of this file).
 # A test executable of this worktree that runs longer than -StepTimeoutSec is stopped, so a hung suite fails instead of
 # blocking the run (Odin's test runner can hang when several tests hit fatal assertions at once). Other worktrees'
 # processes are theirs to watch.
@@ -546,7 +553,11 @@ if ($Jobs -gt 1) { Flush-Steps }
 # connected, by wren ctl quit and by the window's close button, within 8 s and with no forced exit. A background thread starved by the
 # load that the close waits for made it take 10 to 25 s (tools\remote_e2e.ps1 -Stress); this step saturates the machine, so it runs when no
 # other step does.
-Step 'remote control: the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
+if ($Perf) {
+    Step 'remote control (performance, -Perf): the browser closes within 8 s with every core busy (tools\remote_e2e.ps1 -Stress -1: wren ctl quit with a client connected, and WM_CLOSE, a video playing)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Stress -1 -Rounds 2 }
+} else {
+    'perf: skipped, run with -Perf (test_all.ps1 -Perf, or WREN_PERF=1): remote control, the browser closes within 8 s with every core busy'
+}
 if ($Jobs -gt 1) { Flush-Steps }
 Stop-Job $script:watchdog; Remove-Job $script:watchdog -Force
 Show-TestTimes

@@ -89,6 +89,7 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ### Changed
 
+- **The tests that measure time (a duration, a CPU time, a frame count in a window of time, the closing of the browser under load) are opt-in and never run on the CI**: `powershell -File tools\test_all.ps1 -Perf` (or `WREN_PERF=1`; ignored when `CI` is set) runs them, one step at a time, and prints their measures; without it they are skipped with `perf: skipped, run with -Perf`. They keep their original bounds (60 ms of CPU and 3 frames for an idle Wren in 3 s, 5 ms mean and 20 ms worst per letter typed in the address bar...) instead of the wide ones the CI needed. One place decides (`base.perf_skip`, `Check-Perf` in `tools/test_env.ps1`); see [CONTRIBUTING.md](CONTRIBUTING.md).
 - **The text of the licence card is silver, not gold** (`card_foil.wgsl`: the engraved letters go from a cool steel grey to a bright white-blue with the angle, lit by the same two lights).
 - User-Agent `Mozilla/5.0 (Windows NT 10.0; Win64; x64) Wren/0.3.0` (was `Wren/0.3`): the form sites expect, the version from the program, no `Chrome/` token. `network.user_agent` empty = this one.
 - **The file's description is "Wren"** (what Task Manager, the taskbar's jump list and the Apps list show for the program), not "Wren web browser": the version resource and the manifest; a development build says "Wren (development build)".

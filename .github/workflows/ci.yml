@@ -34,6 +34,7 @@ jobs:
       # Two steps of test_all at a time (-Jobs 2; the end-to-end timeouts of -CI are three times the usual): the runner has 4 cores, and most
       # of the steps spend their time waiting (servers, expiries, a video that plays) or run on a few threads. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
+      # The tests that measure time are not run here (the runner's speed is unknown): `test_all.ps1 -Perf` is for our own machines, and is ignored when CI is set.
       - name: Tests (tools\test_all.ps1 -CI -Jobs 2 -NoAsan)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -Jobs 2 -NoAsan
