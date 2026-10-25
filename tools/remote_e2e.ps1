@@ -162,6 +162,29 @@ function Test-LayoutSized($server) {
     Check 'and the Wren answers' ($global:WrenExit -eq 0)
 }
 
+# ---- a timer that changes nothing draws no frame; one that changes the page does ------------------------------------------------------
+# examples/site/remote/idle-timer.htm runs a script every 20 ms that touches nothing. The frames drawn while it ticks are counted against
+# the ticks (a ratio, not a time: it holds on a slow machine too); then a timer that turns the box blue must reach the screen.
+function Test-IdleTimers($server) {
+    Section '6 idle timer: ticks that change nothing draw no frame'
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/idle-timer.htm" --wait idle
+    $null = Wren-Ctl wait quiet
+    $t0 = [int](Wren-Eval 'window.ticks'); $f0 = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
+    $enough = "window.ticks >= $($t0 + 100)"
+    $null = Wren-Ctl wait function $enough --timeout 20000
+    $t1 = [int](Wren-Eval 'window.ticks'); $f1 = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
+    Check "a script ran $($t1 - $t0) times" (($t1 - $t0) -ge 100)
+    Check "and drew $($f1 - $f0) frames for them (a frame per tick before: now a few at most)" ((($f1 - $f0) * 5) -le ($t1 - $t0)) "$($f1 - $f0) frames for $($t1 - $t0) ticks"
+    $png = Join-Path $env:TEMP 'idle-timer-box.png'
+    $null = Wren-Eval 'window.paint(); 1'
+    $null = Wren-Ctl wait function 'document.getElementById("box").style.background === "rgb(0, 0, 255)"' --timeout 10000
+    $null = Wren-Ctl wait stable
+    $null = Wren-Shot $png -Selector '#box'
+    $px = Pixel $png 10 10
+    Check "a timer that changes the page is drawn (the box is blue: $($px -join ','))" (Near $px @(0, 0, 255)) "pixel $($px -join ',')"
+    Remove-Item $png -ErrorAction SilentlyContinue
+}
+
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------
 # A state is made in every place a reset reaches (two tabs, a zoomed page, cookies, local and session storage, a changed preference
 # and a scale, a resized window, developer tools, a console line, a visit in the history, a wait nobody is going to end), then
@@ -645,6 +668,7 @@ public static class PipeStorm {
     Scenario '2l checkpoints: save, change everything, restore' { Test-Checkpoints $server }
     Scenario '4 video layers' { Test-VideoLayers $server }
     Scenario '5 layout read by a script after a navigation' { Test-LayoutSized $server }
+    Scenario '6 idle timer: ticks that change nothing draw no frame' { Test-IdleTimers $server }
 
     # closing with a client connected, and the exit code
     Section '2j quit with a client connected'

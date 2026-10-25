@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>idle timer</title>
+<style>#box { width: 120px; height: 120px; background: rgb(255, 0, 0); }</style>
+<div id="box"></div>
+<script>
+// A page that does a lot of nothing (YouTube's 25 ms interval is such a timer): every tick runs a script and changes nothing the
+// browser would draw. window.ticks counts them; window.paint() makes the one change that must reach the screen, from a timer.
+window.ticks = 0;
+setInterval(function () { window.ticks++; }, 20);
+window.paint = function () { setTimeout(function () { document.getElementById('box').style.background = 'rgb(0, 0, 255)'; }, 30); };
+</script>

@@ -53,6 +53,24 @@ background_wait_ms :: proc(now_ms, align_ms: f64) -> f64 {
 	return max(next - now_ms, 0)
 }
 
+// What a callback can change in a page that is to be drawn, as a few counters (compared before and after it ran): the document, the
+// style rules (CSSOM), the pixels of images and canvases, the selection, the address (history.pushState). Animations and animation
+// frames asked for are looked at by the shell itself (wants_animation_frame, animations_active), scrolling and form state ask for their frame.
+Page_Activity :: struct {
+	mutations: u64,
+	rules:     bool,
+	pixels:    u64,
+	selection: u64,
+	href:      string,
+}
+
+page_activity :: proc(p: ^Page) -> Page_Activity {
+	a := Page_Activity{pixels = images_pixels_generation(p), selection = p.selection.serial, href = p.env.location.href}
+	if p.doc != nil { a.mutations = p.doc.mutations }
+	if p.engine != nil { a.rules = p.engine.dirty }
+	return a
+}
+
 @(private)
 timer_fire :: proc(data: rawptr) {
 	t := (^Timer)(data)
@@ -72,6 +90,7 @@ timer_fire :: proc(data: rawptr) {
 
 	saved := p.web.timer_nesting
 	p.web.timer_nesting = nesting
+	before := page_activity(p)
 	if inst := instance_by_index(p, idx); inst != nil {
 		if wide {
 			argv := [2]u32{u32(user64), u32(user64 >> 32)}
@@ -83,6 +102,9 @@ timer_fire :: proc(data: rawptr) {
 	}
 	if p.closed { return }
 	p.web.timer_nesting = saved
+	// a timer that changed nothing the shell would draw (YouTube's 25 ms interval, 58 times a second on a page nobody touches) is not
+	// a reason to draw a frame: what a callback does change on screen shows in the activity (or asks for its frame itself)
+	if page_activity(p) == before { host.quiet_note(p.loop) }
 
 	// the guest may have cleared the timer from its own callback
 	cur := base.pool_get(&p.timers, self)
