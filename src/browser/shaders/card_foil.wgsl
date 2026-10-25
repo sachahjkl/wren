@@ -1,24 +1,29 @@
 // card-foil: the licence card of about:wren (src/browser/shaders.odin lists it; the toolkit's docs/shaders.md describes the frame this is
 // written in: rect.wgsl + app.wgsl + this file, app_shade returns linear light with straight alpha).
 //
+// One module, two shaders of the registry: `card-foil` (the card: arg `seal` 0) and `card-seal` (the certification seal stuck on it: arg
+// `seal` 1, see seal_shade below). Both are lit by the same two lights and the same eye.
+//
 // The card is a banknote's foil under two lights. Its relief is a normal map (about_card_relief.odin: a guilloche of two rosettes, a lipped
 // frame with a groove, micro-lettering, a grain) in texture 0: R G the normal's x y, B the height, A the cavity. Texture 1 is the card's TEXT,
-// engraved (about_card_engrave.odin: R G the normal of the bevel of the letters, B their coverage, A the blurred coverage): the letters are cut
-// into the metal, lit by the same lights and made of GOLD: a flat floor that shines with a brushed, anisotropic highlight, walls that catch the
-// light on one side and fall into shade on the other, a dark engraving around them. The guilloche, the glitter and the film are calmed around
-// the letters so that they read. The shader is drawn in two passes over the card's dark background:
-//   pass 0, blend Normal   the engraving's shade: black where the relief hollows (and where the letters' walls are), so the lines read as cut;
+// raised (about_card_engrave.odin: R G the normal of the bevel of the letters, B their coverage, A the blurred height): the letters stand
+// out of the card like the embossed lettering of a bank card, made of brushed SILVER, lit by the same lights: a top that shines with a
+// brushed, anisotropic highlight, flanks that catch the light on the side of the key light (the top left) and fall into shade on the other,
+// and a soft shadow the letters dropped on the card towards the bottom right. The guilloche, the glitter and the film are calmed around the
+// letters so that they read. The shader is drawn in two passes over the card's dark background:
+//   pass 0, blend Normal   the engraving's shade: black where the relief hollows, the shadow of the letters, a dark floor under them;
 //   pass 1, blend Add      the light: for each of two point lights (one that sweeps across the card, one that follows the pointer)
 //                          an ANISOTROPIC highlight (brushed metal: Ward's model, long across the brushing, short along it), an
 //                          iridescent wash (a thin film: the hue goes round the spectrum with the angle the normal makes with the eye),
 //                          glitter (a grid of tiny flakes, each with a normal of its own, that flash where the light mirrors into the
-//                          eye) and a fresnel rim on the lip; in the letters, the same light on gold. The eye's direction comes from the tilt.
-// Arguments (CSS: -wren-shader: card-foil <sweep> <x> <y> <live> <intensity> <engrave>, after the engine's two vec4):
+//                          eye) and a fresnel rim on the lip; on the letters, the same light on silver. The eye's direction comes from the tilt.
+// Arguments (CSS: -wren-shader: card-foil <sweep> <x> <y> <live> <intensity> <engrave> <seal>, after the engine's two vec4):
 //   sweep      0 .. 1 the sweeping light's way across the card (it enters at the bottom left, leaves at the top right; outside: off)
 //   x, y       0 .. 1 where the pointer is on the card (0.5, 0.5 at rest); the tilt of the card, and the second light
 //   live       0 .. 1 the pointer is on the card: the sweep dims, the pointer's light shines
 //   intensity  the overall strength of the light pass
-//   engrave    1: texture 1 holds the text to engrave; 0: none (the page draws its own text)
+//   engrave    1: texture 1 holds the text to raise; 0: none (the page draws its own text; the seal draws nothing: the page draws it)
+//   seal       0: the card; 1: the seal (the registry's card-seal sets it)
 
 const PI: f32 = 3.14159265;
 
@@ -74,7 +79,87 @@ fn foil_glitter(g: float2, P: float3, lp: float3, V: float3, weight: f32) -> flo
 	return foil_film(h.y * 2.0 + 0.1) * (present * s * disc * att * weight * 5.0);
 }
 
+// The card's key light, fixed at its top left: what makes a bevel read as raised (bright on the side that faces it).
+const KEY_LIGHT: float3 = float3(-0.4465, -0.5953, 0.6449);
+
+// The seal, in the card's units (1 = the card's height, 277.4 css px at the design's 440 px): the centre of the 88 px medal 16 px from
+// the right edge and 14 px from the bottom, and its diameter. The lights of the card are placed in the same units.
+const SEAL_CENTER: float2 = float2(1.3697, 0.7906);
+const SEAL_SPAN: f32 = 0.3172;
+const CARD_ASPECT_: f32 = 1.586;
+
+// ---- the seal ---------------------------------------------------------------------------------------------------------------------
+// A medal of 88 css px stuck on the card: a reeded gold edge, a smooth gold lip, a domed green face with fine concentric rings and a gold
+// rib, and the word CERTIFIED and a tick RAISED on the face, in cream gold. Its relief is a normal map made natively (about_card_seal.odin;
+// texture 0: R G the normal, B the openness (dark in the grooves), A how gold the point is, 0 = the green enamel), the letters and the tick a
+// second one (texture 1, like the card's text). The pass 0 is the opaque body (the key light, the shade, the shadow the raised letters dropped on
+// the face); the pass 1 adds the two lights: a diffuse part and a glossy highlight, tight on the enamel, wide and tinted on the gold.
+fn seal_shade(a: AppIn) -> vec4<f32> {
+	let ctl = app_param(1u);
+	let arg = app_param(2u);
+	let arg2 = app_param(3u);
+	let uv = clamp(a.uv, float2(0.0), float2(1.0));
+	let t = textureSample(app_tex0, samp_img, uv);
+	let tx = textureSample(app_tex1, samp_img, uv);
+	let cov = tx.b;
+	// the shadow of the raised letters, dropped towards the bottom right: the coverage taken from up-left of the point, softened by two mip levels
+	let off = float2(1.0, 1.4) / a.size;
+	let shadow = 0.5 * (textureSampleLevel(app_tex1, samp_img, uv - off, 1.5).b + textureSampleLevel(app_tex1, samp_img, uv - 1.7 * off, 2.5).b) * (1.0 - cov);
+	if (arg2.y < 0.5) { return float4(0.0); }
+
+	var xy = mix(t.xy * 2.0 - 1.0, tx.xy * 2.0 - 1.0, cov);
+	var N = float3(xy, 0.0);
+	N.z = sqrt(max(1.0 - dot(N.xy, N.xy), 0.0));
+	N = normalize(N);
+
+	let green = float3(0.012, 0.30, 0.095);
+	let gold = float3(0.60, 0.385, 0.05);
+	let cream = float3(0.90, 0.78, 0.40);
+	let metal = max(t.a, cov);
+	var alb = mix(mix(green, gold, t.a), cream, cov);
+	let opn = mix(t.b, 1.0, cov);
+	let kd = clamp(dot(N, KEY_LIGHT) / KEY_LIGHT.z, 0.0, 1.6);
+	if (ctl.x < 0.5) {
+		var body = alb * opn * (0.04 + 0.70 * kd * kd);
+		body *= 1.0 - 0.62 * shadow;
+		return float4(body, 1.0);
+	}
+
+	let tilt = (arg.yz - 0.5) * 2.0;
+	let ry = tilt.x * 0.3142;
+	let rx = -tilt.y * 0.2443;
+	let V = normalize(float3(-sin(ry) * cos(rx), sin(rx), cos(ry) * cos(rx)));
+	let P = float3(SEAL_CENTER + (uv - 0.5) * SEAL_SPAN, 0.0);
+	let live = arg.w;
+	let sw = arg.x;
+	let sweep_pos = float3(mix(-0.5, 1.5, sw) * CARD_ASPECT_, mix(1.15, -0.15, sw), 0.30);
+	let sweep_k = (1.0 - 0.9 * live) * smoothstep(-0.25, 0.05, sw) * (1.0 - smoothstep(0.95, 1.25, sw));
+	let ptr_pos = float3(arg.y * CARD_ASPECT_, arg.z, 0.32);
+	let ptr_k = 0.30 + 0.95 * live;
+
+	var col = float3(0.0);
+	for (var i = 0; i < 2; i = i + 1) {
+		let lp = select(ptr_pos, sweep_pos, i == 0);
+		let lk = select(ptr_k, sweep_k * 1.25, i == 0);
+		let d = lp - P;
+		let dist2 = dot(d, d);
+		let L = d * inverseSqrt(max(dist2, 1e-4));
+		let att = 1.0 / (1.0 + dist2 * 5.0);
+		let NL = max(dot(N, L), 0.0);
+		let H = normalize(L + V);
+		let NH = max(dot(N, H), 0.0);
+		// enamel: a tight white gloss; metal: a wider one, tinted by the metal; the film's hue a little on the gold
+		let gloss = pow(NH, mix(90.0, 26.0, metal)) * NL;
+		let sheen = mix(float3(0.85, 1.0, 0.92), alb * 1.9 + 0.12, metal);
+		col += lk * att * (alb * NL * 0.55 + sheen * gloss * mix(0.7, 1.25, metal));
+	}
+	col *= opn;
+	col += float3(0.30, 0.34, 0.22) * pow(1.0 - max(dot(N, V), 0.0), 2.5) * (0.10 + 0.5 * t.a) * opn;
+	return float4(col * arg2.x, 1.0);
+}
+
 fn app_shade(a: AppIn) -> vec4<f32> {
+	if (app_param(3u).z > 0.5) { return seal_shade(a); }
 	let ctl = app_param(1u);       // x: the pass
 	let arg = app_param(2u);       // sweep, pointer x, pointer y, live
 	let arg2 = app_param(3u);      // intensity, engrave
@@ -85,8 +170,12 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 	// how far the letters reach around themselves: the coarse level of their coverage (about 4 css px)
 	let halo = textureSampleLevel(app_tex1, samp_img, uv, 4.0).b * arg2.y;
 	let cov = tx.b * arg2.y;
+	// the soft shadow the letters dropped on the card, towards the bottom right (1.6 css px right, 2 down): their coverage taken from up-left of
+	// the point and softened by two mip levels
+	let off = float2(1.7, 2.1) / a.size;
+	let dropped = 0.5 * (textureSampleLevel(app_tex1, samp_img, uv - off, 1.5).b + textureSampleLevel(app_tex1, samp_img, uv - 1.8 * off, 2.8).b) * arg2.y;
 
-	// the surface: the guilloche calmed around the letters, then the letters' bevel where they are (their floor is flat)
+	// the surface: the guilloche calmed around the letters, then the letters' bevel where they are (their top is flat)
 	var xy = (t.xy * 2.0 - 1.0) * (1.0 - 0.85 * halo);
 	xy = mix(xy, tx.xy * 2.0 - 1.0, cov);
 	var N = float3(xy, 0.0);
@@ -97,8 +186,9 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 
 	if (ctl.x < 0.5) {
 		var k = clamp(cavity * 0.9 + (1.0 - N.z) * 0.35, 0.0, 0.6) * (1.0 - 0.5 * halo);
-		// a letter: a dark floor under the gold and darker walls (the blurred coverage is lower towards an edge)
-		k = mix(k, 0.25 + 0.65 * (1.0 - tx.a), cov);
+		// the letters' shadow on the card, then a dark floor under the silver (the guilloche does not show through it)
+		k = 1.0 - (1.0 - k) * (1.0 - 0.7 * dropped * (1.0 - cov));
+		k = mix(k, 0.92, cov);
 		return float4(0.0, 0.0, 0.0, k);
 	}
 
@@ -143,19 +233,21 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 	let lip = smoothstep(0.62, 0.92, height);
 	col += float3(0.6, 0.75, 1.0) * foil_film(phase * 1.3) * (pow(1.0 - NV, 3.0) * lip * 0.45);
 
-	// SILVER, in the letters: a color that goes from a cool steel grey to a bright white-blue with the angle, a floor that is never dark (the
-	// contrast with the dark engraving around is what makes the text read), the two lights as brushed highlights, and the walls shaded by the
-	// same lights
+	// SILVER, raised: a brushed top (fine streaks along the brushing, a cool grey that drifts towards white-blue with the angle), the two lights
+	// as brushed highlights, and flanks shaded by the card's key light: bright where they face the top left, dark on the other side, so that
+	// the letters stand out of the card
 	let gt = 0.5 + 0.5 * sin(6.2831853 * (phase * 0.8 + 0.15));
-	let gold = mix(float3(0.60, 0.64, 0.71), float3(0.93, 0.95, 1.0), gt);
-	var lit = gold * (0.62 + 0.20 * N.z);
-	lit += gold * foil_shine(P, sweep_pos, N, V, T, B, phase, gold, 0.10, 0.0) * sweep_k * 2.6;
-	lit += gold * foil_shine(P, ptr_pos, N, V, T, B, phase, gold, 0.10, 0.0) * ptr_k * 2.2;
-	// the walls: bright where they face the light of the card's top left (a fixed key light, so that a letter always has a rim), dark opposite
-	let key = normalize(float3(-0.45, -0.6, 0.65));
-	lit *= 0.30 + 1.25 * clamp(dot(N, key), 0.0, 1.0) / max(key.z, 0.3);
-	lit += float3(0.85, 0.92, 1.0) * pow(1.0 - NV, 2.0) * 0.12;
+	let streak = foil_cell(vec2<i32>(vec2<f32>(uv.x * a.size.x * 0.35, uv.y * a.size.y * 1.6))).x;
+	let silver = mix(float3(0.58, 0.61, 0.67), float3(0.80, 0.83, 0.90), gt) * (0.88 + 0.24 * streak);
+	let kd = clamp(dot(N, KEY_LIGHT) / KEY_LIGHT.z, 0.0, 1.6);
+	var lit = silver * (0.22 + 0.78 * kd) * 0.88;
+	lit += silver * foil_shine(P, sweep_pos, N, V, T, B, phase, silver, 0.10, 0.0) * sweep_k * 1.5;
+	lit += silver * foil_shine(P, ptr_pos, N, V, T, B, phase, silver, 0.10, 0.0) * ptr_k * 1.3;
+	// a thin bright line on the very edge facing the key light, and a dark one opposite: the bevel reads at any resolution
+	lit += float3(0.85, 0.92, 1.0) * pow(1.0 - NV, 2.0) * 0.06 * clamp(kd, 0.0, 1.0);
 
+	// the foil's light does not reach the card in the letters' shadow
+	col *= (1.0 - 0.5 * halo) * (1.0 - 0.85 * dropped * (1.0 - cov));
 	col = mix(col, lit, cov);
 	col = 1.0 - exp(-col * 1.35);
 	return float4(col * arg2.x, 1.0);
