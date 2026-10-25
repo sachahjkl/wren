@@ -101,7 +101,8 @@ function Test-VideoLayers($server) {
     Check 'video layers: both videos play' ($global:WrenExit -eq 0) "exit $global:WrenExit $global:WrenErr"
     Section '4b video layers: 40 captures'
     $n = 40
-    $null = Wren-Ctl shot (Join-Path $tmp 'vl.png') --tab --count $n
+    # (in the check build every allocation is tracked: forty captures of a playing video took more than the 120 s a call may take on a runner)
+$null = Wren-Ctl shot (Join-Path $tmp 'vl.png') --tab --count $n -TimeoutSec $(if ($Check) { 600 } else { 120 })
     $shots = @(0..($n - 1) | ForEach-Object { Join-Path $tmp ('vl-{0:D2}.png' -f $_) })
     Check "video layers: $n captures were made" (@($shots | Where-Object { Test-Path $_ }).Count -eq $n) "exit $global:WrenExit $global:WrenErr"
     Section '4c video layers: pixels of the 40 captures (PowerShell GetPixel)'
