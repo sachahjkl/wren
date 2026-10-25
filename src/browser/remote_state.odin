@@ -72,21 +72,22 @@ process_uptime_ms :: proc() -> f64 {
 	return f64(ticks(now) - ticks(c)) / 10000
 }
 
-// Threads of this process (a snapshot of the system's threads, filtered by owner): -1 when the system will not say.
+// Threads of this process, from the system's list of processes (each entry carries its thread count): -1 when the system will not
+// say. Not from the list of threads: that one has every thread of the machine (thousands, and the more on a busy runner), and
+// walking it cost `wren ctl stats` 16 to 47 ms of the browser's own CPU time (more than a whole second of an idle Wren's).
 process_thread_count :: proc() -> int {
-	snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPTHREAD, 0)
+	snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPPROCESS, 0)
 	if snap == win.INVALID_HANDLE_VALUE { return -1 }
 	defer win.CloseHandle(snap)
-	e := win.THREADENTRY32{dwSize = size_of(win.THREADENTRY32)}
+	e := win.PROCESSENTRY32W{dwSize = size_of(win.PROCESSENTRY32W)}
 	pid := win.GetCurrentProcessId()
-	n := 0
-	ok := win.Thread32First(snap, &e)
+	ok := win.Process32FirstW(snap, &e)
 	for ok {
-		if e.th32OwnerProcessID == pid { n += 1 }
-		e.dwSize = size_of(win.THREADENTRY32)
-		ok = win.Thread32Next(snap, &e)
+		if e.th32ProcessID == pid { return int(e.cntThreads) }
+		e.dwSize = size_of(win.PROCESSENTRY32W)
+		ok = win.Process32NextW(snap, &e)
 	}
-	return n
+	return -1
 }
 
 ////////////////////////////////

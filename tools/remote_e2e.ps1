@@ -527,13 +527,16 @@ try {
     $null = Wren-Ctl ping --profile $prof0 --timeout 300
     $env:WREN_REMOTE = $selected
     Check 'ctl finds no server (exit 3)' ($global:WrenExit -eq 3) "exit $global:WrenExit"
-    $a = $proc.TotalProcessorTime.TotalMilliseconds; $c1 = $p0.TotalProcessorTime.TotalMilliseconds
+    # (The CPU is read from outside, between the two `stats` calls and not around them: a call is a connection, a request and a reply, 16 to
+    # 47 ms of the Wren's CPU time then, and the 62 to 219 ms "unexplained" in this window were those two calls, not an idle Wren.)
     $frames0 = [double](Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
+    $proc.Refresh(); $p0.Refresh()
+    $a = $proc.TotalProcessorTime.TotalMilliseconds; $c1 = $p0.TotalProcessorTime.TotalMilliseconds
     Start-Sleep -Seconds 3
-    $frames1 = [double](Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
     $proc.Refresh(); $p0.Refresh()
     $idle1 = $proc.TotalProcessorTime.TotalMilliseconds - $a
     $idle0 = $p0.TotalProcessorTime.TotalMilliseconds - $c1
+    $frames1 = [double](Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
     # What an idle Wren must not do is draw frames, or loop: a loop that does not rest takes 3000 ms of CPU in 3 s. On a CI machine (a cold cache, other
     # steps at the same time) the process was seen to keep working in the background for a while after it settled (125 and 594 ms measured): the bound
     # is tight where the machine is ours and wide there, and the frames drawn are asserted exactly (no frame for an idle page: stats.framesDrawn).
