@@ -298,11 +298,17 @@ graph_tooltip :: proc(index: int, colors: [Hud_Series]draw.Color) {
 		bad, warn := hud_bad(), hud_warn()
 		tone := bad > 0 && total > bad ? "bad" : warn > 0 && total > warn ? "warn" : ""
 		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), w, tone = tone)
+		// the three rows are always there ("--" when the frame had none): a row that came and went as the pointer crossed the bars of a
+		// graph where some frames restyle and others do not made the tooltip jump in height under it
+		restyle, lay_pass, wasm := "--", "--", "--"
 		if d := &hud.details[s.tag % u64(len(hud.details))]; d.serial == s.tag {
-			if d.restyle != .None { ui.stat_row("tt_rs", "Restyle", restyle_text(d), w, mono = false) }
-			if d.lay_pass != .None { ui.stat_row("tt_lp", "Layout pass", pass_name(d.lay_pass), w, mono = false) }
-			if d.wasm_calls > 0 { ui.stat_row("tt_wasm", "WebAssembly", fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls), w) }
+			if d.restyle != .None { restyle = restyle_text(d) }
+			if d.lay_pass != .None { lay_pass = pass_name(d.lay_pass) }
+			if d.wasm_calls > 0 { wasm = fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls) }
 		}
+		ui.stat_row("tt_rs", "Restyle", restyle, w, mono = false)
+		ui.stat_row("tt_lp", "Layout pass", lay_pass, w, mono = false)
+		ui.stat_row("tt_wasm", "WebAssembly", wasm, w)
 		ui.spacer(ui.px(em * 0.3))
 	}
 }
