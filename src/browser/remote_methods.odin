@@ -1038,6 +1038,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
 	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
 	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev.visible)
+	j_int(&b, "pendingOps", i64(len(the_remote.ops)))   // the commands that wait (a wait, a navigation's load): a test sees one is registered before it acts on it
 	j_int(&b, "devtoolsRoomChecks", i64(dev.room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev.room_wrong))   // devtools.odin: dev_width
 	j_end(&b)
 	return done(strings.to_string(b))
