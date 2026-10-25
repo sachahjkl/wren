@@ -14,6 +14,7 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
+import "wb:base"
 import "wb:tools/testenv"
 
 @(private = "file")
@@ -339,7 +340,13 @@ preemption :: proc(t: ^testing.T) {
 	_, res := call_i32(inst, "spin")
 	dt := time.duration_milliseconds(time.tick_since(t0))
 	testing.expectf(t, res == .Trapped && strings.contains(inst.last_error, "wasm.max_call_ms"), "the deadline still ends the call (%s)", inst.last_error)
-	testing.expectf(t, probe.calls >= 10, "the hook ran at every tick of the call (%d times in %.0f ms)", probe.calls, dt)
+	// the hook is called at every tick (2 ms) of the call: how many ticks a loaded machine gets in the time depends on it, so the
+	// count is a performance measure (-Perf); that it ran at all and was given its time back is the correctness
+	if base.perf_enabled() {
+		testing.expectf(t, probe.calls >= 10, "the hook ran at every tick of the call (%d times in %.0f ms)", probe.calls, dt)
+	} else {
+		testing.expectf(t, probe.calls >= 2, "the hook ran during the call (%d times in %.0f ms; the tick rate is checked with -Perf)", probe.calls, dt)
+	}
 	testing.expect(t, probe.refused, "a guest call from the hook is refused")
 	testing.expectf(t, dt >= 150 + probe.slept_ms * 0.9, "the hook's %.0f ms are given back to the deadline (%.0f ms)", probe.slept_ms, dt)
 	r, res2 := call_i32(inst, "add", 1, 2)
