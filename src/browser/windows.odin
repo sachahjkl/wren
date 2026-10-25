@@ -429,19 +429,24 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 // repaint the system asked for. (The page's own changes are seen by the frame, once the tasks have run.)
 @(private = "file")
 window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
-	if w.minimized { return false }
+	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
 	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
 	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || platform.take_paint_request(w.win) || events_waiting
 }
+
+@(private = "file") pass_order: [dynamic]^Browser_Window
+@(private = "file") pass_causes: [dynamic]bool
 
 // One pass of the loop: sleep when no window has a cause, then one frame for each window (the front one first, which runs the
 // tasks of the loop). false: the last window was closed.
 windows_pass :: proc(app: ^App) -> bool {
 	front := window_front(app)
-	causes := make([]bool, len(app.windows), context.temp_allocator)
-	order := make([dynamic]^Browser_Window, 0, len(app.windows), context.temp_allocator)
-	if front != nil { append(&order, front) }
-	for w in app.windows { if w != front { append(&order, w) } }
+	// (not the temporary allocator: a frame frees it at its end, and the next window's frame is made after)
+	clear(&pass_order); clear(&pass_causes)
+	if front != nil { append(&pass_order, front) }
+	for w in app.windows { if w != front { append(&pass_order, w) } }
+	for _ in pass_order { append(&pass_causes, false) }
+	order, causes := pass_order[:], pass_causes[:]
 	any_cause := devtools_window_busy()
 	wake := 0
 	for w, i in order {
@@ -655,6 +660,8 @@ windows_destroy :: proc(app: ^App) {
 		free(w)
 	}
 	delete(app.windows)
+	delete(pass_order); delete(pass_causes)
+	pass_order, pass_causes = nil, nil
 	app.windows = nil
 	app.active, app.front, app.win, app.ui_state = nil, nil, nil, nil
 	windows_locals_destroy()
