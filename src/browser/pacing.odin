@@ -28,8 +28,10 @@ import "core:strconv"
 import "core:strings"
 import "core:time"
 import win "core:sys/windows"
+import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
+import "toolkit:ui"
 import "wb:config"
 
 // PACING_DEBUG: every wait for the screen and every smooth scrolling step on stderr (build with -subsystem:console).
@@ -63,6 +65,8 @@ FRAME_PREFS := [?]config.Def{
 		description = "While the window is resized, or the splitter or the floating panel of the developer tools is dragged, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
 	{name = "browser.frame.resize_hold_ms", kind = .Int, default = {i = 120}, bounded = true, min = 0, max = 2000, unit = "ms",
 		description = "After a size change, the frames that follow within this time (the frame that settles the last step, one made for a timer or a message between two steps) are shown at once as the resize step is, with no wait for the screen's refresh in Present. A program that resizes the window itself, such as AltSnap (Alt + right button), calls the window's thread at every step and waits for it: a frame blocked in Present for a refresh made every step wait that long. 0: only the frame that sees the new size."},
+	{name = "browser.frame.resize_skip_echoes", kind = .Bool, default = {b = true},
+		description = "Within browser.frame.resize_hold_ms of a size change, a frame with nothing new to show (no input, no task run, nothing of the page or of the interface waiting for a frame, the page laid out at its size) is not made: one picture per step of the resize instead of three (the step, then the frames still asked for after it). Off: every frame asked for is drawn and presented."},
 }
 
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
@@ -75,6 +79,7 @@ Pacer_Settings :: struct {
 	vblank_clock: bool,
 	resize_immediate: bool,
 	resize_hold_ms: int,
+	resize_skip_echoes: bool,
 	input_immediate: bool,
 	video_at_vblank: bool,
 	latency_probe: bool,
@@ -90,6 +95,7 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		vblank_clock = config.bool_of(p, "browser.frame.vblank_clock"),
 		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
 		resize_hold_ms = int(config.int_of(p, "browser.frame.resize_hold_ms")),
+		resize_skip_echoes = config.bool_of(p, "browser.frame.resize_skip_echoes"),
 		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
 		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
 		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
@@ -159,6 +165,7 @@ Pacer :: struct {
 	resizing:   bool,         // this frame follows a size change: drawn and shown at once (pacer_wait)
 	resize_ns:  i64,          // tick of the last size change seen (0: none yet)
 	resize_held: bool,        // this frame comes within browser.frame.resize_hold_ms of one: shown at once, paced as any frame (resize_burst)
+	echoes_skipped: int,      // frames of a resize burst not made (resize_echo_frame)
 	input_frame: bool,        // this frame was woken by input: shown at once (browser.frame.input_immediate)
 	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize or an input frame)
 	read_tick:  i64,          // tick this frame had read its input (the key of its Displayed_Frame)
@@ -224,6 +231,32 @@ resize_burst :: proc(now_ns, last_ns: i64, hold_ms: int) -> bool {
 // frame): the loop idled before it, or nothing was presented for `periods` refresh periods (0: every frame does).
 input_starts_answer :: proc(idled: bool, since_present_ns: i64, period_ms, periods: f64) -> bool {
 	return idled || periods <= 0 || f64(since_present_ns) > period_ms * periods * 1e6
+}
+
+// A frame of the burst after a resize step that would only show the step's picture again: nothing came (events, tasks),
+// nothing waits for a frame (the page, the interface, a scroll animation) and the page is laid out at its area's size.
+// Pure: frame() skips it (resize_echo_frame) instead of presenting a copy at once.
+resize_echo :: proc(held, resizing, enabled: bool, events, ran: int, wants: bool) -> bool {
+	return enabled && held && !resizing && events == 0 && ran == 0 && !wants
+}
+
+// frame() (main.odin): whether this frame is such an echo; it is then not made (frames asked for are forgotten).
+resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
+	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
+	// chain keeps it on screen)
+	wants := page_wants || ui.needs_frame(&app.ui_state) || ui.wake_ms(&app.ui_state) != 0
+	// a step is a frame at a size not drawn yet (the window's size against the renderer's: pacer_wait only sees a size
+	// that came before its wait, and calls the frame after the one that drew it a step too)
+	step := app.win.size != app.r.size
+	if t := current_tab(app); t != nil && t.page != nil {
+		if len(t.smooth.anims) > 0 { wants = true }
+		if page_prep.tab == t && page_prep.size != draw.rect_size(app.page_rect) { wants = true }   // laid out at another size: the next frame settles it
+	}
+	if !resize_echo(pacer.resize_held || pacer.resizing, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) { return false }
+	app.frames_requested = 0
+	platform.take_paint_request(app.win)
+	pacer.echoes_skipped += 1
+	return true
 }
 
 // Present and the swap chain's latency for a frame: the resize step, a frame of the burst after it, an input frame.

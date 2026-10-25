@@ -98,7 +98,7 @@ JSValue wjr_NavigatorCookies_get_cookieEnabled(JSContext *ctx, JSValueConst this
 JSValue wjr_NavigatorConcurrentHardware_get_hardwareConcurrency(JSContext *ctx, JSValueConst this_val) { return nav_this(ctx, this_val) ? JS_NewInt32(ctx, wr_Navigator_hardwareConcurrency()) : JS_EXCEPTION; }
 JSValue wjr_NavigatorPlugins_get_pdfViewerEnabled(JSContext *ctx, JSValueConst this_val) { return nav_this(ctx, this_val) ? JS_FALSE : JS_EXCEPTION; }
 JSValue wjr_NavigatorPlugins_javaEnabled(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return nav_this(ctx, this_val) ? JS_FALSE : JS_EXCEPTION; }
-JSValue wjr_Navigator_get_maxTouchPoints(JSContext *ctx, JSValueConst this_val) { return nav_this(ctx, this_val) ? JS_NewInt32(ctx, 0) : JS_EXCEPTION; }
+JSValue wjr_Navigator_get_maxTouchPoints(JSContext *ctx, JSValueConst this_val) { return nav_this(ctx, this_val) ? JS_NewInt32(ctx, wr_Navigator_maxTouchPoints()) : JS_EXCEPTION; }
 
 /* navigator.plugins / mimeTypes: empty (PluginArray, MimeTypeArray: no plugins; pdfViewerEnabled is false) */
 static JSValue empty_frozen(JSContext *ctx)

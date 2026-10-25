@@ -225,6 +225,8 @@ JSValue web_blob_new(JSContext *ctx, const uint8_t *p, size_t n, const char *typ
 JSValue web_file_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len, const char *name, size_t name_len, double last_modified);
 /* A File for a file of the browser (module dnd's LocalFile handle, taken), read on demand; null for 0. */
 JSValue web_file_from_host(JSContext *ctx, uint64_t local_file);
+/* The wrapper of a FileSystemEntry handle of the browser (module entries; web_entries.c), null for 0. */
+JSValue web_entry_wrap(JSContext *ctx, uint64_t entry);
 /* The browser's file behind a File not read yet (0 otherwise). */
 uint64_t web_file_host(JSValueConst v);
 /* A File's name, type (owned: wj_str_free) and lastModified; false when `v` is not a Blob (or with an exception). */

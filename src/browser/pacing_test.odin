@@ -91,6 +91,17 @@ frames_just_after_a_size_change_are_part_of_the_burst :: proc(t: ^testing.T) {
 }
 
 @(test)
+resize_echoes_are_not_presented :: proc(t: ^testing.T) {
+	testing.expect(t, resize_echo(true, false, true, 0, 0, false), "after a step, nothing new: skipped")
+	testing.expect(t, !resize_echo(true, true, true, 0, 0, false), "the step itself is made")
+	testing.expect(t, !resize_echo(true, false, true, 1, 0, false), "input came: made")
+	testing.expect(t, !resize_echo(true, false, true, 0, 2, false), "a task ran: made")
+	testing.expect(t, !resize_echo(true, false, true, 0, 0, true), "the page or the interface wants a frame: made")
+	testing.expect(t, !resize_echo(false, false, true, 0, 0, false), "outside a resize: frames as asked")
+	testing.expect(t, !resize_echo(true, false, false, 0, 0, false), "browser.frame.resize_skip_echoes off")
+}
+
+@(test)
 pacing_plan_on_a_display :: proc(t: ^testing.T) {
 	Case :: struct { display, hz: f64, tearing: bool, interval: int, timed: bool }
 	cases := [?]Case{

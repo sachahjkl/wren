@@ -716,3 +716,22 @@ transforms3d_interpolate :: proc(t: ^testing.T) {
 	l.rotate = Rotate_Value{set = true, axis = {0, 1, 0}, angle = 1}
 	testing.expect(t, interpolate_prop(out, k, l, .Rotate, 0.5, &ctx) && out.rotate.axis[2] == 0 && out.rotate.axis[0] > 0 && out.rotate.axis[1] > 0, "between two axes: an axis between them")
 }
+
+@(test)
+touch_action_values :: proc(t: ^testing.T) {
+	f := open(`<style>
+		#n { touch-action: none } #x { touch-action: pan-x } #y { touch-action: pan-y pinch-zoom }
+		#m { touch-action: manipulation } #l { touch-action: pan-left pan-down } #bad { touch-action: none pan-x }
+		#dup { touch-action: pan-x pan-right }
+	</style><p id=n></p><p id=x></p><p id=y></p><p id=m></p><p id=l></p><p id=bad></p><p id=dup></p><p id=a></p>`)
+	defer close(&f)
+	ALL :: Touch_Blocked{.Pan_X, .Pan_Y, .Pinch_Zoom, .Double_Tap}
+	testing.expect_value(t, node(&f, "a").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(&f, "n").touch_action, ALL)
+	testing.expect_value(t, node(&f, "x").touch_action, Touch_Blocked{.Pan_Y, .Pinch_Zoom, .Double_Tap})
+	testing.expect_value(t, node(&f, "y").touch_action, Touch_Blocked{.Pan_X, .Double_Tap})
+	testing.expect_value(t, node(&f, "m").touch_action, Touch_Blocked{.Double_Tap})
+	testing.expect_value(t, node(&f, "l").touch_action, Touch_Blocked{.Pinch_Zoom, .Double_Tap})
+	testing.expect_value(t, node(&f, "bad").touch_action, Touch_Blocked{})
+	testing.expect_value(t, node(&f, "dup").touch_action, Touch_Blocked{})
+}

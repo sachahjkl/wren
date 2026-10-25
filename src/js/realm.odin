@@ -60,7 +60,7 @@ Start_Options :: struct {
 	gc_threshold:   i64,
 	expose_unimplemented: bool,   // interfaces with nothing implemented are on the global anyway
 	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
-	no_touch_handlers:    bool,   // the ontouch* event handler attributes are removed (javascript.touch_events)
+	no_touch_handlers:    bool,   // the ontouch* attributes and the Touch* interfaces are removed (browser.touch.expose)
 }
 
 // Starts a realm on a fresh instance of the engine (pre-initialized or not). False when the engine refused.

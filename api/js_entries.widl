@@ -1,0 +1,39 @@
+/// The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin;
+/// native/js/runtime/web_entries.c): DataTransferItem.webkitGetAsEntry() gives a FileSystemFileEntry or a
+/// FileSystemDirectoryEntry for a dropped file or folder; a folder is listed lazily, one directory at a time, on a
+/// background thread (createReader().readEntries()), and its files are opened the same way (file()). Paths stay inside
+/// what was dropped: a path that leaves it ("..") is refused.
+[Exposed=Window]
+module entries {
+  handle FsEntry : Object = Fs_Entry via lookup_FsEntry;
+  handle FsReader : Object = Fs_Reader via lookup_FsReader;
+
+  /// What an entry is.
+  struct FsEntryInfo {
+    bool is_dir;
+  }
+
+  /// item.webkitGetAsEntry(): the entry of a file item (0: a string item, or the data store is protected).
+  FsEntry DataTransfer_itemEntry(DataTransfer dt, i32 index) raises;
+  /// isFile / isDirectory
+  FsEntryInfo FsEntry_info(FsEntry entry);
+  /// entry.name
+  string FsEntry_name(FsEntry entry);
+  /// entry.fullPath ("/" then the dropped item's name and the path below it, "/" separated)
+  string FsEntry_fullPath(FsEntry entry);
+  /// entry.filesystem.name
+  string FsEntry_filesystemName(FsEntry entry);
+  /// getParent(): the folder above (an entry is its own parent at the top of what was dropped).
+  FsEntry FsEntry_parent(FsEntry entry);
+  /// fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).
+  Promise FsEntry_file(FsEntry entry);
+  /// dirEntry.getFile(path) / getDirectory(path): a promise of the entry (NotFoundError, TypeMismatchError when it is
+  /// the other kind, SecurityError for a path that leaves what was dropped).
+  Promise FsEntry_lookup(FsEntry dir, string path, bool directory);
+  /// dirEntry.createReader()
+  FsReader FsEntry_createReader(FsEntry dir);
+  /// reader.readEntries(): a promise of the number of entries of the next batch (0: the end), read with FsReader_entry.
+  Promise FsReader_read(FsReader reader);
+  /// The entries of the last batch.
+  FsEntry FsReader_entry(FsReader reader, i32 index);
+}

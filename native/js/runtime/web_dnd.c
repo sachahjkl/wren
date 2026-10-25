@@ -275,11 +275,15 @@ JSValue wjr_DataTransferItem_getAsFile(JSContext *ctx, JSValueConst this_val, in
     return web_file_from_host(ctx, f);
 }
 
-/* webkitGetAsEntry(): the File and Directory Entries API is not implemented; null as for an item that is not a file */
+/* webkitGetAsEntry(): the entry of a dropped file or folder (web_entries.c), null for a string item or outside drop */
 JSValue wjr_DataTransferItem_webkitGetAsEntry(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
-    return item_this(ctx, this_val) ? JS_NULL : JS_EXCEPTION;
+    list_impl *l = item_this(ctx, this_val);
+    if (!l) { return JS_EXCEPTION; }
+    uint64_t e = 0;
+    if (wr_DataTransfer_itemEntry(l->store, l->index, &e) < 0 || !e) { return JS_NULL; }
+    return web_entry_wrap(ctx, e);
 }
 
 /* ---- FileList ---- */

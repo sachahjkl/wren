@@ -52,6 +52,7 @@ module htmlmedia {
   /// video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
   u32 HTMLVideoElement_videoWidth(HTMLMediaElement element);
   u32 HTMLVideoElement_videoHeight(HTMLMediaElement element);
-  /// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+  /// video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
+  /// totalFrameDelay in seconds).
   bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element);
 }

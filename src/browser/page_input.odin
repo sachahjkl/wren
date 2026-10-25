@@ -95,6 +95,7 @@ device_details :: proc(ev: platform.Event, scale: f32) -> dom.Pointer_Details {
 
 // A mouse event of the system's emulation that must not reach the page (its touchstart was cancelled).
 page_drop_emulated :: proc(ev: platform.Event) -> bool {
+	if touch_drop_emulated(ev) { return true }   // touch_shell.odin: a finger pans; its tap is clicked by the shell
 	if !ev.emulated || !din.drop_emulated { return false }
 	if ev.kind == .Mouse_Release && ev.buttons == {} { din.drop_emulated = false }
 	return ev.kind == .Mouse_Press || ev.kind == .Mouse_Release || ev.kind == .Mouse_Move
@@ -147,7 +148,11 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		page.pointer_capture_process(p, id, proto)
 		fire(p, proto, "pointerdown", page.pointer_target(p, id, hit))
 		if t.page != p { return true }
-		if touch && !page.touch_dispatch(p, .Start, tp, proto.mods, scroll) && ev.pointer.primary { din.drop_emulated = true }
+		if touch {
+			ok := page.touch_dispatch(p, .Start, tp, proto.mods, scroll)
+			if !ok && ev.pointer.primary { din.drop_emulated = true }
+			if t.page == p { touch_pointer(app, t, ev, hit, ok) }   // touch_shell.odin: pan, pinch, long press, tap
+		}
 	case .Pointer_Move:
 		if was != now { boundary(p, proto, was, now) }
 		if t.page != p { return true }
@@ -155,7 +160,10 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		page.pointer_capture_process(p, id, proto)
 		fire(p, proto, "pointermove", page.pointer_target(p, id, hit))
 		if t.page != p { return true }
-		if touch { page.touch_dispatch(p, .Move, tp, proto.mods, scroll) }
+		if touch {
+			ok := page.touch_dispatch(p, .Move, tp, proto.mods, scroll)
+			if t.page == p { touch_pointer(app, t, ev, hit, ok) }
+		}
 	case .Pointer_Up, .Pointer_Cancel:
 		cancel := ev.kind == .Pointer_Cancel
 		page.pointer_capture_process(p, id, proto)
@@ -167,7 +175,10 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		boundary(p, proto, was, base.NIL_HANDLE)
 		delete_key(&din.over, ev.pointer.id)
 		if t.page != p { return true }
-		if touch { page.touch_dispatch(p, cancel ? .Cancel : .End, tp, proto.mods, scroll) }
+		if touch {
+			ok := page.touch_dispatch(p, cancel ? .Cancel : .End, tp, proto.mods, scroll)
+			if t.page == p { touch_pointer(app, t, ev, hit, ok) }
+		}
 	}
 	app.frames_requested = max(app.frames_requested, 2)
 	return true

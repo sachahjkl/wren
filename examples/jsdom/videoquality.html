@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>getVideoPlaybackQuality</title>
+<body>
+<video id="v"></video>
+<script>
+section("getVideoPlaybackQuality", () => {
+  const v = document.getElementById("v");
+  t("a method of HTMLVideoElement", typeof v.getVideoPlaybackQuality === "function");
+  const q = v.getVideoPlaybackQuality();
+  t("a VideoPlaybackQuality", q instanceof VideoPlaybackQuality);
+  t("a new snapshot each time", q !== v.getVideoPlaybackQuality());
+  eq("no player yet: totalVideoFrames", q.totalVideoFrames, 0);
+  eq("droppedVideoFrames", q.droppedVideoFrames, 0);
+  eq("corruptedVideoFrames", q.corruptedVideoFrames, 0);
+  eq("totalFrameDelay (Firefox's)", q.totalFrameDelay, 0);
+  t("creationTime on the page's clock", q.creationTime > 0 && q.creationTime <= performance.now() + 1);
+  throws("not on an audio element", () => HTMLVideoElement.prototype.getVideoPlaybackQuality.call(document.createElement("audio")), "TypeError");
+});
+done();
+</script>
