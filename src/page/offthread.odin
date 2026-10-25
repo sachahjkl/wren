@@ -46,8 +46,8 @@ THREAD_PREFS := [?]config.Def{
 		description = "<style> elements at least this large are parsed together with their document on the background thread (when page.threads.parse_html applies). Style elements added later by scripts are always parsed at once, as the specification requires."},
 	{name = "page.threads.style", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 256,
 		description = "Threads that compute the styles of a large document together with the interface thread (the result is the same as on one thread). -1 = one less than the logical processors, at most 7; 0 = only the interface thread."},
-	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 4000}, bounded = true, min = 0, max = 1 << 40, unit = "nodes",
-		description = "Documents with fewer nodes get their full style pass on the interface thread alone: sharing the work out would cost more than it saves (incremental restyles follow style.incremental.parallel_min)."},
+	{name = "page.threads.style_min_nodes", kind = .Int, default = {i = 400}, bounded = true, min = 0, max = 1 << 40, unit = "nodes",
+		description = "Documents with fewer nodes get their full style pass on the interface thread alone: sharing the work out would cost more than it saves (incremental restyles follow style.incremental.parallel_min). A style pass costs 25 to 50 microseconds per element on a page that uses many custom properties (Tailwind): at 1 800 elements it is 90 ms on one thread and 20 ms shared out, so the limit is low."},
 }
 
 // Helpers of the full style pass, shared by every page (the UI thread runs one pass at a time). Made on first use with
