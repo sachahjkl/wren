@@ -515,7 +515,8 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
 }
 
 /* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: WJ_START_*. 0 ok. */
-enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4 };
+enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4,
+       WJ_START_SHARED_WORKER = 8, WJ_START_SERVICE_WORKER = 16 };   /* (a worker realm of that kind) */
 
 /* browser.touch.expose off (or auto without a touch screen): the ontouch* event handler attributes and the Touch,
  * TouchEvent and TouchList interfaces are not exposed, as in Firefox on such a computer; pages test 'ontouchstart' in
@@ -549,7 +550,11 @@ WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, d
     if (memory_limit > 0) { JS_SetMemoryLimit(rt, (size_t)memory_limit); }
     if (gc_threshold > 0) { JS_SetGCThreshold(rt, (size_t)gc_threshold); JS_SetGCThresholdFloor(rt, (size_t)gc_threshold); }
     wj_the_realm.kind = kind;
-    if (wj_platform_start(ctx, kind) != 0) { return -2; }
+    int scope = kind;
+    if (kind == WJ_EXPOSE_WORKER && (flags & WJ_START_SHARED_WORKER)) { scope = WJ_EXPOSE_SHARED_WORKER; }
+    if (kind == WJ_EXPOSE_WORKER && (flags & WJ_START_SERVICE_WORKER)) { scope = WJ_EXPOSE_SERVICE_WORKER; }
+    wj_the_realm.scope = scope;
+    if (wj_platform_start(ctx, scope) != 0) { return -2; }
     if (flags & WJ_START_NO_TOUCH_HANDLERS) { remove_touch_handlers(ctx); }
     wj_the_realm.started = true;
     return 0;

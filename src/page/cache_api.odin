@@ -48,10 +48,10 @@ CacheStorage_names :: proc(c: ^Call) -> (string, Api_Error) {
 	return cache_names(dir, origin), .None
 }
 
-Cache_matchIds :: proc(c: ^Call, cache, u, method: string, ignore_search, ignore_method: bool) -> (string, Api_Error) {
+Cache_matchIds :: proc(c: ^Call, cache, u, method, request_headers: string, ignore_search, ignore_method, ignore_vary: bool) -> (string, Api_Error) {
 	dir, origin, err := cache_realm(c)
 	if err != .None { return "", err }
-	ids := cache_match_ids(dir, origin, cache, u, method, {ignore_search = ignore_search, ignore_method = ignore_method})
+	ids := cache_match_ids(dir, origin, cache, u, method, {ignore_search = ignore_search, ignore_method = ignore_method, ignore_vary = ignore_vary}, request_headers)
 	b := strings.builder_make(context.temp_allocator)
 	for id, i in ids {
 		if i > 0 { strings.write_byte(&b, '\n') }
@@ -69,6 +69,14 @@ Cache_entryHead :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)
 	return fmt.tprintf("%d\n%s\n%s\n%s\n%s\n%s", e.status, e.status_text, e.response_url, e.method, e.url, e.headers), .None
 }
 
+Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error) {
+	dir, origin, err := cache_realm(c)
+	if err != .None { return "", err }
+	h, ok := cache_entry_request_headers(dir, origin, cache, id)
+	if !ok { return "", fail(c, .Not_Found, "the entry is gone") }
+	return h, .None
+}
+
 Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]byte, Api_Error) {
 	dir, origin, err := cache_realm(c)
 	if err != .None { return nil, err }
@@ -77,9 +85,10 @@ Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]byte, Api_Error)
 	return body, .None
 }
 
-Cache_putEntry :: proc(c: ^Call, cache, u: string, status: i32, status_text, response_url, headers: string, body: []byte) -> Api_Error {
+Cache_putEntry :: proc(c: ^Call, cache, u, request_headers: string, status: i32, status_text, response_url, headers: string, body: []byte) -> Api_Error {
 	dir, origin := cache_realm(c) or_return
-	switch cache_put(dir, origin, cache, Cached_Response{url = u, status = int(status), status_text = status_text, response_url = response_url, headers = headers}, body, c.page.settings.sw.cache_max_bytes) {
+	e := Cached_Response{url = u, req_headers = request_headers, status = int(status), status_text = status_text, response_url = response_url, headers = headers}
+	switch cache_put(dir, origin, cache, e, body, c.page.settings.sw.cache_max_bytes) {
 	case .None:
 	case .No_Cache: return fail(c, .Invalid_State, "InvalidStateError: the cache is gone")
 	case .Quota: return fail(c, .Quota, "QuotaExceededError: caches.max_bytes_per_origin")
@@ -87,8 +96,8 @@ Cache_putEntry :: proc(c: ^Call, cache, u: string, status: i32, status_text, res
 	return .None
 }
 
-Cache_deleteEntries :: proc(c: ^Call, cache, u, method: string, ignore_search, ignore_method: bool) -> (bool, Api_Error) {
+Cache_deleteEntries :: proc(c: ^Call, cache, u, method, request_headers: string, ignore_search, ignore_method, ignore_vary: bool) -> (bool, Api_Error) {
 	dir, origin, err := cache_realm(c)
 	if err != .None { return false, err }
-	return cache_delete_entries(dir, origin, cache, u, method, {ignore_search = ignore_search, ignore_method = ignore_method}), .None
+	return cache_delete_entries(dir, origin, cache, u, method, {ignore_search = ignore_search, ignore_method = ignore_method, ignore_vary = ignore_vary}, request_headers), .None
 }

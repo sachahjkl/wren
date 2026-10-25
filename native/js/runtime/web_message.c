@@ -225,6 +225,16 @@ static JSValue port_new_remote(JSContext *ctx, uint64_t end)
     return port;
 }
 
+/* A port of this realm bound to the browser's port end `end` (a SharedWorker's port, a connect event's port). An end
+ * of 0 gives a closed port. */
+JSValue web_port_remote(JSContext *ctx, uint64_t end)
+{
+    if (end) { return port_new_remote(ctx, end); }
+    JSValue port = port_new(ctx);
+    if (!JS_IsException(port)) { port_of(port)->closed = true; }
+    return port;
+}
+
 /* Ships the ports of a message (an array, transfer order) out of this realm: each one's pair becomes a pair of port
  * ends (the port that stays here, if any, talks to the first), and the ports themselves are neutered. The ends travel
  * with the message (*ends: malloc'ed, *n of them). False with a DataCloneError pending for a port that cannot go. */

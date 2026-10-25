@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Shared and module workers</title>
+<p>Shared and module workers (tools\workers_e2e.ps1).</p>
+<script>
+// Connects to the shared worker "w" and keeps what its port receives.
+window.shared = new SharedWorker("shared.js", "w");
+window.got = [];
+shared.port.onmessage = (e) => got.push(String(e.data));
+window.ask = (what) => new Promise((ok) => {
+  const n = got.length;
+  shared.port.postMessage(what);
+  const t = setInterval(() => { if (got.length > n) { clearInterval(t); ok(got[got.length - 1]); } }, 20);
+});
+</script>

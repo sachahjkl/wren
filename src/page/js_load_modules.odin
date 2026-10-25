@@ -45,6 +45,7 @@ Module_Graph :: struct {
 	script:    ^Page_Script,        // the module script that waits for it (nil for import())
 	import_id: i32,                 // import(): the engine's id of the promise
 	is_import: bool,
+	worker_root: bool,              // the graph of a module worker's script (js_worker_module_start)
 	error:     string,              // owned: why it failed; with `rethrow`, the module whose error is to be rethrown
 	rethrow:   bool,                // failed because of a module's error to rethrow (reported / rejected with it)
 }
@@ -73,7 +74,11 @@ modules_of :: proc(p: ^Page) -> ^Module_State {
 @(private)
 modules_free :: proc(p: ^Page, ms: ^Module_State) {
 	for _, e in ms.entries {
-		if e.task != base.NIL_HANDLE && !p.closed { fetch.cancel(p.loader, e.task) }
+		if e.task != base.NIL_HANDLE && p.worker != nil {
+			module_worker_release(p, e.task)
+		} else if e.task != base.NIL_HANDLE && !p.closed {
+			fetch.cancel(p.loader, e.task)
+		}
 		delete(e.key); delete(e.source); delete(e.error)
 		for d in e.deps { delete(d) }
 		delete(e.deps)
@@ -121,6 +126,15 @@ module_fetch :: proc(p: ^Page, key: string, type: Api_ModuleType, cors: Cors_Set
 	e.state = .Fetching
 	ms.entries[e.key] = e
 	cred := cors == .Use_Credentials ? fetch.Credentials.Include : fetch.Credentials.Same_Origin
+	if p.worker != nil {
+		// a worker's requests run on the interface thread (worker.odin): a record of the realm, relayed
+		h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = max(u32), module = e})
+		f.self = h
+		options := FETCH_OPTION_MODULE_SCRIPT | (type == .Json ? FETCH_OPTION_JSON_MODULE : 0) | (cors == .Use_Credentials ? 2 << 2 : 0)
+		worker_fetch_start(p, f, e.key, "GET", "", nil, options)
+		e.task = h
+		return e
+	}
 	e.task = fetch.start(p.loader, {
 		request = {url = e.key, mode = .Cors, credentials = cred, destination = .Script, initiator = &p.env,
 			script = type == .Json ? .Json_Module : .Module},
@@ -139,23 +153,93 @@ module_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if r.status < 200 || r.status >= 300 { delete(e.error); e.error = fmt.aprintf("HTTP %d", r.status) }
 	case .Done:
 		e.task = base.NIL_HANDLE
-		if e.error != "" {
-			e.state = .Failed
-			log(p, .Error, fmt.tprintf("module %s: %s", e.key, e.error))
-		} else {
-			append(&e.source, ..ev.data)
-			e.state = .Fetched
-			module_prepare(p, e)
-		}
-		modules_check(p)
+		module_arrived(p, e, ev.data, "")
 	case .Failed:
 		e.task = base.NIL_HANDLE
-		e.state = .Failed
-		delete(e.error)
-		e.error = strings.clone(ev.detail)
-		log(p, .Error, fmt.tprintf("module %s: %s", e.key, ev.detail))
-		modules_check(p)
+		module_arrived(p, e, nil, ev.detail)
 	}
+}
+
+// A module's request finished: its source (or why it failed, `failure`), then the graphs waiting for it move on.
+@(private)
+module_arrived :: proc(p: ^Page, e: ^Module_Entry, source: []byte, failure: string) {
+	if failure != "" { delete(e.error); e.error = strings.clone(failure) }
+	if e.error != "" {
+		e.state = .Failed
+		log(p, .Error, fmt.tprintf("module %s: %s", e.key, e.error))
+	} else {
+		append(&e.source, ..source)
+		e.state = .Fetched
+		module_prepare(p, e)
+	}
+	modules_check(p)
+}
+
+// Option bits of a worker's relayed request: a module script (destination script, a JavaScript MIME type required),
+// and a JSON module.
+FETCH_OPTION_MODULE_SCRIPT :: u32(1) << 15
+FETCH_OPTION_JSON_MODULE :: u32(1) << 16
+
+// A worker realm: the request of a module of its graph finished (worker.odin's worker_fetch_event).
+module_worker_fetched :: proc(p: ^Page, f: ^Fetch) {
+	e := f.module
+	f.module = nil
+	h := f.self
+	e.task = base.NIL_HANDLE
+	why := ""
+	if f.state == 3 {
+		why = f.error != "" ? strings.clone(f.error, context.temp_allocator) : "network error"
+	} else if f.status < 200 || f.status >= 300 {
+		why = fmt.tprintf("HTTP %d", f.status)
+	}
+	body := make([]byte, len(f.body), context.temp_allocator)
+	copy(body, f.body[:])
+	module_worker_release(p, h)
+	module_arrived(p, e, body, why)
+}
+
+// Forgets a worker realm's module request (cancelled when still running).
+@(private)
+module_worker_release :: proc(p: ^Page, h: base.Handle) {
+	f := base.pool_get(&p.fetches, h)
+	if f == nil { return }
+	fetch_abort(p, f)
+	p.held -= len(f.body)
+	removed, _ := base.pool_remove(&p.fetches, h)
+	free_fetch(&removed)
+}
+
+// A module worker's script arrived (js_workers.odin): the root of the realm's graph, whose imports are fetched next;
+// it runs once the graph is complete (worker_root_settled).
+js_worker_module_start :: proc(p: ^Page, root_url: string, source: []byte) {
+	ms := modules_of(p)
+	e := new(Module_Entry)
+	e.page = p
+	e.key = strings.clone(root_url)
+	e.cors = .Anonymous
+	e.state = .Fetched
+	append(&e.source, ..source)
+	ms.entries[e.key] = e
+	module_prepare(p, e)
+	g := new(Module_Graph)
+	g.root = strings.clone(root_url)
+	g.worker_root = true
+	append(&ms.graphs, g)
+	modules_check(p)
+}
+
+// The module worker's graph is complete (it runs: a service worker's events may come after) or failed (an error
+// event at the Worker object, the console says why).
+@(private)
+worker_root_settled :: proc(p: ^Page, g: ^Module_Graph) {
+	defer graph_free(g)
+	defer worker_release_held(p)
+	if g.state == .Ready || g.rethrow {
+		module_graph_run(p, g)
+		if g.state == .Ready && p.worker != nil { sw_script_ran(p) }
+		return
+	}
+	if p.worker != nil && !realm_halted(p) { worker_send_error(p.worker, g.error) }
 }
 
 // Hands a fetched module to the engine: compiled (not run), its imports requested.
@@ -307,6 +391,11 @@ modules_check :: proc(p: ^Page) {
 			import_settle(p, g)
 			continue
 		}
+		if g.worker_root {
+			ordered_remove(&ms.graphs, i)
+			worker_root_settled(p, g)   // (a worker's realm is closed by its thread, never from a task)
+			continue
+		}
 		if g.script != nil { settled_script = true }
 		i += 1
 	}
@@ -334,7 +423,6 @@ module_graph_run :: proc(p: ^Page, g: ^Module_Graph) {
 
 Module_import :: proc(c: ^Call, id: i32, specifier: string, base_url: string, type: Api_ModuleType) -> Api_Error {
 	p := c.page
-	if p.worker != nil { return fail(c, .Not_Supported, "import() is not supported in workers by this browser") }
 	b := base_url != "" ? base_url : p.env.location.href
 	resolved, msg, ok := module_resolve(p, specifier, b)
 	if !ok { return fail(c, .Type, msg) }

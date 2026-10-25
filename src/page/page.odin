@@ -45,6 +45,7 @@ Fetch :: struct {
 	error:      string,
 	error_kind: fetch.Error_Kind,
 	ext:        ^Fetch_Ext,     // promise / stream / abort signal state (bindings_fetch.odin), nil for plain callback fetches
+	module:     ^Module_Entry,  // a worker realm fetching a module of its graph (js_load_modules.odin)
 }
 
 Timer :: struct {
