@@ -203,6 +203,13 @@ Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren wi
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 }
+Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\nav_trust_e2e.ps1
+}
 
 Step 'unit tests: wasm' { odin test src/wasm -use-separate-modules $MemCheck -collection:wb=src -vet -define:ODIN_TEST_THREADS=1 -out:build/wasm_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'unit tests: bindgen (description language, determinism)' { odin test src/tools/bindgen/idl -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/bindgen_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }

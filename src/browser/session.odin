@@ -257,7 +257,7 @@ session_lazy_load :: proc(app: ^App) {
 	t := current_tab(app)
 	if t == nil || !t.lazy { return }
 	t.lazy = false
-	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true)
+	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, origin = .Replay)
 }
 
 session_destroy :: proc() {

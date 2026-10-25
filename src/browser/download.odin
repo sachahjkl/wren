@@ -421,7 +421,7 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 	}
 	if cur := page.session_current(&t.session); cur != nil && bfcache_restore(app, t, cur) { return }
 	if e := page_session_current(t); e != "" {
-		navigate(app, t, e, record = false, restore = true)
+		navigate(app, t, e, record = false, restore = true, origin = .Replay)
 		return
 	}
 	if len(app.tabs) > 1 {

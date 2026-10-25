@@ -869,7 +869,7 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		name := r.label[sp.name_a:sp.name_b]
 		if name == "href" || name == "src" || name == "srcset" || name == "action" {
 			ui.menu_separator()
-			if ui.menu_item("Open in a new tab###dt_em_open").clicked { open_in_new_tab(app, strings.clone(val, context.temp_allocator)) }
+			if ui.menu_item("Open in a new tab###dt_em_open").clicked { open_in_new_tab(app, strings.clone(val, context.temp_allocator), inspected_page(app)) }
 		}
 	}
 }

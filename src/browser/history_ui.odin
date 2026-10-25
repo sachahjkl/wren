@@ -108,7 +108,7 @@ open_history :: proc(app: ^App, from: ^Tab, tree: bool) {
 			return
 		}
 	}
-	tab_open(app, tree ? HISTORY_URL + "#tree" : HISTORY_URL)
+	tab_open(app, tree ? HISTORY_URL + "#tree" : HISTORY_URL, origin = .User)
 }
 
 // The tab's document title changed (favicon.odin tab_refresh): its entry and its last visit take it.
@@ -353,7 +353,7 @@ browsing_toolbar :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 visit_open :: proc(app: ^App, t: ^Tab, address: string, new_tab: bool) {
 	a := strings.clone(address, context.temp_allocator)
-	if new_tab { tab_open(app, a) } else { navigate(app, t, a) }
+	if new_tab { tab_open(app, a, origin = .Replay) } else { navigate(app, t, a, origin = .Replay) }
 }
 
 @(private = "file")

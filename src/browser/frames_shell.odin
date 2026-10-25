@@ -401,7 +401,7 @@ frames_follow_link :: proc(app: ^App, fv: ^Frame_View, el: base.Handle, href: st
 	if page.follow_javascript_url(p, resolved) { return }
 	target, _ := dom.get_attribute(p.doc, el, "target")
 	if strings.equal_fold(strings.trim_space(target), "_blank") {
-		tab_open(app, resolved.href)
+		tab_open(app, resolved.href, p)
 		return
 	}
 	n := page.frames_find_target(p, strings.trim_space(target))

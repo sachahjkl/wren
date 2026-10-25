@@ -221,7 +221,7 @@ image_bar :: proc(app: ^App, pv: ^Preview_State, e: ^Net_Entry) {
 		ui.custom("###dt_pi_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^)
 		}, new_clone(dt_frame_str(image_info_text(pv, e)), ui.frame_allocator()))
-		if dt_btn("###dt_pi_open", .Detach, tooltip = "Open the image in a new tab").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator)) }
+		if dt_btn("###dt_pi_open", .Detach, tooltip = "Open the image in a new tab").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 		dt_gap(3)
 	}
 }
@@ -571,7 +571,7 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		ui.custom("###dt_ph_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(120))
 		}, new_clone(dt_frame_str(hr.title != "" ? hr.title : net_name_of(e.url)), ui.frame_allocator()))
-		if dt_btn("###dt_ph_open", .Detach, tooltip = "Open the page in a new tab (as the browser renders it)").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator)) }
+		if dt_btn("###dt_ph_open", .Detach, tooltip = "Open the page in a new tab (as the browser renders it)").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 		dt_gap(3)
 	}
 	if pv.source {

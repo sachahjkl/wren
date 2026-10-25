@@ -242,14 +242,13 @@ cache_page_html :: proc(app: ^App, filter: string, cleared: bool) -> string {
 }
 
 // about:cache, about:cache?q=filter; about:cache?clear=1 clears the cache when the browser itself or about:cache asks
-// (a web page linking there does nothing).
-show_cache_page :: proc(app: ^App, t: ^Tab, target: string, from: ^page.Page) {
+// (`acts`, from nav_judge: a web page linking there, or a navigation replayed, does nothing).
+show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	query := ""
 	if i := strings.index_byte(target, '?'); i >= 0 { query = target[i + 1:] }
 	filter := query_param(query, "q")
 	cleared := false
-	trusted := from == nil || is_cache_address(from.env.location.href)
-	if query_param(query, "clear") == "1" && trusted {
+	if query_param(query, "clear") == "1" && acts {
 		http_cache_clear(app)
 		cleared = true
 		// the entry is about:cache again: going back here must not clear it once more
@@ -272,7 +271,7 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, from: ^page.Page) {
 		httpcache.when_ready(c, proc(user: rawptr, ok: bool) {
 			id := u64(uintptr(user))
 			for tab in the_app.tabs {
-				if tab.id == id && is_cache_address(tab.url) { show_cache_page(the_app, tab, strings.clone(tab.url, context.temp_allocator), nil); break }
+				if tab.id == id && is_cache_address(tab.url) { show_cache_page(the_app, tab, strings.clone(tab.url, context.temp_allocator), false); break }
 			}
 			the_app.frames_requested = max(the_app.frames_requested, 2)
 		}, rawptr(uintptr(t.id)))
