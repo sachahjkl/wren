@@ -391,6 +391,9 @@ t.setAttribute("n", 0);
 		usable(p, "observer feedback")
 		page.page_close(p)
 
+		// deep trees (20 000 and 50 000 nested elements) are a load test: how long they take depends on the machine, and a script past its
+		// limit is stopped; they run with -Perf, not on the CI
+		if !base.perf_skip("deep trees: 20 000 and 50 000 nested elements") {
 		settings.js.slow_script_ms = 20_000
 		p, ms = timed(process, `<!doctype html><body><script>
 let n = document.createElement("div");
@@ -411,6 +414,7 @@ console.log("deep markup", holder.textContent);
 		check(logged("deep markup x"), "50 000 nested elements from innerHTML")
 		usable(p, "deep tree")
 		page.page_close(p)
+		}
 		settings.js.slow_script_ms = 300
 
 		p, ms = timed(process, `<!doctype html><body><p id=old>old</p><script>
