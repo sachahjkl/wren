@@ -83,7 +83,10 @@ if not exist build mkdir build
 ::             -> build\js\wren_js.wasm, embedded in wren.exe (src\js\image)
 ::  launcher   wren.com, the console launcher (src\tools\wrencom)                 -> build\wren.com, embedded in wren.exe
 
-odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:build/bindgen.exe || exit /b 1
+:: (an exe of its own, deleted after: two builds at once, test_all -Jobs n runs several, wrote build\bindgen.exe together, Error(013))
+set "BINDGEN=build\bindgen_%RANDOM%%RANDOM%.exe"
+odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:%BINDGEN% || exit /b 1
+del "%BINDGEN%" 2>nul
 call :step "building the JavaScript engine"  tools\build_js.ps1 || exit /b 1
 
 :: the console launcher: build\wren.com, a small console program (src\tools\wrencom, core library only) that cmd and PowerShell
