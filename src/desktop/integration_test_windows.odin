@@ -8,6 +8,7 @@ import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:testing"
+import "wb:base"
 import "core:time"
 import win "core:sys/windows"
 
@@ -54,7 +55,7 @@ scratch_make :: proc() -> Scratch {
 scratch_destroy :: proc(s: ^Scratch) {
 	RegDeleteTreeW(win.HKEY_CURRENT_USER, wide(s.root))
 	RegDeleteKeyW(win.HKEY_CURRENT_USER, wide("Software\\WrenTest"))   // (fails while another test's key is in it: then it stays)
-	_ = os.remove_all(s.dir)
+	_ = base.remove_tree(s.dir)   // (not os.remove_all: it hands the folder to the Windows shell, which meets the shell links the other tests make)
 	delete(s.dir); delete(s.menu); delete(s.exe); delete(s.exe2); delete(s.root); delete(s.desk); delete(s.env)
 }
 
@@ -553,7 +554,7 @@ windows_watcher_wakes_on_every_place_it_watches :: proc(t: ^testing.T) {
 
 	// a place that goes does not end the watcher: it is a change, and it is watched again when it comes back
 	step(t, "the environment key deleted", proc() -> bool { return reg_delete_tree(sc.env) })
-	step(t, "the Desktop folder deleted", proc() -> bool { return os.remove_all(sc.desk) == nil })
+	step(t, "the Desktop folder deleted", proc() -> bool { return base.remove_tree(sc.desk) })
 	step(t, "the Desktop folder back", proc() -> bool { return os.make_directory_all(sc.desk) == nil })
 	step(t, "a file in the Desktop folder again", proc() -> bool { return os.write_entire_file(fmt.tprintf("%s\\b.lnk", sc.desk), "x") == nil })
 	step(t, "the environment key back", proc() -> bool { return reg_set(sc.env, "Path", "C:\\scratch") })

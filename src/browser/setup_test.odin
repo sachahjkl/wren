@@ -9,6 +9,7 @@ import "core:strings"
 import "core:testing"
 import "core:time"
 import win "core:sys/windows"
+import "wb:base"
 import "wb:desktop"
 
 @(private = "file")
@@ -64,7 +65,7 @@ Identity_for_test :: proc() -> desktop.Identity {
 @(private = "file")
 scene_destroy :: proc(s: ^Scene) {
 	desktop.delete_scratch_root(s.reg)
-	_ = os.remove_all(s.root)
+	_ = base.remove_tree(s.root)
 	delete(s.root); delete(s.menu); delete(s.desk); delete(s.pkg); delete(s.pkg2); delete(s.target); delete(s.reg)
 	delete(s.opts.environment_root)
 }

@@ -132,7 +132,7 @@ test_youtube_replace_rules :: proc(t: ^testing.T) {
 	testing.expect_value(t, n2, 1)
 	testing.expect_value(t, out2, `{"adSlots":[]}`)
 	// the same over several kilobytes between the two names
-	big := strings.concatenate({`{"adPlacements":[`, strings.repeat(`{"k":"vvvvvvvvvv"},`, 600), `{}],"adSlots":[]}`}, context.temp_allocator)
+	big := strings.concatenate({`{"adPlacements":[`, strings.repeat(`{"k":"vvvvvvvvvv"},`, 600, context.temp_allocator), `{}],"adSlots":[]}`}, context.temp_allocator)
 	out3, n3 := jsre_replace(re2, big, a2[2], 0, context.temp_allocator)
 	testing.expect_value(t, n3, 1)
 	testing.expect_value(t, out3, `{"adSlots":[]}`)
