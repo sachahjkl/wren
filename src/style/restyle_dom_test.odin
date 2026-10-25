@@ -795,6 +795,59 @@ restyle_dom_has_exact :: proc(t: ^testing.T) {
 	expect_partial(t, f, "a second one: the answer is the same", 2)
 }
 
+// A member removed from where the chain did not hold (no [role] above it, none in what was removed) was part of no true answer: nothing
+// is restyled; one removed from under a [role] flips the answer (YouTube adds and removes such members all the time).
+@(test)
+restyle_dom_has_chain_removal :: proc(t: ^testing.T) {
+	// (the subject is `*`: an answer that flips restyles the whole subtree of the anchor)
+	f := rx_load(`<style>:has([role]:not([aria-hidden]) .k) * { margin: 1px }</style>
+		<div id=a><p class=y id=y>u</p><div id=r role=x><b></b></div><div id=other><i id=i></i></div></div>`)
+	defer rx_unload(f)
+	r, other := by_id(f, "r"), by_id(f, "other")
+	dom.set_attribute(f.doc, other, "title", "x")
+	expect_partial(t, f, "a first change")
+	k2 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k2, "class", "k")
+	dom.append_child(f.doc, other, k2)
+	expect_partial(t, f, "a member where the chain does not hold", 3)
+	dom.remove_child(f.doc, other, k2)
+	dom.release(f.doc, k2)
+	expect_partial(t, f, "that member removed and destroyed", 3)
+	k3 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k3, "class", "k")
+	dom.append_child(f.doc, r, k3)
+	expect_partial(t, f, "a member under a [role]: the answer flips")
+	testing.expect(t, f.eng.last_restyle.marked >= 5, "the subtree of the anchors was restyled")
+	dom.remove_child(f.doc, r, k3)
+	dom.release(f.doc, k3)
+	expect_partial(t, f, "that member removed: the answer flips back")
+	testing.expect(t, f.eng.last_restyle.marked >= 5, "the subtree of the anchors was restyled again")
+	// an attribute change on the way: the ancestor loses its role in the batch that removes the member
+	k4 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k4, "class", "k")
+	dom.append_child(f.doc, r, k4)
+	expect_partial(t, f, "a member under the [role] again")
+	dom.remove_attribute(f.doc, r, "role")
+	dom.remove_child(f.doc, r, k4)
+	dom.release(f.doc, k4)
+	expect_partial(t, f, "role and member gone in one batch")
+	testing.expect(t, f.eng.last_restyle.marked >= 5, "and the answer flipped")
+	// the head stops matching (aria-hidden): the member under it is not held any more, so its removal flips nothing
+	dom.set_attribute(f.doc, r, "role", "x")
+	expect_partial(t, f, "the role is back")
+	k5 := dom.create_element(f.doc, "span")
+	dom.set_attribute(f.doc, k5, "class", "k")
+	dom.append_child(f.doc, r, k5)
+	expect_partial(t, f, "a member under the [role]")
+	testing.expect(t, f.eng.last_restyle.marked >= 5, "flipped to true")
+	dom.set_attribute(f.doc, r, "aria-hidden", "true")
+	expect_partial(t, f, "the head is hidden: flipped to false")
+	testing.expect(t, f.eng.last_restyle.marked >= 5, "flipped to false")
+	dom.remove_child(f.doc, r, k5)
+	dom.release(f.doc, k5)
+	expect_partial(t, f, "that member removed: it was under no matching head", 3)
+}
+
 // The same for a chain of compounds (YouTube: `:has([role]:not([aria-hidden]) .host) ...`): members are the elements that match its last
 // compound and satisfy the chain; a change of an attribute the chain reads on an ancestor of a member may flip the answer.
 @(test)
