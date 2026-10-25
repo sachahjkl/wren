@@ -113,6 +113,7 @@ try {
             $s = Wren-Ctl stats --json | ConvertFrom-Json
             $shown = if ($s.latency) { $s.latency.framesShown } else { -1 }
             '{0,-8} {1,6} {2,9} {3,8:N1} {4,8:N1} {5,8:N1} {6,7} {7,6} {8,7} {9,8:N0} {10,8:N2} {11,8:N2} {12,8:N2} {13,7} {14,8:N2} {15,8:N2}' -f $v, $swp.Count, $s.framesPresented, $s.frameGapP50Ms, $s.frameGapP95Ms, $s.frameGapMaxMs, $s.paintFrames, $s.modalLoops, $s.ignoredSizeMoves, ($s.cpuTimeMs - $s0.cpuTimeMs), (Pct $swp 0.5), (Pct $swp 0.95), (Pct $swp 1.0), $shown, (Pct ([AltDrag]::Send.ToArray()) 0.5), (Pct ([AltDrag]::Send.ToArray()) 0.95)
+            if ($s.resizeFrameCauses) { "         frames made during the resize, by cause (since the start): $($s.resizeFrameCauses); echoes skipped: $($s.resizeEchoesSkipped)" }
         }
     }
 } finally {
