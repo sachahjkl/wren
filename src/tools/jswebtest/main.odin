@@ -234,6 +234,7 @@ main :: proc() {
 	if selected("message") { run("message") }
 	if selected("sockets") { run("sockets") }
 	if selected("canvas") { run("canvas") }
+	if selected("geometry") { run("geometry") }
 	if selected("perf_timeline") {
 		actions := make(map[string]Action, context.temp_allocator)
 		actions["click"] = proc(p: ^page.Page, l: ^Page_Log) { page.dispatch_event(p, p.body, dom.Event{type = "click", bubbles = true, cancelable = true}) }

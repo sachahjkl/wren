@@ -150,8 +150,141 @@ JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_v
 JSValue wjr_DOMImplementation_createDocumentType(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMImplementation_createHTMLDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_flipX(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_flipY(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_get_a(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_b(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_c(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_d(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_e(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_f(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_is2D(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_isIdentity(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m11(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m12(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m13(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m14(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m21(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m22(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m23(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m24(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m31(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m32(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m33(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m34(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m41(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m42(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m43(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_get_m44(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrixReadOnly_inverse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_multiply(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_rotate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_rotateAxisAngle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_rotateFromVector(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_scale3d(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_scaleNonUniform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_skewX(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_skewY(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_static_fromFloat32Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_static_fromFloat64Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_static_fromMatrix(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_toFloat32Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_toFloat64Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_toString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_transformPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrixReadOnly_translate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_get_a(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_b(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_c(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_d(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_e(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_f(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m11(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m12(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m13(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m14(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m21(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m22(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m23(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m24(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m31(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m32(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m33(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m34(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m41(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m42(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m43(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_get_m44(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMMatrix_invertSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_multiplySelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_preMultiplySelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_rotateAxisAngleSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_rotateFromVectorSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_rotateSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_scale3dSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_scaleSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_setMatrixValue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_set_a(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_b(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_c(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_d(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_e(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_f(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m11(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m12(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m13(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m14(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m21(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m22(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m23(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m24(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m31(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m32(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m33(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m34(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m41(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m42(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m43(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_set_m44(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMMatrix_skewXSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_skewYSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_static_fromFloat32Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_static_fromFloat64Array(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_static_fromMatrix(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMMatrix_translateSelf(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMParser_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPointReadOnly_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPointReadOnly_get_w(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPointReadOnly_get_x(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPointReadOnly_get_y(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPointReadOnly_get_z(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPointReadOnly_matrixTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPointReadOnly_static_fromPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPointReadOnly_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPoint_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMPoint_get_w(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPoint_get_x(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPoint_get_y(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPoint_get_z(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMPoint_set_w(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMPoint_set_x(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMPoint_set_y(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMPoint_set_z(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_DOMPoint_static_fromPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMQuad_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMQuad_getBounds(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMQuad_get_p1(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMQuad_get_p2(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMQuad_get_p3(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMQuad_get_p4(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DOMQuad_static_fromQuad(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMQuad_static_fromRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DOMQuad_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DOMRectList_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DOMRectList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
 JSValue wjr_DOMRectList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -12013,119 +12146,119 @@ static const wj_member wj_m_DOMImplementation[] = {
     { "hasFeature", WJ_M_METHOD, 0, 0, wjr_DOMImplementation_hasFeature, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMMatrixReadOnly[] = {
-    { "fromMatrix", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "fromFloat32Array", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "fromFloat64Array", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "a", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "b", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "c", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "d", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "e", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "f", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m11", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m12", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m13", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m14", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m21", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m22", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m23", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m24", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m31", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m32", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m33", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m34", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m41", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m42", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m43", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "m44", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "is2D", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isIdentity", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "translate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scale", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scaleNonUniform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scale3d", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotateFromVector", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotateAxisAngle", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "skewX", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "skewY", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "multiply", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "flipX", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "flipY", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "inverse", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "transformPoint", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toFloat32Array", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toFloat64Array", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toString", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "fromMatrix", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMMatrixReadOnly_static_fromMatrix, NULL, NULL, 0 },
+    { "fromFloat32Array", WJ_M_STATIC_METHOD, 0, 1, wjr_DOMMatrixReadOnly_static_fromFloat32Array, NULL, NULL, 0 },
+    { "fromFloat64Array", WJ_M_STATIC_METHOD, 0, 1, wjr_DOMMatrixReadOnly_static_fromFloat64Array, NULL, NULL, 0 },
+    { "a", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_a, NULL, 0 },
+    { "b", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_b, NULL, 0 },
+    { "c", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_c, NULL, 0 },
+    { "d", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_d, NULL, 0 },
+    { "e", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_e, NULL, 0 },
+    { "f", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_f, NULL, 0 },
+    { "m11", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m11, NULL, 0 },
+    { "m12", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m12, NULL, 0 },
+    { "m13", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m13, NULL, 0 },
+    { "m14", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m14, NULL, 0 },
+    { "m21", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m21, NULL, 0 },
+    { "m22", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m22, NULL, 0 },
+    { "m23", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m23, NULL, 0 },
+    { "m24", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m24, NULL, 0 },
+    { "m31", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m31, NULL, 0 },
+    { "m32", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m32, NULL, 0 },
+    { "m33", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m33, NULL, 0 },
+    { "m34", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m34, NULL, 0 },
+    { "m41", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m41, NULL, 0 },
+    { "m42", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m42, NULL, 0 },
+    { "m43", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m43, NULL, 0 },
+    { "m44", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_m44, NULL, 0 },
+    { "is2D", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_is2D, NULL, 0 },
+    { "isIdentity", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrixReadOnly_get_isIdentity, NULL, 0 },
+    { "translate", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_translate, NULL, NULL, 0 },
+    { "scale", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_scale, NULL, NULL, 0 },
+    { "scaleNonUniform", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_scaleNonUniform, NULL, NULL, 0 },
+    { "scale3d", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_scale3d, NULL, NULL, 0 },
+    { "rotate", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_rotate, NULL, NULL, 0 },
+    { "rotateFromVector", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_rotateFromVector, NULL, NULL, 0 },
+    { "rotateAxisAngle", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_rotateAxisAngle, NULL, NULL, 0 },
+    { "skewX", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_skewX, NULL, NULL, 0 },
+    { "skewY", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_skewY, NULL, NULL, 0 },
+    { "multiply", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_multiply, NULL, NULL, 0 },
+    { "flipX", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_flipX, NULL, NULL, 0 },
+    { "flipY", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_flipY, NULL, NULL, 0 },
+    { "inverse", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_inverse, NULL, NULL, 0 },
+    { "transformPoint", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_transformPoint, NULL, NULL, 0 },
+    { "toFloat32Array", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_toFloat32Array, NULL, NULL, 0 },
+    { "toFloat64Array", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_toFloat64Array, NULL, NULL, 0 },
+    { "toString", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_toString, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_DOMMatrixReadOnly_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMMatrix[] = {
-    { "fromMatrix", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "fromFloat32Array", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "fromFloat64Array", WJ_M_STATIC_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "a", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "b", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "c", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "d", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "e", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "f", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m11", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m12", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m13", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m14", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m21", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m22", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m23", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m24", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m31", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m32", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m33", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m34", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m41", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m42", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m43", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "m44", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "multiplySelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "preMultiplySelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "translateSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scaleSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scale3dSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotateSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotateFromVectorSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "rotateAxisAngleSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "skewXSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "skewYSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "invertSelf", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "setMatrixValue", WJ_M_METHOD, WJ_F_WINDOW_ONLY, 1, NULL, NULL, NULL, 0 },
+    { "fromMatrix", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMMatrix_static_fromMatrix, NULL, NULL, 0 },
+    { "fromFloat32Array", WJ_M_STATIC_METHOD, 0, 1, wjr_DOMMatrix_static_fromFloat32Array, NULL, NULL, 0 },
+    { "fromFloat64Array", WJ_M_STATIC_METHOD, 0, 1, wjr_DOMMatrix_static_fromFloat64Array, NULL, NULL, 0 },
+    { "a", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_a, wjr_DOMMatrix_set_a, 0 },
+    { "b", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_b, wjr_DOMMatrix_set_b, 0 },
+    { "c", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_c, wjr_DOMMatrix_set_c, 0 },
+    { "d", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_d, wjr_DOMMatrix_set_d, 0 },
+    { "e", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_e, wjr_DOMMatrix_set_e, 0 },
+    { "f", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_f, wjr_DOMMatrix_set_f, 0 },
+    { "m11", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m11, wjr_DOMMatrix_set_m11, 0 },
+    { "m12", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m12, wjr_DOMMatrix_set_m12, 0 },
+    { "m13", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m13, wjr_DOMMatrix_set_m13, 0 },
+    { "m14", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m14, wjr_DOMMatrix_set_m14, 0 },
+    { "m21", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m21, wjr_DOMMatrix_set_m21, 0 },
+    { "m22", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m22, wjr_DOMMatrix_set_m22, 0 },
+    { "m23", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m23, wjr_DOMMatrix_set_m23, 0 },
+    { "m24", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m24, wjr_DOMMatrix_set_m24, 0 },
+    { "m31", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m31, wjr_DOMMatrix_set_m31, 0 },
+    { "m32", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m32, wjr_DOMMatrix_set_m32, 0 },
+    { "m33", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m33, wjr_DOMMatrix_set_m33, 0 },
+    { "m34", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m34, wjr_DOMMatrix_set_m34, 0 },
+    { "m41", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m41, wjr_DOMMatrix_set_m41, 0 },
+    { "m42", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m42, wjr_DOMMatrix_set_m42, 0 },
+    { "m43", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m43, wjr_DOMMatrix_set_m43, 0 },
+    { "m44", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMMatrix_get_m44, wjr_DOMMatrix_set_m44, 0 },
+    { "multiplySelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_multiplySelf, NULL, NULL, 0 },
+    { "preMultiplySelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_preMultiplySelf, NULL, NULL, 0 },
+    { "translateSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_translateSelf, NULL, NULL, 0 },
+    { "scaleSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_scaleSelf, NULL, NULL, 0 },
+    { "scale3dSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_scale3dSelf, NULL, NULL, 0 },
+    { "rotateSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_rotateSelf, NULL, NULL, 0 },
+    { "rotateFromVectorSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_rotateFromVectorSelf, NULL, NULL, 0 },
+    { "rotateAxisAngleSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_rotateAxisAngleSelf, NULL, NULL, 0 },
+    { "skewXSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_skewXSelf, NULL, NULL, 0 },
+    { "skewYSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_skewYSelf, NULL, NULL, 0 },
+    { "invertSelf", WJ_M_METHOD, 0, 0, wjr_DOMMatrix_invertSelf, NULL, NULL, 0 },
+    { "setMatrixValue", WJ_M_METHOD, WJ_F_WINDOW_ONLY, 1, wjr_DOMMatrix_setMatrixValue, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMParser[] = {
     { "parseFromString", WJ_M_METHOD, 0, 2, wjr_DOMParser_parseFromString, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMPointReadOnly[] = {
-    { "fromPoint", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "z", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "w", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "matrixTransform", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "fromPoint", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMPointReadOnly_static_fromPoint, NULL, NULL, 0 },
+    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPointReadOnly_get_x, NULL, 0 },
+    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPointReadOnly_get_y, NULL, 0 },
+    { "z", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPointReadOnly_get_z, NULL, 0 },
+    { "w", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPointReadOnly_get_w, NULL, 0 },
+    { "matrixTransform", WJ_M_METHOD, 0, 0, wjr_DOMPointReadOnly_matrixTransform, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_DOMPointReadOnly_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMPoint[] = {
-    { "fromPoint", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "x", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "y", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "z", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "w", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "fromPoint", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMPoint_static_fromPoint, NULL, NULL, 0 },
+    { "x", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPoint_get_x, wjr_DOMPoint_set_x, 0 },
+    { "y", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPoint_get_y, wjr_DOMPoint_set_y, 0 },
+    { "z", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPoint_get_z, wjr_DOMPoint_set_z, 0 },
+    { "w", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMPoint_get_w, wjr_DOMPoint_set_w, 0 },
 };
 static const wj_member wj_m_DOMQuad[] = {
-    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "fromQuad", WJ_M_STATIC_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "p1", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 19, NULL, NULL, NULL, 0 },
-    { "p2", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 20, NULL, NULL, NULL, 0 },
-    { "p3", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 21, NULL, NULL, NULL, 0 },
-    { "p4", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 22, NULL, NULL, NULL, 0 },
-    { "getBounds", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "fromRect", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMQuad_static_fromRect, NULL, NULL, 0 },
+    { "fromQuad", WJ_M_STATIC_METHOD, 0, 0, wjr_DOMQuad_static_fromQuad, NULL, NULL, 0 },
+    { "p1", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 19, NULL, wjr_DOMQuad_get_p1, NULL, 0 },
+    { "p2", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 20, NULL, wjr_DOMQuad_get_p2, NULL, 0 },
+    { "p3", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 21, NULL, wjr_DOMQuad_get_p3, NULL, 0 },
+    { "p4", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 22, NULL, wjr_DOMQuad_get_p4, NULL, 0 },
+    { "getBounds", WJ_M_METHOD, 0, 0, wjr_DOMQuad_getBounds, NULL, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_DOMQuad_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DOMRectList[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DOMRectList_get_length, NULL, 0 },
@@ -17540,11 +17673,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMImplementation, .n_members = 4, .subtree_end = 101,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMMatrixReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMMatrixReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMMatrixReadOnly_constructor,
       .members = wj_m_DOMMatrixReadOnly, .n_members = 45, .subtree_end = 103,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMMatrix", .parent = 101, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMMatrix", .parent = 101, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMMatrix_constructor,
       .members = wj_m_DOMMatrix, .n_members = 37, .subtree_end = 103,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGMatrix", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -17552,15 +17685,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DOMParser, .n_members = 1, .subtree_end = 104,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMPointReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMPointReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMPointReadOnly_constructor,
       .members = wj_m_DOMPointReadOnly, .n_members = 7, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMPoint", .parent = 104, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMPoint", .parent = 104, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMPoint_constructor,
       .members = wj_m_DOMPoint, .n_members = 5, .subtree_end = 106,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "SVGPoint", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DOMQuad", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "DOMQuad", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_DOMQuad_constructor,
       .members = wj_m_DOMQuad, .n_members = 8, .subtree_end = 107,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
