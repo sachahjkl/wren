@@ -149,6 +149,7 @@ Drag_Ops :: bit_set[Drag_Op; u8]
 
 Drag_Item :: struct {
 	is_file: bool,
+	is_dir:  bool,         // a folder the user dropped: a File of size 0 (as other browsers), webkitGetAsEntry lists it
 	type:    string,       // owned; a string item's type is lower case
 	data:    string,       // owned (string items)
 	file:    forms.File,   // owned (file items)
@@ -242,6 +243,15 @@ store_get_string :: proc(st: ^Drag_Store, format: string) -> (string, bool) {
 @(private)
 store_add_file :: proc(st: ^Drag_Store, f: forms.File) {
 	append(&st.items, Drag_Item{is_file = true, type = strings.clone(f.mime), file = file_clone(f)})
+}
+
+// A dropped folder: a file item with no type and no bytes, its path kept for the Entries API.
+@(private)
+store_add_dir :: proc(st: ^Drag_Store, path: string) {
+	slash := strings.last_index_any(strings.trim_right(path, "\\/"), "\\/")
+	name := strings.trim_right(path, "\\/")[slash + 1:]
+	f := forms.File{path = strings.clone(path), name = strings.clone(name), mime = strings.clone("")}
+	append(&st.items, Drag_Item{is_file = true, is_dir = true, type = strings.clone(""), file = f})
 }
 
 // The first URL of a text/uri-list ("" when none).

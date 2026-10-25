@@ -12,6 +12,11 @@
 <div id="plain">not a zone</div>
 <input id="file" type="file" multiple>
 <input id="text" type="text">
+<textarea id="area"></textarea>
+<div id="ce" contenteditable="true">abcd</div>
+<input id="file2" type="file" accept=".txt,image/*">
+<input id="filedis" type="file" disabled>
+<canvas id="cv" width="8" height="6"></canvas>
 <script>
 section("DataTransfer made by the page", () => {
   const dt = new DataTransfer();
@@ -106,6 +111,47 @@ zone.addEventListener("drop", (e) => {
   window.dropped = f ? Promise.all([f.text(), f.slice(1, 4).text()]).then(([all, part]) => all + "|" + part + "|" + f.name + "|" + f.type + "|" + f.size) : Promise.resolve("no file");
 });
 document.getElementById("plain").addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse") { e.target.setPointerCapture(e.pointerId); } });
+// the browser's own part of a drop: insertion (beforeinput / input), files into an input
+for (const type of ["beforeinput", "input", "change"]) {
+  document.addEventListener(type, (e) => events.push(e.type + "@" + (e.target.id || e.target.nodeName) + (e.inputType ? " " + e.inputType : "") + (e.data ? " data=" + e.data : "")), true);
+}
+window.blockInsert = false;
+document.getElementById("area").addEventListener("beforeinput", (e) => { if (blockInsert && e.inputType === "insertFromDrop") { e.preventDefault(); } });
+{
+  const c = document.getElementById("cv").getContext("2d");
+  c.fillStyle = "rgb(255, 0, 0)";
+  c.fillRect(0, 0, 8, 6);
+}
+// webkitGetAsEntry of what is dropped on the zone: the tree walked with readEntries and file()
+zone.addEventListener("drop", (e) => {
+  const items = [...e.dataTransfer.items].filter((it) => it.kind === "file");
+  if (!items.length) { return; }
+  const entries = items.map((it) => it.webkitGetAsEntry());
+  const out = [];
+  const walk = (entry) => new Promise((resolve, reject) => {
+    if (entry.isFile) {
+      entry.file((f) => f.text().then((s) => { out.push("F " + entry.fullPath + " " + entry.name + " " + s); resolve(); }), reject);
+    } else {
+      out.push("D " + entry.fullPath + " " + entry.isDirectory);
+      const r = entry.createReader();
+      const all = [];
+      const next = () => r.readEntries((batch) => {
+        if (!batch.length) { Promise.all(all.map(walk)).then(resolve, reject); return; }
+        all.push(...batch);
+        next();
+      }, reject);
+      next();
+    }
+  });
+  window.entries = Promise.all(entries.map((en) => en ? walk(en) : Promise.resolve(out.push("null")))).then(() => out.sort().join(" | "));
+  // a path that leaves what was dropped is refused, and so is creating
+  const dir = entries.find((en) => en && en.isDirectory);
+  if (dir) {
+    window.escape = new Promise((resolve) => dir.getFile("../x.txt", {}, () => resolve("found"), (err) => resolve(err.name)));
+    window.creating = new Promise((resolve) => dir.getFile("new.txt", { create: true }, () => resolve("made"), (err) => resolve(err.name)));
+    window.sub = new Promise((resolve) => dir.getDirectory("sub", {}, (d) => d.getFile("b.txt", {}, (f) => resolve(f.fullPath + " " + f.isFile), (err) => resolve(err.name)), (err) => resolve(err.name)));
+  }
+});
 window.report = () => { console.log("EVENTS " + events.join(" ; ")); events = []; };
 readBack.then(done, done);
 </script>

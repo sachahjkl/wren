@@ -282,11 +282,18 @@ cmd_drop :: proc(ctx: ^Context, args: []string) -> int {
 
 @(private)
 cmd_drag :: proc(ctx: ^Context, args: []string) -> int {
-	if len(args) != 2 { return usage("drag", "usage: drag x,y x2,y2 [--steps n]") }
+	if len(args) < 2 { return usage("drag", "usage: drag x,y [via-x,via-y ...] x2,y2 [--steps n]") }
 	a, ok1 := parse_numbers(args[0], 2)
-	z, ok2 := parse_numbers(args[1], 2)
-	if !ok1 || !ok2 { return usage("drag", "usage: drag x,y x2,y2") }
-	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"steps":%d,"space":%s}}`, a[0], a[1], z[0], z[1], opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page")))
+	z, ok2 := parse_numbers(args[len(args) - 1], 2)
+	if !ok1 || !ok2 { return usage("drag", "usage: drag x,y [via-x,via-y ...] x2,y2") }
+	via := strings.builder_make(context.temp_allocator)
+	for mid in args[1:len(args) - 1] {
+		v, ok := parse_numbers(mid, 2)
+		if !ok { return usage("drag", "every point is x,y") }
+		if strings.builder_len(via) > 0 { strings.write_byte(&via, ',') }
+		fmt.sbprintf(&via, "[%v,%v]", v[0], v[1])
+	}
+	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page")))
 }
 
 // scroll <notches> [x,y]: the wheel; positive goes down. Without a point, the middle of the page area.
