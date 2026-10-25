@@ -304,6 +304,14 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
 	if ui.menu_item("Close other tabs", enabled = len(app.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
 	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app) }
+	ui.menu_separator()
+	if ui.menu_submenu(fmt.tprintf("%s###tabbar_sub", i18n.tr("Tab bar"))) {   // tab_sidebar.odin
+		cur := current_tab(app)
+		menu_command(app, cur, "view.tabs_position.top")
+		menu_command(app, cur, "view.tabs_position.left")
+		menu_command(app, cur, "view.tabs_position.right")
+		menu_command(app, cur, "view.tabs_sidebar_collapse")
+	}
 }
 
 @(private = "file")
