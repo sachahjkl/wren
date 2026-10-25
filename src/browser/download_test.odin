@@ -2,6 +2,7 @@ package browser
 
 import "core:strings"
 import "core:testing"
+import "core:unicode/utf8"
 
 // RFC 6266 / 8187.
 @(test)
@@ -87,4 +88,109 @@ document_actions :: proc(t: ^testing.T) {
 	testing.expect_value(t, doc_action("application/octet-stream", "", "https://a/setup.exe"), Doc_Action.Download)
 	testing.expect_value(t, doc_action("application/pdf", "", "https://a/doc.pdf"), Doc_Action.Download)
 	testing.expect_value(t, doc_action("application/zip", "", "https://a/a.zip"), Doc_Action.Download)
+}
+
+// What a saved file's name must be whatever the server sent: at most `max_bytes`, valid UTF-8, not empty, no folder part, no
+// character or ending Windows refuses, and not a device (CON, NUL.txt, com1.tar.gz...).
+@(private = "file")
+file_name_ok :: proc(t: ^testing.T, n: string, max_bytes: int, label: string) {
+	testing.expectf(t, n != "", "%s: empty name", label)
+	testing.expectf(t, len(n) <= max(max_bytes, 1), "%s: %d bytes, limit %d", label, len(n), max_bytes)
+	testing.expectf(t, utf8.valid_string(n), "%s: not UTF-8: %q", label, n)
+	testing.expectf(t, !strings.contains_any(n, "<>:\"|?*/\\"), "%s: reserved character in %q", label, n)
+	for r in n { testing.expectf(t, r >= 32 && r != 0x7f, "%s: control character in %q", label, n) }
+	testing.expectf(t, n[len(n) - 1] != '.' && n[len(n) - 1] != ' ', "%s: ends with a dot or a space: %q", label, n)
+	base := n
+	if i := strings.index_byte(n, '.'); i >= 0 { base = n[:i] }
+	base = strings.to_upper(strings.trim_right(base, " "), context.temp_allocator)
+	testing.expectf(t, !(base == "CON" || base == "PRN" || base == "AUX" || base == "NUL" || base == "CONIN$" || base == "CONOUT$"), "%s: device name %q", label, n)
+	if len(base) == 4 && (base[:3] == "COM" || base[:3] == "LPT") { testing.expectf(t, !(base[3] >= '0' && base[3] <= '9'), "%s: device name %q", label, n) }
+}
+
+// An extension longer than the name may be (the whole Content-Disposition filename of a server is its to choose): used to
+// index past the end of the stem and end the browser.
+@(test)
+download_names_long_extension :: proc(t: ^testing.T) {
+	x := strings.repeat("x", 250, context.temp_allocator)
+	_, header_name := parse_content_disposition(strings.concatenate({`attachment; filename="a.`, x, `"`}, context.temp_allocator))
+	n := download_file_name(header_name, "https://x.org/d", "application/octet-stream")
+	file_name_ok(t, n, 200, "a.x*250")
+	testing.expect(t, strings.has_prefix(n, "a.x"), n)
+	for max_bytes in ([]int{1, 2, 5, 12, 13, 14, 100, 200, 255}) {
+		file_name_ok(t, download_file_name(strings.concatenate({"a.", x}, context.temp_allocator), "", "application/octet-stream", max_bytes), max_bytes, "a.x*250")
+		file_name_ok(t, download_file_name(strings.concatenate({".", x}, context.temp_allocator), "", "", max_bytes), max_bytes, ".x*250")
+		file_name_ok(t, download_file_name(strings.concatenate({x, ".", x}, context.temp_allocator), "", "", max_bytes), max_bytes, "x*250.x*250")
+		file_name_ok(t, download_file_name(strings.concatenate({"é", ".", strings.repeat("é", 150, context.temp_allocator)}, context.temp_allocator), "", "", max_bytes), max_bytes, "é.é*150")
+	}
+	// a long extension of a typed answer still gets the type's
+	n = download_file_name(strings.concatenate({"a.", x}, context.temp_allocator), "", "application/pdf")
+	file_name_ok(t, n, 200, "a.x*250 pdf")
+	testing.expect(t, strings.has_suffix(n, ".pdf") || strings.has_prefix(n, "a.x"), n)
+}
+
+@(test)
+download_names_hostile :: proc(t: ^testing.T) {
+	cases := []string{
+		"", " ", "   ", ".", "..", "...", ". . .", " . ", "\x00", "\x01\x02\x03", "\x7f", "\u202e", "\u202e\u202d.txt",
+		"<>", "<>:\"|?*", "????", "a:b", "a:b:c.txt", "file.txt:evil.exe", "con", "CON", "con.txt", "Con.tar.gz", "nul", "NUL.", "NUL .txt",
+		"aux", "prn.log", "com1", "COM9.txt", "lpt1", "LPT9.a.b", "com0", "COM\xc2\xb9", "conin$", "CONOUT$.x", "con ", "con...", "c o n",
+		"..\\..\\..\\Windows\\System32\\cmd.exe", "../../etc/passwd", "/", "\\", "a/", "a\\", "/a", "C:\\x", "\\\\server\\share\\x", "dir/..",
+		"\xff", "\xff\xfe.txt", "abc\xc3", "abc\xe2\x82", "\xf0\x9f\x98", "a\xc0\xafb", "\xed\xa0\x80.txt", "\xef\xbf\xbe",
+		".hidden", ".a.b.c.d", "a.", "a..", "a. ", "a .", "a.b ", "x.\x00y", "a.\u202etxt",
+	}
+	for c, i in cases {
+		for max_bytes in ([]int{1, 3, 8, 200, 255}) {
+			for mime in ([]string{"", "application/octet-stream", "application/pdf"}) {
+				file_name_ok(t, download_file_name(c, "", mime, max_bytes), max_bytes, c)
+				file_name_ok(t, download_file_name("", c, mime, max_bytes), max_bytes, c)   // the same bytes as the last segment of an address
+				file_name_ok(t, download_file_name(c, "https://x.org/fallback%ff%00%2e%2e", mime, max_bytes), max_bytes, c)
+			}
+		}
+		_ = i
+	}
+	// names of 255, 256, 300 and 1000 bytes, with and without an extension, in one-, two-, three- and four-byte characters
+	for ch in ([]string{"a", "é", "€", "😀"}) {
+		for count in ([]int{1, 50, 63, 64, 85, 100, 199, 200, 201, 255, 256, 300, 1000}) {
+			stem := strings.repeat(ch, count, context.temp_allocator)
+			file_name_ok(t, download_file_name(stem, "", ""), 200, stem)
+			file_name_ok(t, download_file_name(strings.concatenate({stem, ".txt"}, context.temp_allocator), "", ""), 200, stem)
+			file_name_ok(t, download_file_name(strings.concatenate({stem, ".", stem}, context.temp_allocator), "", ""), 200, stem)
+		}
+	}
+	// the extension is kept when it fits, and only whole characters are cut
+	long := strings.repeat("€", 100, context.temp_allocator)
+	n := download_file_name(strings.concatenate({long, ".tar.gz"}, context.temp_allocator), "", "")
+	testing.expect(t, strings.has_suffix(n, ".gz") && len(n) <= 200, n)
+	testing.expect_value(t, download_file_name("Con.tar.gz", "", ""), "_Con.tar.gz")
+	testing.expect_value(t, download_file_name("NUL .txt", "", ""), "_NUL .txt")
+	testing.expect_value(t, download_file_name("COM\xc2\xb9.txt", "", ""), "_COM\xc2\xb9.txt")
+	testing.expect_value(t, download_file_name("com0", "", ""), "_com0")
+	testing.expect_value(t, download_file_name("\xff.txt", "", ""), "\uFFFD.txt")
+	testing.expect_value(t, download_file_name("a.\u202etxt", "", ""), "a.txt")
+}
+
+// Pseudo-random names built from the pieces that went wrong before: the same invariants, 30000 times.
+@(test)
+download_names_random :: proc(t: ^testing.T) {
+	pieces := []string{
+		"a", "b", "Z", "é", "€", "😀", ".", "..", " ", "_", "-", "x", "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "con", "NUL", "com1", "LPT3", "aux", "prn",
+		".txt", ".tar", ".gz", ".exe", ".pdf", "<", ">", ":", "\"", "|", "?", "*", "/", "\\", "\x00", "\x1f", "\u202e", "\xff", "\xc3", "\xe2\x82", "%", "%2e", "%00",
+	}
+	seed := u64(0x9E3779B97F4A7C15)
+	next :: proc(seed: ^u64) -> u64 {
+		seed^ = seed^ * 6364136223846793005 + 1442695040888963407
+		return seed^ >> 33
+	}
+	maxes := []int{1, 2, 4, 9, 14, 40, 200, 255}
+	mimes := []string{"", "application/octet-stream", "application/pdf", "text/html"}
+	for _ in 0 ..< 30000 {
+		sb := strings.builder_make(context.temp_allocator)
+		for _ in 0 ..< int(next(&seed) % 40) { strings.write_string(&sb, pieces[next(&seed) % u64(len(pieces))]) }
+		name := strings.to_string(sb)
+		max_bytes := maxes[next(&seed) % u64(len(maxes))]
+		mime := mimes[next(&seed) % u64(len(mimes))]
+		file_name_ok(t, download_file_name(name, "", mime, max_bytes), max_bytes, name)
+		file_name_ok(t, download_file_name("", name, mime, max_bytes), max_bytes, name)
+		free_all(context.temp_allocator)
+	}
 }
