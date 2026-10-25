@@ -570,6 +570,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 		if len(sc.set.host_entries) > 0 {
 			m.featureless = el
 			for &ent in sc.set.host_entries {
+				if !entry_live(p, &ent) { continue }
 				k := list_of(ent.complex.pseudo_element)
 				if k < 0 { continue }
 				if matches_complex(m, el, ent.complex) { add(p, ent, k, ctx.depth + 1 + u16(n_slots)) }
@@ -582,6 +583,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 		sc := ctx_for_root(p, dom.tree_root(doc, slot))
 		if sc.set != nil {
 			for &ent in sc.set.slotted_entries {
+				if !entry_live(p, &ent) { continue }
 				k := list_of(ent.complex.then_pseudo)
 				if k < 0 { continue }
 				m.featureless = sc.host
@@ -607,6 +609,7 @@ shadow_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ctx: Elem_Ctx) {
 			}
 			rs := hc.set != nil ? hc.set : &p.e.rules
 			for &ent in rs.part_entries {
+				if !entry_live(p, &ent) { continue }
 				k := list_of(ent.complex.then_pseudo)
 				if k < 0 { continue }
 				all := true

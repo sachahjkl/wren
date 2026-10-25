@@ -53,6 +53,7 @@ Entry :: struct {
 	n_anc:   u8,
 	state:   State_Kinds,   // state the complex depends on, anywhere in it
 	ctx:     u16,           // matched entries (cascade.odin): the encapsulation depth of the tree the rule came from
+	gate:    u32,           // the @media block around the rule that is kept in the index on or off (media_gate.odin); 0: none
 }
 
 Index :: struct {
@@ -105,6 +106,10 @@ Engine :: struct {
 	env:       css.Media_Env,
 	media_dependent: bool,             // some active condition depends on the viewport
 	media_seen: [dynamic]Media_Seen,   // the document's media lists the last rebuild evaluated, and their results
+	gates:     [dynamic]Media_Gate,    // @media blocks of style rules the index keeps whatever their value (media_gate.odin); [0] is unused
+	gate_on:   [dynamic]bool,          // ... which of them hold now (with their parents)
+	gate_touched: [dynamic]bool,       // ... which changed since the styles were computed
+	gates_pending: bool,               // some gate changed: restyle_media restyles what its rules reach
 	dirty:     bool,
 	font_faces: [dynamic]Font_Face_Ref,   // @font-face rules in force, with the URL their sources resolve against
 	faces:     [dynamic]Font_Face,        // ... parsed (fontface.odin); strings in `alloc`
@@ -182,6 +187,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.container_sizes)
 	delete(e.container_pending)
 	delete(e.media_seen)
+	delete(e.gates); delete(e.gate_on); delete(e.gate_touched)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)
 	free(e)
@@ -209,13 +215,17 @@ index_free :: proc(ix: ^Index) {
 }
 
 // Applies a changed configuration: every sheet is compiled again with the new limits and built-in styles.
-engine_configure :: proc(e: ^Engine, settings: Settings) {
+engine_configure :: proc(e: ^Engine, settings: Settings) -> (changed: bool) {
+	// the same configuration (any preference of the browser being written, the developer tools' size, say, hands every page its
+	// settings again): nothing to compile again, and no restyle of the whole document
+	if settings == e.settings { return false }
 	settings_destroy(&e.settings)
 	e.settings = clone_settings(settings)
 	free(e.probe_base, base.process_allocator())
 	e.probe_base = nil
 	engine_reset_builtin_sheets(e)
 	e.dirty = true
+	return true
 }
 
 @(private)
@@ -497,7 +507,7 @@ resolve_import :: proc(e: ^Engine, parent: ^Sheet, slot: ^Import_Slot, sheet: ^c
 ////////////////////////////////
 // Compiling rules
 
-LayerCtx :: struct { path: string, rank: u32, cq: ^Cq_Cond }   // cq: the @container conditions around (container.odin)
+LayerCtx :: struct { path: string, rank: u32, cq: ^Cq_Cond, gate: u32 }   // cq: the @container conditions around (container.odin); gate: the innermost @media block kept on or off (media_gate.odin)
 
 @(private)
 layer_rank :: proc(e: ^Engine, path: string) -> u32 {
@@ -702,7 +712,7 @@ compile_style_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCt
 		for i in 0 ..< len(r.selectors) {
 			c := &r.selectors[i]
 			if len(c.compounds) > e.settings.max_selector_compounds { continue }
-			bucket_add(e, Entry{rule = rule, complex = c})
+			bucket_add(e, Entry{rule = rule, complex = c, gate = lc.gate})
 		}
 	}
 	for n in r.nested { flatten_rule(e, n, origin, lc) }
@@ -713,6 +723,13 @@ flatten_rule :: proc(e: ^Engine, r: ^css.Rule, origin: Origin, lc: LayerCtx) {
 	switch r.kind {
 	case .Style: compile_style_rule(e, r, origin, lc)
 	case .Media:
+		if e.cur == &e.rules && e.settings.media_partial && e.settings.inc_enabled && gateable(r) {
+			// kept in the index on or off: a change of its value flips a flag instead of rebuilding (media_gate.odin)
+			sub := lc
+			sub.gate = gate_add(e, r.media, lc.gate)
+			for n in r.rules { flatten_rule(e, n, origin, sub) }
+			return
+		}
 		if media_depends_on_viewport(r.media) { e.media_dependent = true; e.cur.conditional = true }
 		if media_note(e, r.media) { for n in r.rules { flatten_rule(e, n, origin, lc) } }
 	case .Supports:
@@ -837,6 +854,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	e.registered_noninherited = 0
 	e.container_dependent = false
 	e.media_dependent, e.anon_layers, e.kf_order = false, 0, 0
+	gates_reset(e)
 	clear(&e.media_seen)
 
 	if doc != nil {
@@ -877,6 +895,7 @@ engine_set_environment :: proc(e: ^Engine, env: css.Media_Env) -> bool {
 	changed := env != e.env
 	old := e.env
 	e.env = env
+	if changed { gates_refresh(e) }
 	// the rules in force change only if some media list the last rebuild evaluated answers otherwise now (a window
 	// resized between two breakpoints keeps them)
 	flipped := changed && e.media_dependent && media_flipped(e)

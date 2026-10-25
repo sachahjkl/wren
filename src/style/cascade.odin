@@ -1,9 +1,9 @@
 package style
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:mem"
 import "core:mem/virtual"
-import "core:slice"
 import "core:strings"
 import "core:sync"
 import "wb:base"
@@ -335,7 +335,12 @@ Pass :: struct {
 	opt:      css.Parse_Options,
 	ws:       [Prop]Cand,      // winners of the element being styled; only `touched` entries are reset between elements
 	touched:  [dynamic]Prop,
+	touched_set: Prop_Set,     // the same properties as a set: build_style puts `touched` in enum order from it
+	cust_map:  map[string]Custom_Cand,   // the element's custom property candidates, resolved values and states (build_style): kept between elements
+	res_map:   map[string]string,
+	state_map: map[string]u8,
 	lists:    [4][dynamic]Entry,   // matched entries: the element, ::before, ::after, ::selection
+	gate_probe: []bool,        // media_gate.odin: the entries of the gates in it are the only ones matched, on or off (which elements a flip reaches)
 	compare:  bool,            // partial restyle: keep the old computed style when nothing changed
 	changed:  bool,            // ... and report whether some element really changed
 	layout_changed: bool,      // ... in a way that is not paint-only (paint_change.odin)
@@ -359,13 +364,14 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 		cand := &p.ws[d.prop]
 		if !cand.valid {
 			append(&p.touched, d.prop)
+			ps_add(&p.touched_set, d.prop)
 			cand^ = Cand{&d, k, rule.origin, true}
 		} else if key_ge(k, cand.key) {
 			cand^ = Cand{&d, k, rule.origin, true}
 		}
 	}
 	if len(rule.customs) > 0 {
-		if cust^ == nil { cust^ = make(map[string]Custom_Cand, max(16, len(rule.customs) * 2), context.temp_allocator) }
+		if cust^ == nil { cust^ = make(map[string]Custom_Cand, max(16, len(rule.customs) * 2)) }   // (kept by the pass: build_style)
 		for &cd in rule.customs {
 			k := make_key(rule, cd.important, spec, ctx)
 			old, has := cust[cd.name]
@@ -378,6 +384,7 @@ consider :: proc(p: ^Pass, cust: ^map[string]Custom_Cand, rule: ^Rule, spec: css
 collect_entries :: proc(p: ^Pass, el: base.Handle, n: ^dom.Node, ancestors: ^Bloom, ctx: Elem_Ctx) {
 	check :: proc(p: ^Pass, el: base.Handle, list: []Entry, ancestors: ^Bloom) {
 		for &ent in list {
+			if !entry_live(p, &ent) { continue }
 			slot: int
 			#partial switch ent.complex.pseudo_element {
 			case .None: slot = 0
@@ -443,10 +450,27 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	s := p.s
 	e := p.e
 	a := p.alloc
-	cust: map[string]Custom_Cand
+	// the tables of custom properties are the pass's, emptied for each element: made again for every element they were 9 %
+	// of a style pass on a page whose every element declares custom properties (Tailwind's `*, ::before, ::after` reset)
+	cust := p.cust_map
+	if cust != nil { clear(&cust) }
+	defer {
+		p.cust_map = cust
+	}
 	for ent in entries { consider(p, &cust, ent.rule, ent.complex.specificity, parent, ent.ctx) }
 	if inline_rule != nil { consider(p, &cust, inline_rule, css.Specificity{max(u32), 0, 0}, parent, p.own_depth) }
-	slice.sort(p.touched[:])   // enum order = dependency order (font-size and color first)
+	// enum order = dependency order (font-size and color first): read back from the bit set the properties went into (a sort of
+	// forty values of an enum was 6 % of a style pass)
+	{
+		n := 0
+		for word, wi in p.touched_set.bits {
+			for x := word; x != 0; x &= x - 1 {
+				p.touched[n] = Prop(wi * 64 + int(intrinsics.count_trailing_zeros(x)))
+				n += 1
+			}
+		}
+		p.touched_set = {}
+	}
 
 	c := new(Computed, a)
 	c^ = s.initial^
@@ -474,12 +498,17 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 	defer virtual.arena_temp_end(scratch)
 	env := Var_Env{engine = e, alloc = a, scratch = virtual.arena_allocator(&p.scratch), budget = e.settings.max_var_bytes, cx = &cx}
 	env.parent = c.custom
+	defer {   // (a table that grew while it was used is another block of memory: the pass keeps the one it has now)
+		if env.resolved != nil { p.res_map = env.resolved }
+		if env.state != nil { p.state_map = env.state }
+	}
 	// registered properties that do not inherit stop here: the map is copied without them
 	drops_noninherited := e.registered_noninherited > 0 && c.custom != nil && carries_noninherited(e, c.custom)
 	if len(cust) > 0 || drops_noninherited {
 		env.pending = cust   // (the element's candidates, read only from here)
-		env.resolved = make(map[string]string, context.temp_allocator)
-		env.state = make(map[string]u8, context.temp_allocator)
+		env.resolved, env.state = p.res_map, p.state_map
+		if env.resolved == nil { env.resolved = make(map[string]string) } else { clear(&env.resolved) }
+		if env.state == nil { env.state = make(map[string]u8) } else { clear(&env.state) }
 		// resolved first: when every declared property ends as the parent has it (a universal reset such as Tailwind's
 		// `*, ::before, ::after { --tw-…: initial }` on every element), the parent's table is shared, not copied
 		Resolved_Custom :: struct { name, text: string, ok: bool }
@@ -786,6 +815,7 @@ pass_destroy :: proc(p: ^Pass) {
 	match_ctx_destroy(&p.mc)
 	delete(p.fs_chain)
 	delete(p.touched)
+	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
 	virtual.arena_destroy(&p.scratch)
 	free(p)
@@ -875,6 +905,7 @@ compute_styles :: proc(e: ^Engine, doc: ^dom.Document, state: State, pool: ^host
 	shadow_prepare(e, doc)
 	clear(&e.shadow.changed)   // a full pass covers whatever changed
 	clear(&e.container_pending)
+	clear_gates_pending(e)   // (the gates hold what the environment says now: this pass reads them so)
 	s := styled_make(e, doc, state)
 	if pool != nil && host.thread_pool_size(pool) > 1 && doc.nodes.count >= min_nodes {
 		// counters and quotes need tree order: the threads compute everything else, then one ordered walk resolves them

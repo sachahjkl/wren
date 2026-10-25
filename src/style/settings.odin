@@ -73,6 +73,8 @@ Settings :: struct {
 	background_clip_text: bool,     // the painter clips backgrounds to text: `background-clip: text` is accepted
 	cq_max_rounds:       int,       // container queries: style + layout rounds per frame once container sizes change
 	cq_partial:          bool,      // ... and a changed container restyles its own subtree only
+	media_partial:       bool,      // a media query that changes value restyles the elements its rules reach only (media_gate.odin)
+	media_parallel_min:  int,       // ... shared out between the style threads from this many elements that its rules reach
 	presentational_hints: bool,     // HTML's presentational attributes (align, bgcolor, width...) style elements (hints.odin)
 	// not a preference: set by the page whose engine it is. Scripting is enabled for the document: <noscript> is not
 	// rendered (HTML 15.3.1), its content having been parsed as text (page/js_load_write.odin)
@@ -197,6 +199,10 @@ PREFS := [?]config.Def{
 		description = "Container queries (@container, cq units) depend on sizes only layout knows: after a layout that changes the size of a query container, styles and layout are computed again, at most this many times per frame (the rest waits for the next frame). 0 = sizes are never fed back: queries stay unknown and cq units use the viewport."},
 	{name = "style.container_queries.partial", kind = .Bool, default = {b = true},
 		description = "When the size of a query container changes, restyle only the subtree of that container (only its descendants can depend on its size) instead of the whole document. A page whose width changes at every step of a window resize (a container with cq units) restyles a few elements per frame, not all of them. Needs style.incremental.enabled; when the partial restyle cannot be scoped (the root element, a counter, the memory left by earlier partial restyles) the full pass is made. Off: every change of a container's size restyles the whole document."},
+	{name = "style.media_queries.partial", kind = .Bool, default = {b = true},
+		description = "When a window or page width crosses a media query breakpoint (Tailwind's sm:, md:, lg:), restyle only the elements that the rules of the @media blocks that changed value match (and their subtrees) instead of the whole document: a page of two thousand elements whose width crosses a breakpoint during a drag restyles a few dozen, not all. Applies to @media blocks that hold style rules only (a block with @keyframes, @font-face, @layer, @property or @container inside, a media attribute on <link> or <style>, and the rules of shadow trees keep the full restyle). Needs style.incremental.enabled. Off: every change of value of a media query restyles the whole document (same result)."},
+	{name = "style.media_queries.parallel_min", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1 << 40, unit = "elements",
+		description = "When a media query changes value and its rules reach at least this many elements, the restyle of those elements and of what they pass their style to is shared between the style threads (page.threads.style); fewer stay on the page's thread."},
 	{name = "style.presentational_hints.enabled", kind = .Bool, default = {b = true},
 		description = "Honor HTML's presentational attributes (align, valign, bgcolor, width / height, cellpadding, cellspacing, border, <font>, hspace...) as the HTML Standard's rendering section maps them to CSS: author styles of the lowest priority, which any stylesheet of the page overrides. Off: those attributes do nothing (old pages lose their layout). Follows style.author_stylesheets.enabled."},
 	{name = "style.quirks_mode.enabled", kind = .Bool, default = {b = true},
@@ -283,6 +289,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.quirks_rules = config.bool_of(p, "style.quirks_mode.enabled")
 	s.cq_max_rounds = int(config.int_of(p, "style.container_queries.max_rounds"))
 	s.cq_partial = config.bool_of(p, "style.container_queries.partial")
+	s.media_partial = config.bool_of(p, "style.media_queries.partial")
+	s.media_parallel_min = int(config.int_of(p, "style.media_queries.parallel_min"))
 	return s
 }
 
