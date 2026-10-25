@@ -32,6 +32,8 @@ try {
   Expect ($keys -eq 'v1') 'the page sees the cache the worker made (caches.keys)' $keys
   $cached = Wren-Ctl eval 'caches.open("v1").then((c) => c.match("data.txt")).then((r) => r ? r.text() : "none")' --await
   Expect ($cached -match 'data from the network') 'cache.addAll stored the response (cache.match from the page)' $cached
+  $est = Wren-Ctl eval 'navigator.storage.estimate().then((e) => e.usage > 0 && e.quota > e.usage)' --await
+  Expect ($est -eq 'true') 'navigator.storage.estimate() counts the Cache API' $est
   $data = Wren-Ctl eval 'fetch("data.txt").then((r) => r.text())' --await
   Expect ($data -match 'data from the network') 'a request answered from the cache (respondWith(caches.match))' $data
   $only = Wren-Ctl eval 'fetch("cached-only.txt").then((r) => r.text())' --await
