@@ -782,6 +782,36 @@ page_view :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
+// What is under the toolbar (beside the sidebar when the tabs are in one): the crash banner, the find bar, the page and the
+// developer tools docked next to it.
+page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
+	if !elem_fs { crash_banner(app); find_bar(app, t) }   // crash_banner.odin
+	// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
+	dock, dev_on := devtools_dock(app, t)
+	switch {
+	case dev_on && dock == .Right:
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if ui.row(.Start, {}, "###page_and_devtools") {
+			page_view(app, t)
+			devtools_splitter(app, true)
+			devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+		}
+	case dev_on && dock == .Left:
+		ui.next({width = ui.fill(), height = ui.fill()})
+		if ui.row(.Start, {}, "###devtools_and_page") {
+			devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+			devtools_splitter(app, true)
+			page_view(app, t)
+		}
+	case dev_on && dock == .Bottom:
+		page_view(app, t)
+		devtools_splitter(app, false)
+		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(app.win.size.x), 0})
+	case:
+		page_view(app, t)
+	}
+}
+
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
 	t := current_tab(app)
@@ -791,35 +821,28 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 		if ui.parent(root) {
 			// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
 			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
+			// the tabs in a sidebar (tab_sidebar.odin): the title bar keeps its place, the address row too, and the sidebar
+			// and the page share what is below them
+			side := tabs_in_sidebar(app)
 			if !platform.is_fullscreen(app.win) {
-				if tab_strip(app, platform.is_integrated_title(app.win)) { return }
+				if side {
+					sidebar_title_row(app, platform.is_integrated_title(app.win))
+				} else if tab_strip(app, platform.is_integrated_title(app.win)) { return }
 				toolbar_row(app, t)   // chrome_style.odin
 			}
 			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
-			if !elem_fs { crash_banner(app); find_bar(app, t) }   // crash_banner.odin
-			// the page, and the developer tools docked next to it (devtools.odin): the page takes what the panel leaves
-			dock, dev_on := devtools_dock(app, t)
-			switch {
-			case dev_on && dock == .Right:
+			if side {
+				pos := favs.cfg.position
 				ui.next({width = ui.fill(), height = ui.fill()})
-				if ui.row(.Start, {}, "###page_and_devtools") {
-					page_view(app, t)
-					devtools_splitter(app, true)
-					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
+				if ui.row(.Start, {}, "###sidebar_row") {
+					if pos == .Left { if tab_sidebar(app, pos) { return } }
+					ui.next({width = ui.fill(), height = ui.fill()})
+					if ui.column(.Start, {}, "###page_column") { page_column(app, t, elem_fs) }
+					if pos == .Right { if tab_sidebar(app, pos) { return } }
 				}
-			case dev_on && dock == .Left:
-				ui.next({width = ui.fill(), height = ui.fill()})
-				if ui.row(.Start, {}, "###devtools_and_page") {
-					devtools_panel(app, t, false, {width = ui.px(devtools_extent(app, true)), height = ui.fill()})
-					devtools_splitter(app, true)
-					page_view(app, t)
-				}
-			case dev_on && dock == .Bottom:
-				page_view(app, t)
-				devtools_splitter(app, false)
-				devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(app.win.size.x), 0})
-			case:
-				page_view(app, t)
+			} else {
+				sidebar.shown = false
+				page_column(app, t, elem_fs)
 			}
 			// status bar (status_bar.odin)
 			if !elem_fs { status_bar_build(app, t) }

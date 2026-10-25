@@ -58,9 +58,16 @@ TAB_PREFS := [?]config.Def{
 		description = "Tab titles and icons follow changes of the document (document.title, <link rel=icon> added by a script) at most this often."},
 }
 
-register_tab_prefs :: proc(p: ^config.Prefs) { config.register(p, TAB_PREFS[:]) }
+register_tab_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, TAB_PREFS[:])
+	config.register(p, SIDEBAR_PREFS[:])   // tab_sidebar.odin
+}
 
 Tab_Settings :: struct {
+	position:                         Tabs_Position,   // tab_sidebar.odin: the row of tabs, or a sidebar
+	side_w, side_collapsed_w:         f32,             // the sidebar's width, wide and icons only (CSS px)
+	side_collapsed:                   bool,
+	side_row_em:                      f32,
 	max_w_em, min_w_em, close_min_em: f32,
 	middle_close, drag_reorder:       bool,
 	drag_threshold:                   f32,
@@ -74,6 +81,11 @@ Tab_Settings :: struct {
 
 tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 	return {
+		position = tabs_position_of(config.string_of(p, "browser.tabs.position")),
+		side_w = f32(config.int_of(p, "browser.tabs.sidebar_width")),
+		side_collapsed_w = f32(config.int_of(p, "browser.tabs.sidebar_collapsed_width")),
+		side_collapsed = config.bool_of(p, "browser.tabs.sidebar_collapsed"),
+		side_row_em = f32(config.float_of(p, "browser.tabs.sidebar_row_em")),
 		max_w_em = f32(config.float_of(p, "browser.tabs.max_width_em")),
 		min_w_em = f32(config.float_of(p, "browser.tabs.min_width_em")),
 		close_min_em = f32(config.float_of(p, "browser.tabs.close_button_min_em")),
