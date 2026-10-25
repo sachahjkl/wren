@@ -317,8 +317,12 @@ compact_done :: proc(data: rawptr) {
 
 @(private)
 compact_discard_tmp :: proc(j: ^Compact_Job) {
-	file_delete(join2(j.new_jpath, ".tmp"))
-	file_delete(join2(j.new_ckpath, ".tmp"))
+	// (join2 allocates: the two paths are freed after the files are, not left behind as they were)
+	for base_path in ([2]string{j.new_jpath, j.new_ckpath}) {
+		tmp := join2(base_path, ".tmp")
+		file_delete(tmp)
+		delete(tmp)
+	}
 }
 
 @(private)
