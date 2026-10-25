@@ -27,7 +27,7 @@ import "wb:page"
 import "wb:remote"
 
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
-ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(&app.ui_state) }
+ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(app.ui_state) }
 render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_pending(&the_app.r) }
 
 ////////////////////////////////
@@ -102,7 +102,7 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 @(private = "file")
 tab_of :: proc(app: ^App, c: ^Call) -> (^Tab, Reply) {
 	if id, ok := remote.param_int(c.params, "tabId"); ok {
-		for t in app.tabs { if t.id == u64(id) { return t, {} } }
+		if t := tab_by_id(app, u64(id)); t != nil { return t, {} }
 		return nil, fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 	}
 	t := current_tab(app)
@@ -175,7 +175,7 @@ m_subscribe :: proc(app: ^App, c: ^Call, on: bool) -> Reply {
 	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == c.conn { unordered_remove(&r.subs, i) } }
 	if on {
 		append(&r.subs, c.conn)
-		for t in app.tabs { r.loaded[t.id] = tab_loaded(app, t) }
+		for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
 	}
 	return done(`{"events":["Page.loadEventFired","Runtime.consoleAPICalled"]}`)
 }
@@ -302,13 +302,11 @@ m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
 m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	for t, i in app.tabs {
-		if t.id == u64(id) {
-			app.current = i
-			ui.field_set(&app.address, t.url)
-			app.frames_requested = max(app.frames_requested, 3)
-			return done()
-		}
+	if t := tab_by_id(app, u64(id)); t != nil {
+		tab_reveal(app, t)
+		windows_spill(app, 3)
+		app.frames_requested = max(app.frames_requested, 3)
+		return done()
 	}
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 }
@@ -317,9 +315,7 @@ m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 m_target_close :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	for t, i in app.tabs {
-		if t.id == u64(id) { tab_close(app, i); return done(`{"success":true}`) }
-	}
+	if t := tab_by_id(app, u64(id)); t != nil { tab_close_tab(app, t); return done(`{"success":true}`) }
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 }
 

@@ -138,7 +138,7 @@ group_id :: proc(x: ^Fx_Cache, l: ^Layout, g: i32, salt: u64) -> u64 {
 @(private = "file")
 page_of :: proc(l: ^Layout) -> ^page.Page {
 	if the_app == nil { return nil }
-	for t in the_app.tabs { if &t.layout == l { return t.page } }
+	for t in tabs_all(the_app) { if &t.layout == l { return t.page } }
 	return nil
 }
 

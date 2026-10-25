@@ -72,7 +72,7 @@ load_measure_write :: proc(data: rawptr) {
 	if !m.active { return }
 	m.active = false
 	var_t: ^Tab
-	for t in app.tabs { if t.id == m.tab { var_t = t } }
+	for t in tabs_all(app) { if t.id == m.tab { var_t = t } }
 	if var_t == nil || var_t.page == nil { return }
 	blocked := 0
 	if ts := blocker_tab(var_t); ts != nil { blocked = ts.blocked }

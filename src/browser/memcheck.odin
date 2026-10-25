@@ -390,7 +390,7 @@ driver_stats :: proc(app: ^App, label: string) {
 	is := page.images_stats(nil)
 	_, _, fe, fb := webfont.decoded_cache_stats()
 	line := fmt.tprintf("%d,%s,%.0f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n", driver.next, label, time.duration_milliseconds(time.tick_since(driver.t0)),
-		m.live_bytes, m.live_blocks, m.peak_bytes, m.permanent_bytes, c.private_bytes, c.working_set, c.handles, c.gdi, c.user, len(app.tabs),
+		m.live_bytes, m.live_blocks, m.peak_bytes, m.permanent_bytes, c.private_bytes, c.working_set, c.handles, c.gdi, c.user, len(tabs_all(app)),
 		sp.heap_allocated, sp.heap_committed, sp.vm_rw, sp.vm_exec, wc.entries, wc.code_bytes, wasm.instances_alive(), jc.entries, jc.bytes,
 		is.entries, is.bytes, fe, fb, render.targets_bytes(&app.r), memory_trim_count())
 	_, _ = os.write_string(driver.stats, line)

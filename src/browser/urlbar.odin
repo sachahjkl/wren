@@ -287,7 +287,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	cur := current_tab(app)
 	if ub.cfg.tabs {
 		n := 0
-		for x in app.tabs {
+		for x in tabs_all(app) {
 			if len(ub.rows) >= room || n >= ub.cfg.max_tab_rows { break }
 			if x == cur || skipped_address(x.url) { continue }
 			lt, lu := strings.to_lower(x.title, context.temp_allocator), strings.to_lower(x.url, context.temp_allocator)
@@ -387,7 +387,7 @@ urlbar_open :: proc(app: ^App, t: ^Tab, i: int, new_tab: bool) -> bool {
 	address := strings.clone(row_address(app, r), context.temp_allocator)
 	if address == "" { return false }
 	if r.kind == .Tab {
-		for x, k in app.tabs { if x.id == r.tab_id { urlbar_close(); ui.set_focus(0); tab_select(app, k); return true } }
+		if x := tab_by_id(app, r.tab_id); x != nil { urlbar_close(); ui.set_focus(0); tab_reveal(app, x); return true }
 		return false
 	}
 	urlbar_close()

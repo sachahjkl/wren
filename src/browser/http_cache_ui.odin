@@ -4,7 +4,6 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
-import "toolkit:ui"
 import "wb:base"
 import "wb:fetch"
 import "wb:httpcache"
@@ -270,7 +269,7 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 		// at start-up the index is still being read: the page is made again once it is
 		httpcache.when_ready(c, proc(user: rawptr, ok: bool) {
 			id := u64(uintptr(user))
-			for tab in the_app.tabs {
+			for tab in tabs_all(the_app) {
 				if tab.id == id && is_cache_address(tab.url) { show_cache_page(the_app, tab, strings.clone(tab.url, context.temp_allocator), false); break }
 			}
 			the_app.frames_requested = max(the_app.frames_requested, 2)
@@ -279,5 +278,5 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	delete(t.url); t.url = strings.clone(shown)
 	delete(t.title); t.title = strings.clone("HTTP cache")
 	set_status(t, cleared ? "the HTTP cache was cleared" : CACHE_URL)
-	ui.field_set(&app.address, shown)
+	address_set(app, t, shown)
 }

@@ -441,7 +441,7 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 		t.title = default_tab_title(t.url, context.allocator)
 		tab_icon_destroy(&t.icon)   // the title and icon are read again from the page
 		set_status(t, "Done")
-		if current_tab(app) == t { ui.field_set(&app.address, t.url == HOME_URL ? "" : t.url) }
+		address_set(app, t, t.url == HOME_URL ? "" : t.url)
 		return
 	}
 	if cur := page.session_current(&t.session); cur != nil && bfcache_restore(app, t, cur) { return }
@@ -449,8 +449,9 @@ download_restore_tab :: proc(app: ^App, load: ^Doc_Load) {
 		navigate(app, t, e, record = false, restore = true, origin = .Replay)
 		return
 	}
-	if len(app.tabs) > 1 {
-		for x, i in app.tabs { if x == t { tab_close(app, i); return } }
+	if w, _ := window_of_tab(app, t); w != nil && (len(window_tabs(app, w)) > 1 || len(app.windows) > 1) {
+		tab_close_tab(app, t)
+		return
 	}
 	navigate(app, t, "", record = false)
 }
