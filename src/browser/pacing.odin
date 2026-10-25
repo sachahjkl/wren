@@ -57,6 +57,8 @@ FRAME_PREFS := [?]config.Def{
 		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
 	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
 		description = "While the window is resized, or the splitter or the floating panel of the developer tools is dragged, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
+	{name = "browser.frame.resize_hold_ms", kind = .Int, default = {i = 120}, bounded = true, min = 0, max = 2000, unit = "ms",
+		description = "After a size change, the frames that follow within this time (the frame that settles the last step, one made for a timer or a message between two steps) are shown at once as the resize step is, with no wait for the screen's refresh in Present. A program that resizes the window itself, such as AltSnap (Alt + right button), calls the window's thread at every step and waits for it: a frame blocked in Present for a refresh made every step wait that long. 0: only the frame that sees the new size."},
 }
 
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
@@ -68,6 +70,7 @@ Pacer_Settings :: struct {
 	timeout_ms: int,
 	vblank_clock: bool,
 	resize_immediate: bool,
+	resize_hold_ms: int,
 	input_immediate: bool,
 	video_at_vblank: bool,
 	latency_probe: bool,
@@ -80,6 +83,7 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
 		vblank_clock = config.bool_of(p, "browser.frame.vblank_clock"),
 		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
+		resize_hold_ms = int(config.int_of(p, "browser.frame.resize_hold_ms")),
 		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
 		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
@@ -145,6 +149,8 @@ Pacer :: struct {
 	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
 	size:       [2]int,       // the window's size at the last frame (another one: the window is being resized)
 	resizing:   bool,         // this frame follows a size change: drawn and shown at once (pacer_wait)
+	resize_ns:  i64,          // tick of the last size change seen (0: none yet)
+	resize_held: bool,        // this frame comes within browser.frame.resize_hold_ms of one: shown at once, paced as any frame (resize_burst)
 	input_frame: bool,        // this frame was woken by input: shown at once (browser.frame.input_immediate)
 	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize or an input frame)
 }
@@ -197,6 +203,16 @@ resize_step :: proc(window_resized, panel_dragged, presented, enabled: bool) -> 
 	return (window_resized || panel_dragged) && presented && enabled
 }
 
+// Whether `now_ns` is within `hold_ms` after the last size change (`last_ns`, 0: none): the frames of a resize that are
+// not made for a new size (the one that settles the last step, a wake between two steps of a program that resizes the
+// window from outside) are shown like its steps, or the one blocked in Present for a refresh stalls the next step.
+resize_burst :: proc(now_ns, last_ns: i64, hold_ms: int) -> bool {
+	return hold_ms > 0 && last_ns != 0 && now_ns - last_ns < i64(hold_ms) * 1_000_000
+}
+
+// Present and the swap chain's latency for a frame: the resize step, a frame of the burst after it, an input frame.
+pacer_at_once :: proc() -> bool { return pacer.resizing || pacer.resize_held || pacer.input_frame }
+
 // The frame budget in ms: what one frame may take at the target rate.
 frame_budget_ms :: proc() -> f32 { return pacer.period_ms > 0 ? f32(pacer.period_ms) : 1000.0 / 60 }
 
@@ -225,12 +241,16 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	pacer.size = app.win.size
 	// (so is a drag of the developer tools' splitter or of their floating panel: the window keeps its size and the panel and the
 	// page are resized under the hand, which has to follow it at the same rate as the window's edge does)
-	pacer.resizing = resize_step(resized, devtools_dragging(), app.presented, pacer.cfg.resize_immediate)
+	dragged := devtools_dragging()
+	pacer.resizing = resize_step(resized, dragged, app.presented, pacer.cfg.resize_immediate)
+	tick := time.tick_now()._nsec
+	pacer.resize_held = !pacer.resizing && app.presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
+	if resized || dragged { pacer.resize_ns = tick }
 	input := shell_user_input_pending()
 	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
-	pacer_latency(app, &pacer.latency, pacer.resizing || pacer.input_frame)
+	pacer_latency(app, &pacer.latency, pacer_at_once())
 	if pacer.resizing { return }
 	// input waiting in the queue: the frame is made for it now, not at the next slot of the target rate (the pointer's
 	// hover state follows the hand, not a refresh later)

@@ -49,6 +49,16 @@ a_resize_step_is_a_new_window_size_or_a_panel_dragged :: proc(t: ^testing.T) {
 }
 
 @(test)
+frames_just_after_a_size_change_are_part_of_the_burst :: proc(t: ^testing.T) {
+	ms :: 1_000_000
+	testing.expect(t, resize_burst(100 * ms, 90 * ms, 120), "10 ms after a step")
+	testing.expect(t, resize_burst(209 * ms, 90 * ms, 120), "just inside the hold")
+	testing.expect(t, !resize_burst(210 * ms, 90 * ms, 120), "the hold is over")
+	testing.expect(t, !resize_burst(100 * ms, 0, 120), "no size change seen yet")
+	testing.expect(t, !resize_burst(100 * ms, 90 * ms, 0), "browser.frame.resize_hold_ms = 0: only the step itself")
+}
+
+@(test)
 pacing_plan_on_a_display :: proc(t: ^testing.T) {
 	Case :: struct { display, hz: f64, tearing: bool, interval: int, timed: bool }
 	cases := [?]Case{
