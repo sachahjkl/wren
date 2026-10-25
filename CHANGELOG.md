@@ -6,6 +6,8 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- **`touch-action` directions**: `pan-left`, `pan-right`, `pan-up` and `pan-down` are their own (a gesture may only start by scrolling that way, then goes on along its axis, as the standard says), combined with the other axis and `pinch-zoom`, each group at most once.
+
 - **AltSnap resizing: one picture per step** (toolkit 0.35.2 `ui.wake_due` / `ui.wake_in_ms`): the second frame of each step came from the loop woken by the `WM_SIZING` AltSnap sends before the step, which made a frame because a caret blink was asked for (not yet due); `wren ctl stats` now says why the frames of a resize were made (`resizeFrameCauses`: `Ui_Timer` 882 of 1544 before). `tools\altdrag_sim.ps1 -Variants altsnap`: 893 presents for 500 steps to 494, CPU 969 to 578 ms.
 
 - **Service workers**: `navigator.serviceWorker` (`register`, `ready`, `getRegistration(s)`, `controller`, `controllerchange`, messages), `ServiceWorkerRegistration`, `ServiceWorker`; in the worker `install` / `activate` with `waitUntil`, `fetch` with `respondWith`, `message`, `skipWaiting`, `clients` (`claim`, `matchAll`, `get`, `Client.postMessage`). One running worker per registration (a JavaScript worker hosted by a hidden page), registrations kept in the profile, requests intercepted by the native loader before the network: navigations in the scope and the requests of controlled pages; nothing is asked while no registration is active. Preferences `service_workers.enabled`, `service_workers.fetch_timeout_ms`. Limits: one version at a time, no navigation preload, Background Sync, Push, module service workers, `Client.navigate` / `focus` / `openWindow`.
