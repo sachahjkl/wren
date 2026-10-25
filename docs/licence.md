@@ -103,6 +103,8 @@ against the built-in key; `-public KEY` against another).
 it). A licence made with it is refused by a build that carries the production key. To try one in a build: 
 `tools\license.ps1 issue -dev …` and `--pref browser.license.public_key=<tools\license.ps1 pubkey -dev>`.
 
+An experimental build (`tools\experimental.ps1`, which builds with `WREN_ACCEPT_DEV_LICENSE_KEY=1`: `build.bat` passes `-define:WREN_ACCEPT_DEV_LICENSE_KEY=true`) accepts the licences of this pair too, as a development build does, so that the demonstration licence it is handed out with shows its card with no setting. A release never does.
+
 ### 4. Without the Worker
 
 `tools\license.ps1 issue` still works for a gift, a refund replacement or a licence given by hand, with the same key.
