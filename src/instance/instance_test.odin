@@ -7,6 +7,7 @@ import "core:sync"
 import "core:testing"
 import "core:thread"
 import "core:time"
+import "wb:base"
 
 @(test)
 instance_key_follows_channel_and_profile :: proc(t: ^testing.T) {
@@ -122,7 +123,7 @@ owner_end :: proc(d: ^Owner_Thread, th: ^thread.Thread) {
 
 @(test)
 instance_second_start_hands_over_and_ends :: proc(t: ^testing.T) {
-	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
+	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%s", base.unique_name(context.temp_allocator)))
 	d, th := owner_begin(key, `C:\a\wren.exe`)
 	defer owner_end(d, th)
 	testing.expect(t, d.started, "the first start owns the profile")
@@ -140,7 +141,7 @@ instance_second_start_hands_over_and_ends :: proc(t: ^testing.T) {
 
 @(test)
 instance_another_executable_is_not_taken :: proc(t: ^testing.T) {
-	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
+	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%s", base.unique_name(context.temp_allocator)))
 	d, th := owner_begin(key, `C:\installed\wren.exe`)
 	defer owner_end(d, th)
 	outcome, _ := acquire(key, `C:\download\wren.exe`, Message{exe = `C:\download\wren.exe`, addresses = {"about:config"}}, 3000)
@@ -152,9 +153,9 @@ instance_another_executable_is_not_taken :: proc(t: ^testing.T) {
 
 @(test)
 instance_profiles_are_independent :: proc(t: ^testing.T) {
-	id := time.to_unix_nanoseconds(time.now())
-	k1 := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\a%d", id))
-	k2 := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\b%d", id))
+	id := base.unique_name(context.temp_allocator)
+	k1 := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\a%s", id))
+	k2 := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\b%s", id))
 	d, th := owner_begin(k1, `C:\a\wren.exe`)
 	defer owner_end(d, th)
 	outcome, owner := acquire(k2, `C:\a\wren.exe`, Message{exe = `C:\a\wren.exe`}, 500)
@@ -167,7 +168,7 @@ instance_profiles_are_independent :: proc(t: ^testing.T) {
 
 @(test)
 instance_a_silent_owner_does_not_hold_the_second_start :: proc(t: ^testing.T) {
-	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
+	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%s", base.unique_name(context.temp_allocator)))
 	d, th := owner_begin(key, `C:\a\wren.exe`, pump = false)   // has the window, never answers
 	defer owner_end(d, th)
 	// (on the CI the second start got First once, which means the owner had not taken the profile: say so, instead of a misleading outcome)
@@ -180,7 +181,7 @@ instance_a_silent_owner_does_not_hold_the_second_start :: proc(t: ^testing.T) {
 
 @(test)
 instance_a_closing_owner_is_waited_for :: proc(t: ^testing.T) {
-	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
+	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%s", base.unique_name(context.temp_allocator)))
 	d, th := owner_begin(key, `C:\a\wren.exe`)
 	d.closing = true   // it refuses from now on
 	time.sleep(50 * time.Millisecond)
@@ -198,7 +199,7 @@ instance_a_closing_owner_is_waited_for :: proc(t: ^testing.T) {
 
 @(test)
 instance_a_start_that_finds_no_window_yet_waits_for_it :: proc(t: ^testing.T) {
-	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%d", time.to_unix_nanoseconds(time.now())))
+	key := profile_key("test", fmt.tprintf("C:\\wren_instance_test\\%s", base.unique_name(context.temp_allocator)))
 	// the owner holds the mutex (it is starting) and makes its window 400 ms later
 	d, th := owner_begin(key, `C:\a\wren.exe`, delay_ms = 400)
 	defer owner_end(d, th)

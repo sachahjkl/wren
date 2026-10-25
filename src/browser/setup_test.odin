@@ -7,7 +7,6 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
-import "core:time"
 import win "core:sys/windows"
 import "wb:base"
 import "wb:desktop"
@@ -28,7 +27,9 @@ Scene :: struct {
 scene_make :: proc() -> Scene {
 	tmp, _ := os.temp_dir(context.allocator)
 	defer delete(tmp)
-	id := fmt.aprintf("setup_%d_%d", win.GetCurrentProcessId(), time.to_unix_nanoseconds(time.now()))
+	uid := base.unique_name()
+	defer delete(uid)
+	id := fmt.aprintf("setup_%s", uid)
 	defer delete(id)
 	s: Scene
 	s.root = fmt.aprintf("%s\\wren_%s", strings.trim_right(tmp, "\\/"), id)

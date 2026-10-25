@@ -27,7 +27,7 @@ Scratch :: struct {
 @(private = "file")
 scratch_make :: proc() -> Scratch {
 	tmp, _ := os.temp_dir(context.allocator)
-	id := fmt.aprintf("%d_%d", win.GetCurrentProcessId(), time.to_unix_nanoseconds(time.now()), allocator = context.allocator)
+	id := base.unique_name(context.allocator)
 	s: Scratch
 	s.dir = fmt.aprintf("%s\\wren_desktop_test_%s", tmp, id)
 	s.menu = fmt.aprintf("%s\\Start Menu\\Programs", s.dir)
