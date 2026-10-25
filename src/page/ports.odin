@@ -169,10 +169,13 @@ ports_note_loop :: proc(p: ^Page) {
 	if router.ui_loop == nil { router.ui_loop = p.worker != nil ? p.worker.link.ui_loop : p.loop }
 }
 
-Port_entangle :: proc(c: ^Call) -> u64 {
+Port_entangle :: proc(c: ^Call) -> u64 { return port_pair(c.page) }
+
+// A new pair of entangled ends owned by nobody yet: the first end's id (the second is that id + 1).
+port_pair :: proc(p: ^Page) -> u64 {
 	sync.mutex_lock(&router.mu)
 	defer sync.mutex_unlock(&router.mu)
-	ports_note_loop(c.page)
+	ports_note_loop(p)
 	if router.ends == nil { router.ends = make(map[u64]^Port_End) }
 	a, b := new(Port_End), new(Port_End)
 	router.next += 2

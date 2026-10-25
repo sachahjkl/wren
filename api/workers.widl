@@ -23,6 +23,10 @@ module workers {
   void DedicatedWorkerGlobalScope_close() raises;
   /// self.name, in a worker.
   string DedicatedWorkerGlobalScope_name() raises;
+  /// close(), in a shared worker: no connect event any more; the worker stops after the current task.
+  void SharedWorkerGlobalScope_close() raises;
+  /// self.name, in a shared worker.
+  string SharedWorkerGlobalScope_name() raises;
   /// location.href, in a worker: the script's URL.
   string WorkerGlobalScope_location() raises;
   /// The index-th buffer that came with a message event (null when none).

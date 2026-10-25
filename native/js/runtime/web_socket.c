@@ -519,6 +519,18 @@ JSValue wjr_MessageEvent_initMessageEvent(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+/* a MessageEvent named `type` (a shared worker's connect) with data, origin, source and ports (frozen) */
+JSValue web_message_event_named(JSContext *ctx, const char *type, JSValueConst data, const char *origin, JSValueConst source, JSValueConst ports)
+{
+    JSValue ev = web_event_new(ctx, WJ_IFACE_MessageEvent, type, false, false);
+    if (JS_IsException(ev)) { return ev; }
+    JSValue o = JS_NewString(ctx, origin);
+    bool ok = message_init(ctx, ev, data, o, JS_UNDEFINED, source, ports);
+    JS_FreeValue(ctx, o);
+    if (!ok) { JS_FreeValue(ctx, ev); return JS_EXCEPTION; }
+    return ev;
+}
+
 /* a MessageEvent of the engine (MessagePort, window.postMessage): data, origin and source given */
 JSValue web_message_event(JSContext *ctx, JSValueConst data, const char *origin, JSValueConst source)
 {

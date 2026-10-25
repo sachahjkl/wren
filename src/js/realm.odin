@@ -61,7 +61,10 @@ Start_Options :: struct {
 	expose_unimplemented: bool,   // interfaces with nothing implemented are on the global anyway
 	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
 	no_touch_handlers:    bool,   // the ontouch* attributes and the Touch* interfaces are removed (browser.touch.expose)
+	worker_scope:         Worker_Scope,   // a Worker realm: which kind of worker (what its global exposes)
 }
+
+Worker_Scope :: enum u8 { Dedicated, Shared, Service }
 
 // Starts a realm on a fresh instance of the engine (pre-initialized or not). False when the engine refused.
 realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
@@ -71,6 +74,8 @@ realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
 	if o.expose_unimplemented { flags |= 1 }
 	if o.no_touch_handlers { flags |= 4 }
 	if o.unimplemented_throw { flags |= 2 }
+	if o.kind == .Worker && o.worker_scope == .Shared { flags |= 8 }
+	if o.kind == .Worker && o.worker_scope == .Service { flags |= 16 }
 	argv[7] = flags
 	argv[1] = u32(o.seed)
 	argv[2] = u32(o.seed >> 32)

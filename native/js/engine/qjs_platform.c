@@ -960,6 +960,11 @@ int wj_platform_preinit(JSContext *ctx)
 int wj_platform_start(JSContext *ctx, int kind)
 {
     wj_realm *r = &wj_the_realm;
+    /* `kind` is the realm's scope (one WJ_EXPOSE_* bit); wj_runtime_start gets window or worker */
+    int scope = kind;
+    kind = scope == WJ_EXPOSE_WINDOW ? WJ_EXPOSE_WINDOW : WJ_EXPOSE_WORKER;
+    uint16_t not_here = scope == WJ_EXPOSE_WINDOW ? WJ_F_NOT_WINDOW : scope == WJ_EXPOSE_SHARED_WORKER ? WJ_F_NOT_SHARED
+                      : scope == WJ_EXPOSE_SERVICE_WORKER ? WJ_F_NOT_SERVICE : WJ_F_NOT_DEDICATED;
     extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
     wj_expose_unimplemented = wj_start_expose_unimplemented;
     /* unimplemented members are absent (feature detection sees the truth) unless javascript.bindings.unimplemented
@@ -967,7 +972,7 @@ int wj_platform_start(JSContext *ctx, int kind)
     if (wj_start_unimplemented_throw) {
         wj_define_which = WJ_DEFINE_UNIMPLEMENTED;
         for (int i = 0; i < wj_interface_count; i++) {
-            if (JS_IsUndefined(r->ctors[i]) || !(wj_interfaces[i].exposed & kind)) { continue; }
+            if (JS_IsUndefined(r->ctors[i]) || !(wj_interfaces[i].exposed & scope)) { continue; }
             if (wj_place_members(ctx, i) < 0) { return -1; }
         }
         wj_define_which = WJ_DEFINE_IMPLEMENTED | WJ_DEFINE_UNIMPLEMENTED;
@@ -976,7 +981,7 @@ int wj_platform_start(JSContext *ctx, int kind)
     int global_iface = -1;
     for (int i = 0; i < wj_interface_count; i++) {
         const wj_interface *it = &wj_interfaces[i];
-        if ((it->flags & WJ_I_GLOBAL) && (it->exposed & kind)) {
+        if ((it->flags & WJ_I_GLOBAL) && (it->exposed & scope)) {
             /* the most derived global interface of this kind (DedicatedWorkerGlobalScope over WorkerGlobalScope) */
             if (global_iface < 0 || it->parent == global_iface) { global_iface = i; }
         }
@@ -994,13 +999,12 @@ int wj_platform_start(JSContext *ctx, int kind)
     }
     for (int i = 0; i < wj_interface_count; i++) {
         const wj_interface *it = &wj_interfaces[i];
-        if (!(it->exposed & kind) || JS_IsUndefined(r->ctors[i])) { continue; }
-        /* members exposed to the other kind of realm only: the image's prototypes serve both */
+        if (!(it->exposed & scope) || JS_IsUndefined(r->ctors[i])) { continue; }
+        /* members not exposed to this kind of realm: the image's prototypes serve every kind */
         for (int m = 0; m < it->n_members; m++) {
             const wj_member *mb = &it->members[m];
             if (!mb->name) { continue; }
-            bool drop = (kind == WJ_EXPOSE_WINDOW && (mb->flags & WJ_F_WORKER_ONLY)) || (kind == WJ_EXPOSE_WORKER && (mb->flags & WJ_F_WINDOW_ONLY));
-            if (!drop) { continue; }
+            if (!(mb->flags & not_here)) { continue; }
             JSValueConst target = (mb->kind == WJ_M_STATIC_METHOD || mb->kind == WJ_M_STATIC_ATTRIBUTE) ? r->ctors[i] : r->protos[i];
             if (JS_IsObject(target)) {
                 JSAtom a = JS_NewAtom(ctx, mb->name);

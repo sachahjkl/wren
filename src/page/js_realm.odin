@@ -119,6 +119,9 @@ js_realm :: proc(p: ^Page) -> ^Js_Realm {
 		expose_unimplemented = p.settings.js.expose_unimplemented, unimplemented_throw = p.settings.js.unimplemented_throw,
 		no_touch_handlers = kind == .Window && !p.settings.js.touch_handlers,
 	}
+	if g := p.worker; g != nil {
+		if g.sw.reg != 0 { start.worker_scope = .Service } else if g.shared { start.worker_scope = .Shared }
+	}
 	if !js.realm_start(inst, start) {
 		r.failed = true
 		log(p, .Error, fmt.tprintf("JavaScript could not start: %s", inst.last_error))

@@ -51,6 +51,9 @@ static void let_go(JSContext *ctx, uint64_t handle)
     }
 }
 
+/* A SharedWorker object stays alive the same way while its shared worker runs (runtime/shared_workers.c). */
+void web_keep_worker(JSContext *ctx, JSValueConst w) { keep_worker(ctx, w); }
+
 /* The browser: the worker of `handle` is gone (it closed itself, failed to start, or its thread ended). */
 WJ_EXPORT("wj_worker_gone") void wj_worker_gone(uint64_t handle)
 {
@@ -187,6 +190,7 @@ JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst 
 JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);
+    if (wr_WorkerGlobalScope_isModule()) { return JS_ThrowTypeError(ctx, "Failed to execute 'importScripts' on 'WorkerGlobalScope': Module scripts don't support importScripts()."); }
     if (argc == 0) { return JS_UNDEFINED; }
     char **sources = calloc((size_t)argc, sizeof(char *));
     size_t *lens = calloc((size_t)argc, sizeof(size_t));

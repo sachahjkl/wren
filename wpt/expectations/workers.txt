@@ -30,8 +30,8 @@
 	Test simple shared worker construction case.: FAIL
 /workers/SharedWorkerPerformanceNow.html: OK
 	performance.now() exists in shared workers and reports reasonable times: FAIL
-/workers/SharedWorker_blobUrl.html: OK
-	Blob URL shared by document on SharedWorker: FAIL
+/workers/SharedWorker_blobUrl.html: TIMEOUT
+	Blob URL shared by document on SharedWorker: TIMEOUT
 /workers/SharedWorker_dataUrl.html: TIMEOUT
 	Data URL not shared by cross-origin SharedWorkers: TIMEOUT
 	Data URLs shared by same-origin SharedWorkers: NOTRUN
@@ -41,8 +41,8 @@
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: OK
-	Tests that creation of a "new Worker()" will occur in parallel: FAIL
+/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
+	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
 /workers/Worker-formdata.any.worker.html: CRASH
@@ -199,9 +199,9 @@
 	 ErrorEvent and Worker.dispatchEvent() : PASS
 	ErrorEvent constructor called as normal function: PASS
 	initErrorEvent: PASS
-/workers/Worker_script_mimetype.htm: OK
+/workers/Worker_script_mimetype.htm: TIMEOUT
 	HTTP(S) URLs which respond with text/plain MIME type must not work: FAIL
-	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: FAIL
+	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: TIMEOUT
 	blob: URLs should load, despite no MIME type for the backing Blob: FAIL
 	blob: URLs should load, despite the wrong MIME type for the backing Blob: FAIL
 	data: URLs should load, despite the wrong MIME type: PASS
@@ -352,8 +352,8 @@
 /workers/postMessage_target_source.htm: OK
 	 postMessage(): target port and source port : PASS
 /workers/same-origin-check.sub.html: OK
-	SharedWorker: cross-origin (classic): PASS
-	SharedWorker: cross-origin (module): PASS
+	SharedWorker: cross-origin (classic): FAIL
+	SharedWorker: cross-origin (module): FAIL
 	SharedWorker: cross-origin-to-same-origin-redirect (classic): PASS
 	SharedWorker: cross-origin-to-same-origin-redirect (module): PASS
 	SharedWorker: same-origin-to-cross-origin-redirect (classic): PASS
@@ -361,18 +361,18 @@
 	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
 	SharedWorker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
 	Worker: cross-origin (classic): FAIL
-	Worker: cross-origin (module): PASS
+	Worker: cross-origin (module): FAIL
 	Worker: cross-origin-to-same-origin-redirect (classic): PASS
 	Worker: cross-origin-to-same-origin-redirect (module): PASS
 	Worker: same-origin-to-cross-origin-redirect (classic): PASS
 	Worker: same-origin-to-cross-origin-redirect (module): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
-/workers/shared-worker-from-blob-url.window.html: OK
-	Blob URLs should not resolve relative to document base URL.: FAIL
-	Connecting to a shared worker on a revoked blob URL works.: FAIL
-	Creating a shared worker from a blob URL works immediately before revoking.: FAIL
-	Creating a shared worker from a blob URL works.: FAIL
+/workers/shared-worker-from-blob-url.window.html: TIMEOUT
+	Blob URLs should not resolve relative to document base URL.: NOTRUN
+	Connecting to a shared worker on a revoked blob URL works.: NOTRUN
+	Creating a shared worker from a blob URL works immediately before revoking.: NOTRUN
+	Creating a shared worker from a blob URL works.: TIMEOUT
 /workers/shared-worker-in-data-url-context.window.html: OK
 	Create a data url shared worker in a data url frame: FAIL
 	Create a shared worker in a data url frame: FAIL
@@ -416,8 +416,8 @@
 	Static import on classic shared worker should dispatch an event named error.: FAIL
 /workers/shared-worker-partitioned-cookies.tentative.https.html: OK
 	SharedWorker: Partitioned Cookies: FAIL
-/workers/shared-worker-partitioned.tentative.html: OK
-	Test partitioning of shared workers: FAIL
+/workers/shared-worker-partitioned.tentative.html: TIMEOUT
+	Test partitioning of shared workers: TIMEOUT
 /workers/shared-worker-runtime-error-is-not-parse-error.html: OK
 	JSON.parse() error fires at global scope but not at SharedWorker: FAIL
 	Script parse error dispatches plain Event at SharedWorker: FAIL
@@ -431,7 +431,7 @@
 	Can use performance.now in workers: PASS
 	Performance marks and measures seem to be working correctly in workers: PASS
 	Resource timing seems to work in workers: FAIL
-	There are no navigation type performance entries in workers: PASS
+	There are no navigation type performance entries in workers: FAIL
 	performance.clearResourceTimings in workers: PASS
 	performance.navigation is not available in workers: PASS
 	performance.setResourceTimingBufferSize in workers: FAIL

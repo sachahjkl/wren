@@ -99,6 +99,7 @@ navigable_count: int
 
 // Process end (process_shutdown): the registry of navigables (empty once every page is closed).
 frames_shutdown :: proc() {
+	shared_workers_shutdown()   // (lingering ones: extendedLifetime)
 	ports_shutdown()
 	delete(navigables)
 	navigables = nil
@@ -162,6 +163,7 @@ frames_cleanup :: proc(data: rawptr) {
 	f := p.frames
 	if f == nil { return }
 	ports_page_closed(p)   // the MessagePort ends it owns (ports.odin)
+	shared_workers_page_closed(p)   // the shared workers it connected to (shared_worker.odin)
 	for len(f.children) > 0 { frame_destroy(f.children[len(f.children) - 1]) }
 	delete(f.children)
 	if f.owns_nav && f.nav != nil { navigable_free(f.nav) }
