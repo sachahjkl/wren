@@ -35,9 +35,11 @@ $slow = if ($CI) { 3 } else { 1 }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'test_env.ps1')
-# -Jobs 0 (the default): one step per core (at most 8: each step may compile or start browsers of its own). The steps that measure time
-# are not run on the CI, so the load of the other steps cannot fail a check; one that does is a check that depends on the machine's speed.
-if ($Jobs -le 0) { $Jobs = [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount)) }
+# -Jobs 0 (the default): one step per core on a machine of ours (at most 8: each step may compile or start browsers of its own), two on the CI.
+# Measured on the CI runner (4 vCPU) with the same steps: -Jobs 2: 514 s; -Jobs 3: 539 s and three checks failed under the load; -Jobs 4: 765 s
+# (the sum of the steps' durations went from 1 280 s to 2 580 s): the steps are not waiting, they compile and test, and four of them on four
+# cores slow each other down. More jobs only help where there are more cores than the steps use.
+if ($Jobs -le 0) { $Jobs = if ($CI) { 2 } else { [Math]::Max(1, [Math]::Min(8, [Environment]::ProcessorCount)) } }
 if ($BasePort -le 0) { $BasePort = if ($CI) { 8765 } else { Get-WrenPreferredBasePort $root } }
 $failed = 0
 # the emoji font and Unicode's emoji data (the toolkit's tests/colr skip without them): fetched before the steps start, so none races it
