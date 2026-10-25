@@ -71,12 +71,27 @@ touch_blocked_along :: proc(p: ^page.Page, h: base.Handle) -> style.Touch_Blocke
 	return out
 }
 
-// How a finger's pan scrolls: the content follows the finger (the scroll moves the other way), on the axes touch-action
-// lets through. Pure.
-touch_scroll_delta :: proc(pan: [2]f32, blocked: style.Touch_Blocked) -> [2]f32 {
+// The axes a gesture may scroll, from the scroll its first move asks for (`first`: the content follows the finger, so
+// a finger going right scrolls left) and touch-action: pan-left lets a gesture that starts by scrolling left go on along
+// x (in both directions, as the standard says: the direction only decides whether it may start), pan-x either way. An
+// axis the first move does not use goes when either of its directions is allowed. Pure.
+touch_pan_axes :: proc(first: [2]f32, blocked: style.Touch_Blocked) -> (x, y: bool) {
+	axis :: proc(v: f32, back, fwd: style.Touch_Gesture, blocked: style.Touch_Blocked) -> bool {
+		switch {
+		case v < 0: return back not_in blocked
+		case v > 0: return fwd not_in blocked
+		}
+		return back not_in blocked || fwd not_in blocked
+	}
+	return axis(first.x, .Pan_Left, .Pan_Right, blocked), axis(first.y, .Pan_Up, .Pan_Down, blocked)
+}
+
+// How a finger's pan scrolls: the content follows the finger (the scroll moves the other way), on the axes the gesture
+// may use (touch_pan_axes). Pure.
+touch_scroll_delta :: proc(pan: [2]f32, x_ok, y_ok: bool) -> [2]f32 {
 	d := -pan
-	if .Pan_X in blocked { d.x = 0 }
-	if .Pan_Y in blocked { d.y = 0 }
+	if !x_ok { d.x = 0 }
+	if !y_ok { d.y = 0 }
 	return d
 }
 
@@ -96,6 +111,7 @@ Touch_Shell :: struct {
 	tab:       ^Tab,
 	page:      ^page.Page,
 	blocked:   style.Touch_Blocked,
+	x_ok, y_ok: bool,      // the axes this gesture may scroll (decided by its first move: touch_pan_axes)
 	cancelled: bool,       // a touch event of this gesture was cancelled: the page has it
 	panned:    bool,
 	pinch:     f32,
@@ -165,12 +181,13 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 				for _ in 0 ..< abs(n) { zoom_step(app, t, n > 0 ? 1 : -1) }
 			}
 		}
-		d := touch_scroll_delta(ge.pan, tsh.blocked)
+		if ge.first { tsh.x_ok, tsh.y_ok = touch_pan_axes(-ge.pan, tsh.blocked) }
+		d := touch_scroll_delta(ge.pan, tsh.x_ok, tsh.y_ok)
 		if d != {} { tsh.scroller = touch_scroll(app, t, ge.pos - app.page_rect.min, d) }
 	case .Fling:
 		if tsh.cancelled || !config.bool_of(&app.prefs, "browser.touch.fling") { return }
 		dist, ms := platform.touch_fling(ge.velocity, f32(config.float_of(&app.prefs, "browser.touch.fling_friction")))
-		d := touch_scroll_delta(dist, tsh.blocked)
+		d := touch_scroll_delta(dist, tsh.x_ok, tsh.y_ok)
 		if d != {} && ms > 0 { smooth_scroll_by(app, t, tsh.scroller, d, ms) }
 	case .Tap:
 		if tsh.cancelled { return }

@@ -20,10 +20,28 @@ pref_writes_reach_their_subsystem_only :: proc(t: ^testing.T) {
 @(test)
 finger_gestures_to_scrolling_and_zoom :: proc(t: ^testing.T) {
 	// the content follows the finger: a finger going up scrolls down
-	testing.expect_value(t, touch_scroll_delta({3, -40}, {}), [2]f32{-3, 40})
-	testing.expect_value(t, touch_scroll_delta({3, -40}, {.Pan_X}), [2]f32{0, 40})          // touch-action: pan-y
-	testing.expect_value(t, touch_scroll_delta({3, -40}, {.Pan_Y, .Pinch_Zoom}), [2]f32{-3, 0})   // pan-x
-	testing.expect_value(t, touch_scroll_delta({3, -40}, {.Pan_X, .Pan_Y, .Pinch_Zoom, .Double_Tap}), [2]f32{0, 0})   // none
+	testing.expect_value(t, touch_scroll_delta({3, -40}, true, true), [2]f32{-3, 40})
+	testing.expect_value(t, touch_scroll_delta({3, -40}, false, true), [2]f32{0, 40})
+	// the axes a gesture may use, from its first scroll and touch-action
+	NONE :: style.Touch_Blocked{.Pan_Left, .Pan_Right, .Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap}
+	x, y := touch_pan_axes({-3, 40}, {})
+	testing.expect(t, x && y, "auto: both")
+	x, y = touch_pan_axes({-3, 40}, {.Pan_Left, .Pan_Right})   // pan-y
+	testing.expect(t, !x && y)
+	x, y = touch_pan_axes({0, 40}, NONE)
+	testing.expect(t, !x && !y, "none")
+	// pan-left: a gesture that starts by scrolling left goes on along x, one that starts by scrolling right does not
+	PAN_LEFT :: style.Touch_Blocked{.Pan_Right, .Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap}
+	x, y = touch_pan_axes({-5, 0}, PAN_LEFT)
+	testing.expect(t, x && !y, "pan-left, starting left")
+	x, y = touch_pan_axes({5, 0}, PAN_LEFT)
+	testing.expect(t, !x && !y, "pan-left, starting right")
+	// pan-down pan-right: up and left refused
+	DR :: style.Touch_Blocked{.Pan_Left, .Pan_Up, .Pinch_Zoom, .Double_Tap}
+	x, y = touch_pan_axes({4, 6}, DR)
+	testing.expect(t, x && y)
+	x, y = touch_pan_axes({4, -6}, DR)
+	testing.expect(t, x && !y)
 	// a pinch zooms one step each time the fingers spread by the step
 	acc: f32 = 1
 	testing.expect_value(t, touch_pinch_steps(&acc, 1.1, 1.15), 0)
@@ -38,7 +56,6 @@ finger_gestures_to_scrolling_and_zoom :: proc(t: ^testing.T) {
 	testing.expect(t, !c.fine && !c.hover && c.any_coarse && !c.any_hover)
 	c = pointer_caps_of({})
 	testing.expect(t, c.none)
-	_ = style.Touch_Blocked{}
 	// a finger's mouse emulation is dropped, a pen's is kept
 	testing.expect(t, touch_drop_emulated(platform.Event{kind = .Mouse_Press, emulated = true, pointer = {kind = .Touch}}))
 	testing.expect(t, !touch_drop_emulated(platform.Event{kind = .Mouse_Press, emulated = true, pointer = {kind = .Pen}}))

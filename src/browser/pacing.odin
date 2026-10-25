@@ -166,6 +166,8 @@ Pacer :: struct {
 	resize_ns:  i64,          // tick of the last size change seen (0: none yet)
 	resize_held: bool,        // this frame comes within browser.frame.resize_hold_ms of one: shown at once, paced as any frame (resize_burst)
 	echoes_skipped: int,      // frames of a resize burst not made (resize_echo_frame)
+	resize_causes: [Resize_Frame_Cause]int,                  // why the frames of a resize burst were made
+	resize_event_kinds: [platform.Event_Kind]int,            // the events of those made for events
 	input_frame: bool,        // this frame was woken by input: shown at once (browser.frame.input_immediate)
 	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize or an input frame)
 	read_tick:  i64,          // tick this frame had read its input (the key of its Displayed_Frame)
@@ -240,19 +242,40 @@ resize_echo :: proc(held, resizing, enabled: bool, events, ran: int, wants: bool
 	return enabled && held && !resizing && events == 0 && ran == 0 && !wants
 }
 
+Resize_Frame_Cause :: enum u8 { Step, Events, Tasks, Page, Ui_Animation, Ui_Timer, Scrolling, Layout_Size }
+
 // frame() (main.odin): whether this frame is such an echo; it is then not made (frames asked for are forgotten).
 resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
 	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
 	// chain keeps it on screen)
-	wants := page_wants || ui.needs_frame(&app.ui_state) || ui.wake_ms(&app.ui_state) != 0
+	cause := Resize_Frame_Cause.Page
+	switch {
+	case ui.needs_frame(&app.ui_state): cause = .Ui_Animation
+	case ui.wake_due(&app.ui_state): cause = .Ui_Timer
+	}
+	wants := page_wants || cause != .Page
 	// a step is a frame at a size not drawn yet (the window's size against the renderer's: pacer_wait only sees a size
 	// that came before its wait, and calls the frame after the one that drew it a step too)
 	step := app.win.size != app.r.size
 	if t := current_tab(app); t != nil && t.page != nil {
-		if len(t.smooth.anims) > 0 { wants = true }
-		if page_prep.tab == t && page_prep.size != draw.rect_size(app.page_rect) { wants = true }   // laid out at another size: the next frame settles it
+		if len(t.smooth.anims) > 0 { wants = true; cause = .Scrolling }
+		if page_prep.tab == t && page_prep.size != draw.rect_size(app.page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
 	}
-	if !resize_echo(pacer.resize_held || pacer.resizing, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) { return false }
+	held := pacer.resize_held || pacer.resizing
+	if !resize_echo(held, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) {
+		// why a frame of a resize was made (wren ctl stats: resizeFrameCauses)
+		if held && pacer.cfg.resize_skip_echoes {
+			c := &pacer.resize_causes
+			switch {
+			case step: c[.Step] += 1
+			case len(events) > 0: c[.Events] += 1; for e in events { c_ev := &pacer.resize_event_kinds[e.kind]; c_ev^ += 1 }
+			case ran > 0: c[.Tasks] += 1
+			case page_wants: c[.Page] += 1
+			case: c[cause] += 1
+			}
+		}
+		return false
+	}
 	app.frames_requested = 0
 	platform.take_paint_request(app.win)
 	pacer.echoes_skipped += 1

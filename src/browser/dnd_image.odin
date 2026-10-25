@@ -6,8 +6,11 @@ package browser
 // over everything at the pointer; when the drag leaves the window the same picture goes to the system's drag
 // (platform.drag_start), which draws it over other applications too, with the same hot spot.
 //
-// How an element is drawn is read back from the frame (render.capture_request of its box, the frame after the drag
-// started: what dragstart's listeners changed is in it); the part of it outside the page's visible area is not.
+// Another element is painted alone into an offscreen target of the toolkit (draw.offscreen_begin, the frame after the
+// drag started: what dragstart's listeners changed is in it), whatever its place: off the screen (top: -1000px, the
+// usual trick of a custom drag picture), under other elements or scrolled away; then read back
+// (render.readback_poll). A drag of selected text of the document gets a picture of the selection: its text with the
+// selection's highlight over each line, faded as the ghost.
 
 import "core:math"
 import "toolkit:draw"
@@ -15,8 +18,10 @@ import "toolkit:platform"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
-import "wb:config"
+import "wb:dom"
+import lay "wb:layout"
 import "wb:page"
+import "wb:config"
 
 DND_IMAGE_PREFS := [?]config.Def{
 	{name = "browser.dnd.image_opacity", kind = .Float, default = {f = 0.7}, bounded = true, min = 0, max = 1,
@@ -28,9 +33,12 @@ DND_IMAGE_PREFS := [?]config.Def{
 @(private = "file")
 Dnd_Image :: struct {
 	active:  bool,
-	waiting: bool,            // the picture is to be read back from the frame
-	asked:   bool,            // the capture is asked (render.capture_request), not read yet
-	rect:    [4]int,          // what is captured (window px)
+	waiting: bool,            // the picture is to be painted offscreen and read back
+	asked:   bool,            // painted: the readback is waited for
+	readback: render.Readback_Id,
+	mode:    Picture_Of,
+	el:      base.Handle,     // Element: what is painted
+	bounds:  draw.Rect,       // what is painted (page area px, the viewport's: scrolled)
 	hot:     [2]f32,          // where the pointer is in the picture
 	fade:    f32,             // opacity applied to the capture
 	img:     platform.Drag_Image,   // owned pixels (empty until ready)
@@ -44,6 +52,16 @@ Dnd_Image :: struct {
 @(private = "file")
 dimg: Dnd_Image
 
+@(private = "file")
+Picture_Of :: enum u8 { Element, Selection }
+
+// The last drag picture made: its size, hot spot and middle pixel (RGBA, the opacity applied).
+dnd_last_picture: struct { size, hot: [2]int, middle: [4]u8 }
+
+// The largest offscreen picture painted for a drag (device px a side): a larger element or selection is painted around
+// the pointer (drag_image_fit then scales it to browser.dnd.image_max_px).
+@(private = "file") PAINT_MAX_PX :: 2048
+
 // A drag from the page started at `pointer` (window px): the picture is made (now for pixels, the next frame for a
 // capture).
 dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
@@ -56,8 +74,16 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 	el, off := page.drag_session_image(p)
 	given := el != base.NIL_HANDLE
 	fade := given ? f32(1) : f32(config.float_of(&app.prefs, "browser.dnd.image_opacity"))
+	local := pointer - app.page_rect.min
 	if !given {
-		if s.kind == .Selection || s.source == base.NIL_HANDLE { dimg.active = false; return }   // (the system's own picture of text)
+		if s.kind == .Selection && page.selection_active(p) {
+			// the selection of the document: its lines, as they are highlighted
+			b, ok := selection_bounds(app, t)
+			if !ok { dimg.active = false; return }
+			start_paint(app, .Selection, base.NIL_HANDLE, b, local, local - b.min, fade)
+			return
+		}
+		if s.source == base.NIL_HANDLE { dimg.active = false; return }
 		el = s.source
 	}
 	// an image or a canvas: their pixels, at the size they are shown
@@ -72,18 +98,117 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 		set_picture(app, platform.Drag_Image{px, {w, h}, {int(math.round(hot.x)), int(math.round(hot.y))}}, fade, limit)
 		return
 	}
-	// another element: as it is drawn, read back from the next frame
-	er, ok := element_window_rect(app, t, el)
-	if !ok || er[2] <= 0 || er[3] <= 0 { dimg.active = false; return }
-	pr := app.page_rect
-	x0, y0 := max(er[0], pr.min.x), max(er[1], pr.min.y)
-	x1, y1 := min(er[0] + er[2], pr.max.x), min(er[1] + er[3], pr.max.y)
-	if x1 <= x0 || y1 <= y0 { dimg.active = false; return }
-	dimg.rect = {int(math.floor(x0)), int(math.floor(y0)), int(math.ceil(x1 - x0)), int(math.ceil(y1 - y0))}
-	dimg.hot = given ? [2]f32{f32(off.x) * scale + (er[0] - x0), f32(off.y) * scale + (er[1] - y0)} : pointer - {f32(dimg.rect[0]), f32(dimg.rect[1])}
-	dimg.fade = fade
+	// another element: painted alone, wherever it is (an element that is not rendered at all, display: none, has no
+	// picture: the dragged element's ghost then, as browsers do)
+	b, ok := element_paint_bounds(app, t, el)
+	if !ok && given && s.source != base.NIL_HANDLE {
+		el, given, fade = s.source, false, f32(config.float_of(&app.prefs, "browser.dnd.image_opacity"))
+		b, ok = element_paint_bounds(app, t, el)
+	}
+	if !ok { dimg.active = false; return }
+	hot := given ? [2]f32{f32(off.x) * scale, f32(off.y) * scale} : local - b.min
+	start_paint(app, .Element, el, b, b.min + hot, hot, fade)
+}
+
+// Where element `el` is painted (page area px of the viewport, its whole box, on the screen or not).
+@(private = "file")
+element_paint_bounds :: proc(app: ^App, t: ^Tab, el: base.Handle) -> (draw.Rect, bool) {
+	if t.page == nil || !t.layout.valid { return {}, false }
+	r, found := lay.box_of(&t.layout, el, draw.rect_size(app.page_rect), t.scroll)
+	if !found || r.bounds.max.x <= r.bounds.min.x || r.bounds.max.y <= r.bounds.min.y { return {}, false }
+	return draw.Rect{{r.bounds.min.x, r.bounds.min.y - t.scroll}, {r.bounds.max.x, r.bounds.max.y - t.scroll}}, true
+}
+
+// The bounds of the selected text (page area px of the viewport): each text item's selected part.
+@(private = "file")
+selection_bounds :: proc(app: ^App, t: ^Tab) -> (draw.Rect, bool) {
+	p := t.page
+	a, b, ok := page.selection_range(p)
+	if !ok || a == b || !t.layout.valid { return {}, false }
+	l := &t.layout
+	v := lay.view_make(l, draw.rect_size(app.page_rect), t.scroll, cull = false)
+	api := page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style)
+	out: draw.Rect
+	found := false
+	for i in 0 ..< len(l.items) {
+		it := &l.items[i]
+		if it.kind != .Text { continue }
+		ia, ib, in_range := lay.item_range(l, p.doc, i, a, b)
+		if !in_range || ia == ib { continue }
+		off := v.offsets[it.space]
+		x0, x1 := lay.item_caret_x(l, it, ia, api), lay.item_caret_x(l, it, ib, api)
+		r := draw.Rect{{it.rect.min.x + off.x + min(x0, x1), it.rect.min.y + off.y}, {it.rect.min.x + off.x + max(x0, x1), it.rect.max.y + off.y}}
+		out = found ? draw.Rect{{min(out.min.x, r.min.x), min(out.min.y, r.min.y)}, {max(out.max.x, r.max.x), max(out.max.y, r.max.y)}} : r
+		found = true
+	}
+	return out, found && out.max.x > out.min.x && out.max.y > out.min.y
+}
+
+// What will be painted at the next frame: `bounds` cut to PAINT_MAX_PX around `at` (page area px), the hot spot from
+// its corner.
+@(private = "file")
+start_paint :: proc(app: ^App, mode: Picture_Of, el: base.Handle, bounds: draw.Rect, at, hot: [2]f32, fade: f32) {
+	b := bounds
+	for k in 0 ..< 2 {
+		if b.max[k] - b.min[k] > PAINT_MAX_PX {
+			lo := clamp(at[k] - PAINT_MAX_PX / 2, b.min[k], b.max[k] - PAINT_MAX_PX)
+			b.min[k], b.max[k] = lo, lo + PAINT_MAX_PX
+		}
+	}
+	b.min, b.max = {math.floor(b.min.x), math.floor(b.min.y)}, {math.ceil(b.max.x), math.ceil(b.max.y)}
+	dimg.mode, dimg.el, dimg.bounds, dimg.fade = mode, el, b, fade
+	dimg.hot = hot - (b.min - bounds.min)
 	dimg.waiting = true
 	app.frames_requested = max(app.frames_requested, 3)
+}
+
+// The page's items that make the picture, painted into an offscreen target, its corner at dimg.bounds.min: those of
+// the element and below it (not cut by its ancestors' overflow nor moved by their effects: the element alone), or the
+// selected text with its highlight.
+@(private = "file")
+paint_picture :: proc(app: ^App, dc: ^draw.Context) -> render.Readback_Id {
+	t := current_tab(app)
+	if t == nil || t.page == nil || !t.layout.valid { return 0 }
+	p := t.page
+	l := &t.layout
+	d := p.doc
+	b := dimg.bounds
+	size := [2]int{int(b.max.x - b.min.x), int(b.max.y - b.min.y)}
+	if !draw.offscreen_begin(dc, size) { return 0 }
+	circular := draw.set_circular_corners(dc, true)
+	interp := draw.set_interpolation(dc, .Srgb)
+	v := lay.view_make(l, draw.rect_size(app.page_rect), t.scroll, cull = false)
+	sel_a, sel_b, has_sel := page.selection_range(p)
+	api := page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style)
+	for i in 0 ..< len(l.items) {
+		it := &l.items[i]
+		off := v.offsets[it.space] - b.min
+		r := draw.Rect{it.rect.min + off, it.rect.max + off}
+		clipped := false
+		switch dimg.mode {
+		case .Element:
+			if it.node == base.NIL_HANDLE || !dom.is_ancestor_or_self(d, dimg.el, it.node) { continue }
+		case .Selection:
+			if !has_sel { continue }
+			#partial switch it.kind {
+			case .Text:
+				ia, ib, in_range := lay.item_range(l, d, i, sel_a, sel_b)
+				if !in_range || ia == ib { continue }
+				// only the selected part of the piece of text
+				x0, x1 := lay.item_caret_x(l, it, ia, api), lay.item_caret_x(l, it, ib, api)
+				draw.push_clip(dc, {{r.min.x + min(x0, x1), r.min.y}, {r.min.x + max(x0, x1), r.max.y}})
+				clipped = true
+			case .Replaced:
+				if !lay.node_in_range(d, it.node, sel_a, sel_b) { continue }
+			case: continue
+			}
+		}
+		paint_item(l, dc, d, &v, it, r, off, -b.min)
+		if clipped { draw.pop_clip(dc) }
+	}
+	draw.set_interpolation(dc, interp)
+	draw.set_circular_corners(dc, circular)
+	return draw.offscreen_end(dc)
 }
 
 // Where the pointer took an element (picture px from its top left).
@@ -100,6 +225,9 @@ set_picture :: proc(app: ^App, img: platform.Drag_Image, fade: f32, limit: int) 
 	platform.drag_image_fade(fit, fade)
 	delete(dimg.img.rgba)
 	dimg.img = fit
+	// what the remote control reports (wren ctl stats: dragPicture): its size, hot spot, the pixel at its middle
+	mid := (fit.size.y / 2 * fit.size.x + fit.size.x / 2) * 4
+	dnd_last_picture = {fit.size, fit.offset, {fit.rgba[mid], fit.rgba[mid + 1], fit.rgba[mid + 2], fit.rgba[mid + 3]}}
 	if dimg.tex_ok { render.destroy_texture(&app.r, dimg.tex); dimg.tex_ok = false }
 	dimg.tex = render.create_texture_rgba(&app.r, fit.size.x, fit.size.y, false)
 	if dimg.tex != 0 {
@@ -109,29 +237,29 @@ set_picture :: proc(app: ^App, img: platform.Drag_Image, fade: f32, limit: int) 
 	app.frames_requested = max(app.frames_requested, 2)
 }
 
-// Every frame: the capture asked for is read when the GPU has it.
+// Every frame (drawing): the picture is painted offscreen once, then its pixels read when the GPU has them.
 @(private = "file")
-dnd_image_poll :: proc(app: ^App) {
+dnd_image_poll :: proc(app: ^App, dc: ^draw.Context) {
 	if !dimg.active || !dimg.waiting { return }
 	app.frames_requested = max(app.frames_requested, 2)
 	if !dimg.asked {
-		// (a capture of the remote control's in the way: the next frame)
-		if render.capture_pending(&app.r) || !render.capture_request(&app.r, dimg.rect) { return }
+		dimg.readback = paint_picture(app, dc)
 		dimg.asked = true
+		if dimg.readback == 0 { dimg.waiting, dimg.asked = false, false }   // (no readback on this renderer: the system's own picture)
 		return
 	}
-	pixels, size, st := render.capture_poll(&app.r, context.temp_allocator)
+	pixels, size, st := render.readback_poll(&app.r, dimg.readback, context.temp_allocator)
 	switch st {
 	case .None, .Pending:
-	case .Failed: dimg.waiting, dimg.asked = false, false
+	case .Failed: dimg.waiting, dimg.asked, dimg.readback = false, false, 0
 	case .Ready:
-		dimg.waiting, dimg.asked = false, false
+		dimg.waiting, dimg.asked, dimg.readback = false, false, 0
 		hot := dimg.hot
 		set_picture(app, platform.Drag_Image{pixels, size, {int(math.round(hot.x)), int(math.round(hot.y))}}, dimg.fade, int(config.int_of(&app.prefs, "browser.dnd.image_max_px")))
 	}
 }
 
-// The picture is still being read back from the frame.
+// The picture is still being painted or read back.
 dnd_image_waiting :: proc() -> bool { return dimg.active && dimg.waiting }
 
 // The pointer moved (window px).
@@ -154,8 +282,8 @@ dnd_image_system_shows :: proc(on: bool) { dimg.shown = !on }
 
 // The drag is over: the picture goes.
 dnd_image_end :: proc(app: ^App) {
-	// a capture of ours not read yet: forgotten, so that it does not stand in the way of the next one
-	if dimg.asked && app != nil { render.capture_cancel(&app.r) }
+	// a readback not taken yet: forgotten
+	if dimg.readback != 0 && app != nil { render.readback_release(&app.r, dimg.readback) }
 	if dimg.tex_ok && app != nil { render.destroy_texture(&app.r, dimg.tex) }
 	delete(dimg.img.rgba)
 	dimg = {}
@@ -169,7 +297,7 @@ dnd_image_state :: proc() -> (active, ready: bool, size, hot: [2]int) {
 // Over everything the frame drew (main.odin, after the interface): the picture at the pointer, and the outline of a
 // file input that would take the dropped files.
 dnd_paint :: proc(app: ^App, dc: ^draw.Context) {
-	dnd_image_poll(app)
+	dnd_image_poll(app, dc)
 	if dimg.target[2] > 0 && dimg.target[3] > 0 {
 		r := draw.Rect{{dimg.target[0], dimg.target[1]}, {dimg.target[0] + dimg.target[2], dimg.target[1] + dimg.target[3]}}
 		w := max(2 * page_scale(app), 1)

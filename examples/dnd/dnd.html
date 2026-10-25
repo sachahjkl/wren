@@ -17,6 +17,8 @@
 <input id="in2" style="position:absolute; left:350px; top:150px; width:200px; height:24px; font:16px monospace; border:1px solid; padding:0">
 <input id="fin" type="file" accept=".txt" style="position:absolute; left:350px; top:250px; width:200px; height:30px">
 <canvas id="cv" width="20" height="10" style="position:absolute; left:600px; top:10px"></canvas>
+<div id="far" style="position:absolute; left:0; top:-1000px; width:60px; height:30px; background:#f80"></div>
+<p id="txt" style="position:absolute; left:350px; top:200px; margin:0; font:20px sans-serif">select this text</p>
 <script>
 window.log = [];
 window.useImage = false;
@@ -35,7 +37,7 @@ for (const ty of ["dragstart", "dragenter", "dragover", "drop", "dragend", "poin
 }
 document.getElementById("src").addEventListener("dragstart", (e) => {
   e.dataTransfer.setData("text/plain", "payload");
-  if (useImage) { e.dataTransfer.setDragImage(document.getElementById("cv"), 5, 4); }
+  if (useImage) { e.dataTransfer.setDragImage(document.getElementById(useImage === "far" ? "far" : "cv"), useImage === "far" ? 6 : 5, useImage === "far" ? 3 : 4); }
 });
 const zone = document.getElementById("zone");
 zone.addEventListener("dragover", (e) => e.preventDefault());

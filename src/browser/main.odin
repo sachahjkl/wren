@@ -1076,7 +1076,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil {
 		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
 	}
-	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
+	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !ui.wake_due(&app.ui_state) && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1351,7 +1351,7 @@ main :: proc() {
 	for !platform.is_closed(app.win) {
 		idled := false
 		if app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && !platform.take_paint_request(app.win) && !devtools_window_busy() {
-			timeout := devtools_window_timeout(ui.wake_ms(&app.ui_state))
+			timeout := devtools_window_timeout(ui.wake_in_ms(&app.ui_state))
 			if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 			prof_begin(.Idle)
 			platform.wait_event(app.win, memcheck_wake(memory_trim_wake(timeout)))
