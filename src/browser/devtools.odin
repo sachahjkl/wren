@@ -72,6 +72,7 @@ Dev_Drag :: enum u8 { None, Size, Move, Corner }
 
 Devtools :: struct {
 	visible:   bool,
+	window:    int,                // the window the docked panel is in (Browser_Window.id; 0: the next one that builds)
 	dock:      Dev_Dock,
 	panel:     Dev_Panel,
 	size:      f32,                // logical px: the height (bottom) or the width (side)
@@ -157,15 +158,22 @@ dev_toggle_pref :: proc(app: ^App, name: string) {
 	dev_set_pref(app, name, config.bool_of(&app.prefs, name) ? "false" : "true")
 }
 
+// Whether the panel belongs to the window being built (the docked one: the other windows show none).
+devtools_here :: proc(app: ^App) -> bool { return dev.window == 0 || app.active == nil || dev.window == app.active.id }
+
+// The docked panel is in the window that asked for it (and follows its tab when the tab moves to another window).
+devtools_claim :: proc(app: ^App) { dev.window = app.active != nil ? app.active.id : 0 }
+
 devtools_toggle :: proc(app: ^App) {
 	dev.visible = !dev.visible
-	if !dev.visible { dev.picking = false }
+	if !dev.visible { dev.picking = false } else { devtools_claim(app) }
 	set_pref_bool(app, "browser.devtools.visible", dev.visible)
 	app.frames_requested = max(app.frames_requested, 3)
 }
 
 devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	changed := !dev.visible || dev.panel != panel
+	if !dev.visible { devtools_claim(app) }
 	dev.visible, dev.panel = true, panel
 	if changed { devtools_save(app) }
 	app.frames_requested = max(app.frames_requested, 3)
@@ -178,6 +186,7 @@ devtools_toggle_panel :: proc(app: ^App, panel: Dev_Panel) {
 
 devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	dev.dock = dock
+	if !dev.visible { devtools_claim(app) }
 	dev.visible = true
 	devtools_save(app)
 	app.frames_requested = max(app.frames_requested, 3)
@@ -200,6 +209,10 @@ devtools_zoom :: proc(app: ^App, step: f32) {
 // Whether the panel is shown for `t` (a web page), and where.
 devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
 	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) || devtools_detached() { return {}, false }
+	if app.active != nil {
+		if dev.window == 0 || window_by_id(app, dev.window) == nil { dev.window = app.active.id }
+		if dev.window != app.active.id { return {}, false }
+	}
 	return dev.dock, true
 }
 
@@ -270,6 +283,7 @@ devtools_panel :: proc(app: ^App, t: ^Tab, floating := false, place := ui.Style_
 devtools_events :: proc(app: ^App, events: []platform.Event, in_window := false) -> []platform.Event {
 	if !dev.visible && net_media_active() { net_media_release() }
 	if devtools_detached() != in_window { return events }   // (the panel's rectangle is of the window it is in)
+	if !in_window && !devtools_here(app) { return events }
 	if !dev.visible || dev.rect.max.x <= dev.rect.min.x || ui.ctx_menu_any_open() { return events }
 	taken := false
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -636,7 +650,7 @@ corner_grip_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // The floating panel takes the pointer where it is: the page under it gets nothing.
 devtools_captures :: proc(pos: draw.Vec2) -> bool {
-	return dev.visible && !devtools_detached() && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
+	return dev.visible && !devtools_detached() && devtools_here(the_app) && dev.dock == .Floating && draw.rect_contains(dev.panel_rect, pos)
 }
 
 ////////////////////////////////
@@ -645,7 +659,7 @@ devtools_captures :: proc(pos: draw.Vec2) -> bool {
 // The box of the element the Elements tab hovers or has selected, over the page (Chromium's colors: content blue, padding
 // green, border yellow). Called by page_draw for a page that is painted now.
 devtools_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect) {
-	if !dev.visible || dev.panel != .Elements || t == nil || t.page == nil || t.kind != .Web { return }
+	if !dev.visible || dev.panel != .Elements || t == nil || t.page == nil || t.kind != .Web || !devtools_here(app) { return }
 	h := dev.els.hover != base.NIL_HANDLE ? dev.els.hover : dev.els.selected
 	if dev.picking { h = dev.els.picked }
 	if h == base.NIL_HANDLE { return }

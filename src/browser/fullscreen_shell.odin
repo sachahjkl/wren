@@ -44,6 +44,13 @@ fullscreen_shell_init :: proc(app: ^App) {
 	page.fullscreen_embedder = {set = fullscreen_set, deferred = true}
 }
 
+// A page's full screen is a window's: each window has its own state of it.
+fullscreen_shell_window_locals :: proc() {
+	window_local(&fshell)
+	window_local(&sback)
+	window_local(&settle)
+}
+
 fullscreen_shell_destroy :: proc(app: ^App) {
 	page.fullscreen_embedder = {}
 	fshell, sback, settle = {}, {}, {}

@@ -547,6 +547,29 @@ try {
     Check 'stats' ($st.tabs -eq 2 -and $st.workingSetBytes -gt 0)
     Check 'stats: the process (pid, CPU time, threads, handles)' ($st.pid -eq $pidOf -and $st.cpuTimeMs -gt 0 -and $st.threads -gt 1 -and $st.handles -gt 10 -and $st.uptimeMs -gt 0) "pid $($st.pid) cpu $($st.cpuTimeMs) threads $($st.threads) handles $($st.handles)"
 
+    # a tab moved to another window and back keeps its page: the same document (timeOrigin), the counter that went on, the field's value
+    Section '2e2 driven Wren: a tab moved between windows keeps its page'
+    $fx = ((Wren-Ctl tabs --json | ConvertFrom-Json).targetInfos | Select-Object -First 1)
+    $tid = $fx.targetId; $win0 = $fx.windowId
+    $null = Wren-Ctl eval --tab-id $tid 'window.counter = 0; setInterval(() => window.counter++, 10); window.origin0 = performance.timeOrigin; document.getElementById("name").value = "kept"; 1'
+    $null = Wren-Ctl wait function 'window.counter > 3' --tab-id $tid
+    $before = [int](Wren-Ctl eval --tab-id $tid 'window.counter')
+    $moved = Wren-Ctl tab move $tid --to new --json | ConvertFrom-Json
+    Check 'a tab moves to a new window' ($global:WrenExit -eq 0 -and $moved.windowId -ne $win0) "exit $global:WrenExit $global:WrenErr"
+    $ws = (Wren-Ctl windows --json | ConvertFrom-Json).windows
+    Check 'two windows now' (@($ws).Count -eq 2) "$(@($ws).Count)"
+    $tg = (Wren-Ctl tabs --json | ConvertFrom-Json).targetInfos | Where-Object { $_.targetId -eq $tid }
+    Check 'the tab is in the new window and is its current one' ($tg.windowId -eq $moved.windowId -and $tg.active)
+    $null = Wren-Ctl wait function 'window.counter > 10' --tab-id $tid
+    Check 'the page was not reloaded (same timeOrigin)' ((Wren-Ctl eval --tab-id $tid 'window.origin0 === performance.timeOrigin') -eq 'true')
+    Check 'the counter went on (not reset)' ([int](Wren-Ctl eval --tab-id $tid 'window.counter') -gt $before)
+    Check 'the field kept its value' ((Wren-Ctl eval --tab-id $tid 'document.getElementById("name").value') -eq 'kept')
+    $null = Wren-Ctl tab move $tid --to $win0
+    Check 'the tab goes back to the first window' ($global:WrenExit -eq 0) "exit $global:WrenExit $global:WrenErr"
+    $null = Wren-Ctl wait function 'window.counter > 10' --tab-id $tid
+    Check 'the empty window closed' ((Wait-Until { @((Wren-Ctl windows --json | ConvertFrom-Json).windows).Count -eq 1 } 5))
+    Check 'back in place: same page, field and a running counter' ((Wren-Ctl eval --tab-id $tid 'window.origin0 === performance.timeOrigin && document.getElementById("name").value === "kept" && window.counter > 10') -eq 'true')
+
     # both idle Wrens, in the same three seconds: the one that was not asked for the channel (nothing to ask it, so its CPU time is watched
     # from outside until it has settled) and the driven one (asked: `wait quiet` is decided in the browser)
     Section '2f idle: wait quiet (driven Wren), settled (the other)'

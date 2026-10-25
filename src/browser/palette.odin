@@ -584,6 +584,7 @@ Palette_Row :: struct {
 
 Palette_State :: struct {
 	open:          bool,
+	window:        int,             // the window it is open in (Browser_Window.id)
 	field:         ui.Text_Field,
 	opened:        time.Tick,
 	focus_pending: bool,
@@ -609,7 +610,8 @@ Palette_State :: struct {
 
 cpal: Palette_State
 
-palette_open :: proc() -> bool { return cpal.open }
+// (The palette belongs to the window it was opened in: the others show nothing of it.)
+palette_open :: proc() -> bool { return cpal.open && the_app != nil && the_app.active != nil && cpal.window == the_app.active.id }
 
 palette_destroy :: proc() {
 	ui.field_destroy(&cpal.field)
@@ -647,6 +649,7 @@ palette_show :: proc(app: ^App, text := "") {
 	usage_load(app)
 	ui.ctx_menu_close()
 	cpal.open = true
+	cpal.window = app.active != nil ? app.active.id : 0
 	ui.field_set(&cpal.field, text)
 	cpal.sel, cpal.first, cpal.scroll_acc = 0, 0, 0
 	cpal.cache_valid = false
@@ -669,7 +672,7 @@ palette_close :: proc(app: ^App) {
 }
 
 // While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
-palette_captures :: proc(pos: draw.Vec2) -> bool { return cpal.open }
+palette_captures :: proc(pos: draw.Vec2) -> bool { return palette_open() }
 
 @(private = "file")
 fnv :: proc(h: u64, s: string) -> u64 {
@@ -928,7 +931,7 @@ label_id :: proc(text, suffix: string) -> string {
 
 // Builds the palette over the window (after the chrome, the page and the menus). Nothing when it is closed.
 palette_build :: proc(app: ^App) {
-	if !cpal.open { return }
+	if !palette_open() { return }
 	palette_ready(app)
 	em := ui.font_size()
 	win_w, win_h := f32(app.win.size.x), f32(app.win.size.y)

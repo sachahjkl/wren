@@ -235,6 +235,7 @@ sidebar_list :: proc(app: ^App, collapsed: bool, extent: f32) -> (closed: bool) 
 	area := ui.build_box({.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y}, "###tabs_area")
 	_ = ui.signal(area)   // the wheel
 	strip.area_key = area.key
+	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
 	view_h := area.size.y > 0 ? area.size.y : f32(app.win.size.y)
 	limit := max(f32(n) * rh - view_h, 0)
 
@@ -270,6 +271,7 @@ sidebar_list :: proc(app: ^App, collapsed: bool, extent: f32) -> (closed: bool) 
 		if dragged >= 0 {   // built last: it draws over the others and takes the clicks
 			if sidebar_row(app, dragged, rh, row_w, inset, collapsed, area, limit, &move_from, &move_to) { return true }
 		}
+		if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, true, f32(app.active.drop_hint - 1) * rh - area.view_off.y) }   // a tab carried over this list
 	}
 	if move_from >= 0 {
 		app.current = list_move(app.tabs[:], move_from, move_to, app.current)
@@ -373,7 +375,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_w, inset: f32, collapsed: bool, a
 	if !strip.drag_active { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y
-	if sig.dragging && favs.cfg.drag_reorder && n > 1 {
+	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
 		if !strip.drag_active && abs(sig.drag_delta.y) > favs.cfg.drag_threshold * dpi {
 			strip.drag_active, strip.drag_id = true, t.id
 			press_y := ui.mouse_pos().y - sig.drag_delta.y
@@ -390,6 +392,11 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_w, inset: f32, collapsed: bool, a
 				area.view_target.y = clamp(y + rh - view_h, 0, limit)
 			}
 			app.frames_requested = max(app.frames_requested, 2)
+			// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
+			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, favs.cfg.detach_distance_em * em) {
+				strip.drag_active = false
+				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return true }
+			}
 		}
 	}
 	return false
