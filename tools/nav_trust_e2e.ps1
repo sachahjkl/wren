@@ -24,6 +24,9 @@ function Wait-Until([scriptblock]$Test, [double]$Seconds = 8) {
     while ($sw.Elapsed.TotalSeconds -lt $Seconds) { if (& $Test) { return $true }; Start-Sleep -Milliseconds 50 }
     return $false
 }
+# What a fixed delay used to wait for: the navigation the last command started is over and nothing else is loading (a short quiet window: a
+# refused or cleared navigation is decided before any network request).
+function Wait-Settled { $null = Wren-Ctl wait idle --idle-ms 100 --timeout 15000 }
 function Stored { return (Wren-Eval 'String(localStorage.getItem("nav_trust"))') }
 
 $secret = Join-Path $env:TEMP "nav_trust_$PID.html"
@@ -42,13 +45,13 @@ try {
     $null = Wait-Until { (Tab-Url) -like 'about:sites*' }
     Check 'a page can open about:sites, without its query: the address is about:sites' ((Tab-Url) -eq 'about:sites') (Tab-Url)
     $null = Wren-Ctl key F5
-    Start-Sleep -Milliseconds 600
+    Wait-Settled
     $null = Wren-Nav $page
     Check 'F5 on it cleared nothing' ((Stored) -eq 'kept') "got $(Stored)"
     $null = Wren-Ctl back
-    Start-Sleep -Milliseconds 600
+    Wait-Settled
     $null = Wren-Ctl forward
-    Start-Sleep -Milliseconds 600
+    Wait-Settled
     $null = Wren-Nav $page
     Check 'Back and Forward over it cleared nothing' ((Stored) -eq 'kept') "got $(Stored)"
 
@@ -61,7 +64,7 @@ try {
         Check "a page asking for $what is refused in its console" ((Wren-Ctl console) -match 'Blocked: a web page cannot open a file') (Wren-Ctl console)
         Check "...and the tab stays on the page ($what)" ((Tab-Url) -eq $page) (Tab-Url)
         $null = Wren-Ctl reload
-        Start-Sleep -Milliseconds 800
+        Wait-Settled
         Check "...and F5 does not open it ($what)" ((Tab-Url) -eq $page -and (Wren-Eval 'document.title') -notmatch 'LOCAL-SECRET') "$(Tab-Url) / $(Wren-Eval 'document.title')"
     }
 
@@ -69,7 +72,7 @@ try {
     $null = Wren-Nav $secretUrl
     Check 'typed in the address bar, a file opens' ((Wren-Eval 'document.title') -eq 'LOCAL-SECRET') (Tab-Url)
     $null = Wren-Ctl reload
-    Start-Sleep -Milliseconds 800
+    Wait-Settled
     Check '...and F5 shows it again' ((Wren-Eval 'document.title') -eq 'LOCAL-SECRET') (Tab-Url)
     $null = Wren-Nav $page
     $null = Wren-Eval 'localStorage.setItem("nav_trust", "again")'
@@ -81,7 +84,7 @@ try {
     $null = Wren-Eval 'localStorage.setItem("nav_trust", "link")'
     $null = Wren-Nav 'about:sites'
     $null = Wren-Ctl click --selector 'a.clear'
-    Start-Sleep -Milliseconds 800
+    Wait-Settled
     $null = Wren-Nav $page
     Check "about:sites' own Clear all link clears the data" ((Stored) -eq 'null') "got $(Stored)"
 
@@ -91,9 +94,9 @@ try {
     $null = Wren-Nav $page
     $null = Wren-Eval 'localStorage.setItem("nav_trust", "after")'
     $null = Wren-Ctl back
-    Start-Sleep -Milliseconds 600
+    Wait-Settled
     $null = Wren-Ctl forward
-    Start-Sleep -Milliseconds 600
+    Wait-Settled
     Check 'Back to the typed clear and Forward again do not clear a second time' ((Stored) -eq 'after') "got $(Stored)"
 } finally {
     if ($env:WREN_REMOTE) { Stop-Wren }

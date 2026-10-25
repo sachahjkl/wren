@@ -158,6 +158,28 @@ function Test-WrenBuildFresh([string]$Variant = 'wren') {
     return $true
 }
 
+# Builds the browser (Variant 'dev': build\wren.exe, 'check': build\wren_check.exe) unless Test-WrenBuildFresh says it is newer than its sources, and
+# never two builds of this worktree at once: build.bat writes build\bindgen.exe, build\wren.com and the version resource, which Windows refuses to
+# a second writer (Error(013)), so the steps that run side by side (test_all -Jobs n) wait on a named mutex and then find the program built.
+# Returns $true when the program is there; otherwise $false with the build's output in $global:WrenBuildOutput and LASTEXITCODE set.
+$global:WrenBuildOutput = ''
+function Ensure-WrenBuild([string]$Variant = 'dev') {
+    $name = if ($Variant -eq 'check') { 'wren_check' } else { 'wren' }
+    if (Test-WrenBuildFresh $name) { return $true }
+    $root = Get-WrenRepoRoot
+    $sha = [Security.Cryptography.SHA1]::Create()
+    $key = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($root.ToLowerInvariant().TrimEnd('\')))) -replace '-', '').Substring(0, 16)
+    $mutex = New-Object Threading.Mutex($false, "wren_build_$key")
+    try {
+        try { [void]$mutex.WaitOne() } catch [Threading.AbandonedMutexException] { }
+        if (Test-WrenBuildFresh $name) { return $true }
+        Push-Location $root
+        try { $global:WrenBuildOutput = (cmd /c "build.bat $Variant 2>&1" | Out-String) } finally { Pop-Location }
+        if ($LASTEXITCODE -ne 0) { return $false }
+        return $true
+    } finally { $mutex.ReleaseMutex(); $mutex.Dispose() }
+}
+
 # Odin compiles a whole program every time (no incremental build): a tool that a run builds twice (test262.ps1 is called twice by test_all)
 # or that is already built does not need it again. Builds `Output` with `Build` (a script block), unless Output is newer than every source of the
 # repository's src and ext\gui_toolkit (tests aside) and was built with the same `Flags` (written beside it, Output.flags).

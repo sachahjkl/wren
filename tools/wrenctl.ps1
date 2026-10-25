@@ -67,6 +67,14 @@ function Wren-Ctl {
     return $outTask.Result.TrimEnd("`r", "`n")
 }
 
+# The Wren processes a run starts (test_all.ps1 sets WREN_STARTS_FILE and prints the count at the end): one line "script<TAB>what" each.
+function Note-WrenStart([string]$What) {
+    if (-not $env:WREN_STARTS_FILE) { return }
+    $top = Get-PSCallStack | Where-Object { $_.ScriptName } | Select-Object -Last 1
+    $scr = if ($top) { [IO.Path]::GetFileNameWithoutExtension($top.ScriptName) } else { 'script' }
+    try { [IO.File]::AppendAllText($env:WREN_STARTS_FILE, "$scr`t$What`n") } catch { }
+}
+
 # Starts a Wren in the background and selects it ($env:WREN_REMOTE); returns its name.
 function Start-Wren {
     param([string]$Size = '1280x800', [double]$Dpi = 0, [string]$ProfileDir = '', [switch]$Visible, [string]$Url = '', [string]$Name = '', [string[]]$Pref = @())
@@ -80,6 +88,7 @@ function Start-Wren {
     if ($Url) { $a += $Url }
     $name = Wren-Ctl @a
     if ($global:WrenExit -ne 0) { throw "Start-Wren failed ($global:WrenExit): $global:WrenErr" }
+    Note-WrenStart "start $name"
     $env:WREN_REMOTE = $name
     return $name
 }
@@ -124,6 +133,7 @@ function Wren-Run {
     if ($Visible) { $a += '--visible' }
     if ($Timing) { $a += '--timing' }
     if ($Url) { $a += $Url }
+    Note-WrenStart 'run'
     return Wren-Ctl @a
 }
 
