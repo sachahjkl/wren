@@ -30,17 +30,6 @@ static wj_obj *ctx_this(JSContext *ctx, JSValueConst this_val)
     return o;
 }
 
-static JSValue global_ctor_call(JSContext *ctx, const char *name, int argc, JSValueConst *argv)
-{
-    JSValue g = JS_GetGlobalObject(ctx);
-    JSValue c = JS_GetPropertyStr(ctx, g, name);
-    JS_FreeValue(ctx, g);
-    if (!JS_IsFunction(ctx, c)) { JS_FreeValue(ctx, c); return wj_throw_dom(ctx, "NotSupportedError", name); }
-    JSValue r = JS_CallConstructor(ctx, c, argc, argv);
-    JS_FreeValue(ctx, c);
-    return r;
-}
-
 /* ---- getContext ---- */
 
 static bool context_options(JSContext *ctx, JSValueConst options, bool *alpha, bool *wrf)
@@ -400,11 +389,9 @@ JSValue wjr_CanvasTransform_getTransform(JSContext *ctx, JSValueConst this_val, 
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     wj_obj *o = ctx_this(ctx, this_val);
     if (!o) { return JS_EXCEPTION; }
-    JSValue arr = JS_NewArray(ctx);
-    for (int i = 0; i < 6; i++) { JS_SetPropertyUint32(ctx, arr, (uint32_t)i, JS_NewFloat64(ctx, wr_CanvasTransform_matrixElement(o->handle, i))); }
-    JSValue m = global_ctor_call(ctx, "DOMMatrix", 1, (JSValueConst *)&arr);
-    JS_FreeValue(ctx, arr);
-    return m;
+    double m[6];
+    for (int i = 0; i < 6; i++) { m[i] = wr_CanvasTransform_matrixElement(o->handle, i); }
+    return web_dommatrix_new_2d(ctx, m);
 }
 
 JSValue wjr_CanvasPattern_setTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)

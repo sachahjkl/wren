@@ -13,6 +13,19 @@
   eq("size", f.size, 0);
   eq("onloading", f.onloading, null);
   throws("FontFaceSet has no public constructor", () => new FontFaceSet(), "TypeError");
+  const face = { family: "x" };
+  eq("add returns the set", f.add(face), f);
+  t("has, size", f.has(face) && f.size === 1);
+  const seen = [];
+  f.forEach(function (a, b, c) { seen.push(a === face && b === face && c === f && this === seen); }, seen);
+  eq("forEach", seen.join(), "true");
+  eq("iterates its faces", [...f].length + "," + [...f.values()].length + "," + [...f.keys()][0].family + "," + [...f.entries()][0][1].family, "1,1,x,x");
+  eq("@@iterator is values", FontFaceSet.prototype[Symbol.iterator], FontFaceSet.prototype.values);
+  eq("delete", f.delete(face) && !f.delete(face), true);
+  f.add(face); f.clear();
+  eq("clear", f.size, 0);
+  throws("forEach needs a function", () => f.forEach(1), "TypeError");
+  throws("check needs an argument", () => f.check(), "TypeError");
 
   // navigator.permissions
   const p = navigator.permissions;

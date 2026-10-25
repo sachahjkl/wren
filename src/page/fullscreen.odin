@@ -19,7 +19,7 @@ package page
 //     its document goes away. Nested fullscreen elements are not stacked: a request for another element replaces the
 //     fullscreen element, and any exit leaves full screen altogether.
 //   * The WebKit-prefixed names (webkitRequestFullscreen, webkitFullscreenElement, webkitfullscreenchange...) are
-//     aliases in native/js/prelude/compat.js; both spellings of each event are fired.
+//     aliases in native/js/runtime/web_compat.c; both spellings of each event are fired.
 
 import "core:strings"
 import "wb:base"

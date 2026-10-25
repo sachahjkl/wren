@@ -267,6 +267,11 @@ typedef struct web_extracted { uint8_t *data; size_t len; char *type; JSValue st
 bool web_extract_body(JSContext *ctx, JSValueConst v, web_extracted *out, const char *what);
 void web_extracted_free(JSContext *ctx, web_extracted *e);
 
+/* ---- Geometry (web_geometry.c) ---- */
+
+/* A new 2D DOMMatrix of a b c d e f (the canvas's getTransform) */
+JSValue web_dommatrix_new_2d(JSContext *ctx, const double m[6]);
+
 /* ---- structured serialization (web_clone.c: runtime/clone.c's when linked, else the engine's serializer) ---- */
 
 /* the serialized bytes (free with web_clone_free), or NULL with a DataCloneError pending */
@@ -293,7 +298,8 @@ int wj_web_start(JSContext *ctx, int kind);
 /* The realm's singletons a getter returns every time (location, history, navigator...), kept by the realm. */
 enum {
     WEB_SINGLE_LOCATION, WEB_SINGLE_HISTORY, WEB_SINGLE_NAVIGATOR, WEB_SINGLE_LOCAL_STORAGE, WEB_SINGLE_SESSION_STORAGE,
-    WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_CREDENTIALS, WEB_SINGLE_CLIPBOARD, WEB_SINGLE_COUNT,
+    WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_CREDENTIALS, WEB_SINGLE_CLIPBOARD,
+    WEB_SINGLE_VISUAL_VIEWPORT, WEB_SINGLE_PERMISSIONS, WEB_SINGLE_FONTS, WEB_SINGLE_COUNT,
 };
 /* The singleton `which`, made by `make` the first time (counted result). */
 JSValue web_singleton(JSContext *ctx, int which, JSValue (*make)(JSContext *ctx));
