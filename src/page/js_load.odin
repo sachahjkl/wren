@@ -120,6 +120,8 @@ Page_Scripts :: struct {
 	pumping:      bool,
 	modules:      ^Module_State,           // js_load_modules.odin
 	timing:       Script_Timing,
+	// <link> elements scripts inserted before the first paint: they do not block it (render_blocking.odin)
+	inserted_links: map[base.Handle]bool,
 }
 
 // When the document's life cycle steps happened (loop clock, ms): measurements and tests.
@@ -127,7 +129,10 @@ Script_Timing :: struct {
 	started_ms:    f64,   // scripts_start (the document was parsed and adopted)
 	parsed_ms:     f64,   // the reveal finished ("stop parsing")
 	dcl_ms:        f64,   // DOMContentLoaded fired
+	dcl_end_ms:    f64,   // its listeners returned
+	complete_ms:   f64,   // readyState became complete
 	load_ms:       f64,   // load fired
+	load_end_ms:   f64,   // its listeners returned
 	scripts_run:   int,
 }
 
@@ -184,6 +189,7 @@ scripts_free :: proc(data: rawptr) {
 	for f in s.fetches { script_fetch_free(p, f) }
 	delete(s.fetches)
 	delete(s.flags)
+	delete(s.inserted_links)
 	delete(s.parser.queue)
 	delete(s.deferred)
 	delete(s.in_order)
@@ -691,15 +697,18 @@ the_end :: proc(p: ^Page) -> bool {
 		s.content_loaded = true
 		s.timing.dcl_ms = now_ms(p)
 		dispatch_event(p, p.doc.root, dom.Event{type = "DOMContentLoaded", bubbles = true})
+		s.timing.dcl_end_ms = now_ms(p)
 		return true
 	}
 	if s.loaded || len(s.asap) > 0 || len(s.in_order) > 0 { return false }
 	if load_delayed(p) { return false }
 	s.loaded = true
-	s.timing.load_ms = now_ms(p)
+	s.timing.complete_ms = now_ms(p)
 	ready_state_set(p, .Complete)
 	if p.closed { return true }
+	s.timing.load_ms = now_ms(p)
 	fire_window_event(p, dom.Event{type = "load"})
+	s.timing.load_end_ms = now_ms(p)
 	if p.closed { return true }
 	frames_document_complete(p)   // a nested document: its container's load event (frames.odin)
 	fire_window_event(p, dom.Event{type = "pageshow"})
@@ -963,6 +972,10 @@ hook_inserted :: proc(user: rawptr, d: ^dom.Document, node: base.Handle) {
 		c := dom.get(d, cur)
 		if _, ok := is_frame_container(c); ok { append(&found, cur); continue }
 		if is_script_element(c) && (len(d.shadow_roots) == 0 || dom.containing_shadow_root(d, cur) == own_tree) { append(&found, cur) }
+		if c != nil && c.kind == .Element && c.name == "link" && connected && !p.render.painted && s.write_depth == 0 {
+			// one a script inserts before the first paint does not block it (render_blocking.odin; document.write's markup goes through the parser: its links are the parser's)
+			s.inserted_links[cur] = true
+		}
 	}
 	for el in found {
 		if c := dom.get(d, el); c != nil {

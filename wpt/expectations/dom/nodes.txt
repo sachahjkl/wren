@@ -1251,7 +1251,7 @@
 	Clone of a blob: URL document: FAIL
 	Clone of a createHTMLDocument() document with a <base>: FAIL
 	Clone of a createHTMLDocument() document without a <base>: FAIL
-	Clone of a document without a <base>: FAIL
+	Clone of a document without a <base>: PASS
 	Deep clone of a document with a <base>: FAIL
 	Deep clone of a document with a relative <base>: FAIL
 	Inserting a <base> into a shallow clone overrides the copied base URL: FAIL
@@ -1332,7 +1332,7 @@
 	Created element's namespace in bare_xhtml.xhtml: FAIL
 	Created element's namespace in bare_xhtml.xml: FAIL
 	Created element's namespace in created HTML document: PASS
-	Created element's namespace in created HTML document by DOMParser ('text/html'): FAIL
+	Created element's namespace in created HTML document by DOMParser ('text/html'): PASS
 	Created element's namespace in created MathML document: FAIL
 	Created element's namespace in created SVG document: FAIL
 	Created element's namespace in created SVG document by DOMParser ('image/svg+xml'): FAIL
@@ -2116,9 +2116,9 @@
 	null namespace: PASS
 	undefined namespace: PASS
 /dom/nodes/Document-createEvent-touchevent.window.html: OK
-	document.createEvent('TOUCHEVENT') should throw if 'expose legacy touch event APIs' is false: FAIL
-	document.createEvent('TouchEvent') should throw if 'expose legacy touch event APIs' is false: FAIL
-	document.createEvent('touchevent') should throw if 'expose legacy touch event APIs' is false: FAIL
+	document.createEvent('TOUCHEVENT') should throw if 'expose legacy touch event APIs' is false: PASS
+	document.createEvent('TouchEvent') should throw if 'expose legacy touch event APIs' is false: PASS
+	document.createEvent('touchevent') should throw if 'expose legacy touch event APIs' is false: PASS
 /dom/nodes/Document-createEvent.https.html: OK
 	BEFOREUNLOADEVENT should be an alias for BeforeUnloadEvent.: FAIL
 	BeforeUnloadEvent should be an alias for BeforeUnloadEvent.: FAIL
@@ -2308,9 +2308,9 @@
 	Should throw NOT_SUPPORTED_ERR for unrecognized arguments: PASS
 	StorageEvent should be an alias for StorageEvent.: PASS
 	TEXTEVENT should be an alias for TextEvent.: FAIL
-	TOUCHEVENT should be an alias for TouchEvent.: FAIL
+	TOUCHEVENT should be an alias for TouchEvent.: PRECONDITION_FAILED
 	TextEvent should be an alias for TextEvent.: FAIL
-	TouchEvent should be an alias for TouchEvent.: FAIL
+	TouchEvent should be an alias for TouchEvent.: PRECONDITION_FAILED
 	UIEVENT should be an alias for UIEvent.: PASS
 	UIEVENTS should be an alias for UIEvent.: PASS
 	UIEvent should be an alias for UIEvent.: PASS
@@ -2352,9 +2352,9 @@
 	createEvent('SVGEvents') should be initialized correctly.: PASS
 	createEvent('StorageEvent') should be initialized correctly.: PASS
 	createEvent('TEXTEVENT') should be initialized correctly.: PASS
-	createEvent('TOUCHEVENT') should be initialized correctly.: FAIL
+	createEvent('TOUCHEVENT') should be initialized correctly.: PRECONDITION_FAILED
 	createEvent('TextEvent') should be initialized correctly.: PASS
-	createEvent('TouchEvent') should be initialized correctly.: FAIL
+	createEvent('TouchEvent') should be initialized correctly.: PRECONDITION_FAILED
 	createEvent('UIEVENT') should be initialized correctly.: PASS
 	createEvent('UIEVENTS') should be initialized correctly.: PASS
 	createEvent('UIEvent') should be initialized correctly.: PASS
@@ -2377,7 +2377,7 @@
 	createEvent('storageevent') should be initialized correctly.: PASS
 	createEvent('svgevents') should be initialized correctly.: PASS
 	createEvent('textevent') should be initialized correctly.: PASS
-	createEvent('touchevent') should be initialized correctly.: FAIL
+	createEvent('touchevent') should be initialized correctly.: PRECONDITION_FAILED
 	createEvent('uievent') should be initialized correctly.: PASS
 	createEvent('uievents') should be initialized correctly.: PASS
 	customevent should be an alias for CustomEvent.: PASS
@@ -2396,7 +2396,7 @@
 	storageevent should be an alias for StorageEvent.: PASS
 	svgevents should be an alias for Event.: PASS
 	textevent should be an alias for TextEvent.: FAIL
-	touchevent should be an alias for TouchEvent.: FAIL
+	touchevent should be an alias for TouchEvent.: PRECONDITION_FAILED
 	uievent should be an alias for UIEvent.: PASS
 	uievents should be an alias for UIEvent.: PASS
 /dom/nodes/Document-createProcessingInstruction-xhtml.xhtml: OK
@@ -4130,7 +4130,7 @@
 /dom/nodes/Element-tagName-adopt.html: OK
 	tagName should not be uppercased when appended to XML document: FAIL
 /dom/nodes/Element-tagName.html: OK
-	tagName should be updated when changing ownerDocument: PASS
+	tagName should be updated when changing ownerDocument: FAIL
 	tagName should be updated when changing ownerDocument (createDocument with prefix): FAIL
 	tagName should be updated when changing ownerDocument (createDocument without prefix): FAIL
 	tagName should not upper-case for SVG elements in HTML documents.: FAIL
@@ -4355,7 +4355,7 @@
 /dom/nodes/Node-cloneNode-document-allow-declarative-shadow-roots.window.html: OK
 	cloneNode() and document's allow declarative shadow roots: FAIL
 /dom/nodes/Node-cloneNode-document-with-doctype.html: OK
-	Created with DOMParser: FAIL
+	Created with DOMParser: PASS
 	Created with the createDocument/createDocumentType: FAIL
 	Created with the createHTMLDocument: PASS
 /dom/nodes/Node-cloneNode-external-stylesheet-no-bc.sub.html: OK
@@ -4917,8 +4917,8 @@
 	svg compound class: PASS
 	svg simple class: PASS
 /dom/nodes/ParentNode-querySelector-dupe-id.html: OK
-	Returns a non-null value for connected cloned node with duplicated ID: FAIL
-	Sanity: returns a non-null value: FAIL
+	Returns a non-null value for connected cloned node with duplicated ID: PASS
+	Sanity: returns a non-null value: PASS
 /dom/nodes/ParentNode-querySelector-empty-attribute-value.html: OK
 	Compound [title][title=''] matches element with empty title attribute: PASS
 	[title=''] matches element with empty title attribute: PASS
@@ -5161,9 +5161,9 @@
 	Moving an attribute between documents: FAIL
 	Replacing an attribute across documents: FAIL
 /dom/nodes/attributes-namednodemap.html: OK
-	an attribute set by setAttribute should be accessible as a field on the `attributes` field of an Element: FAIL
-	an attribute with a null namespace should be accessible as a field on the `attributes` field of an Element: FAIL
-	an attribute with a set namespace should be accessible as a field on the `attributes` field of an Element: FAIL
+	an attribute set by setAttribute should be accessible as a field on the `attributes` field of an Element: PASS
+	an attribute with a null namespace should be accessible as a field on the `attributes` field of an Element: PASS
+	an attribute with a set namespace should be accessible as a field on the `attributes` field of an Element: PASS
 	setNamedItem and removeNamedItem on `attributes` should add and remove fields from `attributes`: FAIL
 	setNamedItem and removeNamedItem on `attributes` should not interfere with existing method names: FAIL
 	setting an attribute should not overwrite the length property of an `NamedNodeMap` object: PASS
@@ -5189,7 +5189,7 @@
 	Non-HTML element with upper-case attribute: PASS
 	Only lowercase attributes are returned on HTML elements (mixed case attribute): FAIL
 	Only lowercase attributes are returned on HTML elements (upper case attribute): FAIL
-	Own property correctness with basic attributes: FAIL
+	Own property correctness with basic attributes: PASS
 	Own property correctness with namespaced attribute before same-name non-namespaced one: FAIL
 	Own property correctness with non-namespaced attribute before same-name namespaced one: FAIL
 	Own property correctness with two namespaced attributes with the same name-with-prefix: FAIL

@@ -60,3 +60,25 @@ journal_is_bounded :: proc(t: ^testing.T) {
 	_, ok4 := journal_since(d, d.mutations)
 	testing.expect(t, !ok4)
 }
+
+// Long attribute values (a style attribute a script animates): the old values the entries hold may alone pass the
+// arena's bound; copying them all to a fresh arena at each record made every setAttribute cost the whole journal
+// (DuckDuckGo spent 80 % of its time there). Compaction runs only once garbage is half of the arena.
+@(test)
+journal_compaction_amortized :: proc(t: ^testing.T) {
+	d := document_create(nil)
+	defer document_destroy(d)
+	journal_enable(d, 64)
+	e := create_element(d, "div")
+	append_child(d, d.root, e)
+	long_a, long_b: [2000]u8
+	for i in 0 ..< len(long_a) { long_a[i] = 'a'; long_b[i] = 'b' }
+	for i in 0 ..< 2000 { set_attribute(d, e, "style", i % 2 == 0 ? string(long_a[:]) : string(long_b[:])) }
+	testing.expectf(t, d.journal.compactions < 100, "%d compactions for 2000 records", d.journal.compactions)
+	// what the entries hold is intact
+	es, ok := journal_since(d, d.mutations - 2)
+	testing.expect(t, ok && len(es) == 2 && es[1].name == "style" && len(es[1].old) == 2000)
+	live := 0
+	for x in d.journal.entries { live += len(x.name) + len(x.old) }
+	testing.expect_value(t, d.journal.live_bytes, live)
+}

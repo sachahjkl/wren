@@ -138,6 +138,27 @@ picture_of :: proc(f: ^media.Video_Frame) -> render.Video_Picture {
 	return pic
 }
 
+// The texture holding the picture a <video> shows now (converted from its decoder's surface if a new one came), for a canvas
+// that draws it: no copy through the CPU.
+video_texture_for_canvas :: proc(app: ^App, p: ^page.Page, node: base.Handle) -> (tex: render.Texture, size: [2]int, ok: bool) {
+	if app == nil || p == nil { return }
+	t, _, vok := video_current(app, p, node)
+	if !vok || t == nil || t.frames == 0 { return }
+	return t.tex, t.size, true
+}
+
+// The target of a video with its current picture converted into it (made when there is none), for the frame being made: the
+// picture the player chose for the moment the screen shows it.
+@(private = "file")
+video_current :: proc(app: ^App, p: ^page.Page, node: base.Handle) -> (t: ^Video_Target, view: page.Media_View, ok: bool) {
+	view, ok = page.media_view(p, node, true, screen_ahead_ns())
+	if !ok { return }
+	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
+	t = video_update_target(app, Video_Key{page.page_id(p), node}, &view)
+	if t != nil { t.epoch = vshell.epoch }
+	return
+}
+
 // The GPU picture of a video for the frame being made: its target (made, or made again at another size) holding the
 // picture the player chose (converted when it is a new one). nil: nothing to show yet.
 @(private = "file")
@@ -187,12 +208,8 @@ screen_ahead_ns :: proc() -> i64 {
 video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, scale: f32) -> bool {
 	app := the_app
 	if app == nil { return true }
-	view, ok := page.media_view(p, node, true, screen_ahead_ns())
+	t, view, ok := video_current(app, p, node)
 	if !ok { return true }
-	if view.next_due_ns >= 0 { vshell.next_ns = vshell.next_ns < 0 ? view.next_due_ns : min(vshell.next_ns, view.next_due_ns) }
-	key := Video_Key{page.page_id(p), node}
-	t := video_update_target(app, key, &view)
-	if t != nil { t.epoch = vshell.epoch }
 	if view.ready { draw.rect(dc, content, draw.Color{0, 0, 0, 1}) }
 	if t != nil && t.frames > 0 {
 		dst := fit_rect(content, {f32(t.size.x), f32(t.size.y)}, cs, scale)

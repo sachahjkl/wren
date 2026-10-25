@@ -105,8 +105,13 @@ Decoder :: struct {
 	cond:     sync.Cond,
 	queue:    [dynamic]^Job,
 	running:  [dynamic]^Job,
-	threads:  [dynamic]^host.Thread,
+	threads:  [dynamic]^host.Thread,   // live ones and ended ones not joined yet (reap_threads)
 	ports:    base.Pool(Port),
+	max_threads: int,
+	stack_bytes: int,
+	idle_ms:  int,    // a thread idle this long ends (0: never); submit starts another when none is idle
+	threads_live: int,   // threads running decoder_thread
+	idle:     int,    // ... of them waiting for a job
 	stopping: bool,
 	held:     bool,   // decoder_hold: the threads take no job (tests queue several jobs before any is taken)
 	seq:      u64,
@@ -182,8 +187,10 @@ probe_codecs :: proc() {
 }
 
 // Starts the decoding threads (`threads` <= 0: one). Idempotent; the threads use the process heap. `stack_bytes`
-// reserved per thread (committed as used): SVG rendering recurses per nesting level (images.svg.max_depth).
-decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
+// reserved per thread (committed as used): SVG rendering recurses per nesting level (images.svg.max_depth). With
+// `idle_ms` > 0 a thread with nothing to do for that long ends (the stack a large decode committed goes back to the
+// system: Windows never decommits a thread's stack) and `submit` starts one again when a job finds none idle.
+decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT, idle_ms := 0) {
 	sync.mutex_lock(&dec_mu)
 	defer sync.mutex_unlock(&dec_mu)
 	if dec != nil { return }
@@ -194,17 +201,44 @@ decoder_start :: proc(threads: int, stack_bytes := DECODER_STACK_DEFAULT) {
 	d.running = make([dynamic]^Job)
 	d.threads = make([dynamic]^host.Thread)
 	d.live = make(map[Job_Id]^Job)
+	d.max_threads, d.stack_bytes, d.idle_ms = max(threads, 1), stack_bytes, max(idle_ms, 0)
 	dec = d
-	for _ in 0 ..< max(threads, 1) {
-		if t := host.thread_start(decoder_thread, d, stack_bytes, .Below_Normal, "wren-image-decode"); t != nil { append(&d.threads, t) }
-	}
+	sync.mutex_lock(&d.mu)
+	for _ in 0 ..< d.max_threads { spawn_thread(d) }
+	sync.mutex_unlock(&d.mu)
 	// <source type> selection needs to know the optional codecs: the first thread looks (a few CoCreateInstance calls)
 	if len(d.threads) > 0 && !codecs.probed { _ = sync.sema_wait_with_timeout(&codecs_ready, 2 * time.Second) }
 }
 
 decoder_running :: proc() -> bool { return dec != nil }
 
-decoder_threads :: proc() -> int { return dec == nil ? 0 : len(dec.threads) }
+// Decoding threads running now (fewer than started once idle ones ended).
+decoder_threads :: proc() -> int {
+	d := dec
+	if d == nil { return 0 }
+	sync.mutex_lock(&d.mu)
+	defer sync.mutex_unlock(&d.mu)
+	return d.threads_live
+}
+
+// Under d.mu: joins the threads that ended (they returned: joining does not wait), then starts one more.
+@(private)
+spawn_thread :: proc(d: ^Decoder) {
+	reap_threads(d)
+	context.allocator = d.allocator
+	if t := host.thread_start(decoder_thread, d, d.stack_bytes, .Below_Normal, "wren-image-decode"); t != nil {
+		append(&d.threads, t)
+		d.threads_live += 1
+	}
+}
+
+@(private)
+reap_threads :: proc(d: ^Decoder) {
+	context.allocator = d.allocator
+	for i := 0; i < len(d.threads); {
+		if host.thread_finished(d.threads[i]) { host.thread_join(d.threads[i]); unordered_remove(&d.threads, i) } else { i += 1 }
+	}
+}
 
 decoder_stats :: proc() -> Decoder_Stats {
 	if dec == nil { return {} }
@@ -317,6 +351,8 @@ submit :: proc(id: Port_Id, j: ^Job) -> Job_Id {
 	j.id = Job_Id(d.seq)
 	d.live[j.id] = j
 	append(&d.queue, j)
+	// every thread is busy (or ended while idle): one more, up to the configured number
+	if d.idle < len(d.queue) && d.threads_live < d.max_threads { spawn_thread(d) }
 	sync.cond_signal(&d.cond)
 	return j.id
 }
@@ -376,8 +412,16 @@ decoder_thread :: proc(data: rawptr) {
 	if first { sync.sema_post(&codecs_ready) }
 	for {
 		sync.mutex_lock(&d.mu)
-		for (len(d.queue) == 0 || d.held) && !d.stopping { sync.cond_wait(&d.cond, &d.mu) }
-		if d.stopping { sync.mutex_unlock(&d.mu); return }
+		ended := false
+		for (len(d.queue) == 0 || d.held) && !d.stopping {
+			d.idle += 1
+			woken := true
+			if d.idle_ms > 0 { woken = sync.cond_wait_with_timeout(&d.cond, &d.mu, time.Duration(d.idle_ms) * time.Millisecond) } else { sync.cond_wait(&d.cond, &d.mu) }
+			d.idle -= 1
+			// idle for idle_ms: this thread ends (another starts at the next submit)
+			if !woken && len(d.queue) == 0 && !d.stopping { ended = true; break }
+		}
+		if d.stopping || ended { d.threads_live -= 1; sync.mutex_unlock(&d.mu); return }
 		best := 0
 		for j, i in d.queue {
 			b := d.queue[best]

@@ -69,6 +69,6 @@
 	Object.getOwnPropertyNames on DOMStringMap, empty data attribute: PASS
 	Object.getOwnPropertyNames on DOMStringMap, multiple data attributes: PASS
 /dom/collections/namednodemap-supported-property-names.html: OK
-	Object.getOwnPropertyNames on NamedNodeMap: FAIL
-	Object.getOwnPropertyNames on NamedNodeMap after attribute removal: FAIL
-	Object.getOwnPropertyNames on NamedNodeMap of input: FAIL
+	Object.getOwnPropertyNames on NamedNodeMap: PASS
+	Object.getOwnPropertyNames on NamedNodeMap after attribute removal: PASS
+	Object.getOwnPropertyNames on NamedNodeMap of input: PASS

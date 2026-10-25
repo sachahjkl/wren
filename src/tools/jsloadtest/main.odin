@@ -200,6 +200,7 @@ main :: proc() {
 	test_workers()
 	test_clone()
 	test_integrity_preload()
+	test_link_events()
 	measurements()
 
 	base.scope_close(process)
@@ -668,6 +669,74 @@ document.getElementById("b").dispatchEvent(new Event("click", { bubbles: true })
 	page.page_close(p)
 	n := hits(once)
 	check(n == 1, fmt.tprintf("a parser script is downloaded once (the preload is claimed by its element): %d download(s)", n))
+}
+
+// <link rel=stylesheet> fires load / error (link_events.odin), without anything being rendered (this tool lays out
+// nothing): a link inserted by a script is fetched at once, its load waits for the @import its sheet has, a failed one
+// fires error, and one pointed elsewhere before its sheet came fires only for the new address. (Turbopack and Next.js
+// load CSS chunks this way and go on in onload: DuckDuckGo's home page waited for ever.)
+test_link_events :: proc() {
+	fmt.println("-- <link rel=stylesheet> load and error events")
+	css :: proc(text: string, ms: int, key: string) -> string { return gen(text, ms, strings.concatenate({"&type=text/css&k=", key}, context.temp_allocator)) }
+	imported := css("b { color: green }", 300, "imp")
+	with_import := css(strings.concatenate({`@import url("`, imported, `"); p { color: red }`}, context.temp_allocator), 0, "outer")
+	src := strings.concatenate({`<!doctype html><head>`, PRELUDE, `</head><body><p id=t>x</p><b id=bb>b</b><script>
+function add(name, href, then) {
+  const l = document.createElement("link");
+  l.rel = "stylesheet";
+  l.onload = () => log(name + " load" + (then ? " " + then() : ""));
+  l.onerror = () => log(name + " error");
+  l.href = href;
+  document.head.appendChild(l);
+  return l;
+}
+add("plain", "`, css("p { margin: 1px }", 50, "plain"), `");
+add("missing", "`, gen("p {}", 0, "&type=text/css&status=404&k=missing"), `");
+add("imports", "`, with_import, `", () => getComputedStyle(document.getElementById("bb")).color);
+const moved = add("moved", "`, css("p {}", 400, "first"), `");
+moved.href = "`, css("p {}", 0, "second"), `";
+setTimeout(() => log("timeout"), 1500);
+</script></body>`}, context.temp_allocator)
+	p := load(src)
+	wait_for("timeout")
+	check(logged("plain load"), "a link a script inserts fires load once its sheet is in (nothing rendered)")
+	check(logged("missing error") && !logged("missing load"), "a link whose sheet failed (HTTP 404) fires error")
+	check(logged("imports load rgb(0, 128, 0)"), "a link whose sheet has an @import fires load once the imported sheet applies too")
+	n := hits(imported)
+	check(n == 1, fmt.tprintf("the @import was fetched before that load (%d request(s))", n))
+	moved := 0
+	for l in logs { if l == "moved load" { moved += 1 } }
+	check(moved == 1, fmt.tprintf("a link pointed elsewhere before its sheet came fires load once, for the new sheet (%d)", moved))
+	page.page_close(p)
+
+	// render-blocking: the parser's <link> holds the first paint back, one a script inserts does not
+	src2 := strings.concatenate({`<!doctype html><head>`, PRELUDE, `<link rel=stylesheet href="`, css("p { color: red }", 300, "parser"),
+		`" onload="log('parser link load')"></head><body><script>
+const l = document.createElement("link");
+l.rel = "stylesheet"; l.href = "`, css("p { color: blue }", 3000, "late"), `";
+document.head.appendChild(l);
+log("inserted");
+</script></body>`}, context.temp_allocator)
+	p2 := load(src2)
+	st, why := page.first_paint_state(p2)
+	check(st == .Blocked && strings.contains(why, "parser"), fmt.tprintf("the parser's stylesheet blocks the first paint (%v %s)", st, why))
+	// (the inline script waits for that stylesheet: javascript.load.scripts_wait_for_stylesheets)
+	wait_for("parser link load")
+	wait_for("inserted")
+	st, why = page.first_paint_state(p2)
+	check(st == .Ready, fmt.tprintf("a stylesheet a script inserted does not block it (%v %s)", st, why))
+	page.page_close(p2)
+
+	// a script turns the parser's <link> into something else while the document is parsed: the scripts after it
+	// (which wait for pending stylesheets) do not wait for it for ever
+	src3 := strings.concatenate({`<!doctype html><head>`, PRELUDE, `<link id=l rel=stylesheet href="`, css("p {}", 200, "relchange"),
+		`"></head><body><script>document.getElementById("l").rel = "expect"; log("rel changed")</script><p>x</p>`,
+		`<script src="`, gen(`log("script after the change ran")`, 300, "&k=after"), `"></script>`,
+		`<script>document.addEventListener("DOMContentLoaded", () => log("relchange dcl"))</script></body>`}, context.temp_allocator)
+	p3 := load(src3)
+	wait_for("relchange dcl")
+	check(logged("rel changed") && in_order("script after the change ran", "relchange dcl"), "a parser link whose rel a script changed does not hold the parser")
+	page.page_close(p3)
 }
 
 measurements :: proc() {

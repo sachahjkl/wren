@@ -119,7 +119,7 @@ decoder_ensure :: proc(s: ^images.Settings) {
 	if images.decoder_running() { return }
 	n := s.decode_threads
 	if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
-	images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT)
+	images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 }
 
 // Frees the process cache and stops the decoding threads. Call once every page is closed, before exiting.

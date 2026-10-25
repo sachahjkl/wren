@@ -404,7 +404,7 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 			s := &app.page_settings.images
 			n := s.decode_threads
 			if n < 0 { n = clamp(host.processor_count() / 2, 1, 4) }
-			images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT)
+			images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 		}
 		if favs.port == 0 { favs.port = images.port_open(&app.loop, favicon_decoded, nil) }
 		if favs.port == 0 { e.state = .Failed; return }
