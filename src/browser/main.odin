@@ -994,15 +994,17 @@ arm_autosave :: proc(app: ^App) {
 
 // Every setting struct is derived from the registry; when any preference changes they are all refreshed and handed to
 // their subsystems. Preferences marked "restart" are read again at the next start (the subsystem keeps what it opened with).
-apply_prefs :: proc(app: ^App) {
-	ns := net.settings_from_prefs(&app.prefs)
-	net.client_apply(&app.client, ns)
-	net.settings_destroy(&ns)
+// `changed`: the preference written ("" = any): the network, the HTTP cache, the downloads and the touch devices are
+// configured again only for their own (prefs_apply.odin).
+apply_prefs :: proc(app: ^App, changed := "") {
+	groups := pref_groups_of(changed)
+	if .Net in groups { net_apply(app) }
 
 	fetch.settings_destroy(&app.profile.settings)
 	app.profile.settings = fetch.settings_from_prefs(&app.prefs)
 	app.profile.jar.settings = cookies.settings_from_prefs(&app.prefs)
-	http_cache_apply(app)
+	if .Http_Cache in groups { http_cache_apply(app); prefs_apply_counts[.Http_Cache] += 1 }
+	if .Touch in groups { touch_devices_apply(app) }
 
 	page.settings_destroy(&app.page_settings)
 	app.page_settings = page.settings_from_prefs(&app.prefs)
@@ -1014,7 +1016,7 @@ apply_prefs :: proc(app: ^App) {
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
-	downloads_apply(app)
+	if .Downloads in groups { downloads_apply(app); prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
 	app.frames_requested = max(app.frames_requested, 3)
@@ -1022,7 +1024,7 @@ apply_prefs :: proc(app: ^App) {
 
 on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	if shell_defer({kind = .Prefs}) { return }   // (shell_frames.odin: pages' settings are not replaced under a running page)
-	apply_prefs((^App)(user))
+	apply_prefs((^App)(user), name)
 }
 ////////////////////////////////
 // Loop
@@ -1074,7 +1076,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil {
 		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
 	}
-	if idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested {
+	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(&app.ui_state) && ui.wake_ms(&app.ui_state) == 0 && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1148,6 +1150,7 @@ frame :: proc(app: ^App, idled := false) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
 	ui.draw_tree(&app.ui_state, &app.dc)
+	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	prof_end(.UI_Draw)
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
@@ -1190,6 +1193,7 @@ main :: proc() {
 	prof_mark(.Main)
 	app := new(App)
 	the_app = app
+	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
 	// --- configuration: defaults < profile file < command line < policy file ---
 	args := desktop.command_line_args(base.permanent_allocator())   // (UTF-8 from the UTF-16 command line: os.args is the C runtime's ANSI)

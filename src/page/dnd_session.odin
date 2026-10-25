@@ -7,10 +7,12 @@ package page
 //   leaves the page, drag_drop at the release (or drag_cancel), and drag_finish with the operation that happened.
 // The events carry the client coordinates, the modifiers, the buttons and the session's DataTransfer.
 
+import "core:os"
 import "core:strings"
 import "wb:base"
 import "wb:dom"
 import "wb:forms"
+import lay "wb:layout"
 
 // What starts a drag in a page (drag_source_for).
 Drag_Source_Kind :: enum u8 { None, Element, Link, Image, Selection }
@@ -37,7 +39,28 @@ Drag_Session :: struct {
 	os_allowed:  Drag_Ops,      // a drag from outside: what the other application allows
 	x, y:        f64,
 	mods:        u32,
+	// a selection dragged from editable text (drag_set_source_text): what a move deletes once the text is dropped
+	src_field:   base.Handle,   // a text field and its selection (bytes)
+	src_a, src_b: int,
+	src_host:    base.Handle,   // an editing host (contenteditable) and the selected range
+	src_range:   [2]lay.Text_Pos,
+	// where a drop of text would go (drag_set_caret: the shell follows the pointer)
+	caret:       Drop_Caret,
+	has_caret:   bool,
+	default_kind: Drop_Default,   // what the current target does with an uncancelled drop
 }
+
+// Where dropped text goes: an offset (bytes) in a text field's value, or a point of an editing host.
+Drop_Caret :: struct {
+	node:   base.Handle,   // the text field, or the editing host
+	field:  bool,
+	offset: int,           // field: byte offset in its edit text
+	pos:    lay.Text_Pos,  // editing host: the DOM point
+}
+
+// The default action of a drop the page does not cancel (HTML §6.11.5: text controls and editing hosts insert the
+// text, a file input takes the files).
+Drop_Default :: enum u8 { None, Text_Field, Editable, File_Input }
 
 // The result of a drop (drag_drop).
 Drop_Result :: struct {
@@ -188,6 +211,8 @@ drag_external_begin :: proc(p: ^Page, payload: Drag_Payload, allowed: Drag_Ops) 
 		if f, ok := local_file_from_path(path); ok {
 			store_add_file(st, f)
 			forms.file_destroy(&f)
+		} else if os.is_dir(path) {
+			store_add_dir(st, path)
 		}
 	}
 	st.effect_allowed = effect_allowed_of(allowed)
@@ -243,23 +268,6 @@ initial_drop_effect :: proc(s: ^Drag_Session, effect_allowed: string) -> Drag_Op
 	return .Copy
 }
 
-// Is `h` a place text can be dropped into (a text field, a textarea, contenteditable)?
-@(private)
-drop_editable :: proc(p: ^Page, h: base.Handle) -> bool {
-	if p.formctl != nil && forms.is_text_field(page_forms(p), h) { return true }
-	for cur := h; cur != base.NIL_HANDLE; {
-		n := dom.get(p.doc, cur)
-		if n == nil { break }
-		if n.kind == .Element {
-			if v, ok := dom.get_attribute(p.doc, cur, "contenteditable"); ok {
-				return v == "" || strings.equal_fold(v, "true") || strings.equal_fold(v, "plaintext-only")
-			}
-		}
-		cur = n.parent
-	}
-	return false
-}
-
 // One step of the drag: the pointer is over `hit` (NIL: over nothing of the page) at client (x, y). A drag from the
 // page first fires `drag` at its source (cancelled: the drag ends, returns ok = false). Then dragenter / dragleave as
 // the current target changes, and dragover at it. Returns the operation a drop would do here.
@@ -300,12 +308,14 @@ drag_update :: proc(p: ^Page, hit: base.Handle, x, y: f64, mods: u32) -> (op: Dr
 	if st = store_get(p, s.store); st == nil { return .None, false }
 	allowed := allowed_ops(st.effect_allowed)
 	if s.source == base.NIL_HANDLE { allowed &= s.os_allowed }
+	s.default_kind = .None
 	if cancelled {
 		s.zone = true
 		s.op = st.drop_effect in allowed ? st.drop_effect : .None
-	} else if drop_editable(p, s.current) && store_has_text(st) {
-		s.op = .Copy in allowed ? .Copy : (.Move in allowed ? .Move : .None)
+	} else {
+		s.op, s.default_kind = drop_default_op(p, s, st, allowed)   // dnd_default.odin
 	}
+	if s.default_kind != .Text_Field && s.default_kind != .Editable { s.has_caret = false }
 	return s.op, true
 }
 
@@ -347,6 +357,12 @@ drag_drop :: proc(p: ^Page, hit: base.Handle, x, y: f64, mods: u32) -> Drop_Resu
 		return {op = op, handled = true}
 	}
 	s.op = op
+	if s.default_kind != .None {
+		// the browser's default: the text goes into the field or the editing host, the files into the input
+		op = drop_default_run(p, s, op)   // dnd_default.odin
+		if s = drag_session(p); s != nil { s.op = op }
+		return {op = op, handled = true}
+	}
 	return {op = op, handled = zone}
 }
 
@@ -392,6 +408,27 @@ drag_session_payload :: proc(p: ^Page) -> (out: Drag_Payload, allowed: Drag_Ops)
 	}
 	out.files, out.custom = files[:], custom[:]
 	return out, allowed_ops(st.effect_allowed)
+}
+
+// The pixels of an <img> or a <canvas> (in the document or not) for a drag image: straight RGBA (allocator), their size
+// in pixels and the size the element shows them at (CSS px). ok = false for another element, or one with nothing to
+// show yet.
+drag_image_pixels :: proc(p: ^Page, h: base.Handle, allocator := context.allocator) -> (rgba: []u8, size: [2]int, css: [2]f64, ok: bool) {
+	if p == nil || p.doc == nil { return }
+	n := dom.get(p.doc, h)
+	if n == nil || n.kind != .Element || (n.name != "img" && n.name != "canvas") { return }
+	src := canvas_source(p, u64(h))
+	if src.status != .Ok { return }
+	bmp := canvas_source_bitmap(&src)
+	if bmp == nil || bmp.w <= 0 || bmp.h <= 0 || len(bmp.pix) < bmp.w * bmp.h * 4 { return }
+	rgba = make([]u8, bmp.w * bmp.h * 4, allocator)
+	for i := 0; i < len(rgba); i += 4 {
+		a := u32(bmp.pix[i + 3])
+		rgba[i + 3] = u8(a)
+		if a == 0 { continue }
+		for k in 0 ..< 3 { rgba[i + k] = u8(min(u32(bmp.pix[i + k]) * 255 / a, 255)) }
+	}
+	return rgba, {bmp.w, bmp.h}, src.nat, true
 }
 
 // setDragImage's element and offset (NIL: the browser's own picture).

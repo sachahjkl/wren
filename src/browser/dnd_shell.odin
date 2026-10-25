@@ -16,12 +16,15 @@ package browser
 // elevated OLE target.
 
 import "core:strings"
+import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:dom"
 import "wb:fetch"
+import "wb:forms"
 import "wb:instance"
 import lay "wb:layout"
 import "wb:page"
@@ -33,7 +36,11 @@ DND_PREFS := [?]config.Def{
 		description = "A link or an address dropped on a page that does not take the drop is opened in that tab (on the tab strip: in a new tab)."},
 }
 
-register_dnd_prefs :: proc(p: ^config.Prefs) { config.register(p, DND_PREFS[:]) }
+register_dnd_prefs :: proc(p: ^config.Prefs) {
+	config.register(p, DND_PREFS[:])
+	config.register(p, DND_IMAGE_PREFS[:])   // dnd_image.odin
+	register_touch_prefs(p)                  // touch_shell.odin
+}
 
 @(private = "file")
 Dnd_Shell :: struct {
@@ -45,6 +52,10 @@ Dnd_Shell :: struct {
 	cand_pos:    [2]f32,
 	cand_local:  [2]f32,
 	cand_text:   string,          // owned: the selection's text
+	cand_field:  base.Handle,     // the selection is a text field's (bytes cand_a..cand_b)
+	cand_a, cand_b: int,
+	cand_host:   base.Handle,     // the selection is inside this editing host (range cand_range)
+	cand_range:  [2]lay.Text_Pos,
 	// a drag from the page
 	active:      bool,
 	src_page:    ^page.Page,
@@ -55,7 +66,15 @@ Dnd_Shell :: struct {
 	over_chrome: bool,
 	op:          page.Drag_Op,
 	ole:         bool,            // the window is an OLE drop target
+	// the system's drag of a page's drag (hand_off): its tab, and whether it is back over the page
+	sync_tab:    ^Tab,
+	sync_over:   bool,
+	// the pointer left the window while the picture is still being read back
+	handoff_pending: bool,
+	handoff_frames:  int,
 }
+
+@(private = "file") HANDOFF_WAIT_FRAMES :: 4
 
 @(private = "file")
 dnd: Dnd_Shell
@@ -69,6 +88,7 @@ dnd_init :: proc(app: ^App) {
 }
 
 dnd_destroy :: proc(app: ^App) {
+	dnd_image_end(app)
 	if dnd.ole && app.win != nil { platform.drop_target_enable(app.win, false) }
 	delete(dnd.cand_text)
 	dnd = {}
@@ -177,12 +197,23 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 	if p == nil || ev.button != .Left || !dnd_page_events(app) { return false }
 	source, kind := page.drag_source_for(p, pressed)
 	text := ""
+	// selected text of a field (the press kept the selection: forms_shell.odin)
+	if kind == .None {
+		if field, a, b, ftext, ok := forms_take_selection_press(p); ok && field == pressed {
+			kind, text, source = .Selection, ftext, field
+			dnd.cand_field, dnd.cand_a, dnd.cand_b = field, a, b
+		}
+	}
 	if kind == .None && page.selection_active(p) {
 		if tp, ok := position_of(app, t, ev.pos); ok {
 			a, b, _ := page.selection_range(p)
 			if lay.pos_compare(p.doc, a, tp) <= 0 && lay.pos_compare(p.doc, tp, b) < 0 {
 				kind, text = .Selection, page.selection_text(p)
 				source = pressed != base.NIL_HANDLE ? pressed : p.body
+				// inside an editing host: a move takes the text out of it
+				if host := page.editing_host_of(p, a.node); host != base.NIL_HANDLE && host == page.editing_host_of(p, b.node) {
+					dnd.cand_host, dnd.cand_range = host, {a, b}
+				}
 			}
 		}
 	}
@@ -197,6 +228,7 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 dnd_clear_candidate :: proc() {
 	delete(dnd.cand_text)
 	dnd.candidate, dnd.cand_text, dnd.cand_page = false, "", nil
+	dnd.cand_field, dnd.cand_host = base.NIL_HANDLE, base.NIL_HANDLE
 }
 
 // Whether a drag (from the page, or of the system) is in progress: page input is the drag's.
@@ -218,14 +250,22 @@ dnd_cursor :: proc() -> (platform.Cursor, bool) {
 end_page_drag :: proc(op: page.Drag_Op) {
 	p := dnd.src_page
 	dnd.active, dnd.src_page, dnd.op, dnd.over_chrome = false, nil, .None, false
+	dnd.handoff_pending = false
+	dnd_image_end(the_app)
+	dnd_image_target(nil)
 	if p != nil { page.drag_finish(p, op) }
 }
 
-// The pointer left the window during a drag from the page: the system's drag takes over until the drop.
+// The pointer left the window during a drag from the page: the system's drag takes over until the drop, with the
+// picture the shell drew. When it comes back over the window while the system's loop runs, the window's drop target
+// asks the shell at once (dnd_sync): the page gets dragenter / dragover / drop from the same session, so `drop` comes
+// before `dragend`, and dragend carries the effect of the drop, as the standard orders them.
 @(private = "file")
 hand_off :: proc(app: ^App, t: ^Tab) {
 	p := dnd.src_page
 	page.drag_leave_page(p)
+	set_caret(app, p, nil)
+	dnd_image_target(nil)
 	if t.page != p { end_page_drag(.None); return }
 	pl, allowed := page.drag_session_payload(p)
 	data: platform.Drag_Data
@@ -235,10 +275,118 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	if data.url != "" && data.text == "" { data.text = data.url }
 	for e in pl.custom { append(&data.custom, platform.Drag_Entry{e.mime, e.data}) }
 	if platform.drag_data_empty(data) || allowed == {} { end_page_drag(.None); return }
-	effect, _ := platform.drag_start(app.win, data, effects_of(allowed))
+	// the remote control's drag goes on through the window's own drop target; a window nobody sees (driven by it)
+	// never runs the system's drag, which would follow the real mouse of the person at the computer
+	steps, scripted := remote_drag_steps(app)   // remote_methods.odin
+	if scripted {
+		platform.drag_script(app.win, steps)
+	} else if !win.IsWindowVisible(app.win.hwnd) {
+		end_page_drag(.None)
+		return
+	}
+	platform.drop_sync_set(app.win, dnd_sync, app)
+	defer platform.drop_sync_set(app.win, nil, nil)
+	dnd.sync_tab, dnd.sync_over = t, false
+	dnd_image_system_shows(true)
+	effect, _ := platform.drag_start(app.win, data, effects_of(allowed), dnd_image_system())
+	dnd.sync_tab = nil
 	if t.page != p { dnd.src_page = nil }
 	end_page_drag(op_of(effect))
 	app.frames_requested = max(app.frames_requested, 2)
+}
+
+// The window's drop target while the system's drag of a page's drag runs (hand_off): the drag came back over the
+// window. The same steps as a drag inside the window, at once; the answer is the operation a drop would do.
+@(private = "file")
+dnd_sync :: proc(user: rawptr, w: ^platform.Window, ev: platform.Event) -> Maybe(platform.Drop_Effect) {
+	app := (^App)(user)
+	t := dnd.sync_tab
+	p := dnd.src_page
+	if t == nil || p == nil || t.page != p || page.drag_session(p) == nil { return nil }
+	over_page := draw.rect_contains(app.page_rect, ev.pos)
+	#partial switch ev.kind {
+	case .Drop_Enter, .Drop_Over:
+		if !over_page {
+			if dnd.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
+			dnd.sync_over = false
+			pl, _ := page.drag_session_payload(p)
+			return pl.url != "" ? platform.drop_effect_for(ev.drop_allowed, ev.mods, .Link) : nil
+		}
+		dnd.sync_over = true
+		hit, cx, cy := page_point(app, t, ev.pos)
+		op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
+		if !ok { return nil }
+		follow_caret(app, t, p, ev.pos)
+		return effect_of(op)
+	case .Drop_Leave:
+		if dnd.sync_over { page.drag_leave_page(p); set_caret(app, p, nil) }
+		dnd.sync_over = false
+	case .Drop:
+		dnd.sync_over = false
+		if !over_page {
+			pl, _ := page.drag_session_payload(p)
+			if pl.url != "" { chrome_open(app, strings.clone(pl.url, context.temp_allocator), ev.pos); return .Link }
+			return nil
+		}
+		hit, cx, cy := page_point(app, t, ev.pos)
+		res := page.drag_drop(p, hit, cx, cy, dom_mods(ev.mods))
+		return effect_of(res.op)
+	}
+	return nil
+}
+
+// The drop caret (where dragged text would go) at the pointer, over a field or an editing host the drag is over.
+@(private = "file")
+follow_caret :: proc(app: ^App, t: ^Tab, p: ^page.Page, pos: [2]f32) {
+	s := page.drag_session(p)
+	if s == nil { return }
+	dnd_image_target(nil)
+	kind, el := page.drop_default_of(p, s.current)
+	if s.default_kind == .None { kind = .None }
+	switch kind {
+	case .None: set_caret(app, p, nil)
+	case .Text_Field:
+		if p.formctl == nil { set_caret(app, p, nil); return }
+		if at, ok := forms_field_offset_at(app, page.page_forms(p), el, pos); ok {
+			set_caret(app, p, page.Drop_Caret{node = el, field = true, offset = at})
+		} else {
+			set_caret(app, p, nil)
+		}
+	case .Editable:
+		if tp, ok := position_of(app, t, pos); ok && page.editing_host_of(p, tp.node) == el {
+			set_caret(app, p, page.Drop_Caret{node = el, pos = tp})
+		} else {
+			set_caret(app, p, nil)
+		}
+	case .File_Input:
+		set_caret(app, p, nil)
+		if r, ok := element_window_rect(app, t, el); ok { dnd_image_target(r) }
+	}
+}
+
+@(private = "file")
+set_caret :: proc(app: ^App, p: ^page.Page, c: Maybe(page.Drop_Caret)) {
+	if p == nil { return }
+	old, had := page.drag_caret(p)
+	page.drag_set_caret(p, c)
+	now, has := page.drag_caret(p)
+	if had == has && old == now { return }
+	// a field's caret is painted with the field: it paints again
+	if p.formctl != nil {
+		f := page.page_forms(p)
+		if had && old.field && dom.get(p.doc, old.node) != nil { forms.changed(f, old.node) }
+		if has && now.field { forms.changed(f, now.node) }
+	}
+	app.frames_requested = max(app.frames_requested, 2)
+}
+
+// The drop caret in text field `node` (forms_shell.odin paints it), when text is dragged over it.
+dnd_field_caret :: proc(node: base.Handle) -> (int, bool) {
+	for p in ([]^page.Page{dnd.src_page, dnd.ext_page}) {
+		if p == nil { continue }
+		if c, ok := page.drag_caret(p); ok && c.field && c.node == node { return c.offset, true }
+	}
+	return 0, false
 }
 
 // The frame's events, while a press may become a drag or a drag from the page goes on (route_page_input, before any
@@ -254,11 +402,19 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			p := t.page
 			cx, cy := page_client_xy(t, dnd.cand_local, page_scale(app))
 			source, kind, text := dnd.cand_source, dnd.cand_kind, strings.clone(dnd.cand_text, context.temp_allocator)
+			field, fa, fb := dnd.cand_field, dnd.cand_a, dnd.cand_b
+			host, hrange := dnd.cand_host, dnd.cand_range
+			press := dnd.cand_pos
 			dnd_clear_candidate()
+			forms_drop_selection_press()   // (the release is the drag's, not a click in the field's selection)
 			sshell.down = false   // the selection gesture, if any, is over
 			if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
+			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
+			if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }
 			dnd.active, dnd.src_page = true, p
+			dnd.handoff_pending, dnd.handoff_frames = false, 0
 			page_set_active(p, base.NIL_HANDLE)
+			dnd_image_begin(app, t, p, press)   // dnd_image.odin: grabbed where the press was
 			return dnd_route(app, t, ev)
 		case .Mouse_Release:
 			if ev.button == .Left {
@@ -274,15 +430,29 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	#partial switch ev.kind {
 	case .Mouse_Move:
 		size := [2]f32{f32(app.win.size.x), f32(app.win.size.y)}
-		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y { hand_off(app, t); return true }
+		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y {
+			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (a
+			// few frames at most: dnd_events)
+			if dnd_image_waiting() && dnd.handoff_frames < HANDOFF_WAIT_FRAMES {
+				dnd.handoff_pending = true
+				app.frames_requested = max(app.frames_requested, 2)
+				return true
+			}
+			dnd.handoff_pending = false
+			hand_off(app, t)
+			return true
+		}
+		dnd.handoff_pending = false
+		dnd_image_move(ev.pos)
 		if draw.rect_contains(app.page_rect, ev.pos) {
 			dnd.over_chrome = false
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
 			if !ok { end_page_drag(.None); return true }
 			dnd.op = op
+			follow_caret(app, t, p, ev.pos)
 		} else {
-			if !dnd.over_chrome { page.drag_leave_page(p) }
+			if !dnd.over_chrome { page.drag_leave_page(p); set_caret(app, p, nil); dnd_image_target(nil) }
 			dnd.over_chrome = true
 			pl, _ := page.drag_session_payload(p)
 			dnd.op = pl.url != "" ? .Link : .None
@@ -309,6 +479,8 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	case .Key_Press:
 		if ev.key == .Escape {
 			dnd.active, dnd.src_page, dnd.op = false, nil, .None
+			dnd_image_end(app)
+			dnd_image_target(nil)
 			page.drag_cancel(p)
 			return true
 		}
@@ -323,6 +495,16 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 
 // Every event of the frame (main.odin, before the page's routing): the Drop_* events of the toolkit.
 dnd_events :: proc(app: ^App, events: []platform.Event) {
+	touch_frame(app)   // touch_shell.odin: a finger held still (the long press), every frame while one is down
+	if dnd.handoff_pending {
+		dnd.handoff_frames += 1
+		if t := current_tab(app); t != nil && dnd.active && t.page == dnd.src_page {
+			if !dnd_image_waiting() || dnd.handoff_frames >= HANDOFF_WAIT_FRAMES { dnd.handoff_pending = false; hand_off(app, t) }
+			else { app.frames_requested = max(app.frames_requested, 2) }
+		} else {
+			dnd.handoff_pending = false
+		}
+	}
 	for ev in events {
 		#partial switch ev.kind {
 		case .Drop_Enter, .Drop_Over, .Drop_Leave, .Drop:
@@ -333,6 +515,7 @@ dnd_events :: proc(app: ^App, events: []platform.Event) {
 
 @(private = "file")
 end_external :: proc() {
+	dnd_image_target(nil)
 	if dnd.ext_page != nil { page.drag_finish(dnd.ext_page, .None) }
 	dnd.external, dnd.ext_page, dnd.over_chrome = false, nil, false
 }
@@ -356,13 +539,14 @@ dnd_external :: proc(app: ^App, ev: platform.Event) {
 			op, ok := page.drag_update(t.page, hit, cx, cy, dom_mods(ev.mods))
 			s := page.drag_session(t.page)
 			if !ok { end_external(); platform.drop_set_effect(app.win, nil); return }
+			follow_caret(app, t, t.page, ev.pos)
 			// a page that does not take the drop: the browser's default (open the file / follow the link) shows as a link
 			if op == .None && (s == nil || !s.zone) {
 				if _, has := dropped_address(data); has && default_drop_allowed(app, data) { op = .Link in ops_of(ev.drop_allowed) ? .Link : .Copy }
 			}
 			platform.drop_set_effect(app.win, effect_of(op))
 		} else {
-			if dnd.ext_page != nil && !dnd.over_chrome { page.drag_leave_page(dnd.ext_page) }
+			if dnd.ext_page != nil && !dnd.over_chrome { page.drag_leave_page(dnd.ext_page); set_caret(app, dnd.ext_page, nil); dnd_image_target(nil) }
 			dnd.over_chrome = true
 			_, has := dropped_address(data)
 			platform.drop_set_effect(app.win, has ? platform.drop_effect_for(ev.drop_allowed, ev.mods, .Link) : nil)

@@ -560,23 +560,24 @@
 #define WJ_IFACE_URLSearchParams 552
 #define WJ_IFACE_UserActivation 553
 #define WJ_IFACE_ValidityState 554
-#define WJ_IFACE_VideoTrack 555
-#define WJ_IFACE_ViewTransition 556
-#define WJ_IFACE_ViewTransitionTypeSet 557
-#define WJ_IFACE_WorkerLocation 558
-#define WJ_IFACE_WorkerNavigator 559
-#define WJ_IFACE_Worklet 560
-#define WJ_IFACE_AudioWorklet 561
-#define WJ_IFACE_WritableStream 562
-#define WJ_IFACE_WritableStreamDefaultController 563
-#define WJ_IFACE_WritableStreamDefaultWriter 564
-#define WJ_IFACE_XMLSerializer 565
-#define WJ_IFACE_XPathEvaluator 566
-#define WJ_IFACE_XPathExpression 567
-#define WJ_IFACE_XPathResult 568
-#define WJ_IFACE_XSLTProcessor 569
-#define WJ_IFACE_console 570
-#define WJ_IFACE_COUNT 571
+#define WJ_IFACE_VideoPlaybackQuality 555
+#define WJ_IFACE_VideoTrack 556
+#define WJ_IFACE_ViewTransition 557
+#define WJ_IFACE_ViewTransitionTypeSet 558
+#define WJ_IFACE_WorkerLocation 559
+#define WJ_IFACE_WorkerNavigator 560
+#define WJ_IFACE_Worklet 561
+#define WJ_IFACE_AudioWorklet 562
+#define WJ_IFACE_WritableStream 563
+#define WJ_IFACE_WritableStreamDefaultController 564
+#define WJ_IFACE_WritableStreamDefaultWriter 565
+#define WJ_IFACE_XMLSerializer 566
+#define WJ_IFACE_XPathEvaluator 567
+#define WJ_IFACE_XPathExpression 568
+#define WJ_IFACE_XPathResult 569
+#define WJ_IFACE_XSLTProcessor 570
+#define WJ_IFACE_console 571
+#define WJ_IFACE_COUNT 572
 
 extern const int wj_same_object_count;
 

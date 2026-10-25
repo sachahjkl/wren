@@ -79,6 +79,11 @@ Cursor :: enum u8 {
 	Ew_Resize, Ns_Resize, Nesw_Resize, Nwse_Resize, Zoom_In, Zoom_Out,
 }
 User_Select :: enum u8 { Auto, None, Text, All }
+// touch-action as what the browser must not do with fingers on the element: auto = {}, none = all of them,
+// manipulation = {.Double_Tap}, pan-x = everything but .Pan_X (pan-left / pan-right count as pan-x, pan-up / pan-down as
+// pan-y).
+Touch_Gesture :: enum u8 { Pan_X, Pan_Y, Pinch_Zoom, Double_Tap }
+Touch_Blocked :: bit_set[Touch_Gesture; u8]
 Object_Fit :: enum u8 { Fill, Contain, Cover, None, Scale_Down }
 Repeat :: enum u8 { Repeat, No_Repeat, Repeat_X, Repeat_Y, Space, Round }
 Flex_Direction :: enum u8 { Row, Row_Reverse, Column, Column_Reverse }
@@ -287,6 +292,7 @@ Computed :: struct {
 	content_visibility: Content_Visibility,
 	scroll_behavior:   Scroll_Behavior,
 	overscroll_x, overscroll_y: Overscroll,
+	touch_action:      Touch_Blocked,      // what fingers may not do here ({} = auto)
 	caret_color:       Auto_Color,
 	accent_color:      Auto_Color,
 	appearance:        Appearance,
@@ -367,7 +373,7 @@ Prop :: enum u8 {
 	Animation_Direction, Animation_Fill_Mode, Animation_Play_State, Animation_Composition,
 	Counter_Reset, Counter_Increment, Counter_Set, Quotes,
 	Object_Position, Filter, Backdrop_Filter, Clip_Path, Isolation, Mix_Blend_Mode,
-	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overscroll_Behavior_X, Overscroll_Behavior_Y,
+	Will_Change, Contain, Content_Visibility, Scroll_Behavior, Overscroll_Behavior_X, Overscroll_Behavior_Y, Touch_Action,
 	Caret_Color, Accent_Color, Appearance, Resize, Column_Count, Column_Width,
 	Grid_Template_Columns, Grid_Template_Rows, Grid_Template_Areas, Grid_Auto_Columns, Grid_Auto_Rows, Grid_Auto_Flow,
 	Grid_Row_Start, Grid_Row_End, Grid_Column_Start, Grid_Column_End, Justify_Items, Justify_Self,

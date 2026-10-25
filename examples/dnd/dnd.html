@@ -13,18 +13,30 @@
 <div id="plain">plain</div>
 <div id="tall"></div>
 <div id="fixed">fixed</div>
+<input id="in1" value="hello world" style="position:absolute; left:350px; top:100px; width:200px; height:24px; font:16px monospace; border:1px solid; padding:0">
+<input id="in2" style="position:absolute; left:350px; top:150px; width:200px; height:24px; font:16px monospace; border:1px solid; padding:0">
+<input id="fin" type="file" accept=".txt" style="position:absolute; left:350px; top:250px; width:200px; height:30px">
+<canvas id="cv" width="20" height="10" style="position:absolute; left:600px; top:10px"></canvas>
 <script>
 window.log = [];
-for (const ty of ["dragstart", "dragenter", "dragover", "drop", "dragend", "pointerdown", "pointerup", "mousedown", "mouseup", "pointermove"]) {
+window.useImage = false;
+{ const c = document.getElementById("cv").getContext("2d"); c.fillStyle = "#08f"; c.fillRect(0, 0, 20, 10); }
+for (const ty of ["dragstart", "dragenter", "dragover", "drop", "dragend", "pointerdown", "pointerup", "mousedown", "mouseup", "pointermove", "beforeinput", "input", "change"]) {
   document.addEventListener(ty, (e) => {
     if (ty === "pointermove" && !e.buttons) { return; }
+    if (ty === "dragover" || ty === "dragenter") { if (log.length && log[log.length - 1].startsWith(ty + "@" + (e.target.id || e.target.nodeName))) { return; } }
     let s = ty + "@" + (e.target.id || e.target.nodeName);
+    if (e.inputType) { s += " " + e.inputType; }
+    if (ty === "dragend") { s += " effect=" + e.dataTransfer.dropEffect; }
     if (e.dataTransfer && ty === "drop") { s += " files=" + e.dataTransfer.files.length + " text=" + e.dataTransfer.getData("text"); }
     if (ty.startsWith("mouse") || ty.startsWith("pointer")) { s += " cy=" + Math.round(e.clientY) + " py=" + Math.round(e.pageY) + " b=" + e.buttons; }
     log.push(s);
   }, true);
 }
-document.getElementById("src").addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", "payload"));
+document.getElementById("src").addEventListener("dragstart", (e) => {
+  e.dataTransfer.setData("text/plain", "payload");
+  if (useImage) { e.dataTransfer.setDragImage(document.getElementById("cv"), 5, 4); }
+});
 const zone = document.getElementById("zone");
 zone.addEventListener("dragover", (e) => e.preventDefault());
 zone.addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { f.text().then((t) => log.push("read=" + t)); } });

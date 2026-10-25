@@ -688,6 +688,32 @@ files :: proc(f: ^Forms, h: base.Handle) -> []File {
 	return c.files[:]
 }
 
+// Whether a file fits an `accept` attribute (HTML §4.10.5.1.18): a comma-separated list of extensions (".png"), MIME
+// types ("image/png") and the wildcards audio/*, video/*, image/*; ASCII case-insensitive. An empty or absent list
+// takes everything; a list with no valid token too.
+accept_matches :: proc(accept, name, mime: string) -> bool {
+	rest := accept
+	any_token := false
+	for tok in strings.split_iterator(&rest, ",") {
+		t := strings.trim_space(tok)
+		if t == "" { continue }
+		switch {
+		case t[0] == '.':
+			any_token = true
+			if len(name) >= len(t) && strings.equal_fold(name[len(name) - len(t):], t) { return true }
+		case strings.has_suffix(t, "/*"):
+			major := t[:len(t) - 1]   // "image/"
+			if !strings.equal_fold(major, "audio/") && !strings.equal_fold(major, "video/") && !strings.equal_fold(major, "image/") { continue }
+			any_token = true
+			if len(mime) > len(major) && strings.equal_fold(mime[:len(major)], major) { return true }
+		case strings.contains_rune(t, '/'):
+			any_token = true
+			if strings.equal_fold(t, mime) { return true }
+		}
+	}
+	return !any_token
+}
+
 // Replaces the selection of a file input from a script (input.files = dataTransfer.files): no event. Takes ownership
 // of `list`'s contents.
 set_files_quiet :: proc(f: ^Forms, h: base.Handle, list: []File) {

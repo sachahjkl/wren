@@ -25,6 +25,8 @@ module navigator {
   i32 Navigator_hardwareConcurrency();
   /// navigator.onLine: whether the system has a network connection.
   bool Navigator_onLine();
+  /// navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
+  i32 Navigator_maxTouchPoints();
   /// navigator.cookieEnabled: whether the document may use cookies.
   bool Navigator_cookieEnabled();
   /// navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),

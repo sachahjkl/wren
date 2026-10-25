@@ -31,6 +31,7 @@ Player_Error :: enum u8 { None, No_Video_Decoder, No_Audio_Decoder, Decode_Faile
 
 Player_Stats :: struct {
 	decoded, dropped, presented: int,
+	delay_ns: i64,    // how late the pictures shown were, added up (their due time to the frame that took them)
 	hardware: bool,
 	decoder:  string,
 	queued:   int,
@@ -323,6 +324,7 @@ player_present :: proc(p: ^Player, ahead: i64 = 0) -> (frame: ^Video_Frame, chan
 		ordered_remove(&p.queue, 0)
 		p.has_cur, p.need_cur, changed = true, false, true
 		p.stats.presented += 1
+		if p.started && t > p.cur.pts { p.stats.delay_ns += i64(f64(t - p.cur.pts) / max(p.rate, 0.01)) }
 		sync.cond_broadcast(&p.cv)   // room in the queue
 		p.vsize = {p.cur.width, p.cur.height}
 	}
