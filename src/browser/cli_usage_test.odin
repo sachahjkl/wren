@@ -38,6 +38,7 @@ the_usage_names_every_option_and_the_version_the_build :: proc(t: ^testing.T) {
 	ver := cli_version_text()
 	testing.expect(t, strings.has_prefix(ver, APP_NAME), "the version starts with the name")
 	testing.expect(t, strings.contains(ver, APP_VERSION), "the version has the version")
+	testing.expect(t, strings.contains(ver, APP_VERSION_SHOWN), "and what a user is shown: with the label of an experimental build")
 	testing.expect(t, strings.contains(ver, "build: "), "the version says how it was built")
 	testing.expect_value(t, cli_info_text(.None), "")
 }
