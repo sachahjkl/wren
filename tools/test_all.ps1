@@ -210,7 +210,7 @@ Step 'the policy file is read beside the executable, never from the working dire
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
 }
-Step 'a program of the working directory never runs in place of the system's (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for Windows' record; one planted beside the document must not run)' {
+Step 'a program of the working directory never runs in place of the system''s (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for the Windows record; one planted beside the document must not run)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null
         if ($LASTEXITCODE) { return }
