@@ -50,6 +50,10 @@ foreign _m_scripts {
 	@(link_name = "Worker_postSerialized") _Worker_postSerialized :: proc(worker: u64, data: [^]u8, data_len: u32) -> Error ---
 	@(link_name = "DedicatedWorkerGlobalScope_postSerialized") _DedicatedWorkerGlobalScope_postSerialized :: proc(data: [^]u8, data_len: u32) -> Error ---
 	@(link_name = "WorkerGlobalScope_importScript") _WorkerGlobalScope_importScript :: proc(url: [^]u8, url_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "WorkerGlobalScope_isModule") _WorkerGlobalScope_isModule :: proc() -> i32 ---
+	@(link_name = "SharedWorker_connect") _SharedWorker_connect :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, extended_lifetime: i32, _ret: ^u64) -> Error ---
+	@(link_name = "SharedWorker_portEnd") _SharedWorker_portEnd :: proc(worker: u64) -> u64 ---
+	@(link_name = "SharedWorkerGlobalScope_takeConnection") _SharedWorkerGlobalScope_takeConnection :: proc() -> u64 ---
 }
 
 // document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
@@ -220,7 +224,8 @@ DedicatedWorkerGlobalScope_postSerialized :: proc "contextless" (data: []u8) -> 
 }
 
 // importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+// module worker (importScripts is a classic worker's).
 WorkerGlobalScope_importScript :: proc "contextless" (url: string, buf: []u8) -> (string, Error) {
 	n := _WorkerGlobalScope_importScript(raw_data(url), u32(len(url)), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
@@ -247,5 +252,29 @@ WorkerGlobalScope_importScript_alloc :: proc(url: string, allocator: runtime.All
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// Whether the calling worker's script is a module ({type: "module"}).
+WorkerGlobalScope_isModule :: proc "contextless" () -> bool {
+	return _WorkerGlobalScope_isModule() != 0
+}
+
+// new SharedWorker(url, {name, type, extendedLifetime}) from a document: the SharedWorker object (it gets `error`
+// events), connected to the shared worker of (the document's storage key, the URL, the name), which starts if none
+// runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
+// Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
+SharedWorker_connect :: proc "contextless" (url: string, name: string, type: WorkerType, extended_lifetime: bool) -> (result: u64, err: Error) {
+	err = _SharedWorker_connect(raw_data(url), u32(len(url)), raw_data(name), u32(len(name)), type, i32(1 if extended_lifetime else 0), &result)
+	return
+}
+
+// The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
+SharedWorker_portEnd :: proc "contextless" (worker: u64) -> u64 {
+	return _SharedWorker_portEnd(worker)
+}
+
+// The end of the port of the next connect event of the calling shared worker (0: none waits).
+SharedWorkerGlobalScope_takeConnection :: proc "contextless" () -> u64 {
+	return _SharedWorkerGlobalScope_takeConnection()
 }
 

@@ -53,15 +53,22 @@ enum {
     WJ_F_LENIENT_THIS  = 1 << 3,   /* [LegacyLenientThis]: a wrong `this` gives undefined, no exception */
     WJ_F_NOT_ENUMERABLE = 1 << 4,
     WJ_F_SECURE        = 1 << 5,   /* [SecureContext]: absent from realms that are not secure contexts */
-    WJ_F_WINDOW_ONLY   = 1 << 6,   /* exposed in windows only (the interface also in workers) */
-    WJ_F_WORKER_ONLY   = 1 << 7,
+    WJ_F_NOT_WINDOW    = 1 << 6,   /* absent from this kind of realm although its interface is there */
+    WJ_F_NOT_DEDICATED = 1 << 7,
     WJ_F_SETTER_UNSUPPORTED = 1 << 8,   /* writable in the IDL, setting it is not implemented: throws */
+    WJ_F_NOT_SHARED    = 1 << 9,
+    WJ_F_NOT_SERVICE   = 1 << 10,
 };
 
+/* What an interface is exposed to ([Exposed]), and the kind of a realm's global (wj_realm.scope). WJ_EXPOSE_WORKER is
+ * a dedicated worker's; wj_realm.kind stays WINDOW or WORKER for code that only asks "a document or a worker?". */
 enum {
     WJ_EXPOSE_WINDOW = 1 << 0,
     WJ_EXPOSE_WORKER = 1 << 1,
+    WJ_EXPOSE_SHARED_WORKER = 1 << 2,
+    WJ_EXPOSE_SERVICE_WORKER = 1 << 3,
 };
+#define WJ_EXPOSE_ANY_WORKER (WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER)
 
 enum {
     WJ_I_GLOBAL              = 1 << 0,   /* [Global]: the realm's global object implements it */
@@ -189,7 +196,8 @@ wj_val wj_cached(wj_ctx *ctx, uint64_t handle);
 
 typedef struct wj_realm {
     wj_ctx      *ctx;
-    int          kind;            /* WJ_EXPOSE_WINDOW or WJ_EXPOSE_WORKER: what the global exposes */
+    int          kind;            /* WJ_EXPOSE_WINDOW or WJ_EXPOSE_WORKER (any kind of worker) */
+    int          scope;           /* one WJ_EXPOSE_* bit: what the global exposes (window, dedicated, shared, service) */
     wj_obj       global_obj;      /* the global object's platform data (Window / WorkerGlobalScope) */
     wj_val       global;
     wj_val      *protos;          /* per interface: prototype object */

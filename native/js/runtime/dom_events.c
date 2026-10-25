@@ -22,6 +22,19 @@ static bool is_mouse(int iface) { return iface >= WJ_IFACE_MouseEvent && iface <
 /* The browser dispatches a UI event: its details into the extension object. */
 void wj_event_wrapped(JSContext *ctx, JSValueConst obj, uint64_t host, int iface)
 {
+    if (iface == WJ_IFACE_MessageEvent) {
+        /* HTML deserializes a message before its event is dispatched: data (and its ports), origin and lastEventId
+         * are read now, while the browser's event exists, so a listener that reads them after an await sees them */
+        extern JSValue wjr_MessageEvent_get_data(JSContext *, JSValueConst);
+        extern JSValue wjr_MessageEvent_get_origin(JSContext *, JSValueConst);
+        extern JSValue wjr_MessageEvent_get_lastEventId(JSContext *, JSValueConst);
+        JSValue (*const getters[3])(JSContext *, JSValueConst) = { wjr_MessageEvent_get_data, wjr_MessageEvent_get_origin, wjr_MessageEvent_get_lastEventId };
+        for (int i = 0; i < 3; i++) {
+            JSValue v = getters[i](ctx, obj);
+            if (JS_IsException(v)) { JS_FreeValue(ctx, JS_GetException(ctx)); } else { JS_FreeValue(ctx, v); }
+        }
+        return;
+    }
     if (iface < WJ_IFACE_UIEvent || iface >= wj_interfaces[WJ_IFACE_UIEvent].subtree_end) { return; }
     wr_UiEventData d;
     memset(&d, 0, sizeof d);

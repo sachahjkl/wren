@@ -1496,6 +1496,26 @@ static web_response *response_this(JSContext *ctx, JSValueConst this_val) { retu
 
 JSValue wjr_Response_get_type(JSContext *ctx, JSValueConst this_val) { web_response *r = response_this(ctx, this_val); return r ? JS_NewString(ctx, response_types[r->type]) : JS_EXCEPTION; }
 JSValue wjr_Response_get_url(JSContext *ctx, JSValueConst this_val) { web_response *r = response_this(ctx, this_val); return r ? JS_DupValue(ctx, r->url) : JS_EXCEPTION; }
+
+/* A request made by the engine for one that came from elsewhere (a service worker's FetchEvent.request): its mode
+ * (MODE_*: "navigate" cannot be given to the constructor). */
+void web_request_set_mode(JSValueConst req, int mode)
+{
+    wj_obj *o = wj_unwrap(req, WJ_IFACE_Request);
+    web_request *r = o ? o->impl : NULL;
+    if (r && mode >= MODE_CORS && mode <= MODE_NAVIGATE) { r->mode = (uint8_t)mode; }
+}
+
+/* A response made by the engine for one that came from elsewhere (the Cache API's entries): its URL, as the stored
+ * response had it. */
+void web_response_set_url(JSContext *ctx, JSValueConst resp, const char *url, size_t len)
+{
+    wj_obj *o = wj_unwrap(resp, WJ_IFACE_Response);
+    web_response *r = o ? o->impl : NULL;
+    if (!r) { return; }
+    JS_FreeValue(ctx, r->url);
+    r->url = JS_NewStringLen(ctx, url, len);
+}
 JSValue wjr_Response_get_redirected(JSContext *ctx, JSValueConst this_val) { web_response *r = response_this(ctx, this_val); return r ? JS_NewBool(ctx, r->redirected) : JS_EXCEPTION; }
 JSValue wjr_Response_get_status(JSContext *ctx, JSValueConst this_val) { web_response *r = response_this(ctx, this_val); return r ? JS_NewInt32(ctx, r->status) : JS_EXCEPTION; }
 JSValue wjr_Response_get_ok(JSContext *ctx, JSValueConst this_val) { web_response *r = response_this(ctx, this_val); return r ? JS_NewBool(ctx, r->status >= 200 && r->status <= 299) : JS_EXCEPTION; }

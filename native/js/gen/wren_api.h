@@ -488,6 +488,7 @@ typedef struct wr_SwEventInfo {
     int32_t mode;
     int32_t destination;
     uint64_t client;
+    int32_t flags;
 } wr_SwEventInfo;
 
 /* module storage: types */
@@ -681,18 +682,22 @@ WR_IMPORT("caches", "CacheStorage_hasName") int32_t wr_CacheStorage_hasName(cons
 WR_IMPORT("caches", "CacheStorage_deleteName") int32_t wr_CacheStorage_deleteName(const uint8_t *name, uint32_t name_len, uint8_t *_ret);
 // caches.keys(): the names in creation order, "\n"-separated.
 WR_IMPORT("caches", "CacheStorage_names") int32_t wr_CacheStorage_names(uint8_t *_buf, uint32_t _cap);
-// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
-WR_IMPORT("caches", "Cache_matchIds") int32_t wr_Cache_matchIds(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, int32_t ignore_search, int32_t ignore_method, uint8_t *_buf, uint32_t _cap);
+// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
+// ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
+// in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
+WR_IMPORT("caches", "Cache_matchIds") int32_t wr_Cache_matchIds(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *request_headers, uint32_t request_headers_len, int32_t ignore_search, int32_t ignore_method, int32_t ignore_vary, uint8_t *_buf, uint32_t _cap);
+// The header lines of an entry's request (Not_Found when it is gone).
+WR_IMPORT("caches", "Cache_entryRequestHeaders") int32_t wr_Cache_entryRequestHeaders(const uint8_t *cache, uint32_t cache_len, uint64_t id, uint8_t *_buf, uint32_t _cap);
 // An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
 // response's header lines, "\n"-separated (Not_Found when it is gone).
 WR_IMPORT("caches", "Cache_entryHead") int32_t wr_Cache_entryHead(const uint8_t *cache, uint32_t cache_len, uint64_t id, uint8_t *_buf, uint32_t _cap);
 // An entry's body (Not_Found when it is gone).
 WR_IMPORT("caches", "Cache_entryBody") int32_t wr_Cache_entryBody(const uint8_t *cache, uint32_t cache_len, uint64_t id, uint8_t *_buf, uint32_t _cap);
-// cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
-// caches.max_bytes_per_origin.
-WR_IMPORT("caches", "Cache_putEntry") int32_t wr_Cache_putEntry(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, int32_t status, const uint8_t *status_text, uint32_t status_text_len, const uint8_t *response_url, uint32_t response_url_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len);
+// cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
+// considered). Quota past caches.max_bytes_per_origin.
+WR_IMPORT("caches", "Cache_putEntry") int32_t wr_Cache_putEntry(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *request_headers, uint32_t request_headers_len, int32_t status, const uint8_t *status_text, uint32_t status_text_len, const uint8_t *response_url, uint32_t response_url_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len);
 // cache.delete(request, options)
-WR_IMPORT("caches", "Cache_deleteEntries") int32_t wr_Cache_deleteEntries(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, int32_t ignore_search, int32_t ignore_method, uint8_t *_ret);
+WR_IMPORT("caches", "Cache_deleteEntries") int32_t wr_Cache_deleteEntries(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *request_headers, uint32_t request_headers_len, int32_t ignore_search, int32_t ignore_method, int32_t ignore_vary, uint8_t *_ret);
 
 /* module canvas */
 // /////////////////////////////
@@ -2362,8 +2367,20 @@ WR_IMPORT("scripts", "Worker_postSerialized") int32_t wr_Worker_postSerialized(u
 // postMessage(message) in a JavaScript worker.
 WR_IMPORT("scripts", "DedicatedWorkerGlobalScope_postSerialized") int32_t wr_DedicatedWorkerGlobalScope_postSerialized(const uint8_t *data, uint32_t data_len);
 // importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+// module worker (importScripts is a classic worker's).
 WR_IMPORT("scripts", "WorkerGlobalScope_importScript") int32_t wr_WorkerGlobalScope_importScript(const uint8_t *url, uint32_t url_len, uint8_t *_buf, uint32_t _cap);
+// Whether the calling worker's script is a module ({type: "module"}).
+WR_IMPORT("scripts", "WorkerGlobalScope_isModule") int32_t wr_WorkerGlobalScope_isModule(void);
+// new SharedWorker(url, {name, type, extendedLifetime}) from a document: the SharedWorker object (it gets `error`
+// events), connected to the shared worker of (the document's storage key, the URL, the name), which starts if none
+// runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
+// Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
+WR_IMPORT("scripts", "SharedWorker_connect") int32_t wr_SharedWorker_connect(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, uint64_t *_ret);
+// The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
+WR_IMPORT("scripts", "SharedWorker_portEnd") uint64_t wr_SharedWorker_portEnd(uint64_t worker);
+// The end of the port of the next connect event of the calling shared worker (0: none waits).
+WR_IMPORT("scripts", "SharedWorkerGlobalScope_takeConnection") uint64_t wr_SharedWorkerGlobalScope_takeConnection(void);
 
 /* module navigator */
 // A string member of Navigator.
@@ -2593,39 +2610,53 @@ WR_IMPORT("ports", "Broadcast_post") int32_t wr_Broadcast_post(uint64_t end, con
 WR_IMPORT("ports", "MessageEvent_portEnds") int32_t wr_MessageEvent_portEnds(uint64_t event, uint8_t *_buf, uint32_t _cap);
 
 /* module serviceworker */
-// navigator.serviceWorker.register(script, {scope, updateViaCache}): a promise of the registration's id, resolved
-// once the worker's script ran (TypeError when it failed). Security outside a secure context, for another origin
-// or a scope outside the script's directory.
-WR_IMPORT("serviceworker", "ServiceWorker_register") int32_t wr_ServiceWorker_register(const uint8_t *script, uint32_t script_len, const uint8_t *scope, uint32_t scope_len, const uint8_t *update_via_cache, uint32_t update_via_cache_len, uint64_t *_ret);
+// navigator.serviceWorker.register(script, {scope, updateViaCache, type}): a promise of the registration's id,
+// resolved once the script ran (an unchanged script: at once; TypeError when it failed). Security outside a secure
+// context, for another origin or a scope outside what the script may control.
+WR_IMPORT("serviceworker", "ServiceWorker_register") int32_t wr_ServiceWorker_register(const uint8_t *script, uint32_t script_len, const uint8_t *scope, uint32_t scope_len, const uint8_t *update_via_cache, uint32_t update_via_cache_len, int32_t module, uint64_t *_ret);
 // navigator.serviceWorker.ready: a promise of the id of the active registration whose scope holds the page.
 WR_IMPORT("serviceworker", "ServiceWorker_ready") uint64_t wr_ServiceWorker_ready(void);
 // getRegistration(clientURL): the id of the registration matching the URL (0: none).
 WR_IMPORT("serviceworker", "ServiceWorker_getRegistration") uint64_t wr_ServiceWorker_getRegistration(const uint8_t *client_url, uint32_t client_url_len);
 // getRegistrations(): the ids of the origin's registrations, "\n"-separated.
 WR_IMPORT("serviceworker", "ServiceWorker_registrationIds") int32_t wr_ServiceWorker_registrationIds(uint8_t *_buf, uint32_t _cap);
-// navigator.serviceWorker.controller: the id of the registration controlling the page (0: none).
+// navigator.serviceWorker.controller: the id of the version controlling the page (0: none).
 WR_IMPORT("serviceworker", "ServiceWorker_controller") uint64_t wr_ServiceWorker_controller(void);
-// A registration: scope, script URL, its version's state, 1 when a version is active, updateViaCache;
-// "\n"-separated, "" when it is gone.
+// A registration ("" when it is gone), "\n"-separated: scope, updateViaCache, the installing, waiting and active
+// versions' ids (0: none), navigation preload enabled (1 / 0), its header value.
 WR_IMPORT("serviceworker", "ServiceWorkerRegistration_info") int32_t wr_ServiceWorkerRegistration_info(uint64_t id, uint8_t *_buf, uint32_t _cap);
+// A version ("" when unknown): its state, then its script URL ("\n"-separated).
+WR_IMPORT("serviceworker", "ServiceWorker_info") int32_t wr_ServiceWorker_info(uint64_t version, uint8_t *_buf, uint32_t _cap);
 // registration.unregister(): true when it was the origin's and is gone.
 WR_IMPORT("serviceworker", "ServiceWorkerRegistration_unregisterId") int32_t wr_ServiceWorkerRegistration_unregisterId(uint64_t id);
-// serviceWorker.postMessage(message): the serialized message to the registration's worker.
-WR_IMPORT("serviceworker", "ServiceWorker_postToWorker") int32_t wr_ServiceWorker_postToWorker(uint64_t id, const uint8_t *data, uint32_t data_len);
-// The next message a service worker sent this page (Not_Found when none waits).
+// registration.update(): a promise of the registration's id once its script was checked (a new version then
+// installs). Invalid_State when the registration is gone.
+WR_IMPORT("serviceworker", "ServiceWorkerRegistration_updateId") int32_t wr_ServiceWorkerRegistration_updateId(uint64_t id, uint64_t *_ret);
+// registration.navigationPreload: op 0 getState, 1 enable, 2 disable, 3 setHeaderValue(header). The state after:
+// enabled (1 / 0), "\n", the header value. Invalid_State for enable / disable without an active version.
+WR_IMPORT("serviceworker", "ServiceWorkerRegistration_preload") int32_t wr_ServiceWorkerRegistration_preload(uint64_t id, int32_t op, const uint8_t *header, uint32_t header_len, uint8_t *_buf, uint32_t _cap);
+// serviceWorker.postMessage(message): the serialized message to that version's worker (started if it stopped).
+WR_IMPORT("serviceworker", "ServiceWorker_postToWorker") int32_t wr_ServiceWorker_postToWorker(uint64_t version, const uint8_t *data, uint32_t data_len);
+// The next message a service worker sent this page (Not_Found when none waits): the sender's version id (8 bytes)
+// then the serialized message.
 WR_IMPORT("serviceworker", "ServiceWorker_takeMessage") int32_t wr_ServiceWorker_takeMessage(uint8_t *_buf, uint32_t _cap);
-// In a service worker's realm: its registration's id (0 in any other realm), scope, script URL.
+// In a service worker's realm: its registration's id (0 in any other realm), its version's id, scope, script URL.
 WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_registration") uint64_t wr_ServiceWorkerGlobalScope_registration(void);
+WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_version") uint64_t wr_ServiceWorkerGlobalScope_version(void);
 WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_scope") int32_t wr_ServiceWorkerGlobalScope_scope(uint8_t *_buf, uint32_t _cap);
 WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_scriptURL") int32_t wr_ServiceWorkerGlobalScope_scriptURL(uint8_t *_buf, uint32_t _cap);
-// The current event; its strings (0 URL, 1 method, 2 header lines), its body; done: the next one.
+// The current event; its strings (0 URL / an answer's text, 1 method, 2 header lines), its body; done: the next one.
 WR_IMPORT("serviceworker", "SwEvent_next") void wr_SwEvent_next(wr_SwEventInfo *_ret);
 WR_IMPORT("serviceworker", "SwEvent_text") int32_t wr_SwEvent_text(int32_t which, uint8_t *_buf, uint32_t _cap);
 WR_IMPORT("serviceworker", "SwEvent_body") int32_t wr_SwEvent_body(uint8_t *_buf, uint32_t _cap);
 WR_IMPORT("serviceworker", "SwEvent_done") void wr_SwEvent_done(void);
 // What the worker did: 1 install done (code 1 ok, 0 failed), 2 activate done, 3 respond (code = status, headers,
-// body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim, 8 a message to a client
-// (code = the client's id, 0 every controlled page; body = the serialized message).
+// text = the response's URL, body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim,
+// 8 a message to a client (code = the client's id, 0 every controlled page; body = the serialized message),
+// 10 a request answered later by an event 5 (id = the request's id, code = 1 clients.matchAll (headers:
+// "includeUncontrolled TAB type"), 2 clients.get (text: id), 3 clients.openWindow (text: URL), 4 navigate (text: URL,
+// headers: the client's id), 5 focus (text: the client's id), 6 registration.update, 7 registration.unregister),
+// 11 navigation preload (code = op as ServiceWorkerRegistration_preload, text = the header value).
 WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_reply") void wr_ServiceWorkerGlobalScope_reply(int32_t kind, uint64_t id, int64_t code, const uint8_t *headers, uint32_t headers_len, const uint8_t *text, uint32_t text_len, const uint8_t *body, uint32_t body_len);
 
 /* module storage */
@@ -2753,6 +2784,10 @@ WR_IMPORT("workers", "DedicatedWorkerGlobalScope_postMessage") int32_t wr_Dedica
 WR_IMPORT("workers", "DedicatedWorkerGlobalScope_close") int32_t wr_DedicatedWorkerGlobalScope_close(void);
 // self.name, in a worker.
 WR_IMPORT("workers", "DedicatedWorkerGlobalScope_name") int32_t wr_DedicatedWorkerGlobalScope_name(uint8_t *_buf, uint32_t _cap);
+// close(), in a shared worker: no connect event any more; the worker stops after the current task.
+WR_IMPORT("workers", "SharedWorkerGlobalScope_close") int32_t wr_SharedWorkerGlobalScope_close(void);
+// self.name, in a shared worker.
+WR_IMPORT("workers", "SharedWorkerGlobalScope_name") int32_t wr_SharedWorkerGlobalScope_name(uint8_t *_buf, uint32_t _cap);
 // location.href, in a worker: the script's URL.
 WR_IMPORT("workers", "WorkerGlobalScope_location") int32_t wr_WorkerGlobalScope_location(uint8_t *_buf, uint32_t _cap);
 // The index-th buffer that came with a message event (null when none).

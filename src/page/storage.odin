@@ -69,6 +69,7 @@ storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^h
 // Writes what is not saved yet (synchronously) and frees everything. Pages using the manager must be closed first.
 storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	if !m.ready { return }
+	shared_workers_shutdown()   // shared_worker.odin: their host pages use this manager too
 	sw_registry_shutdown()   // service_worker.odin: the workers' host pages use this manager
 	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
 	// every area it could be writing is written again here, the commit gate keeps the newest

@@ -1335,6 +1335,7 @@ main :: proc() {
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
 	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
+	sw_shell_init(app)   // sw_shell.odin: clients.openWindow, WindowClient.focus
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
@@ -1381,6 +1382,7 @@ main :: proc() {
 	host.shutdown_step("shell_frames_destroy")
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
 	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
+	sw_shell_destroy(app)
 	host.shutdown_step("session capture")
 	for t in app.tabs { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")
