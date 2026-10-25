@@ -2,7 +2,7 @@
  * dictionary, which the generator does not convert for a browser function: the converter of bindings.h reads
  * navigationUI, the browser gets it as an enum. The rest of the API (exitFullscreen, fullscreenElement,
  * fullscreenEnabled, fullscreen) binds to the browser's functions of api/fullscreen.widl by name; the WebKit-prefixed
- * aliases are in prelude/compat.js. A bad options argument rejects the promise, as Web IDL says for promise-returning
+ * aliases are in runtime/web_compat.c. A bad options argument rejects the promise, as Web IDL says for promise-returning
  * operations. */
 #include <string.h>
 #include "web.h"
