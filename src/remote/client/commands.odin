@@ -68,6 +68,11 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "eval":     return cmd_eval(ctx, args)
 	case "click":    return cmd_click(ctx, args)
 	case "drag":     return cmd_drag(ctx, args)
+	case "hover":
+		if len(args) != 1 { return usage(cmd, "usage: hover x,y [--window]") }
+		v, ok := parse_numbers(args[0], 2)
+		if !ok { return usage(cmd, "usage: hover x,y [--window]") }
+		return simple(ctx, "Input.dispatchMouseEvent", fmt.tprintf(`{{"type":"mouseMoved","x":%v,"y":%v,"space":%s}}`, v[0], v[1], q(flag(&ctx.o, "window") ? "window" : "page")))
 	case "scroll":   return cmd_scroll(ctx, args)
 	case "type":
 		if len(args) == 0 { return usage(cmd, "usage: type <text>") }
@@ -338,7 +343,7 @@ cmd_network :: proc(ctx: ^Context) -> int {
 
 @(private)
 cmd_stats :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Wren.stats", "{}")
+	rep, code := request(ctx, "Wren.stats", flag(&ctx.o, "reset-latency") ? `{"resetLatency":true}` : "{}")
 	if code != 0 { return code }
 	if flag(&ctx.o, "json") { print_json(rep); return 0 }
 	for k, v in parse_result(rep) {
