@@ -63,9 +63,11 @@ update_load :: proc(app: ^App) {
 		l := strings.trim_space(line)
 		switch {
 		case strings.has_prefix(l, "checked="):  upd.checked = parse_i64(l[len("checked="):])
-		case strings.has_prefix(l, "latest="):   delete(upd.latest); upd.latest = strings.clone(l[len("latest="):])
-		case strings.has_prefix(l, "url="):      delete(upd.url); upd.url = strings.clone(l[len("url="):])
-		case strings.has_prefix(l, "notified="): delete(upd.notified); upd.notified = strings.clone(l[len("notified="):])
+		// (the file is the profile's, but whatever it says is checked as the answer was: a version is a version, an address one of the
+		// web page that a tab opens)
+		case strings.has_prefix(l, "latest="):   delete(upd.latest); upd.latest = update_version_ok(l[len("latest="):]) ? strings.clone(l[len("latest="):]) : ""
+		case strings.has_prefix(l, "url="):      delete(upd.url); upd.url = update_page_ok(l[len("url="):]) ? strings.clone(l[len("url="):]) : ""
+		case strings.has_prefix(l, "notified="): delete(upd.notified); upd.notified = update_version_ok(l[len("notified="):]) ? strings.clone(l[len("notified="):]) : ""
 		}
 	}
 }
@@ -128,7 +130,7 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		upd.checking = false
 		tag, page, ok := update_parse(ev.data)
 		if !ok { update_failed(app, "the answer is not a release"); return }
-		version := strings.trim_prefix(tag, "v")
+		version := strings.trim_prefix(tag, "v")   // (update_parse checked it)
 		delete(upd.latest); upd.latest = strings.clone(version)
 		delete(upd.url); upd.url = strings.clone(page)
 		newer := desktop.compare_versions(version, APP_VERSION) > 0
@@ -168,6 +170,27 @@ update_parse :: proc(body: []byte) -> (tag, page: string, ok: bool) {
 	t, has_tag := obj["tag_name"].(json.String)
 	if !has_tag || t == "" { return }
 	tag = string(t)
-	if h, has := obj["html_url"].(json.String); has && strings.has_prefix(string(h), "https://") { page = string(h) }   // (it is opened in a tab: a web page, nothing else)
+	if !update_version_ok(strings.trim_prefix(tag, "v")) { return }   // (it is written to update.txt a line at a time, and compared: not free text)
+	if h, has := obj["html_url"].(json.String); has && update_page_ok(string(h)) { page = string(h) }   // (it is opened in a tab: a web page, nothing else)
 	return tag, page, true
+}
+
+// A version number as a release carries it: letters, digits, dots, plus and minus, at most 64 of them. Never a line break (the
+// value is saved in update.txt, one key per line: a second line would be another key), a space or a slash.
+update_version_ok :: proc(v: string) -> bool {
+	if v == "" || len(v) > 64 { return false }
+	for c in transmute([]u8)v {
+		switch c {
+		case '0' ..= '9', 'a' ..= 'z', 'A' ..= 'Z', '.', '+', '-':
+		case: return false
+		}
+	}
+	return true
+}
+
+// The page of a release: an https address on one line with no space or control character.
+update_page_ok :: proc(a: string) -> bool {
+	if !strings.has_prefix(a, "https://") || len(a) > 2048 { return false }
+	for c in transmute([]u8)a { if c <= ' ' || c == 0x7f { return false } }
+	return true
 }
