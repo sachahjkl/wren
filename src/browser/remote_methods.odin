@@ -1002,6 +1002,10 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	n := &hud.nums
 	b := builder()
 	reset_latency, _ := remote.param_bool(c.params, "resetLatency")
+	reset_frames, _ := remote.param_bool(c.params, "resetFrames")
+	gaps := frame_log_intervals()
+	loops := platform.pump_stats(app.win)
+	defer if reset_frames { frame_log_reset(); app.win.stats = {} }
 	latency := render.latency_summary(&app.r)
 	latency_on := render.latency_probe_on(&app.r)
 	if reset_latency { render.latency_reset(&app.r) }
@@ -1024,6 +1028,10 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
 	j_int(&b, "workingSetBytes", i64(n.working_set)); j_int(&b, "privateBytes", i64(n.private_bytes))
 	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(app.frames_requested))
+	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
+	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
+	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
+	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
 	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
