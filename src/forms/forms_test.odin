@@ -507,6 +507,50 @@ cd</textarea><input id=ro readonly value=r>`)
 }
 
 @(test)
+a_summary_opens_and_closes_its_details :: proc(t: ^testing.T) {
+	x := fx_make(`<details id=d1><summary id=s1>One <span id=sp>text</span></summary><p>body</p></details>
+<details id=d2><p id=lead>no summary first</p><summary id=s2>late</summary><summary id=s3>later</summary></details>
+<details id=d3 open><summary id=s4><a id=lk href="#x">link</a></summary></details>
+<div><summary id=s5>not in a details</summary></div>`)
+	defer fx_destroy(x)
+	f := x.f
+	open :: proc(x: ^Fixture, name: string) -> bool { return has_attr(dom.get(x.f.doc, id(x, name)), "open") }
+	click(f, id(x, "s1"), {trusted = true})
+	testing.expect(t, open(x, "d1"), "a click on the summary opens its details")
+	testing.expect_value(t, events_string(x), "click@s1 toggle@d1")
+	clear_events(x)
+	click(f, id(x, "sp"), {trusted = true})
+	testing.expect(t, !open(x, "d1"), "a click on what is inside the summary (its text) closes it")
+	testing.expect_value(t, events_string(x), "click@sp toggle@d1")
+	clear_events(x)
+	x.cancel["click"] = true
+	click(f, id(x, "s1"), {trusted = true})
+	testing.expect(t, !open(x, "d1"), "a cancelled click does not toggle")
+	x.cancel["click"] = false
+	clear_events(x)
+	// only the first summary child of a details is its summary (other elements before it do not matter)
+	click(f, id(x, "s3"), {trusted = true})
+	testing.expect(t, !open(x, "d2"), "the second summary of a details does nothing")
+	click(f, id(x, "s2"), {trusted = true})
+	testing.expect(t, open(x, "d2"), "the first summary child opens it, though a paragraph comes before it")
+	clear_events(x)
+	click(f, id(x, "s5"), {trusted = true})
+	testing.expect_value(t, events_string(x), "click@s5")   // (a summary outside a details has no behaviour)
+	// a link inside the summary is the activation target: it navigates, the details stay as they are
+	click(f, id(x, "lk"), {trusted = true})
+	testing.expect(t, open(x, "d3"), "a link inside the summary keeps the details open")
+	// the keyboard: Enter and Space on the focused summary click it
+	focus(f, id(x, "s1"), by_keyboard = true)
+	testing.expect(t, key_down(f, .Enter, {}), "Enter is the summary's")
+	testing.expect(t, open(x, "d1"), "Enter opens the details")
+	testing.expect(t, key_down(f, .Space, {}), "Space is the summary's")
+	testing.expect(t, !open(x, "d1"), "Space closes it again")
+	testing.expect(t, !key_down(f, .Enter, {.Ctrl}) && !open(x, "d1"), "Ctrl+Enter is not an activation")
+	focus(f, id(x, "s3"), by_keyboard = true)
+	testing.expect(t, !key_down(f, .Enter, {}), "a summary that is not the details' own does nothing")
+}
+
+@(test)
 checkbox_and_label_activation :: proc(t: ^testing.T) {
 	x := fx_make(`<form id=f><label id=l>Tick <input type=checkbox id=cb></label><label for=r1 id=l2>R</label>
 <input type=radio name=g id=r1><input type=radio name=g id=r2 checked><input type=checkbox id=dis disabled></form>`)
