@@ -415,32 +415,37 @@ title_fade_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 }
 
-// The new-tab button after the last tab: a small trapezoid of the same family, faint until the pointer is over it.
-classic_new_tab_button :: proc(app: ^App, cg: ^Classic_Geom, cc: ^Classic_Colors, bar_h, box_w: f32) -> (sig: ui.Signal) {
-	dpi := ui_scale_of(app)
-	em := ui.font_size()
-	gap_b := math.round(2 * dpi)   // clear of the toolbar's line
-	hb := cg.h - gap_b - math.round(em * 0.3)
-	m := cg.m
+// The metrics of the new-tab button's trapezoid (a small flare, a bit lower than a tab), the room it keeps clear of the toolbar's line,
+// and how far its left foot reaches back under the last tab: so that its top corner is a tab gap (0.2 em) from the last tab's top
+// corner, as two tabs' are, instead of far to the right of them.
+classic_plus_metrics :: proc(cg: ^Classic_Geom, em, dpi, box_w: f32) -> (m: Tab_Metrics, gap_b, hb, pull: f32) {
+	gap_b = math.round(2 * dpi)   // clear of the toolbar's line
+	hb = cg.h - gap_b - math.round(em * 0.3)
+	m = cg.m
 	m.h = hb
 	m.r_foot = math.round(em * 0.25)   // a small button: a small flare
 	m.w = box_w - 2 * tab_dims(m).ext
 	d := tab_dims(m)
-	ui.next({width = ui.px(box_w), height = ui.pct(1)})
-	if ui.column(.Start, {}, "###newtab_col") {
-		ui.spacer(ui.px(bar_h - gap_b - hb), true)
-		ui.next({width = ui.px(d.box_w), height = ui.px(hb)})
-		b := ui.build_box({.Clickable, .Focusable}, "###newtab")
-		b.cursor = .Arrow
-		b.slant = tab_slant(d)
-		sig = ui.signal(b)
-		p := ui.frame_new(Classic_Tab)
-		p.m, p.c, p.box = m, cc, b
-		p.hover = ui.anim(ui.key_from_string(b.key, "hov"), sig.hovering ? 1 : 0, 40)
-		p.top, p.bot = ui.srgb_step(cc.idle_top, cc.hot_top, p.hover), ui.srgb_step(cc.idle_bot, cc.hot_bot, p.hover)
-		p.ghost = 0.5 + 0.5 * p.hover
-		b.custom, b.custom_user = classic_tab_draw, p
-	}
+	pull = max(math.round((cg.d.ext + cg.d.run + d.ext + d.run) * 0.5 - em * 0.2), 0)
+	return
+}
+
+// The new-tab button at `x` of the tab area (the caller builds it before the tabs, which draw over its left foot): a small trapezoid of
+// the same family, faint until the pointer is over it.
+classic_new_tab_button :: proc(app: ^App, cg: ^Classic_Geom, cc: ^Classic_Colors, bar_h, box_w, x: f32) -> (sig: ui.Signal) {
+	m, gap_b, hb, _ := classic_plus_metrics(cg, ui.font_size(), ui_scale_of(app), box_w)
+	d := tab_dims(m)
+	ui.next({fixed_x = x, fixed_y = bar_h - gap_b - hb, width = ui.px(d.box_w), height = ui.px(hb)})
+	b := ui.build_box({.Clickable, .Focusable}, "###newtab")
+	b.cursor = .Arrow
+	b.slant = tab_slant(d)
+	sig = ui.signal(b)
+	p := ui.frame_new(Classic_Tab)
+	p.m, p.c, p.box = m, cc, b
+	p.hover = ui.anim(ui.key_from_string(b.key, "hov"), sig.hovering ? 1 : 0, 40)
+	p.top, p.bot = ui.srgb_step(cc.idle_top, cc.hot_top, p.hover), ui.srgb_step(cc.idle_bot, cc.hot_bot, p.hover)
+	p.ghost = 0.5 + 0.5 * p.hover
+	b.custom, b.custom_user = classic_tab_draw, p
 	return
 }
 
