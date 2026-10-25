@@ -591,7 +591,7 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	}
 	// the width the lines are wrapped to: the pane's, as of the last frame
 	box := ui.box_from_key(pv.scroll)
-	w := box != nil && box.size.x > 0 ? box.size.x - dt_px(10) : dev.rect.max.x - dev.rect.min.x
+	w := box != nil && box.size.x > 0 ? box.size.x - dt_px(10) : dev_width()
 	if math.abs(hr.wrap_w - w) > 1 || len(hr.offs) == 0 { rd_wrap(hr, w) }
 	n := len(hr.lines)
 	if n == 0 { dt_empty("###dt_ph_empty", .File_Doc, "Nothing to show", "The page has no text."); return }

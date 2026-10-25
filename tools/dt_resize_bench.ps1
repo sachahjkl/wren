@@ -111,7 +111,8 @@ function Find-Splitter([string]$dock, [int]$w, [int]$hh) {
     return [int]$mode + 5   # the page's last pixel is the mode; the grip (about 9 px) follows it
 }function Split-Drag($h, [string]$dock, [int]$ms, [double]$sc, [int]$every) {
     $c = Client $h
-    $pos = Find-Splitter $dock $c.R $c.B
+    # (right: from the geometry, the panel is 300 CSS px wide and the bar 5 px left of it; reading the colors fails on a dark page)
+    $pos = if ($dock -eq 'right') { [int]($c.R - 302.5 * $sc) } else { Find-Splitter $dock $c.R $c.B }
     if ($pos -lt 0) { throw "splitter not found" }
     Mark
     if ($dock -eq 'bottom') { $x = [int]($c.R / 2); $y0 = $pos }

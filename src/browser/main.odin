@@ -817,7 +817,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			case dev_on && dock == .Bottom:
 				page_view(app, t)
 				devtools_splitter(app, false)
-				devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))})
+				devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(app.win.size.x), 0})
 			case:
 				page_view(app, t)
 			}
