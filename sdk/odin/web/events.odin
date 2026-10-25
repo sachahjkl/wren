@@ -71,6 +71,46 @@ UiEventData :: struct {
 	repeat: u32,
 	// WheelEvent.deltaMode
 	delta_mode: u32,
+	// PointerEvent.pointerId (1 for the mouse)
+	pointer_id: i32,
+	// PointerEvent.pointerType: 0 mouse, 1 pen, 2 touch
+	pointer_type: u32,
+	// PointerEvent.isPrimary
+	is_primary: u32,
+	// PointerEvent.pressure, tangentialPressure
+	pressure: f64,
+	tangential_pressure: f64,
+	// PointerEvent.width / height (CSS px)
+	width: f64,
+	height: f64,
+	// PointerEvent.tiltX / tiltY / twist (degrees)
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
+
+// A Touch of a TouchEvent.
+TouchPoint :: struct {
+	identifier: i32,
+	// the element the touch started on
+	target: u64,
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	radius_x: f64,
+	radius_y: f64,
+	rotation_angle: f64,
+	force: f64,
+}
+
+// The lists of a TouchEvent.
+TouchListKind :: enum i32 {
+	Touches = 0,
+	Target_Touches = 1,
+	Changed_Touches = 2,
 }
 
 foreign import _m_events "events"
@@ -95,6 +135,11 @@ foreign _m_events {
 	@(link_name = "MouseEvent_clientY") _MouseEvent_clientY :: proc(event: Event) -> f64 ---
 	@(link_name = "MouseEvent_button") _MouseEvent_button :: proc(event: Event) -> i32 ---
 	@(link_name = "KeyboardEvent_keyCode") _KeyboardEvent_keyCode :: proc(event: Event) -> i32 ---
+	@(link_name = "TouchEvent_count") _TouchEvent_count :: proc(event: Event, list: TouchListKind) -> i32 ---
+	@(link_name = "TouchEvent_touch") _TouchEvent_touch :: proc(event: Event, list: TouchListKind, index: i32, _ret: ^TouchPoint) -> Error ---
+	@(link_name = "PointerCapture_set") _PointerCapture_set :: proc(element: u64, pointer_id: i32) -> Error ---
+	@(link_name = "PointerCapture_release") _PointerCapture_release :: proc(element: u64, pointer_id: i32) -> Error ---
+	@(link_name = "PointerCapture_has") _PointerCapture_has :: proc(element: u64, pointer_id: i32) -> i32 ---
 	@(link_name = "Event_uiData") _Event_uiData :: proc(event: Event, _ret: ^UiEventData) ---
 	@(link_name = "UiEvent_key") _UiEvent_key :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "UiEvent_code") _UiEvent_code :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -281,6 +326,33 @@ MouseEvent_button :: proc "contextless" (event: Event) -> i32 {
 // KeyboardEvent.keyCode
 KeyboardEvent_keyCode :: proc "contextless" (event: Event) -> i32 {
 	return _KeyboardEvent_keyCode(event)
+}
+
+// The number of touches in a list of a TouchEvent the browser dispatches (0 for another event).
+TouchEvent_count :: proc "contextless" (event: Event, list: TouchListKind) -> i32 {
+	return _TouchEvent_count(event, list)
+}
+
+// A touch of that list (Invalid_Argument past its end).
+TouchEvent_touch :: proc "contextless" (event: Event, list: TouchListKind, index: i32) -> (result: TouchPoint, err: Error) {
+	err = _TouchEvent_touch(event, list, index, &result)
+	return
+}
+
+// Element.setPointerCapture(pointerId): Not_Found for a pointer that is not active, Invalid_State for an element
+// that is not connected. The capture takes effect at the pointer's next event (gotpointercapture).
+PointerCapture_set :: proc "contextless" (element: $T_element, pointer_id: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _PointerCapture_set(u64(element), pointer_id)
+}
+
+// Element.releasePointerCapture(pointerId): Not_Found for a pointer that is not active.
+PointerCapture_release :: proc "contextless" (element: $T_element, pointer_id: i32) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _PointerCapture_release(u64(element), pointer_id)
+}
+
+// Element.hasPointerCapture(pointerId)
+PointerCapture_has :: proc "contextless" (element: $T_element, pointer_id: i32) -> bool where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
+	return _PointerCapture_has(u64(element), pointer_id) != 0
 }
 
 // The details of a UI event being dispatched.

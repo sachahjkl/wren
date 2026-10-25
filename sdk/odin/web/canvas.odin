@@ -10,7 +10,8 @@
 // * pixel data (ImageData) is straight-alpha RGBA8, rows top to bottom;
 // * a canvas that drew an image the page may not read (cross-origin without CORS) is tainted: reading it back
 // (getImageData, toDataURL, toBlob...) raises Security;
-// * workers have no canvas yet (OffscreenCanvas is window-only for now).
+// * workers have OffscreenCanvas (drawn in the worker's thread; its text is not drawn yet: the shell's fonts belong to
+// the interface thread); functions taking an element answer as for a dead handle there.
 package web
 
 import "base:runtime"

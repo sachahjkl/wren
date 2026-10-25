@@ -266,6 +266,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if dragging {
 		x = clamp(ui.mouse_pos().x - area.rect.min.x - strip.drag_grab, -strip.offset, f32(n - 1) * w - strip.offset)
 		_ = ui.anim(ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), x, 30, x)   // the release slides from here
+		drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + strip.drag_grab)
 	} else {
 		x = math.round(ui.anim(ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), slot, 30, slot))
 	}

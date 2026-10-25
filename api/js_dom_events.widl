@@ -38,7 +38,56 @@ partial module events {
     u32 repeat;
     /// WheelEvent.deltaMode
     u32 delta_mode;
+    /// PointerEvent.pointerId (1 for the mouse)
+    i32 pointer_id;
+    /// PointerEvent.pointerType: 0 mouse, 1 pen, 2 touch
+    u32 pointer_type;
+    /// PointerEvent.isPrimary
+    u32 is_primary;
+    /// PointerEvent.pressure, tangentialPressure
+    f64 pressure;
+    f64 tangential_pressure;
+    /// PointerEvent.width / height (CSS px)
+    f64 width;
+    f64 height;
+    /// PointerEvent.tiltX / tiltY / twist (degrees)
+    f64 tilt_x;
+    f64 tilt_y;
+    f64 twist;
   }
+
+  /// A Touch of a TouchEvent.
+  struct TouchPoint {
+    i32 identifier;
+    /// the element the touch started on
+    u64 target;
+    f64 client_x;
+    f64 client_y;
+    f64 screen_x;
+    f64 screen_y;
+    f64 page_x;
+    f64 page_y;
+    f64 radius_x;
+    f64 radius_y;
+    f64 rotation_angle;
+    f64 force;
+  }
+
+  /// The lists of a TouchEvent.
+  enum TouchListKind : i32 { Touches, Target_Touches, Changed_Touches }
+
+  /// The number of touches in a list of a TouchEvent the browser dispatches (0 for another event).
+  i32 TouchEvent_count(Event event, TouchListKind list);
+  /// A touch of that list (Invalid_Argument past its end).
+  TouchPoint TouchEvent_touch(Event event, TouchListKind list, i32 index) raises;
+
+  /// Element.setPointerCapture(pointerId): Not_Found for a pointer that is not active, Invalid_State for an element
+  /// that is not connected. The capture takes effect at the pointer's next event (gotpointercapture).
+  void PointerCapture_set(Element element, i32 pointer_id) raises;
+  /// Element.releasePointerCapture(pointerId): Not_Found for a pointer that is not active.
+  void PointerCapture_release(Element element, i32 pointer_id) raises;
+  /// Element.hasPointerCapture(pointerId)
+  bool PointerCapture_has(Element element, i32 pointer_id);
 
   /// The details of a UI event being dispatched.
   UiEventData Event_uiData(Event event);

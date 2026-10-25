@@ -90,6 +90,7 @@ Request_Desc :: struct {
 	parser_inserted: bool,              // a script the parser inserted (CSP 'strict-dynamic' trusts only the others)
 	cache:           Cache_Mode,        // Request.cache (http_cache.odin)
 	ping:            bool,              // a beacon: filters see it as ping, not as a fetch
+	skip_service_worker: bool,          // service-workers mode "none": no service worker may answer it
 }
 
 // The "environment settings object" of a document: who is asking.

@@ -54,6 +54,16 @@ navigator.onLine: whether the system has a network connection.
 
 Host: `Navigator_onLine :: proc(c: ^Call) -> bool`
 
+### `Navigator_maxTouchPoints`
+
+```
+i32 Navigator_maxTouchPoints()
+```
+
+navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
+
+Host: `Navigator_maxTouchPoints :: proc(c: ^Call) -> i32`
+
 ### `Navigator_cookieEnabled`
 
 ```

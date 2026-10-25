@@ -70,6 +70,7 @@ Remote_Op :: struct {
 	count:    int,
 	pos:      [2]f32,
 	to:       [2]f32,
+	via:      [dynamic][2]f32,   // Drag: the points it passes through between pos and to (owned)
 	// Replay
 	events:   [dynamic]Rec_Event,
 	idx:      int,
@@ -291,7 +292,7 @@ op_new :: proc(app: ^App, c: ^Call, kind: Remote_Op_Kind, timeout_ms: int, what:
 }
 
 op_free :: proc(op: ^Remote_Op) {
-	delete(op.id); delete(op.what); delete(op.result); delete(op.arg); delete(op.path); delete(op.events); delete(op.snapshot)
+	delete(op.id); delete(op.what); delete(op.result); delete(op.arg); delete(op.path); delete(op.events); delete(op.snapshot); delete(op.via)
 	free(op)
 }
 

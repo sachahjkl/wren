@@ -18,7 +18,8 @@ Settings :: struct {
 	console_eval:         bool,
 	workers:              bool,
 	offthread_min_bytes:  int,        // scripts at least this large are compiled on a background thread
-	touch_handlers:       bool,       // the ontouch* event handler attributes are exposed (javascript.touch_events)
+	touch_handlers:       bool,       // ontouch* and the Touch, TouchEvent, TouchList constructors are exposed (browser.touch.expose)
+	touch_points:         int,        // navigator.maxTouchPoints (browser.touch.expose)
 	cache:                Cache_Settings,
 	jit:                  Jit_Settings,
 }
@@ -40,8 +41,8 @@ PREFS := [?]config.Def{
 		description = "Also expose the interfaces of the web platform this browser does not implement at all (their members throw NotSupportedError). Off, they are absent, so feature detection (\"IntersectionObserver\" in window) sees the truth."},
 	{name = "javascript.bindings.unimplemented", kind = .String, default = {s = "absent"}, choices = {"absent", "throw"},
 		description = "Members of the web platform this browser does not implement on interfaces it does: absent (scripts that test for them, if (\"x\" in el), take their fallback) or present and throwing NotSupportedError when used (what the bindings' coverage says, visible to scripts)."},
-	{name = "javascript.touch_events", kind = .String, default = {s = "auto"}, choices = {"auto", "on", "off"},
-		description = "Whether pages see the touch event handler attributes (ontouchstart in window...), which many use to tell a phone or tablet from a computer. auto: when this computer has a touch screen (as Chromium and Firefox do); on, off: always, never."},
+	{name = "browser.touch.expose", kind = .String, default = {s = "auto"}, choices = {"auto", "on", "off"},
+		description = "Whether pages are told about a touch screen: the touch event handler attributes (ontouchstart in window...) and the Touch, TouchEvent and TouchList constructors, navigator.maxTouchPoints, and the media features any-pointer: coarse and pointer: coarse. Many pages use them to tell a phone or tablet from a computer. auto: what this computer has (as Chromium and Firefox do); on: always a touch screen (at least one point); off: never. (Was javascript.touch_events.)"},
 	{name = "javascript.console_eval", kind = .Bool, default = {b = true},
 		description = "Let the tab's console run JavaScript typed by the user in the page's realm."},
 	{name = "javascript.workers.enabled", kind = .Bool, default = {b = true},
@@ -78,11 +79,7 @@ settings_from_prefs :: proc(p: ^config.Prefs, profile_dir := "") -> Settings {
 		offthread_min_bytes = int(config.int_of(p, "javascript.compile.offthread_min_bytes")),
 		jit = jit_settings_from_prefs(p),
 	}
-	switch config.string_of(p, "javascript.touch_events") {
-	case "on": s.touch_handlers = true
-	case "off": s.touch_handlers = false
-	case: s.touch_handlers = has_touch_screen()
-	}
+	s.touch_points, s.touch_handlers = touch_exposure(config.string_of(p, "browser.touch.expose"), touch_points())
 	s.cache = Cache_Settings{
 		memory_bytes = config.int_of(p, "javascript.bytecode_cache.memory_bytes"),
 		disk = config.bool_of(p, "javascript.bytecode_cache.disk") && profile_dir != "",

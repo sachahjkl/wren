@@ -776,23 +776,33 @@ CanvasTextDrawingStyles_set_textRendering :: proc(c: ^Call, ctx: Api_CanvasRende
 	if k := cx(ctx.data); k != nil { if i, ok := enum_index(TEXT_RENDERING[:], value); ok { k.state.text_rendering = u8(i) } }
 }
 
+// Text in a worker's OffscreenCanvas: the shell's text system (fonts, shaping) belongs to the interface thread, so a
+// worker draws no text (said once in its console).
+@(private)
+worker_text_refused :: proc(c: ^Call) -> bool {
+	if c.page.worker == nil { return false }
+	@(thread_local) told: bool
+	if !told { told = true; log(c.page, .Warn, "OffscreenCanvas in a worker: text (fillText, strokeText, measureText) is not drawn by this browser yet") }
+	return true
+}
+
 CanvasText_fillText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string, x: f64, y: f64, max_width: f64, has_max: bool) {
 	k := cx(ctx.data)
-	if k == nil { return }
+	if k == nil || worker_text_refused(c) { return }
 	canvas_refresh_inherit(ctx.data)
 	canvas2d.ctx_draw_text(k, text, x, y, max_width, has_max, false)
 }
 
 CanvasText_strokeText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string, x: f64, y: f64, max_width: f64, has_max: bool) {
 	k := cx(ctx.data)
-	if k == nil { return }
+	if k == nil || worker_text_refused(c) { return }
 	canvas_refresh_inherit(ctx.data)
 	canvas2d.ctx_draw_text(k, text, x, y, max_width, has_max, true)
 }
 
 CanvasText_measureText :: proc(c: ^Call, ctx: Api_CanvasRenderingContext2D, text: string) -> u64 {
 	o, h := canvas_new_object(c.page, c.owner, .Metrics)
-	if k := cx(ctx.data); k != nil {
+	if k := cx(ctx.data); k != nil && !worker_text_refused(c) {
 		canvas_refresh_inherit(ctx.data)
 		if tm, ok := canvas2d.ctx_measure_text(k, text); ok { o.metrics = tm }
 	}

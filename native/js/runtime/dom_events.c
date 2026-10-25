@@ -9,6 +9,8 @@ JSValue wj_event_ext(JSValueConst obj);
 void wj_event_set_ext(JSContext *ctx, JSValueConst obj, JSValue ext);
 uint64_t wj_event_host(JSValueConst obj);
 JSValue wj_event_new_uninitialized(JSContext *ctx, int iface);
+void touch_lists_from_host(JSContext *ctx, JSValue x, uint64_t host);
+JSValue dom_touch_list_from_sequence(JSContext *ctx, JSValueConst seq, const char *member);
 JSValue wj_event_construct(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv, int iface, const char *name);
 
 static void set_num(JSContext *ctx, JSValue o, const char *k, double v) { JS_SetPropertyStr(ctx, o, k, JS_NewFloat64(ctx, v)); }
@@ -40,12 +42,19 @@ void wj_event_wrapped(JSContext *ctx, JSValueConst obj, uint64_t host, int iface
         set_num(ctx, x, "button", d.button); set_num(ctx, x, "buttons", d.buttons);
         set_num(ctx, x, "deltaX", d.delta_x); set_num(ctx, x, "deltaY", d.delta_y); set_num(ctx, x, "deltaZ", d.delta_z);
         set_num(ctx, x, "deltaMode", d.delta_mode);
-        set_num(ctx, x, "pointerId", 1);
-        set_bool(ctx, x, "isPrimary", true);
-        set_num(ctx, x, "width", 1); set_num(ctx, x, "height", 1);
-        set_num(ctx, x, "pressure", d.buttons ? 0.5 : 0);
-        JS_SetPropertyStr(ctx, x, "pointerType", JS_NewString(ctx, "mouse"));
+        static const char *pointer_types[] = { "mouse", "pen", "touch" };
+        set_num(ctx, x, "pointerId", d.pointer_id);
+        set_bool(ctx, x, "isPrimary", d.is_primary != 0);
+        set_num(ctx, x, "width", d.width); set_num(ctx, x, "height", d.height);
+        set_num(ctx, x, "pressure", d.pressure); set_num(ctx, x, "tangentialPressure", d.tangential_pressure);
+        set_num(ctx, x, "tiltX", d.tilt_x); set_num(ctx, x, "tiltY", d.tilt_y); set_num(ctx, x, "twist", d.twist);
+        JS_SetPropertyStr(ctx, x, "pointerType", JS_NewString(ctx, pointer_types[d.pointer_type < 3 ? d.pointer_type : 0]));
+        if (iface == WJ_IFACE_DragEvent) {
+            uint64_t dt = wr_DragEvent_dataTransfer(host);
+            JS_SetPropertyStr(ctx, x, "dataTransfer", dt ? wj_wrap_host(ctx, dt, WJ_IFACE_DataTransfer) : JS_NULL);
+        }
     }
+    if (iface == WJ_IFACE_TouchEvent) { touch_lists_from_host(ctx, x, host); }
     if (d.related) { JS_SetPropertyStr(ctx, x, "relatedTarget", wj_wrap_node(ctx, d.related)); }
     if (is_keyboard(iface)) {
         int32_t n;
@@ -150,6 +159,24 @@ static JSValue ui_construct(JSContext *ctx, JSValueConst new_target, int argc, J
     if (ok && iface == WJ_IFACE_FocusEvent) { ok = read_fields(ctx, init, x, FIELDS(focus_fields)); }
     if (ok && iface == WJ_IFACE_InputEvent) { ok = read_fields(ctx, init, x, FIELDS(input_fields)); }
     if (ok && iface == WJ_IFACE_CompositionEvent) { ok = read_fields(ctx, init, x, FIELDS(composition_fields)); }
+    if (ok && iface == WJ_IFACE_DragEvent) {
+        JSValue dt = dom_dict_get(ctx, init, "dataTransfer");
+        if (JS_IsException(dt)) { ok = false; }
+        else if (JS_IsUndefined(dt) || JS_IsNull(dt)) { JS_SetPropertyStr(ctx, x, "dataTransfer", JS_NULL); }
+        else if (!wj_unwrap(dt, WJ_IFACE_DataTransfer)) { JS_FreeValue(ctx, dt); JS_ThrowTypeError(ctx, "Failed to construct 'DragEvent': member dataTransfer is not of type 'DataTransfer'."); ok = false; }
+        else { JS_SetPropertyStr(ctx, x, "dataTransfer", dt); }
+    }
+    if (ok && iface == WJ_IFACE_TouchEvent) {
+        static const char *lists[] = { "touches", "targetTouches", "changedTouches" };
+        for (int i = 0; i < 3 && ok; i++) {
+            JSValue seq = dom_dict_get(ctx, init, lists[i]);
+            if (JS_IsException(seq)) { ok = false; break; }
+            JSValue tl = dom_touch_list_from_sequence(ctx, seq, lists[i]);
+            JS_FreeValue(ctx, seq);
+            if (JS_IsException(tl)) { ok = false; break; }
+            JS_SetPropertyStr(ctx, x, lists[i], tl);
+        }
+    }
     if (!ok) { JS_FreeValue(ctx, x); JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
     /* MouseEvent: page and offset coordinates follow the client ones for a synthetic event */
     if (is_mouse(iface)) {
@@ -165,6 +192,8 @@ static JSValue ui_construct(JSContext *ctx, JSValueConst new_target, int argc, J
 JSValue wjr_UIEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_UIEvent, "UIEvent"); }
 JSValue wjr_MouseEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_MouseEvent, "MouseEvent"); }
 JSValue wjr_PointerEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_PointerEvent, "PointerEvent"); }
+JSValue wjr_DragEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_DragEvent, "DragEvent"); }
+JSValue wjr_TouchEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_TouchEvent, "TouchEvent"); }
 JSValue wjr_WheelEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_WheelEvent, "WheelEvent"); }
 JSValue wjr_KeyboardEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_KeyboardEvent, "KeyboardEvent"); }
 JSValue wjr_FocusEvent_constructor(JSContext *ctx, JSValueConst nt, int argc, JSValueConst *argv) { return ui_construct(ctx, nt, argc, argv, WJ_IFACE_FocusEvent, "FocusEvent"); }
@@ -277,6 +306,7 @@ static JSValue modifier_state(JSContext *ctx, JSValueConst t, int iface, int arg
 
 JSValue wjr_MouseEvent_getModifierState(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return modifier_state(ctx, t, WJ_IFACE_MouseEvent, argc, argv); }
 JSValue wjr_KeyboardEvent_getModifierState(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return modifier_state(ctx, t, WJ_IFACE_KeyboardEvent, argc, argv); }
+JSValue wjr_TouchEvent_getModifierState(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv) { return modifier_state(ctx, t, WJ_IFACE_TouchEvent, argc, argv); }
 
 JSValue wjr_PointerEvent_get_pointerId(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_PointerEvent, "pointerId", NUM0); }
 JSValue wjr_PointerEvent_get_width(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_PointerEvent, "width", JS_NewInt32(ctx, 1)); }
@@ -290,6 +320,27 @@ JSValue wjr_PointerEvent_get_altitudeAngle(JSContext *ctx, JSValueConst t) { ret
 JSValue wjr_PointerEvent_get_azimuthAngle(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_PointerEvent, "azimuthAngle", NUM0); }
 JSValue wjr_PointerEvent_get_pointerType(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_PointerEvent, "pointerType", JS_NewString(ctx, "")); }
 JSValue wjr_PointerEvent_get_isPrimary(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_PointerEvent, "isPrimary", JS_FALSE); }
+
+JSValue wjr_DragEvent_get_dataTransfer(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_DragEvent, "dataTransfer", JS_NULL); }
+
+static JSValue touch_list_field(JSContext *ctx, JSValueConst t, const char *name)
+{
+    JSValue v = ext_field(ctx, t, WJ_IFACE_TouchEvent, name, JS_UNDEFINED);
+    if (!JS_IsUndefined(v)) { return v; }
+    extern JSValue dom_touch_list(JSContext *ctx, JSValue items);
+    JSValue tl = dom_touch_list(ctx, JS_NewArray(ctx));
+    JSValue x = wj_event_ext(t);
+    if (JS_IsObject(x) && !JS_IsException(tl)) { JS_SetPropertyStr(ctx, x, name, JS_DupValue(ctx, tl)); }
+    return tl;
+}
+
+JSValue wjr_TouchEvent_get_touches(JSContext *ctx, JSValueConst t) { return touch_list_field(ctx, t, "touches"); }
+JSValue wjr_TouchEvent_get_targetTouches(JSContext *ctx, JSValueConst t) { return touch_list_field(ctx, t, "targetTouches"); }
+JSValue wjr_TouchEvent_get_changedTouches(JSContext *ctx, JSValueConst t) { return touch_list_field(ctx, t, "changedTouches"); }
+JSValue wjr_TouchEvent_get_ctrlKey(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_TouchEvent, "ctrlKey", JS_FALSE); }
+JSValue wjr_TouchEvent_get_shiftKey(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_TouchEvent, "shiftKey", JS_FALSE); }
+JSValue wjr_TouchEvent_get_altKey(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_TouchEvent, "altKey", JS_FALSE); }
+JSValue wjr_TouchEvent_get_metaKey(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_TouchEvent, "metaKey", JS_FALSE); }
 
 JSValue wjr_WheelEvent_get_deltaX(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_WheelEvent, "deltaX", NUM0); }
 JSValue wjr_WheelEvent_get_deltaY(JSContext *ctx, JSValueConst t) { return ext_field(ctx, t, WJ_IFACE_WheelEvent, "deltaY", NUM0); }

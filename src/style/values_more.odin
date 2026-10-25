@@ -1107,6 +1107,35 @@ apply_prop_more :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		}
 		if .Size in set && .Inline_Size in set { return false }
 		c.contain = set
+	case .Touch_Action:
+		items := split_items(css.trim_values(vs))
+		if len(items) == 0 { return false }
+		ALL :: Touch_Blocked{.Pan_Left, .Pan_Right, .Pan_Up, .Pan_Down, .Pinch_Zoom, .Double_Tap}
+		// [pan-x | pan-left | pan-right] || [pan-y | pan-up | pan-down] || pinch-zoom: one of each group at most
+		allowed: Touch_Blocked
+		has_x, has_y, has_pinch: bool
+		for it in items {
+			id := ident_lower(it)
+			switch id {
+			case "auto": if len(items) != 1 { return false }; c.touch_action = {}; return true
+			case "none": if len(items) != 1 { return false }; c.touch_action = ALL; return true
+			case "manipulation": if len(items) != 1 { return false }; c.touch_action = {.Double_Tap}; return true
+			case "pan-x", "pan-left", "pan-right":
+				if has_x { return false }
+				has_x = true
+				allowed += id == "pan-x" ? Touch_Blocked{.Pan_Left, .Pan_Right} : (id == "pan-left" ? Touch_Blocked{.Pan_Left} : Touch_Blocked{.Pan_Right})
+			case "pan-y", "pan-up", "pan-down":
+				if has_y { return false }
+				has_y = true
+				allowed += id == "pan-y" ? Touch_Blocked{.Pan_Up, .Pan_Down} : (id == "pan-up" ? Touch_Blocked{.Pan_Up} : Touch_Blocked{.Pan_Down})
+			case "pinch-zoom":
+				if has_pinch { return false }
+				has_pinch = true
+				allowed += {.Pinch_Zoom}
+			case: return false
+			}
+		}
+		c.touch_action = ALL - allowed
 	case .Content_Visibility: return set_enum(vs, &c.content_visibility)
 	case .Scroll_Behavior: return set_enum(vs, &c.scroll_behavior)
 	case .Overscroll_Behavior_X: return set_enum(vs, &c.overscroll_x)

@@ -27,6 +27,8 @@ typedef void (*wr_MicrotaskCallback)(int32_t user);
 // A reaction: read the result with Promise_value / Promise_text.
 typedef void (*wr_PromiseReaction)(int32_t user, uint64_t promise, int32_t state);
 
+/* module caches: types */
+
 /* module canvas: types */
 typedef uint64_t wr_HTMLCanvasElement;
 // A CanvasRenderingContext2D or an OffscreenCanvasRenderingContext2D.
@@ -198,6 +200,20 @@ enum wr_ConsoleLevel {
 
 /* module dom (partial): types */
 
+/* module dnd: types */
+typedef uint64_t wr_DataTransfer;
+typedef uint64_t wr_LocalFile;
+// DataTransferItem.kind
+enum wr_DragItemKind {
+    wr_DragItemKind_String = 0,
+    wr_DragItemKind_File = 1,
+};
+// The size and time of a file.
+typedef struct wr_LocalFileInfo {
+    int64_t size;
+    double last_modified;
+} wr_LocalFileInfo;
+
 /* module dom (partial): types */
 
 /* module dom (partial): types */
@@ -229,7 +245,38 @@ typedef struct wr_UiEventData {
     uint32_t location;
     uint32_t repeat;
     uint32_t delta_mode;
+    int32_t pointer_id;
+    uint32_t pointer_type;
+    uint32_t is_primary;
+    double pressure;
+    double tangential_pressure;
+    double width;
+    double height;
+    double tilt_x;
+    double tilt_y;
+    double twist;
 } wr_UiEventData;
+// A Touch of a TouchEvent.
+typedef struct wr_TouchPoint {
+    int32_t identifier;
+    uint64_t target;
+    double client_x;
+    double client_y;
+    double screen_x;
+    double screen_y;
+    double page_x;
+    double page_y;
+    double radius_x;
+    double radius_y;
+    double rotation_angle;
+    double force;
+} wr_TouchPoint;
+// The lists of a TouchEvent.
+enum wr_TouchListKind {
+    wr_TouchListKind_Touches = 0,
+    wr_TouchListKind_Target_Touches = 1,
+    wr_TouchListKind_Changed_Touches = 2,
+};
 
 /* module dom (partial): types */
 
@@ -257,6 +304,14 @@ typedef struct wr_SelectionState {
 /* module dom (partial): types */
 
 /* module dom (partial): types */
+
+/* module entries: types */
+typedef uint64_t wr_FsEntry;
+typedef uint64_t wr_FsReader;
+// What an entry is.
+typedef struct wr_FsEntryInfo {
+    uint8_t is_dir;
+} wr_FsEntryInfo;
 
 /* module events (partial): types */
 
@@ -424,6 +479,16 @@ enum wr_PerformanceEntryType {
 typedef void (*wr_TimelineCallback)(int32_t user, int32_t kinds);
 
 /* module ports: types */
+
+/* module serviceworker: types */
+// What the current event of a service worker's realm is (kind 0: none waits).
+typedef struct wr_SwEventInfo {
+    int32_t kind;
+    uint64_t id;
+    int32_t mode;
+    int32_t destination;
+    uint64_t client;
+} wr_SwEventInfo;
 
 /* module storage: types */
 enum wr_StorageArea {
@@ -604,6 +669,30 @@ WR_IMPORT("async", "Buffer_read") int32_t wr_Buffer_read(uint64_t buffer, int64_
 WR_IMPORT("async", "Buffer_write") int32_t wr_Buffer_write(uint64_t buffer, int64_t offset, const uint8_t *source, uint32_t source_len);
 // buffer.slice(start, end): a copy; negative positions count from the end. Quota past the page's memory limit.
 WR_IMPORT("async", "Buffer_slice") int32_t wr_Buffer_slice(uint64_t buffer, int64_t start, int64_t end, uint64_t *_ret);
+
+/* module caches */
+// Whether the calling realm may use caches.
+WR_IMPORT("caches", "CacheStorage_check") int32_t wr_CacheStorage_check(void);
+// caches.open(name): the cache exists afterwards.
+WR_IMPORT("caches", "CacheStorage_openName") int32_t wr_CacheStorage_openName(const uint8_t *name, uint32_t name_len);
+// caches.has(name)
+WR_IMPORT("caches", "CacheStorage_hasName") int32_t wr_CacheStorage_hasName(const uint8_t *name, uint32_t name_len, uint8_t *_ret);
+// caches.delete(name)
+WR_IMPORT("caches", "CacheStorage_deleteName") int32_t wr_CacheStorage_deleteName(const uint8_t *name, uint32_t name_len, uint8_t *_ret);
+// caches.keys(): the names in creation order, "\n"-separated.
+WR_IMPORT("caches", "CacheStorage_names") int32_t wr_CacheStorage_names(uint8_t *_buf, uint32_t _cap);
+// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
+WR_IMPORT("caches", "Cache_matchIds") int32_t wr_Cache_matchIds(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, int32_t ignore_search, int32_t ignore_method, uint8_t *_buf, uint32_t _cap);
+// An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
+// response's header lines, "\n"-separated (Not_Found when it is gone).
+WR_IMPORT("caches", "Cache_entryHead") int32_t wr_Cache_entryHead(const uint8_t *cache, uint32_t cache_len, uint64_t id, uint8_t *_buf, uint32_t _cap);
+// An entry's body (Not_Found when it is gone).
+WR_IMPORT("caches", "Cache_entryBody") int32_t wr_Cache_entryBody(const uint8_t *cache, uint32_t cache_len, uint64_t id, uint8_t *_buf, uint32_t _cap);
+// cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
+// caches.max_bytes_per_origin.
+WR_IMPORT("caches", "Cache_putEntry") int32_t wr_Cache_putEntry(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, int32_t status, const uint8_t *status_text, uint32_t status_text_len, const uint8_t *response_url, uint32_t response_url_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len);
+// cache.delete(request, options)
+WR_IMPORT("caches", "Cache_deleteEntries") int32_t wr_Cache_deleteEntries(const uint8_t *cache, uint32_t cache_len, const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, int32_t ignore_search, int32_t ignore_method, uint8_t *_ret);
 
 /* module canvas */
 // /////////////////////////////
@@ -1670,6 +1759,17 @@ WR_IMPORT("events", "MouseEvent_clientY") double wr_MouseEvent_clientY(uint64_t 
 WR_IMPORT("events", "MouseEvent_button") int32_t wr_MouseEvent_button(uint64_t event);
 // KeyboardEvent.keyCode
 WR_IMPORT("events", "KeyboardEvent_keyCode") int32_t wr_KeyboardEvent_keyCode(uint64_t event);
+// The number of touches in a list of a TouchEvent the browser dispatches (0 for another event).
+WR_IMPORT("events", "TouchEvent_count") int32_t wr_TouchEvent_count(uint64_t event, int32_t list);
+// A touch of that list (Invalid_Argument past its end).
+WR_IMPORT("events", "TouchEvent_touch") int32_t wr_TouchEvent_touch(uint64_t event, int32_t list, int32_t index, wr_TouchPoint *_ret);
+// Element.setPointerCapture(pointerId): Not_Found for a pointer that is not active, Invalid_State for an element
+// that is not connected. The capture takes effect at the pointer's next event (gotpointercapture).
+WR_IMPORT("events", "PointerCapture_set") int32_t wr_PointerCapture_set(uint64_t element, int32_t pointer_id);
+// Element.releasePointerCapture(pointerId): Not_Found for a pointer that is not active.
+WR_IMPORT("events", "PointerCapture_release") int32_t wr_PointerCapture_release(uint64_t element, int32_t pointer_id);
+// Element.hasPointerCapture(pointerId)
+WR_IMPORT("events", "PointerCapture_has") int32_t wr_PointerCapture_has(uint64_t element, int32_t pointer_id);
 // The details of a UI event being dispatched.
 WR_IMPORT("events", "Event_uiData") void wr_Event_uiData(uint64_t event, wr_UiEventData *_ret);
 // KeyboardEvent.key ("Enter", "a"...): "Unidentified" when unknown.
@@ -2126,6 +2226,97 @@ WR_IMPORT("js", "Node_unpin") void wr_Node_unpin(uint64_t node);
 // wrappers of one tree alive together.
 WR_IMPORT("js", "Node_treeRoots") void wr_Node_treeRoots(const uint64_t *nodes, uint32_t nodes_len, uint8_t *roots, uint32_t roots_cap);
 
+/* module dnd */
+// new DataTransfer(): an empty store in read/write mode.
+WR_IMPORT("dnd", "DataTransfer_create") uint64_t wr_DataTransfer_create(void);
+// dataTransfer.dropEffect ("none", "copy", "link", "move")
+WR_IMPORT("dnd", "DataTransfer_get_dropEffect") int32_t wr_DataTransfer_get_dropEffect(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// Values other than the four are ignored.
+WR_IMPORT("dnd", "DataTransfer_set_dropEffect") void wr_DataTransfer_set_dropEffect(uint64_t dt, const uint8_t *value, uint32_t value_len);
+// dataTransfer.effectAllowed
+WR_IMPORT("dnd", "DataTransfer_get_effectAllowed") int32_t wr_DataTransfer_get_effectAllowed(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// Ignored outside read/write mode and for a value that is not one of the nine.
+WR_IMPORT("dnd", "DataTransfer_set_effectAllowed") void wr_DataTransfer_set_effectAllowed(uint64_t dt, const uint8_t *value, uint32_t value_len);
+// getData(format): "" in protected mode or when absent ("text" is text/plain, "url" the first URL of text/uri-list).
+WR_IMPORT("dnd", "DataTransfer_getData") int32_t wr_DataTransfer_getData(uint64_t dt, const uint8_t *format, uint32_t format_len, uint8_t *_buf, uint32_t _cap);
+// setData(format, data): ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_setData") void wr_DataTransfer_setData(uint64_t dt, const uint8_t *format, uint32_t format_len, const uint8_t *data, uint32_t data_len);
+// clearData(format): every string item, or those of the format; ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_clearData") void wr_DataTransfer_clearData(uint64_t dt, const uint8_t *format, uint32_t format_len);
+// setDragImage(image, x, y): ignored outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_setDragImage") void wr_DataTransfer_setDragImage(uint64_t dt, uint64_t image, int32_t x, int32_t y);
+// The types, in order, separated by "\n" ("Files" last when there are files).
+WR_IMPORT("dnd", "DataTransfer_typeList") int32_t wr_DataTransfer_typeList(uint64_t dt, uint8_t *_buf, uint32_t _cap);
+// The number of items (DataTransferItemList.length; 0 in disabled mode).
+WR_IMPORT("dnd", "DataTransfer_itemCount") int32_t wr_DataTransfer_itemCount(uint64_t dt);
+// An item's kind (Invalid_Argument past the end).
+WR_IMPORT("dnd", "DataTransfer_itemKind") int32_t wr_DataTransfer_itemKind(uint64_t dt, int32_t index, int32_t *_ret);
+// An item's type.
+WR_IMPORT("dnd", "DataTransfer_itemType") int32_t wr_DataTransfer_itemType(uint64_t dt, int32_t index, uint8_t *_buf, uint32_t _cap);
+// A string item's data (Invalid_State in protected mode).
+WR_IMPORT("dnd", "DataTransfer_itemString") int32_t wr_DataTransfer_itemString(uint64_t dt, int32_t index, uint8_t *_buf, uint32_t _cap);
+// A file item's file (0: not a file, or protected mode).
+WR_IMPORT("dnd", "DataTransfer_itemFile") int32_t wr_DataTransfer_itemFile(uint64_t dt, int32_t index, uint64_t *_ret);
+// items.add(data, type): Invalid_State outside read/write mode, Not_Supported when a string item of the type exists.
+WR_IMPORT("dnd", "DataTransfer_addString") int32_t wr_DataTransfer_addString(uint64_t dt, const uint8_t *data, uint32_t data_len, const uint8_t *type, uint32_t type_len);
+// items.add(file) for a file of the browser (a dropped or chosen one).
+WR_IMPORT("dnd", "DataTransfer_addFile") int32_t wr_DataTransfer_addFile(uint64_t dt, uint64_t file);
+// items.add(file) for a File made by the page: its bytes are copied (Quota past the page's memory limit).
+WR_IMPORT("dnd", "DataTransfer_addBytes") int32_t wr_DataTransfer_addBytes(uint64_t dt, const uint8_t *name, uint32_t name_len, const uint8_t *type, uint32_t type_len, const uint8_t *data, uint32_t data_len, double last_modified);
+// items.remove(index): Invalid_State outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_removeItem") int32_t wr_DataTransfer_removeItem(uint64_t dt, int32_t index);
+// items.clear(): Invalid_State outside read/write mode.
+WR_IMPORT("dnd", "DataTransfer_clearItems") int32_t wr_DataTransfer_clearItems(uint64_t dt);
+// The files (dataTransfer.files: none outside read/write and read-only mode).
+WR_IMPORT("dnd", "DataTransfer_fileCount") int32_t wr_DataTransfer_fileCount(uint64_t dt);
+// One of them.
+WR_IMPORT("dnd", "DataTransfer_file") int32_t wr_DataTransfer_file(uint64_t dt, int32_t index, uint64_t *_ret);
+// The mode: 0 protected, 1 read/write, 2 read-only.
+WR_IMPORT("dnd", "DataTransfer_mode") int32_t wr_DataTransfer_mode(uint64_t dt);
+// A file's name (no directory).
+WR_IMPORT("dnd", "LocalFile_name") int32_t wr_LocalFile_name(uint64_t file, uint8_t *_buf, uint32_t _cap);
+// Its MIME type ("" when unknown).
+WR_IMPORT("dnd", "LocalFile_type") int32_t wr_LocalFile_type(uint64_t file, uint8_t *_buf, uint32_t _cap);
+// Its size and time.
+WR_IMPORT("dnd", "LocalFile_info") void wr_LocalFile_info(uint64_t file, wr_LocalFileInfo *_ret);
+// Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
+// changed since it was given: File API "NotReadableError").
+WR_IMPORT("dnd", "LocalFile_read") int32_t wr_LocalFile_read(uint64_t file, int64_t offset, uint8_t *into, uint32_t into_cap, int64_t *_ret);
+// DragEvent.dataTransfer of an event the browser dispatches (0 for another event).
+WR_IMPORT("dnd", "DragEvent_dataTransfer") uint64_t wr_DragEvent_dataTransfer(uint64_t event);
+// input.files.length (0 for an element that is not a file input).
+WR_IMPORT("dnd", "InputFiles_count") int32_t wr_InputFiles_count(uint64_t input);
+// input.files[index]
+WR_IMPORT("dnd", "InputFiles_item") int32_t wr_InputFiles_item(uint64_t input, int32_t index, uint64_t *_ret);
+// input.files = dataTransfer.files: the store's files become the input's selection (Invalid_State for an element
+// that is not a file input).
+WR_IMPORT("dnd", "InputFiles_assign") int32_t wr_InputFiles_assign(uint64_t input, uint64_t from);
+
+/* module entries */
+// item.webkitGetAsEntry(): the entry of a file item (0: a string item, or the data store is protected).
+WR_IMPORT("entries", "DataTransfer_itemEntry") int32_t wr_DataTransfer_itemEntry(uint64_t dt, int32_t index, uint64_t *_ret);
+// isFile / isDirectory
+WR_IMPORT("entries", "FsEntry_info") void wr_FsEntry_info(uint64_t entry, wr_FsEntryInfo *_ret);
+// entry.name
+WR_IMPORT("entries", "FsEntry_name") int32_t wr_FsEntry_name(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// entry.fullPath ("/" then the dropped item's name and the path below it, "/" separated)
+WR_IMPORT("entries", "FsEntry_fullPath") int32_t wr_FsEntry_fullPath(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// entry.filesystem.name
+WR_IMPORT("entries", "FsEntry_filesystemName") int32_t wr_FsEntry_filesystemName(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// getParent(): the folder above (an entry is its own parent at the top of what was dropped).
+WR_IMPORT("entries", "FsEntry_parent") uint64_t wr_FsEntry_parent(uint64_t entry);
+// fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).
+WR_IMPORT("entries", "FsEntry_file") uint64_t wr_FsEntry_file(uint64_t entry);
+// dirEntry.getFile(path) / getDirectory(path): a promise of the entry (NotFoundError, TypeMismatchError when it is
+// the other kind, SecurityError for a path that leaves what was dropped).
+WR_IMPORT("entries", "FsEntry_lookup") uint64_t wr_FsEntry_lookup(uint64_t dir, const uint8_t *path, uint32_t path_len, int32_t directory);
+// dirEntry.createReader()
+WR_IMPORT("entries", "FsEntry_createReader") uint64_t wr_FsEntry_createReader(uint64_t dir);
+// reader.readEntries(): a promise of the number of entries of the next batch (0: the end), read with FsReader_entry.
+WR_IMPORT("entries", "FsReader_read") uint64_t wr_FsReader_read(uint64_t reader);
+// The entries of the last batch.
+WR_IMPORT("entries", "FsReader_entry") uint64_t wr_FsReader_entry(uint64_t reader, int32_t index);
+
 /* module scripts */
 // document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
 // loads (scripts written run before it returns), else the document is opened again first and replaced. Invalid_State
@@ -2181,6 +2372,8 @@ WR_IMPORT("navigator", "Navigator_get") int32_t wr_Navigator_get(int32_t field, 
 WR_IMPORT("navigator", "Navigator_hardwareConcurrency") int32_t wr_Navigator_hardwareConcurrency(void);
 // navigator.onLine: whether the system has a network connection.
 WR_IMPORT("navigator", "Navigator_onLine") int32_t wr_Navigator_onLine(void);
+// navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
+WR_IMPORT("navigator", "Navigator_maxTouchPoints") int32_t wr_Navigator_maxTouchPoints(void);
 // navigator.cookieEnabled: whether the document may use cookies.
 WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEnabled(void);
 // navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),
@@ -2253,7 +2446,8 @@ WR_IMPORT("htmlmedia", "HTMLMediaElement_canPlayType") int32_t wr_HTMLMediaEleme
 // video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
 WR_IMPORT("htmlmedia", "HTMLVideoElement_videoWidth") uint32_t wr_HTMLVideoElement_videoWidth(uint64_t element);
 WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElement_videoHeight(uint64_t element);
-// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+// video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
+// totalFrameDelay in seconds).
 WR_IMPORT("htmlmedia", "HTMLVideoElement_playbackQuality") int32_t wr_HTMLVideoElement_playbackQuality(uint64_t element, uint8_t *_buf, uint32_t _cap);
 
 /* module mse */
@@ -2389,8 +2583,50 @@ WR_IMPORT("ports", "Port_close") void wr_Port_close(uint64_t end);
 WR_IMPORT("ports", "Worker_postSerializedPorts") int32_t wr_Worker_postSerializedPorts(uint64_t worker, const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
 // postMessage(message, transfer) in a worker, with MessagePorts.
 WR_IMPORT("ports", "DedicatedWorkerGlobalScope_postSerializedPorts") int32_t wr_DedicatedWorkerGlobalScope_postSerializedPorts(const uint8_t *data, uint32_t data_len, const uint64_t *ports, uint32_t ports_len);
+// new BroadcastChannel(name): a port end of the channel (the realm's origin and the name), owned by the calling
+// realm; 0 for an opaque origin (the object sends and receives nothing). Port_close closes it.
+WR_IMPORT("ports", "Broadcast_open") uint64_t wr_Broadcast_open(const uint8_t *name, uint32_t name_len);
+// broadcastChannel.postMessage: the serialized message to every other end of the channel, in every realm.
+// Data_Clone for a message over frames.max_message_bytes.
+WR_IMPORT("ports", "Broadcast_post") int32_t wr_Broadcast_post(uint64_t end, const uint8_t *data, uint32_t data_len);
 // The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.
 WR_IMPORT("ports", "MessageEvent_portEnds") int32_t wr_MessageEvent_portEnds(uint64_t event, uint8_t *_buf, uint32_t _cap);
+
+/* module serviceworker */
+// navigator.serviceWorker.register(script, {scope, updateViaCache}): a promise of the registration's id, resolved
+// once the worker's script ran (TypeError when it failed). Security outside a secure context, for another origin
+// or a scope outside the script's directory.
+WR_IMPORT("serviceworker", "ServiceWorker_register") int32_t wr_ServiceWorker_register(const uint8_t *script, uint32_t script_len, const uint8_t *scope, uint32_t scope_len, const uint8_t *update_via_cache, uint32_t update_via_cache_len, uint64_t *_ret);
+// navigator.serviceWorker.ready: a promise of the id of the active registration whose scope holds the page.
+WR_IMPORT("serviceworker", "ServiceWorker_ready") uint64_t wr_ServiceWorker_ready(void);
+// getRegistration(clientURL): the id of the registration matching the URL (0: none).
+WR_IMPORT("serviceworker", "ServiceWorker_getRegistration") uint64_t wr_ServiceWorker_getRegistration(const uint8_t *client_url, uint32_t client_url_len);
+// getRegistrations(): the ids of the origin's registrations, "\n"-separated.
+WR_IMPORT("serviceworker", "ServiceWorker_registrationIds") int32_t wr_ServiceWorker_registrationIds(uint8_t *_buf, uint32_t _cap);
+// navigator.serviceWorker.controller: the id of the registration controlling the page (0: none).
+WR_IMPORT("serviceworker", "ServiceWorker_controller") uint64_t wr_ServiceWorker_controller(void);
+// A registration: scope, script URL, its version's state, 1 when a version is active, updateViaCache;
+// "\n"-separated, "" when it is gone.
+WR_IMPORT("serviceworker", "ServiceWorkerRegistration_info") int32_t wr_ServiceWorkerRegistration_info(uint64_t id, uint8_t *_buf, uint32_t _cap);
+// registration.unregister(): true when it was the origin's and is gone.
+WR_IMPORT("serviceworker", "ServiceWorkerRegistration_unregisterId") int32_t wr_ServiceWorkerRegistration_unregisterId(uint64_t id);
+// serviceWorker.postMessage(message): the serialized message to the registration's worker.
+WR_IMPORT("serviceworker", "ServiceWorker_postToWorker") int32_t wr_ServiceWorker_postToWorker(uint64_t id, const uint8_t *data, uint32_t data_len);
+// The next message a service worker sent this page (Not_Found when none waits).
+WR_IMPORT("serviceworker", "ServiceWorker_takeMessage") int32_t wr_ServiceWorker_takeMessage(uint8_t *_buf, uint32_t _cap);
+// In a service worker's realm: its registration's id (0 in any other realm), scope, script URL.
+WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_registration") uint64_t wr_ServiceWorkerGlobalScope_registration(void);
+WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_scope") int32_t wr_ServiceWorkerGlobalScope_scope(uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_scriptURL") int32_t wr_ServiceWorkerGlobalScope_scriptURL(uint8_t *_buf, uint32_t _cap);
+// The current event; its strings (0 URL, 1 method, 2 header lines), its body; done: the next one.
+WR_IMPORT("serviceworker", "SwEvent_next") void wr_SwEvent_next(wr_SwEventInfo *_ret);
+WR_IMPORT("serviceworker", "SwEvent_text") int32_t wr_SwEvent_text(int32_t which, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("serviceworker", "SwEvent_body") int32_t wr_SwEvent_body(uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("serviceworker", "SwEvent_done") void wr_SwEvent_done(void);
+// What the worker did: 1 install done (code 1 ok, 0 failed), 2 activate done, 3 respond (code = status, headers,
+// body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim, 8 a message to a client
+// (code = the client's id, 0 every controlled page; body = the serialized message).
+WR_IMPORT("serviceworker", "ServiceWorkerGlobalScope_reply") void wr_ServiceWorkerGlobalScope_reply(int32_t kind, uint64_t id, int64_t code, const uint8_t *headers, uint32_t headers_len, const uint8_t *text, uint32_t text_len, const uint8_t *body, uint32_t body_len);
 
 /* module storage */
 // storage.length

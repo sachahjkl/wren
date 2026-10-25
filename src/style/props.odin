@@ -276,6 +276,7 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Mix_Blend_Mode: return fa(&c.mix_blend_mode), NO_FIELD
 	case .Will_Change: return fa(&c.will_change), NO_FIELD
 	case .Contain: return fa(&c.contain), NO_FIELD
+	case .Touch_Action: return fa(&c.touch_action), NO_FIELD
 	case .Content_Visibility: return fa(&c.content_visibility), NO_FIELD
 	case .Scroll_Behavior: return fa(&c.scroll_behavior), NO_FIELD
 	case .Overscroll_Behavior_X: return fa(&c.overscroll_x), NO_FIELD

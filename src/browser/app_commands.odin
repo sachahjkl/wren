@@ -54,6 +54,9 @@ app_commands_init :: proc(app: ^App) {
 	cmd_hwnd = hwnd
 }
 
+// The back / forward buttons of the mouse in another window of the browser (windows.odin).
+app_commands_attach :: proc(hwnd: win.HWND) { if hwnd != nil { win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, 0) } }
+
 app_commands_destroy :: proc() {
 	if cmd_hwnd == nil { return }
 	RemoveWindowSubclass(cmd_hwnd, cmd_subclass, CMD_SUBCLASS_ID)

@@ -232,6 +232,14 @@ Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren wi
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 } -Weight 60
+Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window shown)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1
+} -Weight 20
+Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (tools\sw_e2e.ps1: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages; no window shown)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
+} -Weight 20
 Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1

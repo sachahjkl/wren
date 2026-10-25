@@ -73,6 +73,45 @@ The numeric details of a UI event.
 | `location` | `u32` | KeyboardEvent.location |%!(EXTRA false)
 | `repeat` | `u32` | KeyboardEvent.repeat |%!(EXTRA false)
 | `delta_mode` | `u32` | WheelEvent.deltaMode |%!(EXTRA false)
+| `pointer_id` | `i32` | PointerEvent.pointerId (1 for the mouse) |%!(EXTRA false)
+| `pointer_type` | `u32` | PointerEvent.pointerType: 0 mouse, 1 pen, 2 touch |%!(EXTRA false)
+| `is_primary` | `u32` | PointerEvent.isPrimary |%!(EXTRA false)
+| `pressure` | `f64` | PointerEvent.pressure, tangentialPressure |%!(EXTRA false)
+| `tangential_pressure` | `f64` |  |%!(EXTRA false)
+| `width` | `f64` | PointerEvent.width / height (CSS px) |%!(EXTRA false)
+| `height` | `f64` |  |%!(EXTRA false)
+| `tilt_x` | `f64` | PointerEvent.tiltX / tiltY / twist (degrees) |%!(EXTRA false)
+| `tilt_y` | `f64` |  |%!(EXTRA false)
+| `twist` | `f64` |  |%!(EXTRA false)
+
+### struct `TouchPoint`
+
+A Touch of a TouchEvent.
+
+| field | type | |
+|---|---|---|
+| `identifier` | `i32` |  |%!(EXTRA false)
+| `target` | `u64` | the element the touch started on |%!(EXTRA false)
+| `client_x` | `f64` |  |%!(EXTRA false)
+| `client_y` | `f64` |  |%!(EXTRA false)
+| `screen_x` | `f64` |  |%!(EXTRA false)
+| `screen_y` | `f64` |  |%!(EXTRA false)
+| `page_x` | `f64` |  |%!(EXTRA false)
+| `page_y` | `f64` |  |%!(EXTRA false)
+| `radius_x` | `f64` |  |%!(EXTRA false)
+| `radius_y` | `f64` |  |%!(EXTRA false)
+| `rotation_angle` | `f64` |  |%!(EXTRA false)
+| `force` | `f64` |  |%!(EXTRA false)
+
+### enum `TouchListKind` : i32
+
+The lists of a TouchEvent.
+
+| member | value | |
+|---|---:|---|
+| `Touches` | 0 |  |%!(EXTRA false)
+| `Target_Touches` | 1 |  |%!(EXTRA false)
+| `Changed_Touches` | 2 |  |%!(EXTRA false)
 
 ## Functions
 
@@ -262,6 +301,63 @@ i32 KeyboardEvent_keyCode(Event event)
 KeyboardEvent.keyCode
 
 Host: `KeyboardEvent_keyCode :: proc(c: ^Call, event: Api_Event) -> i32`
+
+### `TouchEvent_count`
+
+```
+i32 TouchEvent_count(Event event, TouchListKind list)
+```
+
+The number of touches in a list of a TouchEvent the browser dispatches (0 for another event).
+
+Host: `TouchEvent_count :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind) -> i32`
+
+### `TouchEvent_touch`
+
+```
+TouchPoint TouchEvent_touch(Event event, TouchListKind list, i32 index) raises
+```
+
+A touch of that list (Invalid_Argument past its end).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `TouchEvent_touch :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind, index: i32) -> (Api_TouchPoint, Api_Error)`
+
+### `PointerCapture_set`
+
+```
+void PointerCapture_set(Element element, i32 pointer_id) raises
+```
+
+Element.setPointerCapture(pointerId): Not_Found for a pointer that is not active, Invalid_State for an element
+that is not connected. The capture takes effect at the pointer's next event (gotpointercapture).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `PointerCapture_set :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error`
+
+### `PointerCapture_release`
+
+```
+void PointerCapture_release(Element element, i32 pointer_id) raises
+```
+
+Element.releasePointerCapture(pointerId): Not_Found for a pointer that is not active.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `PointerCapture_release :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error`
+
+### `PointerCapture_has`
+
+```
+bool PointerCapture_has(Element element, i32 pointer_id)
+```
+
+Element.hasPointerCapture(pointerId)
+
+Host: `PointerCapture_has :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> bool`
 
 ### `Event_uiData`
 

@@ -291,6 +291,30 @@ Api_ConsoleLevel :: enum i32 {
 	Debug = 4,
 }
 
+// A live DataTransfer: its handle and what lookup_DataTransfer found.
+Api_DataTransfer :: struct {
+	handle: u64,
+	data:   ^Drag_Store,
+}
+
+// A live LocalFile: its handle and what lookup_LocalFile found.
+Api_LocalFile :: struct {
+	handle: u64,
+	data:   ^Local_File,
+}
+
+// DataTransferItem.kind
+Api_DragItemKind :: enum i32 {
+	String = 0,
+	File = 1,
+}
+
+// The size and time of a file.
+Api_LocalFileInfo :: struct {
+	size: i64,
+	last_modified: f64,
+}
+
 // The numeric details of a UI event.
 Api_UiEventData :: struct {
 	client_x: f64,
@@ -313,6 +337,39 @@ Api_UiEventData :: struct {
 	location: u32,
 	repeat: u32,
 	delta_mode: u32,
+	pointer_id: i32,
+	pointer_type: u32,
+	is_primary: u32,
+	pressure: f64,
+	tangential_pressure: f64,
+	width: f64,
+	height: f64,
+	tilt_x: f64,
+	tilt_y: f64,
+	twist: f64,
+}
+
+// A Touch of a TouchEvent.
+Api_TouchPoint :: struct {
+	identifier: i32,
+	target: u64,
+	client_x: f64,
+	client_y: f64,
+	screen_x: f64,
+	screen_y: f64,
+	page_x: f64,
+	page_y: f64,
+	radius_x: f64,
+	radius_y: f64,
+	rotation_angle: f64,
+	force: f64,
+}
+
+// The lists of a TouchEvent.
+Api_TouchListKind :: enum i32 {
+	Touches = 0,
+	Target_Touches = 1,
+	Changed_Touches = 2,
 }
 
 // A rectangle (DOMRect).
@@ -330,6 +387,23 @@ Api_SelectionState :: struct {
 	focus: u64,
 	focus_offset: u32,
 	kind: u32,
+}
+
+// A live FsEntry: its handle and what lookup_FsEntry found.
+Api_FsEntry :: struct {
+	handle: u64,
+	data:   ^Fs_Entry,
+}
+
+// A live FsReader: its handle and what lookup_FsReader found.
+Api_FsReader :: struct {
+	handle: u64,
+	data:   ^Fs_Reader,
+}
+
+// What an entry is.
+Api_FsEntryInfo :: struct {
+	is_dir: bool,
 }
 
 // What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
@@ -497,6 +571,15 @@ Api_PerformanceEntryType :: enum i32 {
 	First_Input = 7,
 }
 
+// What the current event of a service worker's realm is (kind 0: none waits).
+Api_SwEventInfo :: struct {
+	kind: i32,
+	id: u64,
+	mode: i32,
+	destination: i32,
+	client: u64,
+}
+
 Api_StorageArea :: enum i32 {
 	Local = 0,
 	Session = 1,
@@ -640,6 +723,12 @@ _valid_ScrollRestoration :: #force_inline proc "contextless" (v: i32) -> bool { 
 
 @(private = "file")
 _valid_ConsoleLevel :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4: return true }; return false }
+
+@(private = "file")
+_valid_DragItemKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
+
+@(private = "file")
+_valid_TouchListKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_InlineScriptKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
@@ -1374,6 +1463,320 @@ _t_async_Buffer_slice :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 		return _fail_status(&c, a, _err, c.message)
 	}
 	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CacheStorage_check :: proc(c: ^Call) -> Api_Error
+@(private = "file")
+_t_caches_CacheStorage_check :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_err := CacheStorage_check(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CacheStorage_openName :: proc(c: ^Call, name: string) -> Api_Error
+@(private = "file")
+_t_caches_CacheStorage_openName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_openName", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "caches.CacheStorage_openName: argument name is not valid UTF-8")
+	}
+	_err := CacheStorage_openName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CacheStorage_hasName :: proc(c: ^Call, name: string) -> (bool, Api_Error)
+@(private = "file")
+_t_caches_CacheStorage_hasName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_hasName", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "caches.CacheStorage_hasName", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "caches.CacheStorage_hasName: argument name is not valid UTF-8")
+	}
+	_r, _err := CacheStorage_hasName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CacheStorage_deleteName :: proc(c: ^Call, name: string) -> (bool, Api_Error)
+@(private = "file")
+_t_caches_CacheStorage_deleteName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.CacheStorage_deleteName", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "caches.CacheStorage_deleteName", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "caches.CacheStorage_deleteName: argument name is not valid UTF-8")
+	}
+	_r, _err := CacheStorage_deleteName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// CacheStorage_names :: proc(c: ^Call) -> (string, Api_Error)
+@(private = "file")
+_t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "caches.CacheStorage_names", "result buffer") }
+	_r, _err := CacheStorage_names(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (string, Api_Error)
+@(private = "file")
+_t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "cache") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "url") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "method") }
+	_on := wasm.addr(&f, a[9])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[8]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "result buffer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_matchIds: argument cache is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_matchIds: argument url is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_matchIds: argument method is not valid UTF-8")
+	}
+	_p3 := a[6].i32 != 0
+	_p4 := a[7].i32 != 0
+	_r, _err := Cache_matchIds(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Cache_entryHead :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)
+@(private = "file")
+_t_caches_Cache_entryHead :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryHead", "cache") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "caches.Cache_entryHead", "result buffer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryHead: argument cache is not valid UTF-8")
+	}
+	_p1 := u64(a[2].i64)
+	_r, _err := Cache_entryHead(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]u8, Api_Error)
+@(private = "file")
+_t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryBody", "cache") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "caches.Cache_entryBody", "result buffer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryBody: argument cache is not valid UTF-8")
+	}
+	_p1 := u64(a[2].i64)
+	_r, _err := Cache_entryBody(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Cache_putEntry :: proc(c: ^Call, cache: string, url: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error
+@(private = "file")
+_t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "cache") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "url") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "status_text") }
+	_n4 := wasm.addr(&f, a[8])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[7]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "response_url") }
+	_n5 := wasm.addr(&f, a[10])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[9]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "headers") }
+	_n6 := wasm.addr(&f, a[12])
+	_s6, _k6 := wasm.span(&f, wasm.addr(&f, a[11]), _n6)
+	if !_k6 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "body") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument cache is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument url is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument status_text is not valid UTF-8")
+	}
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument response_url is not valid UTF-8")
+	}
+	_p5 := string(_s5[:_n5])
+	if !wasm.valid_utf8(_p5) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument headers is not valid UTF-8")
+	}
+	_p6 := _s6[:_n6]
+	_p2 := a[4].i32
+	_err := Cache_putEntry(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (bool, Api_Error)
+@(private = "file")
+_t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "cache") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "url") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "method") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "caches.Cache_deleteEntries: argument cache is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "caches.Cache_deleteEntries: argument url is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "caches.Cache_deleteEntries: argument method is not valid UTF-8")
+	}
+	_p3 := a[6].i32 != 0
+	_p4 := a[7].i32 != 0
+	_r, _err := Cache_deleteEntries(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
 	a[0] = {}
 	a[0].i32 = 0
 	return nil
@@ -9881,6 +10284,792 @@ _t_dom_Element_setCustomState :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	return nil
 }
 
+// DataTransfer_create :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_dnd_DataTransfer_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := DataTransfer_create(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// DataTransfer_get_dropEffect :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_get_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_dropEffect", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_get_dropEffect: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_get_dropEffect: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_get_dropEffect(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_set_dropEffect :: proc(c: ^Call, dt: Api_DataTransfer, value: string)
+@(private = "file")
+_t_dnd_DataTransfer_set_dropEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_dropEffect", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_set_dropEffect: argument value is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_set_dropEffect: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_set_dropEffect: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_set_dropEffect(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_get_effectAllowed :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_get_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_get_effectAllowed", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_get_effectAllowed: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_get_effectAllowed: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_get_effectAllowed(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_set_effectAllowed :: proc(c: ^Call, dt: Api_DataTransfer, value: string)
+@(private = "file")
+_t_dnd_DataTransfer_set_effectAllowed :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_set_effectAllowed", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_set_effectAllowed: argument value is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_set_effectAllowed: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_set_effectAllowed: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_set_effectAllowed(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_getData :: proc(c: ^Call, dt: Api_DataTransfer, format: string) -> string
+@(private = "file")
+_t_dnd_DataTransfer_getData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_getData", "format") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_getData", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_getData: argument format is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_getData: argument format is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_getData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_getData: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_getData(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_setData :: proc(c: ^Call, dt: Api_DataTransfer, format: string, data: string)
+@(private = "file")
+_t_dnd_DataTransfer_setData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_setData", "format") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_setData", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_setData: argument format is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument format is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_setData: argument data is not valid UTF-8") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument data is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_setData: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_setData(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_clearData :: proc(c: ^Call, dt: Api_DataTransfer, format: Maybe(string))
+@(private = "file")
+_t_dnd_DataTransfer_clearData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_clearData", "format") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			if f.inst.lenient { return _fail_lenient(&c, a, .Type, "dnd.DataTransfer_clearData: argument format is not valid UTF-8") }
+			return wasm.trap_new("dnd.DataTransfer_clearData: argument format is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_clearData: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_clearData: argument dt is not a live DataTransfer")
+	}
+	DataTransfer_clearData(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_setDragImage :: proc(c: ^Call, dt: Api_DataTransfer, image: Api_Element, x: i32, y: i32)
+@(private = "file")
+_t_dnd_DataTransfer_setDragImage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_setDragImage: argument dt is not a live DataTransfer")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	_p1.data = lookup_Element(&c, _p1.handle)
+	if _p1.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_setDragImage: argument image is not a live Element") }
+		return wasm.trap_new("dnd.DataTransfer_setDragImage: argument image is not a live Element")
+	}
+	_p2 := a[2].i32
+	_p3 := a[3].i32
+	DataTransfer_setDragImage(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// DataTransfer_typeList :: proc(c: ^Call, dt: Api_DataTransfer) -> string
+@(private = "file")
+_t_dnd_DataTransfer_typeList :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_typeList", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_typeList: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_typeList: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_typeList(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemCount :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_itemCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemCount: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_itemCount: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_itemCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// DataTransfer_itemKind :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (Api_DragItemKind, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemKind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 4)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemKind", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemKind: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemKind(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(_rs), i32(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_itemType :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemType", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dnd.DataTransfer_itemType: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemType(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemString :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemString", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dnd.DataTransfer_itemString: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemString(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DataTransfer_itemFile :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemFile", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_itemFile: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemFile(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addString :: proc(c: ^Call, dt: Api_DataTransfer, data: string, type: string) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addString", "data") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addString", "type") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addString: argument data is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addString: argument type is not valid UTF-8")
+	}
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addString: argument dt is not a live DataTransfer")
+	}
+	_err := DataTransfer_addString(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addFile :: proc(c: ^Call, dt: Api_DataTransfer, file: Api_LocalFile) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addFile: argument dt is not a live DataTransfer")
+	}
+	_p1 := Api_LocalFile{handle = u64(a[1].i64)}
+	_p1.data = lookup_LocalFile(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addFile: argument file is not a live LocalFile")
+	}
+	_err := DataTransfer_addFile(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_addBytes :: proc(c: ^Call, dt: Api_DataTransfer, name: string, type: string, data: []u8, last_modified: f64) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_addBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "name") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "type") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "dnd.DataTransfer_addBytes", "data") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addBytes: argument name is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dnd.DataTransfer_addBytes: argument type is not valid UTF-8")
+	}
+	_p3 := _s3[:_n3]
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_addBytes: argument dt is not a live DataTransfer")
+	}
+	_p4 := a[7].f64
+	_err := DataTransfer_addBytes(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_removeItem :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_removeItem :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_removeItem: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_err := DataTransfer_removeItem(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_clearItems :: proc(c: ^Call, dt: Api_DataTransfer) -> Api_Error
+@(private = "file")
+_t_dnd_DataTransfer_clearItems :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_clearItems: argument dt is not a live DataTransfer")
+	}
+	_err := DataTransfer_clearItems(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_fileCount :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_fileCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_fileCount: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_fileCount: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_fileCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// DataTransfer_file :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.DataTransfer_file", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.DataTransfer_file: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_file(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_mode :: proc(c: ^Call, dt: Api_DataTransfer) -> i32
+@(private = "file")
+_t_dnd_DataTransfer_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DataTransfer_mode: argument dt is not a live DataTransfer") }
+		return wasm.trap_new("dnd.DataTransfer_mode: argument dt is not a live DataTransfer")
+	}
+	_r := DataTransfer_mode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// LocalFile_name :: proc(c: ^Call, file: Api_LocalFile) -> string
+@(private = "file")
+_t_dnd_LocalFile_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_name", "result buffer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_name: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_name: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_name(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LocalFile_type :: proc(c: ^Call, file: Api_LocalFile) -> string
+@(private = "file")
+_t_dnd_LocalFile_type :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.LocalFile_type", "result buffer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_type: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_type: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_type(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LocalFile_info :: proc(c: ^Call, file: Api_LocalFile) -> Api_LocalFileInfo
+@(private = "file")
+_t_dnd_LocalFile_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 16)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_info", "result pointer") }
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.LocalFile_info: argument file is not a live LocalFile") }
+		return wasm.trap_new("dnd.LocalFile_info: argument file is not a live LocalFile")
+	}
+	_r := LocalFile_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^i64)(&_rs[0]), _r.size)
+	intrinsics.unaligned_store((^f64)(&_rs[8]), _r.last_modified)
+	return nil
+}
+
+// LocalFile_read :: proc(c: ^Call, file: Api_LocalFile, offset: i64, into: []u8) -> (i64, Api_Error)
+@(private = "file")
+_t_dnd_LocalFile_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "into") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.LocalFile_read", "result pointer") }
+	_p2 := _s2[:_n2]
+	_p0 := Api_LocalFile{handle = u64(a[0].i64)}
+	_p0.data = lookup_LocalFile(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.LocalFile_read: argument file is not a live LocalFile")
+	}
+	_p1 := a[1].i64
+	_r, _err := LocalFile_read(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DragEvent_dataTransfer :: proc(c: ^Call, event: Api_Event) -> u64
+@(private = "file")
+_t_dnd_DragEvent_dataTransfer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.DragEvent_dataTransfer: argument event is not a live Event") }
+		return wasm.trap_new("dnd.DragEvent_dataTransfer: argument event is not a live Event")
+	}
+	_r := DragEvent_dataTransfer(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// InputFiles_count :: proc(c: ^Call, input: Api_Element) -> i32
+@(private = "file")
+_t_dnd_InputFiles_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dnd.InputFiles_count: argument input is not a live Element") }
+		return wasm.trap_new("dnd.InputFiles_count: argument input is not a live Element")
+	}
+	_r := InputFiles_count(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// InputFiles_item :: proc(c: ^Call, input: Api_Element, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_dnd_InputFiles_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dnd.InputFiles_item", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_item: argument input is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r, _err := InputFiles_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// InputFiles_assign :: proc(c: ^Call, input: Api_Element, from: Api_DataTransfer) -> Api_Error
+@(private = "file")
+_t_dnd_InputFiles_assign :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_assign: argument input is not a live Element")
+	}
+	_p1 := Api_DataTransfer{handle = u64(a[1].i64)}
+	_p1.data = lookup_DataTransfer(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dnd.InputFiles_assign: argument from is not a live DataTransfer")
+	}
+	_err := InputFiles_assign(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Document_readyState :: proc(c: ^Call) -> string
 @(private = "file")
 _t_dom_Document_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -12608,13 +13797,148 @@ _t_dom_HTMLTemplateElement_content :: proc "c" (env: rawptr, caller: wasm.Caller
 	return nil
 }
 
+// TouchEvent_count :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind) -> i32
+@(private = "file")
+_t_events_TouchEvent_count :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.TouchEvent_count: argument event is not a live Event") }
+		return wasm.trap_new("events.TouchEvent_count: argument event is not a live Event")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_TouchListKind(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "events.TouchEvent_count: argument list is not a TouchListKind") }
+		return wasm.trap_new("events.TouchEvent_count: argument list is not a TouchListKind")
+	}
+	_p1 := Api_TouchListKind(_e1)
+	_r := TouchEvent_count(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// TouchEvent_touch :: proc(c: ^Call, event: Api_Event, list: Api_TouchListKind, index: i32) -> (Api_TouchPoint, Api_Error)
+@(private = "file")
+_t_events_TouchEvent_touch :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 96)
+	if !_rk { return wasm.trap_bounds(&f, "events.TouchEvent_touch", "result pointer") }
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.TouchEvent_touch: argument event is not a live Event")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_TouchListKind(_e1) {
+		return _fail_status(&c, a, .Invalid_Argument, "events.TouchEvent_touch: argument list is not a TouchListKind")
+	}
+	_p1 := Api_TouchListKind(_e1)
+	_p2 := a[2].i32
+	_r, _err := TouchEvent_touch(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i32)(&_rs[0]), _r.identifier)
+	intrinsics.unaligned_store((^u64)(&_rs[8]), _r.target)
+	intrinsics.unaligned_store((^f64)(&_rs[16]), _r.client_x)
+	intrinsics.unaligned_store((^f64)(&_rs[24]), _r.client_y)
+	intrinsics.unaligned_store((^f64)(&_rs[32]), _r.screen_x)
+	intrinsics.unaligned_store((^f64)(&_rs[40]), _r.screen_y)
+	intrinsics.unaligned_store((^f64)(&_rs[48]), _r.page_x)
+	intrinsics.unaligned_store((^f64)(&_rs[56]), _r.page_y)
+	intrinsics.unaligned_store((^f64)(&_rs[64]), _r.radius_x)
+	intrinsics.unaligned_store((^f64)(&_rs[72]), _r.radius_y)
+	intrinsics.unaligned_store((^f64)(&_rs[80]), _r.rotation_angle)
+	intrinsics.unaligned_store((^f64)(&_rs[88]), _r.force)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_set :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error
+@(private = "file")
+_t_events_PointerCapture_set :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.PointerCapture_set: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := PointerCapture_set(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_release :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> Api_Error
+@(private = "file")
+_t_events_PointerCapture_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "events.PointerCapture_release: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_err := PointerCapture_release(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// PointerCapture_has :: proc(c: ^Call, element: Api_Element, pointer_id: i32) -> bool
+@(private = "file")
+_t_events_PointerCapture_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "events.PointerCapture_has: argument element is not a live Element") }
+		return wasm.trap_new("events.PointerCapture_has: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_r := PointerCapture_has(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData
 @(private = "file")
 _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 128)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 200)
 	if !_rk { return wasm.trap_bounds(&f, "events.Event_uiData", "result pointer") }
 	_p0 := Api_Event{handle = u64(a[0].i64)}
 	_p0.data = lookup_Event(&c, _p0.handle)
@@ -12645,6 +13969,16 @@ _t_events_Event_uiData :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	intrinsics.unaligned_store((^u32)(&_rs[116]), _r.location)
 	intrinsics.unaligned_store((^u32)(&_rs[120]), _r.repeat)
 	intrinsics.unaligned_store((^u32)(&_rs[124]), _r.delta_mode)
+	intrinsics.unaligned_store((^i32)(&_rs[128]), _r.pointer_id)
+	intrinsics.unaligned_store((^u32)(&_rs[132]), _r.pointer_type)
+	intrinsics.unaligned_store((^u32)(&_rs[136]), _r.is_primary)
+	intrinsics.unaligned_store((^f64)(&_rs[144]), _r.pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[152]), _r.tangential_pressure)
+	intrinsics.unaligned_store((^f64)(&_rs[160]), _r.width)
+	intrinsics.unaligned_store((^f64)(&_rs[168]), _r.height)
+	intrinsics.unaligned_store((^f64)(&_rs[176]), _r.tilt_x)
+	intrinsics.unaligned_store((^f64)(&_rs[184]), _r.tilt_y)
+	intrinsics.unaligned_store((^f64)(&_rs[192]), _r.twist)
 	return nil
 }
 
@@ -16623,6 +17957,252 @@ _t_dom_Document_partOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm
 	return nil
 }
 
+// DataTransfer_itemEntry :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u64, Api_Error)
+@(private = "file")
+_t_entries_DataTransfer_itemEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "entries.DataTransfer_itemEntry", "result pointer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "entries.DataTransfer_itemEntry: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemEntry(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// FsEntry_info :: proc(c: ^Call, entry: Api_FsEntry) -> Api_FsEntryInfo
+@(private = "file")
+_t_entries_FsEntry_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "entries.FsEntry_info", "result pointer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_info: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_info: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^u8)(&_rs[0]), u8(1 if _r.is_dir else 0))
+	return nil
+}
+
+// FsEntry_name :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_name", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_name: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_name: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_name(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_fullPath :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_fullPath :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_fullPath", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_fullPath: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_fullPath: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_fullPath(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_filesystemName :: proc(c: ^Call, entry: Api_FsEntry) -> string
+@(private = "file")
+_t_entries_FsEntry_filesystemName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "entries.FsEntry_filesystemName", "result buffer") }
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_filesystemName: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_filesystemName: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_filesystemName(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// FsEntry_parent :: proc(c: ^Call, entry: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_parent: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_parent: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_parent(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_file :: proc(c: ^Call, entry: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_file: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_file: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_file(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_lookup :: proc(c: ^Call, dir: Api_FsEntry, path: string, directory: bool) -> u64
+@(private = "file")
+_t_entries_FsEntry_lookup :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "entries.FsEntry_lookup", "path") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "entries.FsEntry_lookup: argument path is not valid UTF-8") }
+		return wasm.trap_new("entries.FsEntry_lookup: argument path is not valid UTF-8")
+	}
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_lookup: argument dir is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_lookup: argument dir is not a live FsEntry")
+	}
+	_p2 := a[3].i32 != 0
+	_r := FsEntry_lookup(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsEntry_createReader :: proc(c: ^Call, dir: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_createReader :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_createReader: argument dir is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_createReader: argument dir is not a live FsEntry")
+	}
+	_r := FsEntry_createReader(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsReader_read :: proc(c: ^Call, reader: Api_FsReader) -> u64
+@(private = "file")
+_t_entries_FsReader_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsReader{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsReader(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsReader_read: argument reader is not a live FsReader") }
+		return wasm.trap_new("entries.FsReader_read: argument reader is not a live FsReader")
+	}
+	_r := FsReader_read(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// FsReader_entry :: proc(c: ^Call, reader: Api_FsReader, index: i32) -> u64
+@(private = "file")
+_t_entries_FsReader_entry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsReader{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsReader(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsReader_entry: argument reader is not a live FsReader") }
+		return wasm.trap_new("entries.FsReader_entry: argument reader is not a live FsReader")
+	}
+	_p1 := a[1].i32
+	_r := FsReader_entry(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // EventTarget_dispatchEngineEvent :: proc(c: ^Call, target: u64, type: string, init: Api_EventInit, engine_id: i64, time_stamp: f64) -> (bool, Api_Error)
 @(private = "file")
 _t_events_EventTarget_dispatchEngineEvent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -18623,6 +20203,20 @@ _t_navigator_Navigator_onLine :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	a[0] = {}
 	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Navigator_maxTouchPoints :: proc(c: ^Call) -> i32
+@(private = "file")
+_t_navigator_Navigator_maxTouchPoints :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Navigator_maxTouchPoints(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
 	return nil
 }
 
@@ -21058,6 +22652,50 @@ _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts :: proc "c" (env: rawptr
 	return nil
 }
 
+// Broadcast_open :: proc(c: ^Call, name: string) -> u64
+@(private = "file")
+_t_ports_Broadcast_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "ports.Broadcast_open", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "ports.Broadcast_open: argument name is not valid UTF-8") }
+		return wasm.trap_new("ports.Broadcast_open: argument name is not valid UTF-8")
+	}
+	_r := Broadcast_open(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Broadcast_post :: proc(c: ^Call, end: u64, data: []u8) -> Api_Error
+@(private = "file")
+_t_ports_Broadcast_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "ports.Broadcast_post", "data") }
+	_p1 := _s1[:_n1]
+	_p0 := u64(a[0].i64)
+	_err := Broadcast_post(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // MessageEvent_portEnds :: proc(c: ^Call, event: Api_Event) -> []u8
 @(private = "file")
 _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -21078,6 +22716,342 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	copy(_os[:_on], _r)
 	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string) -> (u64, Api_Error)
+@(private = "file")
+_t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "script") }
+	_absent1 := wasm.is_absent(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), 0 if _absent1 else wasm.addr(&f, a[3]))
+	if !_k1 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "scope") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "update_via_cache") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "serviceworker.ServiceWorker_register: argument script is not valid UTF-8")
+	}
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[3])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_status(&c, a, .Type, "serviceworker.ServiceWorker_register: argument scope is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "serviceworker.ServiceWorker_register: argument update_via_cache is not valid UTF-8")
+	}
+	_r, _err := ServiceWorker_register(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ServiceWorker_ready :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_serviceworker_ServiceWorker_ready :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := ServiceWorker_ready(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -> u64
+@(private = "file")
+_t_serviceworker_ServiceWorker_getRegistration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_getRegistration", "client_url") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "serviceworker.ServiceWorker_getRegistration: argument client_url is not valid UTF-8") }
+		return wasm.trap_new("serviceworker.ServiceWorker_getRegistration: argument client_url is not valid UTF-8")
+	}
+	_r := ServiceWorker_getRegistration(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ServiceWorker_registrationIds :: proc(c: ^Call) -> string
+@(private = "file")
+_t_serviceworker_ServiceWorker_registrationIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_registrationIds", "result buffer") }
+	_r := ServiceWorker_registrationIds(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorker_controller :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_serviceworker_ServiceWorker_controller :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := ServiceWorker_controller(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ServiceWorkerRegistration_info :: proc(c: ^Call, id: u64) -> string
+@(private = "file")
+_t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_info", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := ServiceWorkerRegistration_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool
+@(private = "file")
+_t_serviceworker_ServiceWorkerRegistration_unregisterId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := ServiceWorkerRegistration_unregisterId(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// ServiceWorker_postToWorker :: proc(c: ^Call, id: u64, data: []u8) -> Api_Error
+@(private = "file")
+_t_serviceworker_ServiceWorker_postToWorker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_postToWorker", "data") }
+	_p1 := _s1[:_n1]
+	_p0 := u64(a[0].i64)
+	_err := ServiceWorker_postToWorker(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ServiceWorker_takeMessage :: proc(c: ^Call) -> ([]u8, Api_Error)
+@(private = "file")
+_t_serviceworker_ServiceWorker_takeMessage :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_takeMessage", "result buffer") }
+	_r, _err := ServiceWorker_takeMessage(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorkerGlobalScope_registration :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_serviceworker_ServiceWorkerGlobalScope_registration :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := ServiceWorkerGlobalScope_registration(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ServiceWorkerGlobalScope_scope :: proc(c: ^Call) -> string
+@(private = "file")
+_t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scope", "result buffer") }
+	_r := ServiceWorkerGlobalScope_scope(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorkerGlobalScope_scriptURL :: proc(c: ^Call) -> string
+@(private = "file")
+_t_serviceworker_ServiceWorkerGlobalScope_scriptURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_scriptURL", "result buffer") }
+	_r := ServiceWorkerGlobalScope_scriptURL(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// SwEvent_next :: proc(c: ^Call) -> Api_SwEventInfo
+@(private = "file")
+_t_serviceworker_SwEvent_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
+	if !_rk { return wasm.trap_bounds(&f, "serviceworker.SwEvent_next", "result pointer") }
+	_r := SwEvent_next(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^i32)(&_rs[0]), _r.kind)
+	intrinsics.unaligned_store((^u64)(&_rs[8]), _r.id)
+	intrinsics.unaligned_store((^i32)(&_rs[16]), _r.mode)
+	intrinsics.unaligned_store((^i32)(&_rs[20]), _r.destination)
+	intrinsics.unaligned_store((^u64)(&_rs[24]), _r.client)
+	return nil
+}
+
+// SwEvent_text :: proc(c: ^Call, which: i32) -> string
+@(private = "file")
+_t_serviceworker_SwEvent_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_text", "result buffer") }
+	_p0 := a[0].i32
+	_r := SwEvent_text(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// SwEvent_body :: proc(c: ^Call) -> []u8
+@(private = "file")
+_t_serviceworker_SwEvent_body :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.SwEvent_body", "result buffer") }
+	_r := SwEvent_body(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// SwEvent_done :: proc(c: ^Call)
+@(private = "file")
+_t_serviceworker_SwEvent_done :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	SwEvent_done(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// ServiceWorkerGlobalScope_reply :: proc(c: ^Call, kind: i32, id: u64, code: i64, headers: string, text: string, body: []u8)
+@(private = "file")
+_t_serviceworker_ServiceWorkerGlobalScope_reply :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n3 := wasm.addr(&f, a[4])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[3]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_reply", "headers") }
+	_n4 := wasm.addr(&f, a[6])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[5]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_reply", "text") }
+	_n5 := wasm.addr(&f, a[8])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[7]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerGlobalScope_reply", "body") }
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "serviceworker.ServiceWorkerGlobalScope_reply: argument headers is not valid UTF-8") }
+		return wasm.trap_new("serviceworker.ServiceWorkerGlobalScope_reply: argument headers is not valid UTF-8")
+	}
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "serviceworker.ServiceWorkerGlobalScope_reply: argument text is not valid UTF-8") }
+		return wasm.trap_new("serviceworker.ServiceWorkerGlobalScope_reply: argument text is not valid UTF-8")
+	}
+	_p5 := _s5[:_n5]
+	_p0 := a[0].i32
+	_p1 := u64(a[1].i64)
+	_p2 := a[2].i64
+	ServiceWorkerGlobalScope_reply(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	return nil
 }
 
@@ -22563,143 +24537,153 @@ api_imports := [?]wasm.Import{
 	{module = "async", name = "Buffer_read", fn = _t_async_Buffer_read, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_write", fn = _t_async_Buffer_write, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "Buffer_slice", fn = _t_async_Buffer_slice, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "HTMLCanvasElement_width", fn = _t_canvas_HTMLCanvasElement_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "HTMLCanvasElement_set_width", fn = _t_canvas_HTMLCanvasElement_set_width, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "HTMLCanvasElement_height", fn = _t_canvas_HTMLCanvasElement_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "HTMLCanvasElement_set_height", fn = _t_canvas_HTMLCanvasElement_set_height, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "HTMLCanvasElement_context2d", fn = _t_canvas_HTMLCanvasElement_context2d, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "Canvas_encode", fn = _t_canvas_Canvas_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasRenderingContext2D_canvas", fn = _t_canvas_CanvasRenderingContext2D_canvas, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "OffscreenCanvasRenderingContext2D_canvas", fn = _t_canvas_OffscreenCanvasRenderingContext2D_canvas, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasSettings_alpha", fn = _t_canvas_CanvasSettings_alpha, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasSettings_willReadFrequently", fn = _t_canvas_CanvasSettings_willReadFrequently, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasState_save", fn = _t_canvas_CanvasState_save, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasState_restore", fn = _t_canvas_CanvasState_restore, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasState_reset", fn = _t_canvas_CanvasState_reset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasState_isContextLost", fn = _t_canvas_CanvasState_isContextLost, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasTransform_scale", fn = _t_canvas_CanvasTransform_scale, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_rotate", fn = _t_canvas_CanvasTransform_rotate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_translate", fn = _t_canvas_CanvasTransform_translate, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_transform", fn = _t_canvas_CanvasTransform_transform, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_setTransform", fn = _t_canvas_CanvasTransform_setTransform, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_resetTransform", fn = _t_canvas_CanvasTransform_resetTransform, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTransform_matrixElement", fn = _t_canvas_CanvasTransform_matrixElement, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasCompositing_globalAlpha", fn = _t_canvas_CanvasCompositing_globalAlpha, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasCompositing_set_globalAlpha", fn = _t_canvas_CanvasCompositing_set_globalAlpha, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasCompositing_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_globalCompositeOperation, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasCompositing_set_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_set_globalCompositeOperation, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasStyle_kind", fn = _t_canvas_CanvasStyle_kind, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasStyle_color", fn = _t_canvas_CanvasStyle_color, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasStyle_object", fn = _t_canvas_CanvasStyle_object, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasStyle_setColor", fn = _t_canvas_CanvasStyle_setColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasStyle_setObject", fn = _t_canvas_CanvasStyle_setObject, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasFillStrokeStyles_createLinearGradient", fn = _t_canvas_CanvasFillStrokeStyles_createLinearGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasFillStrokeStyles_createRadialGradient", fn = _t_canvas_CanvasFillStrokeStyles_createRadialGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasFillStrokeStyles_createConicGradient", fn = _t_canvas_CanvasFillStrokeStyles_createConicGradient, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "Canvas_createPattern", fn = _t_canvas_Canvas_createPattern, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasGradient_addColorStop", fn = _t_canvas_CanvasGradient_addColorStop, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasPattern_setTransformMatrix", fn = _t_canvas_CanvasPattern_setTransformMatrix, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_shadowOffsetX, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetX, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_shadowOffsetY, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetY, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasShadowStyles_shadowBlur", fn = _t_canvas_CanvasShadowStyles_shadowBlur, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasShadowStyles_set_shadowBlur", fn = _t_canvas_CanvasShadowStyles_set_shadowBlur, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasShadowStyles_shadowColor", fn = _t_canvas_CanvasShadowStyles_shadowColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasShadowStyles_set_shadowColor", fn = _t_canvas_CanvasShadowStyles_set_shadowColor, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasFilters_filter", fn = _t_canvas_CanvasFilters_filter, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasFilters_set_filter", fn = _t_canvas_CanvasFilters_set_filter, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasRect_clearRect", fn = _t_canvas_CanvasRect_clearRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasRect_fillRect", fn = _t_canvas_CanvasRect_fillRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasRect_strokeRect", fn = _t_canvas_CanvasRect_strokeRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasDrawPath_beginPath", fn = _t_canvas_CanvasDrawPath_beginPath, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasDrawPath_fill", fn = _t_canvas_CanvasDrawPath_fill, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasDrawPath_stroke", fn = _t_canvas_CanvasDrawPath_stroke, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasDrawPath_clip", fn = _t_canvas_CanvasDrawPath_clip, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasDrawPath_isPointInPath", fn = _t_canvas_CanvasDrawPath_isPointInPath, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasDrawPath_isPointInStroke", fn = _t_canvas_CanvasDrawPath_isPointInStroke, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasText_fillText", fn = _t_canvas_CanvasText_fillText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasText_strokeText", fn = _t_canvas_CanvasText_strokeText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasText_measureText", fn = _t_canvas_CanvasText_measureText, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "TextMetrics_width", fn = _t_canvas_TextMetrics_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_actualBoundingBoxLeft", fn = _t_canvas_TextMetrics_actualBoundingBoxLeft, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_actualBoundingBoxRight", fn = _t_canvas_TextMetrics_actualBoundingBoxRight, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_fontBoundingBoxAscent", fn = _t_canvas_TextMetrics_fontBoundingBoxAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_fontBoundingBoxDescent", fn = _t_canvas_TextMetrics_fontBoundingBoxDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_actualBoundingBoxAscent", fn = _t_canvas_TextMetrics_actualBoundingBoxAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_actualBoundingBoxDescent", fn = _t_canvas_TextMetrics_actualBoundingBoxDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_emHeightAscent", fn = _t_canvas_TextMetrics_emHeightAscent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_emHeightDescent", fn = _t_canvas_TextMetrics_emHeightDescent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_hangingBaseline", fn = _t_canvas_TextMetrics_hangingBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_alphabeticBaseline", fn = _t_canvas_TextMetrics_alphabeticBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "TextMetrics_ideographicBaseline", fn = _t_canvas_TextMetrics_ideographicBaseline, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasDrawImage_drawImage", fn = _t_canvas_CanvasDrawImage_drawImage, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasImageData_maxBytes", fn = _t_canvas_CanvasImageData_maxBytes, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasImageData_get", fn = _t_canvas_CanvasImageData_get, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasImageData_put", fn = _t_canvas_CanvasImageData_put, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_set_lineWidth, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_lineCap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_set_lineCap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_lineJoin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_set_lineJoin, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_miterLimit, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_set_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_set_miterLimit, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_lineDashOffset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_setLineDash", fn = _t_canvas_CanvasPathDrawingStyles_setLineDash, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashCount", fn = _t_canvas_CanvasPathDrawingStyles_lineDashCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashAt", fn = _t_canvas_CanvasPathDrawingStyles_lineDashAt, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_lang", fn = _t_canvas_CanvasTextDrawingStyles_lang, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_lang", fn = _t_canvas_CanvasTextDrawingStyles_set_lang, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_font", fn = _t_canvas_CanvasTextDrawingStyles_font, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_font", fn = _t_canvas_CanvasTextDrawingStyles_set_font, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_textAlign, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_set_textAlign, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_textBaseline, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_set_textBaseline, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_direction", fn = _t_canvas_CanvasTextDrawingStyles_direction, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_direction", fn = _t_canvas_CanvasTextDrawingStyles_set_direction, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_letterSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_letterSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_wordSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_wordSpacing, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_fontKerning, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_set_fontKerning, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_fontStretch, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_set_fontStretch, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_fontVariantCaps, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_textRendering, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "CanvasTextDrawingStyles_set_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_set_textRendering, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_closePath", fn = _t_canvas_CanvasPath_closePath, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_moveTo", fn = _t_canvas_CanvasPath_moveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_lineTo", fn = _t_canvas_CanvasPath_lineTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_quadraticCurveTo", fn = _t_canvas_CanvasPath_quadraticCurveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_bezierCurveTo", fn = _t_canvas_CanvasPath_bezierCurveTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_arcTo", fn = _t_canvas_CanvasPath_arcTo, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasPath_rect", fn = _t_canvas_CanvasPath_rect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "CanvasPath_roundRect", fn = _t_canvas_CanvasPath_roundRect, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasPath_arc", fn = _t_canvas_CanvasPath_arc, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "CanvasPath_ellipse", fn = _t_canvas_CanvasPath_ellipse, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "Path2D_create", fn = _t_canvas_Path2D_create, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "Path2D_addPath", fn = _t_canvas_Path2D_addPath, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "OffscreenCanvas_create", fn = _t_canvas_OffscreenCanvas_create, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "OffscreenCanvas_width", fn = _t_canvas_OffscreenCanvas_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "OffscreenCanvas_height", fn = _t_canvas_OffscreenCanvas_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "canvas", name = "OffscreenCanvas_set_width", fn = _t_canvas_OffscreenCanvas_set_width, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "OffscreenCanvas_set_height", fn = _t_canvas_OffscreenCanvas_set_height, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "OffscreenCanvas_context2d", fn = _t_canvas_OffscreenCanvas_context2d, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "OffscreenCanvas_transferToImageBitmap", fn = _t_canvas_OffscreenCanvas_transferToImageBitmap, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "ImageBitmap_width", fn = _t_canvas_ImageBitmap_width, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "ImageBitmap_height", fn = _t_canvas_ImageBitmap_height, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "CacheStorage_check", fn = _t_caches_CacheStorage_check, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "CacheStorage_openName", fn = _t_caches_CacheStorage_openName, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "CacheStorage_hasName", fn = _t_caches_CacheStorage_hasName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "CacheStorage_deleteName", fn = _t_caches_CacheStorage_deleteName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "CacheStorage_names", fn = _t_caches_CacheStorage_names, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_matchIds", fn = _t_caches_Cache_matchIds, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_entryHead", fn = _t_caches_Cache_entryHead, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_entryBody", fn = _t_caches_Cache_entryBody, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_putEntry", fn = _t_caches_Cache_putEntry, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "Cache_deleteEntries", fn = _t_caches_Cache_deleteEntries, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_width", fn = _t_canvas_HTMLCanvasElement_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_set_width", fn = _t_canvas_HTMLCanvasElement_set_width, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "HTMLCanvasElement_height", fn = _t_canvas_HTMLCanvasElement_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_set_height", fn = _t_canvas_HTMLCanvasElement_set_height, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "HTMLCanvasElement_context2d", fn = _t_canvas_HTMLCanvasElement_context2d, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_encode", fn = _t_canvas_Canvas_encode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasRenderingContext2D_canvas", fn = _t_canvas_CanvasRenderingContext2D_canvas, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvasRenderingContext2D_canvas", fn = _t_canvas_OffscreenCanvasRenderingContext2D_canvas, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasSettings_alpha", fn = _t_canvas_CanvasSettings_alpha, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasSettings_willReadFrequently", fn = _t_canvas_CanvasSettings_willReadFrequently, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasState_save", fn = _t_canvas_CanvasState_save, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_restore", fn = _t_canvas_CanvasState_restore, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_reset", fn = _t_canvas_CanvasState_reset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasState_isContextLost", fn = _t_canvas_CanvasState_isContextLost, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasTransform_scale", fn = _t_canvas_CanvasTransform_scale, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_rotate", fn = _t_canvas_CanvasTransform_rotate, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_translate", fn = _t_canvas_CanvasTransform_translate, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_transform", fn = _t_canvas_CanvasTransform_transform, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_setTransform", fn = _t_canvas_CanvasTransform_setTransform, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_resetTransform", fn = _t_canvas_CanvasTransform_resetTransform, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTransform_matrixElement", fn = _t_canvas_CanvasTransform_matrixElement, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasCompositing_globalAlpha", fn = _t_canvas_CanvasCompositing_globalAlpha, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasCompositing_set_globalAlpha", fn = _t_canvas_CanvasCompositing_set_globalAlpha, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasCompositing_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_globalCompositeOperation, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasCompositing_set_globalCompositeOperation", fn = _t_canvas_CanvasCompositing_set_globalCompositeOperation, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingEnabled, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingEnabled", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingEnabled, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasImageSmoothing_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_imageSmoothingQuality, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasImageSmoothing_set_imageSmoothingQuality", fn = _t_canvas_CanvasImageSmoothing_set_imageSmoothingQuality, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasStyle_kind", fn = _t_canvas_CanvasStyle_kind, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasStyle_color", fn = _t_canvas_CanvasStyle_color, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasStyle_object", fn = _t_canvas_CanvasStyle_object, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasStyle_setColor", fn = _t_canvas_CanvasStyle_setColor, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasStyle_setObject", fn = _t_canvas_CanvasStyle_setObject, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createLinearGradient", fn = _t_canvas_CanvasFillStrokeStyles_createLinearGradient, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createRadialGradient", fn = _t_canvas_CanvasFillStrokeStyles_createRadialGradient, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasFillStrokeStyles_createConicGradient", fn = _t_canvas_CanvasFillStrokeStyles_createConicGradient, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "Canvas_createPattern", fn = _t_canvas_Canvas_createPattern, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasGradient_addColorStop", fn = _t_canvas_CanvasGradient_addColorStop, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPattern_setTransformMatrix", fn = _t_canvas_CanvasPattern_setTransformMatrix, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_shadowOffsetX, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetX", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetX, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_shadowOffsetY, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowOffsetY", fn = _t_canvas_CanvasShadowStyles_set_shadowOffsetY, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowBlur", fn = _t_canvas_CanvasShadowStyles_shadowBlur, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowBlur", fn = _t_canvas_CanvasShadowStyles_set_shadowBlur, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasShadowStyles_shadowColor", fn = _t_canvas_CanvasShadowStyles_shadowColor, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasShadowStyles_set_shadowColor", fn = _t_canvas_CanvasShadowStyles_set_shadowColor, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasFilters_filter", fn = _t_canvas_CanvasFilters_filter, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasFilters_set_filter", fn = _t_canvas_CanvasFilters_set_filter, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_clearRect", fn = _t_canvas_CanvasRect_clearRect, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_fillRect", fn = _t_canvas_CanvasRect_fillRect, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasRect_strokeRect", fn = _t_canvas_CanvasRect_strokeRect, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_beginPath", fn = _t_canvas_CanvasDrawPath_beginPath, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_fill", fn = _t_canvas_CanvasDrawPath_fill, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_stroke", fn = _t_canvas_CanvasDrawPath_stroke, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_clip", fn = _t_canvas_CanvasDrawPath_clip, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasDrawPath_isPointInPath", fn = _t_canvas_CanvasDrawPath_isPointInPath, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasDrawPath_isPointInStroke", fn = _t_canvas_CanvasDrawPath_isPointInStroke, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasText_fillText", fn = _t_canvas_CanvasText_fillText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasText_strokeText", fn = _t_canvas_CanvasText_strokeText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .F64, .F64, .F64, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasText_measureText", fn = _t_canvas_CanvasText_measureText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "TextMetrics_width", fn = _t_canvas_TextMetrics_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxLeft", fn = _t_canvas_TextMetrics_actualBoundingBoxLeft, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxRight", fn = _t_canvas_TextMetrics_actualBoundingBoxRight, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_fontBoundingBoxAscent", fn = _t_canvas_TextMetrics_fontBoundingBoxAscent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_fontBoundingBoxDescent", fn = _t_canvas_TextMetrics_fontBoundingBoxDescent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxAscent", fn = _t_canvas_TextMetrics_actualBoundingBoxAscent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_actualBoundingBoxDescent", fn = _t_canvas_TextMetrics_actualBoundingBoxDescent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_emHeightAscent", fn = _t_canvas_TextMetrics_emHeightAscent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_emHeightDescent", fn = _t_canvas_TextMetrics_emHeightDescent, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_hangingBaseline", fn = _t_canvas_TextMetrics_hangingBaseline, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_alphabeticBaseline", fn = _t_canvas_TextMetrics_alphabeticBaseline, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "TextMetrics_ideographicBaseline", fn = _t_canvas_TextMetrics_ideographicBaseline, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasDrawImage_drawImage", fn = _t_canvas_CanvasDrawImage_drawImage, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageData_maxBytes", fn = _t_canvas_CanvasImageData_maxBytes, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasImageData_get", fn = _t_canvas_CanvasImageData_get, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasImageData_put", fn = _t_canvas_CanvasImageData_put, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_lineWidth, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineWidth", fn = _t_canvas_CanvasPathDrawingStyles_set_lineWidth, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_lineCap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineCap", fn = _t_canvas_CanvasPathDrawingStyles_set_lineCap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_lineJoin, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineJoin", fn = _t_canvas_CanvasPathDrawingStyles_set_lineJoin, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_miterLimit, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_miterLimit", fn = _t_canvas_CanvasPathDrawingStyles_set_miterLimit, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_lineDashOffset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_set_lineDashOffset", fn = _t_canvas_CanvasPathDrawingStyles_set_lineDashOffset, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_setLineDash", fn = _t_canvas_CanvasPathDrawingStyles_setLineDash, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashCount", fn = _t_canvas_CanvasPathDrawingStyles_lineDashCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPathDrawingStyles_lineDashAt", fn = _t_canvas_CanvasPathDrawingStyles_lineDashAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_lang", fn = _t_canvas_CanvasTextDrawingStyles_lang, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_lang", fn = _t_canvas_CanvasTextDrawingStyles_set_lang, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_font", fn = _t_canvas_CanvasTextDrawingStyles_font, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_font", fn = _t_canvas_CanvasTextDrawingStyles_set_font, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_textAlign, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textAlign", fn = _t_canvas_CanvasTextDrawingStyles_set_textAlign, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_textBaseline, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textBaseline", fn = _t_canvas_CanvasTextDrawingStyles_set_textBaseline, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_direction", fn = _t_canvas_CanvasTextDrawingStyles_direction, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_direction", fn = _t_canvas_CanvasTextDrawingStyles_set_direction, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_letterSpacing, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_letterSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_letterSpacing, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_wordSpacing, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_wordSpacing", fn = _t_canvas_CanvasTextDrawingStyles_set_wordSpacing, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_fontKerning, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontKerning", fn = _t_canvas_CanvasTextDrawingStyles_set_fontKerning, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_fontStretch, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontStretch", fn = _t_canvas_CanvasTextDrawingStyles_set_fontStretch, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_fontVariantCaps, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_fontVariantCaps", fn = _t_canvas_CanvasTextDrawingStyles_set_fontVariantCaps, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_textRendering, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "CanvasTextDrawingStyles_set_textRendering", fn = _t_canvas_CanvasTextDrawingStyles_set_textRendering, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_closePath", fn = _t_canvas_CanvasPath_closePath, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_moveTo", fn = _t_canvas_CanvasPath_moveTo, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_lineTo", fn = _t_canvas_CanvasPath_lineTo, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_quadraticCurveTo", fn = _t_canvas_CanvasPath_quadraticCurveTo, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_bezierCurveTo", fn = _t_canvas_CanvasPath_bezierCurveTo, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_arcTo", fn = _t_canvas_CanvasPath_arcTo, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_rect", fn = _t_canvas_CanvasPath_rect, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "CanvasPath_roundRect", fn = _t_canvas_CanvasPath_roundRect, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_arc", fn = _t_canvas_CanvasPath_arc, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "CanvasPath_ellipse", fn = _t_canvas_CanvasPath_ellipse, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64, .F64, .F64, .F64, .F64, .F64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Path2D_create", fn = _t_canvas_Path2D_create, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "Path2D_addPath", fn = _t_canvas_Path2D_addPath, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .F64, .F64, .F64, .F64, .F64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "OffscreenCanvas_create", fn = _t_canvas_OffscreenCanvas_create, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_width", fn = _t_canvas_OffscreenCanvas_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvas_height", fn = _t_canvas_OffscreenCanvas_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "OffscreenCanvas_set_width", fn = _t_canvas_OffscreenCanvas_set_width, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_set_height", fn = _t_canvas_OffscreenCanvas_set_height, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_context2d", fn = _t_canvas_OffscreenCanvas_context2d, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_transferToImageBitmap", fn = _t_canvas_OffscreenCanvas_transferToImageBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_width", fn = _t_canvas_ImageBitmap_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_height", fn = _t_canvas_ImageBitmap_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "console", name = "console_log", fn = _t_console_console_log, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_warn", fn = _t_console_console_warn, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_error", fn = _t_console_console_error, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
@@ -23037,6 +25021,37 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "CustomElements_release", fn = _t_dom_CustomElements_release, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CustomElements_create", fn = _t_dom_CustomElements_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Element_setCustomState", fn = _t_dom_Element_setCustomState, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_create", fn = _t_dnd_DataTransfer_create, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_get_dropEffect", fn = _t_dnd_DataTransfer_get_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_set_dropEffect", fn = _t_dnd_DataTransfer_set_dropEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_get_effectAllowed", fn = _t_dnd_DataTransfer_get_effectAllowed, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_set_effectAllowed", fn = _t_dnd_DataTransfer_set_effectAllowed, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_getData", fn = _t_dnd_DataTransfer_getData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_setData", fn = _t_dnd_DataTransfer_setData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_clearData", fn = _t_dnd_DataTransfer_clearData, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_setDragImage", fn = _t_dnd_DataTransfer_setDragImage, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "DataTransfer_typeList", fn = _t_dnd_DataTransfer_typeList, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemCount", fn = _t_dnd_DataTransfer_itemCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_itemKind", fn = _t_dnd_DataTransfer_itemKind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_itemType", fn = _t_dnd_DataTransfer_itemType, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemString", fn = _t_dnd_DataTransfer_itemString, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "DataTransfer_itemFile", fn = _t_dnd_DataTransfer_itemFile, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addString", fn = _t_dnd_DataTransfer_addString, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addFile", fn = _t_dnd_DataTransfer_addFile, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_addBytes", fn = _t_dnd_DataTransfer_addBytes, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .F64}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .F64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_removeItem", fn = _t_dnd_DataTransfer_removeItem, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_clearItems", fn = _t_dnd_DataTransfer_clearItems, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_fileCount", fn = _t_dnd_DataTransfer_fileCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_file", fn = _t_dnd_DataTransfer_file, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_mode", fn = _t_dnd_DataTransfer_mode, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "LocalFile_name", fn = _t_dnd_LocalFile_name, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_type", fn = _t_dnd_LocalFile_type, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_info", fn = _t_dnd_LocalFile_info, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "LocalFile_read", fn = _t_dnd_LocalFile_read, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DragEvent_dataTransfer", fn = _t_dnd_DragEvent_dataTransfer, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "InputFiles_count", fn = _t_dnd_InputFiles_count, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "InputFiles_item", fn = _t_dnd_InputFiles_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "InputFiles_assign", fn = _t_dnd_InputFiles_assign, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_readyState", fn = _t_dom_Document_readyState, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_currentScript", fn = _t_dom_Document_currentScript, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Window_document", fn = _t_dom_Window_document, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
@@ -23138,6 +25153,11 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "HTMLAnchorElement_text", fn = _t_dom_HTMLAnchorElement_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLAnchorElement_set_text", fn = _t_dom_HTMLAnchorElement_set_text, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "HTMLTemplateElement_content", fn = _t_dom_HTMLTemplateElement_content, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "events", name = "TouchEvent_count", fn = _t_events_TouchEvent_count, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "TouchEvent_touch", fn = _t_events_TouchEvent_touch, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_set", fn = _t_events_PointerCapture_set, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_release", fn = _t_events_PointerCapture_release, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "events", name = "PointerCapture_has", fn = _t_events_PointerCapture_has, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_uiData", fn = _t_events_Event_uiData, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "events", name = "UiEvent_key", fn = _t_events_UiEvent_key, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "UiEvent_code", fn = _t_events_UiEvent_code, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -23316,6 +25336,17 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DOMParser_parseHTMLNode", fn = _t_dom_DOMParser_parseHTMLNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DOMImplementation_createDocumentType", fn = _t_dom_DOMImplementation_createDocumentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_partOf", fn = _t_dom_Document_partOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "DataTransfer_itemEntry", fn = _t_entries_DataTransfer_itemEntry, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "entries", name = "FsEntry_info", fn = _t_entries_FsEntry_info, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "entries", name = "FsEntry_name", fn = _t_entries_FsEntry_name, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_fullPath", fn = _t_entries_FsEntry_fullPath, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_filesystemName", fn = _t_entries_FsEntry_filesystemName, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_parent", fn = _t_entries_FsEntry_parent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_file", fn = _t_entries_FsEntry_file, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_lookup", fn = _t_entries_FsEntry_lookup, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_createReader", fn = _t_entries_FsEntry_createReader, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsReader_read", fn = _t_entries_FsReader_read, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsReader_entry", fn = _t_entries_FsReader_entry, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "EventTarget_dispatchEngineEvent", fn = _t_events_EventTarget_dispatchEngineEvent, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I64, .F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "events", name = "Event_engineId", fn = _t_events_Event_engineId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "events", name = "Event_interface", fn = _t_events_Event_interface, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -23414,6 +25445,7 @@ api_imports := [?]wasm.Import{
 	{module = "navigator", name = "Navigator_get", fn = _t_navigator_Navigator_get, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Navigator_hardwareConcurrency", fn = _t_navigator_Navigator_hardwareConcurrency, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "navigator", name = "Navigator_maxTouchPoints", fn = _t_navigator_Navigator_maxTouchPoints, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_cookieEnabled", fn = _t_navigator_Navigator_cookieEnabled, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Beacon_send", fn = _t_navigator_Beacon_send, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Clipboard_writeText", fn = _t_navigator_Clipboard_writeText, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -23522,7 +25554,26 @@ api_imports := [?]wasm.Import{
 	{module = "ports", name = "Port_close", fn = _t_ports_Port_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "ports", name = "Worker_postSerializedPorts", fn = _t_ports_Worker_postSerializedPorts, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "DedicatedWorkerGlobalScope_postSerializedPorts", fn = _t_ports_DedicatedWorkerGlobalScope_postSerializedPorts, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "ports", name = "Broadcast_open", fn = _t_ports_Broadcast_open, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "ports", name = "Broadcast_post", fn = _t_ports_Broadcast_post, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "MessageEvent_portEnds", fn = _t_ports_MessageEvent_portEnds, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorker_register", fn = _t_serviceworker_ServiceWorker_register, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorker_ready", fn = _t_serviceworker_ServiceWorker_ready, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorker_getRegistration", fn = _t_serviceworker_ServiceWorker_getRegistration, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorker_registrationIds", fn = _t_serviceworker_ServiceWorker_registrationIds, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorker_controller", fn = _t_serviceworker_ServiceWorker_controller, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerRegistration_info", fn = _t_serviceworker_ServiceWorkerRegistration_info, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerRegistration_unregisterId", fn = _t_serviceworker_ServiceWorkerRegistration_unregisterId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorker_postToWorker", fn = _t_serviceworker_ServiceWorker_postToWorker, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorker_takeMessage", fn = _t_serviceworker_ServiceWorker_takeMessage, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerGlobalScope_registration", fn = _t_serviceworker_ServiceWorkerGlobalScope_registration, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerGlobalScope_scope", fn = _t_serviceworker_ServiceWorkerGlobalScope_scope, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerGlobalScope_scriptURL", fn = _t_serviceworker_ServiceWorkerGlobalScope_scriptURL, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "SwEvent_next", fn = _t_serviceworker_SwEvent_next, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "serviceworker", name = "SwEvent_text", fn = _t_serviceworker_SwEvent_text, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "SwEvent_body", fn = _t_serviceworker_SwEvent_body, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "SwEvent_done", fn = _t_serviceworker_SwEvent_done, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
+	{module = "serviceworker", name = "ServiceWorkerGlobalScope_reply", fn = _t_serviceworker_ServiceWorkerGlobalScope_reply, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "storage", name = "Storage_length", fn = _t_storage_Storage_length, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "storage", name = "Storage_key", fn = _t_storage_Storage_key, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "storage", name = "Storage_getItem", fn = _t_storage_Storage_getItem, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

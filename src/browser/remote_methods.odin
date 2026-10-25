@@ -96,6 +96,7 @@ remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.wait":            return m_wait(app, c)
 	case "Wren.click":           return m_click(app, c)
 	case "Wren.drag":            return m_drag(app, c)
+	case "Wren.drop":            return m_drop(app, c)
 	case "Wren.type":            return m_type(app, c)
 	case "Wren.key":             return m_key(app, c)
 	case "Wren.stats":           return m_stats(app, c)
@@ -771,8 +772,19 @@ scale_rgba :: proc(src: []u8, w, h: int, scale: f32) -> (out: []u8, nw, nh: int)
 ////////////////////////////////
 // Input: the events go to the window's queue and take the path of a real device's
 
+// the buttons held, as a real device's events carry them (e.buttons, a drag that needs the left button held)
+@(private = "file")
+inject_held: platform.Mouse_Buttons
+
 @(private = "file")
 inject :: proc(app: ^App, ev: platform.Event) {
+	ev := ev
+	#partial switch ev.kind {
+	case .Mouse_Press: inject_held += {ev.button}
+	case .Mouse_Release: inject_held -= {ev.button}
+	}
+	held := inject_held
+	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(app.win, ev)
 	the_remote.inputs += 1
 	app.frames_requested = max(app.frames_requested, 4)
@@ -896,6 +908,32 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 }
 
+// Wren.drop {x, y, files: [paths], text, url, html, leave}: another application's drag over the window, through the
+// toolkit's drop target path (platform.drop_inject): enter, over, then the drop at (x, y) (with `leave`: it leaves
+// instead). The reply says what the window answered (the effect the app set).
+@(private = "file")
+m_drop :: proc(app: ^App, c: ^Call) -> Reply {
+	pos, ok := point_of(app, c, "x", "y")
+	if !ok { return fail(remote.ERR_PARAMS, "x and y are missing") }
+	d: platform.Drag_Data
+	defer delete(d.files)
+	if arr, has := remote.param_array(c.params, "files"); has {
+		for v in arr { if s, is := v.(json.String); is { append(&d.files, string(s)) } }
+	}
+	d.text, _ = remote.param_string(c.params, "text")
+	d.url, _ = remote.param_string(c.params, "url")
+	d.html, _ = remote.param_string(c.params, "html")
+	if platform.drag_data_empty(d) { return fail(remote.ERR_PARAMS, "give files, text, url or html") }
+	leave, _ := remote.param_bool(c.params, "leave")
+	mods := mods_of(c)
+	if !platform.drop_inject(app.win, .Drop_Enter, pos, &d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
+	platform.drop_inject(app.win, .Drop_Over, pos, mods = mods)
+	platform.drop_inject(app.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
+	the_remote.inputs += 1
+	app.frames_requested = max(app.frames_requested, 4)
+	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
+}
+
 // Wren.drag {x, y, toX, toY, steps, button}
 // Each step gets its own frame: injected at once, the frame's input pass would see the release before the page had
 // the moves (the DOM's mousemove goes out once per frame, after the loop over the events; a press that waits for a
@@ -908,9 +946,68 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 	steps, _ := remote.param_int(c.params, "steps", 8)
 	op := op_new(app, c, .Drag, timeout_of(c), "drag")
 	op.pos, op.to, op.count, op.button = from, to, clamp(steps, 1, 1000), button_of(c)
+	// "via": points passed through on the way (window points may be outside the window: the drag leaves it and comes
+	// back, through the window's own drop target, never the real mouse)
+	if arr, has := remote.param_array(c.params, "via"); has {
+		space, _ := remote.param_string(c.params, "space")
+		s := page_scale(app)
+		for v in arr {
+			pt, is := v.(json.Array)
+			if !is || len(pt) != 2 { continue }
+			num :: proc(v: json.Value) -> (f32, bool) {
+				#partial switch x in v {
+				case json.Float: return f32(x), true
+				case json.Integer: return f32(x), true
+				}
+				return 0, false
+			}
+			x, xok := num(pt[0])
+			y, yok := num(pt[1])
+			if !xok || !yok { continue }
+			p := [2]f32{x, y}
+			append(&op.via, space == "window" ? p : app.page_rect.min + p * s)
+		}
+	}
 	op.until = the_remote.frame_no
 	app.frames_requested = max(app.frames_requested, 3)
 	return Reply{deferred = true}
+}
+
+// The drag's path: its start, the points it passes through, its end (temporary).
+@(private = "file")
+drag_path :: proc(op: ^Remote_Op) -> [][2]f32 {
+	pts := make([dynamic][2]f32, context.temp_allocator)
+	append(&pts, op.pos)
+	append(&pts, ..op.via[:])
+	append(&pts, op.to)
+	return pts[:]
+}
+
+// Where step `k` (1-based, op.count steps per segment) of the drag's path is.
+@(private = "file")
+drag_point :: proc(op: ^Remote_Op, pts: [][2]f32, k: int) -> [2]f32 {
+	segs := len(pts) - 1
+	seg := min((k - 1) / op.count, segs - 1)
+	f := f32((k - 1) - seg * op.count + 1) / f32(op.count)
+	return pts[seg] + (pts[seg + 1] - pts[seg]) * f
+}
+
+// The drag left the window and the shell runs the system's drag (dnd_shell.odin hand_off): the rest of the path, as the
+// steps of a scripted drag through the window's own drop target, the release included. The remote drag is then done.
+remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
+	for op in the_remote.ops {
+		if op.kind != .Drag || (op.stage != 1 && op.stage != 2) { continue }
+		pts := drag_path(op)
+		total := op.count * (len(pts) - 1)
+		steps := make([dynamic]platform.Drag_Step, context.temp_allocator)
+		for k in op.idx + 1 ..= total { append(&steps, platform.Drag_Step{pos = drag_point(op, pts, k)}) }
+		if len(steps) == 0 { append(&steps, platform.Drag_Step{pos = op.to}) }
+		inject_held -= {op.button}   // (released in the system's drag: no release event follows)
+		op.stage = 3
+		op.until = the_remote.frame_no + u64(max(the_remote.cfg.settle_frames, 1))
+		return steps[:], true
+	}
+	return nil, false
 }
 
 // Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
@@ -926,9 +1023,9 @@ drag_step :: proc(app: ^App, op: ^Remote_Op) {
 		op.until = r.frame_no + 2   // (a press may wait one frame for a fresh layout before its gesture starts)
 	case 1:
 		op.idx += 1
-		f := f32(op.idx) / f32(op.count)
-		inject(app, {kind = .Mouse_Move, pos = op.pos + (op.to - op.pos) * f})
-		if op.idx >= op.count { op.stage = 2 }
+		pts := drag_path(op)
+		inject(app, {kind = .Mouse_Move, pos = drag_point(op, pts, op.idx)})
+		if op.idx >= op.count * (len(pts) - 1) { op.stage = 2 }
 		op.until = r.frame_no + 1
 	case 2:
 		inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button})
@@ -1113,7 +1210,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	reset_frames, _ := remote.param_bool(c.params, "resetFrames")
 	gaps := frame_log_intervals()
 	loops := platform.pump_stats(app.win)
-	defer if reset_frames { frame_log_reset(); app.win.stats = {} }
+	defer if reset_frames { frame_log_reset(); drag_probe_reset(); app.win.stats = {} }
 	latency := render.latency_summary(&app.r)
 	latency_on := render.latency_probe_on(&app.r)
 	if reset_latency { render.latency_reset(&app.r) }
@@ -1140,8 +1237,26 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
 	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
+	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
+	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
+	j_bool(&b, "dropTarget", platform.drop_target_enabled(app.win))
+	{
+		lp := dnd_last_picture
+		j_str(&b, "dragPicture", lp.size.x > 0 ? fmt.tprintf("%dx%d@%d,%d rgba=%d,%d,%d,%d", lp.size.x, lp.size.y, lp.hot.x, lp.hot.y, lp.middle[0], lp.middle[1], lp.middle[2], lp.middle[3]) : "")
+	}
+	j_int(&b, "resizeEchoesSkipped", i64(pacer.echoes_skipped))
+	{
+		// the frames of resize bursts that were made, by cause, and the events of those made for events
+		sb := strings.builder_make(context.temp_allocator)
+		for n, c in pacer.resize_causes { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", c, n) } }
+		for n, k in pacer.resize_event_kinds { if n > 0 { fmt.sbprintf(&sb, "ev.%v=%d ", k, n) } }
+		j_str(&b, "resizeFrameCauses", strings.trim_space(strings.to_string(sb)))
+	}
+	if sz, hot, held := platform.drag_image_held(app.win); held { j_str(&b, "dragImage", fmt.tprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y)) } else { j_str(&b, "dragImage", "") }
+	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
+	j_int(&b, "prefsNetApplied", i64(prefs_apply_counts[.Net])); j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
 	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
 	j_str(&b, "backend", render.backend_name())
 	// the process and the state a reset empties (so that a test can see both the cost of what it did and that a reset worked)

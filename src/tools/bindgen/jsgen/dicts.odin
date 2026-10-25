@@ -42,8 +42,27 @@ dict_field_kind :: proc(g: ^Gen, t: ^webidl.Type) -> (k: Dict_Field_Kind, name: 
 	}
 	if r.nullable { return .Value, "", 0, false }
 	if _, ok := g.m.enums[r.name]; ok { return .Enum, r.name, 0, false }
-	if _, ok := g.m.dictionaries[r.name]; ok { return .Dict, r.name, 0, false }
+	if _, ok := g.m.dictionaries[r.name]; ok {
+		// a dictionary that contains itself (RouterCondition's `not`) cannot be a C struct field: kept as a value
+		if dict_reaches(g, r.name, r.name, 0) { return .Value, "", 0, false }
+		return .Dict, r.name, 0, false
+	}
 	return .Value, "", 0, false
+}
+
+// Whether dictionary `from` has, by value, a member of dictionary type `target` (directly or through its members).
+@(private)
+dict_reaches :: proc(g: ^Gen, from, target: string, depth: int) -> bool {
+	if depth > 16 { return false }
+	d := g.m.dictionaries[from]
+	if d == nil { return false }
+	for mb in d.members {
+		r := webidl.resolve(g.m, mb.type)
+		if r.kind != .Named || r.nullable { continue }
+		if _, ok := g.m.dictionaries[r.name]; !ok { continue }
+		if r.name == target || dict_reaches(g, r.name, target, depth + 1) { return true }
+	}
+	return false
 }
 
 // Every dictionary reachable from the arguments of the included interfaces' members, bases first.

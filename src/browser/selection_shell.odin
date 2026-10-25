@@ -262,7 +262,7 @@ selection_shell_frame :: proc(app: ^App) {
 	port := app.page_rect
 	if sshell.scroller != base.NIL_HANDLE {
 		if r, ok := lay.box_of(&t.layout, sshell.scroller, page_viewport(app), t.scroll); ok {
-			off := app.page_rect.min - {0, r.fixed ? 0 : t.scroll}
+			off := app.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
 			port = {{max(port.min.x, app.page_rect.min.x), max(port.min.y, app.page_rect.min.y)}, {min(port.max.x, app.page_rect.max.x), min(port.max.y, app.page_rect.max.y)}}
 		}
@@ -339,6 +339,9 @@ Sel_Paint :: struct {
 	keep_fg:   bool,
 	api:       lay.Text_Api,
 	find:      ^Find_State,
+	drop:      lay.Text_Pos,   // the caret of text dragged over an editing host (dnd_shell.odin)
+	has_drop:  bool,
+	drop_color: draw.Color,
 }
 
 @(private = "file") spaint: Sel_Paint
@@ -358,6 +361,7 @@ selection_paint_key :: proc() -> u64 {
 		n, a := len(f.matches), f.active
 		mix(&h, mem.ptr_to_bytes(&n)); mix(&h, mem.ptr_to_bytes(&a))
 	}
+	if spaint.has_drop { mix(&h, mem.ptr_to_bytes(&spaint.drop)) }
 	return h
 }
 
@@ -403,6 +407,10 @@ selection_paint_begin :: proc(app: ^App, t: ^Tab) {
 	spaint.doc, spaint.styled = p.doc, p.styled
 	spaint.api = text_api(app)
 	spaint.find = find_paint_state(t)
+	if c, ok := page.drag_caret(p); ok && !c.field {
+		spaint.drop, spaint.has_drop = c.pos, true
+		if cs := style.style_of(p.styled, c.node); cs != nil { spaint.drop_color = to_draw(cs.color) } else { spaint.drop_color = draw.srgb(0, 0, 0, 1) }
+	}
 	if a, b, ok := page.selection_range(p); ok && a != b {
 		spaint.on = true
 		spaint.start, spaint.end = a, b
@@ -443,9 +451,21 @@ span_rect :: proc(l: ^Layout, it: ^lay.Display_Item, r: draw.Rect, a, b: int) ->
 
 // The painter, before item `it` (drawn at `r`, window pixels): highlights of the selection and of find matches.
 selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_Item, r: draw.Rect) {
-	if it.kind != .Text || (!spaint.on && spaint.find == nil) { return }
+	if it.kind != .Text || (!spaint.on && spaint.find == nil && !spaint.has_drop) { return }
 	idx := item_index(l, it)
 	if idx < 0 { return }
+	if spaint.has_drop {
+		// the drop caret, in the piece of text it falls in (the item's start owns a position between two items)
+		if node, lo, hi, ok := lay.item_source(l, spaint.doc, idx); ok && node == spaint.drop.node && spaint.drop.offset >= lo && spaint.drop.offset <= hi {
+			if n := dom.get(spaint.doc, node); n != nil && hi <= len(n.text) {
+				k := lay.source_to_item(it.text, n.text[lo:hi], spaint.drop.offset - lo)
+				x := math.round(r.min.x + lay.item_caret_x(l, it, k, spaint.api))
+				w := max(math.round((r.max.y - r.min.y) / 16), 1)
+				draw.rect(dc, {{x, r.min.y}, {x + w, r.max.y}}, spaint.drop_color)
+			}
+		}
+	}
+	if !spaint.on && spaint.find == nil { return }
 	if spaint.find != nil { find_paint_item(l, dc, it, idx, r) }
 	if !spaint.on { return }
 	a, b, ok := lay.item_range(l, spaint.doc, idx, spaint.start, spaint.end)

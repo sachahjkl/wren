@@ -23,6 +23,7 @@ import "wb:js"
 import lay "wb:layout"
 import "wb:net"
 import "wb:page"
+import "wb:style"
 import "wb:wasm"
 import "wb:tools/testenv"
 
@@ -168,7 +169,11 @@ main :: proc() {
 		lh := new(Layout_Host)
 		lh.set = lay.settings_default()
 		t0 := time.tick_now()
+		// dnd.html builds Touch and TouchEvent: a page told about a touch screen (browser.touch.expose = on)
+		saved_touch := settings.js
+		if name == "dnd.html" { settings.js.touch_handlers, settings.js.touch_points = true, 5 }
 		p := open_page(process, string(src), lh, name, name == "bench.html" ? 600_000 : 120_000)
+		settings.js.touch_handlers, settings.js.touch_points = saved_touch.touch_handlers, saved_touch.touch_points
 		ms := time.duration_milliseconds(time.tick_since(t0))
 		report_page(name)
 		switch name {
@@ -176,6 +181,7 @@ main :: proc() {
 		case "layout.html": layout_cost_checks(p); resize_checks(p, lh)
 		case "events.html": browser_event_checks(p)
 		case "fullscreen.html": fullscreen_checks(p)
+		case "dnd.html": dnd_checks(p)   // dnd.odin
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
 		page.page_close(p)
@@ -297,19 +303,31 @@ resize_checks :: proc(p: ^page.Page, lh: ^Layout_Host) {
 	check(n == 1, fmt.tprintf("a new viewport size fires resize once, innerWidth and innerHeight already the new ones (%d)", n))
 	lh.view = {}
 }
-// javascript.touch_events: without touch handlers 'ontouchstart' in window (Modernizr's touch test) is false
-// everywhere a page looks; with them, they are there; other handlers stay.
+// browser.touch.expose: without a touch screen 'ontouchstart' in window (Modernizr's touch test) is false everywhere a
+// page looks, the Touch* constructors are absent and maxTouchPoints is 0; with one, they are there (other handlers stay).
 touch_checks :: proc(process: ^base.Scope) {
-	fmt.println("-- javascript.touch_events")
-	saved := settings.js.touch_handlers
-	defer settings.js.touch_handlers = saved
-	probe :: `console.log(["ontouchstart" in window, "ontouchend" in document, "ontouchmove" in document.body, "ontouchcancel" in document.createElementNS("http://www.w3.org/2000/svg", "svg"), "onclick" in window].join(" ")); console.log("DONE")`
+	fmt.println("-- browser.touch.expose")
+	saved, saved_points := settings.js.touch_handlers, settings.js.touch_points
+	defer { settings.js.touch_handlers, settings.js.touch_points = saved, saved_points }
+	// what the preference makes of the hardware
+	pts, on_ := js.touch_exposure("auto", 0)
+	check(pts == 0 && !on_, "auto without a touch screen: nothing")
+	pts, on_ = js.touch_exposure("auto", 10)
+	check(pts == 10 && on_, "auto with a 10-point screen: 10, handlers")
+	pts, on_ = js.touch_exposure("on", 0)
+	check(pts == 1 && on_, "on: at least one point")
+	pts, on_ = js.touch_exposure("off", 10)
+	check(pts == 0 && !on_, "off: none")
+	probe :: `console.log(["ontouchstart" in window, "ontouchend" in document, "ontouchmove" in document.body, "ontouchcancel" in document.createElementNS("http://www.w3.org/2000/svg", "svg"), "onclick" in window, "Touch" in window, "TouchEvent" in window, "TouchList" in window, navigator.maxTouchPoints, matchMedia("(any-pointer: coarse)").matches, matchMedia("(pointer: fine)").matches, matchMedia("(hover: hover)").matches].join(" ")); console.log("DONE")`
 	for on in ([]bool{false, true}) {
-		settings.js.touch_handlers = on
+		settings.js.touch_handlers, settings.js.touch_points = on, on ? 10 : 0
+		caps := style.get_pointer_caps()
+		if on { style.set_pointer_caps({fine = true, hover = true, any_fine = true, any_coarse = true, any_hover = true}) }
 		lh := new(Layout_Host)
 		lh.set = lay.settings_default()
 		p := open_page(process, strings.concatenate({"<!doctype html><body><script>", probe, "</script>"}, context.temp_allocator), lh, "touch.html")
-		want := on ? "true true true true true" : "false false false false true"
+		style.set_pointer_caps(caps)
+		want := on ? "true true true true true true true true 10 true true true" : "false false false false true false false false 0 false true true"
 		check(logged(want), fmt.tprintf("touch handlers %v: %s (%v)", on, want, logs[:]))
 		page.page_close(p)
 		lay.destroy(&lh.l)

@@ -120,6 +120,7 @@ Task :: struct {
 	obs_net:   bool,           // the answer came over the network (obs_timing and the others are set)
 	ping:      bool,
 	rewritten: bool,           // the interceptor changed the URL
+	skip_service_worker: bool, // no service worker may answer (Request service-workers mode "none", or it fell back)
 }
 
 ////////////////////////////////
@@ -136,7 +137,7 @@ start :: proc(l: ^Loader, d: Start_Desc) -> base.Handle {
 		loader = l, mode = r.mode, credentials = r.credentials, redirect = r.redirect, destination = r.destination,
 		referrer_policy = r.referrer_policy, no_referrer = r.no_referrer, user_activation = r.user_activation,
 		initiator = r.initiator, max_body = r.max_body, on_event = d.on_event, user = d.user, scope = d.scope, collect = d.collect,
-		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping,
+		script = r.script, parser_inserted = r.parser_inserted, ping = r.ping, skip_service_worker = r.skip_service_worker,
 	}
 	t.headers = http.headers_make()
 	t.raw_headers = http.headers_make()
@@ -305,6 +306,7 @@ run_hop :: proc(t: ^Task) {
 	}
 	if !intercept_hop(t) { return }
 	if !content_security_check(t) { return }
+	if sw_takes(t) { return }   // service_worker.odin: a service worker answers (zero cost while none can)
 	switch t.target.scheme {
 	case "http", "https": http_hop(t)
 	case "data":          data_hop(t)
