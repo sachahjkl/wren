@@ -112,7 +112,11 @@ windows_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 	if l.desktop_lnk != "" { s.parts[.Desktop_Shortcut] = shortcut_status(o, l.desktop_lnk, allocator) }
 
 	// the folder of the program on the user's PATH
-	if dir := exe_dir(o.exe); dir != "" && path_contains(o, dir) { s.parts[.Path].present = true }
+	// (and, when the program ships a console launcher, wren.com beside it: without it `wren ctl` from a terminal is half done)
+	if dir := exe_dir(o.exe); dir != "" && path_contains(o, dir) {
+		s.parts[.Path].present = true
+		s.parts[.Path].partial = o.add_to_path && len(o.launcher) > 0 && !launcher_current(o)
+	}
 
 	// the registration: three pieces; each one is ours when it has the mark or runs the executable
 	client_cmd, client_cmd_ok := reg_get(reg_join(l.client, "shell", "open", "command"), "")
@@ -218,10 +222,12 @@ windows_install :: proc(o: ^Options) -> Result {
 			had := path_contains(o, dir)
 			if r := path_add(o, dir); r.error != .None { return r }
 			path_changed = !had
+			if r := launcher_write(o); r.error != .None { return r }
 		} else {
 			had := path_contains(o, dir)
 			if r := path_take_out(o, dir, force = false); r.error != .None { return r }
 			path_changed = had && !path_contains(o, dir)
+			if r := launcher_remove(o.exe); r.error != .None { return r }
 		}
 	}
 	if o.notify_system {
@@ -357,6 +363,7 @@ windows_remove :: proc(o: ^Options) -> Result {
 		had := path_contains(o, dir)
 		if r := path_take_out(o, dir, force = false); r.error != .None && res.error == .None { res = r }
 		path_changed = had && !path_contains(o, dir)
+		if r := launcher_remove(o.exe); r.error != .None && res.error == .None { res = r }
 	}
 	if o.notify_system {
 		notify_associations()

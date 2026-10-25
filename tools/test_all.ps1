@@ -191,6 +191,7 @@ $script:watchdog = Start-Watchdog
 "test_all: $root, -Jobs $Jobs, test server ports from $BasePort, started $(Get-Date -Format 'HH:mm:ss')"
 # the JavaScript engine every build below embeds (nothing to do when build\js is up to date)
 Step 'JavaScript engine (tools\build_js.ps1; nothing to do when up to date)' { powershell -NoProfile -ExecutionPolicy Bypass -File tools\build_js.ps1 | Out-Null }
+Step 'console launcher: build\wren.com (src\tools\wrencom; the browser embeds it, so it is built before its tests) and its unit tests (when to wait for wren.exe and when to let go, the command line it hands over)' { $built = (Get-Item build\wren.com -ErrorAction SilentlyContinue).LastWriteTimeUtc; if (-not $built -or @(Get-ChildItem src\tools\wrencom -Filter *.odin | Where-Object { $_.LastWriteTimeUtc -gt $built }).Count) { odin build src/tools/wrencom -vet -subsystem:console -o:size -out:build/wren.com -extra-linker-flags:"/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" 2>&1 | Out-String | Tee-Object -Variable b | Out-Null; if ($LASTEXITCODE) { $b; return } }; odin test src/tools/wrencom -use-separate-modules $MemCheck -vet -out:build/wrencom_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 if ($Jobs -gt 1) { Flush-Steps }
 foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'media', 'canvas2d', 'idb', 'layout', 'forms', 'js', 'page', 'webauthn', 'license', 'desktop', 'instance', 'adblock', 'blocker', 'i18n', 'browser') {
     Step "unit tests: $pkg" { odin test "src/$pkg" -use-separate-modules $MemCheck -collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -out:"build/${pkg}_test.exe" $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
@@ -216,6 +217,13 @@ Step 'the policy file is read beside the executable, never from the working dire
         if ($LASTEXITCODE) { return }
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
+}
+Step 'the console launcher wren.com (tools\wrencom_e2e.ps1: from a terminal wren ctl gives its output and exit code, redirections and pipes included; an address lets go at once; it dies with its child and will not start itself; Setup writes it beside wren.exe with the PATH entry and takes it away with it)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\wrencom_e2e.ps1
 }
 Step 'a program of the working directory never runs in place of the system''s (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for the Windows record; one planted beside the document must not run)' {
     if (-not (Test-WrenBuildFresh)) {

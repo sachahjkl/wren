@@ -263,7 +263,9 @@ What `build.bat` does, each step skipped when it is already up to date:
 5. `tools\build_js.ps1` downloads **Zig 0.15.2** and the **QuickJS-ng 0.17.0** source (both SHA-256 pinned), applies
    the patches of `native/js/patches`, compiles the engine with the browser's bindings to `wasm32-wasi`, and
    pre-initializes it into `build\js\wren_js.wasm`.
-6. `odin build src/browser` links everything into one self-contained `build\wren.exe`, the JavaScript engine
+6. `odin build src/tools/wrencom` builds `build\wren.com`, the console launcher that makes `wren ctl ...` behave in a
+   terminal ([docs/console-launcher.md](docs/console-launcher.md)); `wren.exe` embeds it.
+7. `odin build src/browser` links everything into one self-contained `build\wren.exe`, the JavaScript engine
    included (no DLL beyond the system's and the Visual C++ runtime that Windows ships).
 
 Run it with `build\wren.exe [URL]`. For the demo pages that need a server, build and start the test server first:
