@@ -67,6 +67,12 @@ trailing separator do not matter), the folder is never added twice, and open pro
 "Environment"). The value `PathDir` under `Software\FromentSoftware\Wren` says which folder Wren added: an entry the user put
 there by hand is never taken out (except the folder of a copy that is being uninstalled).
 
+The Path part also holds `wren.com`, the console launcher that makes `wren ctl ...` work in a terminal
+([console-launcher.md](console-launcher.md)): `Options.launcher` carries its bytes (the shell passes the ones embedded in
+`wren.exe`), `install` writes it beside the executable with the PATH entry and takes it away without it, `remove` and the
+uninstall delete it, and the Path part is "incomplete" (Repair) while the entry is there and the launcher is not. A file
+of that name without the launcher's mark is never replaced or deleted.
+
 ## Setup: the installed copy
 
 `src/desktop/install.odin` (platform agnostic) and `src/browser/setup.odin`, `setup_ui.odin` (the dialog).

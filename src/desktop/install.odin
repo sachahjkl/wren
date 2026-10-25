@@ -345,6 +345,11 @@ files_remove :: proc(o: ^Options, dir: string) -> Remove_Files_Result {
 	m, has := manifest_read(manifest_path, context.temp_allocator)
 	names := make([dynamic]string, context.temp_allocator)
 	if has { for f in m.files { append(&names, f) } } else { append(&names, exe_name_of(o.identity)) }
+	// the console launcher is not in the manifest (the PATH option writes and takes it away): it goes with the rest, so that a
+	// launcher a running terminal holds is reported as a leftover like any other file
+	if lf := launcher_file(join_path(dir, exe_name_of(o.identity))); launcher_is_ours(lf) {
+		append(&names, lf[len(strings.trim_right(dir, "\\/")) + 1:])
+	}
 
 	dirs := make(map[string]bool, 8, context.temp_allocator)
 	for f in names {

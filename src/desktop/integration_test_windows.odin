@@ -417,6 +417,107 @@ windows_path_value_is_deleted_when_it_empties :: proc(t: ^testing.T) {
 	testing.expect(t, !ok, "an empty PATH is not left behind")
 }
 
+@(private = "file") LAUNCHER_V1 :: "MZ launcher " + LAUNCHER_MARK + " v1"
+@(private = "file") LAUNCHER_V2 :: "MZ launcher " + LAUNCHER_MARK + " version 2"
+
+@(test)
+windows_console_launcher_follows_the_path_option :: proc(t: ^testing.T) {
+	s := scratch_make()
+	defer scratch_destroy(&s)
+	o := &s.opts
+	o.launcher = transmute([]byte)string(LAUNCHER_V1)
+	com := fmt.tprintf("%s\\v1\\wren.com", s.dir)
+
+	// the option off: no launcher
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect(t, !os.exists(com), "no PATH entry, no launcher")
+
+	// on: written beside the executable, nowhere else; the status sees it
+	o.add_to_path = true
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect_value(t, read_file(com), LAUNCHER_V1)
+	testing.expect(t, !os.exists(fmt.tprintf("%s\\v2\\wren.com", s.dir)), "only beside the program")
+	state, st := state_of(o)
+	testing.expect_value(t, state, State.Installed)
+	testing.expect(t, st.parts[.Path].present && !st.parts[.Path].partial, "the PATH part is complete")
+
+	// gone from the disk: the PATH part is incomplete, and installing again puts it back
+	testing.expect(t, os.remove(com) == nil, "removed by hand")
+	state, st = state_of(o)
+	testing.expect_value(t, state, State.Repair)
+	testing.expect(t, st.parts[.Path].partial, "the launcher is missing")
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect_value(t, read_file(com), LAUNCHER_V1)
+
+	// another version of the program: replaced, nothing left behind
+	o.launcher = transmute([]byte)string(LAUNCHER_V2)
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect_value(t, read_file(com), LAUNCHER_V2)
+	testing.expect(t, !os.exists(fmt.tprintf("%s.old", com)) && !os.exists(fmt.tprintf("%s.new", com)), "no .old / .new left")
+
+	// the option off again: it goes with the PATH entry
+	o.add_to_path = false
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect(t, !os.exists(com), "unticked: removed")
+
+	// removal takes it too
+	o.add_to_path = true
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect(t, os.is_file(com), "back")
+	testing.expect_value(t, remove(o).error, Error.None)
+	testing.expect(t, !os.exists(com), "removed with the integration")
+}
+
+@(test)
+windows_console_launcher_never_replaces_or_deletes_another_program :: proc(t: ^testing.T) {
+	s := scratch_make()
+	defer scratch_destroy(&s)
+	o := &s.opts
+	o.launcher = transmute([]byte)string(LAUNCHER_V1)
+	o.add_to_path = true
+	com := fmt.tprintf("%s\\v1\\wren.com", s.dir)
+	testing.expect(t, os.write_entire_file(com, "somebody else's wren.com") == nil, "a file of that name")
+	r := install(o)
+	testing.expect_value(t, r.error, Error.Io)
+	testing.expect(t, strings.contains(r.detail, "not Wren's console launcher"), r.detail)
+	testing.expect_value(t, read_file(com), "somebody else's wren.com")
+	o.add_to_path = false
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect_value(t, remove(o).error, Error.None)
+	testing.expect_value(t, read_file(com), "somebody else's wren.com")
+	// and an executable without a launcher in its options writes none
+	_ = os.remove(com)
+	o.launcher = nil
+	o.add_to_path = true
+	testing.expect_value(t, install(o).error, Error.None)
+	testing.expect(t, !os.exists(com), "the program ships without one")
+}
+
+@(test)
+windows_console_launcher_goes_with_the_install_folder :: proc(t: ^testing.T) {
+	tr := tree_make()
+	defer tree_destroy(&tr)
+	testing.expect_value(t, files_install(plan_of(&tr)).error, Error.None)
+	com := fmt.tprintf("%s\\wren.com", tr.dst)
+	testing.expect(t, os.write_entire_file(com, LAUNCHER_V1) == nil, "the launcher Setup wrote")
+	r := files_remove(&tr.opts, tr.dst)
+	testing.expect_value(t, len(r.leftovers), 0)
+	testing.expect(t, !os.exists(com), "gone")
+	testing.expect(t, r.folder && !os.exists(tr.dst), "so is the folder")
+
+	// a wren.com of someone else keeps the folder
+	testing.expect_value(t, files_install(plan_of(&tr)).error, Error.None)
+	testing.expect(t, os.write_entire_file(com, "not ours") == nil, "another program")
+	r = files_remove(&tr.opts, tr.dst)
+	testing.expect(t, os.is_file(com) && !r.folder, "it stays, and the folder with it")
+}
+
+@(private = "file")
+read_file :: proc(path: string) -> string {
+	data, err := os.read_entire_file(path, context.temp_allocator)
+	return err == nil ? string(data) : "<unreadable>"
+}
+
 @(test)
 windows_record_locates_the_installed_copy :: proc(t: ^testing.T) {
 	s := scratch_make()

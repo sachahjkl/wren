@@ -27,6 +27,7 @@ import "core:strings"
 import "toolkit:draw"
 import "toolkit:ui"
 import "wb:desktop"
+import "wb:i18n"
 
 @(private = "file")
 Grip_Draw :: struct { color: draw.Color }
@@ -112,7 +113,7 @@ status_text :: proc(f: ^Setup_Facts) -> (text, tone: string) {
 // The parts the options want that are not (all) there, in words: "Start menu entry, PATH entry".
 @(private = "file")
 missing_parts :: proc(f: ^Setup_Facts) -> string {
-	names := [desktop.Part]string{.Launcher = "Start menu entry", .Registration = "browser registration", .Icons = "icons", .Desktop_Shortcut = "desktop shortcut", .Path = "PATH entry"}
+	names := [desktop.Part]string{.Launcher = "Start menu entry", .Registration = "browser registration", .Icons = "icons", .Desktop_Shortcut = "desktop shortcut", .Path = i18n.tr("PATH entry and console launcher (wren.com)")}
 	if desktop.menu_name() != "Start menu" { names[.Launcher] = "application menu entry" }
 	out := make([dynamic]string, context.temp_allocator)
 	for p in desktop.Part {
