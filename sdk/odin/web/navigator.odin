@@ -29,6 +29,7 @@ foreign _m_navigator {
 	@(link_name = "Navigator_get") _Navigator_get :: proc(field: NavigatorField, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Navigator_hardwareConcurrency") _Navigator_hardwareConcurrency :: proc() -> i32 ---
 	@(link_name = "Navigator_onLine") _Navigator_onLine :: proc() -> i32 ---
+	@(link_name = "Navigator_maxTouchPoints") _Navigator_maxTouchPoints :: proc() -> i32 ---
 	@(link_name = "Navigator_cookieEnabled") _Navigator_cookieEnabled :: proc() -> i32 ---
 	@(link_name = "Beacon_send") _Beacon_send :: proc(url: [^]u8, url_len: u32, data: [^]u8, data_len: u32, content_type: [^]u8, content_type_len: u32) -> i32 ---
 	@(link_name = "Clipboard_writeText") _Clipboard_writeText :: proc(data: [^]u8, data_len: u32) -> Promise ---
@@ -72,6 +73,11 @@ Navigator_hardwareConcurrency :: proc "contextless" () -> i32 {
 // navigator.onLine: whether the system has a network connection.
 Navigator_onLine :: proc "contextless" () -> bool {
 	return _Navigator_onLine() != 0
+}
+
+// navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
+Navigator_maxTouchPoints :: proc "contextless" () -> i32 {
+	return _Navigator_maxTouchPoints()
 }
 
 // navigator.cookieEnabled: whether the document may use cookies.

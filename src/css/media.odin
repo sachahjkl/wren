@@ -58,7 +58,11 @@ Media_Env :: struct {
 	prefers_more_contrast: bool,
 	prefers_reduced_data: bool,
 	hover:                bool,    // the primary input can hover
-	pointer_fine:         bool,
+	pointer_fine:         bool,    // the primary pointer is precise (a mouse, a pen); else coarse (a finger)
+	pointer_none:         bool,    // there is no pointer at all
+	any_fine:             bool,    // another pointer than the primary one is precise (any-pointer: fine)
+	any_coarse:           bool,    // another pointer is coarse: a touch screen next to a mouse (any-pointer: coarse)
+	any_hover:            bool,    // another pointer can hover
 	color_bits:           int,
 	scripting:            bool,    // scripting is enabled for the document (JavaScript runs)
 }
@@ -435,14 +439,31 @@ eval_feature :: proc(c: Media_Condition, env: Media_Env) -> Tri {
 		cur := env.prefers_reduced_data ? "reduce" : "no-preference"
 		if c.boolean { return env.prefers_reduced_data ? .True : .False }
 		return c.ident == cur ? .True : .False
-	case .Hover, .Any_Hover:
+	case .Hover:
 		cur := env.hover ? "hover" : "none"
 		if c.boolean { return env.hover ? .True : .False }
 		return c.ident == cur ? .True : .False
-	case .Pointer, .Any_Pointer:
-		cur := env.pointer_fine ? "fine" : "coarse"
-		if c.boolean { return .True }
+	case .Any_Hover:
+		// some pointer can hover (the primary one, or another)
+		can := env.hover || env.any_hover
+		if c.boolean { return can ? .True : .False }
+		return (c.ident == "hover") == can ? .True : .False
+	case .Pointer:
+		cur := env.pointer_none ? "none" : (env.pointer_fine ? "fine" : "coarse")
+		if c.boolean { return env.pointer_none ? .False : .True }
 		return c.ident == cur ? .True : .False
+	case .Any_Pointer:
+		// the accuracies of every pointer: a computer with a mouse and a touch screen matches fine and coarse
+		primary := !env.pointer_none
+		fine := (primary && env.pointer_fine) || env.any_fine
+		coarse := (primary && !env.pointer_fine) || env.any_coarse
+		switch {
+		case c.boolean: return fine || coarse ? .True : .False
+		case c.ident == "fine": return fine ? .True : .False
+		case c.ident == "coarse": return coarse ? .True : .False
+		case c.ident == "none": return !fine && !coarse ? .True : .False
+		}
+		return .False
 	case .Display_Mode:
 		return c.boolean || c.ident == "browser" ? .True : .False
 	case .Scripting:

@@ -572,9 +572,6 @@ JSValue wjr_Document_get_visibilityState(JSContext *ctx, JSValueConst t)
 
 /* Pointer capture (Pointer Events §10.1) for the mouse, pointer 1: the state is kept, the shell does not retarget the
  * events to the capturing element. */
-#define MOUSE_POINTER_ID 1
-static uint64_t pointer_capture;
-
 static wj_obj *capture_args(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv, const char *what, int32_t *id)
 {
     wj_obj *o = wj_this(ctx, t, I(Element));
@@ -584,15 +581,15 @@ static wj_obj *capture_args(JSContext *ctx, JSValueConst t, int argc, JSValueCon
     return o;
 }
 
+/* Pointer capture lives in the browser (src/page/pointer_input.odin): it retargets the pointer's events and fires
+ * gotpointercapture / lostpointercapture. */
 JSValue wjr_Element_setPointerCapture(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
 {
     int32_t id;
     wj_obj *o = capture_args(ctx, t, argc, argv, "Element.setPointerCapture", &id);
     if (!o) { return JS_EXCEPTION; }
-    if (id != MOUSE_POINTER_ID) { return wj_throw_dom(ctx, "NotFoundError", "No active pointer with the given id is found."); }
-    if (!wr_Node_isConnected(o->handle)) { return wj_throw_dom(ctx, "InvalidStateError", "The element is not connected."); }
-    pointer_capture = o->handle;
-    return JS_UNDEFINED;
+    int32_t st = wr_PointerCapture_set(o->handle, id);
+    return st < 0 ? wj_throw_status(ctx, st, "Element.setPointerCapture") : JS_UNDEFINED;
 }
 
 JSValue wjr_Element_releasePointerCapture(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
@@ -600,9 +597,8 @@ JSValue wjr_Element_releasePointerCapture(JSContext *ctx, JSValueConst t, int ar
     int32_t id;
     wj_obj *o = capture_args(ctx, t, argc, argv, "Element.releasePointerCapture", &id);
     if (!o) { return JS_EXCEPTION; }
-    if (id != MOUSE_POINTER_ID) { return wj_throw_dom(ctx, "NotFoundError", "No active pointer with the given id is found."); }
-    if (pointer_capture == o->handle) { pointer_capture = 0; }
-    return JS_UNDEFINED;
+    int32_t st = wr_PointerCapture_release(o->handle, id);
+    return st < 0 ? wj_throw_status(ctx, st, "Element.releasePointerCapture") : JS_UNDEFINED;
 }
 
 JSValue wjr_Element_hasPointerCapture(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
@@ -610,7 +606,7 @@ JSValue wjr_Element_hasPointerCapture(JSContext *ctx, JSValueConst t, int argc, 
     int32_t id;
     wj_obj *o = capture_args(ctx, t, argc, argv, "Element.hasPointerCapture", &id);
     if (!o) { return JS_EXCEPTION; }
-    return JS_NewBool(ctx, id == MOUSE_POINTER_ID && pointer_capture == o->handle && wr_Node_isConnected(o->handle));
+    return JS_NewBool(ctx, wr_PointerCapture_has(o->handle, id) != 0);
 }
 
 /* checkVisibility(options): rendered (it has boxes), and with the options, not visibility:hidden / opacity:0 */

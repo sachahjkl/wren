@@ -223,6 +223,14 @@ JSValue web_blob_type(JSContext *ctx, JSValueConst v);
 JSValue web_blob_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len);
 /* A new File */
 JSValue web_file_new(JSContext *ctx, const uint8_t *p, size_t n, const char *type, size_t type_len, const char *name, size_t name_len, double last_modified);
+/* A File for a file of the browser (module dnd's LocalFile handle, taken), read on demand; null for 0. */
+JSValue web_file_from_host(JSContext *ctx, uint64_t local_file);
+/* The wrapper of a FileSystemEntry handle of the browser (module entries; web_entries.c), null for 0. */
+JSValue web_entry_wrap(JSContext *ctx, uint64_t entry);
+/* The browser's file behind a File not read yet (0 otherwise). */
+uint64_t web_file_host(JSValueConst v);
+/* A File's name, type (owned: wj_str_free) and lastModified; false when `v` is not a Blob (or with an exception). */
+bool web_file_meta(JSContext *ctx, JSValueConst v, wj_str *name, wj_str *type, double *last_modified);
 /* The Blob a blob: URL of this realm stands for (URL.createObjectURL), or undefined. */
 JSValue web_blob_url_lookup(JSContext *ctx, const char *url, size_t n);
 
@@ -299,7 +307,8 @@ int wj_web_start(JSContext *ctx, int kind);
 enum {
     WEB_SINGLE_LOCATION, WEB_SINGLE_HISTORY, WEB_SINGLE_NAVIGATOR, WEB_SINGLE_LOCAL_STORAGE, WEB_SINGLE_SESSION_STORAGE,
     WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_CREDENTIALS, WEB_SINGLE_CLIPBOARD,
-    WEB_SINGLE_VISUAL_VIEWPORT, WEB_SINGLE_PERMISSIONS, WEB_SINGLE_FONTS, WEB_SINGLE_COUNT,
+    WEB_SINGLE_VISUAL_VIEWPORT, WEB_SINGLE_PERMISSIONS, WEB_SINGLE_FONTS, WEB_SINGLE_CACHES, WEB_SINGLE_SERVICE_WORKER,
+    WEB_SINGLE_STORAGE, WEB_SINGLE_COUNT,
 };
 /* The singleton `which`, made by `make` the first time (counted result). */
 JSValue web_singleton(JSContext *ctx, int which, JSValue (*make)(JSContext *ctx));

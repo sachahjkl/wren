@@ -47,6 +47,8 @@ Worker_Msg_Kind :: enum u8 {
 	Fetch_Cancel,   // worker -> page: id
 	Fetch_Event,    // page -> worker: id, code = fetch.Event_Kind (see `relay_event`)
 	Port_Wake,      // router -> worker: a message waits for the port end id (ports.odin)
+	Sw_Event,       // page -> service worker: an event to fire (service_worker.odin)
+	Sw_Reply,       // service worker -> page: what it did (service_worker.odin)
 }
 
 Worker_Msg :: struct {
@@ -178,6 +180,7 @@ Worker_Host :: struct {
 	counted:    bool,                   // holds a slot of the process-wide count
 	javascript: bool,                   // its script is JavaScript (js_workers.odin), not a Wasm module
 	pins:       int,                    // being worked on (a message, an error event): not freed before it is unpinned
+	sw:         ^Sw_Registration,       // the registration whose instance this is (service_worker.odin), nil for a Worker
 }
 
 Relay :: struct {
@@ -309,6 +312,7 @@ worker_script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 worker_failed :: proc(h: ^Worker_Host, message: string) {
 	h.state = .Exited
 	worker_uncount(h)
+	if h.sw != nil { sw_instance_error(h, message); return }   // service_worker.odin
 	worker_fire_error(h, message, h.url)
 }
 
@@ -335,6 +339,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.js_web.vendor = strings.clone(p.settings.js_web.vendor)
 	g.settings.forms.password_mask = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
+	if h.sw != nil { sw_global_init(&g.sw, h.sw) }   // service_worker.odin: a service worker's instance
 	g.image = make([]byte, len(image))
 	copy(g.image, image)
 	link_retain(h.link)
@@ -432,6 +437,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		deliver_message(p, h.self, m, h.owner)
 	case .Error:
 		if h.terminated { return }
+		if h.sw != nil { sw_instance_error(h, m.text); return }   // service_worker.odin
 		worker_fire_error(h, m.text, m.text2)
 	case .Console:
 		log(p, Log_Level(m.code), fmt.tprintf("[worker %s] %s", worker_label(h), m.text))
@@ -453,7 +459,9 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 			delete_key(&h.relays, m.id)
 			free(r)
 		}
-	case .Fetch_Event, .Port_Wake:
+	case .Sw_Reply:
+		if !h.terminated { sw_page_reply(h, m) }   // service_worker.odin
+	case .Fetch_Event, .Port_Wake, .Sw_Event:
 	}
 }
 
@@ -648,6 +656,7 @@ Worker_Global :: struct {
 	storage:  ^Storage_Manager,   // the creator's profile storage (IndexedDB: idb_host.odin)
 	storage_key: string,         // the creator's storage key (origin, and the top-level site of a partitioned frame)
 	idb_wake: b32,              // atomic: the IndexedDB manager has an event for this realm (any thread sets it)
+	sw:       Sw_Global,        // a service worker's realm: what it is and the events it has to fire (service_worker.odin)
 }
 
 @(private)
@@ -658,6 +667,7 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	if g.javascript { js.settings_destroy(&g.settings.js) }
 	js_web_settings_destroy(&g.settings.js_web)
 	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
+	sw_global_free(&g.sw)
 	for m in g.inbox { msg_free(m) }
 	delete(g.inbox)
 	free(g)
@@ -745,7 +755,8 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 			case .Message:     deliver_message(p, g.self, m, 0)
 			case .Fetch_Event: worker_fetch_event(p, m)
 			case .Port_Wake:   ports_wake_worker(p, m.id)   // ports.odin
-			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel:
+			case .Sw_Event:    sw_worker_event(p, m); continue   // service_worker.odin (keeps the message)
+			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply:
 			}
 		}
 		msg_free(m)

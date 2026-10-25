@@ -348,6 +348,14 @@ void wj_port_message(uint32_t end_lo, uint32_t end_hi, uint32_t data, uint32_t d
     JSValue ports = web_receive_ports(ctx, list, n_ends);
     free(list);
     JSValue port = JS_DupValue(ctx, bound_find(end));
+    if (wj_unwrap(port, WJ_IFACE_BroadcastChannel)) {
+        /* a BroadcastChannel's end (web_broadcast.c) */
+        extern void web_broadcast_deliver(JSContext *ctx, JSValueConst channel, const uint8_t *data, size_t len);
+        JS_FreeValue(ctx, ports);
+        web_broadcast_deliver(ctx, port, (const uint8_t *)(uintptr_t)data, data_len);
+        JS_FreeValue(ctx, port);
+        return;
+    }
     web_port *pt = port_of(port);
     JSValue value = wj_clone_deserialize_ports(ctx, (const uint8_t *)(uintptr_t)data, data_len, ports);
     JSValue ev;
@@ -372,6 +380,10 @@ void wj_port_message(uint32_t end_lo, uint32_t end_hi, uint32_t data, uint32_t d
     JS_FreeValue(ctx, ev);
     JS_FreeValue(ctx, port);
 }
+
+/* the table of ends bound to objects of this realm, for BroadcastChannel (web_broadcast.c) */
+void web_bound_add(JSContext *ctx, uint64_t end, JSValueConst obj) { bound_add(ctx, end, obj); }
+void web_bound_remove(uint64_t end) { bound_remove(end); }
 
 /* ---- MessagePort ---- */
 

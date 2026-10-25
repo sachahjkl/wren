@@ -18,6 +18,8 @@ foreign _m_ports {
 	@(link_name = "Port_close") _Port_close :: proc(end: u64) ---
 	@(link_name = "Worker_postSerializedPorts") _Worker_postSerializedPorts :: proc(worker: u64, data: [^]u8, data_len: u32, ports: [^]u64, ports_len: u32) -> Error ---
 	@(link_name = "DedicatedWorkerGlobalScope_postSerializedPorts") _DedicatedWorkerGlobalScope_postSerializedPorts :: proc(data: [^]u8, data_len: u32, ports: [^]u64, ports_len: u32) -> Error ---
+	@(link_name = "Broadcast_open") _Broadcast_open :: proc(name: [^]u8, name_len: u32) -> u64 ---
+	@(link_name = "Broadcast_post") _Broadcast_post :: proc(end: u64, data: [^]u8, data_len: u32) -> Error ---
 	@(link_name = "MessageEvent_portEnds") _MessageEvent_portEnds :: proc(event: Event, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
@@ -56,6 +58,18 @@ Worker_postSerializedPorts :: proc "contextless" (worker: u64, data: []u8, ports
 // postMessage(message, transfer) in a worker, with MessagePorts.
 DedicatedWorkerGlobalScope_postSerializedPorts :: proc "contextless" (data: []u8, ports: []u64) -> Error {
 	return _DedicatedWorkerGlobalScope_postSerializedPorts(raw_data(data), u32(len(data)), raw_data(ports), u32(len(ports)))
+}
+
+// new BroadcastChannel(name): a port end of the channel (the realm's origin and the name), owned by the calling
+// realm; 0 for an opaque origin (the object sends and receives nothing). Port_close closes it.
+Broadcast_open :: proc "contextless" (name: string) -> u64 {
+	return _Broadcast_open(raw_data(name), u32(len(name)))
+}
+
+// broadcastChannel.postMessage: the serialized message to every other end of the channel, in every realm.
+// Data_Clone for a message over frames.max_message_bytes.
+Broadcast_post :: proc "contextless" (end: u64, data: []u8) -> Error {
+	return _Broadcast_post(end, raw_data(data), u32(len(data)))
 }
 
 // The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.

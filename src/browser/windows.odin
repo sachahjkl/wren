@@ -328,6 +328,8 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	nw := platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
 	if nw == nil { return nil }
 	platform.set_square_corners(nw, wchrome.cfg.square_corners)
+	dnd_window_attach(nw)   // dnd_shell.odin
+	app_commands_attach(nw.hwnd)   // app_commands.odin
 	if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
 	if nw.size.x <= 0 || nw.size.y <= 0 {
 		cr: win.RECT
@@ -389,6 +391,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	ui.destroy(w.ui)
 	free(w.ui)
 	delete(w.title)
+	dnd_window_detach(w.win)
 	platform.destroy_window(w.win)
 	free(w)
 	if was_front || app.front == w { app.front = nil }
@@ -406,7 +409,7 @@ window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
 	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
 	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
 	paint := platform.take_paint_request(w.win)
-	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || paint || events_waiting
+	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || ui.wake_due(app.ui_state) || paint || events_waiting
 }
 
 
@@ -430,7 +433,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		w.minimized = len(app.windows) > 1 && platform.is_minimized(w.win)
 		causes[i] = window_has_cause(app, w)
 		any_cause ||= causes[i]
-		if ms := ui.wake_ms(app.ui_state); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
+		if ms := ui.wake_in_ms(app.ui_state); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
 	}
 	idled := false
 	if !any_cause {

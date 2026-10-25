@@ -2,6 +2,7 @@ package browser
 
 import "core:strings"
 import win "core:sys/windows"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
@@ -102,6 +103,7 @@ Dropped :: struct { paths: [dynamic]string }
 drop_files_init :: proc(app: ^App) {
 	hwnd := app.win.hwnd
 	if hwnd == nil { return }
+	dnd_init(app)   // dnd_shell.odin: the OLE drop target (drags with their events to the page); WM_DROPFILES stays for an elevated browser
 	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, 0)   // (core:sys/windows declares it without its result)
 	drop_hwnd = hwnd
 	// an elevated browser still takes drops from Explorer (UIPI lets these three messages through). Only an elevated one: a normal
@@ -113,10 +115,13 @@ drop_files_init :: proc(app: ^App) {
 
 @(private = "file")
 drop_files_apply :: proc(app: ^App) {
-	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files"))) }
+	// (with the OLE target, OLE takes the drops: WM_DROPFILES is not asked for)
+	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(app.win))) }
 }
 
 drop_files_destroy :: proc(app: ^App) {
+	dnd_destroy(app)
+	page_input_destroy()
 	if drop_hwnd == nil { return }
 	win.DragAcceptFiles(drop_hwnd, false)
 	RemoveWindowSubclass(drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
@@ -161,8 +166,13 @@ drop_open :: proc(data: rawptr) {
 	defer dropped_free(d)
 	app := the_app
 	if !config.bool_of(&app.prefs, "browser.drop.open_files") { return }
+	open_dropped_paths(app, d.paths[:])
+}
+
+// Files and folders dropped on the window: the first in the current tab, the others in new tabs (in the background).
+open_dropped_paths :: proc(app: ^App, paths: []string) {
 	first := -1
-	for p, i in d.paths {
+	for p, i in paths {
 		address := fetch.file_url_from_path(p, false, context.temp_allocator)   // a folder is redirected to its URL with '/'
 		if i == 0 && current_tab(app) != nil {
 			first = app.current

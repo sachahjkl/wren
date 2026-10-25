@@ -327,6 +327,15 @@ smooth_wheel :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2, precise: bool) {
 	smooth_scroll_by(app, t, node, delta, dur)
 }
 
+// A finger's pan over the page (touch_shell.odin): at once (the content follows the finger), the scroller under `p`
+// that can move that way, else the document. Returns the scroller (NIL: the document), for the fling after it.
+touch_scroll :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
+	if !t.layout.valid { return base.NIL_HANDLE }
+	node := wheel_scroller(app, t, p, d)
+	smooth_scroll_by(app, t, node, {node == base.NIL_HANDLE ? 0 : d.x, d.y}, 0)
+	return node
+}
+
 @(private = "file")
 wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	l := &t.layout

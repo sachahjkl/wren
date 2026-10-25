@@ -137,6 +137,37 @@ JSValue wjr_MediaError_get_message(JSContext *ctx, JSValueConst this_val)
     return e ? web_utf8_string(ctx, (const uint8_t *)e->message, e->len, false) : JS_EXCEPTION;
 }
 
+/* ---- VideoPlaybackQuality: a snapshot of the player's counters (src/page/media_element.odin) ---- */
+
+typedef struct web_quality { double v[5]; } web_quality;   /* creationTime, dropped, total, corrupted, totalFrameDelay */
+
+JSValue wjr_HTMLVideoElement_getVideoPlaybackQuality(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    wj_obj *self = wj_this(ctx, this_val, WJ_IFACE_HTMLVideoElement);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLVideoElement_playbackQuality(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "HTMLVideoElement.getVideoPlaybackQuality"); }
+    web_quality *q = calloc(1, sizeof *q);
+    if (!q) { return JS_ThrowOutOfMemory(ctx); }
+    memcpy(q->v, wj_scratch.data, (size_t)n < sizeof q->v ? (size_t)n : sizeof q->v);
+    return wj_new_object(ctx, WJ_IFACE_VideoPlaybackQuality, q, free);
+}
+
+static JSValue quality_at(JSContext *ctx, JSValueConst this_val, int i, bool integer)
+{
+    web_quality *q = web_this_impl(ctx, this_val, WJ_IFACE_VideoPlaybackQuality);
+    if (!q) { return JS_EXCEPTION; }
+    return integer ? JS_NewUint32(ctx, (uint32_t)q->v[i]) : JS_NewFloat64(ctx, q->v[i]);
+}
+
+JSValue wjr_VideoPlaybackQuality_get_creationTime(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 0, false); }
+JSValue wjr_VideoPlaybackQuality_get_droppedVideoFrames(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 1, true); }
+JSValue wjr_VideoPlaybackQuality_get_totalVideoFrames(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 2, true); }
+JSValue wjr_VideoPlaybackQuality_get_corruptedVideoFrames(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 3, true); }
+JSValue wjr_VideoPlaybackQuality_get_totalFrameDelay(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 4, false); }
+
 /* ---- Media Source Extensions ---- */
 
 JSValue wjr_MediaSource_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)

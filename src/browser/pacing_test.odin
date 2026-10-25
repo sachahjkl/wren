@@ -49,6 +49,38 @@ a_resize_step_is_a_new_window_size_or_a_panel_dragged :: proc(t: ^testing.T) {
 }
 
 @(test)
+only_the_frame_that_starts_an_answer_to_input_is_shown_at_once :: proc(t: ^testing.T) {
+	period :: 5.55   // 180 Hz
+	ms :: 1_000_000
+	testing.expect(t, input_starts_answer(true, 1 * ms, period, 1.5), "the loop idled: a click, a key")
+	testing.expect(t, input_starts_answer(false, 20 * ms, period, 1.5), "nothing presented for 3.6 periods")
+	testing.expect(t, !input_starts_answer(false, 1 * ms, period, 1.5), "a frame a millisecond ago: a drag goes on, the frame waits for its slot")
+	testing.expect(t, !input_starts_answer(false, 8 * ms, period, 1.5), "1.4 periods ago: still one run of frames")
+	testing.expect(t, input_starts_answer(false, 1 * ms, period, 0), "0: every frame woken by input, as before")
+}
+
+@(test)
+a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^testing.T) {
+	saved_cfg, saved_read := pacer.cfg, pacer.read_tick
+	defer { drag_probe_reset(); pacer.cfg, pacer.read_tick = saved_cfg, saved_read }
+	drag_probe_reset()
+	for i in 0 ..< 3 { drag_probe.ring[i] = {} }
+	pacer.cfg.drag_probe = true
+	for read in ([?]i64{1000, 2000, 3000}) {
+		pacer.read_tick = read
+		drag_probe_note(10, 12)
+	}
+	drag_probe_displayed({read = {_nsec = 2000}, shown = {_nsec = 9000}})
+	drag_probe_displayed({read = {_nsec = 7777}, shown = {_nsec = 1}})   // a chrome frame of no drag: nothing matches
+	testing.expect_value(t, drag_probe.ring[0].shown, 0)
+	testing.expect_value(t, drag_probe.ring[1].shown, 9000)
+	testing.expect_value(t, drag_probe.ring[2].shown, 0)
+	pacer.cfg.drag_probe = false
+	drag_probe_note(1, 1)
+	testing.expect_value(t, drag_probe.n, 3)   // off: nothing recorded
+}
+
+@(test)
 frames_just_after_a_size_change_are_part_of_the_burst :: proc(t: ^testing.T) {
 	ms :: 1_000_000
 	testing.expect(t, resize_burst(100 * ms, 90 * ms, 120), "10 ms after a step")
@@ -56,6 +88,17 @@ frames_just_after_a_size_change_are_part_of_the_burst :: proc(t: ^testing.T) {
 	testing.expect(t, !resize_burst(210 * ms, 90 * ms, 120), "the hold is over")
 	testing.expect(t, !resize_burst(100 * ms, 0, 120), "no size change seen yet")
 	testing.expect(t, !resize_burst(100 * ms, 90 * ms, 0), "browser.frame.resize_hold_ms = 0: only the step itself")
+}
+
+@(test)
+resize_echoes_are_not_presented :: proc(t: ^testing.T) {
+	testing.expect(t, resize_echo(true, false, true, 0, 0, false), "after a step, nothing new: skipped")
+	testing.expect(t, !resize_echo(true, true, true, 0, 0, false), "the step itself is made")
+	testing.expect(t, !resize_echo(true, false, true, 1, 0, false), "input came: made")
+	testing.expect(t, !resize_echo(true, false, true, 0, 2, false), "a task ran: made")
+	testing.expect(t, !resize_echo(true, false, true, 0, 0, true), "the page or the interface wants a frame: made")
+	testing.expect(t, !resize_echo(false, false, true, 0, 0, false), "outside a resize: frames as asked")
+	testing.expect(t, !resize_echo(true, false, false, 0, 0, false), "browser.frame.resize_skip_echoes off")
 }
 
 @(test)
