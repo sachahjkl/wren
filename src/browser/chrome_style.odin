@@ -71,7 +71,8 @@ chrome_style_destroy :: proc(app: ^App) {
 	chrome_cfg = {}
 }
 
-classic_on :: proc() -> bool { return chrome_cfg.style == .Classic }
+// The classic look is a row of trapezoids along the top: the tabs in a sidebar (tab_sidebar.odin) take the modern one.
+classic_on :: proc() -> bool { return chrome_cfg.style == .Classic && favs.cfg.position == .Top }
 
 ////////////////////////////////
 // Geometry (pure)
