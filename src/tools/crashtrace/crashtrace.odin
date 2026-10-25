@@ -324,11 +324,9 @@ begin_session :: proc() {
 	if prev, ok := read_file(path); ok {
 		pid, started := parse_session(prev)
 		if pid != 0 && !process_is(pid, started) {
+			unclean_text = prev   // (before the thread starts: it reads it at once)
 			h := win.CreateThread(nil, 1 << 20, unclean_thread, nil, 0, nil)   // (wevtutil takes a moment: not on the start-up path)
-			if h != nil {
-				unclean_text = prev
-				win.CloseHandle(h)
-			}
+			if h != nil { win.CloseHandle(h) } else { unclean_text = "" }
 		}
 	}
 	ft: win.FILETIME
