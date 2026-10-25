@@ -81,9 +81,16 @@ if not exist build mkdir build
 ::             tests (only what changed)
 ::  JS engine  QuickJS-ng + the generated bindings, compiled to Wasm with a pinned zig and pre-initialized
 ::             -> build\js\wren_js.wasm, embedded in wren.exe (src\js\image)
+::  launcher   wren.com, the console launcher (src\tools\wrencom)                 -> build\wren.com, embedded in wren.exe
 
 odin run src/tools/bindgen -collection:wb=src -vet -use-separate-modules -out:build/bindgen.exe || exit /b 1
 call :step "building the JavaScript engine"  tools\build_js.ps1 || exit /b 1
+
+:: the console launcher: build\wren.com, a small console program (src\tools\wrencom, core library only) that cmd and PowerShell
+:: prefer to wren.exe when `wren` is typed; wren.exe embeds it (src\browser\console_launcher.odin) and Setup writes it beside
+:: itself with the PATH entry. A console program waits for `wren ctl ...` and hands its output and exit code to the caller. The
+:: same C runtime flags as wren.exe (below): nothing but the system's files.
+odin build src/tools/wrencom -vet -subsystem:console -o:size -out:build/wren.com -extra-linker-flags:"/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" || exit /b 1
 
 
 :: ------------------------------------------------------------------------------------------------------------
