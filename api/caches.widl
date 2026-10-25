@@ -1,0 +1,29 @@
+/// The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named
+/// caches of request -> response entries per origin, kept in the profile and shared by every realm of the origin (pages,
+/// workers, service workers). The engine (native/js/runtime/web_cache.c) makes the promises, the Request and Response
+/// objects; these functions are synchronous. Security for a realm that is not a secure context or has an opaque origin.
+[Exposed=(Window,Worker)]
+module caches {
+  /// Whether the calling realm may use caches.
+  void CacheStorage_check() raises;
+  /// caches.open(name): the cache exists afterwards.
+  void CacheStorage_openName(string name) raises;
+  /// caches.has(name)
+  bool CacheStorage_hasName(string name) raises;
+  /// caches.delete(name)
+  bool CacheStorage_deleteName(string name) raises;
+  /// caches.keys(): the names in creation order, "\n"-separated.
+  string CacheStorage_names() raises;
+  /// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
+  string Cache_matchIds(string cache, string url, string method, bool ignore_search, bool ignore_method) raises;
+  /// An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
+  /// response's header lines, "\n"-separated (Not_Found when it is gone).
+  string Cache_entryHead(string cache, u64 id) raises;
+  /// An entry's body (Not_Found when it is gone).
+  bytes Cache_entryBody(string cache, u64 id) raises;
+  /// cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
+  /// caches.max_bytes_per_origin.
+  void Cache_putEntry(string cache, string url, i32 status, string status_text, string response_url, string headers, bytes body) raises;
+  /// cache.delete(request, options)
+  bool Cache_deleteEntries(string cache, string url, string method, bool ignore_search, bool ignore_method) raises;
+}

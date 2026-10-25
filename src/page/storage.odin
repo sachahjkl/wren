@@ -63,11 +63,13 @@ storage_manager_init :: proc(m: ^Storage_Manager, loop: ^host.Loop, blocking: ^h
 	m.areas = make(map[string]^Storage_Area)
 	m.ready = true
 	if m.dir != "" { _ = os.make_directory_all(storage_dir(m)) }
+	sw_registry_load(m.dir)   // service_worker.odin: the profile's registrations, the loader's hook
 }
 
 // Writes what is not saved yet (synchronously) and frees everything. Pages using the manager must be closed first.
 storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	if !m.ready { return }
+	sw_registry_shutdown()   // service_worker.odin: the workers' host pages use this manager
 	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
 	// every area it could be writing is written again here, the commit gate keeps the newest
 	storage_flush(m, sync_write = true, all = m.pending > 0)
