@@ -1183,6 +1183,12 @@ main :: proc() {
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
+	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
+	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
+	if len(rest) > 0 && rest[0] == "ctl" {
+		desktop.console_write("`ctl` is a command only as the first argument: wren ctl <command> [options]. To open a file or host named ctl, write ./ctl\n")
+		os.exit(2)
+	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
 	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
