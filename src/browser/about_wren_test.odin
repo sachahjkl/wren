@@ -145,6 +145,14 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 		testing.expectf(t, strings.contains(html, want), "the licence card lacks %q", want)
 	}
 	testing.expect(t, strings.contains(html, "Zoé &lt;b&gt;Martin&lt;/b&gt; &amp; Co</div>"), "the card shows the escaped name")
+	// the copy button: an icon inside, the three labels in one grid cell (so its width is the longest one's), and a script that only
+	// changes the state, never the text
+	for want in ([]string{`id="copylic"`, `class="i-copy"`, `class="i-ok"`, `class="l-idle">Copy the licence details<`, `class="l-done" aria-live="polite">Copied<`, `class="l-fail">Copy failed<`, `currentColor`, `width="1em"`,
+		"button.copy .lbs > span { grid-area: 1 / 1;", "button.copy .ics svg { grid-area: 1 / 1;", `setAttribute("data-state"`}) {
+		testing.expectf(t, strings.contains(html, want), "the copy button lacks %q", want)
+	}
+	testing.expect(t, strings.index(html, `class="ics"`) < strings.index(html, `class="l-idle"`), "the icon is left of the text")
+	testing.expect(t, !strings.contains(html, "b.textContent"), "the label's text is never swapped: the button keeps its width")
 	testing.expect(t, !strings.contains(html, "setInterval") && !strings.contains(html, "requestAnimationFrame(loop"), "the card's script never loops: no frame at rest")
 	// every page has the beta notice
 	testing.expect(t, strings.contains(html, "Wren is a beta under development."))
