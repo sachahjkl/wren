@@ -31,11 +31,11 @@ jobs:
         shell: cmd
         run: call build.bat
 
-      # One step of test_all per core (-Jobs 0, the default: 4 cores here; the end-to-end timeouts of -CI are three times the usual): most
-      # of the steps spend their time waiting (servers, expiries, a video that plays) or run on a few threads. Three at a time once failed the wasm
-      # preemption tick count, a 50 000 element innerHTML under its 20 s limit and a font edge of canvas2d: the first two are not run here now (they
-      # measure time) and the third reads a stronger pixel; a check that fails again under the load is a check that depends on the machine's speed:
-      # it goes behind -Perf, it does not make the run slower. The AddressSanitizer unit tests
+      # Two steps of test_all at a time (-Jobs 0 is two under -CI; the end-to-end timeouts of -CI are three times the usual). Measured on this runner
+      # (4 vCPU) with the same steps: two at a time 514 s; three 539 s with three checks failing under the load; four 765 s, the sum of the steps'
+      # durations doubled (1 280 s to 2 580 s): the steps compile and test, they do not wait, and they slow each other down on four cores. The checks
+      # that failed under three (the wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit, a font edge of canvas2d) are not run
+      # here any more or read a stronger pixel; one that fails again under the load depends on the machine's speed and goes behind -Perf. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
       # The tests that measure time are not run here (the runner's speed is unknown): `test_all.ps1 -Perf` is for our own machines, and is ignored when CI is set.
       - name: Tests (tools\test_all.ps1 -CI -NoAsan)
