@@ -31,8 +31,9 @@ body:                  [sidebar][ page (and docked developer tools) ]       left
   the title bar's. The sidebar starts below the title bar and cannot cover any of them. Its own width handle is inside it.
 * `page_rect` is a result of the layout (the page's box in the column next to the sidebar): nothing that uses it changed.
 * In full screen the bars that slide over the page hold the row of tabs, as before: there is no sidebar over a page.
-* The classic style (`browser.ui.chrome_style = classic`) is a row of trapezoids attached to the toolbar. With the tabs in a
-  sidebar the modern look is used (`classic_on()` is false); the preference keeps its value for when the tabs go back to the top.
+* The classic style (`browser.ui.chrome_style = classic`) has a sidebar of its own: the sidebar is the tab bar, the current
+  tab a classic tab with upright sides that flows into the page's side, the others flat and engraved apart, the scroll bar
+  on the outer side ([chrome-style.md](chrome-style.md), "Classic, with the tabs in a sidebar").
 
 ## The list
 

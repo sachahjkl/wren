@@ -28,7 +28,7 @@ import "wb:config"
 
 CHROME_PREFS := [?]config.Def{
 	{name = "browser.ui.chrome_style", kind = .String, default = {s = "modern"}, choices = {"modern", "classic"},
-		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines. Either one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
+		description = "How the browser's own interface (tab bar, tabs, toolbar, address field) is drawn. modern: flat, tabs are rounded pills. classic: tabs are trapezoids with sloped sides, rounded shoulders and a concave foot, the current tab is attached to the toolbar (one gradient, no line between them), the others are darker and overlap behind it, with gradients and light and dark hairlines; with the tabs in a sidebar (browser.tabs.position), the current tab is a panel with rounded outer corners that flows into the page's side, the others lie flat on the bar, engraved apart. Either one follows browser.ui.theme: the classic colors are derived from the palette, light or dark. Applies at once."},
 	{name = "browser.ui.classic_slope_deg", kind = .Float, default = {f = 22}, bounded = true, min = 8, max = 40, unit = "deg",
 		description = "Classic style: how far the sides of a tab lean from the vertical (Chrome of 2010-2015: about 17). The larger, the more angular the tabs and the more they overlap."},
 	{name = "browser.ui.classic_gloss", kind = .Float, default = {f = 1}, bounded = true, min = 0, max = 2,
@@ -71,8 +71,9 @@ chrome_style_destroy :: proc(app: ^App) {
 	chrome_cfg = {}
 }
 
-// The classic look is a row of trapezoids along the top: the tabs in a sidebar (tab_sidebar.odin) take the modern one.
-classic_on :: proc() -> bool { return chrome_cfg.style == .Classic && favs.cfg.position == .Top }
+// The classic look, wherever the tabs are: a row of trapezoids along the top, or a sidebar whose current tab is a panel
+// that flows into the page (tab_sidebar.odin; its geometry and colors: "The classic sidebar" below).
+classic_on :: proc() -> bool { return chrome_cfg.style == .Classic }
 
 ////////////////////////////////
 // Geometry (pure)
@@ -96,7 +97,7 @@ Tab_Dims :: struct {
 }
 
 tab_dims :: proc(m: Tab_Metrics) -> Tab_Dims {
-	a := math.to_radians(clamp(m.slope, 1, 80))
+	a := math.to_radians(clamp(m.slope, 0, 80))   // (0: upright sides, the sidebar's current tab)
 	turn := math.PI * 0.5 - a   // the outline turns by this much at each of its four corners
 	tangent := m.r_foot * math.tan(turn * 0.5)
 	ext := math.ceil(tangent) + 1
@@ -438,9 +439,14 @@ classic_new_tab_button :: proc(app: ^App, cg: ^Classic_Geom, cc: ^Classic_Colors
 	m, gap_b, hb, _ := classic_plus_metrics(cg, ui.font_size(), ui_scale_of(app), box_w)
 	d := tab_dims(m)
 	ui.next({fixed_x = x, fixed_y = bar_h - gap_b - hb, width = ui.px(d.box_w), height = ui.px(hb)})
+	return classic_plus_box(cc, m)
+}
+
+// The new-tab button's box (its size and place given with ui.next) with metrics `m`.
+classic_plus_box :: proc(cc: ^Classic_Colors, m: Tab_Metrics) -> (sig: ui.Signal) {
 	b := ui.build_box({.Clickable, .Focusable}, "###newtab")
 	b.cursor = .Arrow
-	b.slant = tab_slant(d)
+	b.slant = tab_slant(tab_dims(m))
 	sig = ui.signal(b)
 	p := ui.frame_new(Classic_Tab)
 	p.m, p.c, p.box = m, cc, b
@@ -496,4 +502,138 @@ toolbar_row :: proc(app: ^App, t: ^Tab) {
 		b.custom, b.custom_user = toolbar_draw, classic_colors_frame(app)
 		address_row(app, t)
 	}
+}
+
+////////////////////////////////
+// The classic sidebar (tab_sidebar.odin)
+//
+// The row of trapezoids turned on its side. The sidebar is the tab bar (its gradient runs from the outer edge toward the
+// page, darker there, and a dark line runs along its inner edge); the page's side is the toolbar's. The current tab is a
+// classic tab with upright sides (slope 0) lying across its row: its rounded shoulders on the outer side, its concave
+// feet flaring into the inner edge's line, which it interrupts, its body flowing on into the page's side; lit from above
+// as the toolbar is (the current tab's colors, top to bottom). The other tabs lie flat on the bar, apart by an engraved
+// line, lit with the hover colors under the pointer. The current tab's shape is the top's (tab_shape_get: the same cache),
+// drawn through `side_point`: a shape's axes (along the tab, and from its top to the bar's line) are the row's (down,
+// and from the outer edge to the inner one).
+
+// Where a point of a tab's shape lands on screen: `origin` is the top-left of the tab's box (its first foot's flare starts
+// there, above the row), `across` the shape's height (the row's width, from its outer side to the inner edge). Left: the
+// shape's top is on the left; right: mirrored, the top on the right.
+side_point :: proc(p: [2]f32, pos: Tabs_Position, origin: [2]f32, across: f32) -> [2]f32 {
+	if pos == .Right { return {origin.x + across - p.y, origin.y + p.x} }
+	return {origin.x + p.y, origin.y + p.x}
+}
+
+// The current tab of a row `rh` high and `across` wide: upright sides, the top's radii (a smaller flare: the feet sit on
+// a vertical line where rows are close together).
+side_tab_metrics :: proc(em, dpi, rh, across: f32) -> Tab_Metrics {
+	return {w = rh, h = across, slope = 0, r_top = math.round(em * 0.5), r_foot = math.round(em * 0.4), edge = max(math.round(dpi), 1)}
+}
+
+// The screen origin of the shape of a row `row` (from its outer side to the inner edge, either side): the feet's flare
+// reaches `d.ext` above and below the row.
+side_tab_origin :: proc(row: draw.Rect, d: Tab_Dims) -> [2]f32 { return {row.min.x, row.min.y - d.ext} }
+
+// A tab of the sidebar under the pointer: a classic tab that is not current (its colors, a little toward the hover's):
+// lighter than the bar, clearly darker than the current tab.
+side_hover_colors :: proc(c: Classic_Colors) -> (top, bot: draw.Color) {
+	return ui.srgb_step(c.idle_top, c.hot_top, 0.4), ui.srgb_step(c.idle_bot, c.hot_bot, 0.4)
+}
+
+// `pts` of a shape moved to the screen (temp memory).
+side_polygon :: proc(pts: [][2]f32, pos: Tabs_Position, origin: [2]f32, across: f32) -> [][2]f32 {
+	out := make([][2]f32, len(pts), context.temp_allocator)
+	for p, i in pts { out[i] = side_point(p, pos, origin, across) }
+	return out
+}
+
+// The sidebar's panel.
+Classic_Side_Panel :: struct { c: ^Classic_Colors, pos: Tabs_Position }
+
+classic_side_panel_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	p := (^Classic_Side_Panel)(user)
+	c := p.c
+	r := b.rect
+	outer, inner := r.min.x, r.max.x
+	if p.pos == .Right { outer, inner = inner, outer }
+	stops := [2]draw.Gradient_Stop{{color = c.strip_top, pos = 0}, {color = c.strip_bot, pos = 1}}
+	draw.gradient(dc, r, {kind = .Linear, space = .Srgb, start = {outer - r.min.x, 0}, end = {inner - r.min.x, 0}, stops = stops[:], dither = true})
+	// the line along the inner edge (the current tab, drawn later, interrupts it with its feet and its body)
+	lw := c.edge
+	x0 := p.pos == .Right ? r.min.x : r.max.x - lw
+	draw.rect(dc, {{x0, r.min.y}, {x0 + lw, r.max.y}}, c.edge_dark)
+}
+
+// A tab's row in the classic sidebar. Its box is the row: from the outer side (past the room of the scroll bar) to the
+// panel's inner edge.
+Classic_Side_Tab :: struct {
+	c:        ^Classic_Colors,
+	pos:      Tabs_Position,
+	m:        Tab_Metrics,   // the current tab's shape (side_tab_metrics)
+	selected: f32,           // 0..1, animated
+	hover:    f32,           // 0..1, animated
+	rule:     bool,          // an engraved line under the row (between two tabs that are not current)
+	inset:    f32,           // how far the line stays from both ends of the row
+	gap:      f32,           // how far the hover's panel stays from the inner edge
+	dragging: bool,
+}
+
+classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	t := (^Classic_Side_Tab)(user)
+	c := t.c
+	r := b.rect
+	lw := c.edge
+	outer_l := t.pos == .Left   // the outer side is the row's left
+	if t.rule && t.selected < 0.5 {
+		// engraved: a dark line and a light one under it, clear of both ends
+		x0, x1 := r.min.x + t.inset, r.max.x - t.inset
+		dark := c.edge_dark
+		dark.a *= 0.45
+		draw.rect(dc, {{x0, r.max.y - lw}, {x1, r.max.y}}, dark)
+		draw.rect(dc, {{x0, r.max.y}, {x1, r.max.y + lw}}, c.edge_light)
+	}
+	if t.hover > 0.01 && t.selected < 0.99 {
+		// a panel of the hover colors, rounded, clear of the inner edge (it is not attached to the page)
+		hr := draw.Rect{{r.min.x + (outer_l ? 0 : t.gap), r.min.y + lw}, {r.max.x - (outer_l ? t.gap : 0), r.max.y - lw}}
+		rad := t.m.r_top
+		a := t.hover * (1 - t.selected)
+		if t.dragging {
+			draw.box_shadow(dc, hr, {rad, rad, rad, rad}, ui.font_size() * 0.35, ui.tuned({0, 0, 0, c.dark ? 0.7 : 0.3}))
+		}
+		draw.rect(dc, hr, {c.edge_dark.r, c.edge_dark.g, c.edge_dark.b, c.edge_dark.a * a * 0.35}, rad)
+		inner := draw.rect_pad(hr, -lw)
+		top, bot := side_hover_colors(c^)
+		vgradient(dc, inner, inner.min.y, inner.max.y, top, bot, {1, 1, 1, a}, {rad - lw, rad - lw, rad - lw, rad - lw})
+	}
+	if t.selected < 0.01 { return }
+	s := tab_shape_get(t.m)
+	origin := side_tab_origin(r, s.d)
+	across := t.m.h
+	if t.selected < 0.999 { draw.push_alpha(dc, t.selected) }
+	Fill :: struct { color: draw.Color, top, bot: draw.Color, y0, y1: f32, grad: bool }
+	fill :: proc(dc: ^draw.Context, pts: [][2]f32, f: Fill) {
+		draw.push_clip_polygon(dc, pts)
+		b := draw.Rect{pts[0], pts[0]}
+		for p in pts { b = {{min(b.min.x, p.x), min(b.min.y, p.y)}, {max(b.max.x, p.x), max(b.max.y, p.y)}}}
+		if f.grad { vgradient(dc, b, f.y0, f.y1, f.top, f.bot) } else { draw.rect(dc, b, f.color) }
+		draw.pop_clip(dc)
+	}
+	if t.dragging {
+		draw.box_shadow(dc, r, {t.m.r_top, t.m.r_top, t.m.r_top, t.m.r_top}, ui.font_size() * 0.35, ui.tuned({0, 0, 0, c.dark ? 0.7 : 0.3}))
+	}
+	fill(dc, side_polygon(s.outer[:], t.pos, origin, across), {color = c.edge_dark})
+	fill(dc, side_polygon(s.mid[:], t.pos, origin, across), {color = c.edge_light})
+	fill(dc, side_polygon(s.body[:], t.pos, origin, across), {grad = true, top = c.lit_top, bot = c.lit_mid, y0 = r.min.y, y1 = r.max.y})
+	if t.selected < 0.999 { draw.pop_alpha(dc) }
+}
+
+// The new-tab button of the sidebar's head: the top's small trapezoid (classic_new_tab_button), of the same size as in
+// the row of tabs. Built in a row: its place is the row's.
+classic_side_new_tab :: proc(app: ^App, cc: ^Classic_Colors) -> (sig: ui.Signal) {
+	em := ui.font_size()
+	dpi := ui_scale_of(app)
+	cg := classic_geom(em, dpi, ui.dense(em * 2.6), chrome_cfg.slope_deg)   // (tab_strip's height and button width)
+	m, _, hb, _ := classic_plus_metrics(&cg, em, dpi, math.round(em * 2.4) + cg.d.ext)
+	ui.next({width = ui.px(tab_dims(m).box_w), height = ui.px(hb)})
+	return classic_plus_box(cc, m)
 }
