@@ -24,6 +24,8 @@ foreign _m_workers {
 	@(link_name = "DedicatedWorkerGlobalScope_postMessage") _DedicatedWorkerGlobalScope_postMessage :: proc(message: [^]u8, message_len: u32, transfer: [^]Buffer, transfer_len: u32) -> Error ---
 	@(link_name = "DedicatedWorkerGlobalScope_close") _DedicatedWorkerGlobalScope_close :: proc() -> Error ---
 	@(link_name = "DedicatedWorkerGlobalScope_name") _DedicatedWorkerGlobalScope_name :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "SharedWorkerGlobalScope_close") _SharedWorkerGlobalScope_close :: proc() -> Error ---
+	@(link_name = "SharedWorkerGlobalScope_name") _SharedWorkerGlobalScope_name :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WorkerGlobalScope_location") _WorkerGlobalScope_location :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "MessageEvent_transfer") _MessageEvent_transfer :: proc(event: Event, index: i32) -> Buffer ---
 }
@@ -80,6 +82,40 @@ DedicatedWorkerGlobalScope_name_alloc :: proc(allocator: runtime.Allocator) -> (
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
 		n := _DedicatedWorkerGlobalScope_name(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// close(), in a shared worker: no connect event any more; the worker stops after the current task.
+SharedWorkerGlobalScope_close :: proc "contextless" () -> Error {
+	return _SharedWorkerGlobalScope_close()
+}
+
+// self.name, in a shared worker.
+SharedWorkerGlobalScope_name :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _SharedWorkerGlobalScope_name(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of SharedWorkerGlobalScope_name's result.
+SharedWorkerGlobalScope_name_len :: proc "contextless" () -> (int, Error) {
+	n := _SharedWorkerGlobalScope_name(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// SharedWorkerGlobalScope_name's result in a buffer allocated to fit.
+SharedWorkerGlobalScope_name_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _SharedWorkerGlobalScope_name(raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)

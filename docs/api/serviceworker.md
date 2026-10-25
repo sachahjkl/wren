@@ -2,10 +2,13 @@
 
 # Module `serviceworker`
 
-Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, one
-running worker per registration (a JavaScript worker hosted by a page of its own), requests intercepted by the
-loader for the pages it controls. Page side: register, ready, the registrations, the controller, messages. Worker
-side: the events the browser sends (install, activate, fetch, message) and what the worker answers.
+Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, each
+with up to three versions (installing, waiting, active), each version a JavaScript worker hosted by a page of its own
+while it runs; requests intercepted by the loader for the pages it controls. Page side: register, ready, the
+registrations and their versions, update, unregister, navigation preload, the controller, messages. Worker side: the
+events the browser sends (install, activate, fetch, message, the answers to its requests) and what the worker does.
+ServiceWorkerRegistration_info and ServiceWorker_info answer in both realms (a service worker reads the last state
+the browser sent it).
 
 Exposed to: Window, Worker. Source: `api/serviceworker.widl`.
 
@@ -17,27 +20,28 @@ What the current event of a service worker's realm is (kind 0: none waits).
 
 | field | type | |
 |---|---|---|
-| `kind` | `i32` | 1 install, 2 activate, 3 fetch, 4 message |%!(EXTRA false)
-| `id` | `u64` | the fetch's id (ServiceWorkerGlobalScope_reply) |%!(EXTRA false)
-| `mode` | `i32` | fetch: the request's mode and destination (fetch.Mode, fetch.Destination) |%!(EXTRA false)
-| `destination` | `i32` |  |%!(EXTRA false)
+| `kind` | `i32` | 1 install, 2 activate, 3 fetch, 4 message, 5 the answer to a request (ServiceWorkerGlobalScope_reply 10), 6 the registration changed (ServiceWorkerRegistration_info has its new state), 7 a navigation preload's response |%!(EXTRA true)
+| `id` | `u64` | fetch / preload: the fetch's id; answer: the request's id |%!(EXTRA false)
+| `mode` | `i32` | fetch: the request's mode (fetch.Mode); answer: 0 done, else rejected (text 0: why); preload: the status (0: failed) |%!(EXTRA false)
+| `destination` | `i32` | fetch: the request's destination (fetch.Destination) |%!(EXTRA false)
 | `client` | `u64` | the client (a page's id), 0 for a navigation |%!(EXTRA false)
+| `flags` | `i32` | fetch: 1 when a navigation preload runs for it (FetchEvent.preloadResponse) |%!(EXTRA false)
 
 ## Functions
 
 ### `ServiceWorker_register`
 
 ```
-Promise ServiceWorker_register(string script, optional string scope, string update_via_cache) raises
+Promise ServiceWorker_register(string script, optional string scope, string update_via_cache, bool module) raises
 ```
 
-navigator.serviceWorker.register(script, {scope, updateViaCache}): a promise of the registration's id, resolved
-once the worker's script ran (TypeError when it failed). Security outside a secure context, for another origin
-or a scope outside the script's directory.
+navigator.serviceWorker.register(script, {scope, updateViaCache, type}): a promise of the registration's id,
+resolved once the script ran (an unchanged script: at once; TypeError when it failed). Security outside a secure
+context, for another origin or a scope outside what the script may control.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string) -> (u64, Api_Error)`
+Host: `ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string, module: bool) -> (u64, Api_Error)`
 
 ### `ServiceWorker_ready`
 
@@ -75,7 +79,7 @@ Host: `ServiceWorker_registrationIds :: proc(c: ^Call) -> string`
 u64 ServiceWorker_controller()
 ```
 
-navigator.serviceWorker.controller: the id of the registration controlling the page (0: none).
+navigator.serviceWorker.controller: the id of the version controlling the page (0: none).
 
 Host: `ServiceWorker_controller :: proc(c: ^Call) -> u64`
 
@@ -85,10 +89,20 @@ Host: `ServiceWorker_controller :: proc(c: ^Call) -> u64`
 string ServiceWorkerRegistration_info(u64 id)
 ```
 
-A registration: scope, script URL, its version's state, 1 when a version is active, updateViaCache;
-"\n"-separated, "" when it is gone.
+A registration ("" when it is gone), "\n"-separated: scope, updateViaCache, the installing, waiting and active
+versions' ids (0: none), navigation preload enabled (1 / 0), its header value.
 
 Host: `ServiceWorkerRegistration_info :: proc(c: ^Call, id: u64) -> string`
+
+### `ServiceWorker_info`
+
+```
+string ServiceWorker_info(u64 version)
+```
+
+A version ("" when unknown): its state, then its script URL ("\n"-separated).
+
+Host: `ServiceWorker_info :: proc(c: ^Call, version: u64) -> string`
 
 ### `ServiceWorkerRegistration_unregisterId`
 
@@ -100,17 +114,43 @@ registration.unregister(): true when it was the origin's and is gone.
 
 Host: `ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool`
 
-### `ServiceWorker_postToWorker`
+### `ServiceWorkerRegistration_updateId`
 
 ```
-void ServiceWorker_postToWorker(u64 id, bytes data) raises
+Promise ServiceWorkerRegistration_updateId(u64 id) raises
 ```
 
-serviceWorker.postMessage(message): the serialized message to the registration's worker.
+registration.update(): a promise of the registration's id once its script was checked (a new version then
+installs). Invalid_State when the registration is gone.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `ServiceWorker_postToWorker :: proc(c: ^Call, id: u64, data: []u8) -> Api_Error`
+Host: `ServiceWorkerRegistration_updateId :: proc(c: ^Call, id: u64) -> (u64, Api_Error)`
+
+### `ServiceWorkerRegistration_preload`
+
+```
+string ServiceWorkerRegistration_preload(u64 id, i32 op, string header) raises
+```
+
+registration.navigationPreload: op 0 getState, 1 enable, 2 disable, 3 setHeaderValue(header). The state after:
+enabled (1 / 0), "\n", the header value. Invalid_State for enable / disable without an active version.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ServiceWorkerRegistration_preload :: proc(c: ^Call, id: u64, op: i32, header: string) -> (string, Api_Error)`
+
+### `ServiceWorker_postToWorker`
+
+```
+void ServiceWorker_postToWorker(u64 version, bytes data) raises
+```
+
+serviceWorker.postMessage(message): the serialized message to that version's worker (started if it stopped).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -> Api_Error`
 
 ### `ServiceWorker_takeMessage`
 
@@ -118,7 +158,8 @@ Host: `ServiceWorker_postToWorker :: proc(c: ^Call, id: u64, data: []u8) -> Api_
 bytes ServiceWorker_takeMessage() raises
 ```
 
-The next message a service worker sent this page (Not_Found when none waits).
+The next message a service worker sent this page (Not_Found when none waits): the sender's version id (8 bytes)
+then the serialized message.
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -130,9 +171,17 @@ Host: `ServiceWorker_takeMessage :: proc(c: ^Call) -> ([]u8, Api_Error)`
 u64 ServiceWorkerGlobalScope_registration()
 ```
 
-In a service worker's realm: its registration's id (0 in any other realm), scope, script URL.
+In a service worker's realm: its registration's id (0 in any other realm), its version's id, scope, script URL.
 
 Host: `ServiceWorkerGlobalScope_registration :: proc(c: ^Call) -> u64`
+
+### `ServiceWorkerGlobalScope_version`
+
+```
+u64 ServiceWorkerGlobalScope_version()
+```
+
+Host: `ServiceWorkerGlobalScope_version :: proc(c: ^Call) -> u64`
 
 ### `ServiceWorkerGlobalScope_scope`
 
@@ -156,7 +205,7 @@ Host: `ServiceWorkerGlobalScope_scriptURL :: proc(c: ^Call) -> string`
 SwEventInfo SwEvent_next()
 ```
 
-The current event; its strings (0 URL, 1 method, 2 header lines), its body; done: the next one.
+The current event; its strings (0 URL / an answer's text, 1 method, 2 header lines), its body; done: the next one.
 
 Host: `SwEvent_next :: proc(c: ^Call) -> Api_SwEventInfo`
 
@@ -191,8 +240,12 @@ void ServiceWorkerGlobalScope_reply(i32 kind, u64 id, i64 code, string headers, 
 ```
 
 What the worker did: 1 install done (code 1 ok, 0 failed), 2 activate done, 3 respond (code = status, headers,
-body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim, 8 a message to a client
-(code = the client's id, 0 every controlled page; body = the serialized message).
+text = the response's URL, body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim,
+8 a message to a client (code = the client's id, 0 every controlled page; body = the serialized message),
+10 a request answered later by an event 5 (id = the request's id, code = 1 clients.matchAll (headers:
+"includeUncontrolled TAB type"), 2 clients.get (text: id), 3 clients.openWindow (text: URL), 4 navigate (text: URL,
+headers: the client's id), 5 focus (text: the client's id), 6 registration.update, 7 registration.unregister),
+11 navigation preload (code = op as ServiceWorkerRegistration_preload, text = the header value).
 
 Host: `ServiceWorkerGlobalScope_reply :: proc(c: ^Call, kind: i32, id: u64, code: i64, headers: string, text: string, body: []u8)`
 

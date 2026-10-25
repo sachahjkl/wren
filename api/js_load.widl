@@ -61,6 +61,19 @@ module scripts {
   /// postMessage(message) in a JavaScript worker.
   void DedicatedWorkerGlobalScope_postSerialized(bytes data) raises;
   /// importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-  /// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+  /// response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+  /// module worker (importScripts is a classic worker's).
   string WorkerGlobalScope_importScript(usvstring url) raises;
+  /// Whether the calling worker's script is a module ({type: "module"}).
+  bool WorkerGlobalScope_isModule();
+
+  /// new SharedWorker(url, {name, type, extendedLifetime}) from a document: the SharedWorker object (it gets `error`
+  /// events), connected to the shared worker of (the document's storage key, the URL, the name), which starts if none
+  /// runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
+  /// Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
+  u64 SharedWorker_connect(usvstring url, usvstring name, WorkerType type, bool extended_lifetime) raises;
+  /// The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
+  u64 SharedWorker_portEnd(u64 worker);
+  /// The end of the port of the next connect event of the calling shared worker (0: none waits).
+  u64 SharedWorkerGlobalScope_takeConnection();
 }

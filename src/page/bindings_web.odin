@@ -167,10 +167,14 @@ guest_request :: proc(abs, method, headers: string, body: []byte, o: u32, initia
 	cache := fetch.Cache_Mode((o >> 11) & 7)
 	if cache > .Only_If_Cached { cache = .Default }
 	classic := o & FETCH_OPTION_CLASSIC_SCRIPT != 0
+	module := o & FETCH_OPTION_MODULE_SCRIPT != 0
+	script := fetch.Script_Type.Wasm
+	if classic { script = .Classic }
+	if module { script = o & FETCH_OPTION_JSON_MODULE != 0 ? .Json_Module : .Module }
 	return fetch.Request_Desc{
 		url = abs, method = method, headers = pairs[:], body = body,
-		mode = mode, credentials = creds, redirect = redirect, destination = classic ? .Script : .Empty,
-		script = classic ? .Classic : .Wasm,
+		mode = mode, credentials = creds, redirect = redirect, destination = classic || module ? .Script : .Empty,
+		script = script,
 		referrer_policy = policy, no_referrer = o & (1 << 10) != 0, cache = cache,
 		initiator = initiator, guard = .Request,
 	}

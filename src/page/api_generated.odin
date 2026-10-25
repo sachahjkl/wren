@@ -578,6 +578,7 @@ Api_SwEventInfo :: struct {
 	mode: i32,
 	destination: i32,
 	client: u64,
+	flags: i32,
 }
 
 Api_StorageArea :: enum i32 {
@@ -1583,7 +1584,7 @@ _t_caches_CacheStorage_names :: proc "c" (env: rawptr, caller: wasm.Caller, a: [
 	return nil
 }
 
-// Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (string, Api_Error)
+// Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (string, Api_Error)
 @(private = "file")
 _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -1598,8 +1599,11 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_n2 := wasm.addr(&f, a[5])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "method") }
-	_on := wasm.addr(&f, a[9])
-	_os, _ok := wasm.span(&f, wasm.addr(&f, a[8]), _on)
+	_n3 := wasm.addr(&f, a[7])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "request_headers") }
+	_on := wasm.addr(&f, a[12])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[11]), _on)
 	if !_ok { return wasm.trap_bounds(&f, "caches.Cache_matchIds", "result buffer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -1613,9 +1617,42 @@ _t_caches_Cache_matchIds :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p2) {
 		return _fail_size(&c, &f, a, .Type, "caches.Cache_matchIds: argument method is not valid UTF-8")
 	}
-	_p3 := a[6].i32 != 0
-	_p4 := a[7].i32 != 0
-	_r, _err := Cache_matchIds(&c, _p0, _p1, _p2, _p3, _p4)
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_matchIds: argument request_headers is not valid UTF-8")
+	}
+	_p4 := a[8].i32 != 0
+	_p5 := a[9].i32 != 0
+	_p6 := a[10].i32 != 0
+	_r, _err := Cache_matchIds(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)
+@(private = "file")
+_t_caches_Cache_entryRequestHeaders :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "caches.Cache_entryRequestHeaders", "cache") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "caches.Cache_entryRequestHeaders", "result buffer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_size(&c, &f, a, .Type, "caches.Cache_entryRequestHeaders: argument cache is not valid UTF-8")
+	}
+	_p1 := u64(a[2].i64)
+	_r, _err := Cache_entryRequestHeaders(&c, _p0, _p1)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -1682,7 +1719,7 @@ _t_caches_Cache_entryBody :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	return nil
 }
 
-// Cache_putEntry :: proc(c: ^Call, cache: string, url: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error
+// Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error
 @(private = "file")
 _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -1694,18 +1731,21 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	_n1 := wasm.addr(&f, a[3])
 	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
 	if !_k1 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "url") }
-	_n3 := wasm.addr(&f, a[6])
-	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
-	if !_k3 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "status_text") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "request_headers") }
 	_n4 := wasm.addr(&f, a[8])
 	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[7]), _n4)
-	if !_k4 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "response_url") }
+	if !_k4 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "status_text") }
 	_n5 := wasm.addr(&f, a[10])
 	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[9]), _n5)
-	if !_k5 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "headers") }
+	if !_k5 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "response_url") }
 	_n6 := wasm.addr(&f, a[12])
 	_s6, _k6 := wasm.span(&f, wasm.addr(&f, a[11]), _n6)
-	if !_k6 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "body") }
+	if !_k6 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "headers") }
+	_n7 := wasm.addr(&f, a[14])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[13]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "caches.Cache_putEntry", "body") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
 		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument cache is not valid UTF-8")
@@ -1714,21 +1754,25 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	if !wasm.valid_utf8(_p1) {
 		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument url is not valid UTF-8")
 	}
-	_p3 := string(_s3[:_n3])
-	if !wasm.valid_utf8(_p3) {
-		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument status_text is not valid UTF-8")
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument request_headers is not valid UTF-8")
 	}
 	_p4 := string(_s4[:_n4])
 	if !wasm.valid_utf8(_p4) {
-		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument response_url is not valid UTF-8")
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument status_text is not valid UTF-8")
 	}
 	_p5 := string(_s5[:_n5])
 	if !wasm.valid_utf8(_p5) {
+		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument response_url is not valid UTF-8")
+	}
+	_p6 := string(_s6[:_n6])
+	if !wasm.valid_utf8(_p6) {
 		return _fail_status(&c, a, .Type, "caches.Cache_putEntry: argument headers is not valid UTF-8")
 	}
-	_p6 := _s6[:_n6]
-	_p2 := a[4].i32
-	_err := Cache_putEntry(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	_p7 := _s7[:_n7]
+	_p3 := a[6].i32
+	_err := Cache_putEntry(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -1739,7 +1783,7 @@ _t_caches_Cache_putEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	return nil
 }
 
-// Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (bool, Api_Error)
+// Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (bool, Api_Error)
 @(private = "file")
 _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -1754,7 +1798,10 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_n2 := wasm.addr(&f, a[5])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "method") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 1)
+	_n3 := wasm.addr(&f, a[7])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "request_headers") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[11]), 1)
 	if !_rk { return wasm.trap_bounds(&f, "caches.Cache_deleteEntries", "result pointer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -1768,9 +1815,14 @@ _t_caches_Cache_deleteEntries :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "caches.Cache_deleteEntries: argument method is not valid UTF-8")
 	}
-	_p3 := a[6].i32 != 0
-	_p4 := a[7].i32 != 0
-	_r, _err := Cache_deleteEntries(&c, _p0, _p1, _p2, _p3, _p4)
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "caches.Cache_deleteEntries: argument request_headers is not valid UTF-8")
+	}
+	_p4 := a[8].i32 != 0
+	_p5 := a[9].i32 != 0
+	_p6 := a[10].i32 != 0
+	_r, _err := Cache_deleteEntries(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -18832,6 +18884,83 @@ _t_scripts_WorkerGlobalScope_importScript :: proc "c" (env: rawptr, caller: wasm
 	return nil
 }
 
+// WorkerGlobalScope_isModule :: proc(c: ^Call) -> bool
+@(private = "file")
+_t_scripts_WorkerGlobalScope_isModule :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := WorkerGlobalScope_isModule(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// SharedWorker_connect :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_SharedWorker_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connect", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connect", "name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.SharedWorker_connect", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.SharedWorker_connect: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_p3 := a[5].i32 != 0
+	_r, _err := SharedWorker_connect(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SharedWorker_portEnd :: proc(c: ^Call, worker: u64) -> u64
+@(private = "file")
+_t_scripts_SharedWorker_portEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := SharedWorker_portEnd(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// SharedWorkerGlobalScope_takeConnection :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_scripts_SharedWorkerGlobalScope_takeConnection :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := SharedWorkerGlobalScope_takeConnection(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // ResizeObserver_create :: proc(c: ^Call, notify: u32, user: i32) -> u64
 @(private = "file")
 _t_dom_ResizeObserver_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22719,7 +22848,7 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
-// ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string) -> (u64, Api_Error)
+// ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string, module: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -22734,7 +22863,7 @@ _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.C
 	_n2 := wasm.addr(&f, a[5])
 	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
 	if !_k2 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "update_via_cache") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_register", "result pointer") }
 	_p0 := string(_s0[:_n0])
 	if !wasm.valid_utf8(_p0) {
@@ -22752,7 +22881,8 @@ _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.C
 	if !wasm.valid_utf8(_p2) {
 		return _fail_status(&c, a, .Type, "serviceworker.ServiceWorker_register: argument update_via_cache is not valid UTF-8")
 	}
-	_r, _err := ServiceWorker_register(&c, _p0, _p1, _p2)
+	_p3 := a[6].i32 != 0
+	_r, _err := ServiceWorker_register(&c, _p0, _p1, _p2, _p3)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -22849,6 +22979,24 @@ _t_serviceworker_ServiceWorkerRegistration_info :: proc "c" (env: rawptr, caller
 	return nil
 }
 
+// ServiceWorker_info :: proc(c: ^Call, version: u64) -> string
+@(private = "file")
+_t_serviceworker_ServiceWorker_info :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorker_info", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := ServiceWorker_info(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool
 @(private = "file")
 _t_serviceworker_ServiceWorkerRegistration_unregisterId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22864,7 +23012,57 @@ _t_serviceworker_ServiceWorkerRegistration_unregisterId :: proc "c" (env: rawptr
 	return nil
 }
 
-// ServiceWorker_postToWorker :: proc(c: ^Call, id: u64, data: []u8) -> Api_Error
+// ServiceWorkerRegistration_updateId :: proc(c: ^Call, id: u64) -> (u64, Api_Error)
+@(private = "file")
+_t_serviceworker_ServiceWorkerRegistration_updateId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_updateId", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_r, _err := ServiceWorkerRegistration_updateId(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ServiceWorkerRegistration_preload :: proc(c: ^Call, id: u64, op: i32, header: string) -> (string, Api_Error)
+@(private = "file")
+_t_serviceworker_ServiceWorkerRegistration_preload :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_preload", "header") }
+	_on := wasm.addr(&f, a[5])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[4]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "serviceworker.ServiceWorkerRegistration_preload", "result buffer") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_size(&c, &f, a, .Type, "serviceworker.ServiceWorkerRegistration_preload: argument header is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32
+	_r, _err := ServiceWorkerRegistration_preload(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -> Api_Error
 @(private = "file")
 _t_serviceworker_ServiceWorker_postToWorker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -22920,6 +23118,20 @@ _t_serviceworker_ServiceWorkerGlobalScope_registration :: proc "c" (env: rawptr,
 	return nil
 }
 
+// ServiceWorkerGlobalScope_version :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_serviceworker_ServiceWorkerGlobalScope_version :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := ServiceWorkerGlobalScope_version(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // ServiceWorkerGlobalScope_scope :: proc(c: ^Call) -> string
 @(private = "file")
 _t_serviceworker_ServiceWorkerGlobalScope_scope :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22960,7 +23172,7 @@ _t_serviceworker_SwEvent_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 32)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 40)
 	if !_rk { return wasm.trap_bounds(&f, "serviceworker.SwEvent_next", "result pointer") }
 	_r := SwEvent_next(&c)
 	api_end(&c)
@@ -22970,6 +23182,7 @@ _t_serviceworker_SwEvent_next :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	intrinsics.unaligned_store((^i32)(&_rs[16]), _r.mode)
 	intrinsics.unaligned_store((^i32)(&_rs[20]), _r.destination)
 	intrinsics.unaligned_store((^u64)(&_rs[24]), _r.client)
+	intrinsics.unaligned_store((^i32)(&_rs[32]), _r.flags)
 	return nil
 }
 
@@ -24467,6 +24680,43 @@ _t_workers_DedicatedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: was
 	return nil
 }
 
+// SharedWorkerGlobalScope_close :: proc(c: ^Call) -> Api_Error
+@(private = "file")
+_t_workers_SharedWorkerGlobalScope_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_err := SharedWorkerGlobalScope_close(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SharedWorkerGlobalScope_name :: proc(c: ^Call) -> (string, Api_Error)
+@(private = "file")
+_t_workers_SharedWorkerGlobalScope_name :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "workers.SharedWorkerGlobalScope_name", "result buffer") }
+	_r, _err := SharedWorkerGlobalScope_name(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // WorkerGlobalScope_location :: proc(c: ^Call) -> (string, Api_Error)
 @(private = "file")
 _t_workers_WorkerGlobalScope_location :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -24542,11 +24792,12 @@ api_imports := [?]wasm.Import{
 	{module = "caches", name = "CacheStorage_hasName", fn = _t_caches_CacheStorage_hasName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "caches", name = "CacheStorage_deleteName", fn = _t_caches_CacheStorage_deleteName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "caches", name = "CacheStorage_names", fn = _t_caches_CacheStorage_names, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "caches", name = "Cache_matchIds", fn = _t_caches_Cache_matchIds, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_matchIds", fn = _t_caches_Cache_matchIds, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "caches", name = "Cache_entryRequestHeaders", fn = _t_caches_Cache_entryRequestHeaders, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "caches", name = "Cache_entryHead", fn = _t_caches_Cache_entryHead, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "caches", name = "Cache_entryBody", fn = _t_caches_Cache_entryBody, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "caches", name = "Cache_putEntry", fn = _t_caches_Cache_putEntry, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "caches", name = "Cache_deleteEntries", fn = _t_caches_Cache_deleteEntries, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "Cache_putEntry", fn = _t_caches_Cache_putEntry, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "caches", name = "Cache_deleteEntries", fn = _t_caches_Cache_deleteEntries, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "HTMLCanvasElement_width", fn = _t_canvas_HTMLCanvasElement_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "HTMLCanvasElement_set_width", fn = _t_canvas_HTMLCanvasElement_set_width, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
 	{module = "canvas", name = "HTMLCanvasElement_height", fn = _t_canvas_HTMLCanvasElement_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -25377,6 +25628,10 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "Worker_postSerialized", fn = _t_scripts_Worker_postSerialized, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "DedicatedWorkerGlobalScope_postSerialized", fn = _t_scripts_DedicatedWorkerGlobalScope_postSerialized, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "WorkerGlobalScope_isModule", fn = _t_scripts_WorkerGlobalScope_isModule, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "SharedWorker_connect", fn = _t_scripts_SharedWorker_connect, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "SharedWorker_portEnd", fn = _t_scripts_SharedWorker_portEnd, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "scripts", name = "SharedWorkerGlobalScope_takeConnection", fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ResizeObserver_create", fn = _t_dom_ResizeObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ResizeObserver_observe", fn = _t_dom_ResizeObserver_observe, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "ResizeObserver_unobserve", fn = _t_dom_ResizeObserver_unobserve, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
@@ -25557,16 +25812,20 @@ api_imports := [?]wasm.Import{
 	{module = "ports", name = "Broadcast_open", fn = _t_ports_Broadcast_open, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Broadcast_post", fn = _t_ports_Broadcast_post, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "MessageEvent_portEnds", fn = _t_ports_MessageEvent_portEnds, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "serviceworker", name = "ServiceWorker_register", fn = _t_serviceworker_ServiceWorker_register, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorker_register", fn = _t_serviceworker_ServiceWorker_register, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "serviceworker", name = "ServiceWorker_ready", fn = _t_serviceworker_ServiceWorker_ready, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorker_getRegistration", fn = _t_serviceworker_ServiceWorker_getRegistration, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorker_registrationIds", fn = _t_serviceworker_ServiceWorker_registrationIds, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorker_controller", fn = _t_serviceworker_ServiceWorker_controller, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorkerRegistration_info", fn = _t_serviceworker_ServiceWorkerRegistration_info, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorker_info", fn = _t_serviceworker_ServiceWorker_info, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorkerRegistration_unregisterId", fn = _t_serviceworker_ServiceWorkerRegistration_unregisterId, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorkerRegistration_updateId", fn = _t_serviceworker_ServiceWorkerRegistration_updateId, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "serviceworker", name = "ServiceWorkerRegistration_preload", fn = _t_serviceworker_ServiceWorkerRegistration_preload, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorker_postToWorker", fn = _t_serviceworker_ServiceWorker_postToWorker, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "serviceworker", name = "ServiceWorker_takeMessage", fn = _t_serviceworker_ServiceWorker_takeMessage, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorkerGlobalScope_registration", fn = _t_serviceworker_ServiceWorkerGlobalScope_registration, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "serviceworker", name = "ServiceWorkerGlobalScope_version", fn = _t_serviceworker_ServiceWorkerGlobalScope_version, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorkerGlobalScope_scope", fn = _t_serviceworker_ServiceWorkerGlobalScope_scope, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorkerGlobalScope_scriptURL", fn = _t_serviceworker_ServiceWorkerGlobalScope_scriptURL, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "SwEvent_next", fn = _t_serviceworker_SwEvent_next, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{}},
@@ -25632,6 +25891,8 @@ api_imports := [?]wasm.Import{
 	{module = "workers", name = "DedicatedWorkerGlobalScope_postMessage", fn = _t_workers_DedicatedWorkerGlobalScope_postMessage, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "workers", name = "DedicatedWorkerGlobalScope_close", fn = _t_workers_DedicatedWorkerGlobalScope_close, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "workers", name = "DedicatedWorkerGlobalScope_name", fn = _t_workers_DedicatedWorkerGlobalScope_name, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "workers", name = "SharedWorkerGlobalScope_close", fn = _t_workers_SharedWorkerGlobalScope_close, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
+	{module = "workers", name = "SharedWorkerGlobalScope_name", fn = _t_workers_SharedWorkerGlobalScope_name, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "workers", name = "WorkerGlobalScope_location", fn = _t_workers_WorkerGlobalScope_location, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "workers", name = "MessageEvent_transfer", fn = _t_workers_MessageEvent_transfer, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 }
