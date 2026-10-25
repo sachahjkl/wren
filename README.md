@@ -5,7 +5,7 @@
 <p align="center">
 <a href="https://github.com/sachahjkl/wren/actions/workflows/ci.yml"><img src="https://github.com/sachahjkl/wren/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 <a href="https://github.com/sachahjkl/wren/releases/latest"><img src="https://img.shields.io/github/v/release/sachahjkl/wren?color=ffb84d" alt="latest release"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Shield-1d57ba" alt="PolyForm Shield license"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-PolyForm%20Strict-1d57ba" alt="PolyForm Strict license"></a>
 <img src="https://img.shields.io/badge/platform-Windows%20x64-555" alt="Windows x64">
 </p>
 
@@ -450,10 +450,11 @@ git push origin vX.Y.Z
 
 ## License and credits
 
-Wren's source is public, under the [PolyForm Shield License 1.0.0](LICENSE): you may use the program for any purpose, read
-it, change it and redistribute it (with the terms and the `Required Notice` lines), except to provide a product that competes
-with Wren or with another product of its author. Versions up to 0.3.0 were published under the MIT license and stay under it.
-The libraries below keep their own licenses. Wren stands on:
+Wren's source is public, under the [PolyForm Strict License 1.0.0](LICENSE): you may read it and use the program for
+noncommercial purposes (personal use, charities, schools, public bodies, research); you may not redistribute it, sell it,
+or make changes or new works from it, and commercial use needs the author's agreement (contact@froment.software). Versions up
+to 0.3.0 were published under the MIT license and stay under it. The libraries below keep their own licenses. Wren stands
+on:
 
 - [Odin](https://odin-lang.org) by Ginger Bill and contributors;
 - [gui_toolkit](https://github.com/sachahjkl/gui_toolkit) (MIT), whose design follows the UI layers of the
