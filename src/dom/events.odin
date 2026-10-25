@@ -40,9 +40,25 @@ Event :: struct {
 	delta_mode:      u8,
 	related:         u64,       // relatedTarget (a node handle), 0 = null; retargeted for each listener while dispatching
 	composed:        bool,      // crosses shadow boundaries (Event.composed); browser UI events are, see dispatch
+	pointer:         Pointer_Details,   // PointerEvent / Touch details the shell gives (zero: the mouse)
 	// while dispatching: the event path (DOM "event path"), and the entry whose listeners run
 	path:            [dynamic]Path_Entry,
 	path_index:      int,
+}
+
+// What a pointer event says of its device (Pointer Events). `kind` 0 = the mouse (id 1, primary, pressure from the
+// buttons); a finger or a pen gives its own.
+Pointer_Kind :: enum u8 { Mouse, Pen, Touch }
+
+Pointer_Details :: struct {
+	id:          i32,
+	kind:        Pointer_Kind,
+	primary:     bool,
+	pressure:    f32,
+	tangential:  f32,
+	tilt:        [2]f32,
+	twist:       f32,
+	size:        [2]f32,     // width, height (CSS px; 0 = 1)
 }
 
 // One struct of DOM's event path. `node` NIL with `window`: the Window.

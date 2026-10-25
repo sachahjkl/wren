@@ -81,6 +81,20 @@ Event_uiData :: proc(c: ^Call, event: Api_Event) -> Api_UiEventData {
 		related = e.related, mods = e.mods, button = e.button, buttons = derived_buttons(e), detail = derived_detail(e),
 		key_code = e.key, location = u32(e.location), repeat = e.repeat ? 1 : 0, delta_mode = u32(e.delta_mode),
 	}
+	// Pointer Events: the device's details, or the mouse's (id 1, primary, half pressure with a button held)
+	pd := e.pointer
+	r.pointer_id, r.pointer_type, r.is_primary = pd.id, u32(pd.kind), 1
+	r.width, r.height = f64(pd.size.x), f64(pd.size.y)
+	r.pressure, r.tangential_pressure = f64(pd.pressure), f64(pd.tangential)
+	r.tilt_x, r.tilt_y, r.twist = f64(pd.tilt.x), f64(pd.tilt.y), f64(pd.twist)
+	if pd.kind == .Mouse {
+		r.pointer_id = MOUSE_POINTER_ID
+		r.pressure = r.buttons != 0 ? 0.5 : 0
+	} else {
+		r.is_primary = pd.primary ? 1 : 0
+	}
+	if r.width <= 0 { r.width = 1 }
+	if r.height <= 0 { r.height = 1 }
 	r.page_x, r.page_y = e.x, e.y
 	r.offset_x, r.offset_y = e.x, e.y
 	if p.worker == nil && (e.x != 0 || e.y != 0 || is_pointer_type(e.type)) {
@@ -103,7 +117,8 @@ is_pointer_type :: proc(t: string) -> bool {
 	switch t {
 	case "click", "dblclick", "auxclick", "mousedown", "mouseup", "mousemove", "mouseover", "mouseout", "mouseenter",
 	     "mouseleave", "contextmenu", "wheel", "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout",
-	     "pointerenter", "pointerleave":
+	     "pointerenter", "pointerleave", "pointercancel", "gotpointercapture", "lostpointercapture", "dragstart", "drag",
+	     "dragenter", "dragleave", "dragover", "drop", "dragend":
 		return true
 	}
 	return false

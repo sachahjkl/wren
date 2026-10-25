@@ -176,6 +176,7 @@ main :: proc() {
 		case "layout.html": layout_cost_checks(p); resize_checks(p, lh)
 		case "events.html": browser_event_checks(p)
 		case "fullscreen.html": fullscreen_checks(p)
+		case "dnd.html": dnd_checks(p)   // dnd.odin
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
 		page.page_close(p)

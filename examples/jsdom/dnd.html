@@ -1,0 +1,111 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Drag and drop, pointer and touch events</title>
+<style>
+  #src { width: 100px; height: 40px; }
+  #zone, #plain { width: 200px; height: 80px; }
+</style>
+<body>
+<div id="src" draggable="true">drag me</div>
+<a id="link" href="/next?x=1">a link</a>
+<div id="zone">drop zone</div>
+<div id="plain">not a zone</div>
+<input id="file" type="file" multiple>
+<input id="text" type="text">
+<script>
+section("DataTransfer made by the page", () => {
+  const dt = new DataTransfer();
+  eq("dropEffect starts at none", dt.dropEffect, "none");
+  eq("effectAllowed starts uninitialized", dt.effectAllowed, "uninitialized");
+  dt.setData("text", "hello");
+  dt.setData("URL", "https://example.com/a\r\nhttps://example.com/b");
+  dt.setData("application/x-mine", "v");
+  eq("getData('text') is text/plain", dt.getData("text/plain"), "hello");
+  eq("getData('url') is the first URL", dt.getData("url"), "https://example.com/a");
+  eq("types in order", dt.types.join(","), "text/plain,text/uri-list,application/x-mine");
+  t("types is frozen", Object.isFrozen(dt.types));
+  eq("items.length", dt.items.length, 3);
+  t("items is [SameObject]", dt.items === dt.items);
+  eq("items[0].kind", dt.items[0].kind, "string");
+  eq("items[0].type", dt.items[0].type, "text/plain");
+  throws("items.add of an existing type", () => dt.items.add("x", "text/plain"), "NotSupportedError");
+  dt.dropEffect = "bogus";
+  eq("dropEffect ignores other values", dt.dropEffect, "none");
+  dt.dropEffect = "link";
+  eq("dropEffect takes link", dt.dropEffect, "link");
+  dt.effectAllowed = "copyMove";
+  eq("effectAllowed in read/write mode", dt.effectAllowed, "copyMove");
+  dt.clearData("text/plain");
+  eq("clearData(format)", dt.types.join(","), "text/uri-list,application/x-mine");
+  const f = new File(["abc"], "a.txt", { type: "text/plain" });
+  const item = dt.items.add(f);
+  eq("items.add(file) gives a file item", item && item.kind, "file");
+  eq("files.length", dt.files.length, 1);
+  t("files is [SameObject]", dt.files === dt.files);
+  eq("files[0].name", dt.files[0].name, "a.txt");
+  eq("Files is in types", dt.types[dt.types.length - 1], "Files");
+  dt.clearData();
+  eq("clearData() keeps the files", dt.files.length, 1);
+  const input = document.getElementById("file");
+  input.files = dt.files;
+  eq("input.files = dt.files", input.files.length, 1);
+  eq("... with its name", input.files[0].name, "a.txt");
+  eq("text input has no files", document.getElementById("text").files, null);
+  dt.items.remove(0);
+  eq("items.remove", dt.items.length, 0);
+  window.readBack = input.files[0].text().then((s) => eq("a page File read back through the input", s, "abc"));
+});
+
+section("constructors", () => {
+  const dt = new DataTransfer();
+  const de = new DragEvent("dragover", { dataTransfer: dt, clientX: 5, buttons: 1 });
+  t("DragEvent is a MouseEvent", de instanceof MouseEvent);
+  t("DragEvent.dataTransfer", de.dataTransfer === dt);
+  eq("DragEvent.clientX", de.clientX, 5);
+  eq("DragEvent without one", new DragEvent("drop").dataTransfer, null);
+  const tch = new Touch({ identifier: 3, target: document.body, clientX: 10, force: 0.5 });
+  eq("Touch.identifier", tch.identifier, 3);
+  t("Touch.target", tch.target === document.body);
+  eq("Touch.force", tch.force, 0.5);
+  const te = new TouchEvent("touchstart", { touches: [tch], changedTouches: [tch], ctrlKey: true });
+  eq("TouchEvent.touches.length", te.touches.length, 1);
+  t("TouchEvent.touches[0]", te.touches[0] === tch && te.touches.item(0) === tch);
+  eq("TouchEvent.targetTouches empty", te.targetTouches.length, 0);
+  t("TouchEvent.ctrlKey", te.ctrlKey);
+  throws("Touch needs a target", () => new Touch({ identifier: 1 }), "TypeError");
+  const pe = new PointerEvent("pointerdown", { pointerId: 7, pointerType: "pen", pressure: 0.25, isPrimary: true });
+  eq("PointerEvent.pointerType", pe.pointerType, "pen");
+  eq("PointerEvent.pressure", pe.pressure, 0.25);
+});
+
+// what the browser dispatches: recorded, then checked by the tool through window.report()
+window.events = [];
+const rec = (e) => {
+  const dt = e.dataTransfer;
+  let extra = "";
+  if (dt) { extra = " types=" + dt.types.join("|") + " data=" + dt.getData("text/plain") + " files=" + dt.files.length; }
+  if (e.type.startsWith("pointer") || e.type.startsWith("got") || e.type.startsWith("lost")) { extra = " id=" + e.pointerId + " type=" + e.pointerType + " buttons=" + e.buttons; }
+  if (e.type.startsWith("touch")) { extra = " touches=" + e.touches.length + " changed=" + e.changedTouches.length + " id=" + e.changedTouches[0].identifier + " x=" + e.changedTouches[0].clientX; }
+  if (e.type === "mousedown" || e.type === "mouseup") { extra = " y=" + e.clientY + " pageY=" + e.pageY + " buttons=" + e.buttons; }
+  events.push(e.type + "@" + (e.target.id || e.target.nodeName) + extra);
+};
+for (const type of ["dragstart", "drag", "dragenter", "dragleave", "dragover", "drop", "dragend", "pointerdown", "pointerup",
+                    "pointermove", "pointercancel", "gotpointercapture", "lostpointercapture", "touchstart", "touchmove", "touchend",
+                    "touchcancel", "mousedown", "mouseup"]) {
+  document.addEventListener(type, rec, true);
+}
+document.getElementById("src").addEventListener("dragstart", (e) => {
+  e.dataTransfer.setData("text/plain", "from src");
+  e.dataTransfer.effectAllowed = "copy";
+});
+const zone = document.getElementById("zone");
+zone.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+zone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  window.dropped = f ? Promise.all([f.text(), f.slice(1, 4).text()]).then(([all, part]) => all + "|" + part + "|" + f.name + "|" + f.type + "|" + f.size) : Promise.resolve("no file");
+});
+document.getElementById("plain").addEventListener("pointerdown", (e) => { if (e.pointerType === "mouse") { e.target.setPointerCapture(e.pointerId); } });
+window.report = () => { console.log("EVENTS " + events.join(" ; ")); events = []; };
+readBack.then(done, done);
+</script>
