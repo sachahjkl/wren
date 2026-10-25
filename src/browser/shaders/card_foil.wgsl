@@ -1,8 +1,8 @@
 // card-foil: the licence card of about:wren (src/browser/shaders.odin lists it; the toolkit's docs/shaders.md describes the frame this is
 // written in: rect.wgsl + app.wgsl + this file, app_shade returns linear light with straight alpha).
 //
-// One module, two shaders of the registry: `card-foil` (the card: arg `seal` 0) and `card-seal` (the certification seal stuck on it: arg
-// `seal` 1, see seal_shade below). Both are lit by the same two lights and the same eye.
+// One module, three shaders of the registry: `card-foil` (the card: arg `seal` 0), `card-seal` (the certification seal stuck on it: arg
+// `seal` 1, see seal_shade below) and `card-back` (the card's other face: arg `seal` 2). All are lit by the same two lights and the same eye.
 //
 // The card is a banknote's foil under two lights. Its relief is a normal map (about_card_relief.odin: a guilloche of two rosettes, a lipped
 // frame with a groove, micro-lettering, a grain) in texture 0: R G the normal's x y, B the height, A the cavity. Texture 1 is the card's TEXT,
@@ -17,13 +17,15 @@
 //                          iridescent wash (a thin film: the hue goes round the spectrum with the angle the normal makes with the eye),
 //                          glitter (a grid of tiny flakes, each with a normal of its own, that flash where the light mirrors into the
 //                          eye) and a fresnel rim on the lip; on the letters, the same light on silver. The eye's direction comes from the tilt.
-// Arguments (CSS: -wren-shader: card-foil <sweep> <x> <y> <live> <intensity> <engrave> <seal>, after the engine's two vec4):
+// Arguments (CSS: -wren-shader: card-foil <sweep> <x> <y> <live> <intensity> <engrave> <seal> <rx> <ry>, after the engine's two vec4):
 //   sweep      0 .. 1 the sweeping light's way across the card (it enters at the bottom left, leaves at the top right; outside: off)
-//   x, y       0 .. 1 where the pointer is on the card (0.5, 0.5 at rest); the tilt of the card, and the second light
+//   x, y       0 .. 1 where the pointer is on the card (0.5, 0.5 at rest): the second light
 //   live       0 .. 1 the pointer is on the card: the sweep dims, the pointer's light shines
 //   intensity  the overall strength of the light pass
 //   engrave    1: texture 1 holds the text to raise; 0: none (the page draws its own text; the seal draws nothing: the page draws it)
-//   seal       0: the card; 1: the seal (the registry's card-seal sets it)
+//   seal       0: the card; 1: the seal (the registry's card-seal sets it); 2: the BACK of the card (card-back): the same foil with its own
+//              relief (about_card_back.odin: the front's turned inside out, and the logo raised in the middle) seen from behind
+//   rx, ry     the card's turn in degrees (rotateX(rx) rotateY(ry)): the eye and both lights are placed in the frame of the face from it
 
 const PI: f32 = 3.14159265;
 
@@ -88,6 +90,25 @@ const SEAL_CENTER: float2 = float2(1.3697, 0.7906);
 const SEAL_SPAN: f32 = 0.3172;
 const CARD_ASPECT_: f32 = 1.586;
 
+// The card's turn in the page: rotateX(ax) rotateY(ay), as CSS composes them (the page sets both, in degrees: --rx and --ry). The card's own
+// frame is the page's turned back by it: `to_card` takes a vector of the page into it (the transpose of Rx * Ry). The BACK of the card is a face
+// laid on its other side, turned half a turn about the vertical axis (rotateY(180deg) in the page), which mirrors x and z: in the frame of the
+// face the shader paints, the eye and the lights lie where they do for a real object seen from behind.
+fn to_card(v: float3, ax: f32, ay: f32) -> float3 {
+	let u = float3(v.x, cos(ax) * v.y + sin(ax) * v.z, -sin(ax) * v.y + cos(ax) * v.z);
+	return float3(cos(ay) * u.x - sin(ay) * u.z, u.y, sin(ay) * u.x + cos(ay) * u.z);
+}
+
+fn to_face(v: float3, ax: f32, ay: f32, back: bool) -> float3 {
+	let w = to_card(v, ax, ay);
+	return select(w, float3(-w.x, w.y, -w.z), back);
+}
+
+// A light of the page (a point over the card's plane, in the card's units) in the frame of the face, whose centre is `c`.
+fn face_light(p: float3, c: float3, ax: f32, ay: f32, back: bool) -> float3 {
+	return c + to_face(p - c, ax, ay, back);
+}
+
 // ---- the seal ---------------------------------------------------------------------------------------------------------------------
 // A medal of 88 css px stuck on the card: a reeded gold edge, a smooth gold lip, a domed green face with fine concentric rings and a gold
 // rib, and the word CERTIFIED and a tick RAISED on the face, in cream gold. Its relief is a normal map made natively (about_card_seal.odin;
@@ -125,16 +146,16 @@ fn seal_shade(a: AppIn) -> vec4<f32> {
 		return float4(body, 1.0);
 	}
 
-	let tilt = (arg.yz - 0.5) * 2.0;
-	let ry = tilt.x * 0.3142;
-	let rx = -tilt.y * 0.2443;
-	let V = normalize(float3(-sin(ry) * cos(rx), sin(rx), cos(ry) * cos(rx)));
+	let rx = app_param(3u).w * 0.0174533;
+	let ry = app_param(4u).x * 0.0174533;
+	let V = to_face(float3(0.0, 0.0, 1.0), rx, ry, false);
 	let P = float3(SEAL_CENTER + (uv - 0.5) * SEAL_SPAN, 0.0);
 	let live = arg.w;
 	let sw = arg.x;
-	let sweep_pos = float3(mix(-0.5, 1.5, sw) * CARD_ASPECT_, mix(1.15, -0.15, sw), 0.30);
+	let cc = float3(CARD_ASPECT_ * 0.5, 0.5, 0.0);
+	let sweep_pos = face_light(float3(mix(-0.5, 1.5, sw) * CARD_ASPECT_, mix(1.15, -0.15, sw), 0.30), cc, rx, ry, false);
 	let sweep_k = (1.0 - 0.9 * live) * smoothstep(-0.25, 0.05, sw) * (1.0 - smoothstep(0.95, 1.25, sw));
-	let ptr_pos = float3(arg.y * CARD_ASPECT_, arg.z, 0.32);
+	let ptr_pos = face_light(float3(arg.y * CARD_ASPECT_, arg.z, 0.32), cc, rx, ry, false);
 	let ptr_k = 0.30 + 0.95 * live;
 
 	var col = float3(0.0);
@@ -159,7 +180,9 @@ fn seal_shade(a: AppIn) -> vec4<f32> {
 }
 
 fn app_shade(a: AppIn) -> vec4<f32> {
-	if (app_param(3u).z > 0.5) { return seal_shade(a); }
+	let mode = app_param(3u).z;
+	if (mode > 0.5 && mode < 1.5) { return seal_shade(a); }
+	let back = mode > 1.5;
 	let ctl = app_param(1u);       // x: the pass
 	let arg = app_param(2u);       // sweep, pointer x, pointer y, live
 	let arg2 = app_param(3u);      // intensity, engrave
@@ -192,11 +215,14 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 		return float4(0.0, 0.0, 0.0, k);
 	}
 
-	// the eye: the card is turned by rotateX(-ty * 14deg) rotateY(tx * 18deg) (about_card.odin), the eye looks straight at the screen
-	let tilt = (arg.yz - 0.5) * 2.0;
-	let ry = tilt.x * 0.3142;
-	let rx = -tilt.y * 0.2443;
-	let V = normalize(float3(-sin(ry) * cos(rx), sin(rx), cos(ry) * cos(rx)));
+	// the eye: the card is turned by rotateX(rx) rotateY(ry) (about_card.odin: the pointer's small tilt, or the whole turn of the manipulation
+	// mode), the eye looks straight at the screen; in the frame of the face (to_face) the back is seen from behind
+	let rx = app_param(3u).w * 0.0174533;
+	let ry = app_param(4u).x * 0.0174533;
+	let V = to_face(float3(0.0, 0.0, 1.0), rx, ry, back);
+	// how far the eye is off the face, as the pointer's tilt was (1 at the old tilt's end): the thin film's hue follows it
+	let tilt = float2(-V.x / 0.309, -V.y / 0.242);
+	let cc = float3(aspect * 0.5, 0.5, 0.0);
 	let P = float3(uv.x * aspect, uv.y, 0.0);
 	let NV = max(dot(N, V), 0.0);
 
@@ -210,9 +236,9 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 
 	let live = arg.w;
 	let sw = arg.x;
-	let sweep_pos = float3(mix(-0.5, 1.5, sw) * aspect, mix(1.15, -0.15, sw), 0.30);
+	let sweep_pos = face_light(float3(mix(-0.5, 1.5, sw) * aspect, mix(1.15, -0.15, sw), 0.30), cc, rx, ry, back);
 	let sweep_k = (1.0 - 0.9 * live) * smoothstep(-0.25, 0.05, sw) * (1.0 - smoothstep(0.95, 1.25, sw));
-	let ptr_pos = float3(arg.y * aspect, arg.z, 0.32);
+	let ptr_pos = face_light(float3(arg.y * aspect, arg.z, 0.32), cc, rx, ry, back);
 	let ptr_k = 0.30 + 0.95 * live;
 
 	let steel = float3(0.92, 0.95, 1.0);

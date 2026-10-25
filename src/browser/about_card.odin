@@ -3,6 +3,7 @@ package browser
 import "core:fmt"
 import "core:math"
 import "core:strings"
+import "wb:i18n"
 import "wb:license"
 
 ////////////////////////////////
@@ -22,8 +23,17 @@ import "wb:license"
 //  - the script runs on pointer events only, applies at most one update per frame (requestAnimationFrame) and never
 //    loops: a card at rest, or the pointer still, costs no frame. The sweep is a CSS animation of the registered property
 //    --sweep that rests for 60 % of its 7 s: a resting animation asks for no frame either;
+//  - the card turns all the way: a "Rotate" button under it (shown when the pointer is over the card or the button has the focus) switches
+//    the pointer's tilt off and lets a drag turn the card freely on two axes (rotateX, rotateY, no limit), with a fling that slows down (a CSS
+//    transition towards where the speed would take it: no loop, no frame at rest); Done, or Escape, brings it back to the pointer's tilt by the
+//    short way. Past a quarter turn the card shows its back: a second face behind the walls, turned half a turn (`.back`, the shader
+//    `card-back`, about_card_back.odin: the front's relief inside out, the logo raised in the middle). Both faces are `backface-visibility:
+//    hidden`, so that the face turned away is not drawn at all (paint_planes.odin, open_plane). The shaders place the eye and both lights from
+//    the turn (--rx, --ry in degrees, registered properties that transition with the transform), the back as an object seen from behind. The
+//    page engine has pointermove but no pointerdown / pointerup, and a press carries page coordinates: the drag is made of mouse events,
+//    with the position of the last move;
 //  - without JavaScript (javascript.enabled off) or with prefers-reduced-motion the card is the same, still, foil at
-//    a fixed angle.
+//    a fixed angle, with no back and no button; a narrow card has neither.
 
 @(private = "file")
 CARD_STYLE :: `
@@ -32,23 +42,55 @@ CARD_STYLE :: `
   @property --bx { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
   @property --by { syntax: '<percentage>'; inherits: true; initial-value: 50%; }
   @property --engrave { syntax: '<number>'; inherits: true; initial-value: 1; }
+  @property --rx { syntax: '<number>'; inherits: true; initial-value: 0; }
+  @property --ry { syntax: '<number>'; inherits: true; initial-value: 0; }
   .cardbox { width: 100%; max-width: 440px; margin: 16px 0 6px; padding: 12px 0; perspective: 900px; }
-  .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; color: #eceff7; transform-style: preserve-3d;
-    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --bx 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --by 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .cardbox.manip { cursor: grab; touch-action: none; user-select: none; }
+  .cardbox.manip.drag { cursor: grabbing; }
+  /* the card turns about the middle of its thickness (the back lies 8.4px behind the front: CARD_THICKNESS and GAP below), --rx and --ry are the
+     same turn in degrees for the shaders (the eye and the lights are placed from it) */
+  .lic { position: relative; width: 100%; aspect-ratio: 1.586; box-sizing: border-box; color: #eceff7; transform-style: preserve-3d; transform-origin: 50% 50% -4px;
+    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --rx 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --ry 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --bx 0.55s cubic-bezier(0.2, 0.7, 0.2, 1), --by 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
   .lic.live { transition: none; }
   .lic > div { position: absolute; }
   .lic .wall { box-sizing: border-box; }
-  .lic .base { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26;
+  .lic .base { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26; backface-visibility: hidden;
     background-image: linear-gradient(150deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16);
-    -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
-  .lic.live .base { --live: 1; animation-play-state: paused; }
+    -wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave) 0 var(--rx) var(--ry); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+  .lic.live .base, .lic.live .back { --live: 1; animation-play-state: paused; }
+  /* the back: the other face, laid behind the walls and turned half a turn; seen from the front it is turned away and not drawn at all (backface-visibility).
+     Its foil and its relief are its own (card-back: the front's relief inside out, the logo raised in the middle, a line of lettering); the page's own
+     lettering below is the fallback where the shader cannot be had */
+  .lic .back { left: 0; top: 0; right: 0; bottom: 0; box-sizing: border-box; border-radius: 14px; overflow: hidden; background-color: #161a26; backface-visibility: hidden;
+    transform: translateZ(-8.4px) rotateY(180deg);
+    background-image: linear-gradient(210deg, #232a40 0%, #151926 58%, #1c2132 100%); border: 1px solid rgba(255, 255, 255, 0.16);
+    -wren-shader: card-back var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave) 2 var(--rx) var(--ry); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+  .lic .back .btext { position: absolute; left: 0; right: 0; bottom: 20px; text-align: center; font-size: 10px; letter-spacing: 0.28em; color: rgba(236, 239, 247, 0.55); visibility: hidden; }
+  .lic[data-shader=off] .back .btext { visibility: visible; }
+  /* the button that turns the card: under it, at its right, shown when the pointer is over the card (or the button has the focus); the script makes it
+     ready (no script, no button), and reduced motion and a narrow card have none */
+  .flipbar { display: none; justify-content: flex-end; width: 100%; max-width: 440px; height: 30px; margin: -6px 0 0; opacity: 0; transition: opacity 0.18s ease; }
+  .flipbar.ready { display: flex; }
+  .cardbox:hover + .flipbar.ready, .flipbar.ready:hover, .flipbar.ready:focus-within, .flipbar.ready.manip { opacity: 1; }
+  @media (hover: none) { .flipbar.ready { opacity: 1; } }
+  .flipbar button.flip { display: inline-flex; align-items: center; margin: 0; padding: 4px 11px 4px 9px; background-color: transparent; color: inherit; font-size: 13px;
+    border: 1px solid rgba(127, 127, 127, 0.35); border-radius: 999px; }
+  .flipbar button.flip:hover { border-color: rgba(127, 127, 127, 0.8); }
+  .flipbar button.flip:focus-visible { outline: 2px solid currentcolor; outline-offset: 2px; }
+  .flipbar .ics, .flipbar .lbs { display: inline-grid; }
+  .flipbar .ics { margin-right: 7px; width: 1.15em; height: 1.15em; }
+  .flipbar .ics svg { grid-area: 1 / 1; width: 1.15em; height: 1.15em; }
+  .flipbar .lbs > span { grid-area: 1 / 1; text-align: center; }
+  .flipbar .i-on, .flipbar .l-on { visibility: hidden; }
+  .flipbar button.flip[data-state=on] .i-off, .flipbar button.flip[data-state=on] .l-off { visibility: hidden; }
+  .flipbar button.flip[data-state=on] .i-on, .flipbar button.flip[data-state=on] .l-on { visibility: visible; }
   @keyframes sweep { 0% { --sweep: -0.3; } 40% { --sweep: 1.25; } 100% { --sweep: 1.25; } }
   /* the text is engraved by the shader (data-engrave): the page's own text stays in the document (reading, selecting, copying) but is not drawn;
      it is drawn where the shader is not used: a narrow card, reduced motion, a shader that cannot be had */
   .lic .face { -webkit-text-fill-color: transparent; }
   .lic[data-shader=off] .face { -webkit-text-fill-color: currentcolor; }
-  @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } .lic { --engrave: 0; } .lic .face { -webkit-text-fill-color: currentcolor; } }
-  .lic .face { left: 0; top: 0; right: 0; bottom: 0; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+  @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } .lic { --engrave: 0; } .lic .face { -webkit-text-fill-color: currentcolor; } .lic .back, .flipbar.ready { display: none; } }
+  .lic .face { left: 0; top: 0; right: 0; bottom: 0; backface-visibility: hidden; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
   .lic .top { display: flex; align-items: center; }
   .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
   .lic .top b { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
@@ -61,6 +103,7 @@ CARD_STYLE :: `
   .lic .meta em { font-style: normal; font-size: 13px; font-variant-numeric: tabular-nums; }
   @media (max-width: 520px) {
     .lic { aspect-ratio: 1.2; --engrave: 0; }
+    .lic .back, .flipbar.ready { display: none; }
     .lic .face { -webkit-text-fill-color: currentcolor; }
     .lic .meta { flex-direction: column; }
     .lic .meta div { margin: 0 0 5px 0; }
@@ -88,7 +131,7 @@ CARD_STYLE :: `
      raised); the layers above are its fallback and show where it cannot be had (data-shader=off on the seal), with reduced motion and on a
      narrow card. The cast shadow and the edge's walls stay: they are the seal's thickness. */
   .lic .seal .relief { left: 0; top: 0; width: 88px; height: 88px; border-radius: 50%; transform: translate3d(0, 0, 5px) scale(0.99444);
-    -wren-shader: card-seal var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
+    -wren-shader: card-seal var(--sweep) var(--bx) var(--by) var(--live) 1 var(--engrave) 1 var(--rx) var(--ry); animation: sweep 7s cubic-bezier(0.45, 0, 0.35, 1) infinite; }
   .lic.live .seal .relief { --live: 1; animation-play-state: paused; }
   .lic .seal .edge, .lic .seal .ring, .lic .seal .gloss, .lic .seal .word, .lic .seal .tickwrap { visibility: hidden; }
   .lic .seal[data-shader=off] .edge, .lic .seal[data-shader=off] .ring, .lic .seal[data-shader=off] .gloss, .lic .seal[data-shader=off] .word, .lic .seal[data-shader=off] .tickwrap { visibility: visible; }
@@ -102,38 +145,162 @@ CARD_SCRIPT :: `
   var card = document.getElementById("lic");
   if (!card || !card.addEventListener) return;
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var box = card.parentNode, face = card.querySelector(".face"), shadow = card.querySelector(".seal .shadow");
-  var px = 0, py = 0, queued = false, live = false;
-  function apply() {
+
+  var box = card.parentNode, bar = document.getElementById("flipbar"), flip = document.getElementById("flip");
+  var face = card.querySelector(".face"), shadow = card.querySelector(".seal .shadow");
+  // px, py: the pointer on the card, -1 .. 1; ax, ay: the card's turn in degrees (rotateX, rotateY); the pointer's small tilt, or in the
+  // manipulation mode (turn) what the drag made of it; va, vb: how fast it turns while dragged, degrees per ms
+  var px = 0, py = 0, ax = 0, ay = 0, va = 0, vb = 0, lx = 0, ly = 0, lt = 0, mx = 0, my = 0;
+  var queued = false, live = false, turn = false, drag = false, home = 0;
+  // the lettering and the logo stand 18px over the card for the pointer's parallax; a card turned all the way has them on it (1px), or they would float
+  var lift = true;
+  var EASE = "cubic-bezier(0.2, 0.7, 0.2, 1)", K = 0.45;
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function classes() {
+    card.className = live ? "lic live" : "lic";
+    box.className = "cardbox" + (turn ? " manip" : "") + (drag ? " drag" : "");
+    if (bar) bar.className = "flipbar ready" + (turn ? " manip" : "");
+  }
+  // an inline transition rules over the sheet's (and over .live's none): the turn and what the shaders read of it ease together, for ms
+  function ease(ms, light) {
+    if (!ms) { card.style.transition = "none"; return; }
+    var t = " " + ms + "ms " + EASE, s = "transform" + t + ", --rx" + t + ", --ry" + t;
+    card.style.transition = light ? s + ", --bx" + t + ", --by" + t : s;
+  }
+  function write() {
     queued = false;
-    card.style.transform = "rotateX(" + (-py * 14).toFixed(2) + "deg) rotateY(" + (px * 18).toFixed(2) + "deg)";
+    var fx = turn ? 0 : px, fy = turn ? 0 : py;
+    card.style.transform = "rotateX(" + ax.toFixed(2) + "deg) rotateY(" + ay.toFixed(2) + "deg)";
+    card.style.setProperty("--rx", ax.toFixed(2));
+    card.style.setProperty("--ry", ay.toFixed(2));
     card.style.setProperty("--bx", (50 + px * 50).toFixed(1) + "%");
     card.style.setProperty("--by", (50 + py * 50).toFixed(1) + "%");
-    face.style.transform = "translate3d(" + (-px * 5).toFixed(2) + "px," + (-py * 4).toFixed(2) + "px,18px) scale(0.98)";
-    shadow.style.transform = "translate3d(" + (3 - px * 5).toFixed(2) + "px," + (5 - py * 4).toFixed(2) + "px,1px) scale(0.99889)";
+    face.style.transform = "translate3d(" + (-fx * 5).toFixed(2) + "px," + (-fy * 4).toFixed(2) + "px," + (lift ? "18px) scale(0.98)" : "1px) scale(0.99889)");
+    shadow.style.transform = "translate3d(" + (3 - fx * 5).toFixed(2) + "px," + (5 - fy * 4).toFixed(2) + "px,1px) scale(0.99889)";
     card.style.setProperty("--sgx", (50 + px * 28).toFixed(1) + "%");
     card.style.setProperty("--sgy", (50 + py * 28).toFixed(1) + "%");
   }
-  function move(e) {
+  function later() { if (!queued) { queued = true; requestAnimationFrame(write); } }
+  function where(e) {
     var r = box.getBoundingClientRect();
-    px = Math.max(-1, Math.min(1, (e.clientX - r.left) / r.width * 2 - 1));
-    py = Math.max(-1, Math.min(1, (e.clientY - r.top) / r.height * 2 - 1));
-    if (!live) { live = true; card.className = "lic live"; }
-    if (!queued) { queued = true; requestAnimationFrame(apply); }
+    px = clamp((e.clientX - r.left) / r.width * 2 - 1, -1, 1);
+    py = clamp((e.clientY - r.top) / r.height * 2 - 1, -1, 1);
+  }
+  // a touch has its own events: the point of an event, whichever device made it
+  function pt(e) { return (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e; }
+  // the preference asked at the first move, not only when the script runs (the page's media state is not settled while it is parsed)
+  var asked = false;
+  function calm() {
+    if (asked) return false;
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return true;
+    asked = true;
+    return false;
+  }
+  function move(e) {
+    if (drag || calm()) return;
+    mx = e.clientX; my = e.clientY;
+    where(e);
+    if (!live) { live = true; classes(); }
+    if (!turn) { ax = -py * 14; ay = px * 18; }
+    later();
+  }
+  // while a drag lasts the document follows it (the pointer may leave the card)
+  function dragmove(e) {
+    var p = pt(e), dt = Math.max(1, e.timeStamp - lt), da = -(p.clientY - ly) * K, db = (p.clientX - lx) * K;
+    where(p);
+    ax += da; ay += db;
+    va = 0.6 * da / dt + 0.4 * va; vb = 0.6 * db / dt + 0.4 * vb;
+    lx = p.clientX; ly = p.clientY; mx = lx; my = ly; lt = e.timeStamp;
+    later();
+    if (e.preventDefault) e.preventDefault();
   }
   function leave() {
+    if (drag) return;
     live = false; px = 0; py = 0; queued = false;
-    card.className = "lic";
-    card.style.transform = "rotateX(0deg) rotateY(0deg)";
-    card.style.setProperty("--bx", "50%");
-    card.style.setProperty("--by", "50%");
-    face.style.transform = "translate3d(0px,0px,18px) scale(0.98)";
-    shadow.style.transform = "translate3d(3px,5px,1px) scale(0.99889)";
-    card.style.setProperty("--sgx", "32%");
-    card.style.setProperty("--sgy", "26%");
+    classes();
+    if (!turn) { ax = 0; ay = 0; }
+    write();
+  }
+  // the turn as it is on screen now, whatever transition is running
+  function current() {
+    var cs = getComputedStyle(card), a = parseFloat(cs.getPropertyValue("--rx")), b = parseFloat(cs.getPropertyValue("--ry"));
+    if (isFinite(a)) ax = a;
+    if (isFinite(b)) ay = b;
+  }
+  // a style that was written and is read back is the start of the transition the next write begins
+  function settle() { void card.offsetWidth; getComputedStyle(card).getPropertyValue("--ry"); }
+  // the events that follow a drag: the pointer's, or the mouse's, and the touch's where there is a touch screen
+  // (the mouse events, which the engine sends for every device and for the synthetic input of wren ctl: it has pointermove but no pointerdown / up)
+  var TOUCH = "ontouchstart" in window;
+  function track(on) {
+    var f = on ? "addEventListener" : "removeEventListener";
+    document[f]("mousemove", dragmove);
+    document[f]("mouseup", up);
+    if (TOUCH) { document[f]("touchmove", dragmove); document[f]("touchend", up); document[f]("touchcancel", up); }
+  }
+  function down(e) {
+    if (!turn || drag || e.button > 0 || (bar && bar.contains(e.target))) return;
+    var p = pt(e);
+    current(); ease(0); write();
+    // (a press carries its position in the page, not in the window, once the page is scrolled: where the pointer last moved is where it is)
+    drag = true; va = 0; vb = 0; lx = e.touches ? p.clientX : mx; ly = e.touches ? p.clientY : my; lt = e.timeStamp;
+    track(true);
+    classes();
+    e.preventDefault();
+  }
+  // let go: the card keeps turning for a moment, slowing down (a transition towards where its speed would take it: no loop, no frame while it rests)
+  function up(e) {
+    if (!drag) return;
+    drag = false;
+    track(false);
+    classes();
+    if (e.timeStamp - lt > 90) { va = 0; vb = 0; }
+    if (Math.abs(va) + Math.abs(vb) > 0.03) {
+      write(); settle();
+      ax += clamp(va * 380, -300, 300); ay += clamp(vb * 380, -300, 300);
+      ease(1000); write();
+    }
+    var p = e.changedTouches ? pt(e) : { clientX: mx, clientY: my }, r = box.getBoundingClientRect();
+    if (p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) leave();
+  }
+  function enter() {
+    turn = true; lift = false; ease(0);
+    clearTimeout(home);
+    flip.setAttribute("data-state", "on"); flip.setAttribute("aria-pressed", "true"); flip.setAttribute("aria-label", flip.getAttribute("data-label-on"));
+    classes();
+  }
+  // back to the pointer's tilt by the short way (the turn modulo a whole turn: the card does not unwind a spin)
+  function finish() {
+    if (!turn) return;
+    current();
+    turn = false; drag = false;
+    ease(0); ax -= 360 * Math.round(ax / 360); ay -= 360 * Math.round(ay / 360); write(); settle();
+    flip.setAttribute("data-state", "off"); flip.setAttribute("aria-pressed", "false"); flip.setAttribute("aria-label", flip.getAttribute("data-label-off"));
+    ax = 0; ay = 0; px = 0; py = 0; live = false;
+    classes();
+    ease(750, true); write();
+    clearTimeout(home);
+    home = setTimeout(function () { card.style.transition = ""; if (!turn) { lift = true; write(); } }, 800);
+  }
+  function key(e) {
+    if (!turn) return;
+    if (e.key === "Escape") { finish(); return; }
+    var step = { ArrowLeft: [0, -30], ArrowRight: [0, 30], ArrowUp: [30, 0], ArrowDown: [-30, 0] }[e.key];
+    if (!step || e.target !== flip && !box.contains(e.target)) return;
+    current(); ease(0); write(); settle();
+    ax += step[0]; ay += step[1];
+    ease(350); write();
+    e.preventDefault();
   }
   box.addEventListener(window.PointerEvent ? "pointermove" : "mousemove", move);
   box.addEventListener(window.PointerEvent ? "pointerleave" : "mouseleave", leave);
+  if (flip && bar) {
+    box.addEventListener("mousedown", down);
+    if (TOUCH) box.addEventListener("touchstart", down);
+    flip.addEventListener("click", function () { if (turn) finish(); else enter(); });
+    document.addEventListener("keydown", key);
+    bar.className = "flipbar ready";
+  }
 })();
 `
 
@@ -207,6 +374,19 @@ seal_walls_html :: proc(sb: ^strings.Builder) {
 	}
 }
 
+// Lucide's "refresh-cw" (the card is turned) and "check" (done), inline so that they take the button's color and the size of its text.
+@(private = "file") ROTATE_ICON :: `<svg class="i-off" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></g></svg>`
+@(private = "file") ROTATE_DONE_ICON :: `<svg class="i-on" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>`
+
+// The button under the card that switches it to the manipulation mode (the script makes it ready and drives it): "Rotate" with an icon, "Done"
+// while the card is free. Both labels share a grid cell, so the button keeps one width; the accessible name says what a click does.
+@(private = "file")
+flip_button_html :: proc(sb: ^strings.Builder) {
+	fmt.sbprintf(sb, "<div class=\"flipbar\" id=\"flipbar\"><button type=\"button\" class=\"flip\" id=\"flip\" data-state=\"off\" aria-pressed=\"false\" aria-label=\"%s\" data-label-off=\"%s\" data-label-on=\"%s\" title=\"%s\"><span class=\"ics\" aria-hidden=\"true\">%s%s</span><span class=\"lbs\"><span class=\"l-off\">%s</span><span class=\"l-on\" aria-live=\"polite\">%s</span></span></button></div>\n",
+		escape_html(i18n.tr("Rotate the card")), escape_html(i18n.tr("Rotate the card")), escape_html(i18n.tr("Done: bring the card back to its tilt")), escape_html(i18n.tr("Turn the card over: drag it to rotate it (Esc to finish)")),
+		ROTATE_ICON, ROTATE_DONE_ICON, escape_html(i18n.tr("Rotate")), escape_html(i18n.tr("Done")))
+}
+
 // The card of `lic` and the script that moves it. Every field is escaped.
 license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	e :: proc(s: string) -> string { return escape_html(s) }
@@ -223,7 +403,11 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	strings.write_string(sb, "<div class=\"seal\"><div class=\"shadow\"></div>")
 	seal_walls_html(sb)
 	strings.write_string(sb, "<div class=\"relief\" data-engrave=\"CERTIFIED\"></div><div class=\"edge\"></div><div class=\"ring\"><div class=\"rim\"></div></div><div class=\"gloss\"></div><div class=\"word\">CERTIFIED</div><div class=\"tickwrap\"><svg width=\"88\" height=\"88\" viewBox=\"0 0 88 88\"><path d=\"M31.75 27.5L40.25 36L56.25 17\" fill=\"none\" stroke=\"#fbf0c4\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></div></div>")
-	strings.write_string(sb, "</div></div>\n<script>")
+	// the back: the brand line is what the shader engraves (and what shows where it cannot be had); nothing of the person is on this side
+	fmt.sbprintf(sb, "<div class=\"back\" aria-hidden=\"true\" data-engrave=\"%s\"><div class=\"btext\">%s</div></div>", e(back_text()), e(back_text()))
+	strings.write_string(sb, "</div></div>\n")
+	flip_button_html(sb)
+	strings.write_string(sb, "<script>")
 	strings.write_string(sb, CARD_SCRIPT)
 	strings.write_string(sb, "</script>\n")
 }

@@ -540,6 +540,38 @@ planes_backfaces_and_depth_order :: proc(t: ^testing.T) {
 	}
 }
 
+// A face with backface-visibility: hidden that is turned away is not painted at all (open_plane counts it in planes_culled). The same page
+// with the face visible skips none, and both show the same picture (the back is over where the front would be).
+@(test)
+planes_a_hidden_turned_away_face_is_not_painted :: proc(t: ^testing.T) {
+	sync.mutex_lock(&compositor_test_lock)
+	defer sync.mutex_unlock(&compositor_test_lock)
+	layers: [2]int
+	pictures: [2][]u8   // (the temporary allocator's)
+	for hidden, k in ([]bool{true, false}) {
+		f: Cx
+		page := strings.concatenate({`<!doctype html><html><head><style>html, body { margin: 0; background: #fff }
+			.stage { perspective: 600px; width: 200px; height: 200px; position: relative }
+			.flip { position: absolute; left: 20px; top: 20px; width: 120px; height: 120px; transform-style: preserve-3d; transform: rotateY(180deg) }
+			.face { position: absolute; inset: 0; background: rgb(255, 0, 0); `, hidden ? "backface-visibility: hidden" : "", ` }
+			.back { position: absolute; inset: 0; background: rgb(0, 160, 0); transform: rotateY(180deg) translateZ(1px) }
+			</style></head><body><div class=stage><div class=flip><div class=face></div><div class=back></div></div></div></body></html>`}, context.temp_allocator)
+		if !cx_open(&f, page) {
+			cx_close(&f)
+			testing.fail_now(t, "no device")
+		}
+		before := planes_culled
+		for _ in 0 ..< 3 { cx_paint(&f, true) }
+		img := cx_paint(&f, true)
+		layers[k] = planes_culled - before
+		pictures[k] = img
+		cx_close(&f)
+	}
+	testing.expectf(t, layers[0] == 4 && layers[1] == 0, "the hidden face is skipped at each of the four frames, the visible one never (%d with it hidden, %d visible)", layers[0], layers[1])
+	worst, count := cx_diff(pictures[0], pictures[1])
+	testing.expectf(t, worst <= 1, "the same picture (%d bytes differ, worst %d)", count, worst)
+}
+
 // Planes that cut through each other: two members of a preserve-3d context in an X (rotateY +45 and -45 about the same axis)
 // are split along their line of intersection, each in front on its own side.
 @(test)

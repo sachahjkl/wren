@@ -62,6 +62,7 @@ Plane_Settings :: struct {
 
 @(private) plane_settings := Plane_Settings{max_scale = 16, min_scale = 0.0625, taps = 8, mips = true, layer_bytes = 96 << 20, tolerance = 2, settle_ms = 120, detach = true}
 @(private) planes_watch: int
+@(private) planes_culled: int   // planes not painted because they are hidden and turned away (what the tests count)
 
 register_plane_prefs :: proc(p: ^config.Prefs) { config.register(p, PLANE_PREFS[:]) }
 
@@ -326,6 +327,13 @@ open_plane :: proc(e: ^Effects, c: i32, og: ^Open_Group, bounds: lay.Rect) -> bo
 	g := &l.groups[c]
 	s := g.space
 	if s == lay.NONE || e.v.singular[s] || lay.rect_empty(bounds) { return false }
+	// a face with backface-visibility: hidden that is turned away is not drawn at all: its layer (and a shader in it: the licence card's two
+	// faces) would be rasterized only for close_plane to throw it away. A plane that keeps its children in 3D is left alone: they are not its
+	// own, they have their own backfaces.
+	if l.spaces[s].back_hidden && !l.spaces[s].preserve && style.m4_back_facing(e.v.accs[s]) {
+		planes_culled += 1
+		return false
+	}
 	// a member of a 3D context is not in its parent's layer: a kept result of the parent does not stand for it
 	if l.spaces[s].ctx != s && e.fxc != nil {
 		og.member, og.saved_skip = true, e.fxc.skip

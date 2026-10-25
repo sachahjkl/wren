@@ -10,6 +10,7 @@ import "core:time"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:render"
+import "toolkit:ui"
 import "wb:config"
 import "wb:dom"
 import "wb:host"
@@ -30,7 +31,12 @@ the_registry_is_well_formed :: proc(t: ^testing.T) {
 		testing.expectf(t, len(d.passes) > 0, "shader %q draws nothing", d.name)
 		testing.expectf(t, shader_def(d.name) != nil, "shader %q is found by name", d.name)
 	}
-	testing.expect(t, shader_def("card-foil") != nil && shader_def("card-seal") != nil && shader_def("nope") == nil)
+	testing.expect(t, shader_def("card-foil") != nil && shader_def("card-seal") != nil && shader_def("card-back") != nil && shader_def("nope") == nil)
+	// the three faces take the card's turn (rx, ry) after the mode, and differ by the mode alone
+	for name, mode in ([]string{"card-foil", "card-seal", "card-back"}) {
+		d := shader_def(name)
+		testing.expectf(t, len(d.args) == 9 && d.args[6] == "seal" && d.args[7] == "rx" && d.args[8] == "ry" && d.defaults[6] == f32(mode), "%s: the mode %d and the turn", name, mode)
+	}
 	testing.expect(t, shader_def("") == nil, "none is not a shader")
 }
 
@@ -105,12 +111,139 @@ the_relief_of_the_seal_is_a_domed_medal_with_a_reeded_gold_edge :: proc(t: ^test
 }
 
 @(test)
+the_logo_of_the_back_is_a_height_field_in_the_middle_of_the_card :: proc(t: ^testing.T) {
+	mask, size, ok := logo_mask()
+	defer delete(mask)
+	if !testing.expect(t, ok && size == 256, "the built-in logo decodes") { return }
+	bird := 0
+	for v in mask { if v > 0.5 { bird += 1 } }
+	testing.expectf(t, bird > size * size / 40 && bird < size * size / 3, "the bird is a part of the picture, neither nothing nor the whole tile (%d of %d)", bird, size * size)
+
+	field := logo_height_field()
+	defer delete(field)
+	W, H :: NORMAL_W, NORMAL_H
+	testing.expect_value(t, len(field), W * H)
+	sum, cx, cy, top := f64(0), f64(0), f64(0), f32(0)
+	lo_x, hi_x, lo_y, hi_y := W, 0, H, 0
+	for y in 0 ..< H {
+		for x in 0 ..< W {
+			v := field[y * W + x]
+			if !(v >= 0 && v <= 1) { testing.fail_now(t, "a height outside 0 .. 1") }
+			top = max(top, v)
+			sum += f64(v); cx += f64(v) * f64(x); cy += f64(v) * f64(y)
+			if v > 0.02 { lo_x, hi_x, lo_y, hi_y = min(lo_x, x), max(hi_x, x), min(lo_y, y), max(hi_y, y) }
+		}
+	}
+	testing.expectf(t, top > 0.95, "the bird has a flat top (%f)", top)
+	testing.expectf(t, sum > f64(W * H) * 0.04 && sum < f64(W * H) * 0.4, "the figure is big but not the whole card (%f of %d)", sum, W * H)
+	// centred (the logo sits a few px above the middle), and well inside the card's frame, whatever its drawing
+	testing.expectf(t, abs(cx / sum - f64(W) / 2) < f64(W) * 0.06 && abs(cy / sum - f64(H) / 2) < f64(H) * 0.12, "centred: (%f, %f)", cx / sum, cy / sum)
+	testing.expectf(t, lo_x > W / 5 && hi_x < W - W / 5 && lo_y > H / 12 && hi_y < H - H / 8, "inside the frame: x %d .. %d, y %d .. %d", lo_x, hi_x, lo_y, hi_y)
+	again := logo_height_field()
+	defer delete(again)
+	testing.expect(t, slice.equal(field, again), "the same field every time")
+}
+
+@(test)
+the_back_of_the_card_is_the_fronts_relief_inside_out_with_the_logo_raised :: proc(t: ^testing.T) {
+	front := card_normal_map()
+	defer delete(front)
+	back := back_normal_map()
+	defer delete(back)
+	again := back_normal_map()
+	defer delete(again)
+	testing.expect_value(t, len(back), NORMAL_W * NORMAL_H * 4)
+	testing.expect(t, string(back) == string(again), "the same bytes every time")
+	for i := 0; i < len(back); i += 4 {
+		x, y := (f32(back[i]) - 128) / 127, (f32(back[i + 1]) - 128) / 127
+		if x * x + y * y > 1.02 { testing.fail_now(t, "a normal longer than a unit") }
+	}
+	at :: proc(a: []u8, x, y, c: int) -> int { return int(a[(y * NORMAL_W + x) * 4 + c]) }
+	// the lip along the top edge: the highest thing of the front, a trough on the back; its slope faces the other way
+	fh, bh := at(front, NORMAL_W / 2, 3, 2), at(back, NORMAL_W / 2, 3, 2)
+	testing.expectf(t, fh > 170 && bh < 90 && fh - bh > 100, "the lip stands out on the front (%d), is hollow on the back (%d)", fh, bh)
+	// a point on the lip's inner slope leans one way on the front and the other on the back (the guilloche there is the same field, turned inside out)
+	fn, bn := at(front, NORMAL_W / 2, 12, 1) - 128, at(back, NORMAL_W / 2, 12, 1) - 128
+	testing.expectf(t, fn * bn < 0, "the slope turns over (%d, %d)", fn, bn)
+	// the logo is raised in the middle: the top of the bird is the highest the back goes, and its flanks lean away from its centre
+	mid_y := NORMAL_H / 2 + 10
+	field := logo_height_field()
+	defer delete(field)
+	best, bx, by := f32(0), 0, 0
+	for y in 0 ..< NORMAL_H { for x in 0 ..< NORMAL_W { if field[y * NORMAL_W + x] > best { best, bx, by = field[y * NORMAL_W + x], x, y } } }
+	testing.expectf(t, at(back, bx, by, 2) > 235, "the figure's top is the highest of the back (%d)", at(back, bx, by, 2))
+	left_edge := 0
+	for x in 0 ..< NORMAL_W / 2 {
+		if field[mid_y * NORMAL_W + x] > 0.3 { left_edge = x; break }
+	}
+	testing.expectf(t, left_edge > 0 && at(back, left_edge, mid_y, 0) < 120, "the bird's left flank leans to the left (%d at x = %d)", at(back, left_edge, mid_y, 0), left_edge)
+}
+
+// about:wren with the card's preview (the sample licence)
+@(private = "file")
+sample_card_page :: proc() -> Wren_Page {
+	pal, _ := ui.palette_named("graphite")
+	return {palette = pal, card_sample = true, support_url = SUPPORT_URL, profile_dir = `C:\Users\x\AppData\Roaming\Wren`}
+}
+
+@(test)
+the_back_carries_the_brand_and_nothing_of_the_person :: proc(t: ^testing.T) {
+	testing.expect_value(t, back_text(), "WREN \u00b7 FROMENT SOFTWARE")
+	html := wren_page_html(sample_card_page())
+	start := strings.index(html, `<div class="back"`)
+	if !testing.expect(t, start >= 0, "the card has a back") { return }
+	back := html[start:]
+	back = back[:strings.index(back, "</div></div>") + len("</div></div>")]
+	for private in ([]string{SAMPLE_LICENSE.name, SAMPLE_LICENSE.email, SAMPLE_LICENSE.order, SAMPLE_LICENSE.date}) {
+		testing.expectf(t, private == "" || !strings.contains(back, private), "the back must not show %q", private)
+	}
+	testing.expect(t, strings.contains(back, `data-engrave="WREN &middot; FROMENT SOFTWARE"`) || strings.contains(back, "data-engrave=\"WREN \u00b7 FROMENT SOFTWARE\""), "the shader engraves the brand line")
+	testing.expect(t, strings.contains(back, `aria-hidden="true"`), "the back is decoration: the card's text is the front's")
+}
+
+@(test)
 the_card_style_asks_for_the_shader_and_carries_no_picture :: proc(t: ^testing.T) {
 	css := card_css()
 	for want in ([]string{"-wren-shader: card-foil var(--sweep) var(--bx) var(--by) var(--live)", "@property --sweep", "@property --bx", "@keyframes sweep", "prefers-reduced-motion", ".lic.live .base"}) {
 		testing.expectf(t, strings.contains(css, want), "the card's style lacks %q", want)
 	}
-	testing.expect(t, !strings.contains(css, "data:image") && !strings.contains(css, "mask-image") && len(css) < 12000, "no picture of the relief in the page: it is made natively")
+	testing.expect(t, !strings.contains(css, "data:image") && !strings.contains(css, "mask-image") && len(css) < 20000, "no picture of the relief in the page: it is made natively")
+}
+
+@(test)
+the_card_turns_over_with_real_3d_and_has_no_turn_where_motion_is_reduced :: proc(t: ^testing.T) {
+	css := card_css()
+	// two faces back to back: each hides its back (backface-visibility), the back lies behind the walls and is turned half a turn
+	for want in ([]string{".lic .back {", "backface-visibility: hidden", "transform: translateZ(-8.4px) rotateY(180deg)", "-wren-shader: card-back", "transform-origin: 50% 50% -4px",
+		"@property --rx", "@property --ry", "--rx 0.55s", "var(--rx) var(--ry)"}) {
+		testing.expectf(t, strings.contains(css, want), "the card's style lacks %q", want)
+	}
+	testing.expect_value(t, strings.count(css, "backface-visibility: hidden"), 3)   // the foil, the lettering and the back
+	// reduced motion and a narrow card: no back, no button (the script does not make it ready either)
+	reduced := css[strings.index(css, "@media (prefers-reduced-motion: reduce)"):]
+	reduced = reduced[:strings.index(reduced, "\n")]
+	testing.expect(t, strings.contains(reduced, ".lic .back, .flipbar.ready { display: none; }"), "no back and no button with reduced motion")
+	narrow := css[strings.index(css, "@media (max-width: 520px)"):]
+	narrow = narrow[:strings.index(narrow, "  .lic .seal {")]
+	testing.expect(t, strings.contains(narrow, ".lic .back, .flipbar.ready { display: none; }"), "no back and no button on a narrow card")
+	testing.expect(t, !strings.contains(css, ".flipbar.ready { display: flex; }") || strings.index(css, ".flipbar.ready { display: flex; }") < strings.index(css, "@media (max-width: 520px)"), "the narrow rule comes after the one that shows the button")
+}
+
+@(test)
+the_rotate_button_is_labelled_and_the_script_never_loops :: proc(t: ^testing.T) {
+	html := wren_page_html(sample_card_page())
+	for want in ([]string{`<button type="button" class="flip" id="flip"`, `aria-label="Rotate the card"`, `aria-pressed="false"`, `data-label-on="Done: bring the card back to its tilt"`,
+		`class="l-off">Rotate<`, `class="l-on" aria-live="polite">Done<`, `class="i-off"`, `class="i-on"`, `currentColor`, `class="flipbar" id="flipbar"`, `"Escape"`, `"keydown"`, `ontouchstart`}) {
+		testing.expectf(t, strings.contains(html, want), "the page lacks %q", want)
+	}
+	// the button is outside the card (it does not turn with it) and after it
+	testing.expect(t, strings.index(html, `id="flipbar"`) > strings.index(html, `class="back"`), "the button follows the card")
+	// no loop at rest: a drag is made of events, the fling of a transition; the only timers are the end of the return
+	testing.expect(t, !strings.contains(html, "setInterval") && !strings.contains(html, "requestAnimationFrame(loop"), "no loop")
+	script := html[strings.index(html, "<script>\n(function () {\n  var card"):]
+	script = script[:strings.index(script, "</script>")]
+	testing.expect_value(t, strings.count(script, "setTimeout("), 1)
+	testing.expect_value(t, strings.count(script, "requestAnimationFrame("), 1)
 }
 
 ////////////////////////////////
