@@ -16,7 +16,7 @@ import "wb:license"
 //
 //  - the card tilts with the pointer (rotateX / rotateY, eased back to rest by a CSS transition) in the perspective of its box
 //    (CSS Transforms 2: .cardbox has perspective, .lic preserve-3d): the base with its foil and glare lies at z = 0 and the
-//    text 18px above it. The seal is a medal stuck ON the card: a stack of layers 1 to 9px above the base (its cast shadow,
+//    fallback text 18px above it (the logo is printed on the card, 1px over it, and moves with nothing else). The seal is a medal stuck ON the card: a stack of layers 1 to 9px above the base (its cast shadow,
 //    which slides away from the light, the ridged gold edge, the domed green face, a highlight that follows the pointer, the
 //    word and the tick embossed on top), so the tilt shows its relief and it never floats; the text slides a little on the
 //    pointer. At rest the scales (900 / (900 - z)) cancel the enlargement the perspective gives the lifted layers;
@@ -90,9 +90,17 @@ CARD_STYLE :: `
   .lic .face { -webkit-text-fill-color: transparent; }
   .lic[data-shader=off] .face { -webkit-text-fill-color: currentcolor; }
   @media (prefers-reduced-motion: reduce) { .lic .base { animation: none; --sweep: 0.42; } .lic { --engrave: 0; } .lic .face { -webkit-text-fill-color: currentcolor; } .lic .back, .flipbar.ready { display: none; } }
-  .lic .face { left: 0; top: 0; right: 0; bottom: 0; backface-visibility: hidden; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; }
+  .lic .face { left: 0; top: 0; right: 0; bottom: 0; backface-visibility: hidden; transform: translate3d(0, 0, 18px) scale(0.98); padding: 18px 22px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .lic.live .face, .lic.live .seal .shadow { transition: none; }
+  .lic .seal .shadow { transition: transform 0.55s cubic-bezier(0.2, 0.7, 0.2, 1); }
   .lic .top { display: flex; align-items: center; }
-  .lic .top img { width: 26px; height: 26px; flex: none; margin-right: 9px; }
+  /* the logo is a print on the card, in the base's own plane (1px over it, like the seal's shadow, with no parallax: it turns, tilts and eases back
+     with the card and with nothing else; the engraving's relief would break its colours up, and the lettering's layer slides on the pointer);
+     the lettering's line leaves room for it */
+  .lic .logo { position: absolute; left: 22px; top: 18px; width: 26px; height: 26px; backface-visibility: hidden; transform: translate3d(0, 0, 1px) scale(0.99889);
+    filter: drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.55)) drop-shadow(0px -1px 0px rgba(255, 255, 255, 0.18)); }
+  .lic .top b { margin-left: 35px; }
   .lic .top b { font-size: 17px; font-weight: 600; letter-spacing: 0.02em; }
   .lic .top span { margin-left: auto; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(236, 239, 247, 0.66); }
   .lic .who { font-size: 24px; line-height: 1.2; font-weight: 600; overflow-wrap: anywhere; }
@@ -163,9 +171,16 @@ CARD_SCRIPT :: `
   }
   // an inline transition rules over the sheet's (and over .live's none): the turn and what the shaders read of it ease together, for ms
   function ease(ms, light) {
+    follow(ms);
     if (!ms) { card.style.transition = "none"; return; }
     var t = " " + ms + "ms " + EASE, s = "transform" + t + ", --rx" + t + ", --ry" + t;
     card.style.transition = light ? s + ", --bx" + t + ", --by" + t : s;
+  }
+  // what stands on the card (the fallback lettering, the seal's shadow) slides with its parallax and eases with the card, or it would jump
+  // where the card is still on its way (ms: "" gives them back to the sheet's)
+  function follow(ms) {
+    var s = ms === "" ? "" : ms ? "transform " + ms + "ms " + EASE : "none";
+    face.style.transition = s; shadow.style.transition = s;
   }
   function write() {
     queued = false;
@@ -264,7 +279,7 @@ CARD_SCRIPT :: `
     if (p.clientX < r.left || p.clientX > r.right || p.clientY < r.top || p.clientY > r.bottom) leave();
   }
   function enter() {
-    turn = true; lift = false; ease(0);
+    turn = true; lift = false; ease(0); follow(300);
     clearTimeout(home);
     flip.setAttribute("data-state", "on"); flip.setAttribute("aria-pressed", "true"); flip.setAttribute("aria-label", flip.getAttribute("data-label-on"));
     classes();
@@ -280,7 +295,7 @@ CARD_SCRIPT :: `
     classes();
     ease(750, true); write();
     clearTimeout(home);
-    home = setTimeout(function () { card.style.transition = ""; if (!turn) { lift = true; write(); } }, 800);
+    home = setTimeout(function () { card.style.transition = ""; follow(""); if (!turn) { lift = true; write(); } }, 800);
   }
   function key(e) {
     if (!turn) return;
@@ -393,7 +408,8 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	strings.write_string(sb, "<div class=\"cardbox\"><div class=\"lic\" id=\"lic\">")
 	card_walls_html(sb)
 	fmt.sbprintf(sb, "<div class=\"base\" data-engrave=\"%s\"></div>", e(card_engrave_fields(APP_NAME, license.edition_title(lic.edition), lic.name, lic.email, lic.date, lic.order)))
-	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><img src=\"%s\" alt=\"\"><b>%s</b><span>%s</span></div>", app_logo_url(), APP_NAME, e(license.edition_title(lic.edition)))
+	fmt.sbprintf(sb, "<img class=\"logo\" src=\"%s\" alt=\"\">", app_logo_url())
+	fmt.sbprintf(sb, "<div class=\"face\"><div class=\"top\"><b>%s</b><span>%s</span></div>", APP_NAME, e(license.edition_title(lic.edition)))
 	fmt.sbprintf(sb, "<div><div class=\"who\">%s</div>", e(lic.name))
 	if lic.email != "" { fmt.sbprintf(sb, "<div class=\"mail\">%s</div>", e(lic.email)) }
 	strings.write_string(sb, "</div><div class=\"meta\">")
