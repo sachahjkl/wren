@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 560 |
-| exposed by default | 248 |
+| exposed by default | 253 |
 | members | 5013 |
-| members implemented | 3026 (60.4 %) |
+| members implemented | 3133 (62.5 %) |
 
 ## By specification
 
@@ -45,7 +45,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `event-timing.idl` | 2 (1) | 6 / 8 |
 | `fetch.idl` | 4 (3) | 56 / 57 |
 | `gamepad.idl` | 4 (0) | 0 / 17 |
-| `geometry.idl` | 8 (3) | 19 / 126 |
+| `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
 | `html.idl` | 160 (109) | 1401 / 1819 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
@@ -494,12 +494,144 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createHTMLDocument()`: C `wjr_DOMImplementation_createHTMLDocument`
 - `hasFeature()`: C `wjr_DOMImplementation_hasFeature`
 
+### DOMMatrixReadOnly
+
+46 / 46 members.
+
+- `constructor()`: C `wjr_DOMMatrixReadOnly_constructor`
+- `static fromMatrix()`: C `wjr_DOMMatrixReadOnly_static_fromMatrix`
+- `static fromFloat32Array()`: C `wjr_DOMMatrixReadOnly_static_fromFloat32Array`
+- `static fromFloat64Array()`: C `wjr_DOMMatrixReadOnly_static_fromFloat64Array`
+- `readonly a`: C `wjr_DOMMatrixReadOnly_get_a`
+- `readonly b`: C `wjr_DOMMatrixReadOnly_get_b`
+- `readonly c`: C `wjr_DOMMatrixReadOnly_get_c`
+- `readonly d`: C `wjr_DOMMatrixReadOnly_get_d`
+- `readonly e`: C `wjr_DOMMatrixReadOnly_get_e`
+- `readonly f`: C `wjr_DOMMatrixReadOnly_get_f`
+- `readonly m11`: C `wjr_DOMMatrixReadOnly_get_m11`
+- `readonly m12`: C `wjr_DOMMatrixReadOnly_get_m12`
+- `readonly m13`: C `wjr_DOMMatrixReadOnly_get_m13`
+- `readonly m14`: C `wjr_DOMMatrixReadOnly_get_m14`
+- `readonly m21`: C `wjr_DOMMatrixReadOnly_get_m21`
+- `readonly m22`: C `wjr_DOMMatrixReadOnly_get_m22`
+- `readonly m23`: C `wjr_DOMMatrixReadOnly_get_m23`
+- `readonly m24`: C `wjr_DOMMatrixReadOnly_get_m24`
+- `readonly m31`: C `wjr_DOMMatrixReadOnly_get_m31`
+- `readonly m32`: C `wjr_DOMMatrixReadOnly_get_m32`
+- `readonly m33`: C `wjr_DOMMatrixReadOnly_get_m33`
+- `readonly m34`: C `wjr_DOMMatrixReadOnly_get_m34`
+- `readonly m41`: C `wjr_DOMMatrixReadOnly_get_m41`
+- `readonly m42`: C `wjr_DOMMatrixReadOnly_get_m42`
+- `readonly m43`: C `wjr_DOMMatrixReadOnly_get_m43`
+- `readonly m44`: C `wjr_DOMMatrixReadOnly_get_m44`
+- `readonly is2D`: C `wjr_DOMMatrixReadOnly_get_is2D`
+- `readonly isIdentity`: C `wjr_DOMMatrixReadOnly_get_isIdentity`
+- `translate()`: C `wjr_DOMMatrixReadOnly_translate`
+- `scale()`: C `wjr_DOMMatrixReadOnly_scale`
+- `scaleNonUniform()`: C `wjr_DOMMatrixReadOnly_scaleNonUniform`
+- `scale3d()`: C `wjr_DOMMatrixReadOnly_scale3d`
+- `rotate()`: C `wjr_DOMMatrixReadOnly_rotate`
+- `rotateFromVector()`: C `wjr_DOMMatrixReadOnly_rotateFromVector`
+- `rotateAxisAngle()`: C `wjr_DOMMatrixReadOnly_rotateAxisAngle`
+- `skewX()`: C `wjr_DOMMatrixReadOnly_skewX`
+- `skewY()`: C `wjr_DOMMatrixReadOnly_skewY`
+- `multiply()`: C `wjr_DOMMatrixReadOnly_multiply`
+- `flipX()`: C `wjr_DOMMatrixReadOnly_flipX`
+- `flipY()`: C `wjr_DOMMatrixReadOnly_flipY`
+- `inverse()`: C `wjr_DOMMatrixReadOnly_inverse`
+- `transformPoint()`: C `wjr_DOMMatrixReadOnly_transformPoint`
+- `toFloat32Array()`: C `wjr_DOMMatrixReadOnly_toFloat32Array`
+- `toFloat64Array()`: C `wjr_DOMMatrixReadOnly_toFloat64Array`
+- `stringifier`: C `wjr_DOMMatrixReadOnly_toString`
+- `toJSON()`: C `wjr_DOMMatrixReadOnly_toJSON`
+
+### DOMMatrix : DOMMatrixReadOnly
+
+38 / 38 members.
+
+- `constructor()`: C `wjr_DOMMatrix_constructor`
+- `static fromMatrix()`: C `wjr_DOMMatrix_static_fromMatrix`
+- `static fromFloat32Array()`: C `wjr_DOMMatrix_static_fromFloat32Array`
+- `static fromFloat64Array()`: C `wjr_DOMMatrix_static_fromFloat64Array`
+- `a`: C `wjr_DOMMatrix_get_a`
+- `b`: C `wjr_DOMMatrix_get_b`
+- `c`: C `wjr_DOMMatrix_get_c`
+- `d`: C `wjr_DOMMatrix_get_d`
+- `e`: C `wjr_DOMMatrix_get_e`
+- `f`: C `wjr_DOMMatrix_get_f`
+- `m11`: C `wjr_DOMMatrix_get_m11`
+- `m12`: C `wjr_DOMMatrix_get_m12`
+- `m13`: C `wjr_DOMMatrix_get_m13`
+- `m14`: C `wjr_DOMMatrix_get_m14`
+- `m21`: C `wjr_DOMMatrix_get_m21`
+- `m22`: C `wjr_DOMMatrix_get_m22`
+- `m23`: C `wjr_DOMMatrix_get_m23`
+- `m24`: C `wjr_DOMMatrix_get_m24`
+- `m31`: C `wjr_DOMMatrix_get_m31`
+- `m32`: C `wjr_DOMMatrix_get_m32`
+- `m33`: C `wjr_DOMMatrix_get_m33`
+- `m34`: C `wjr_DOMMatrix_get_m34`
+- `m41`: C `wjr_DOMMatrix_get_m41`
+- `m42`: C `wjr_DOMMatrix_get_m42`
+- `m43`: C `wjr_DOMMatrix_get_m43`
+- `m44`: C `wjr_DOMMatrix_get_m44`
+- `multiplySelf()`: C `wjr_DOMMatrix_multiplySelf`
+- `preMultiplySelf()`: C `wjr_DOMMatrix_preMultiplySelf`
+- `translateSelf()`: C `wjr_DOMMatrix_translateSelf`
+- `scaleSelf()`: C `wjr_DOMMatrix_scaleSelf`
+- `scale3dSelf()`: C `wjr_DOMMatrix_scale3dSelf`
+- `rotateSelf()`: C `wjr_DOMMatrix_rotateSelf`
+- `rotateFromVectorSelf()`: C `wjr_DOMMatrix_rotateFromVectorSelf`
+- `rotateAxisAngleSelf()`: C `wjr_DOMMatrix_rotateAxisAngleSelf`
+- `skewXSelf()`: C `wjr_DOMMatrix_skewXSelf`
+- `skewYSelf()`: C `wjr_DOMMatrix_skewYSelf`
+- `invertSelf()`: C `wjr_DOMMatrix_invertSelf`
+- `setMatrixValue()`: C `wjr_DOMMatrix_setMatrixValue`
+
 ### DOMParser
 
 2 / 2 members.
 
 - `constructor()`: C `wjr_DOMParser_constructor`
 - `parseFromString()`: C `wjr_DOMParser_parseFromString`
+
+### DOMPointReadOnly
+
+8 / 8 members.
+
+- `constructor()`: C `wjr_DOMPointReadOnly_constructor`
+- `static fromPoint()`: C `wjr_DOMPointReadOnly_static_fromPoint`
+- `readonly x`: C `wjr_DOMPointReadOnly_get_x`
+- `readonly y`: C `wjr_DOMPointReadOnly_get_y`
+- `readonly z`: C `wjr_DOMPointReadOnly_get_z`
+- `readonly w`: C `wjr_DOMPointReadOnly_get_w`
+- `matrixTransform()`: C `wjr_DOMPointReadOnly_matrixTransform`
+- `toJSON()`: C `wjr_DOMPointReadOnly_toJSON`
+
+### DOMPoint : DOMPointReadOnly
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_DOMPoint_constructor`
+- `static fromPoint()`: C `wjr_DOMPoint_static_fromPoint`
+- `x`: C `wjr_DOMPoint_get_x`
+- `y`: C `wjr_DOMPoint_get_y`
+- `z`: C `wjr_DOMPoint_get_z`
+- `w`: C `wjr_DOMPoint_get_w`
+
+### DOMQuad
+
+9 / 9 members.
+
+- `constructor()`: C `wjr_DOMQuad_constructor`
+- `static fromRect()`: C `wjr_DOMQuad_static_fromRect`
+- `static fromQuad()`: C `wjr_DOMQuad_static_fromQuad`
+- `readonly p1`: C `wjr_DOMQuad_get_p1`
+- `readonly p2`: C `wjr_DOMQuad_get_p2`
+- `readonly p3`: C `wjr_DOMQuad_get_p3`
+- `readonly p4`: C `wjr_DOMQuad_get_p4`
+- `getBounds()`: C `wjr_DOMQuad_getBounds`
+- `toJSON()`: C `wjr_DOMQuad_toJSON`
 
 ### DOMRectList
 
@@ -4754,5 +4886,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMMatrixReadOnly, DOMMatrix, DOMPointReadOnly, DOMPoint, DOMQuad, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, PerformanceLongTaskTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextTrackCueList, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, DataTransfer, DataTransferItem, DataTransferItemList, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, DragEvent, TextEvent, TouchEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, CloseWatcher, CookieStore, FontFaceSet, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, PermissionStatus, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, VisualViewport, XMLHttpRequestUpload, External, FetchLaterResult, FileList, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, PerformanceLongTaskTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Permissions, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextTrackCueList, Touch, TouchList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
