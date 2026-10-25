@@ -135,13 +135,7 @@ static JSValue size_array(JSContext *ctx, double inline_size, double block_size)
     JSValue arr = JS_NewArray(ctx);
     if (JS_IsException(arr)) { JS_FreeValue(ctx, size); return arr; }
     wj_array_set(ctx, arr, 0, size);
-    JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
-    JSValue freeze = JS_GetPropertyStr(ctx, object, "freeze");
-    JSValue frozen = JS_Call(ctx, freeze, object, 1, (JSValueConst *)&arr);
-    JS_FreeValue(ctx, freeze);
-    JS_FreeValue(ctx, object);
-    if (JS_IsException(frozen)) { JS_FreeValue(ctx, arr); return frozen; }
-    JS_FreeValue(ctx, frozen);
+    if (!web_freeze(ctx, arr)) { JS_FreeValue(ctx, arr); return JS_EXCEPTION; }
     return arr;
 }
 

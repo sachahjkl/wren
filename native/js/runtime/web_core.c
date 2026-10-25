@@ -43,6 +43,18 @@ bool web_dict_get(JSContext *ctx, JSValueConst dict, const char *name, JSValue *
     return true;
 }
 
+bool web_freeze(JSContext *ctx, JSValueConst v)
+{
+    JSValue object = JS_GetPropertyStr(ctx, wj_the_realm.global, "Object");
+    JSValue freeze = JS_GetPropertyStr(ctx, object, "freeze");
+    JSValue frozen = JS_Call(ctx, freeze, object, 1, &v);
+    JS_FreeValue(ctx, freeze);
+    JS_FreeValue(ctx, object);
+    bool ok = !JS_IsException(frozen);
+    JS_FreeValue(ctx, frozen);
+    return ok;
+}
+
 char *web_strndup(const char *p, size_t n)
 {
     char *s = malloc(n + 1);

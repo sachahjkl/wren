@@ -299,22 +299,5 @@ page_visible :: proc(p: ^Page) -> bool { return p.web.visible }
 
 Document_visibilityState :: proc(c: ^Call) -> Api_VisibilityState { return c.page.web.visible ? .Visible : .Hidden }
 
-////////////////////////////////
-// IntersectionObserver (computed in the engine: native/js/prelude/intersection.js)
 
-// The engine says whether some observer watches a target; an update is wanted at the next rendering update.
-IntersectionObservers_schedule :: proc(c: ^Call, observing: bool) {
-	c.page.web.io_active = observing
-	c.page.web.io_pending = observing
-}
-
-@(private)
-intersection_observers_update :: proc(p: ^Page) {
-	w := p.web
-	if p.closed || !w.io_active { return }
-	w.io_pending = false
-	r := p.js
-	if r == nil || r.failed || r.inst == nil || r.inst.dead { return }
-	js_call(p, r.inst, "wj_io_update", nil)
-}
 
