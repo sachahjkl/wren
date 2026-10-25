@@ -74,8 +74,11 @@ tab_shape_geometry :: proc(t: ^testing.T) {
 	d := shape.d
 	line := shape.line[:]
 	testing.expect(t, len(line) > 20)
-	testing.expect_value(t, line[0], [2]f32{0, m.h})
-	testing.expect_value(t, line[len(line) - 1], [2]f32{d.box_w, m.h})
+	// it starts and ends where each foot's curve meets the bar's line (a strip out to the box's edge would end in a cut)
+	near(t, line[0].x, d.ext - d.tangent, 0.01, "starts at the left foot's tangent point")
+	near(t, line[0].y, m.h, 0.01, "starts on the bar's line")
+	near(t, line[len(line) - 1].x, d.box_w - d.ext + d.tangent, 0.01, "ends at the right foot's tangent point")
+	near(t, line[len(line) - 1].y, m.h, 0.01, "ends on the bar's line")
 	top: f32 = 1e9
 	for p in line {
 		top = min(top, p.y)

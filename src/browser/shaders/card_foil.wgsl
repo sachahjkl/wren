@@ -143,17 +143,18 @@ fn app_shade(a: AppIn) -> vec4<f32> {
 	let lip = smoothstep(0.62, 0.92, height);
 	col += float3(0.6, 0.75, 1.0) * foil_film(phase * 1.3) * (pow(1.0 - NV, 3.0) * lip * 0.45);
 
-	// GOLD, in the letters: a color that goes from deep amber to pale gold with the angle, a floor that is never dark (the contrast with the
-	// dark engraving around is what makes the text read), the two lights as brushed highlights, and the walls shaded by the same lights
+	// SILVER, in the letters: a color that goes from a cool steel grey to a bright white-blue with the angle, a floor that is never dark (the
+	// contrast with the dark engraving around is what makes the text read), the two lights as brushed highlights, and the walls shaded by the
+	// same lights
 	let gt = 0.5 + 0.5 * sin(6.2831853 * (phase * 0.8 + 0.15));
-	let gold = mix(float3(1.0, 0.52, 0.10), float3(1.0, 0.80, 0.34), gt);
+	let gold = mix(float3(0.60, 0.64, 0.71), float3(0.93, 0.95, 1.0), gt);
 	var lit = gold * (0.62 + 0.20 * N.z);
 	lit += gold * foil_shine(P, sweep_pos, N, V, T, B, phase, gold, 0.10, 0.0) * sweep_k * 2.6;
 	lit += gold * foil_shine(P, ptr_pos, N, V, T, B, phase, gold, 0.10, 0.0) * ptr_k * 2.2;
 	// the walls: bright where they face the light of the card's top left (a fixed key light, so that a letter always has a rim), dark opposite
 	let key = normalize(float3(-0.45, -0.6, 0.65));
 	lit *= 0.30 + 1.25 * clamp(dot(N, key), 0.0, 1.0) / max(key.z, 0.3);
-	lit += float3(1.0, 0.92, 0.7) * pow(1.0 - NV, 2.0) * 0.12;
+	lit += float3(0.85, 0.92, 1.0) * pow(1.0 - NV, 2.0) * 0.12;
 
 	col = mix(col, lit, cov);
 	col = 1.0 - exp(-col * 1.35);
