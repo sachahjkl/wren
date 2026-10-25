@@ -23,6 +23,21 @@
 
 function Get-WrenRepoRoot { Split-Path $PSScriptRoot -Parent }
 
+# Performance tests: what asserts on a duration, a CPU time, a throughput, a latency or a count of frames in a window of time depends on the
+# machine, and the CI runners are of unknown speed. Those checks are opt-in (test_all.ps1 -Perf, or WREN_PERF=1) and never run when the CI
+# variable is set. This is the one place that decides for the scripts (src\base\perf.odin does the same for the Odin tests).
+#   Test-WrenPerf       are the performance tests on?
+#   Skip-WrenPerf       says that one is skipped ("perf: skipped, run with -Perf: <what>")
+#   Check-Perf          Check (the calling script's own) when they are on, a skip line otherwise; put the measure in the name or the detail
+function Test-WrenPerf { return (-not $env:CI) -and ($env:WREN_PERF -eq '1' -or $env:WREN_PERF -eq 'true') }
+function Skip-WrenPerf([string]$What) {
+    if ($env:CI) { "perf: skipped on the CI (the CI variable is set): $What" } else { "perf: skipped, run with -Perf (test_all.ps1 -Perf, or WREN_PERF=1): $What" }
+}
+function Check-Perf([string]$Name, [bool]$Ok, [string]$Detail = '') {
+    if (-not (Test-WrenPerf)) { Skip-WrenPerf $Name; return }
+    Check "perf: $Name" $Ok $Detail
+}
+
 function Get-WrenLockDir {
     if ($env:WREN_LOCK_DIR) { $d = $env:WREN_LOCK_DIR }
     elseif (Test-Path 'S:\wb_wt' -PathType Container) { $d = 'S:\wb_wt' }

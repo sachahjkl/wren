@@ -156,7 +156,9 @@ main :: proc() {
 		for fi in infos { if strings.has_suffix(fi.name, ".html") && fi.name != "bench.html" && fi.name != "leaks.html" { append(&names, strings.clone(fi.name)) } }
 		os.file_info_slice_delete(infos, context.allocator)
 		slice.sort(names[:])
-		append(&names, strings.clone("leaks.html"), strings.clone("bench.html"))
+		append(&names, strings.clone("leaks.html"))
+		// the micro-benchmarks only measure: a performance run (tools\test_all.ps1 -Perf)
+		if !base.perf_skip("jsdomtest: the micro-benchmarks of the DOM bindings (examples/jsdom/bench.html)") { append(&names, strings.clone("bench.html")) }
 	}
 
 	for name in names {
