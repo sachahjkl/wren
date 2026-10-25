@@ -19,7 +19,7 @@ palette). Its state is read from the disk every time it is shown, never from a p
 Everything is in `HKEY_CURRENT_USER` and the user's Start menu folder.
 
 - `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Wren.lnk`, made with `IShellLinkW` and `IPersistFile`: the executable,
-  its own icon, its folder as working directory (`policies.txt` is read from there), and the **AppUserModelID**
+  its own icon, its folder as working directory, and the **AppUserModelID**
   `FromentSoftware.Wren` (`IPropertyStore`, `PKEY_AppUserModel_ID`). The program sets the same ID for its windows
   (`SetCurrentProcessExplicitAppUserModelID`, before the first window), so pinning the shortcut to the taskbar and
   grouping the windows under it work.

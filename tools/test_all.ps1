@@ -203,6 +203,13 @@ Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren wi
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 }
+Step 'the policy file is read beside the executable, never from the working directory (tools\policy_file_e2e.ps1)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
+}
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null

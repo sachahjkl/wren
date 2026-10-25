@@ -249,7 +249,7 @@ write_shortcut :: proc(o: ^Options, path: string) -> Result {
 	dir := exe_dir(o.exe)
 	failed :: proc(what: string) -> Result { return {.System, strings.concatenate({"IShellLink: ", what}, context.temp_allocator)} }
 	if link->SetPath(wide(o.exe)) < 0 { return failed("SetPath") }
-	if dir != "" { link->SetWorkingDirectory(wide(dir)) }   // policies.txt is read from the working directory
+	if dir != "" { link->SetWorkingDirectory(wide(dir)) }   // (policies.txt is read from the executable's folder, whatever the working directory)
 	if link->SetIconLocation(wide(o.exe), 0) < 0 { return failed("SetIconLocation") }
 	if o.identity.description != "" { link->SetDescription(wide(o.identity.description)) }
 	link->SetShowCmd(win.SW_SHOWNORMAL)
