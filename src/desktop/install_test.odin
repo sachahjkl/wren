@@ -7,7 +7,6 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "wb:base"
-import "core:time"
 
 @(private)
 Tree :: struct {
@@ -22,7 +21,8 @@ tree_make :: proc() -> Tree {
 	tmp, _ := os.temp_dir(context.allocator)
 	defer delete(tmp)
 	t: Tree
-	t.root = fmt.aprintf("%s/wren_install_test_%d", strings.trim_right(tmp, "\\/"), time.to_unix_nanoseconds(time.now()))
+	id := base.unique_name(context.temp_allocator)
+	t.root = fmt.aprintf("%s/wren_install_test_%s", strings.trim_right(tmp, "\\/"), id)
 	t.src = fmt.aprintf("%s/package", t.root)
 	t.dst = fmt.aprintf("%s/installed/Wren", t.root)
 	put :: proc(path, text: string) {
