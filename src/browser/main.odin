@@ -160,6 +160,7 @@ App :: struct {
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	headless:   bool,                     // the windows are never shown (`--headless`)
+	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
 }
 
 the_app: ^App
@@ -1076,6 +1077,7 @@ frame :: proc(app: ^App, idled := false) {
 		// the window the user is in is the one the process acts on outside a frame (windows.odin)
 		if (e.kind == .Activate && app.win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { app.front = app.active }
 	}
+	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
@@ -1368,10 +1370,12 @@ main :: proc() {
 	hud_init(app)
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
+	windows_register_locals()   // windows.odin: what of all that is a window's own
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
-	if !headless_mode { platform.show_window(app.win) }
+	if !headless_mode { window_show(app.active) }
+	session_open_other_windows(app)   // session.odin: the other windows of a restored session
 	prof_mark(.Loop)
 
 	for windows_pass(app) {   // windows.odin: a frame for each window that has a cause (devtools_window_tick for the front one)

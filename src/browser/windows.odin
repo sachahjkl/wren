@@ -56,6 +56,10 @@ Browser_Window :: struct {
 	locals:  [dynamic][]byte,     // ... and its copy of each window_local global
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
+	closing_force: bool,          // ... with the tabs it still has (a remote call asked)
+	want_maximized: bool,         // a restored session had it maximized: it is when it is shown (window_show)
+	zone:      Drop_Zone,         // where its tabs were laid out (tab_drag.odin)
+	drop_hint: int,               // a tab is carried over its tab bar: the place it would take, plus one (0: none)
 	title:   string,              // what its title was set to last (owned)
 	opened:  time.Tick,
 }
@@ -81,6 +85,19 @@ window_local :: proc(p: ^$T, destroy: proc() = nil) {
 	l.pristine = make([]byte, l.size)
 	mem.copy(raw_data(l.pristine), p, l.size)
 	append(&window_locals, l)
+}
+
+// The globals of the chrome that are one window's (called once the shell is set up: a new window starts with their values then).
+windows_register_locals :: proc() {
+	window_local(&strip)
+	window_local(&sidebar)
+	window_local(&find, find_destroy)
+	window_local(&fview, forms_shell_destroy)
+	window_local(&sshell)
+	window_local(&ub.view, urlbar_view_destroy)
+	window_local(&wchrome.full)
+	page_cursor_window_local()
+	fullscreen_shell_window_locals()
 }
 
 windows_locals_destroy :: proc() {
@@ -170,7 +187,7 @@ window_front :: proc(app: ^App) -> ^Browser_Window {
 // Makes `w` the window the user is in (it comes to the front of the others on screen too when `raise`).
 window_focus :: proc(app: ^App, w: ^Browser_Window, raise := false) {
 	app.front = w
-	if raise && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
+	if raise && !app.headless && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
 }
 
 window_by_id :: proc(app: ^App, id: int) -> ^Browser_Window {
@@ -292,9 +309,47 @@ window_on_frame :: proc(user: rawptr) {
 	window_frame(app)   // shell_frames.odin
 }
 
+// Shows the window (maximized when a restored session left it so).
+window_show :: proc(w: ^Browser_Window) {
+	if w.want_maximized {
+		win.ShowWindow(w.win.hwnd, win.SW_SHOWMAXIMIZED)
+		win.SetForegroundWindow(w.win.hwnd)
+	} else {
+		platform.show_window(w.win)
+	}
+}
+
+// The outer rectangle of a window (left, top, width, height in screen pixels; where it is restored to when maximized or minimized)
+// and whether it is maximized: what a session saves.
+window_placement :: proc(w: ^Browser_Window) -> (rect: [4]int, maximized: bool) {
+	wp := win.WINDOWPLACEMENT{length = size_of(win.WINDOWPLACEMENT)}
+	win.GetWindowPlacement(w.win.hwnd, &wp)
+	r := wp.rcNormalPosition
+	return {int(r.left), int(r.top), int(r.right - r.left), int(r.bottom - r.top)}, wp.showCmd == u32(win.SW_SHOWMAXIMIZED) || platform.is_maximized(w.win)
+}
+
+// A saved rectangle put back on a monitor: the work area of the monitor nearest to it holds it whole (smaller if need be).
+fit_rect_to_work :: proc(r, work: [4]int) -> [4]int {
+	w, h := min(r[2], work[2]), min(r[3], work[3])
+	return {clamp(r[0], work[0], work[0] + work[2] - w), clamp(r[1], work[1], work[1] + work[3] - h), w, h}
+}
+
+// Puts a window where a session had it (not shown yet: maximized comes with window_show).
+window_placement_set :: proc(w: ^Browser_Window, rect: [4]int, maximized: bool) {
+	rc := win.RECT{i32(rect[0]), i32(rect[1]), i32(rect[0] + rect[2]), i32(rect[1] + rect[3])}
+	mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
+	work := [4]int{0, 0, 1 << 20, 1 << 20}
+	if win.GetMonitorInfoW(win.MonitorFromRect(&rc, .MONITOR_DEFAULTTONEAREST), &mi) {
+		work = {int(mi.rcWork.left), int(mi.rcWork.top), int(mi.rcWork.right - mi.rcWork.left), int(mi.rcWork.bottom - mi.rcWork.top)}
+	}
+	r := fit_rect_to_work(rect, work)
+	win.SetWindowPos(w.win.hwnd, nil, i32(r[0]), i32(r[1]), i32(r[2]), i32(r[3]), win.SWP_NOZORDER | win.SWP_NOACTIVATE)
+	w.want_maximized = maximized
+}
+
 // A new window, empty (the caller puts a tab in it). `size` is in logical pixels; `at` is where its top left goes on the screen
 // (physical pixels), else the system centres it. nil when the system could not make the window or its swap chain.
-window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil) -> ^Browser_Window {
+window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := true) -> ^Browser_Window {
 	fixed := config.bool_of(&app.prefs, "browser.window.fixed_surface")
 	nw := platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
 	if nw == nil { return nil }
@@ -321,7 +376,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil) -> ^Browse
 	ui.use(app.ui_state)
 	bw.ctx.frames_requested = 4
 	append(&app.windows, bw)
-	if !app.headless { platform.show_window(nw) }
+	if show && !app.headless { window_show(bw) }
 	return bw
 }
 
@@ -419,6 +474,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		if app.frames_requested > 0 { app.frames_requested -= 1 }
 	}
 	app.pass_first = false
+	if app.quitting { return false }
 	// a closed window closes; the last one ends the loop
 	for w in app.windows {
 		if platform.is_closed(w.win) {
@@ -426,11 +482,11 @@ windows_pass :: proc(app: ^App) -> bool {
 			window_close(app, w)
 			break
 		}
-		if w.closing && len(window_tabs(app, w)) == 0 {
+		if w.closing && (w.closing_force || len(window_tabs(app, w)) == 0) {
 			if len(app.windows) == 1 {   // (its twin closed in the same pass: the browser keeps one, with a new tab)
-				w.closing = false
+				w.closing, w.closing_force = false, false
 				window_activate(app, w)
-				tab_open_new(app)
+				if len(app.tabs) == 0 { tab_open_new(app) }
 			} else {
 				window_close(app, w)
 			}
@@ -448,6 +504,105 @@ tab_discard :: proc(app: ^App, t: ^Tab) {
 	key := strings.clone(tab_key(t), context.temp_allocator)
 	tab_free(app, t)
 	page.storage_drop_session(&app.storage, key)
+}
+
+////////////////////////////////
+// Moving a tab between windows: the Tab (its page, its history, its zoom, its scripts and video) is the same; only the pointer
+// goes from one list to the other.
+
+// Takes the tab at `index` out of a window's list; returns the window's new current index (the tab that took its place, else the
+// last one; 0 when the list is empty).
+tab_list_take :: proc(tabs: ^[dynamic]^Tab, current, index: int) -> int {
+	if index < 0 || index >= len(tabs) { return current }
+	ordered_remove(tabs, index)
+	switch {
+	case len(tabs) == 0: return 0
+	case index < current: return current - 1
+	case index == current: return min(index, len(tabs) - 1)
+	}
+	return current
+}
+
+// Puts `t` in a list at `at` (clamped; negative: the end). The new current index and the place it took: the tab is the current
+// one when `select`, else the one that was current stays so.
+tab_list_put :: proc(tabs: ^[dynamic]^Tab, current, at: int, t: ^Tab, select: bool) -> (new_current, place: int) {
+	place = at < 0 ? len(tabs) : min(at, len(tabs))
+	inject_at(tabs, place, t)
+	if select || len(tabs) == 1 { return place, place }
+	return place <= current ? current + 1 : current, place
+}
+
+// Moves `t` to window `dest` at `at` (negative: the end), where it becomes the current tab. In its own window: to that place.
+// The window that loses its last tab closes (at the end of the pass). The developer tools follow the tab they were showing.
+// false: nothing was done (the tab or the window is unknown).
+tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_follow := true) -> bool {
+	src, si := window_of_tab(app, t)
+	if src == nil || dest == nil { return false }
+	st, dt := window_tabs(app, src), window_tabs(app, dest)
+	sc := window_current(app, src)
+	if src == dest {
+		to := at < 0 ? len(st) - 1 : min(at, len(st) - 1)
+		sc^ = list_move(st[:], si, to, sc^)
+		window_request(app, src, 2)
+		recovery_touch(app)
+		return true
+	}
+	showing := sc^ == si
+	sc^ = tab_list_take(st, sc^, si)
+	dc := window_current(app, dest)
+	dc^, _ = tab_list_put(dt, dc^, at, t, true)
+	if len(st) > 0 { ui.field_set(window_address(app, src), st[sc^].url) } else { src.closing = true }
+	ui.field_set(window_address(app, dest), t.url)
+	if devtools_follow && showing && dev.visible && dev.window == src.id { dev.window = dest.id }
+	window_request(app, src, 3)
+	window_request(app, dest, 3)
+	recovery_touch(app)
+	return true
+}
+
+// Moves `t` to a window of its own, near `at` (the top left of the window, in screen pixels; else beside the one it comes from).
+// nil when it is alone in its window (it already has one) or the system could not make the window.
+tab_detach :: proc(app: ^App, t: ^Tab, at: Maybe([2]int) = nil, focus := true) -> ^Browser_Window {
+	src, _ := window_of_tab(app, t)
+	if src == nil || len(window_tabs(app, src)) < 2 { return nil }
+	return tab_to_new_window(app, t, src, at, true, focus)
+}
+
+// A new window with a home tab (Ctrl+N).
+window_new :: proc(app: ^App) -> ^Browser_Window {
+	src := app.active != nil ? app.active : window_front(app)
+	if src == nil { return nil }
+	was := window_current(app, src)^
+	t := tab_open(app)   // (in the active window, then taken from it: the window it left shows what it showed)
+	nw := tab_to_new_window(app, t, src, nil, false, true)
+	window_current(app, src)^ = clamp(was, 0, max(len(window_tabs(app, src)) - 1, 0))
+	if cur := window_current_tab(app, src); cur != nil { ui.field_set(window_address(app, src), cur.url) }
+	if nw != nil { nw.ctx.focus_address = true }
+	return nw
+}
+
+@(private = "file")
+tab_to_new_window :: proc(app: ^App, t: ^Tab, src: ^Browser_Window, at: Maybe([2]int), devtools_follow, focus: bool) -> ^Browser_Window {
+	scale := max(src.win.dpi_scale, 0.5)
+	size := [2]int{int(f32(src.win.size.x) / scale), int(f32(src.win.size.y) / scale)}
+	pos := at
+	if _, ok := pos.?; !ok {
+		rc: win.RECT
+		win.GetWindowRect(src.win.hwnd, &rc)
+		off := int(40 * scale)
+		pos = [2]int{int(rc.left) + off, int(rc.top) + off}
+	}
+	nw := window_open(app, size, pos)
+	if nw == nil { return nil }
+	tab_move(app, t, nw, devtools_follow = devtools_follow)
+	if focus { window_focus(app, nw, true) }
+	return nw
+}
+// What the menus call a window: the title of its current tab.
+window_label :: proc(app: ^App, w: ^Browser_Window) -> string {
+	t := window_current_tab(app, w)
+	if t == nil { return "(empty)" }
+	return t.title != "" ? t.title : t.url
 }
 
 ////////////////////////////////

@@ -305,6 +305,18 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	if ui.menu_item("Close other tabs", enabled = len(app.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
 	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()
+	menu_command(app, t, "tab.move_to_new_window")
+	if len(app.windows) > 1 {
+		target: ^Browser_Window
+		if ui.menu_submenu(fmt.tprintf("%s###move_to_window_sub", i18n.tr("Move to window"))) {
+			for w in app.windows {
+				if w == app.active { continue }
+				if ui.menu_item(fmt.tprintf("%s###mv_%d", window_label(app, w), w.id)).clicked { target = w }
+			}
+		}
+		if target != nil { tab_move(app, t, target); ui.ctx_menu_close(); return }
+	}
+	ui.menu_separator()
 	if ui.menu_submenu(fmt.tprintf("%s###tabbar_sub", i18n.tr("Tab bar"))) {   // tab_sidebar.odin
 		cur := current_tab(app)
 		menu_command(app, cur, "view.tabs_position.top")

@@ -332,10 +332,11 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 	case .Crashed:
 		if recovery.text != "" {
 			l := recovery_limits(app)
-			tabs, current, ok := session_parse_tabs(recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries)
-			if ok && len(tabs) > 0 {
-				session_open_tabs(app, tabs, current)
-				recovery.restored, handled = len(tabs), true
+			windows, ok := session_parse_windows(recovery.text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries, int(config.int_of(&app.prefs, "browser.session.max_windows")))
+			n := 0
+			for w in windows { n += len(w.tabs) }
+			if ok && n > 0 && session_open_windows(app, windows, recovery.text) {
+				recovery.restored, handled = n, true
 			}
 		}
 	case .Crashed_Twice:

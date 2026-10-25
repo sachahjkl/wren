@@ -81,10 +81,8 @@ Urlbar_Row :: struct {
 	fill:   bool,   // History: the inline completion's address (always the first row)
 }
 
-Urlbar :: struct {
-	cfg:          Urlbar_Settings,
-	watch:        int,
-	idx:          Url_Index,
+// What of the address bar a window has of its own: its list of suggestions (window_local).
+Urlbar_View :: struct {
 	open:         bool,
 	typed:        string,              // owned: what the user typed (without the inline completion)
 	rows:         [dynamic]Urlbar_Row,
@@ -96,6 +94,13 @@ Urlbar :: struct {
 	focused:      bool,                // the address field had the keyboard last frame
 	just_focused: bool,                // ... and did not have it the frame before
 	click_selects: bool,               // a click gave it the keyboard: all selected while the button is held still
+}
+
+Urlbar :: struct {
+	cfg:          Urlbar_Settings,
+	watch:        int,
+	idx:          Url_Index,
+	using view:   Urlbar_View,
 	query_ms:     f64,                 // time of the last query of the index (measurement)
 	job:          Urlbar_Index_Job,    // a full build of the index on the blocking pool (a large history)
 	app:          ^App,
@@ -184,6 +189,13 @@ urlbar_init :: proc(app: ^App) {
 		ub.cfg = urlbar_settings_from_prefs(p)
 		urlbar_close()
 	}, app)
+}
+
+// The suggestions of a window that closes.
+urlbar_view_destroy :: proc() {
+	delete(ub.rows)
+	delete(ub.typed); delete(ub.fill_text); delete(ub.fill_address)
+	ub.view = {}
 }
 
 urlbar_destroy :: proc(app: ^App) {

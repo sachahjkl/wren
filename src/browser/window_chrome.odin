@@ -67,11 +67,16 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 	}
 }
 
+// What of the frame a window has of its own (window_local).
+Window_Full :: struct {
+	revealed:     bool,          // full screen: the bars are shown over the page
+	overlay:      draw.Rect,     // where they were last frame
+}
+
 Window_Chrome :: struct {
 	cfg:          Window_Settings,
 	watch:        int,
-	revealed:     bool,          // full screen: the bars are shown over the page
-	overlay:      draw.Rect,     // where they were last frame
+	using full:   Window_Full,
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
