@@ -76,6 +76,7 @@ Walker :: struct {
 	task:     bool,
 	results:  [dynamic]Result,
 	defer_subtrees: bool,
+	defer_forced: bool,   // frames forced by a parent that changed (not only subtrees restyled whole) go to the threads too
 	deferred: [dynamic]Frame,
 	changed, marked: int,
 	layout_changed: bool,
@@ -976,7 +977,7 @@ settle :: proc(w: ^Walker, h: base.Handle, c: ^Computed) -> (cur: ^Computed, cha
 	if old != nil && old.node != h { old = nil }
 	old_base = old
 	if old != nil && len(s.overlaid) > 0 { if b, ok := s.overlaid[h]; ok { old_base = b } }
-	if !counters_carry_over(s, w.doc, h, old_base, c, w.p.alloc) { w.rewalk = true }
+	if !counters_carry_over(s, w.doc, h, old_base, c, w.p.alloc, w.task) { w.rewalk = true }
 	if (old_base == nil || !s.counters_used) && box_feeds_counters(c) { w.rewalk = true }
 	if old_base != nil && computed_equal(old_base, c) && !container_changed(old_base, c) { return old_base, false, old_base }
 	level := max(layout_level(old, c), Change_Level.Paint)
@@ -1031,6 +1032,12 @@ walk :: proc(w: ^Walker, start: []Frame) {
 				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, sub = true, ctx = f.ctx})
 				continue
 			}
+			// marked, or forced by its parent's change: restyled whatever happens, and its parent's style is final (the walk
+			// of its own children, and of the marks below, is a thread's)
+			if w.defer_forced && !f.sub && !sub && f.parent != nil {
+				append(&w.deferred, Frame{h = f.h, parent = f.parent, bloom = f.bloom, force = true, ctx = f.ctx})
+				continue
+			}
 			nc, changed, old := restyle_one(w, &f, n)
 			if changed {
 				if old == nil || !inherited_equal(old, nc) || container_changed(old, nc) { inh_changed = true } else { other_changed = true }
@@ -1077,9 +1084,13 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	doc := w.doc
 	s := w.s
 	threads := host.thread_pool_size(pool)
-	frontier := w.deferred
-	w.defer_subtrees = false
-	for depth := 0; len(frontier) > 0 && len(frontier) < threads * 8 && depth < 16; depth += 1 {
+	w.defer_subtrees, w.defer_forced = false, false
+	// subtrees restyled whole: their tops are expanded until there are enough to go round; frames that only have to be
+	// restyled (marked, or forced) go as they are, their walk below them being the thread's
+	frontier := make([dynamic]Frame, 0, len(w.deferred), context.temp_allocator)
+	alone := make([dynamic]Frame, 0, 8, context.temp_allocator)
+	for f in w.deferred { if f.sub { append(&frontier, f) } else { append(&alone, f) } }
+	for depth := 0; len(frontier) > 0 && len(frontier) + len(alone) < threads * 8 && depth < 16; depth += 1 {
 		next := make([dynamic]Frame, 0, len(frontier) * 4, context.temp_allocator)
 		for &f in frontier {
 			n := dom.get(doc, f.h)
@@ -1093,6 +1104,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 		}
 		frontier = next
 	}
+	append(&frontier, ..alone[:])
 	if len(frontier) == 0 { return }
 	// every slot a thread may write exists beforehand: the array does not move while they run
 	if len(s.by_node) < int(doc.nodes.used) { resize(&s.by_node, int(doc.nodes.used)) }
@@ -1101,7 +1113,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	for i in 0 ..< count {
 		t := &job.tasks[i]
 		t.frames = frontier[i * len(frontier) / count:(i + 1) * len(frontier) / count]
-		t.w = Walker{e = w.e, s = s, doc = doc, task = true}
+		t.w = Walker{e = w.e, s = s, doc = doc, task = true, marks = w.marks}   // (the marks are only read meanwhile)
 	}
 	host.parallel_for(pool, count, proc(data: rawptr, i: int) {
 		job := (^Par_Tasks)(data)
@@ -1261,6 +1273,52 @@ restyle_dom :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, pool: ^host.Thre
 		e.last_restyle.fallback = "root font size changed"
 		return w.changed > 0, false
 	}
+	if w.changed > 0 {
+		styled_serial += 1
+		s.serial = styled_serial
+		if w.layout_changed { s.layout_serial = s.serial }
+		journal_stamp(s)
+		update_canvas(s, doc)
+	}
+	return w.changed > 0, true
+}
+
+// Restyles `roots` in place: elements whose own rules changed and that no rule change reaches below (the elements that a flipped
+// @media block matches, media_gate.odin). Each is computed again; its children only where what it inherits changed (or where
+// they take a changed value explicitly), as after a DOM change. `p`: a pass of `s` (it is not destroyed here). ok = false: it
+// cannot be scoped (the root font size changed) and the caller makes a full pass; `changed`: some computed style differs.
+restyle_roots :: proc(e: ^Engine, doc: ^dom.Document, s: ^Styled, p: ^Pass, roots: []base.Handle, pool: ^host.Thread_Pool = nil) -> (changed: bool, ok: bool) {
+	marks := make(map[base.Handle]u8, len(roots) * 2, context.temp_allocator)
+	for h in roots {
+		marks[h] |= M_SELF
+		for a := flat_parent_element(doc, h); a != base.NIL_HANDLE; a = flat_parent_element(doc, a) {
+			b := marks[a]
+			if b & M_CHILD != 0 { break }
+			marks[a] = b | M_CHILD
+		}
+	}
+	w := Walker{e = e, s = s, doc = doc, p = p, arena = &s.arena, marks = &marks}
+	w.defer_forced = pool != nil && host.thread_pool_size(pool) > 1 && len(roots) >= e.settings.media_parallel_min
+	w.defer_subtrees = w.defer_forced
+	start := make([dynamic]Frame, 0, 4, context.temp_allocator)
+	top := dom.get(doc, doc.root)
+	for ch := top.first_child; ch != base.NIL_HANDLE; ch = dom.get(doc, ch).next {
+		if marks[ch] != 0 { append(&start, Frame{h = ch}) }
+	}
+	walk(&w, start[:])
+	run_deferred(&w, pool)
+	delete(w.deferred)
+	e.last_restyle.marked, e.last_restyle.changed = w.marked, w.changed
+	if w.root_font {
+		e.last_restyle.fallback = "root font size changed"
+		return w.changed > 0, false
+	}
+	if w.rewalk {
+		if counters_refresh(s, doc, e.settings.counters_max_listed) { w.changed += 1; w.layout_changed = true }
+		e.last_restyle.rewalked = true
+	}
+	if w.motion { sync.atomic_store(&s.motion, true) }
+	e.last_restyle.changed = w.changed
 	if w.changed > 0 {
 		styled_serial += 1
 		s.serial = styled_serial
