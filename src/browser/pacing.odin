@@ -56,7 +56,7 @@ FRAME_PREFS := [?]config.Def{
 	{name = "browser.frame.video_at_vblank", kind = .Bool, default = {b = true},
 		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
 	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
-		description = "While the window is resized, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
+		description = "While the window is resized, or the splitter or the floating panel of the developer tools is dragged, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
 }
 
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
@@ -191,6 +191,12 @@ pacer_update :: proc(app: ^App) {
 	pacer.next_ns = 0
 }
 
+// Whether a frame is a resize step (drawn and shown at once): the window changed size, or a panel is being dragged to a new
+// size under the pointer; never before the first frame is on screen, and not when the preference is off.
+resize_step :: proc(window_resized, panel_dragged, presented, enabled: bool) -> bool {
+	return (window_resized || panel_dragged) && presented && enabled
+}
+
 // The frame budget in ms: what one frame may take at the target rate.
 frame_budget_ms :: proc() -> f32 { return pacer.period_ms > 0 ? f32(pacer.period_ms) : 1000.0 / 60 }
 
@@ -217,7 +223,9 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// (browser.frame.resize_immediate).
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
-	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	// (so is a drag of the developer tools' splitter or of their floating panel: the window keeps its size and the panel and the
+	// page are resized under the hand, which has to follow it at the same rate as the window's edge does)
+	pacer.resizing = resize_step(resized, devtools_dragging(), app.presented, pacer.cfg.resize_immediate)
 	input := shell_user_input_pending()
 	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous

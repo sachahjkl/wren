@@ -40,6 +40,15 @@ pacing_target_rate :: proc(t: ^testing.T) {
 }
 
 @(test)
+a_resize_step_is_a_new_window_size_or_a_panel_dragged :: proc(t: ^testing.T) {
+	testing.expect(t, resize_step(true, false, true, true), "the window changed size")
+	testing.expect(t, resize_step(false, true, true, true), "a panel is being dragged: shown at once as a resize is")
+	testing.expect(t, !resize_step(false, false, true, true), "nothing moves the size: paced as any frame")
+	testing.expect(t, !resize_step(true, true, false, true), "never before the first frame is on screen")
+	testing.expect(t, !resize_step(true, true, true, false), "browser.frame.resize_immediate off: neither")
+}
+
+@(test)
 pacing_plan_on_a_display :: proc(t: ^testing.T) {
 	Case :: struct { display, hz: f64, tearing: bool, interval: int, timed: bool }
 	cases := [?]Case{
