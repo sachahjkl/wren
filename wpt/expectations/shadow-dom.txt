@@ -84,11 +84,11 @@
 	Element.attachShadow must throw a NotSupportedError for non-safelisted elements: PASS
 	Element.attachShadow must throw a NotSupportedError if the context object already hosts a shadow tree: PASS
 	Element.attachShadow must throw a TypeError if mode is not "open" or "closed": PASS
-	Nodes other than Element should not have attachShadow: FAIL
+	Nodes other than Element should not have attachShadow: PASS
 /shadow-dom/Element-interface-shadowRoot-attribute.html: OK
 	shadowRoot attribute must return null if the shadow root attached to the element is closed: PASS
 	shadowRoot attribute must return the open shadow root associated with the element: PASS
-	shadowRoot must be defined on Element prototype: FAIL
+	shadowRoot must be defined on Element prototype: PASS
 /shadow-dom/Extensions-to-Event-Interface.html: OK
 	The event must not propagate out of closed mode shadow boundaries when the composed flag is unset: PASS
 	The event must not propagate out of closed mode shadow boundaries when the composed flag is unset on an event with relatedTarget: PASS
@@ -1164,7 +1164,7 @@
 	Shadowrootmode reflection: PASS
 	Shadowrootmode reflection, setter: PASS
 /shadow-dom/declarative/declarative-shadow-dom-opt-in.html: OK
-	DOMParser (includeShadowRoots is historical): FAIL
+	DOMParser (includeShadowRoots is historical): PASS
 	Non-fragment parsing needs no opt-in: PASS
 	XMLHttpRequest - not supported: FAIL
 	XMLHttpRequest cloned document document.open() does not enable declarative shadow DOM when it is previously disabled: FAIL

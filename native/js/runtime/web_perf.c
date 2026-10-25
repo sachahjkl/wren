@@ -328,11 +328,17 @@ static void remember_detail(JSContext *ctx, int type, const char *name, size_t n
     JS_FreeValue(ctx, args[1]);
 }
 
+static int timing_index(const char *s, size_t n);
+
 /* PerformanceMark constructor and performance.mark(): the entry, not recorded */
 static JSValue mark_make(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv, wj_str *name_out)
 {
     if (argc < 1) { return wj_throw_arity(ctx, "PerformanceMark", 1, argc); }
     if (!wj_to_str(ctx, argv[0], name_out, 0, NULL)) { return JS_EXCEPTION; }
+    /* a window's marks cannot take the name of a PerformanceTiming attribute (measure reads those as that moment) */
+    if (web_is_window() && timing_index(name_out->ptr ? name_out->ptr : "", name_out->len) >= 0) {
+        return wj_throw_dom(ctx, "SyntaxError", "Failed to construct 'PerformanceMark': the name is a PerformanceTiming attribute.");
+    }
     JSValueConst opt = wj_arg(argc, (JSValue *)argv, 1);
     if (!web_dict_check(ctx, opt, "PerformanceMark")) { return JS_EXCEPTION; }
     JSValue st;
@@ -384,8 +390,86 @@ JSValue wjr_Performance_mark(JSContext *ctx, JSValueConst this_val, int argc, JS
     return m;
 }
 
-/* the start time of the latest mark named `v` (a string), or `v` itself (a number): false with a SyntaxError /
- * TypeError pending */
+/* ---- Navigation Timing 1: performance.timing ---- */
+
+/* PerformanceTiming's attributes in the interface's order (Performance_timingOf's index) */
+static const char *const timing_names[] = {
+    "navigationStart", "unloadEventStart", "unloadEventEnd", "redirectStart", "redirectEnd", "fetchStart",
+    "domainLookupStart", "domainLookupEnd", "connectStart", "connectEnd", "secureConnectionStart", "requestStart",
+    "responseStart", "responseEnd", "domLoading", "domInteractive", "domContentLoadedEventStart",
+    "domContentLoadedEventEnd", "domComplete", "loadEventStart", "loadEventEnd",
+};
+#define TIMING_COUNT ((int)(sizeof timing_names / sizeof timing_names[0]))
+
+static int timing_index(const char *s, size_t n)
+{
+    for (int i = 0; i < TIMING_COUNT; i++) {
+        if (strlen(timing_names[i]) == n && memcmp(timing_names[i], s, n) == 0) { return i; }
+    }
+    return -1;
+}
+
+/* the attribute's value: whole milliseconds since the Unix epoch, 0 when that moment has not come */
+static double timing_value(int which)
+{
+    double rel = wr_Performance_timingOf(which);
+    if (isnan(rel)) { return 0; }
+    return floor(wr_Performance_timeOrigin() + rel);
+}
+
+JSValue wjr_Performance_get_timing(JSContext *ctx, JSValueConst this_val)
+{
+    if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
+    /* [SameObject]: kept with the Performance object */
+    JSValue t = web_extra_get(ctx, this_val, "timing");
+    if (JS_IsObject(t)) { return t; }
+    JS_FreeValue(ctx, t);
+    t = wj_new_object(ctx, WJ_IFACE_PerformanceTiming, NULL, NULL);
+    if (JS_IsException(t)) { return t; }
+    if (!web_extra_set(ctx, this_val, "timing", JS_DupValue(ctx, t))) { JS_FreeValue(ctx, t); return JS_EXCEPTION; }
+    return t;
+}
+
+static JSValue timing_get(JSContext *ctx, JSValueConst this_val, int which)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_PerformanceTiming)) { return JS_EXCEPTION; }
+    return JS_NewFloat64(ctx, timing_value(which));
+}
+
+/* (one definition per line: bindgen finds hand-written members by their definition line) */
+JSValue wjr_PerformanceTiming_get_navigationStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 0); }
+JSValue wjr_PerformanceTiming_get_unloadEventStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 1); }
+JSValue wjr_PerformanceTiming_get_unloadEventEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 2); }
+JSValue wjr_PerformanceTiming_get_redirectStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 3); }
+JSValue wjr_PerformanceTiming_get_redirectEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 4); }
+JSValue wjr_PerformanceTiming_get_fetchStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 5); }
+JSValue wjr_PerformanceTiming_get_domainLookupStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 6); }
+JSValue wjr_PerformanceTiming_get_domainLookupEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 7); }
+JSValue wjr_PerformanceTiming_get_connectStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 8); }
+JSValue wjr_PerformanceTiming_get_connectEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 9); }
+JSValue wjr_PerformanceTiming_get_secureConnectionStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 10); }
+JSValue wjr_PerformanceTiming_get_requestStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 11); }
+JSValue wjr_PerformanceTiming_get_responseStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 12); }
+JSValue wjr_PerformanceTiming_get_responseEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 13); }
+JSValue wjr_PerformanceTiming_get_domLoading(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 14); }
+JSValue wjr_PerformanceTiming_get_domInteractive(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 15); }
+JSValue wjr_PerformanceTiming_get_domContentLoadedEventStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 16); }
+JSValue wjr_PerformanceTiming_get_domContentLoadedEventEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 17); }
+JSValue wjr_PerformanceTiming_get_domComplete(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 18); }
+JSValue wjr_PerformanceTiming_get_loadEventStart(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 19); }
+JSValue wjr_PerformanceTiming_get_loadEventEnd(JSContext *ctx, JSValueConst this_val) { return timing_get(ctx, this_val, 20); }
+
+JSValue wjr_PerformanceTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (!wj_this(ctx, this_val, WJ_IFACE_PerformanceTiming)) { return JS_EXCEPTION; }
+    JSValue o = JS_NewObject(ctx);
+    for (int i = 0; i < TIMING_COUNT; i++) { JS_SetPropertyStr(ctx, o, timing_names[i], JS_NewFloat64(ctx, timing_value(i))); }
+    return o;
+}
+
+/* the start time of the latest mark named `v` (a string; a PerformanceTiming attribute's name stands for that moment),
+ * or `v` itself (a number): false with a SyntaxError / TypeError / InvalidAccessError pending */
 static bool time_of(JSContext *ctx, JSValueConst v, double *out)
 {
     if (JS_IsNumber(v)) {
@@ -395,6 +479,19 @@ static bool time_of(JSContext *ctx, JSValueConst v, double *out)
     }
     wj_str s;
     if (!wj_to_str(ctx, v, &s, 0, NULL)) { return false; }
+    int ti = timing_index(s.ptr ? s.ptr : "", s.len);
+    if (ti >= 0) {
+        /* User Timing "convert a mark to a timestamp": the attribute relative to navigationStart */
+        wj_str_free(ctx, &s);
+        if (!web_is_window()) { JS_ThrowTypeError(ctx, "Failed to execute 'measure' on 'Performance': '%s' is only defined in a window.", timing_names[ti]); return false; }
+        double t = timing_value(ti);
+        if (t == 0) {
+            wj_throw_dom(ctx, "InvalidAccessError", "Failed to execute 'measure' on 'Performance': that PerformanceTiming moment has not happened.");
+            return false;
+        }
+        *out = t - timing_value(0);
+        return true;
+    }
     int32_t n = wr_Performance_entryCount((const uint8_t *)s.ptr, (uint32_t)s.len, wr_PerformanceEntryType_Mark);
     if (n <= 0) {
         wj_throw_dom(ctx, "SyntaxError", "Failed to execute 'measure' on 'Performance': The mark does not exist.");
@@ -642,6 +739,14 @@ JSValue wjr_Performance_toJSON(JSContext *ctx, JSValueConst this_val, int argc, 
     if (!perf_this(ctx, this_val)) { return JS_EXCEPTION; }
     JSValue o = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, o, "timeOrigin", JS_NewFloat64(ctx, wr_Performance_timeOrigin()));
+    if (web_is_window()) {
+        JSValue t = wjr_Performance_get_timing(ctx, this_val);
+        if (JS_IsException(t)) { JS_FreeValue(ctx, o); return t; }
+        JSValue j = wjr_PerformanceTiming_toJSON(ctx, t, 0, NULL);
+        JS_FreeValue(ctx, t);
+        if (JS_IsException(j)) { JS_FreeValue(ctx, o); return j; }
+        JS_SetPropertyStr(ctx, o, "timing", j);
+    }
     return o;
 }
 

@@ -126,6 +126,11 @@ ctx_draw_text :: proc(c: ^Context, text: string, x, y: f64, max_width: f64, has_
 	w := f64(lo.width)
 	if has_max && w > max_width && w > 0 { k = max_width / w; w = max_width }
 	ox, oy := text_origin(c, x, y, w, lo.metrics)
+	if c.gpu != nil && !stroke {
+		paint, pok := make_paint(c, &c.state.fill)
+		if pok { gpu_fill_text(c, &lo, ox, oy, k, &paint) }
+		return
+	}
 	p := Path{}
 	defer path_destroy(&p)
 	text_path(c, &lo, ox, oy, k, &p)
@@ -138,6 +143,7 @@ ctx_draw_text :: proc(c: ^Context, text: string, x, y: f64, max_width: f64, has_
 		path_flatten(&p, IDENTITY, c.opts.flatness, &c.flat)
 		polys_clear(&c.polys)
 		polys_stroke(&c.flat, c.state.ctm, &style, c.opts.flatness, &c.polys)
+		if c.gpu != nil { gpu_fill_polys(c, &c.polys, &paint); return }
 		raster_reset(&c.r)
 		raster_add_polys(&c.r, &c.polys)
 		paint_edges(c, .Nonzero, &paint)

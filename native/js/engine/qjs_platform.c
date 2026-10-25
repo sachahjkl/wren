@@ -323,6 +323,47 @@ static const wj_interface *wj_iface_with(int iface, int what)
     return NULL;
 }
 
+static bool wj_on_proto_chain(JSContext *ctx, JSValueConst obj, JSAtom prop);
+
+/* [LegacyUnenumerableNamedProperties] holds for the interfaces that inherit from one that has it */
+static bool wj_named_unenumerable(int iface)
+{
+    for (int i = iface; i >= 0; i = wj_interfaces[i].parent) {
+        if (wj_interfaces[i].flags & WJ_I_UNENUMERABLE_NAMED) { return true; }
+    }
+    return false;
+}
+
+/* The supported property names of an interface with named_keys, appended (as atoms) to `tab` from `*n` (grown). */
+static int wj_append_named_names(JSContext *ctx, JSValueConst obj, const wj_interface *it, bool enumerable,
+                                 JSPropertyEnum **tab, uint32_t *n)
+{
+    JSValue arr = JS_NewArray(ctx);
+    if (it->named_keys(ctx, obj, arr) < 0) { JS_FreeValue(ctx, arr); return -1; }
+    int64_t k = 0;
+    JS_GetLength(ctx, arr, &k);
+    if (k > 0) {
+        JSPropertyEnum *t = js_realloc(ctx, *tab, sizeof(**tab) * ((size_t)*n + (size_t)k));
+        if (!t) { JS_FreeValue(ctx, arr); return -1; }
+        *tab = t;
+        for (int64_t i = 0; i < k; i++) {
+            JSValue key = JS_GetPropertyUint32(ctx, arr, (uint32_t)i);
+            JSAtom atom = JS_ValueToAtom(ctx, key);
+            JS_FreeValue(ctx, key);
+            /* a name the prototype chain hides is not an own property (unless [LegacyOverrideBuiltIns]) */
+            if (atom == JS_ATOM_NULL) { continue; }
+            if (!(it->flags & WJ_I_OVERRIDE_BUILTINS) && wj_on_proto_chain(ctx, obj, atom)) { JS_FreeAtom(ctx, atom); continue; }
+            t[*n].atom = atom;
+            t[*n].is_enumerable = enumerable;
+            (*n)++;
+        }
+    }
+    JS_FreeValue(ctx, arr);
+    return 0;
+}
+
+/* own keys of an indexed collection: the indices, then (an interface that also has named properties: NamedNodeMap)
+ * the supported property names */
 static int wj_indexed_names(JSContext *ctx, JSPropertyEnum **ptab, uint32_t *plen, JSValueConst obj)
 {
     wj_obj *o = wj_obj_of(obj);
@@ -331,6 +372,12 @@ static int wj_indexed_names(JSContext *ctx, JSPropertyEnum **ptab, uint32_t *ple
     JSPropertyEnum *tab = js_malloc(ctx, sizeof(*tab) * (n ? n : 1));
     if (!tab) { return -1; }
     for (uint32_t i = 0; i < n; i++) { tab[i].atom = JS_NewAtomUInt32(ctx, i); tab[i].is_enumerable = true; }
+    const wj_interface *named = o ? wj_iface_with(o->iface, 1) : NULL;
+    if (named && named->named_keys && wj_append_named_names(ctx, obj, named, !wj_named_unenumerable(o->iface), &tab, &n) < 0) {
+        for (uint32_t i = 0; i < n; i++) { JS_FreeAtom(ctx, tab[i].atom); }
+        js_free(ctx, tab);
+        return -1;
+    }
     *ptab = tab;
     *plen = n;
     return 0;
@@ -390,7 +437,9 @@ static int wj_named_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueC
     if (JS_IsException(v)) { return -1; }
     if (!found) { JS_FreeValue(ctx, v); return 0; }
     if (desc) {
-        desc->flags = JS_PROP_ENUMERABLE | JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE;
+        /* writable even without a setter: Web IDL's [[Set]] ignores named properties (an object inheriting from a
+         * collection can set its own property of that name); the engine has no [[Set]] hook to do the same */
+        desc->flags = (wj_named_unenumerable(o->iface) ? 0 : JS_PROP_ENUMERABLE) | JS_PROP_CONFIGURABLE | JS_PROP_WRITABLE;
         desc->value = v;
         desc->getter = JS_UNDEFINED;
         desc->setter = JS_UNDEFINED;

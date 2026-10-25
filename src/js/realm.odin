@@ -60,6 +60,7 @@ Start_Options :: struct {
 	gc_threshold:   i64,
 	expose_unimplemented: bool,   // interfaces with nothing implemented are on the global anyway
 	unimplemented_throw:  bool,   // unimplemented members exist and throw NotSupportedError (else absent)
+	no_touch_handlers:    bool,   // the ontouch* event handler attributes are removed (javascript.touch_events)
 }
 
 // Starts a realm on a fresh instance of the engine (pre-initialized or not). False when the engine refused.
@@ -68,6 +69,7 @@ realm_start :: proc(inst: ^wasm.Instance, o: Start_Options) -> bool {
 	argv[0] = u32(o.kind)
 	flags: u32
 	if o.expose_unimplemented { flags |= 1 }
+	if o.no_touch_handlers { flags |= 4 }
 	if o.unimplemented_throw { flags |= 2 }
 	argv[7] = flags
 	argv[1] = u32(o.seed)

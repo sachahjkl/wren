@@ -987,6 +987,8 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
 	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
 	platform.set_dark_title(app.win, pal.dark)
+	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque
+	platform.set_border_color(app.win, platform.is_integrated_title(app.win) ? Maybe(u32)(pal.border >> 8) : nil)
 	return ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
@@ -1249,6 +1251,7 @@ main :: proc() {
 	images_shell_init(app)
 	canvas_shell_init(app)
 	images_set_texture_api(renderer_texture_api(app))
+	canvas_gpu_init(app)
 	set_content_painter(forms_content_painter, app)
 	page_render.bare = forms_bare_control
 	frames_shell_init(app)   // frames_shell.odin: nested documents laid out, painted and given input

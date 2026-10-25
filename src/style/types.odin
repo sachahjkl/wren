@@ -115,9 +115,16 @@ Content_Item :: struct { kind: Content_Item_Kind, text: string }
 // and Url items. `parts` is the value as specified (see Content_Part), which the style engine resolves in document order.
 Content :: struct { kind: Content_Kind, items: []Content_Item, parts: []Content_Part }
 
-// Custom properties (--name) as resolved text. Shared between a parent and every child that declares none of its own.
+// Custom properties (--name) as resolved text. Shared between a parent and every child that declares none of its own;
+// a child that declares some is a layer over its parent's (custom_props.odin): `values` holds only what it sets, so a
+// page with hundreds of variables on :root does not copy them all into every element that sets one more. Read them with
+// custom_get / custom_flatten, not through `values`.
 Custom_Props :: struct {
-	values: map[string]string,
+	values:  map[string]string,   // this layer's names (every name when `parent` is nil)
+	removed: []string,            // names the parent has that this layer drops (not in `values`)
+	parent:  ^Custom_Props,       // the layer below, nil for a flat map
+	depth:   int,                 // layers below this one
+	total:   int,                 // names present, all layers counted
 }
 
 Computed :: struct {

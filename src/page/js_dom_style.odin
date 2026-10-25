@@ -743,7 +743,7 @@ computed_value :: proc(cs: ^style.Computed, name: string, used: Used_Box) -> str
 	case "backface-visibility": return cs.backface_visibility == .Hidden ? "hidden" : "visible"
 	}
 	if strings.has_prefix(name, "--") && cs.custom != nil {
-		if v, ok := cs.custom.values[name]; ok { return v }
+		if v, ok := style.custom_get(cs.custom, name); ok { return v }
 	}
 	return ""
 }

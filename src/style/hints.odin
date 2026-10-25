@@ -27,7 +27,7 @@ add_hint_entry :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node) {
 	text := hint_text(p.mc.doc, h, n, p.e.settings.quirks_rules)
 	if text == "" { return }
 	decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-	pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
+	pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats, &p.scratch)
 	if len(pre) == 0 { return }
 	own_custom_names(customs, p.alloc)
 	r := new(Rule, context.temp_allocator)
