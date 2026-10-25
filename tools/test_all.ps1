@@ -545,7 +545,7 @@ if ($CI -or -not $Quick) {
 if ($CI -or -not $Quick) {
     Step 'crash reports (tools\crash_e2e.ps1: src/tools/crashmodes dies by an access violation, an assertion, a stack overflow, a corrupted heap, a fail-fast: each leaves a report with a stack and a minidump, or the session file the next start turns into an unclean-exit report)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
-}
+} -UiOnly
 Step 'developer tools resized (tools\devtools_resize_e2e.ps1: the docked panel has the size the preference gives it; neither the browser window nor the window of the panel is shown stretched while it is resized, read from the screen after each step; the real mouse drags the corner of each window, panel detached)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1
 }
