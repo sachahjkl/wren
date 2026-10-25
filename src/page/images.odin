@@ -352,7 +352,7 @@ Img_Element :: struct {
 	decodes:     [dynamic]u64,    // decode() promises waiting
 }
 
-Pending_Image_Event :: struct { node: base.Handle, type: string }
+Pending_Image_Event :: struct { node: base.Handle, type: string, media_error: bool }   // media_error: the event of a media element's error, which makes the element's error attribute visible as it is fired
 
 Guest_Decode :: struct { job: images.Job_Id, promise: u64, owner: u32 }
 
@@ -1083,9 +1083,9 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 // A load / error event for an element (an image, a <link>'s stylesheet), dispatched as a task. The queue lives with the
 // images' state, started here when no image did.
 @(private)
-queue_element_event :: proc(p: ^Page, node: base.Handle, type: string) {
+queue_element_event :: proc(p: ^Page, node: base.Handle, type: string, media_error := false) {
 	images_init(p)
-	append(&p.images.events, Pending_Image_Event{node, strings.clone(type)})
+	append(&p.images.events, Pending_Image_Event{node, strings.clone(type), media_error})
 	if p.images.event_timer != base.NIL_HANDLE { return }
 	p.images.event_timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
 		p := (^Page)(data)
@@ -1093,6 +1093,9 @@ queue_element_event :: proc(p: ^Page, node: base.Handle, type: string) {
 		evs := slice.clone(p.images.events[:], context.temp_allocator)
 		clear(&p.images.events)
 		for ev in evs {
+			if ev.media_error && !p.closed && p.media != nil {
+				if el, ok := p.media.elements[ev.node]; ok { el.err_shown = true }
+			}
 			if !p.closed && dom.get(p.doc, ev.node) != nil { dispatch_event(p, ev.node, dom.Event{type = ev.type}) }
 			delete(ev.type)
 		}

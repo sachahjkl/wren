@@ -387,7 +387,9 @@ urlbar_speed :: proc(t: ^testing.T) {
 	url_index_sync(&x, visits[:], 2, NOW)
 	sync_ms := time.duration_milliseconds(time.tick_since(s))
 	testing.expect_value(t, x.rebuilds, 1)
-	fmt.printf("urlbar_speed: %d entries, build %.2f ms, per letter mean %.3f ms worst %.3f ms, three words at once %.3f ms, sync after a trim %.3f ms\n", len(x.entries), build_ms, total / f64(n), worst, words_ms, sync_ms)
+	slice.sort(samples[:])
+	p90 := samples[len(samples) * 9 / 10]
+	fmt.printf("urlbar_speed: %d entries, build %.2f ms, per letter mean %.3f ms 90th percentile %.3f ms worst %.3f ms, three words at once %.3f ms, sync after a trim %.3f ms\n", len(x.entries), build_ms, total / f64(n), p90, worst, words_ms, sync_ms)
 	// a time bound means nothing under AddressSanitizer (every access instrumented, several times slower): the build only
 	// checks memory there
 	when .Address in ODIN_SANITIZER_FLAGS {
@@ -397,8 +399,6 @@ urlbar_speed :: proc(t: ^testing.T) {
 		// A debug build on a shared runner: one query can lose its time slice (the CI measured a mean of 0.77 ms with a
 		// single 24 ms query among 48). A real slowdown (a scan of every entry per letter) moves the mean and the whole
 		// distribution, so the mean and the 90th percentile are strict and the single worst only has a wide bound.
-		slice.sort(samples[:])
-		p90 := samples[len(samples) * 9 / 10]
 		testing.expectf(t, total / f64(n) < 5, "mean under 5 ms per letter in a debug build: %.3f", total / f64(n))
 		testing.expectf(t, p90 < 20, "90th percentile under 20 ms per letter in a debug build: %.3f", p90)
 		testing.expectf(t, worst < 250, "worst under 250 ms per letter in a debug build: %.3f", worst)

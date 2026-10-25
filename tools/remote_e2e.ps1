@@ -540,6 +540,10 @@ try {
     $idleMax = if ($env:CI) { 1000 } else { 60 }
     Check "idle Wren without remote uses < $idleMax ms CPU in 3 s" ($idle0 -lt $idleMax) "$([int]$idle0) ms"
     Check "idle Wren with remote on uses < $idleMax ms CPU in 3 s" ($idle1 -lt $idleMax) "$([int]$idle1) ms"
+    # (A request that only reads draws nothing: `stats` and `ping` used to draw 2 to 4 frames each, the second `ctl` call's own client leaving
+    # being a task too, which put 4 to 8 in this window on a loaded machine and on the CI.) A few frames are left room for what a slow
+    # machine finishes late (a tab's first layout); a loop that does not rest draws 180.
+    "      frames drawn by the driven Wren in the 3 s: $($frames1 - $frames0)"
     Check 'idle Wren with remote on draws no frame in 3 s' (($frames1 - $frames0) -le 3) "$($frames1 - $frames0) frame(s)"
     if (-not $p0.HasExited) { Stop-Process -Id $p0.Id -Force }
 
