@@ -284,7 +284,8 @@ Host: `HTMLVideoElement_videoHeight :: proc(c: ^Call, element: Api_HTMLMediaElem
 bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element)
 ```
 
-video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
+totalFrameDelay in seconds).
 
 Host: `HTMLVideoElement_playbackQuality :: proc(c: ^Call, element: Api_HTMLMediaElement) -> []u8`
 

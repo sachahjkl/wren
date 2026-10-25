@@ -270,7 +270,8 @@ HTMLVideoElement_videoHeight :: proc "contextless" (element: HTMLMediaElement) -
 	return _HTMLVideoElement_videoHeight(element)
 }
 
-// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+// video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
+// totalFrameDelay in seconds).
 HTMLVideoElement_playbackQuality :: proc "contextless" (element: HTMLMediaElement, buf: []u8) -> ([]u8, Error) {
 	n := _HTMLVideoElement_playbackQuality(element, raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
