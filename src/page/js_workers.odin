@@ -51,6 +51,7 @@ js_worker_start :: proc(p: ^Page, g: ^Worker_Global) -> bool {
 		return false
 	}
 	js_run(p, g.image, g.url)
+	sw_script_ran(p)   // service_worker.odin: a service worker's events may come now
 	return true
 }
 

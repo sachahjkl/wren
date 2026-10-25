@@ -1,0 +1,15 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Service worker test</title>
+<p id="status">loading</p>
+<script>
+// tools\sw_e2e.ps1 drives this page with wren ctl; it registers sw.js (scope: this folder) and keeps what the worker says.
+window.swMessages = [];
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener("message", (e) => swMessages.push(String(e.data)));
+  window.registered = navigator.serviceWorker.register("sw.js").then((r) => {
+    document.getElementById("status").textContent = "registered";
+    return r.scope;
+  }, (e) => "error " + e.name + ": " + e.message);
+}
+</script>

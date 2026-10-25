@@ -37,6 +37,7 @@ Settings :: struct {
 	fullscreen:      Fullscreen_Settings, // the Fullscreen API (fullscreen.odin)
 	timeline:        Timeline_Settings,   // Performance Timeline entries (timeline.odin)
 	idb:             idb.Settings,        // IndexedDB (idb_host.odin)
+	sw:              Sw_Settings,         // service workers, Cache API, OPFS (sw_settings.odin)
 	// Whether a document address is one of the browser's own pages (about:wren...): those documents may use the properties made for
 	// them (-wren-shader). Set by the shell; nil: no page is.
 	internal_address: proc(href: string) -> bool,
@@ -72,6 +73,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, FULLSCREEN_PREFS[:])
 	config.register(p, TIMELINE_PREFS[:])
 	idb.register_prefs(p)
+	config.register(p, SW_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -99,6 +101,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		fullscreen = fullscreen_settings_from_prefs(p),
 		timeline = timeline_settings_from_prefs(p),
 		idb = idb.settings_from_prefs(p),
+		sw = sw_settings_from_prefs(p),
 	}
 }
 

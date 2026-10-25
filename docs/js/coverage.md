@@ -12,10 +12,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 | | count |
 |---|---:|
-| interfaces, namespaces in the table | 560 |
-| exposed by default | 265 |
-| members | 5013 |
-| members implemented | 3212 (64.1 %) |
+| interfaces, namespaces in the table | 571 |
+| exposed by default | 279 |
+| members | 5069 |
+| members implemented | 3290 (64.9 %) |
 
 ## By specification
 
@@ -27,7 +27,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `clipboard-apis.idl` | 4 (1) | 4 / 14 |
 | `compression.idl` | 2 (0) | 0 / 6 |
 | `console.idl` | 1 (1) | 19 / 19 |
-| `cookiestore.idl` | 3 (0) | 1 / 15 |
+| `cookiestore.idl` | 4 (0) | 1 / 18 |
 | `credential-management.idl` | 4 (2) | 7 / 17 |
 | `css-animations.idl` | 3 (0) | 0 / 12 |
 | `css-conditional.idl` | 3 (0) | 0 / 4 |
@@ -47,7 +47,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 160 (113) | 1432 / 1819 |
+| `html.idl` | 161 (114) | 1442 / 1822 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -58,7 +58,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `mediasession.idl` | 3 (0) | 0 / 16 |
 | `navigation-timing.idl` | 4 (3) | 40 / 46 |
 | `netinfo.idl` | 1 (0) | 1 / 6 |
-| `notifications.idl` | 1 (0) | 4 / 25 |
+| `notifications.idl` | 2 (0) | 4 / 28 |
 | `paint-timing.idl` | 1 (1) | 3 / 3 |
 | `performance-timeline.idl` | 3 (3) | 15 / 15 |
 | `permissions.idl` | 2 (2) | 4 / 4 |
@@ -70,7 +70,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `screen-orientation.idl` | 1 (0) | 1 / 5 |
 | `scroll-to-text-fragment.idl` | 1 (0) | 0 / 0 |
 | `selection-api.idl` | 1 (1) | 24 / 25 |
-| `service-workers.idl` | 6 (0) | 6 / 43 |
+| `service-workers.idl` | 14 (13) | 74 / 90 |
 | `speech-api.idl` | 14 (0) | 19 / 85 |
 | `storage.idl` | 1 (0) | 0 / 3 |
 | `streams.idl` | 13 (3) | 14 / 59 |
@@ -289,6 +289,28 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 - `cssFloat`: C `wjr_CSSStyleProperties_get_cssFloat`
 
+### Cache
+
+7 / 7 members.
+
+- `match()`: C `wjr_Cache_match`
+- `matchAll()`: C `wjr_Cache_matchAll`
+- `add()`: C `wjr_Cache_add`
+- `addAll()`: C `wjr_Cache_addAll`
+- `put()`: C `wjr_Cache_put`
+- `delete()`: C `wjr_Cache_delete`
+- `keys()`: C `wjr_Cache_keys`
+
+### CacheStorage
+
+5 / 5 members.
+
+- `match()`: C `wjr_CacheStorage_match`
+- `has()`: C `wjr_CacheStorage_has`
+- `open()`: C `wjr_CacheStorage_open`
+- `delete()`: C `wjr_CacheStorage_delete`
+- `keys()`: C `wjr_CacheStorage_keys`
+
 ### CanvasGradient
 
 1 / 1 members.
@@ -389,6 +411,37 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `roundRect()` (CanvasPath): C `wjr_CanvasPath_roundRect`
 - `arc()` (CanvasPath): import `canvas.CanvasPath_arc`
 - `ellipse()` (CanvasPath): import `canvas.CanvasPath_ellipse`
+
+### Client
+
+6 / 7 members.
+
+- `readonly lifecycleState`: not supported
+- `readonly url`: C `wjr_Client_get_url`
+- `readonly frameType`: C `wjr_Client_get_frameType`
+- `readonly id`: C `wjr_Client_get_id`
+- `readonly type`: C `wjr_Client_get_type`
+- `postMessage()`: C `wjr_Client_postMessage`
+- `postMessage()`: C `wjr_Client_postMessage`
+
+### WindowClient : Client
+
+2 / 5 members.
+
+- `readonly visibilityState`: C `wjr_WindowClient_get_visibilityState`
+- `readonly focused`: C `wjr_WindowClient_get_focused`
+- `readonly ancestorOrigins`: not supported
+- `focus()`: not supported
+- `navigate()`: not supported
+
+### Clients
+
+4 / 4 members.
+
+- `get()`: C `wjr_Clients_get`
+- `matchAll()`: C `wjr_Clients_matchAll`
+- `openWindow()`: C `wjr_Clients_openWindow`
+- `claim()`: C `wjr_Clients_claim`
 
 ### Credential
 
@@ -849,6 +902,44 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly colno`: C `wjr_ErrorEvent_get_colno`
 - `readonly error`: C `wjr_ErrorEvent_get_error`
 
+### ExtendableEvent : Event
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_ExtendableEvent_constructor`
+- `waitUntil()`: C `wjr_ExtendableEvent_waitUntil`
+
+### ExtendableMessageEvent : ExtendableEvent
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_ExtendableMessageEvent_constructor`
+- `readonly data`: C `wjr_ExtendableMessageEvent_get_data`
+- `readonly origin`: C `wjr_ExtendableMessageEvent_get_origin`
+- `readonly lastEventId`: C `wjr_ExtendableMessageEvent_get_lastEventId`
+- `readonly source`: C `wjr_ExtendableMessageEvent_get_source`
+- `readonly ports`: C `wjr_ExtendableMessageEvent_get_ports`
+
+### FetchEvent : ExtendableEvent
+
+8 / 8 members.
+
+- `constructor()`: C `wjr_FetchEvent_constructor`
+- `readonly request`: C `wjr_FetchEvent_get_request`
+- `readonly preloadResponse`: C `wjr_FetchEvent_get_preloadResponse`
+- `readonly clientId`: C `wjr_FetchEvent_get_clientId`
+- `readonly resultingClientId`: C `wjr_FetchEvent_get_resultingClientId`
+- `readonly replacesClientId`: C `wjr_FetchEvent_get_replacesClientId`
+- `readonly handled`: C `wjr_FetchEvent_get_handled`
+- `respondWith()`: C `wjr_FetchEvent_respondWith`
+
+### InstallEvent : ExtendableEvent
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_InstallEvent_constructor`
+- `addRoutes()`: C `wjr_InstallEvent_addRoutes`
+
 ### HashChangeEvent : Event
 
 3 / 3 members.
@@ -1083,6 +1174,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly reason`: C `wjr_AbortSignal_get_reason`
 - `throwIfAborted()`: C `wjr_AbortSignal_throwIfAborted`
 - `onabort`: generic (event handler)
+
+### BroadcastChannel : EventTarget
+
+6 / 6 members.
+
+- `constructor()`: C `wjr_BroadcastChannel_constructor`
+- `readonly name`: C `wjr_BroadcastChannel_get_name`
+- `postMessage()`: C `wjr_BroadcastChannel_postMessage`
+- `close()`: C `wjr_BroadcastChannel_close`
+- `onmessage`: generic (event handler)
+- `onmessageerror`: generic (event handler)
 
 ### Clipboard : EventTarget
 
@@ -3655,6 +3757,48 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly name`: C `wjr_PermissionStatus_get_name`
 - `onchange`: generic (event handler)
 
+### ServiceWorker : EventTarget
+
+6 / 6 members.
+
+- `readonly scriptURL`: C `wjr_ServiceWorker_get_scriptURL`
+- `readonly state`: C `wjr_ServiceWorker_get_state`
+- `postMessage()`: C `wjr_ServiceWorker_postMessage`
+- `postMessage()`: C `wjr_ServiceWorker_postMessage`
+- `onstatechange`: generic (event handler)
+- `onerror` (AbstractWorker): generic (event handler)
+
+### ServiceWorkerContainer : EventTarget
+
+9 / 9 members.
+
+- `readonly controller`: C `wjr_ServiceWorkerContainer_get_controller`
+- `readonly ready`: C `wjr_ServiceWorkerContainer_get_ready`
+- `register()`: C `wjr_ServiceWorkerContainer_register`
+- `getRegistration()`: C `wjr_ServiceWorkerContainer_getRegistration`
+- `getRegistrations()`: C `wjr_ServiceWorkerContainer_getRegistrations`
+- `startMessages()`: C `wjr_ServiceWorkerContainer_startMessages`
+- `oncontrollerchange`: generic (event handler)
+- `onmessage`: generic (event handler)
+- `onmessageerror`: generic (event handler)
+
+### ServiceWorkerRegistration : EventTarget
+
+8 / 12 members.
+
+- `readonly cookies`: not supported
+- `showNotification()`: not supported
+- `getNotifications()`: not supported
+- `readonly installing`: C `wjr_ServiceWorkerRegistration_get_installing`
+- `readonly waiting`: C `wjr_ServiceWorkerRegistration_get_waiting`
+- `readonly active`: C `wjr_ServiceWorkerRegistration_get_active`
+- `readonly navigationPreload`: not supported
+- `readonly scope`: C `wjr_ServiceWorkerRegistration_get_scope`
+- `readonly updateViaCache`: C `wjr_ServiceWorkerRegistration_get_updateViaCache`
+- `update()`: C `wjr_ServiceWorkerRegistration_update`
+- `unregister()`: C `wjr_ServiceWorkerRegistration_unregister`
+- `onupdatefound`: generic (event handler)
+
 ### SourceBuffer : EventTarget
 
 15 / 18 members.
@@ -3725,7 +3869,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-195 / 220 members.
+197 / 220 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -3927,7 +4071,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
 - `readonly origin` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_origin`
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_isSecureContext`
-- `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
+- `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crossOriginIsolated`
 - `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
 - `atob()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_atob`
@@ -3940,7 +4084,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
-- `readonly caches` (WindowOrWorkerGlobalScope): not supported
+- `readonly caches` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_caches`
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
 - `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
 - `requestAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_requestAnimationFrame`
@@ -3962,7 +4106,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerGlobalScope : EventTarget
 
-27 / 32 members.
+29 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
 - `readonly location`: C `wjr_WorkerGlobalScope_get_location`
@@ -3980,7 +4124,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly performance` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_performance`
 - `readonly origin` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_origin`
 - `readonly isSecureContext` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_isSecureContext`
-- `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): not supported
+- `readonly crossOriginIsolated` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crossOriginIsolated`
 - `reportError()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_reportError`
 - `btoa()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_btoa`
 - `atob()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_atob`
@@ -3993,7 +4137,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
 - `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
-- `readonly caches` (WindowOrWorkerGlobalScope): not supported
+- `readonly caches` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_caches`
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
 - `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
 
@@ -4009,6 +4153,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `cancelAnimationFrame()` (AnimationFrameProvider): C `wjr_AnimationFrameProvider_cancelAnimationFrame`
 - `onmessage` (MessageEventTarget): generic (event handler)
 - `onmessageerror` (MessageEventTarget): generic (event handler)
+
+### ServiceWorkerGlobalScope : WorkerGlobalScope
+
+9 / 13 members.
+
+- `readonly cookieStore`: not supported
+- `oncookiechange`: generic (event handler)
+- `onnotificationclick`: generic (event handler)
+- `onnotificationclose`: generic (event handler)
+- `readonly clients`: not supported
+- `readonly registration`: import `serviceworker.ServiceWorkerGlobalScope_registration`
+- `readonly serviceWorker`: not supported
+- `skipWaiting()`: not supported
+- `oninstall`: generic (event handler)
+- `onactivate`: generic (event handler)
+- `onfetch`: generic (event handler)
+- `onmessage`: generic (event handler)
+- `onmessageerror`: generic (event handler)
 
 ### XMLHttpRequestEventTarget : EventTarget
 
@@ -4256,7 +4418,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Navigator
 
-23 / 43 members.
+24 / 43 members.
 
 - `sendBeacon()`: C `wjr_Navigator_sendBeacon`
 - `readonly clipboard`: C `wjr_Navigator_get_clipboard`
@@ -4268,7 +4430,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly mediaSession`: not supported
 - `readonly permissions`: C `wjr_Navigator_get_permissions`
 - `readonly maxTouchPoints`: C `wjr_Navigator_get_maxTouchPoints`
-- `readonly serviceWorker`: not supported
+- `readonly serviceWorker`: C `wjr_Navigator_get_serviceWorker`
 - `vibrate()`: not supported
 - `share()`: not supported
 - `canShare()`: not supported
@@ -5022,5 +5184,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, Cache, CacheStorage, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, TextEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, BroadcastChannel, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ServiceWorker, ServiceWorkerContainer, ServiceWorkerRegistration, SharedWorker, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, PerformanceLongTaskTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextTrackCueList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationEffect, KeyframeEffect, AnimationTimeline, DocumentTimeline, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, ByteLengthQueuingStrategy, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CompressionStream, CookieStoreManager, CountQueuingStrategy, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, DecompressionStream, AnimationEvent, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, ToggleEvent, TrackEvent, TransitionEvent, TextEvent, EventCounts, TaskSignal, Animation, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, SharedWorker, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, SharedWorkerGlobalScope, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FileSystem, FileSystemDirectoryReader, FileSystemEntry, FileSystemDirectoryEntry, FileSystemFileEntry, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MediaSourceHandle, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationPreloadManager, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, PerformanceLongTaskTiming, TaskAttributionTiming, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextDecoderStream, TextEncoderStream, TextTrackCueList, TransformStream, TransformStreamDefaultController, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, WritableStream, WritableStreamDefaultController, WritableStreamDefaultWriter, XMLSerializer, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
