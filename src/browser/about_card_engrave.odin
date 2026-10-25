@@ -21,7 +21,7 @@ import "toolkit:font"
 
 ENGRAVE_W :: 1320
 ENGRAVE_H :: 832
-@(private = "file") ENGRAVE_SCALE :: 3.0    // texels per CSS pixel of the 440 px design
+@(private) ENGRAVE_SCALE :: 3.0    // texels per CSS pixel of the 440 px design
 BEVEL_R :: 2            // the box blur (radius, two passes) that makes the bevel: about 1.3 CSS px wide at 3 texels to a pixel
 BEVEL_K :: 5.0          // how steep the flanks are made (the steepest slope of a blurred edge is 1 / (2 * BEVEL_R) a texel)
 

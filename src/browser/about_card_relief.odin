@@ -99,6 +99,7 @@ Stage :: enum u8 { Height, Blur_X, Blur_Y, Normals }
 @(private = "file")
 Maps :: struct {
 	hf, tmp, blur: []f32,
+	emboss:        []f32,   // the back of the card: the height of what is raised on it (about_card_back.odin), nil for the front
 	out:           []u8,
 	lo, hi:        f32,
 	stage:         Stage,
@@ -115,7 +116,14 @@ run_band :: proc(t: ^thread.Thread) {
 		for x in 0 ..< W {
 			switch m.stage {
 			case .Height:
-				m.hf[y * W + x] = height_at(x, y) + (hash2(x, y) - 0.5) * 0.10   // the grain
+				h := height_at(x, y)
+				if m.emboss != nil {
+					// the other face of a struck piece: what stands out on the front is hollow here, and the guilloche is calmed where the raised
+					// figure stands (BACK_RELIEF tall, its bevel the blur of the figure's mask)
+					e := m.emboss[y * W + x]
+					h = -h * (1 - clamp(2 * e, 0, 1)) + BACK_RELIEF * e
+				}
+				m.hf[y * W + x] = h + (hash2(x, y) - 0.5) * 0.10   // the grain
 			case .Blur_X:
 				s: f32
 				for k in -BLUR_R ..= BLUR_R { s += m.hf[y * W + clamp(x + k, 0, W - 1)] }
@@ -166,9 +174,13 @@ run_stage :: proc(m: ^Maps, stage: Stage, workers: int) {
 
 // The normal map: NORMAL_W x NORMAL_H texels of RGBA8 (see above), in `allocator`. The same bytes every time. Made on a few threads (the
 // card should not stall the page when it first shows).
-card_normal_map :: proc(allocator := context.allocator) -> []u8 {
+card_normal_map :: proc(allocator := context.allocator) -> []u8 { return relief_map(nil, allocator) }
+
+// The relief of the card, or of its back when `emboss` (NORMAL_W x NORMAL_H, 0 .. 1) holds the figure raised on it.
+@(private)
+relief_map :: proc(emboss: []f32, allocator := context.allocator) -> []u8 {
 	W, H :: NORMAL_W, NORMAL_H
-	m := Maps{hf = make([]f32, W * H, allocator), tmp = make([]f32, W * H, allocator), blur = make([]f32, W * H, allocator), out = make([]u8, W * H * 4, allocator)}
+	m := Maps{hf = make([]f32, W * H, allocator), tmp = make([]f32, W * H, allocator), blur = make([]f32, W * H, allocator), emboss = emboss, out = make([]u8, W * H * 4, allocator)}
 	defer { delete(m.hf); delete(m.tmp); delete(m.blur) }
 	workers := clamp(host.processor_count(), 1, 8)
 	run_stage(&m, .Height, workers)
