@@ -31,14 +31,16 @@ jobs:
         shell: cmd
         run: call build.bat
 
-      # Two steps of test_all at a time (-Jobs 2; the end-to-end timeouts of -CI are three times the usual; three at a time was tried: the
-      # wasm preemption tick count, a 50 000 element innerHTML under its 20 s limit and a font edge of canvas2d failed): the runner has 4 cores, and most
-      # of the steps spend their time waiting (servers, expiries, a video that plays) or run on a few threads. The AddressSanitizer unit tests
+      # One step of test_all per core (-Jobs 0, the default: 4 cores here; the end-to-end timeouts of -CI are three times the usual): most
+      # of the steps spend their time waiting (servers, expiries, a video that plays) or run on a few threads. Three at a time once failed the wasm
+      # preemption tick count, a 50 000 element innerHTML under its 20 s limit and a font edge of canvas2d: the first two are not run here now (they
+      # measure time) and the third reads a stronger pixel; a check that fails again under the load is a check that depends on the machine's speed:
+      # it goes behind -Perf, it does not make the run slower. The AddressSanitizer unit tests
       # are the long step (six minutes one package after the other): the `asan` job below runs them beside this one, three packages at a time.
       # The tests that measure time are not run here (the runner's speed is unknown): `test_all.ps1 -Perf` is for our own machines, and is ignored when CI is set.
-      - name: Tests (tools\test_all.ps1 -CI -Jobs 2 -NoAsan)
+      - name: Tests (tools\test_all.ps1 -CI -NoAsan)
         shell: cmd
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -Jobs 2 -NoAsan
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI -NoAsan
 
       # what the JavaScript conformance steps of test_all measured (WPT sample per folder, test262 failures)
       - uses: actions/upload-artifact@v4

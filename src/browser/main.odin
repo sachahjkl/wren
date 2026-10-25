@@ -1429,6 +1429,8 @@ main :: proc() {
 	host.loop_destroy(&app.loop)
 	host.shutdown_step("page.js_shutdown")
 	page.js_shutdown()
+	host.shutdown_step("page.frames_shutdown")
+	page.frames_shutdown()   // the registry of navigables (every page is closed): a top-level page asks for its navigable on first use
 	host.shutdown_step("wasm.runtime_destroy")
 	wasm.runtime_destroy()
 	host.shutdown_step("measure_destroy")
