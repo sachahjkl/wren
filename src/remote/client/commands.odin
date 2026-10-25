@@ -343,7 +343,8 @@ cmd_network :: proc(ctx: ^Context) -> int {
 
 @(private)
 cmd_stats :: proc(ctx: ^Context) -> int {
-	rep, code := request(ctx, "Wren.stats", flag(&ctx.o, "reset-latency") ? `{"resetLatency":true}` : "{}")
+	params := fmt.tprintf(`{{"resetLatency":%v,"resetFrames":%v}}`, flag(&ctx.o, "reset-latency"), flag(&ctx.o, "reset-frames"))
+	rep, code := request(ctx, "Wren.stats", params)
 	if code != 0 { return code }
 	if flag(&ctx.o, "json") { print_json(rep); return 0 }
 	for k, v in parse_result(rep) {
