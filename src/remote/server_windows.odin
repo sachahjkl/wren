@@ -387,6 +387,9 @@ write_all :: proc(c: ^Conn, data: []byte, write_ev: win.HANDLE) -> bool {
 @(private)
 on_input :: proc(_: rawptr) {
 	if !srv.running { return }
+	// This task draws nothing by itself (it is posted for a request, and again for a client that went: a `wren ctl` call is both):
+	// the handler asks for the frames a request needs, so that a request that only reads leaves a resting browser at rest
+	host.quiet_note(srv.loop)
 	for {
 		line: []byte
 		id: u64
