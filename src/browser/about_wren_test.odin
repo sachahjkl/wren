@@ -162,6 +162,40 @@ about_page_notices_and_rejected_store :: proc(t: ^testing.T) {
 }
 
 @(test)
+thanks_section_links_every_entry :: proc(t: ^testing.T) {
+	html := wren_page_html(test_page("daylight"))
+	heading :: "<h2>Thanks</h2>"
+	start := strings.index(html, heading)
+	testing.expect(t, start >= 0, "the thanks section is there")
+	if start < 0 { return }
+	section := html[start + len(heading):]
+	if end := strings.index(section, "<h2>"); end >= 0 { section = section[:end] }
+	testing.expect(t, strings.count(section, `<tr><td class="k">`) >= 11, "ten people or projects and the libraries")
+	for want in ([]string{
+		"https://caseymuratori.com", "https://x.com/Jonathan_Blow", "https://usgraphics.com", "https://x.com/ThePrimeagen",
+		"https://gingerbill.org", "https://opencode.ai", "https://ladybird.org", "https://rfleury.com", "https://bellard.org",
+		"https://lexbor.com", "https://github.com/EricLengyel/Slug", "https://github.com/bytecodealliance/wasmtime",
+		"https://github.com/quickjs-ng/quickjs", "https://github.com/linebender/resvg",
+	}) {
+		testing.expectf(t, strings.contains(section, strings.concatenate({`href="`, want, `"`}, context.temp_allocator)), "the thanks section lacks a link to %s", want)
+	}
+	rest := section
+	links := 0
+	for {
+		i := strings.index(rest, `href="`)
+		if i < 0 { break }
+		rest = rest[i + len(`href="`):]
+		j := strings.index_byte(rest, '"')
+		if j < 0 { break }
+		href := rest[:j]
+		links += 1
+		testing.expectf(t, strings.has_prefix(href, "https://") || href == LICENSES_URL, "a link of the thanks section is not https: %q", href)
+		rest = rest[j:]
+	}
+	testing.expect(t, links >= 15, "every entry links")
+}
+
+@(test)
 licenses_page_has_every_text :: proc(t: ^testing.T) {
 	html := licenses_page_html(test_page("graphite"))
 	for lt in LICENSE_TEXTS {
