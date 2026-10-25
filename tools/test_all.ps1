@@ -177,6 +177,10 @@ function Show-TestTimes {
             foreach ($r in $top) { $lines += ('  {0,6:N1} s  {1}: {2}' -f $r.Seconds, $r.Script, $r.Section) }
         }
     }
+    if ($env:WREN_STARTS_FILE -and (Test-Path $env:WREN_STARTS_FILE)) {
+        $starts = @(Get-Content $env:WREN_STARTS_FILE | ForEach-Object { ($_ -split "`t")[0] })
+        $lines += "Wren processes started by the scripts (wren ctl start / run): $($starts.Count) ($((($starts | Group-Object | Sort-Object Count -Descending | ForEach-Object { "$($_.Name) $($_.Count)" }) -join ', ')))"
+    }
     $lines
     if ($env:GITHUB_STEP_SUMMARY) { try { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value (@('### Test times', '```') + $lines + '```') } catch { } }
 }
@@ -191,6 +195,9 @@ $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'bu
 # where the time of each script goes (Section / Show-WrenSections in test_env.ps1): the scripts append their sections here, the table is printed at the end
 $env:WREN_TIMINGS_FILE = Join-Path $env:TEMP 'test_all_sections.tsv'
 Remove-Item $env:WREN_TIMINGS_FILE -ErrorAction SilentlyContinue
+# the Wren processes the scripts start (Note-WrenStart in wrenctl.ps1), counted at the end: a start and a close are a second or more of a runner's time
+$env:WREN_STARTS_FILE = Join-Path $env:TEMP 'test_all_wren_starts.tsv'
+Remove-Item $env:WREN_STARTS_FILE -ErrorAction SilentlyContinue
 # Wasm calls run on the calling thread: every program that runs modules (the JavaScript engine needs 16 MiB of wasm
 # stack, wasm.wasmtime.max_stack_bytes) is linked with a 32 MiB default thread stack
 $Stack = '-extra-linker-flags:/STACK:33554432'
