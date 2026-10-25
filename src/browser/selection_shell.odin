@@ -262,7 +262,7 @@ selection_shell_frame :: proc(app: ^App) {
 	port := app.page_rect
 	if sshell.scroller != base.NIL_HANDLE {
 		if r, ok := lay.box_of(&t.layout, sshell.scroller, page_viewport(app), t.scroll); ok {
-			off := app.page_rect.min - {0, r.fixed ? 0 : t.scroll}
+			off := app.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
 			port = {{max(port.min.x, app.page_rect.min.x), max(port.min.y, app.page_rect.min.y)}, {min(port.max.x, app.page_rect.max.x), min(port.max.y, app.page_rect.max.y)}}
 		}

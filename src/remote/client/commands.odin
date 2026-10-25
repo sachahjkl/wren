@@ -3,6 +3,7 @@ package client
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:path/filepath"
 import "core:strconv"
 import "core:strings"
 import "core:time"
@@ -68,6 +69,7 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "eval":     return cmd_eval(ctx, args)
 	case "click":    return cmd_click(ctx, args)
 	case "drag":     return cmd_drag(ctx, args)
+	case "drop":     return cmd_drop(ctx, args)
 	case "hover":
 		if len(args) != 1 { return usage(cmd, "usage: hover x,y [--window]") }
 		v, ok := parse_numbers(args[0], 2)
@@ -257,6 +259,25 @@ cmd_click :: proc(ctx: ^Context, args: []string) -> int {
 	}
 	strings.write_byte(&b, '}')
 	return simple(ctx, "Wren.click", strings.to_string(b))
+}
+
+// drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]: another application's drag dropped on the window
+// (the files are made absolute from the caller's folder).
+@(private)
+cmd_drop :: proc(ctx: ^Context, args: []string) -> int {
+	at, ok := parse_numbers(opt(&ctx.o, "at", "200,200"), 2)
+	if !ok { return usage("drop", "usage: drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]") }
+	sb := strings.builder_make(context.temp_allocator)
+	fmt.sbprintf(&sb, `{{"x":%v,"y":%v,"space":%s,"files":[`, at[0], at[1], q(flag(&ctx.o, "window") ? "window" : "page"))
+	for f, i in args {
+		full, err := filepath.abs(f, context.temp_allocator)
+		if err != nil { full = f }
+		if i > 0 { strings.write_byte(&sb, ',') }
+		strings.write_string(&sb, q(full))
+	}
+	fmt.sbprintf(&sb, `],"text":%s,"url":%s,"html":%s,"leave":%v}}`, q(opt(&ctx.o, "text")), q(opt(&ctx.o, "url")), q(opt(&ctx.o, "html")), flag(&ctx.o, "leave"))
+	if len(args) == 0 && opt(&ctx.o, "text") == "" && opt(&ctx.o, "url") == "" && opt(&ctx.o, "html") == "" { return usage("drop", "give files, --text, --url or --html") }
+	return simple(ctx, "Wren.drop", strings.to_string(sb))
 }
 
 @(private)

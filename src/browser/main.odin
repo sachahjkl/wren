@@ -886,10 +886,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		was := st.hover
 		st.hover = hovered
 		page.set_style_state(t.page, st)
-		page_pointer_events(app, t, was, hovered, last_move.pos)   // page_pointer.odin
+		page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
+		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
+		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { sshell.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
@@ -923,7 +925,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
 			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
-			if ev.button == .Left { selection_pointer_down(app, t, ev, pressed, allowed) }
+			draggable := ev.button == .Left && allowed && dnd_press(app, t, ev, pressed)   // dnd_shell.odin: a press that may become a drag selects nothing
+			if ev.button == .Left && !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
@@ -1079,6 +1082,7 @@ frame :: proc(app: ^App, idled := false) {
 	memory_trim_active()   // memory_trim.odin
 	prof_begin(.Input)
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
+	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
 	route_page_input(app, events)
 	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)

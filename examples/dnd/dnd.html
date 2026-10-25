@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; }
+  #src { position: absolute; left: 10px; top: 10px; width: 100px; height: 40px; background: #cde; }
+  #zone { position: absolute; left: 10px; top: 100px; width: 300px; height: 100px; background: #edc; }
+  #plain { position: absolute; left: 10px; top: 250px; width: 300px; height: 100px; background: #ddd; }
+  #tall { position: absolute; top: 400px; height: 3000px; width: 10px; }
+  #fixed { position: fixed; left: 400px; top: 10px; width: 100px; height: 50px; background: #9c9; }
+</style>
+<div id="src" draggable="true">drag me</div>
+<div id="zone">zone</div>
+<div id="plain">plain</div>
+<div id="tall"></div>
+<div id="fixed">fixed</div>
+<script>
+window.log = [];
+for (const ty of ["dragstart", "dragenter", "dragover", "drop", "dragend", "pointerdown", "pointerup", "mousedown", "mouseup", "pointermove"]) {
+  document.addEventListener(ty, (e) => {
+    if (ty === "pointermove" && !e.buttons) { return; }
+    let s = ty + "@" + (e.target.id || e.target.nodeName);
+    if (e.dataTransfer && ty === "drop") { s += " files=" + e.dataTransfer.files.length + " text=" + e.dataTransfer.getData("text"); }
+    if (ty.startsWith("mouse") || ty.startsWith("pointer")) { s += " cy=" + Math.round(e.clientY) + " py=" + Math.round(e.pageY) + " b=" + e.buttons; }
+    log.push(s);
+  }, true);
+}
+document.getElementById("src").addEventListener("dragstart", (e) => e.dataTransfer.setData("text/plain", "payload"));
+const zone = document.getElementById("zone");
+zone.addEventListener("dragover", (e) => e.preventDefault());
+zone.addEventListener("drop", (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) { f.text().then((t) => log.push("read=" + t)); } });
+</script>
