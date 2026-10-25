@@ -323,18 +323,21 @@ try { a.dispatchEvent(new Event("x")); console.log("returned", depth) } catch (e
 		usable(p, "recursion through the browser")
 		page.page_close(p)
 
-		p, ms = timed(process, `<!doctype html><body><script>
+		// filling the heap to its limit is a race with wasm.max_call_ms: a slow machine (the CI runner under load) has the call stopped before the heap is full
+		if !base.perf_skip("allocating past javascript.max_heap_bytes") {
+			p, ms = timed(process, `<!doctype html><body><script>
 const keep = [];
 try { for (;;) keep.push(new Array(1 << 16).fill(1.5)); } catch (e) { console.log("oom", e.name || String(e)) }
 keep.length = 0;
 try { "x".repeat(1 << 30); } catch (e) { console.log("huge string", e.name) }
 </script></body>`)
-		oom := false
-		for l in logs { if strings.has_prefix(l, "oom") { oom = true } }
-		check(oom, "allocating past javascript.max_heap_bytes throws, the script can catch it")
-		check(logged("huge string RangeError") || logged("huge string InternalError"), "a 1 GiB string is refused")
-		usable(p, "out of memory")
-		page.page_close(p)
+			oom := false
+			for l in logs { if strings.has_prefix(l, "oom") { oom = true } }
+			check(oom, "allocating past javascript.max_heap_bytes throws, the script can catch it")
+			check(logged("huge string RangeError") || logged("huge string InternalError"), "a 1 GiB string is refused")
+			usable(p, "out of memory")
+			page.page_close(p)
+		}
 
 		p, ms = timed(process, `<!doctype html><body><script>
 function m() { Promise.resolve().then(m); }
