@@ -137,9 +137,9 @@ element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32
 	if t.page == nil || !t.layout.valid { return {}, false }
 	r, found := lay.box_of(&t.layout, h, draw.rect_size(app.page_rect), t.scroll)
 	if !found { return {}, false }
-	b := r.border
-	dy := r.fixed ? f32(0) : t.scroll
-	x, y := app.page_rect.min.x + b.min.x, app.page_rect.min.y + b.min.y - dy
+	b := r.bounds   // where the border box is drawn (its transforms applied)
+	// document coordinates, a position: fixed box's too (box_of adds the scroll to the fixed space's)
+	x, y := app.page_rect.min.x + b.min.x, app.page_rect.min.y + b.min.y - t.scroll
 	return {x, y, b.max.x - b.min.x, b.max.y - b.min.y}, true
 }
 
@@ -813,22 +813,46 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 }
 
 // Wren.drag {x, y, toX, toY, steps, button}
+// Each step gets its own frame: injected at once, the frame's input pass would see the release before the page had
+// the moves (the DOM's mousemove goes out once per frame, after the loop over the events; a press that waits for a
+// fresh layout starts its selection gesture a frame later).
 @(private = "file")
 m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 	from, ok1 := point_of(app, c, "x", "y")
 	to, ok2 := point_of(app, c, "toX", "toY")
 	if !ok1 || !ok2 { return fail(remote.ERR_PARAMS, "x, y, toX and toY are needed") }
 	steps, _ := remote.param_int(c.params, "steps", 8)
-	steps = clamp(steps, 1, 1000)
-	button := button_of(c)
-	inject(app, {kind = .Mouse_Move, pos = from})
-	inject(app, {kind = .Mouse_Press, pos = from, button = button})
-	for i in 1 ..= steps {
-		f := f32(i) / f32(steps)
-		inject(app, {kind = .Mouse_Move, pos = from + (to - from) * f})
+	op := op_new(app, c, .Drag, timeout_of(c), "drag")
+	op.pos, op.to, op.count, op.button = from, to, clamp(steps, 1, 1000), button_of(c)
+	op.until = the_remote.frame_no
+	app.frames_requested = max(app.frames_requested, 3)
+	return Reply{deferred = true}
+}
+
+// Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
+drag_step :: proc(app: ^App, op: ^Remote_Op) {
+	r := &the_remote
+	app.frames_requested = max(app.frames_requested, 2)
+	if r.frame_no < op.until { return }
+	switch op.stage {
+	case 0:
+		inject(app, {kind = .Mouse_Move, pos = op.pos})
+		inject(app, {kind = .Mouse_Press, pos = op.pos, button = op.button})
+		op.stage, op.idx = 1, 0
+		op.until = r.frame_no + 2   // (a press may wait one frame for a fresh layout before its gesture starts)
+	case 1:
+		op.idx += 1
+		f := f32(op.idx) / f32(op.count)
+		inject(app, {kind = .Mouse_Move, pos = op.pos + (op.to - op.pos) * f})
+		if op.idx >= op.count { op.stage = 2 }
+		op.until = r.frame_no + 1
+	case 2:
+		inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button})
+		op.stage = 3
+		op.until = r.frame_no + u64(max(r.cfg.settle_frames, 1))
+	case:
+		op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f,"toX":%.1f,"toY":%.1f}}`, op.pos.x, op.pos.y, op.to.x, op.to.y)))
 	}
-	inject(app, {kind = .Mouse_Release, pos = to, button = button})
-	return frames_op(app, c, nil, the_remote.cfg.settle_frames + 1)
 }
 
 // Wren.type {text}  /  Input.insertText {text}: each character as the keyboard's text input (a new line is the Enter key)
