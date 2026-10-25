@@ -18,5 +18,6 @@ process_shutdown :: proc() {
 	clipboard_shutdown()
 	js_shutdown()
 	frames_shutdown()
+	cache_store_shutdown()   // cache_store.odin
 	wasm.runtime_destroy()
 }

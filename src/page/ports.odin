@@ -30,6 +30,7 @@ Port_End :: struct {
 	page:   u64,             // owner: a document's page id (UI thread)
 	link:   ^Worker_Link,    // owner: a worker realm
 	queue:  [dynamic]Port_Msg,
+	channel: string,         // owned: a BroadcastChannel's key (broadcast.odin), "" for a MessagePort's end
 }
 
 @(private)
@@ -56,6 +57,7 @@ port_close_locked :: proc(id: u64) {
 		delete(m.ports)
 	}
 	delete(e.queue)
+	delete(e.channel)
 	free(e)
 }
 

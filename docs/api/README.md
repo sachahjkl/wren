@@ -50,6 +50,7 @@ function not exposed to workers is not instantiated.
 |---|---:|---|---|
 | [`abort`](abort.md) | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
+| [`caches`](caches.md) | 10 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
 | [`canvas`](canvas.md) | 137 | Window | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
 | [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
@@ -75,7 +76,8 @@ function not exposed to workers is not instantiated.
 | [`mse`](mse.md) | 30 | Window | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | 19 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
-| [`ports`](ports.md) | 8 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
+| [`ports`](ports.md) | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
+| [`serviceworker`](serviceworker.md) | 17 | Window, Worker | Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, one |
 | [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
 | [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
 | [`url`](url.md) | 18 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
@@ -83,4 +85,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1083 imports in 984 functions.
+1112 imports in 1013 functions.

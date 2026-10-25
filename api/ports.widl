@@ -21,6 +21,12 @@ module ports {
   void Worker_postSerializedPorts(u64 worker, bytes data, u64[] ports) raises;
   /// postMessage(message, transfer) in a worker, with MessagePorts.
   void DedicatedWorkerGlobalScope_postSerializedPorts(bytes data, u64[] ports) raises;
+  /// new BroadcastChannel(name): a port end of the channel (the realm's origin and the name), owned by the calling
+  /// realm; 0 for an opaque origin (the object sends and receives nothing). Port_close closes it.
+  u64 Broadcast_open(string name);
+  /// broadcastChannel.postMessage: the serialized message to every other end of the channel, in every realm.
+  /// Data_Clone for a message over frames.max_message_bytes.
+  void Broadcast_post(u64 end, bytes data) raises;
   /// The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.
   bytes MessageEvent_portEnds(Event event);
 }

@@ -52,7 +52,9 @@ Source :: struct {
 	text: string,
 }
 
-// Exposure names of [Exposed] this browser has realms for. Worklets, shared and service workers have none.
+// Exposure names of [Exposed] this browser has realms for. Worklets have none; shared and service workers run in worker
+// realms (their globals' own members are added by the engine when such a realm starts: runtime/web_sw.c), so their
+// interfaces (FetchEvent, Clients, ExtendableEvent...) are a worker realm's.
 @(private)
 exposure_of :: proc(names: []string) -> Exposures {
 	out: Exposures
@@ -60,7 +62,7 @@ exposure_of :: proc(names: []string) -> Exposures {
 		switch n {
 		case "*": out += {.Window, .Worker}
 		case "Window": out += {.Window}
-		case "Worker", "DedicatedWorker": out += {.Worker}
+		case "Worker", "DedicatedWorker", "ServiceWorker", "SharedWorker": out += {.Worker}
 		}
 	}
 	return out
