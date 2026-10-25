@@ -115,7 +115,7 @@ WREN_STYLE :: `
   pre { margin: 8px 0 0; padding: 10px 12px; background-color: $PANEL$; border: 1px solid $BORDER$; border-radius: 4px; font-size: 12px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
   .text h3 { font-size: 15px; margin: 24px 0 2px; }
   .foot { margin-top: 36px; color: $WEAK$; font-size: 13px; }
-`
+` + COPY_BUTTON_STYLE
 
 @(private = "file")
 theme_css :: proc(p: ui.Palette) -> string {
@@ -170,28 +170,46 @@ licence_details_text :: proc(lic: license.License) -> string {
 	return strings.to_string(sb)
 }
 
+// Lucide's "copy" and "check", inline so that they take the button's color (currentColor) and the size of its text (1em).
+COPY_ICON      :: `<svg class="i-copy" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></g></svg>`
+COPY_DONE_ICON :: `<svg class="i-ok" xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>`
+
+@(private = "file")
+COPY_BUTTON_STYLE :: `
+  button.copy { display: inline-flex; align-items: center; }
+  button.copy .ics, button.copy .lbs { display: inline-grid; }
+  button.copy .ics { margin-right: 8px; width: 1.15em; height: 1.15em; }
+  button.copy .ics svg { grid-area: 1 / 1; width: 1.15em; height: 1.15em; }
+  button.copy .lbs > span { grid-area: 1 / 1; text-align: center; }
+  button.copy .i-ok, button.copy .l-done, button.copy .l-fail { visibility: hidden; }
+  button.copy[data-state=done] .i-copy, button.copy[data-state=done] .l-idle, button.copy[data-state=fail] .l-idle { visibility: hidden; }
+  button.copy[data-state=done] .i-ok, button.copy[data-state=done] .l-done, button.copy[data-state=fail] .l-fail { visibility: visible; }
+`
+
 // The "Copy the licence details" button and its one handler. The text rides in an attribute (escaped like every field of the page), so
 // no field is ever part of a script. navigator.clipboard.writeText is the engine's own; when it is refused the text appears in a
 // read-only field, selected, and the button says so.
 @(private = "file")
 copy_details_html :: proc(sb: ^strings.Builder, lic: license.License) {
-	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" data-text=\"%s\" data-done=\"%s\" data-fail=\"%s\">%s</button></p>\n",
-		escape_html(licence_details_text(lic)), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")), escape_html(i18n.tr("Copy the licence details")))
+	// The three labels share one grid cell and the two icons another, so the button keeps the width of the longest label whatever it says;
+	// the state (data-state on the button) only decides which of them shows.
+	fmt.sbprintf(sb, "<p><button type=\"button\" id=\"copylic\" class=\"copy\" data-state=\"idle\" data-text=\"%s\"><span class=\"ics\" aria-hidden=\"true\">%s%s</span><span class=\"lbs\"><span class=\"l-idle\">%s</span><span class=\"l-done\" aria-live=\"polite\">%s</span><span class=\"l-fail\">%s</span></span></button></p>\n",
+		escape_html(licence_details_text(lic)), COPY_ICON, COPY_DONE_ICON, escape_html(i18n.tr("Copy the licence details")), escape_html(i18n.tr("Copied")), escape_html(i18n.tr("Copy failed")))
 	fmt.sbprintf(sb, "<textarea id=\"copyfb\" readonly rows=\"5\" aria-label=\"%s\" spellcheck=\"false\" style=\"display: none\"></textarea>\n", escape_html(i18n.tr("Licence details to copy by hand")))
 	strings.write_string(sb, `<script>
 (function () {
   var b = document.getElementById("copylic");
   if (!b) return;
-  var label = b.textContent, text = b.getAttribute("data-text");
-  function say(m) { b.textContent = m; setTimeout(function () { b.textContent = label; }, 1600); }
+  var text = b.getAttribute("data-text");
+  function say(s) { b.setAttribute("data-state", s); setTimeout(function () { b.setAttribute("data-state", "idle"); }, 1600); }
   function by_hand() {
     var a = document.getElementById("copyfb");
     a.style.display = "block"; a.value = text; a.focus(); a.select();
-    say(b.getAttribute("data-fail"));
+    say("fail");
   }
   b.addEventListener("click", function () {
     if (!navigator.clipboard || !navigator.clipboard.writeText) { by_hand(); return; }
-    navigator.clipboard.writeText(text).then(function () { say(b.getAttribute("data-done")); }, by_hand);
+    navigator.clipboard.writeText(text).then(function () { say("done"); }, by_hand);
   });
 })();
 </script>
