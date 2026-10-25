@@ -54,6 +54,7 @@ Options :: struct {
 	start_menu:       bool,       // the launcher in the application menu (options_make: on)
 	desktop_shortcut: bool,       // a launcher on the desktop
 	add_to_path:      bool,       // the folder of the executable on the user's PATH
+	launcher:         []byte,     // Windows: the console launcher (launcher.odin), written beside the executable with the PATH entry and removed with it; none: the program ships without one
 
 	// Where things go. The zero value is the user's real desktop; a test (or WREN_DESKTOP_* in the environment, roots_from_env)
 	// points each at a scratch place.
@@ -163,8 +164,8 @@ options_make :: proc(identity: Identity, allocator := context.temp_allocator) ->
 	}
 }
 
-// A copy of `o` that owns its strings (for a job on another thread). The icons are shared: they are the program's own
-// embedded data.
+// A copy of `o` that owns its strings (for a job on another thread). The icons and the launcher are shared: they are the
+// program's own embedded data.
 options_clone :: proc(o: Options, allocator := context.allocator) -> Options {
 	c := o   // (the identity's strings are the program's constants)
 	c.exe = clone_or_empty(o.exe, allocator)
