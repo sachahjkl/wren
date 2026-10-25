@@ -27,6 +27,29 @@ Change it in about:config, with `wren ctl pref set browser.ui.chrome_style class
   trapezoid) work as in the modern style.
 - A dragged tab is drawn on top, with a shadow.
 
+### Classic, with the tabs in a sidebar
+
+`browser.tabs.position = left | right` ([tab-sidebar.md](tab-sidebar.md)): the same family turned on its side.
+
+- **The sidebar is the tab bar**: its gradient runs from the outer edge (lighter) toward the page (darker), and the dark
+  line of the tab bar's edge runs along its inner edge. With an integrated title bar, the title row carries the tab bar's
+  gradient; the toolbar and the address field are the classic ones, their top line whole.
+- **The current tab** is a classic tab with upright sides (slope 0) lying across its row: rounded shoulders on the outer
+  side, concave feet that flare into the inner edge's line above and below the row and interrupt it, the body flowing on
+  into the page's side, as the top's current tab flows into the toolbar. Lit from above, like the toolbar (the current
+  tab's colors, top to bottom of the row). Left and right are mirrors: the rounded side is always the outer one.
+- **The other tabs** lie flat on the bar, engraved apart (a dark and a light hairline, clear of both ends; none next to
+  the current tab or to the one under the pointer). Under the pointer: a rounded panel of a classic inactive tab's colors
+  (lighter than the bar, darker than the current tab), clear of the inner edge: it is not attached to the page.
+- Icons only (`browser.tabs.sidebar_collapsed`): the same shapes, narrower. The new-tab button is the top's small
+  trapezoid, the same size. The scroll bar is on the outer side (gui_toolkit's `Box_Flag.Scrollbar_Left` for a left sidebar):
+  the inner edge belongs to the current tab.
+- The shape is the top's (`tab_shape_get`, the same cache), moved to the screen by `side_point` (the tab's axes are the
+  row's: along the tab is down, its top to its foot is the outer side to the inner edge). The current row is built after
+  the others (its feet flare over its neighbours' rows); the rows are not clipped, the list is.
+- Tests (`chrome_style_test.odin`): `side_tab_lies_across_its_row` (rounded corners on the outer side, open on the inner
+  edge, feet's flare, left and right mirrored), `side_colors_compose_with_palettes`, `classic_on_follows_the_style_at_every_position`.
+
 ### How the colors are made
 
 No palette is named: from the palette's window color `base` and `border`, `shade(base, amount)` is a mix toward white or

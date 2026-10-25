@@ -237,6 +237,95 @@ classic_colors_compose_with_palettes :: proc(t: ^testing.T) {
 	testing.expect(t, luma(dark.field) < luma(dark.lit_bot), "sunken field")
 }
 
+// The classic look is the style chosen, wherever the tabs are (top, left, right); the modern one likewise.
+@(test)
+classic_on_follows_the_style_at_every_position :: proc(t: ^testing.T) {
+	saved_style, saved_pos := chrome_cfg.style, favs.cfg.position
+	defer { chrome_cfg.style, favs.cfg.position = saved_style, saved_pos }
+	for style in Chrome_Style {
+		for pos in Tabs_Position {
+			chrome_cfg.style, favs.cfg.position = style, pos
+			testing.expectf(t, classic_on() == (style == .Classic), "%v at %v", style, pos)
+		}
+	}
+}
+
+// The sidebar's current tab is a classic tab with upright sides lying across its row: its rounded shoulders on the outer
+// side (left for a left sidebar, right for a right one), its outline open on the inner edge (it flows into the page there),
+// its feet flaring `tangent` above and below the row along that edge, and nothing past the row's outer side.
+@(test)
+side_tab_lies_across_its_row :: proc(t: ^testing.T) {
+	row := draw.Rect{{10, 100}, {210, 136}}
+	across := row.max.x - row.min.x
+	m := side_tab_metrics(15, 1, row.max.y - row.min.y, across)
+	testing.expect_value(t, m.slope, f32(0))
+	shape: Tab_Shape
+	defer tab_shape_destroy(&shape)
+	tab_shape_build(&shape, m)
+	d := shape.d
+	near(t, d.run, 0, 0.001, "upright sides")
+	near(t, d.box_w, row.max.y - row.min.y + 2 * d.ext, 0.001, "the row and its feet's flare")
+	origin := side_tab_origin(row, d)
+	for pos in ([2]Tabs_Position{.Left, .Right}) {
+		line := side_polygon(shape.line[:], pos, origin, across)
+		outer := pos == .Left ? row.min.x : row.max.x
+		inner := pos == .Left ? row.max.x : row.min.x
+		// open on the inner edge, at the feet's tangents above and below the row
+		near(t, line[0].x, inner, 0.01, "starts on the inner edge")
+		near(t, line[len(line) - 1].x, inner, 0.01, "ends on the inner edge")
+		near(t, line[0].y, row.min.y - d.tangent, 0.01, "the upper foot's flare")
+		near(t, line[len(line) - 1].y, row.max.y + d.tangent, 0.01, "the lower foot's flare")
+		reach := pos == .Left ? f32(1e9) : -1e9
+		for p in line {
+			testing.expectf(t, p.x >= row.min.x - 0.01 && p.x <= row.max.x + 0.01, "%v: %v inside the row's width", pos, p)
+			testing.expectf(t, p.y >= row.min.y - d.tangent - 0.01 && p.y <= row.max.y + d.tangent + 0.01, "%v: %v within the flare", pos, p)
+			reach = pos == .Left ? min(reach, p.x) : max(reach, p.x)
+			// the shoulders are rounded: on the outer side only between the corners' arcs
+			if abs(p.x - outer) < 0.01 {
+				testing.expectf(t, p.y >= row.min.y + m.r_top - 0.01 && p.y <= row.max.y - m.r_top + 0.01, "%v: %v is a rounded corner", pos, p)
+			}
+		}
+		near(t, reach, outer, 0.01, "reaches the outer side")
+		// the body covers the inner edge's line between the feet (it interrupts it), and goes on past the edge
+		body := side_polygon(shape.body[:], pos, origin, across)
+		past := false
+		for p in body { if pos == .Left ? p.x > inner : p.x < inner { past = true } }
+		testing.expectf(t, past, "%v: the body goes on past the inner edge (the panel's clip ends it)", pos)
+	}
+	// left and right are mirrors of each other about the row's middle
+	l := side_polygon(shape.line[:], .Left, origin, across)
+	r := side_polygon(shape.line[:], .Right, origin, across)
+	mid := (row.min.x + row.max.x) * 0.5
+	for p, i in l {
+		near(t, r[i].x, 2 * mid - p.x, 0.01, "mirrored")
+		near(t, r[i].y, p.y, 0.01, "at the same height")
+	}
+}
+
+// The sidebar's colors follow any palette: the current tab is lighter than a tab under the pointer, which is lighter
+// than the bar; the inner edge's line is darker than the bar; the titles stand out of the bar.
+@(test)
+side_colors_compose_with_palettes :: proc(t: ^testing.T) {
+	for np in ui.NAMED_PALETTES {
+		base, border := draw.hex(np.palette.bg | 0xff), draw.hex(np.palette.border)
+		c := classic_colors(base, border, 1, 1)
+		top, bot := side_hover_colors(c)
+		testing.expectf(t, luma(c.lit_top) > luma(top) && luma(c.lit_mid) > luma(bot), "%s: the current tab is lighter than one under the pointer", np.name)
+		testing.expectf(t, luma(top) > luma(c.strip_top) && luma(bot) > luma(c.strip_bot), "%s: ... which is lighter than the bar", np.name)
+		testing.expectf(t, luma(c.edge_dark) < luma(c.strip_bot), "%s: the inner edge's line shows on the bar", np.name)
+		text, weak := draw.hex(np.palette.text), draw.hex(np.palette.weak)
+		for lit in ([2]draw.Color{c.lit_top, c.lit_mid}) {
+			testing.expectf(t, abs(luma(text) - luma(lit)) > 0.4, "%s: the current title stands out of its tab", np.name)
+		}
+		for bar in ([2]draw.Color{c.strip_top, c.strip_bot}) {
+			testing.expectf(t, abs(luma(weak) - luma(bar)) > 0.18, "%s: the other titles stand out of the bar", np.name)
+		}
+		flat := classic_colors(base, border, 0, 1)
+		ft, fb := side_hover_colors(flat)
+		testing.expectf(t, abs(luma(ft) - luma(flat.strip_top)) < 0.002 && abs(luma(fb) - luma(flat.strip_bot)) < 0.002, "%s: gloss 0 is flat", np.name)
+	}
+}
+
 // The style is a preference: modern by default, changeable at once, with bounded companions.
 @(test)
 chrome_style_preferences :: proc(t: ^testing.T) {
