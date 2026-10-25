@@ -67,6 +67,10 @@ Media_Element :: struct {
 	current_src:   string,     // owned
 	err_code:      i32,
 	err_message:   string,     // owned
+	// The error attribute is set by the task that fires the error event (the standard's "queue a media element task to set the error
+	// attribute and fire an event"), not before it: a script polling `error` on a timer that came due in the same turn saw the error
+	// and not yet its event (the htmlmedia test of the CI). err_code is the element's own state, err_shown what a script sees.
+	err_shown:     bool,
 	fired:         bit_set[Media_Fired],
 	pending_play:  [dynamic]u64,
 	// the load
@@ -367,6 +371,7 @@ media_load :: proc(el: ^Media_Element, scheduled := false) {
 		media_fire(el, "emptied")
 	}
 	el.err_code = 0
+	el.err_shown = false
 	delete(el.err_message); el.err_message = ""
 	el.fired = {}
 	el.ready_state = HAVE_NOTHING
@@ -487,13 +492,14 @@ media_teardown_keep_gen :: proc(el: ^Media_Element) {
 media_error :: proc(el: ^Media_Element, code: i32, message: string) {
 	p := el.page
 	el.err_code = code
+	el.err_shown = false
 	set_string(&el.err_message, message)
 	if code == MEDIA_ERR_SRC_NOT_SUPPORTED { el.network_state = NETWORK_NO_SOURCE } else { el.network_state = NETWORK_IDLE }
 	for pr in el.pending_play { promise_reject(p, pr, i64(Api_Error.Not_Supported), fmt.tprintf("NotSupportedError: %s", message)) }
 	clear(&el.pending_play)
 	el.paused = true
 	log(p, .Warn, fmt.tprintf("media: %s (%s)", message, el.current_src))
-	media_fire(el, "error")
+	queue_element_event(p, el.node, "error", media_error = true)
 }
 
 @(private)
@@ -1137,8 +1143,8 @@ HTMLMediaElement_ranges :: proc(c: ^Call, e: Api_HTMLMediaElement, which: i32) -
 	return nil
 }
 
-HTMLMediaElement_errorCode :: proc(c: ^Call, e: Api_HTMLMediaElement) -> i32 { return i32(e.data.err_code) }
-HTMLMediaElement_errorMessage :: proc(c: ^Call, e: Api_HTMLMediaElement) -> string { return e.data.err_message }
+HTMLMediaElement_errorCode :: proc(c: ^Call, e: Api_HTMLMediaElement) -> i32 { return e.data.err_shown ? i32(e.data.err_code) : 0 }
+HTMLMediaElement_errorMessage :: proc(c: ^Call, e: Api_HTMLMediaElement) -> string { return e.data.err_shown ? e.data.err_message : "" }
 
 // getVideoPlaybackQuality(): creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames.
 HTMLVideoElement_playbackQuality :: proc(c: ^Call, e: Api_HTMLMediaElement) -> []u8 {
