@@ -247,7 +247,7 @@ section("map, dialog, document, element", () => {
   t("elementsFromPoint returns an array", Array.isArray(document.elementsFromPoint(1, 1)));
   throws("setPointerCapture with an unknown pointer", () => document.body.setPointerCapture(42), "NotFoundError");
   document.body.setPointerCapture(1);
-  t("hasPointerCapture", document.body.hasPointerCapture(1));
+  t("no capture of the mouse while no button is held (Pointer Events: active buttons state)", !document.body.hasPointerCapture(1));
   document.body.releasePointerCapture(1);
   t("releasePointerCapture", !document.body.hasPointerCapture(1));
   const hc = document.createElement("div");

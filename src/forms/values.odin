@@ -688,6 +688,20 @@ files :: proc(f: ^Forms, h: base.Handle) -> []File {
 	return c.files[:]
 }
 
+// Replaces the selection of a file input from a script (input.files = dataTransfer.files): no event. Takes ownership
+// of `list`'s contents.
+set_files_quiet :: proc(f: ^Forms, h: base.Handle, list: []File) {
+	c := control_of(f, h)
+	if c == nil { for &fl in list { file_destroy(&fl) }; return }
+	for &fl in c.files { file_destroy(&fl) }
+	clear(&c.files)
+	keep := min(len(list), f.settings.upload_max_files)
+	for i in 0 ..< len(list) {
+		if i < keep { append(&c.files, list[i]) } else { file_destroy(&list[i]) }
+	}
+	changed(f, h)
+}
+
 // Replaces the selection of a file input (the shell's file dialog). Takes ownership of `list`'s contents. Fires input
 // and change when the selection differs.
 set_files :: proc(f: ^Forms, h: base.Handle, list: []File) {

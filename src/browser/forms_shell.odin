@@ -940,7 +940,6 @@ mods_of :: proc(m: platform.Modifiers) -> forms.Mods {
 	return out
 }
 
-@(private = "file")
 dom_mods :: proc(m: platform.Modifiers) -> u32 {
 	v: u32
 	if .Ctrl in m { v |= 1 }
@@ -1309,9 +1308,14 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 		if ev.button == .Left { forms.blur(f) }
 		return true
 	}
-	if !page.dispatch_event(p, target, dom.Event{type = "mousedown", bubbles = true, cancelable = true, x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button), mods = dom_mods(ev.mods)}) {
-		return false
+	cx, cy := page_client_xy(t, local, scale)   // page_input.odin: `local` has the scroll, events want the viewport's
+	// pointerdown first (Pointer Events); a cancelled one suppresses the compatibility mousedown, not the default actions
+	if page_pointer_button(app, t, "pointerdown", target, ev, cx, cy) {
+		if !page.dispatch_event(p, target, dom.Event{type = "mousedown", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)}) {
+			return false
+		}
 	}
+	if t.page != p { return true }
 	if t.page != p || ev.button != .Left { return true }
 	// click counting (double click selects a word, triple the whole field)
 	now := time.tick_now()
@@ -1413,9 +1417,14 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 		}
 	}
 	fview.drag = .None
-	if target != base.NIL_HANDLE {
-		page.dispatch_event(p, target, dom.Event{type = "mouseup", bubbles = true, cancelable = true, x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button), mods = dom_mods(ev.mods)})
+	cx, cy := page_client_xy(t, local, scale)
+	up_target := page_pointer_target(t, target)   // a captured pointer's release goes to the capturing element
+	if up_target != base.NIL_HANDLE {
+		if page_pointer_button(app, t, "pointerup", up_target, ev, cx, cy) && t.page == p {
+			page.dispatch_event(p, up_target, dom.Event{type = "mouseup", bubbles = true, cancelable = true, x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), buttons = dom_buttons(ev.buttons)})
+		}
 	}
+	if t.page != p { return }
 	if t.page != p || !was_down || target == base.NIL_HANDLE || fview.press_target == base.NIL_HANDLE { return }
 	// common ancestor of where the button went down and where it came up
 	for a := fview.press_target; a != base.NIL_HANDLE; {
@@ -1431,7 +1440,8 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event, local: [2]f32) -> bool {
 	p := t.page
 	scale := page_scale(the_app)
-	info := forms.Click_Info{x = f64(local.x / scale), y = f64(local.y / scale), button = i32(ev.button), mods = dom_mods(ev.mods), trusted = true}
+	cx, cy := page_client_xy(t, local, scale)
+	info := forms.Click_Info{x = cx, y = cy, button = i32(ev.button), mods = dom_mods(ev.mods), trusted = true}
 	if p.formctl == nil {
 		return page.dispatch_event(p, target, dom.Event{type = "click", bubbles = true, cancelable = true, x = info.x, y = info.y, button = info.button})
 	}

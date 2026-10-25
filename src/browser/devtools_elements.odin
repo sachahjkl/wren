@@ -1146,7 +1146,7 @@ elements_overlay :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, area: draw.Rect,
 	if n.kind != .Element { h = n.parent }
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
-	shift := draw.Vec2{area.min.x, area.min.y - (r.fixed ? 0 : t.scroll)}
+	shift := draw.Vec2{area.min.x, area.min.y - t.scroll}   // (box_of: document coordinates, position: fixed boxes included)
 	at :: proc(q: lay.Rect, s: draw.Vec2) -> draw.Rect { return {q.min + s, q.max + s} }
 	draw.push_clip(dc, area)
 	defer draw.pop_clip(dc)

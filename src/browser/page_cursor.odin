@@ -381,6 +381,7 @@ window_cursor_apply :: proc(app: ^App) {
 	          draw.rect_contains(app.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(pos) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
+	if c, dragging := dnd_cursor(); dragging { wc = Window_Cursor{keyword = c} }   // dnd_shell.odin: the drag's operation
 	if wc.custom != 0 && !platform.custom_cursor_valid(app.win, wc.custom) { wc.custom = 0 }
 	if wc.custom != 0 {
 		platform.set_cursor_custom(app.win, wc.custom, wc.keyword, wc.scale)

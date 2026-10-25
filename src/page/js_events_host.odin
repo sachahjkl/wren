@@ -59,6 +59,8 @@ Event_interface :: proc(c: ^Call, event: Api_Event) -> u32 {
 	case "pointerdown", "pointerup", "pointermove", "pointerover", "pointerout", "pointerenter", "pointerleave",
 	     "pointercancel", "gotpointercapture", "lostpointercapture":
 		return JS_IFACE_PointerEvent
+	case "dragstart", "drag", "dragenter", "dragleave", "dragover", "drop", "dragend": return JS_IFACE_DragEvent
+	case "touchstart", "touchmove", "touchend", "touchcancel": return JS_IFACE_TouchEvent
 	case "wheel": return JS_IFACE_WheelEvent
 	case "keydown", "keyup", "keypress": return JS_IFACE_KeyboardEvent
 	case "focus", "blur", "focusin", "focusout": return JS_IFACE_FocusEvent

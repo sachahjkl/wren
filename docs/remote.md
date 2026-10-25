@@ -38,6 +38,7 @@ nav <url> [--wait load|idle|stable|none]     reload   back   forward   cancel
 shot <file.png> [--tab|--window|--rect x,y,w,h|--selector css] [--scale n] [--settle frames] [--count n [--interval ms]]
 eval <js> [--await]                          click x,y | --selector css [--right] [--double] [--window]
 drag x,y x2,y2 [--steps n]                   scroll <notches> [x,y]     type <text>     key <combo>... [--repeat n]
+drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]   (another application's drag, through the drop target)
 wait load|idle|stable|quiet | selector <css> [--visible] | function <js> | frames [n]   [--timeout ms] [--idle-ms ms] [--quiet-ms ms] [--max-cpu ms]
 console [--clear] [--since n]   network [--clear]   stats   tabs   tab new|activate|close
 pref get <n> | set <n> <v> [--override] | reset <n> | reset --all | list [prefix]
