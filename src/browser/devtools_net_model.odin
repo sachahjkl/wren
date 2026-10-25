@@ -207,7 +207,7 @@ net_log_destroy :: proc(l: ^Net_Log) {
 // The tab a scope belongs to, and the scope of its navigation (the child of the tab's scope on the way up).
 tab_of_scope :: proc(app: ^App, s: ^base.Scope) -> (t: ^Tab, nav: uintptr) {
 	for sc := s; sc != nil; sc = sc.parent {
-		for x in app.tabs {
+		for x in tabs_all(app) {
 			if sc == x.scope { return x, 0 }
 			if sc.parent == x.scope { return x, uintptr(sc) }
 		}
@@ -217,7 +217,7 @@ tab_of_scope :: proc(app: ^App, s: ^base.Scope) -> (t: ^Tab, nav: uintptr) {
 
 @(private = "file")
 tab_by_id :: proc(app: ^App, id: u64) -> ^Tab {
-	for t in app.tabs { if t.id == id { return t } }
+	for t in tabs_all(app) { if t.id == id { return t } }
 	return nil
 }
 

@@ -90,6 +90,7 @@ dispatch :: proc(ctx: ^Context, cmd: string, args: []string) -> int {
 	case "tabs":     return cmd_tabs(ctx)
 	case "tab":      return cmd_tab(ctx, args)
 	case "window":   return cmd_window(ctx)
+	case "windows":  return cmd_windows(ctx)
 	case "reset":    return cmd_reset(ctx, args)
 	case "checkpoint": return cmd_checkpoint(ctx, args)
 	case "cmds":     return cmd_cmds(ctx, args)
@@ -441,14 +442,32 @@ cmd_tabs :: proc(ctx: ^Context) -> int {
 		o, _ := i.(json.Object)
 		id, _ := remote.param_int(o, "targetId"); active, _ := remote.param_bool(o, "active"); loading, _ := remote.param_bool(o, "loading")
 		title, _ := remote.param_string(o, "title"); url, _ := remote.param_string(o, "url")
-		outln(fmt.tprintf("%d%s %s%s  %s", id, active ? "*" : " ", loading ? "[loading] " : "", title, url))
+		wid, _ := remote.param_int(o, "windowId")
+		outln(fmt.tprintf("%d%s w%d %s%s  %s", id, active ? "*" : " ", wid, loading ? "[loading] " : "", title, url))
+	}
+	return 0
+}
+
+// windows: one line per window (id, * for the front one, tabs, the current tab, size).
+@(private)
+cmd_windows :: proc(ctx: ^Context) -> int {
+	rep, code := request(ctx, "Browser.getWindows", "{}")
+	if code != 0 { return code }
+	if flag(&ctx.o, "json") { print_json(rep); return 0 }
+	infos, _ := remote.param_array(parse_result(rep), "windows")
+	for i in infos {
+		o, _ := i.(json.Object)
+		id, _ := remote.param_int(o, "windowId"); front, _ := remote.param_bool(o, "front"); n, _ := remote.param_int(o, "tabs")
+		cur, _ := remote.param_int(o, "currentTabId"); w, _ := remote.param_int(o, "width"); h, _ := remote.param_int(o, "height")
+		state, _ := remote.param_string(o, "windowState")
+		outln(fmt.tprintf("%d%s %d tab(s), current %d, %dx%d %s", id, front ? "*" : " ", n, cur, w, h, state))
 	}
 	return 0
 }
 
 @(private)
 cmd_tab :: proc(ctx: ^Context, args: []string) -> int {
-	if len(args) == 0 { return usage("tab", "usage: tab new [url] | tab activate <id> | tab close <id>") }
+	if len(args) == 0 { return usage("tab", "usage: tab new [url] | tab activate <id> | tab close <id> | tab move <id> --to new|<window id> [--index n]") }
 	switch args[0] {
 	case "new":
 		rep, code := request(ctx, "Target.createTarget", fmt.tprintf(`{{"url":%s,"wait":%s}}`, q(len(args) > 1 ? args[1] : ""), q(opt(&ctx.o, "wait", "none"))))
@@ -458,7 +477,16 @@ cmd_tab :: proc(ctx: ^Context, args: []string) -> int {
 	case "activate", "close":
 		if len(args) != 2 { return usage("tab", "tab activate|close <id>") }
 		return simple(ctx, args[0] == "activate" ? "Target.activateTarget" : "Target.closeTarget", fmt.tprintf(`{{"targetId":%s}}`, args[1]))
-	case: return usage("tab", "new, activate or close")
+	case "move":
+		if len(args) != 2 || opt(&ctx.o, "to") == "" { return usage("tab", "tab move <id> --to new|<window id> [--index n]") }
+		to := opt(&ctx.o, "to")
+		dest := to == "new" ? `"new"` : to
+		rep, code := request(ctx, "Target.moveTarget", fmt.tprintf(`{{"targetId":%s,"to":%s,"index":%d}}`, args[1], dest, opt_int(&ctx.o, "index", -1)))
+		if code != 0 { return code }
+		if flag(&ctx.o, "json") { print_json(rep); return 0 }
+		wid, _ := remote.param_int(parse_result(rep), "windowId")
+		outln(fmt.tprintf("%d", wid))
+	case: return usage("tab", "new, activate, close or move")
 	}
 	return 0
 }

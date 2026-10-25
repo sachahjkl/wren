@@ -40,7 +40,7 @@ eval <js> [--await]                          click x,y | --selector css [--right
 drag x,y x2,y2 [--steps n]                   scroll <notches> [x,y]     type <text>     key <combo>... [--repeat n]
 drop [files...] --at x,y [--text t] [--url u] [--html h] [--leave]   (another application's drag, through the drop target)
 wait load|idle|stable|quiet | selector <css> [--visible] | function <js> | frames [n]   [--timeout ms] [--idle-ms ms] [--quiet-ms ms] [--max-cpu ms]
-console [--clear] [--since n]   network [--clear]   stats   tabs   tab new|activate|close
+console [--clear] [--since n]   network [--clear]   stats   tabs   tab new|activate|close|move   windows
 pref get <n> | set <n> <v> [--override] | reset <n> | reset --all | list [prefix]
 reset [--keep tabs,data,prefs,window,history] [--url address] [--wait ...]
 checkpoint save|restore|delete <name> | list

@@ -27,7 +27,7 @@ import "wb:page"
 import "wb:remote"
 
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
-ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(&app.ui_state) }
+ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(app.ui_state) }
 render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_pending(&the_app.r) }
 
 ////////////////////////////////
@@ -38,13 +38,31 @@ render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_
 // call: the test that asks whether an idle Wren draws read its own question.)
 remote_reads_only :: proc(method: string) -> bool {
 	switch method {
-	case "Remote.ping", "Browser.getVersion", "Browser.getWindowBounds", "Target.getTargets", "Wren.stats", "Wren.getPref", "Wren.listPrefs", "Wren.listCommands":
+	case "Remote.ping", "Browser.getVersion", "Browser.getWindowBounds", "Browser.getWindows", "Target.getTargets", "Wren.stats", "Wren.getPref", "Wren.listPrefs", "Wren.listCommands":
 		return true
 	}
 	return false
 }
 
+// A call is about one window: `windowId`, else the window of its `tabId`, else the front one (the active one inside the loop).
+// The window is made the active one for the length of the call, then the one that was comes back.
 remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
+	target := app.active
+	if id, ok := remote.param_int(c.params, "windowId"); ok {
+		target = window_by_id(app, id)
+		if target == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no window %d", id)) }
+	} else if tid, has := remote.param_int(c.params, "tabId"); has {
+		if t := tab_by_id(app, u64(tid)); t != nil { target, _ = window_of_tab(app, t) }
+	}
+	if target == nil || target == app.active { return remote_dispatch_in_window(app, c) }
+	prev := app.active
+	window_activate(app, target)
+	defer window_activate(app, prev)
+	return remote_dispatch_in_window(app, c)
+}
+
+@(private = "file")
+remote_dispatch_in_window :: proc(app: ^App, c: ^Call) -> Reply {
 	switch c.method {
 	case "Remote.ping":          return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, remote.PROTOCOL_VERSION, remote.quote(APP_VERSION), win.GetCurrentProcessId()))
 	case "Remote.subscribe":     return m_subscribe(app, c, true)
@@ -53,6 +71,10 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Browser.close":        return m_close(app, c)
 	case "Browser.getWindowBounds": return m_window_get(app)
 	case "Browser.setWindowBounds": return m_window_set(app, c)
+	case "Browser.getWindows":   return m_windows(app)
+	case "Browser.activateWindow": return m_window_activate(app)
+	case "Browser.closeWindow":  return m_window_close(app)
+	case "Target.moveTarget":    return m_target_move(app, c)
 	case "Target.getTargets":    return m_targets(app)
 	case "Target.createTarget":  return m_target_create(app, c)
 	case "Target.activateTarget": return m_target_activate(app, c)
@@ -103,7 +125,7 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 @(private = "file")
 tab_of :: proc(app: ^App, c: ^Call) -> (^Tab, Reply) {
 	if id, ok := remote.param_int(c.params, "tabId"); ok {
-		for t in app.tabs { if t.id == u64(id) { return t, {} } }
+		if t := tab_by_id(app, u64(id)); t != nil { return t, {} }
 		return nil, fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 	}
 	t := current_tab(app)
@@ -176,7 +198,7 @@ m_subscribe :: proc(app: ^App, c: ^Call, on: bool) -> Reply {
 	for i := len(r.subs) - 1; i >= 0; i -= 1 { if r.subs[i] == c.conn { unordered_remove(&r.subs, i) } }
 	if on {
 		append(&r.subs, c.conn)
-		for t in app.tabs { r.loaded[t.id] = tab_loaded(app, t) }
+		for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
 	}
 	return done(`{"events":["Page.loadEventFired","Runtime.consoleAPICalled"]}`)
 }
@@ -188,6 +210,7 @@ m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	the_remote.fast_exit, _ = remote.param_bool(c.params, "fast")
 	remote_answer(c.conn, c.id, done())
 	remote.close_client(c.conn)
+	app.quitting = true
 	platform.request_close(app.win)
 	return Reply{deferred = true}
 }
@@ -207,6 +230,7 @@ m_window_get :: proc(app: ^App) -> Reply {
 	win.GetWindowRect(app.win.hwnd, &rc)
 	b := builder()
 	j_begin(&b)
+	j_int(&b, "windowId", i64(app.active.id))
 	j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top))
 	j_int(&b, "outerWidth", i64(rc.right - rc.left)); j_int(&b, "outerHeight", i64(rc.bottom - rc.top))
 	j_int(&b, "width", i64(app.win.size.x)); j_int(&b, "height", i64(app.win.size.y))   // the client area, in pixels
@@ -274,12 +298,15 @@ m_targets :: proc(app: ^App) -> Reply {
 	b := builder()
 	j_begin(&b)
 	j_key(&b, "targetInfos"); j_begin(&b, '[')
-	for t, i in app.tabs {
-		if t.frame != nil { continue }
-		j_key(&b, ""); j_begin(&b)
-		j_int(&b, "targetId", i64(t.id)); j_str(&b, "type", "page"); j_str(&b, "title", t.title); j_str(&b, "url", t.url)
-		j_bool(&b, "active", i == app.current); j_bool(&b, "loading", !tab_loaded(app, t)); j_bool(&b, "attached", true)
-		j_end(&b)
+	for w in app.windows {
+		for t, i in window_tabs(app, w)^ {
+			if t.frame != nil { continue }
+			j_key(&b, ""); j_begin(&b)
+			j_int(&b, "targetId", i64(t.id)); j_str(&b, "type", "page"); j_str(&b, "title", t.title); j_str(&b, "url", t.url)
+			j_int(&b, "windowId", i64(w.id))
+			j_bool(&b, "active", i == window_current(app, w)^); j_bool(&b, "loading", !tab_loaded(app, t)); j_bool(&b, "attached", true)
+			j_end(&b)
+		}
 	}
 	j_end(&b, ']'); j_end(&b)
 	return done(strings.to_string(b))
@@ -299,17 +326,76 @@ m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
 	return done(fmt.tprintf(`{{"targetId":%d}}`, t.id))
 }
 
+// The windows: id, whether it is the front one, its tabs and the current one, its size and state.
+@(private = "file")
+m_windows :: proc(app: ^App) -> Reply {
+	b := builder()
+	j_begin(&b)
+	j_key(&b, "windows"); j_begin(&b, '[')
+	for w in app.windows {
+		rc: win.RECT
+		win.GetWindowRect(w.win.hwnd, &rc)
+		j_key(&b, ""); j_begin(&b)
+		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w == window_front(app)); j_int(&b, "tabs", i64(len(window_tabs(app, w))))
+		cur := window_current_tab(app, w)
+		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
+		j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top)); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
+		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
+		j_end(&b)
+	}
+	j_end(&b, ']'); j_end(&b)
+	return done(strings.to_string(b))
+}
+
+// The window becomes the front one: what the calls without a window act on.
+@(private = "file")
+m_window_activate :: proc(app: ^App) -> Reply {
+	window_focus(app, app.active)
+	return done()
+}
+
+// The window closes with its tabs, at the end of the pass (the last window ends the browser: that is Browser.close).
+@(private = "file")
+m_window_close :: proc(app: ^App) -> Reply {
+	if len(app.windows) <= 1 { return fail(remote.ERR_FAILED, "this is the only window: Browser.close ends the browser") }
+	app.active.closing, app.active.closing_force = true, true
+	return done()
+}
+
+// Target.moveTarget {targetId, to: "new" | a window id, index}: the tab goes to another window with its page as it is.
+@(private = "file")
+m_target_move :: proc(app: ^App, c: ^Call) -> Reply {
+	id, ok := remote.param_int(c.params, "targetId")
+	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
+	t := tab_by_id(app, u64(id))
+	if t == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id)) }
+	at := -1
+	if v, has := remote.param_int(c.params, "index"); has { at = v }
+	dest: ^Browser_Window
+	if to, is_str := remote.param_string(c.params, "to"); is_str {
+		if to != "new" { return fail(remote.ERR_PARAMS, "\"to\" is \"new\" or a window id") }
+		dest = tab_detach(app, t)
+		if dest == nil { return fail(remote.ERR_FAILED, "the tab is alone in its window (or the window could not be made)") }
+	} else if wid, is_int := remote.param_int(c.params, "to"); is_int {
+		dest = window_by_id(app, wid)
+		if dest == nil { return fail(remote.ERR_PARAMS, fmt.tprintf("no window %d", wid)) }
+		tab_move(app, t, dest, at)
+	} else {
+		return fail(remote.ERR_PARAMS, "parameter \"to\" is missing")
+	}
+	windows_spill(app, 3)
+	return done(fmt.tprintf(`{{"targetId":%d,"windowId":%d}}`, t.id, dest.id))
+}
+
 @(private = "file")
 m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	for t, i in app.tabs {
-		if t.id == u64(id) {
-			app.current = i
-			ui.field_set(&app.address, t.url)
-			app.frames_requested = max(app.frames_requested, 3)
-			return done()
-		}
+	if t := tab_by_id(app, u64(id)); t != nil {
+		tab_reveal(app, t)
+		windows_spill(app, 3)
+		app.frames_requested = max(app.frames_requested, 3)
+		return done()
 	}
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 }
@@ -318,9 +404,7 @@ m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 m_target_close :: proc(app: ^App, c: ^Call) -> Reply {
 	id, ok := remote.param_int(c.params, "targetId")
 	if !ok { return fail(remote.ERR_PARAMS, "parameter \"targetId\" is missing") }
-	for t, i in app.tabs {
-		if t.id == u64(id) { tab_close(app, i); return done(`{"success":true}`) }
-	}
+	if t := tab_by_id(app, u64(id)); t != nil { tab_close_tab(app, t); return done(`{"success":true}`) }
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
 }
 

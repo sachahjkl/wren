@@ -67,11 +67,16 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 	}
 }
 
+// What of the frame a window has of its own (window_local).
+Window_Full :: struct {
+	revealed:     bool,          // full screen: the bars are shown over the page
+	overlay:      draw.Rect,     // where they were last frame
+}
+
 Window_Chrome :: struct {
 	cfg:          Window_Settings,
 	watch:        int,
-	revealed:     bool,          // full screen: the bars are shown over the page
-	overlay:      draw.Rect,     // where they were last frame
+	using full:   Window_Full,
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
@@ -107,7 +112,7 @@ window_chrome_frame :: proc(app: ^App) {
 	curve: ui.Scroll_Curve = sc.curve == .Ease_Out ? .Ease_Out : .Impulse
 	dur := f32(sc.wheel_ms)
 	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app))) { dur = 0 }
-	ui.set_scroll_settings(&app.ui_state, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
+	ui.set_scroll_settings(app.ui_state, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
 }
 
 toggle_fullscreen :: proc(app: ^App) {

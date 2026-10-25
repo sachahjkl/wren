@@ -216,6 +216,14 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "tab.move_left", title = "Move tab left", category = "Tabs", keys = keys(&r.arena, {key = .Page_Up, mods = cs}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, -1) }})
+	add(r, {name = "tab.move_to_new_window", title = "Move tab to a new window", category = "Tabs", keywords = "detach pop out separate window",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
+			w, _ := window_of_tab(app, t)
+			return w != nil && len(window_tabs(app, w)) > 1
+		},
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_detach(app, t) }})
+	add(r, {name = "window.new", title = "New window", category = "Window", keywords = "open another", keys = keys(&r.arena, {key = .N, mods = ctrl}),
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
 	add(r, {name = "tab.restore_crashed", title = "Restore the tabs of the session that crashed", category = "Tabs", keywords = "crash recovery reopen saved",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return recovery.backup != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { recovery_restore_backup(app) }})

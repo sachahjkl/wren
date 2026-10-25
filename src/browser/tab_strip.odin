@@ -171,6 +171,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
 		add: ui.Signal
 		strip.area_key = area.key
+		if app.active != nil { app.active.zone = {rect = area.rect, offset = strip.offset, pitch = w, n = n, valid = true} }
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
 			strip.offset = strip_offset(strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, app.current, false)
@@ -208,6 +209,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			}
+			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - strip.offset) }   // a tab carried over this bar
 		}
 		if move_from >= 0 {
 			app.current = list_move(app.tabs[:], move_from, move_to, app.current)
@@ -370,8 +372,8 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
 	if !(classic && strip.drag_active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder
-	if sig.dragging && favs.cfg.drag_reorder && n > 1 {
-		if !strip.drag_active && abs(sig.drag_delta.x) > favs.cfg.drag_threshold * dpi {
+	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
+		if !strip.drag_active && max(abs(sig.drag_delta.x), favs.cfg.drag_detach ? abs(sig.drag_delta.y) : 0) > favs.cfg.drag_threshold * dpi {   // (straight down starts a drag too: it may leave the bar)
 			strip.drag_active, strip.drag_id = true, t.id
 			press_x := ui.mouse_pos().x - sig.drag_delta.x
 			strip.drag_grab = press_x - area.rect.min.x - slot   // where the pointer holds the tab
@@ -380,6 +382,11 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			to := drag_slot(x + strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
 			app.frames_requested = max(app.frames_requested, 2)
+			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
+			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, favs.cfg.detach_distance_em * em) {
+				strip.drag_active = false
+				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return .Closed }
+			}
 		}
 	}
 	return .None

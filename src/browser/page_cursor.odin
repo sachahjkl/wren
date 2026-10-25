@@ -84,14 +84,19 @@ Window_Cursor :: struct {
 Cursor_Cache_Entry :: struct { key: u64, cc: platform.Custom_Cursor, used: u64 }
 
 @(private = "file")
-Page_Cursor_State :: struct {
-	watch:    int,
+Page_Cursor_View :: struct {   // a window's own: its custom cursors are made for it (window_local)
 	cache:    [dynamic]Cursor_Cache_Entry,
 	clock:    u64,
 	dragging: bool,            // a press on the page is held: `frozen` shows until it is released
 	frozen:   Window_Cursor,
 	shown:    Window_Cursor,
 	shown_ok: bool,
+}
+
+@(private = "file")
+Page_Cursor_State :: struct {
+	watch:    int,
+	using view: Page_Cursor_View,
 	log_path: string,
 }
 
@@ -104,6 +109,10 @@ page_cursor_init :: proc(app: ^App) {
 		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
 	}, app)
 	pcs.log_path = strings.clone(os.get_env("WREN_CURSOR_LOG", context.temp_allocator))
+}
+
+page_cursor_window_local :: proc() {
+	window_local(&pcs.view, proc() { delete(pcs.cache); pcs.view = {} })
 }
 
 page_cursor_shutdown :: proc(app: ^App) {
@@ -369,7 +378,7 @@ page_cursor_events :: proc(app: ^App, events: []platform.Event) {
 
 // The window's cursor for this frame (after the chrome's build): the page's over the page area, else the chrome's.
 window_cursor_apply :: proc(app: ^App) {
-	st := &app.ui_state
+	st := app.ui_state
 	wc := Window_Cursor{keyword = ui.cursor(st)}
 	pos := ui.mouse_pos()
 	if pcs.dragging && page_tab(app) != nil {

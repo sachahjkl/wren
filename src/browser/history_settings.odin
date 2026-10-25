@@ -107,7 +107,7 @@ history_settings_init :: proc(app: ^App) {
 		hcfg = history_settings_from_prefs(p)
 		bfcache_evict(app)
 		global_history_apply(app)
-		for t in app.tabs { tab_history_limits(app, t) }
+		for t in tabs_all(app) { tab_history_limits(app, t) }
 	}, app)
 }
 

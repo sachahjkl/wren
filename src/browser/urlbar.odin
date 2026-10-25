@@ -81,10 +81,8 @@ Urlbar_Row :: struct {
 	fill:   bool,   // History: the inline completion's address (always the first row)
 }
 
-Urlbar :: struct {
-	cfg:          Urlbar_Settings,
-	watch:        int,
-	idx:          Url_Index,
+// What of the address bar a window has of its own: its list of suggestions (window_local).
+Urlbar_View :: struct {
 	open:         bool,
 	typed:        string,              // owned: what the user typed (without the inline completion)
 	rows:         [dynamic]Urlbar_Row,
@@ -96,6 +94,13 @@ Urlbar :: struct {
 	focused:      bool,                // the address field had the keyboard last frame
 	just_focused: bool,                // ... and did not have it the frame before
 	click_selects: bool,               // a click gave it the keyboard: all selected while the button is held still
+}
+
+Urlbar :: struct {
+	cfg:          Urlbar_Settings,
+	watch:        int,
+	idx:          Url_Index,
+	using view:   Urlbar_View,
 	query_ms:     f64,                 // time of the last query of the index (measurement)
 	job:          Urlbar_Index_Job,    // a full build of the index on the blocking pool (a large history)
 	app:          ^App,
@@ -184,6 +189,13 @@ urlbar_init :: proc(app: ^App) {
 		ub.cfg = urlbar_settings_from_prefs(p)
 		urlbar_close()
 	}, app)
+}
+
+// The suggestions of a window that closes.
+urlbar_view_destroy :: proc() {
+	delete(ub.rows)
+	delete(ub.typed); delete(ub.fill_text); delete(ub.fill_address)
+	ub.view = {}
 }
 
 urlbar_destroy :: proc(app: ^App) {
@@ -287,7 +299,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	cur := current_tab(app)
 	if ub.cfg.tabs {
 		n := 0
-		for x in app.tabs {
+		for x in tabs_all(app) {
 			if len(ub.rows) >= room || n >= ub.cfg.max_tab_rows { break }
 			if x == cur || skipped_address(x.url) { continue }
 			lt, lu := strings.to_lower(x.title, context.temp_allocator), strings.to_lower(x.url, context.temp_allocator)
@@ -387,7 +399,7 @@ urlbar_open :: proc(app: ^App, t: ^Tab, i: int, new_tab: bool) -> bool {
 	address := strings.clone(row_address(app, r), context.temp_allocator)
 	if address == "" { return false }
 	if r.kind == .Tab {
-		for x, k in app.tabs { if x.id == r.tab_id { urlbar_close(); ui.set_focus(0); tab_select(app, k); return true } }
+		if x := tab_by_id(app, r.tab_id); x != nil { urlbar_close(); ui.set_focus(0); tab_reveal(app, x); return true }
 		return false
 	}
 	urlbar_close()

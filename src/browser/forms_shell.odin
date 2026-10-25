@@ -110,11 +110,9 @@ Forms_View :: struct {
 	last_click_pos: [2]f32,
 	popup:        Popup,
 	caret_epoch:  time.Tick,
-	blink_timer:  base.Handle,
 	blink_on:     bool,
 	last_serial:  u64,
 	autofocus_page: u64,
-	report_timer: base.Handle,
 	// a press inside the selection of a text field: it may drag the selected text (dnd_shell.odin); a release without a
 	// drag puts the caret there
 	sel_press:    base.Handle,
@@ -122,6 +120,8 @@ Forms_View :: struct {
 }
 
 fview: Forms_View
+// (the timers are the process's: their callbacks do not say which window they were set for)
+fview_blink_timer, fview_report_timer: base.Handle
 
 forms_shell_destroy :: proc() {
 	delete(fview.painted)
@@ -164,7 +164,7 @@ double_click_ms :: proc(app: ^App) -> f64 {
 // the forms model changed, the lifetime of the validation bubble.
 forms_shell_frame :: proc(app: ^App) {
 	fview.frame += 1
-	for tab in app.tabs {
+	for tab in tabs_all(app) {
 		if tab.page == nil || tab.page.formctl == nil || tab.page.formctl.embedder.navigate != nil { continue }
 		page.set_forms_embedder(tab.page, page.Forms_Embedder{
 			user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
@@ -202,9 +202,9 @@ forms_shell_frame :: proc(app: ^App) {
 		if period > 0 {
 			elapsed := time.duration_milliseconds(time.tick_since(fview.caret_epoch))
 			fview.blink_on = int(elapsed / f64(period)) % 2 == 0
-			if fview.blink_timer == base.NIL_HANDLE {
+			if fview_blink_timer == base.NIL_HANDLE {
 				next := f64(period) - math.mod(elapsed, f64(period))
-				fview.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) { fview.blink_timer = base.NIL_HANDLE }, nil)
+				fview_blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) { fview_blink_timer = base.NIL_HANDLE }, nil)
 			}
 		} else {
 			fview.blink_on = true
@@ -212,8 +212,8 @@ forms_shell_frame :: proc(app: ^App) {
 	} else {
 		fview.blink_on = false
 	}
-	if _, _, shown := forms.current_report(f); shown && fview.report_timer == base.NIL_HANDLE {
-		fview.report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) { fview.report_timer = base.NIL_HANDLE }, nil)
+	if _, _, shown := forms.current_report(f); shown && fview_report_timer == base.NIL_HANDLE {
+		fview_report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) { fview_report_timer = base.NIL_HANDLE }, nil)
 	}
 }
 
@@ -1505,7 +1505,7 @@ forms_click :: proc(app: ^App, t: ^Tab, target: base.Handle, ev: platform.Event,
 
 @(private = "file")
 tab_of_page :: proc(app: ^App, p: ^page.Page) -> ^Tab {
-	for t in app.tabs { if t.page == p { return t } }
+	for t in tabs_all(app) { if t.page == p { return t } }
 	return nil
 }
 

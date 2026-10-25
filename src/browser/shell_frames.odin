@@ -230,7 +230,7 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	chrome_frames.phase = .None
 	clear(&chrome_frames.outer)
 	if chrome_frames.pending_scroll != 0 {
-		for t in app.tabs {
+		for t in tabs_all(app) {
 			if t.id != chrome_frames.pending_tab || t.kind != .Web || t.page == nil { continue }
 			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(app.page_rect).y, 0)), false)
 		}
@@ -275,7 +275,7 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
 	unseen := (chrome_frames.phase == .Loop || chrome_frames.phase == .Anim) && !chrome_frames.outer_taken && len(chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !ui.needs_frame(&app.ui_state) && !(ui.wake_ms(&app.ui_state) > 0 && since >= f64(ui.wake_ms(&app.ui_state))) { return }
+	if !unseen && !shell_input_pending() && !ui.needs_frame(app.ui_state) && !(ui.wake_ms(app.ui_state) > 0 && since >= f64(ui.wake_ms(app.ui_state))) { return }
 	shell_chrome_frame(app)
 }
 
@@ -323,6 +323,7 @@ foreign user32_shell {
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
 	if !chrome_frames.nested {
+		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
 		frame(app)
 		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
 		return
@@ -365,7 +366,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)
-	ui.begin_build(&app.ui_state, {
+	ui.begin_build(app.ui_state, {
 		window_size = size, events = chrome, dt = pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true, window = app.win, frame_ms = pacer.frame_ms,
@@ -376,11 +377,11 @@ shell_chrome_frame :: proc(app: ^App) {
 	// hit-tests the layout, which is not read here)
 	pos := ui.mouse_pos()
 	if !draw.rect_contains(app.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
-		platform.set_cursor(app.win, ui.cursor(&app.ui_state))
+		platform.set_cursor(app.win, ui.cursor(app.ui_state))
 	}
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
-	ui.draw_tree(&app.ui_state, &app.dc)
+	ui.draw_tree(app.ui_state, &app.dc)
 	draw.end_frame(&app.dc)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
@@ -479,21 +480,20 @@ shell_defer :: proc(a: Shell_Action) -> bool {
 
 @(private = "file")
 shell_tab_by_id :: proc(app: ^App, id: u64) -> (^Tab, int) {
-	for t, i in app.tabs { if t.id == id { return t, i } }
-	return nil, -1
+	return tab_by_id(app, id), -1
 }
 
 @(private = "file")
 shell_run_action :: proc(app: ^App, a: Shell_Action) {
 	if a.kind == .Prefs { apply_prefs(app); return }
-	t, i := shell_tab_by_id(app, a.tab)
+	t, _ := shell_tab_by_id(app, a.tab)
 	if t == nil && a.kind != .Command { return }   // closed meanwhile
 	switch a.kind {
 	case .Command:
 		if c := command(a.text); c != nil { command_run(app, t != nil ? t : current_tab(app), c) }
 	case .Navigate:
 		from: ^page.Page   // (the page may be gone by now: it is passed only if a tab still has it)
-		for tab in app.tabs { if a.from != nil && tab.page == a.from { from = a.from; break } }
+		for tab in tabs_all(app) { if a.from != nil && tab.page == a.from { from = a.from; break } }
 		navigate(app, t, a.text, from, user_activation = a.flag, record = a.record, restore = a.restore, cache = a.cache, origin = a.origin)
 	case .Reload:
 		reload(app, t, a.flag)
@@ -502,7 +502,7 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 	case .Entry:
 		if e := page.session_find(&t.session, a.entry); e != nil { go_entry(app, t, e) }
 	case .Close_Tab:
-		tab_close(app, i)
+		tab_close_tab(app, t)
 	case .Prefs:
 	}
 }
