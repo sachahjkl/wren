@@ -59,6 +59,19 @@ if (-not (Test-Path $heavy)) {
     if (-not (Test-Path $src)) { $src = 'S:\wren\build\perf\p10k.html' }
     Copy-Item $src $heavy
 }
+# reflow: text whose line breaks depend on the width (every width change re-wraps all of it: a layout that is long at any size)
+$reflow = Join-Path $outDir 'reflow.html'
+if (-not (Test-Path $reflow)) {
+    $para = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. '
+    $body = (1..1500 | ForEach-Object { "<p>$_ $para$para</p>" }) -join "`n"
+    [IO.File]::WriteAllText($reflow, "<!doctype html><meta charset=utf-8><style>body{font:16px sans-serif;margin:8px}p{margin:0 0 8px}</style>$body")
+}
+# wrap: thousands of boxes in a wrapping flex row: the rows break again at every width, the layout of all of them is redone
+$wrap = Join-Path $outDir 'wrap.html'
+if (-not (Test-Path $wrap)) {
+    $cells = (1..12000 | ForEach-Object { "<div>$_ box</div>" }) -join ''
+    [IO.File]::WriteAllText($wrap, "<!doctype html><meta charset=utf-8><style>body{margin:8px;font:14px sans-serif}.w{display:flex;flex-wrap:wrap}.w div{width:90px;height:40px;margin:2px;border:1px solid #888;padding:2px}</style><div class=w>$cells</div>")
+}
 function FileUrl($p) { 'file:///' + ($p -replace '\\', '/') }
 
 function Client($h) { $r = New-Object DB+RECT; [DB]::GetClientRect($h, [ref]$r) | Out-Null; $r }
@@ -223,6 +236,7 @@ function Summarize($name, $pass, $prefix) {
         run = "$name.$pass"; frames = $d.Count; fps = Rnd ($d.Count / [math]::Max($span, 0.001))
         cpu_p50 = Rnd (Pct $cpu 50); cpu_p95 = Rnd (Pct $cpu 95); cpu_max = Rnd ($cpu | Measure-Object -Maximum).Maximum
         gap_p50 = Rnd (Pct $gaps 50); gap_p95 = Rnd (Pct $gaps 95); gap_max = Rnd ($gaps | Measure-Object -Maximum).Maximum
+        laid = @($d | Where-Object { [double]$_.Layout -gt 0 }).Count; layout_max = Rnd ($d | ForEach-Object { [double]$_.Layout } | Measure-Object -Maximum).Maximum
         styles = Avg 'Styles'; layout = Avg 'Layout'; build = Avg 'Build_UI'; draw = Avg 'UI_Draw'; submit = Avg 'Submit'; present = Avg 'Present'; wait = Avg 'Wait'
     }
     if ($dw) { foreach ($k in $dw.PSObject.Properties) { $o | Add-Member -NotePropertyName ('dw_' + $k.Name) -NotePropertyValue $k.Value } }
@@ -233,11 +247,11 @@ $srv = Start-WrenTestServer
 try {
     $env:WREN_TEST_BASE_PORT = "$($srv.BasePort)"
     $light = "$($srv.Origin)/site/devtools/dt4.html"
-    $pages = [ordered]@{ light = $light; heavy = (FileUrl $heavy) }
+    $pages = [ordered]@{ light = $light; heavy = (FileUrl $heavy); reflow = (FileUrl $reflow); wrap = (FileUrl $wrap) }
     $tabs = 'console', 'elements', 'network'
     foreach ($pg in $pages.Keys) {
         $url = $pages[$pg]
-        $settle = if ($pg -eq 'heavy') { 9 } else { 5 }
+        $settle = if ($pg -ne 'light') { 9 } else { 5 }
         foreach ($tab in $tabs) {
             Run "detached_win_${tab}_$pg" $url 'bottom' $tab { param($h, $p) Start-Sleep $settle; $dh = Detach $p; Mark; Resize-Drag $dh ($Secs * 1000); MarkEnd }
             Run "detached_main_${tab}_$pg" $url 'bottom' $tab { param($h, $p) Start-Sleep $settle; $dh = Detach $p; Mark; Resize-Drag $h ($Secs * 1000); MarkEnd }
