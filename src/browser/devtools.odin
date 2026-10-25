@@ -210,6 +210,9 @@ devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
 // sizes its columns, tabs and fields from them is one frame behind a splitter or a window being dragged (its content looks
 // like the previous width, squeezed or stretched into the new box). The size the panel was asked for is known before
 // layout: pixels as given, else `fill` (what the caller's room is: the window), else the last frame's.
+// The splitter, the floating panel's header or its corner is being dragged (the frame pacing shows such a frame at once).
+devtools_dragging :: proc() -> bool { return dev.drag != .None }
+
 dev_width :: proc() -> f32 { return dev.room.x > 0 ? dev.room.x : dev.rect.max.x - dev.rect.min.x }
 dev_height :: proc() -> f32 { return dev.room.y > 0 ? dev.room.y : dev.rect.max.y - dev.rect.min.y }
 
