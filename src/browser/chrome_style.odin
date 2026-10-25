@@ -197,7 +197,8 @@ tab_shape_build :: proc(s: ^Tab_Shape, m: Tab_Metrics) {
 	d := tab_dims(m)
 	s.m, s.d = m, d
 	h := m.h
-	corners := [6][2]f32{{0, h}, {d.ext, h}, {d.ext + d.run, 0}, {d.box_w - d.ext - d.run, 0}, {d.box_w - d.ext, h}, {d.box_w, h}}
+	// the outline starts and ends where each foot's curve meets the bar's line: a flat strip out to the box's edge would end in a cut
+	corners := [6][2]f32{{d.ext - d.tangent, h}, {d.ext, h}, {d.ext + d.run, 0}, {d.box_w - d.ext - d.run, 0}, {d.box_w - d.ext, h}, {d.box_w - d.ext + d.tangent, h}}
 	radii := [6]f32{0, m.r_foot, m.r_top, m.r_top, m.r_foot, 0}
 	fillet_polyline(corners[:], radii[:], &s.line)
 	bottom := h + 4 * m.edge   // far enough that the bar's line, and everything below it, is the toolbar's to draw
