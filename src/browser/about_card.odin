@@ -80,9 +80,9 @@ CARD_STYLE :: `
     background-image: radial-gradient(circle at var(--sgx, 32%) var(--sgy, 26%), rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 45%), linear-gradient(140deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 46%); }
   .lic .seal .word { left: 0; top: 48px; width: 88px; height: 10px; transform: translate3d(0, 0, 8px) scale(0.99111); text-align: center; font-size: 8px; line-height: 10px; font-weight: 700; letter-spacing: 0.08em; color: #f7e9b0;
     text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.5), 0px -1px 0px rgba(255, 255, 255, 0.3); }
-  .lic .seal .tickwrap { left: 35px; top: 16px; width: 13px; height: 22px; transform: translate3d(0, 0, 10px) scale(0.98889);
+  .lic .seal .tickwrap { left: 0; top: 0; width: 88px; height: 88px; transform: translate3d(0, 0, 10px) scale(0.98889);
     filter: drop-shadow(0px 2px 1px rgba(0, 0, 0, 0.5)) drop-shadow(0px -1px 0px rgba(255, 255, 255, 0.35)); }
-  .lic .seal .tick { width: 9px; height: 18px; border: solid #fbf0c4; border-width: 0 4px 4px 0; transform: rotate(45deg); }
+  .lic .seal .tickwrap svg { display: block; }
 `
 
 @(private = "file")
@@ -211,7 +211,7 @@ license_card_html :: proc(sb: ^strings.Builder, lic: license.License) {
 	strings.write_string(sb, "</div></div>")
 	strings.write_string(sb, "<div class=\"seal\"><div class=\"shadow\"></div>")
 	seal_walls_html(sb)
-	strings.write_string(sb, "<div class=\"edge\"></div><div class=\"ring\"><div class=\"rim\"></div></div><div class=\"gloss\"></div><div class=\"word\">CERTIFIED</div><div class=\"tickwrap\"><div class=\"tick\"></div></div></div>")
+	strings.write_string(sb, "<div class=\"edge\"></div><div class=\"ring\"><div class=\"rim\"></div></div><div class=\"gloss\"></div><div class=\"word\">CERTIFIED</div><div class=\"tickwrap\"><svg width=\"88\" height=\"88\" viewBox=\"0 0 88 88\"><path d=\"M31.75 27.5L40.25 36L56.25 17\" fill=\"none\" stroke=\"#fbf0c4\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></div></div>")
 	strings.write_string(sb, "</div></div>\n<script>")
 	strings.write_string(sb, CARD_SCRIPT)
 	strings.write_string(sb, "</script>\n")
