@@ -17,8 +17,13 @@
 # Steps that mostly wait (the HTTP cache, network policy, content blocker, WebSocket and image tests: seconds of wall clock for a fraction of a second of CPU)
 # are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
-param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf)
+param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf, [switch]$Ui)
 if ($CI) { $Quick = $true }
+# -Ui (or WREN_UI_TESTS=1): the end-to-end steps marked -UiOnly (they drive real windows and processes, or decode heavy images under a time limit:
+# what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
+# Never on a CI machine (-CI, or the CI variable): a shared runner failed them at random, and the logic they check has unit tests.
+if ($Ui -or $env:WREN_UI_TESTS -eq '1' -or $env:WREN_UI_TESTS -eq 'true') { $Ui = $true }
+if ($Ui -and ($CI -or $env:CI)) { 'ui: -Ui / WREN_UI_TESTS ignored on the CI (the UI steps never run there)'; $Ui = $false }
 # -Perf (or WREN_PERF=1 in the environment): the tests that measure time (a duration, a CPU time, a frame count in a window of time, the
 # closing of the browser under load...) run and print their measures; without it they are skipped with "perf: skipped, run with -Perf".
 # Never on a CI machine (-CI, or the CI variable): its specs are unknown. The steps inherit WREN_PERF. The steps run one at a time
@@ -63,7 +68,12 @@ $script:queue = New-Object System.Collections.Generic.List[object]
 $script:serverSteps = $false
 # -Light: a step that mostly waits (the cache and policy tests sleep for expiries, the network tests wait for servers: 0.1 to 4 CPU seconds in 5 to 20 s of wall
 # clock): it does not take one of the -Jobs slots, up to -LightJobs of them run beside the others.
-function Step($name, [scriptblock]$body, [switch]$Light) {
+function Step($name, [scriptblock]$body, [switch]$Light, [switch]$UiOnly) {
+    if ($UiOnly -and -not $Ui) {
+        $short = ($name -split ' [(]')[0]
+        "ui: skipped, run with -Ui (test_all.ps1 -Ui, or WREN_UI_TESTS=1): $short"
+        return
+    }
     if ($Jobs -gt 1) {
         # the caller's variables the body reads (a loop's $pkg...), as values: the step runs in another process
         $vars = @{}
@@ -252,7 +262,7 @@ Step 'tabs come back after a crash and never loop (tools\crash_recovery_e2e.ps1:
         if ($LASTEXITCODE) { return }
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_recovery_e2e.ps1
-}
+} -UiOnly
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null
@@ -492,7 +502,7 @@ try {
         if (-not $p.WaitForExit(90000 * $slow)) { $p.Kill(); Get-Content build\mdt.txt; $global:LASTEXITCODE = 1; return }
         $o = Get-Content build\mdt.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
-    }
+    } -UiOnly
     Step 'images end-to-end test (events, srcset, picture, lazy, CSS images, cache, cancellation, 200 x 1 Mpx)' {
         odin build examples/imagestest -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -collection:web=sdk/odin -out:build/imagestest.wasm -o:size
         if ($LASTEXITCODE -ne 0) { return }
