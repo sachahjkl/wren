@@ -1,16 +1,17 @@
 # What the screen really does, read three ways at once, once a second: for a monitor with a dynamic (Windows 11 DRR) or a
 # variable (G-Sync, FreeSync) refresh rate, where the rate the system reports is not the rate frames are shown at.
 #
-#   powershell -NoProfile -File tools\display_probe.ps1 [-Seconds 30] [-ProcessId n | -Hwnd n] [-Remote name]
+#   powershell -NoProfile -File tools\display_probe.ps1 [-Seconds 30] [-Remote name]
 #
-#   modes   : EnumDisplaySettings: the current rate, and the highest rate offered at the current size (hzMax)
-#   dwm     : DwmGetCompositionTimingInfo(hwnd): the compositor's refreshes counted over the last second ("live": the rate the
-#             screen is at now, which a dynamic refresh rate raises while something moves), and the rate DWM says it composes at
+#   modes   : EnumDisplaySettings (primary monitor): the current rate, and the highest rate offered at the current size (hzMax)
+#   dwm     : DwmGetCompositionTimingInfo(NULL): rateRefresh, the rate the compositor says it runs at right now (a dynamic refresh
+#             rate should raise it from 60 to 180 while something moves), and the rate it composes at.
+#             DWM answers for the PRIMARY monitor only, and only to a NULL window handle (a handle gives E_INVALIDARG, 0x80070057;
+#             a wrong cbSize 0x88980090: the size of the packed DWM_TIMING_INFO is 292). On another monitor read `hzSwapChain`.
 #   wren    : `wren ctl stats` of a running Wren (-Remote name or $env:WREN_REMOTE): fps, the gaps between presents, hz (the
 #             rate frames aim for), hzReported, hzMax, hzNow, hzSwapChain, variableRefresh
-# Without -ProcessId / -Hwnd the window is the foreground one: move the pointer over a window of any program (or drag a tab in
-# Wren) while it runs and watch `live` rise from 60 to 180.
-param([int]$Seconds = 30, [int]$ProcessId = 0, [long]$Hwnd = 0, [string]$Remote = $env:WREN_REMOTE)
+# Move the pointer over a window, or drag a tab in Wren, while it runs and watch rateRefresh.
+param([int]$Seconds = 30, [string]$Remote = $env:WREN_REMOTE)
 Set-Location (Split-Path $PSScriptRoot -Parent)
 . tools\wrenctl.ps1
 if ($Remote) { $env:WREN_REMOTE = $Remote }
@@ -30,6 +31,7 @@ public static class DisplayProbe {
         public ulong cFramesMissed; public ulong cRefreshNextDisplayed; public ulong cRefreshNextPresented; public ulong cRefreshesDisplayed;
         public ulong cRefreshesPresented; public ulong cRefreshStarted; public ulong cPixelsReceived; public ulong cPixelsDrawn; public ulong cBuffersEmpty;
     }
+    // (the window handle must be NULL: with one the call fails with E_INVALIDARG; it answers for the primary monitor)
     [DllImport("dwmapi.dll")] static extern int DwmGetCompositionTimingInfo(IntPtr hwnd, ref DWM_TIMING_INFO info);
     [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] static extern bool EnumDisplaySettingsW([MarshalAs(UnmanagedType.LPWStr)] string dev, int mode, ref DEVMODE dm);
@@ -74,26 +76,17 @@ public static class DisplayProbe {
 
 $freq = [DisplayProbe]::Freq()
 "modes: " + [DisplayProbe]::Modes()
-$h = [IntPtr]$Hwnd
-if ($h -eq [IntPtr]::Zero -and $ProcessId -gt 0) { $h = [DisplayProbe]::WindowOf([uint32]$ProcessId) }
-if ($h -eq [IntPtr]::Zero -and $Remote) {
-    $wp = (Wren-Ctl stats --json | ConvertFrom-Json).pid
-    if ($wp) { $h = [DisplayProbe]::WindowOf([uint32]$wp) }
-}
-$fixed = $h -ne [IntPtr]::Zero
+$h = [IntPtr]::Zero   # (DWM answers for the primary monitor, and only to a NULL window handle)
 $prev = $null
 for ($s = 0; $s -lt $Seconds; $s++) {
-    if (-not $fixed) { $h = [DisplayProbe]::Foreground() }
     $ti = New-Object DisplayProbe+DWM_TIMING_INFO
     $hr = 0
     $ok = [DisplayProbe]::Timing($h, [ref]$ti, [ref]$hr)
     $line = '{0,3}s ' -f $s
     if ($ok) {
-        $live = ''
-        if ($prev -and $ti.qpcVBlank -gt $prev.qpcVBlank) { $live = '{0,7:N1}' -f (($ti.cRefresh - $prev.cRefresh) * $freq / ($ti.qpcVBlank - $prev.qpcVBlank)) }
-        $line += 'dwm live {0} Hz, composes at {1:N1}, frames displayed {2}, dropped {3}' -f $live, ($ti.rrN / [Math]::Max($ti.rrD, 1)), $ti.cFramesDisplayed, $ti.cFramesDropped
-        $prev = $ti
-    } else { $line += ('dwm failed 0x{0:X8}' -f $hr); $prev = $null }
+        # (cRefresh counts the calls of this process, not the screen's refreshes: the rate is rateRefresh / qpcRefreshPeriod)
+        $line += 'dwm rateRefresh {0:N2} Hz (period {1:N3} ms), rateCompose {2:N1}, frames {3}, dropped {4}' -f ($ti.rrN / [Math]::Max($ti.rrD, 1)), ($ti.qpcRefreshPeriod * 1000 / $freq), ($ti.rcN / [Math]::Max($ti.rcD, 1)), $ti.cFrame, $ti.cFramesDropped
+    } else { $line += ('dwm failed 0x{0:X8}' -f $hr) }
     if ($Remote) {
         $j = Wren-Ctl stats --json --reset-frames | ConvertFrom-Json
         if ($j) { $line += ' | wren fps {0:N0} gap p50 {1:N2} ms p95 {2:N2} | aims {3:N1} Hz (reported {4:N1}, max {5:N0}, now {6:N1}, swapchain {7:N1}) variable {8}' -f $j.fps, $j.frameGapP50Ms, $j.frameGapP95Ms, $j.hz, $j.hzReported, $j.hzMax, $j.hzNow, $j.hzSwapChain, $j.variableRefresh }
