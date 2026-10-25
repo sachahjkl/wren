@@ -330,6 +330,7 @@ window_frame :: proc(app: ^App) {
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
 	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	pacer.resize_held = false
 	shell_chrome_frame(app)
 }
 
@@ -381,7 +382,8 @@ shell_chrome_frame :: proc(app: ^App) {
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(&app.ui_state, &app.dc)
 	draw.end_frame(&app.dc)
-	render.frame_end(&app.r, !(pacer.resizing || pacer.input_frame))   // a resize step or an input frame is shown at once
+	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
+	frame_log_presented()
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too
