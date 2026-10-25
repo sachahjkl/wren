@@ -57,7 +57,6 @@ Browser_Window :: struct {
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
 	closing_force: bool,          // ... with the tabs it still has (a remote call asked)
-	want_maximized: bool,         // a restored session had it maximized: it is when it is shown (window_show)
 	zone:      Drop_Zone,         // where its tabs were laid out (tab_drag.odin)
 	drop_hint: int,               // a tab is carried over its tab bar: the place it would take, plus one (0: none)
 	title:   string,              // what its title was set to last (owned)
@@ -98,6 +97,8 @@ windows_register_locals :: proc() {
 	window_local(&wchrome.full)
 	page_cursor_window_local()
 	fullscreen_shell_window_locals()
+	status_bar_window_local()
+	chrome_window_local()
 }
 
 windows_locals_destroy :: proc() {
@@ -309,44 +310,17 @@ window_on_frame :: proc(user: rawptr) {
 	window_frame(app)   // shell_frames.odin
 }
 
-// Shows the window (maximized when a restored session left it so).
-window_show :: proc(w: ^Browser_Window) {
-	if w.want_maximized {
-		win.ShowWindow(w.win.hwnd, win.SW_SHOWMAXIMIZED)
-		win.SetForegroundWindow(w.win.hwnd)
-	} else {
-		platform.show_window(w.win)
-	}
-}
+// Shows the window (maximized when a restored session left it so: platform.set_placement).
+window_show :: proc(w: ^Browser_Window) { platform.show_window(w.win) }
 
-// The outer rectangle of a window (left, top, width, height in screen pixels; where it is restored to when maximized or minimized)
-// and whether it is maximized: what a session saves.
+// The outer rectangle of a window and whether it is maximized: what a session saves.
 window_placement :: proc(w: ^Browser_Window) -> (rect: [4]int, maximized: bool) {
-	wp := win.WINDOWPLACEMENT{length = size_of(win.WINDOWPLACEMENT)}
-	win.GetWindowPlacement(w.win.hwnd, &wp)
-	r := wp.rcNormalPosition
-	return {int(r.left), int(r.top), int(r.right - r.left), int(r.bottom - r.top)}, wp.showCmd == u32(win.SW_SHOWMAXIMIZED) || platform.is_maximized(w.win)
+	p := platform.get_placement(w.win)
+	return p.rect, p.maximized
 }
 
-// A saved rectangle put back on a monitor: the work area of the monitor nearest to it holds it whole (smaller if need be).
-fit_rect_to_work :: proc(r, work: [4]int) -> [4]int {
-	w, h := min(r[2], work[2]), min(r[3], work[3])
-	return {clamp(r[0], work[0], work[0] + work[2] - w), clamp(r[1], work[1], work[1] + work[3] - h), w, h}
-}
-
-// Puts a window where a session had it (not shown yet: maximized comes with window_show).
-window_placement_set :: proc(w: ^Browser_Window, rect: [4]int, maximized: bool) {
-	rc := win.RECT{i32(rect[0]), i32(rect[1]), i32(rect[0] + rect[2]), i32(rect[1] + rect[3])}
-	mi := win.MONITORINFO{cbSize = size_of(win.MONITORINFO)}
-	work := [4]int{0, 0, 1 << 20, 1 << 20}
-	if win.GetMonitorInfoW(win.MonitorFromRect(&rc, .MONITOR_DEFAULTTONEAREST), &mi) {
-		work = {int(mi.rcWork.left), int(mi.rcWork.top), int(mi.rcWork.right - mi.rcWork.left), int(mi.rcWork.bottom - mi.rcWork.top)}
-	}
-	r := fit_rect_to_work(rect, work)
-	win.SetWindowPos(w.win.hwnd, nil, i32(r[0]), i32(r[1]), i32(r[2]), i32(r[3]), win.SWP_NOZORDER | win.SWP_NOACTIVATE)
-	w.want_maximized = maximized
-}
-
+// Puts a window where a session had it (not shown yet).
+window_placement_set :: proc(w: ^Browser_Window, rect: [4]int, maximized: bool) { platform.set_placement(w.win, {rect, maximized}) }
 // A new window, empty (the caller puts a tab in it). `size` is in logical pixels; `at` is where its top left goes on the screen
 // (physical pixels), else the system centres it. nil when the system could not make the window or its swap chain.
 window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := true) -> ^Browser_Window {
@@ -354,7 +328,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	nw := platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
 	if nw == nil { return nil }
 	platform.set_square_corners(nw, wchrome.cfg.square_corners)
-	if p, ok := at.?; ok { win.SetWindowPos(nw.hwnd, nil, i32(p.x), i32(p.y), 0, 0, win.SWP_NOSIZE | win.SWP_NOZORDER | win.SWP_NOACTIVATE) }
+	if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
 	if nw.size.x <= 0 || nw.size.y <= 0 {
 		cr: win.RECT
 		win.GetClientRect(nw.hwnd, &cr)
@@ -431,8 +405,10 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
 	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
 	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
-	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || platform.take_paint_request(w.win) || events_waiting
+	paint := platform.take_paint_request(w.win)
+	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || paint || events_waiting
 }
+
 
 @(private = "file") pass_order: [dynamic]^Browser_Window
 @(private = "file") pass_causes: [dynamic]bool
@@ -592,10 +568,9 @@ tab_to_new_window :: proc(app: ^App, t: ^Tab, src: ^Browser_Window, at: Maybe([2
 	size := [2]int{int(f32(src.win.size.x) / scale), int(f32(src.win.size.y) / scale)}
 	pos := at
 	if _, ok := pos.?; !ok {
-		rc: win.RECT
-		win.GetWindowRect(src.win.hwnd, &rc)
+		r := platform.outer_rect(src.win)
 		off := int(40 * scale)
-		pos = [2]int{int(rc.left) + off, int(rc.top) + off}
+		pos = [2]int{r[0] + off, r[1] + off}
 	}
 	nw := window_open(app, size, pos)
 	if nw == nil { return nil }

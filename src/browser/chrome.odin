@@ -271,6 +271,8 @@ tab_move_current :: proc(app: ^App, delta: int) {
 @(private = "file")
 security_chip_width: f32
 
+chrome_window_local :: proc() { window_local(&security_chip_width) }   // (a window's own: windows.odin)
+
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
 Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
