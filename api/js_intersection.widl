@@ -4,9 +4,4 @@ partial module timers {
   /// Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
   /// the animation frame callbacks of every rendering update, and asks for one frame at once.
   void IntersectionObservers_schedule(bool observing);
-
-  /// Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
-  /// observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
-  /// and asks for one frame at once.
-  void ResizeObservers_schedule(bool observing);
 }

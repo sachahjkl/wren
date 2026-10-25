@@ -963,6 +963,17 @@ JSValue wjr_Request_get_referrer(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Request_get_referrerPolicy(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Request_get_signal(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Request_get_url(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverEntry_get_borderBoxSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverEntry_get_contentBoxSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverEntry_get_contentRect(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverEntry_get_devicePixelContentBoxSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverEntry_get_target(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverSize_get_blockSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserverSize_get_inlineSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ResizeObserver_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ResizeObserver_disconnect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ResizeObserver_observe(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ResizeObserver_unobserve(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Response_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Response_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Response_get_headers(JSContext *ctx, JSValueConst this_val);
@@ -16427,20 +16438,20 @@ static const wj_member wj_m_Request[] = {
     { "textStream", WJ_M_METHOD, 0, 0, wjr_Body_textStream, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ResizeObserver[] = {
-    { "observe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "unobserve", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "disconnect", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "observe", WJ_M_METHOD, 0, 1, wjr_ResizeObserver_observe, NULL, NULL, 0 },
+    { "unobserve", WJ_M_METHOD, 0, 1, wjr_ResizeObserver_unobserve, NULL, NULL, 0 },
+    { "disconnect", WJ_M_METHOD, 0, 0, wjr_ResizeObserver_disconnect, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ResizeObserverEntry[] = {
-    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentRect", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "borderBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "contentBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "devicePixelContentBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverEntry_get_target, NULL, 0 },
+    { "contentRect", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverEntry_get_contentRect, NULL, 0 },
+    { "borderBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverEntry_get_borderBoxSize, NULL, 0 },
+    { "contentBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverEntry_get_contentBoxSize, NULL, 0 },
+    { "devicePixelContentBoxSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverEntry_get_devicePixelContentBoxSize, NULL, 0 },
 };
 static const wj_member wj_m_ResizeObserverSize[] = {
-    { "inlineSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "blockSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "inlineSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverSize_get_inlineSize, NULL, 0 },
+    { "blockSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ResizeObserverSize_get_blockSize, NULL, 0 },
 };
 static const wj_member wj_m_Response[] = {
     { "error", WJ_M_STATIC_METHOD, 0, 0, wjr_Response_static_error, NULL, NULL, 0 },
@@ -19025,15 +19036,15 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_Request, .n_members = 26, .subtree_end = 475,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ResizeObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ResizeObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ResizeObserver_constructor,
       .members = wj_m_ResizeObserver, .n_members = 3, .subtree_end = 476,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ResizeObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ResizeObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_ResizeObserverEntry, .n_members = 5, .subtree_end = 477,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ResizeObserverSize", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ResizeObserverSize", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_ResizeObserverSize, .n_members = 2, .subtree_end = 478,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

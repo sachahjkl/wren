@@ -68,18 +68,6 @@ the animation frame callbacks of every rendering update, and asks for one frame 
 
 Host: `IntersectionObservers_schedule :: proc(c: ^Call, observing: bool)`
 
-### `ResizeObservers_schedule`
-
-```
-void ResizeObservers_schedule(bool observing)
-```
-
-Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
-observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
-and asks for one frame at once.
-
-Host: `ResizeObservers_schedule :: proc(c: ^Call, observing: bool)`
-
 ### `Timers_setTimeout`
 
 ```
