@@ -19,7 +19,7 @@ import "wb:style"
 // argument is its default. Where the shader cannot be had (the renderer refused the module, a picture is being recorded) nothing
 // is drawn and the box keeps its CSS background: every page that uses a shader gives it one that reads well without.
 
-Shader_Texture :: enum u8 { None, Card_Normals, Card_Engraving, Seal_Normals, Seal_Engraving }
+Shader_Texture :: enum u8 { None, Card_Normals, Card_Engraving, Seal_Normals, Seal_Engraving, Back_Normals, Back_Engraving }
 
 Shader_Pass :: struct {
 	blend: render.App_Blend,
@@ -41,21 +41,31 @@ CARD_FOIL_DXBC :: #load("shaders/card_foil.dxbc")
 CARD_FOIL_HASH :: #load("shaders/card_foil.sha256", string)
 
 @(private = "file") CARD_FOIL_PASSES := [?]Shader_Pass{{.Normal}, {.Add}}
+// (rx, ry: the card's turn in degrees, rotateX / rotateY of the page: the eye and the lights follow it)
+@(private = "file") CARD_FOIL_ARGS := [?]string{"sweep", "pointer-x", "pointer-y", "live", "intensity", "engrave", "seal", "rx", "ry"}
 
 SHADERS := [?]Shader_Def{
 	{
 		name = "card-foil", wgsl = CARD_FOIL_WGSL, dxbc = CARD_FOIL_DXBC, hash = CARD_FOIL_HASH,
-		args = {"sweep", "pointer-x", "pointer-y", "live", "intensity", "engrave", "seal"},
-		defaults = {0.5, 0.5, 0.5, 0, 1, 0, 0},
+		args = CARD_FOIL_ARGS[:],
+		defaults = {0.5, 0.5, 0.5, 0, 1, 0, 0, 0, 0},
 		textures = {0 = .Card_Normals, 1 = .Card_Engraving},
 		passes = CARD_FOIL_PASSES[:],
 	},
 	// the certification seal stuck on the card: the same module in its seal mode, with the seal's own relief and lettering
 	{
 		name = "card-seal", wgsl = CARD_FOIL_WGSL, dxbc = CARD_FOIL_DXBC, hash = CARD_FOIL_HASH,
-		args = {"sweep", "pointer-x", "pointer-y", "live", "intensity", "engrave", "seal"},
-		defaults = {0.5, 0.5, 0.5, 0, 1, 0, 1},
+		args = CARD_FOIL_ARGS[:],
+		defaults = {0.5, 0.5, 0.5, 0, 1, 0, 1, 0, 0},
 		textures = {0 = .Seal_Normals, 1 = .Seal_Engraving},
+		passes = CARD_FOIL_PASSES[:],
+	},
+	// the card's other face, seen from behind: the same foil with a relief of its own (the front's turned inside out, the logo raised)
+	{
+		name = "card-back", wgsl = CARD_FOIL_WGSL, dxbc = CARD_FOIL_DXBC, hash = CARD_FOIL_HASH,
+		args = CARD_FOIL_ARGS[:],
+		defaults = {0.5, 0.5, 0.5, 0, 1, 0, 2, 0, 0},
+		textures = {0 = .Back_Normals, 1 = .Back_Engraving},
 		passes = CARD_FOIL_PASSES[:],
 	},
 }
@@ -115,6 +125,8 @@ shader_texture :: proc(r: ^render.Renderer, kind: Shader_Texture) -> render.Text
 	case .Card_Normals: tex = render.create_texture_data(r, NORMAL_W, NORMAL_H, .RGBA8, mips = true)
 	case .Card_Engraving: tex = render.create_texture_data(r, ENGRAVE_W, ENGRAVE_H, .RGBA8, mips = true)
 	case .Seal_Normals, .Seal_Engraving: tex = render.create_texture_data(r, SEAL_TEX, SEAL_TEX, .RGBA8, mips = true)
+	case .Back_Normals: tex = render.create_texture_data(r, NORMAL_W, NORMAL_H, .RGBA8, mips = true)
+	case .Back_Engraving: tex = render.create_texture_data(r, ENGRAVE_W, ENGRAVE_H, .RGBA8, mips = true)
 	}
 	if tex != 0 { shader_texture_fill(r, kind, tex) }
 	return tex
@@ -128,7 +140,11 @@ shader_texture_fill :: proc(r: ^render.Renderer, kind: Shader_Texture, tex: rend
 		texels := card_normal_map()
 		defer delete(texels)
 		render.update_texture_data(r, tex, 0, 0, NORMAL_W, NORMAL_H, texels)
-	case .Card_Engraving, .Seal_Engraving:   // its text is the box's: made by paint_wren_shader
+	case .Card_Engraving, .Seal_Engraving, .Back_Engraving:   // its text is the box's: made by paint_wren_shader
+	case .Back_Normals:
+		texels := back_normal_map()
+		defer delete(texels)
+		render.update_texture_data(r, tex, 0, 0, NORMAL_W, NORMAL_H, texels)
 	case .Seal_Normals:
 		texels := seal_normal_map()
 		defer delete(texels)
@@ -184,11 +200,16 @@ engraving_ready :: proc(dc: ^draw.Context, st: ^Shader_State, def: ^Shader_Def, 
 	h |= 1
 	if st.engraved == h { return true }
 	for tk, k in def.textures {
-		if (tk != .Card_Engraving && tk != .Seal_Engraving) || st.textures[k] == 0 { continue }
-		w, h := tk == .Card_Engraving ? ENGRAVE_W : SEAL_TEX, tk == .Card_Engraving ? ENGRAVE_H : SEAL_TEX
+		if (tk != .Card_Engraving && tk != .Seal_Engraving && tk != .Back_Engraving) || st.textures[k] == 0 { continue }
+		seal := tk == .Seal_Engraving
+		w, h := seal ? SEAL_TEX : ENGRAVE_W, seal ? SEAL_TEX : ENGRAVE_H
 		texels: []u8
 		ok: bool
-		if tk == .Card_Engraving { texels, ok = card_engraving(dc.fonts, st.renderer, text) } else { texels, ok = seal_engraving(dc.fonts, st.renderer, text) }
+		#partial switch tk {
+		case .Card_Engraving: texels, ok = card_engraving(dc.fonts, st.renderer, text)
+		case .Back_Engraving: texels, ok = back_engraving(dc.fonts, st.renderer, text)
+		case: texels, ok = seal_engraving(dc.fonts, st.renderer, text)
+		}
 		if !ok { return false }
 		defer delete(texels)
 		render.update_texture_data(dc.renderer, st.textures[k], 0, 0, w, h, texels)
