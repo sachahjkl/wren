@@ -470,6 +470,18 @@ JSValue wjr_FileReader_readAsArrayBuffer(JSContext *ctx, JSValueConst this_val, 
 JSValue wjr_FileReader_readAsBinaryString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FileReader_readAsDataURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_FileReader_readAsText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemDirectoryEntry_createReader(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemDirectoryEntry_getDirectory(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemDirectoryEntry_getFile(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemDirectoryReader_readEntries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemEntry_getParent(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystemEntry_get_filesystem(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileSystemEntry_get_fullPath(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileSystemEntry_get_isDirectory(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileSystemEntry_get_isFile(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileSystemEntry_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_FileSystemFileEntry_file(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_FileSystem_get_name(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_File_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_File_get_lastModified(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_File_get_name(JSContext *ctx, JSValueConst this_val);
@@ -714,6 +726,7 @@ JSValue wjr_HTMLTextAreaElement_set_selectionEnd(JSContext *ctx, JSValueConst th
 JSValue wjr_HTMLTextAreaElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTrackElement_get_kind(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTrackElement_set_kind(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLVideoElement_getVideoPlaybackQuality(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HashChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HashChangeEvent_get_newURL(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HashChangeEvent_get_oldURL(JSContext *ctx, JSValueConst this_val);
@@ -1338,6 +1351,11 @@ JSValue wjr_ValidityState_get_tooShort(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ValidityState_get_typeMismatch(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ValidityState_get_valid(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ValidityState_get_valueMissing(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoPlaybackQuality_get_corruptedVideoFrames(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoPlaybackQuality_get_creationTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoPlaybackQuality_get_droppedVideoFrames(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoPlaybackQuality_get_totalFrameDelay(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoPlaybackQuality_get_totalVideoFrames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VisualViewport_get_height(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VisualViewport_get_offsetLeft(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VisualViewport_get_offsetTop(JSContext *ctx, JSValueConst this_val);
@@ -14504,6 +14522,7 @@ static const wj_member wj_m_HTMLVideoElement[] = {
     { "videoHeight", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_videoHeight, NULL, 0 },
     { "poster", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_poster, wjg_HTMLVideoElement_set_poster, 0 },
     { "playsInline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_playsInline, wjg_HTMLVideoElement_set_playsInline, 0 },
+    { "getVideoPlaybackQuality", WJ_M_METHOD, 0, 0, wjr_HTMLVideoElement_getVideoPlaybackQuality, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMenuElement[] = {
     { "compact", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMenuElement_get_compact, wjg_HTMLMenuElement_set_compact, 0 },
@@ -15925,27 +15944,27 @@ static const wj_member wj_m_FileReaderSync[] = {
     { "readAsDataURL", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileSystem[] = {
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystem_get_name, NULL, 0 },
     { "root", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileSystemDirectoryReader[] = {
-    { "readEntries", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "readEntries", WJ_M_METHOD, 0, 1, wjr_FileSystemDirectoryReader_readEntries, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileSystemEntry[] = {
-    { "isFile", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "isDirectory", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fullPath", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "filesystem", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getParent", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "isFile", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystemEntry_get_isFile, NULL, 0 },
+    { "isDirectory", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystemEntry_get_isDirectory, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystemEntry_get_name, NULL, 0 },
+    { "fullPath", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystemEntry_get_fullPath, NULL, 0 },
+    { "filesystem", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FileSystemEntry_get_filesystem, NULL, 0 },
+    { "getParent", WJ_M_METHOD, 0, 0, wjr_FileSystemEntry_getParent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileSystemDirectoryEntry[] = {
-    { "createReader", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getFile", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "getDirectory", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "createReader", WJ_M_METHOD, 0, 0, wjr_FileSystemDirectoryEntry_createReader, NULL, NULL, 0 },
+    { "getFile", WJ_M_METHOD, 0, 0, wjr_FileSystemDirectoryEntry_getFile, NULL, NULL, 0 },
+    { "getDirectory", WJ_M_METHOD, 0, 0, wjr_FileSystemDirectoryEntry_getDirectory, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FileSystemFileEntry[] = {
-    { "file", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "file", WJ_M_METHOD, 0, 1, wjr_FileSystemFileEntry_file, NULL, NULL, 0 },
 };
 static const wj_member wj_m_FontFace[] = {
     { "family", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
@@ -17318,6 +17337,13 @@ static const wj_member wj_m_ValidityState[] = {
     { "customError", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_customError, NULL, 0 },
     { "valid", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ValidityState_get_valid, NULL, 0 },
 };
+static const wj_member wj_m_VideoPlaybackQuality[] = {
+    { "creationTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_creationTime, NULL, 0 },
+    { "droppedVideoFrames", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_droppedVideoFrames, NULL, 0 },
+    { "totalVideoFrames", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_totalVideoFrames, NULL, 0 },
+    { "corruptedVideoFrames", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_corruptedVideoFrames, NULL, 0 },
+    { "totalFrameDelay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_totalFrameDelay, NULL, 0 },
+};
 static const wj_member wj_m_VideoTrack[] = {
     { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -17465,7 +17491,7 @@ static const wj_member wj_m_console[] = {
     { "timeEnd", WJ_M_METHOD, 0, 0, wjr_console_timeEnd, NULL, NULL, 0 },
 };
 
-const int wj_interface_count = 560;
+const int wj_interface_count = 561;
 const int wj_same_object_count = 266;
 
 const wj_interface wj_interfaces[] = {
@@ -18566,7 +18592,7 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = "Audio", .factory = wjr_HTMLAudioElement_factory, .factory_length = 0 },
     { .name = "HTMLVideoElement", .parent = 272, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLVideoElement, .n_members = 6, .subtree_end = 275,
+      .members = wj_m_HTMLVideoElement, .n_members = 7, .subtree_end = 275,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLMenuElement", .parent = 238, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -18985,23 +19011,23 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_FileReaderSync, .n_members = 4, .subtree_end = 379,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystem", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileSystem", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileSystem, .n_members = 2, .subtree_end = 380,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemDirectoryReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileSystemDirectoryReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileSystemDirectoryReader, .n_members = 1, .subtree_end = 381,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileSystemEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileSystemEntry, .n_members = 6, .subtree_end = 384,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemDirectoryEntry", .parent = 381, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileSystemDirectoryEntry", .parent = 381, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileSystemDirectoryEntry, .n_members = 3, .subtree_end = 383,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemFileEntry", .parent = 381, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "FileSystemFileEntry", .parent = 381, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_FileSystemFileEntry, .n_members = 1, .subtree_end = 384,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -19645,68 +19671,72 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ValidityState, .n_members = 11, .subtree_end = 544,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
+    { .name = "VideoPlaybackQuality", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_VideoPlaybackQuality, .n_members = 5, .subtree_end = 545,
+      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "VideoTrack", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VideoTrack, .n_members = 6, .subtree_end = 545,
+      .members = wj_m_VideoTrack, .n_members = 6, .subtree_end = 546,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ViewTransition", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ViewTransition, .n_members = 7, .subtree_end = 546,
+      .members = wj_m_ViewTransition, .n_members = 7, .subtree_end = 547,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ViewTransitionTypeSet", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ViewTransitionTypeSet, .n_members = 0, .subtree_end = 547,
+      .members = wj_m_ViewTransitionTypeSet, .n_members = 0, .subtree_end = 548,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerLocation", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerLocation, .n_members = 10, .subtree_end = 548,
+      .members = wj_m_WorkerLocation, .n_members = 10, .subtree_end = 549,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerNavigator", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerNavigator, .n_members = 24, .subtree_end = 549,
+      .members = wj_m_WorkerNavigator, .n_members = 24, .subtree_end = 550,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Worklet", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Worklet, .n_members = 1, .subtree_end = 551,
+      .members = wj_m_Worklet, .n_members = 1, .subtree_end = 552,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "AudioWorklet", .parent = 549, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_AudioWorklet, .n_members = 1, .subtree_end = 551,
+    { .name = "AudioWorklet", .parent = 550, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_AudioWorklet, .n_members = 1, .subtree_end = 552,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WritableStream, .n_members = 4, .subtree_end = 552,
+      .members = wj_m_WritableStream, .n_members = 4, .subtree_end = 553,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WritableStreamDefaultController, .n_members = 2, .subtree_end = 553,
+      .members = wj_m_WritableStreamDefaultController, .n_members = 2, .subtree_end = 554,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStreamDefaultWriter", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_WritableStreamDefaultWriter, .n_members = 7, .subtree_end = 554,
+      .members = wj_m_WritableStreamDefaultWriter, .n_members = 7, .subtree_end = 555,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XMLSerializer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XMLSerializer, .n_members = 1, .subtree_end = 555,
+      .members = wj_m_XMLSerializer, .n_members = 1, .subtree_end = 556,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathEvaluator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathEvaluator, .n_members = 3, .subtree_end = 556,
+      .members = wj_m_XPathEvaluator, .n_members = 3, .subtree_end = 557,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathExpression", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathExpression, .n_members = 1, .subtree_end = 557,
+      .members = wj_m_XPathExpression, .n_members = 1, .subtree_end = 558,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathResult", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathResult, .n_members = 19, .subtree_end = 558,
+      .members = wj_m_XPathResult, .n_members = 19, .subtree_end = 559,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XSLTProcessor", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XSLTProcessor, .n_members = 8, .subtree_end = 559,
+      .members = wj_m_XSLTProcessor, .n_members = 8, .subtree_end = 560,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "console", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_NAMESPACE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_console, .n_members = 19, .subtree_end = 560,
+      .members = wj_m_console, .n_members = 19, .subtree_end = 561,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
 };

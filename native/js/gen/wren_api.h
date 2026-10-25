@@ -303,6 +303,14 @@ typedef struct wr_SelectionState {
 
 /* module dom (partial): types */
 
+/* module entries: types */
+typedef uint64_t wr_FsEntry;
+typedef uint64_t wr_FsReader;
+// What an entry is.
+typedef struct wr_FsEntryInfo {
+    uint8_t is_dir;
+} wr_FsEntryInfo;
+
 /* module events (partial): types */
 
 /* module scripts: types */
@@ -2248,6 +2256,31 @@ WR_IMPORT("dnd", "InputFiles_item") int32_t wr_InputFiles_item(uint64_t input, i
 // that is not a file input).
 WR_IMPORT("dnd", "InputFiles_assign") int32_t wr_InputFiles_assign(uint64_t input, uint64_t from);
 
+/* module entries */
+// item.webkitGetAsEntry(): the entry of a file item (0: a string item, or the data store is protected).
+WR_IMPORT("entries", "DataTransfer_itemEntry") int32_t wr_DataTransfer_itemEntry(uint64_t dt, int32_t index, uint64_t *_ret);
+// isFile / isDirectory
+WR_IMPORT("entries", "FsEntry_info") void wr_FsEntry_info(uint64_t entry, wr_FsEntryInfo *_ret);
+// entry.name
+WR_IMPORT("entries", "FsEntry_name") int32_t wr_FsEntry_name(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// entry.fullPath ("/" then the dropped item's name and the path below it, "/" separated)
+WR_IMPORT("entries", "FsEntry_fullPath") int32_t wr_FsEntry_fullPath(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// entry.filesystem.name
+WR_IMPORT("entries", "FsEntry_filesystemName") int32_t wr_FsEntry_filesystemName(uint64_t entry, uint8_t *_buf, uint32_t _cap);
+// getParent(): the folder above (an entry is its own parent at the top of what was dropped).
+WR_IMPORT("entries", "FsEntry_parent") uint64_t wr_FsEntry_parent(uint64_t entry);
+// fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).
+WR_IMPORT("entries", "FsEntry_file") uint64_t wr_FsEntry_file(uint64_t entry);
+// dirEntry.getFile(path) / getDirectory(path): a promise of the entry (NotFoundError, TypeMismatchError when it is
+// the other kind, SecurityError for a path that leaves what was dropped).
+WR_IMPORT("entries", "FsEntry_lookup") uint64_t wr_FsEntry_lookup(uint64_t dir, const uint8_t *path, uint32_t path_len, int32_t directory);
+// dirEntry.createReader()
+WR_IMPORT("entries", "FsEntry_createReader") uint64_t wr_FsEntry_createReader(uint64_t dir);
+// reader.readEntries(): a promise of the number of entries of the next batch (0: the end), read with FsReader_entry.
+WR_IMPORT("entries", "FsReader_read") uint64_t wr_FsReader_read(uint64_t reader);
+// The entries of the last batch.
+WR_IMPORT("entries", "FsReader_entry") uint64_t wr_FsReader_entry(uint64_t reader, int32_t index);
+
 /* module scripts */
 // document.write(markup) (writeln adds the newline): inserted at the parser's insertion point while the document
 // loads (scripts written run before it returns), else the document is opened again first and replaced. Invalid_State
@@ -2303,6 +2336,8 @@ WR_IMPORT("navigator", "Navigator_get") int32_t wr_Navigator_get(int32_t field, 
 WR_IMPORT("navigator", "Navigator_hardwareConcurrency") int32_t wr_Navigator_hardwareConcurrency(void);
 // navigator.onLine: whether the system has a network connection.
 WR_IMPORT("navigator", "Navigator_onLine") int32_t wr_Navigator_onLine(void);
+// navigator.maxTouchPoints: the touches the touch screen takes at once (0: none), as browser.touch.expose says.
+WR_IMPORT("navigator", "Navigator_maxTouchPoints") int32_t wr_Navigator_maxTouchPoints(void);
 // navigator.cookieEnabled: whether the document may use cookies.
 WR_IMPORT("navigator", "Navigator_cookieEnabled") int32_t wr_Navigator_cookieEnabled(void);
 // navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),
@@ -2375,7 +2410,8 @@ WR_IMPORT("htmlmedia", "HTMLMediaElement_canPlayType") int32_t wr_HTMLMediaEleme
 // video.videoWidth / videoHeight: the size of the picture (0 before the metadata).
 WR_IMPORT("htmlmedia", "HTMLVideoElement_videoWidth") uint32_t wr_HTMLVideoElement_videoWidth(uint64_t element);
 WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElement_videoHeight(uint64_t element);
-// video.getVideoPlaybackQuality(): four f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames).
+// video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
+// totalFrameDelay in seconds).
 WR_IMPORT("htmlmedia", "HTMLVideoElement_playbackQuality") int32_t wr_HTMLVideoElement_playbackQuality(uint64_t element, uint8_t *_buf, uint32_t _cap);
 
 /* module mse */

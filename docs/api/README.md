@@ -68,8 +68,9 @@ function not exposed to workers is not instantiated.
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
 | [`dnd`](dnd.md) | 31 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
+| [`entries`](entries.md) | 11 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
 | [`scripts`](scripts.md) | 18 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
-| [`navigator`](navigator.md) | 7 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
+| [`navigator`](navigator.md) | 8 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
 | [`htmlmedia`](htmlmedia.md) | 29 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
 | [`mse`](mse.md) | 30 | Window | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
@@ -83,4 +84,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 9 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1083 imports in 984 functions.
+1095 imports in 996 functions.
