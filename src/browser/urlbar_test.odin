@@ -8,6 +8,7 @@ import "core:strings"
 import "core:sync"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:host"
 
 @(private = "file")
@@ -340,7 +341,8 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 }
 
 // 50 000 visits of 12 000 addresses: a query per letter typed stays under 2 ms (an optimized build; the test build is
-// not: it checks a looser bound and prints the times).
+// not: it checks a looser bound). The index's contents are always checked; the times are a performance test (base.perf_skip:
+// tools\test_all.ps1 -Perf), printed when they run.
 @(test)
 urlbar_speed :: proc(t: ^testing.T) {
 	context.allocator = runtime.heap_allocator()   // the browser's (not the test runner's tracking allocator)
@@ -387,6 +389,7 @@ urlbar_speed :: proc(t: ^testing.T) {
 	url_index_sync(&x, visits[:], 2, NOW)
 	sync_ms := time.duration_milliseconds(time.tick_since(s))
 	testing.expect_value(t, x.rebuilds, 1)
+	if base.perf_skip("urlbar_speed: the time of a query per letter and of the build") { return }
 	slice.sort(samples[:])
 	p90 := samples[len(samples) * 9 / 10]
 	fmt.printf("urlbar_speed: %d entries, build %.2f ms, per letter mean %.3f ms 90th percentile %.3f ms worst %.3f ms, three words at once %.3f ms, sync after a trim %.3f ms\n", len(x.entries), build_ms, total / f64(n), p90, worst, words_ms, sync_ms)
@@ -396,11 +399,7 @@ urlbar_speed :: proc(t: ^testing.T) {
 	} else when ODIN_OPTIMIZATION_MODE == .Speed {
 		testing.expect(t, worst < 2, "under 2 ms per letter")
 	} else {
-		// A debug build on a shared runner: one query can lose its time slice (the CI measured a mean of 0.77 ms with a
-		// single 24 ms query among 48). A real slowdown (a scan of every entry per letter) moves the mean and the whole
-		// distribution, so the mean and the 90th percentile are strict and the single worst only has a wide bound.
 		testing.expectf(t, total / f64(n) < 5, "mean under 5 ms per letter in a debug build: %.3f", total / f64(n))
-		testing.expectf(t, p90 < 20, "90th percentile under 20 ms per letter in a debug build: %.3f", p90)
-		testing.expectf(t, worst < 250, "worst under 250 ms per letter in a debug build: %.3f", worst)
+		testing.expectf(t, worst < 20, "worst under 20 ms per letter in a debug build: %.3f", worst)
 	}
 }

@@ -239,7 +239,8 @@ main :: proc() {
 		actions["click"] = proc(p: ^page.Page, l: ^Page_Log) { page.dispatch_event(p, p.body, dom.Event{type = "click", bubbles = true, cancelable = true}) }
 		run("perf_timeline", actions)
 	}
-	if selected("idb_bench") { run("idb_bench", seconds = 120) }
+	// (the two benchmarks only measure: performance runs, tools\test_all.ps1 -Perf)
+	if selected("idb_bench") && !base.perf_skip("jswebtest idb_bench: IndexedDB micro-benchmarks") { run("idb_bench", seconds = 120) }
 	if selected("idb") { run("idb", seconds = 60) }
 	if selected("idb_pages") { idb_pages() }
 	if selected("idb_worker") { run("idb_worker", seconds = 60) }
@@ -327,7 +328,7 @@ main :: proc() {
 		close(r)
 	}
 
-	if selected("bench") { run("bench", seconds = 120) }
+	if selected("bench") && !base.perf_skip("jswebtest bench: the cost of a web API call") { run("bench", seconds = 120) }
 
 	base.scope_close(process)
 	host.blocking_settle(&blocking)
