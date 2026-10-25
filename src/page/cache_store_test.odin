@@ -1,14 +1,15 @@
 package page
 
 import "core:os"
+import "core:strings"
 import "core:testing"
 
 @(test)
 cache_index_round_trip :: proc(t: ^testing.T) {
 	oc := Origin_Caches{next = 7}
 	c := new(Named_Cache)
-	c.name = "v1"
-	append(&c.entries, Cached_Response{id = 3, url = "https://a.example/x", method = "GET", status = 200, status_text = "OK", headers = "content-type: text/plain\r\n", size = 5})
+	c.name = strings.clone("v1")
+	append(&c.entries, Cached_Response{id = 3, url = strings.clone("https://a.example/x"), method = strings.clone("GET"), status = 200, status_text = strings.clone("OK"), headers = strings.clone("content-type: text/plain\r\n"), size = 5})
 	append(&oc.caches, c)
 	data := cache_index_serialize(&oc, context.temp_allocator)
 	back: Origin_Caches
@@ -24,6 +25,7 @@ cache_index_round_trip :: proc(t: ^testing.T) {
 	bad: Origin_Caches
 	testing.expect(t, !cache_index_parse(&bad, data[:len(data) - 3]))
 	testing.expect_value(t, len(bad.caches), 0)
+	delete(bad.caches)
 	for x in back.caches { named_free(x) }
 	delete(back.caches)
 	named_free(c)
