@@ -318,21 +318,3 @@ intersection_observers_update :: proc(p: ^Page) {
 	js_call(p, r.inst, "wj_io_update", nil)
 }
 
-////////////////////////////////
-// ResizeObserver (computed in the engine: native/js/prelude/resize.js)
-
-// The engine says whether some observer observes a target; an update is wanted at the next rendering update.
-ResizeObservers_schedule :: proc(c: ^Call, observing: bool) {
-	c.page.web.ro_active = observing
-	c.page.web.ro_pending = observing
-}
-
-@(private)
-resize_observers_update :: proc(p: ^Page) {
-	w := p.web
-	if p.closed || !w.ro_active { return }
-	w.ro_pending = false
-	r := p.js
-	if r == nil || r.failed || r.inst == nil || r.inst.dead { return }
-	js_call(p, r.inst, "wj_ro_update", nil)
-}

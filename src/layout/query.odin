@@ -356,6 +356,17 @@ scroll_wheel :: proc(l: ^Layout, p: Vec2, delta: Vec2, viewport: Vec2, doc_scrol
 	return false
 }
 
+// The bounds of clip `ci` alone (viewport coordinates, device px): the padding box of the box that clips, where it is
+// drawn, not intersected with the clips around it (View.clips is). ok = false for a clip inside a 3D plane, whose frame
+// has no bounds to compare with the page's. Rounded corners are not taken into account.
+clip_bounds :: proc(l: ^Layout, v: ^View, ci: i32) -> (Rect, bool) {
+	cl := &l.clips[ci]
+	if l.spaces[cl.space].plane != NONE { return {}, false }
+	r := rect_shift(cl.rect, v.offsets[cl.space])
+	if !space_plain(l, cl.space) { r = v.singular[cl.space] ? Rect{} : mat_bounds(v.mats[cl.space], r) }
+	return r, true
+}
+
 // Scroll offset of a scroll container (device px), for scrollTop / scrollLeft.
 scroll_of :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
@@ -417,8 +428,17 @@ box_point_to_local :: proc(r: Box_Rects, p: Vec2) -> Vec2 {
 box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -> (Box_Rects, bool) {
 	bi := box_index(l, node)
 	if bi == NONE || !l.valid { return {}, false }
-	b := &l.boxes[bi]
 	v := view_make(l, viewport, doc_scroll, cull = false)
+	return box_of_view(l, &v, node)
+}
+
+// box_of over a view made already (view_make with cull = false, for the viewport and page scroll the rects are wanted
+// for): the observers read many boxes of one frame and make the view once. The view is stale after the layout changes.
+box_of_view :: proc(l: ^Layout, v: ^View, node: base.Handle) -> (Box_Rects, bool) {
+	bi := box_index(l, node)
+	if bi == NONE || !l.valid { return {}, false }
+	b := &l.boxes[bi]
+	doc_scroll := v.doc_scroll
 	off := v.offsets[b.space] + {0, doc_scroll}
 	r: Box_Rects
 	r.border = rect_shift(border_rect(b), off)
@@ -446,7 +466,7 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 		r.transformed = true
 		first := true
 		for c, k in corners {
-			pp, ok := plane_project(l, &v, pl, mat_apply(v.mats[b.space], c - ds))
+			pp, ok := plane_project(l, v, pl, mat_apply(v.mats[b.space], c - ds))
 			if v.singular[b.space] { ok = false }
 			if !ok { continue }
 			pp += ds
@@ -467,7 +487,7 @@ box_of :: proc(l: ^Layout, node: base.Handle, viewport: Vec2, doc_scroll: f32) -
 		}
 		// the exact map: a document point -> viewport -> the plane's frame (perspective divide) -> the box's space
 		if !v.singular[b.space] {
-			fwd := h3_mul(h3_from_matrix(Matrix{1, 0, 0, 1, 0, ds.y}), h3_mul(plane_chain_h3(l, &v, pl), h3_mul(h3_from_matrix(v.mats[b.space]), h3_from_matrix(Matrix{1, 0, 0, 1, 0, -ds.y}))))
+			fwd := h3_mul(h3_from_matrix(Matrix{1, 0, 0, 1, 0, ds.y}), h3_mul(plane_chain_h3(l, v, pl), h3_mul(h3_from_matrix(v.mats[b.space]), h3_from_matrix(Matrix{1, 0, 0, 1, 0, -ds.y}))))
 			if inv, ok := h3_inverse(fwd); ok { r.projective, r.unproject = true, inv }
 		}
 	} else if !space_plain(l, b.space) {

@@ -101,6 +101,26 @@
   await frame();
   await frame();
   eq("disconnect stops everything", seen.length + seenB.length + loops.length, before);
+
+  // the sizes are the layout's: a change of padding alone is seen, a transform does not change them
+  const c = document.createElement("div");
+  c.style.cssText = "width:50px;height:50px;box-sizing:border-box;padding:5px";
+  document.body.appendChild(c);
+  const sc = [];
+  const rc = new ResizeObserver(entries => { for (const x of entries) sc.push(x); });
+  rc.observe(c);
+  await frame();
+  await frame();
+  eq("a border-box fixed by its width: the content box", sc.length === 1 && sc[0].contentBoxSize[0].inlineSize, 40);
+  c.style.padding = "10px";
+  await frame();
+  await frame();
+  eq("a change of padding alone is seen", sc.length === 2 && sc[1].contentBoxSize[0].inlineSize, 30);
+  c.style.transform = "scale(2)";
+  await frame();
+  await frame();
+  eq("a transform does not change the sizes", sc.length, 2);
+  rc.disconnect();
   done();
 })();
 </script>

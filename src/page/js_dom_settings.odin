@@ -9,6 +9,7 @@ Js_Dom_Settings :: struct {
 	max_mutation_records:   int,    // records one MutationObserver may have waiting
 	max_rects:              int,    // getClientRects: rectangles of one element or range
 	style_cache_entries:    int,    // parsed style attributes (and setProperty values) kept for element.style
+	max_resize_passes:      int,    // times one rendering update delivers resize observations again for what the callbacks changed
 }
 
 JS_DOM_PREFS := [?]config.Def{
@@ -22,6 +23,8 @@ JS_DOM_PREFS := [?]config.Def{
 		description = "Most rectangles Range.getClientRects returns (and Range.getBoundingClientRect unites). An element has at most one."},
 	{name = "javascript.dom.style_cache_entries", kind = .Int, default = {i = 4096}, bounded = true, min = 0, max = 100_000, unit = "style attributes",
 		description = "Parsed style attributes, and validated style.setProperty values, kept per page for element.style (each): reading or changing a declaration in a loop does not parse again. Enough for the elements a script animates (each element's current text is one entry: fewer, and an animation of more elements parses every attribute again). 0 parses every time."},
+	{name = "javascript.dom.max_resize_passes", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 100, unit = "passes",
+		description = "Times one rendering update delivers ResizeObserver entries again for what the callbacks changed (Resize Observer: the loop of \"gather active observations\"). What is still changing after that waits for the next frame, as browsers do (\"ResizeObserver loop completed with undelivered notifications\"), so a callback that always resizes its target cannot stall the page."},
 }
 
 js_dom_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Dom_Settings {
@@ -31,5 +34,6 @@ js_dom_settings_from_prefs :: proc(p: ^config.Prefs) -> Js_Dom_Settings {
 		max_mutation_records = int(config.int_of(p, "javascript.dom.max_mutation_records")),
 		max_rects = int(config.int_of(p, "javascript.dom.max_client_rects")),
 		style_cache_entries = int(config.int_of(p, "javascript.dom.style_cache_entries")),
+		max_resize_passes = int(config.int_of(p, "javascript.dom.max_resize_passes")),
 	}
 }
