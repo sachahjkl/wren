@@ -1178,8 +1178,8 @@ main :: proc() {
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
-	if policy_file == "" { policy_file = "policies.txt" }
-	config.load_file(&app.prefs, policy_file, .Policy)
+	if policy_file == "" { policy_file = default_policy_file(desktop.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
+	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
