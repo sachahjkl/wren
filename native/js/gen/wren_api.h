@@ -260,8 +260,6 @@ typedef struct wr_SelectionState {
 
 /* module events (partial): types */
 
-/* module timers (partial): types */
-
 /* module scripts: types */
 // What a Content-Security-Policy check of inline code is about: a script element's text, an event handler
 // attribute (script-src-attr), a javascript: URL.
@@ -280,6 +278,8 @@ enum wr_WorkerType {
     wr_WorkerType_Classic = 0,
     wr_WorkerType_Module = 1,
 };
+
+/* module dom (partial): types */
 
 /* module dom (partial): types */
 
@@ -1492,6 +1492,39 @@ WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplement
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
 // 3 doctype. 0 when there is none.
 WR_IMPORT("dom", "Document_partOf") uint64_t wr_Document_partOf(uint64_t document, int32_t which);
+// new ResizeObserver: `notify(user)` runs, inside a rendering update, when some target's observed box changed; it
+// takes the entries with ResizeObserver_takeEntries.
+WR_IMPORT("dom", "ResizeObserver_create") uint64_t wr_ResizeObserver_create(uint32_t notify, int32_t user);
+// observer.observe(target, { box }): box 0 content-box, 1 border-box, 2 device-pixel-content-box. Observing a target
+// again with the same box does nothing; with another, the observation starts over.
+WR_IMPORT("dom", "ResizeObserver_observe") int32_t wr_ResizeObserver_observe(uint64_t observer, uint64_t target, int32_t box);
+WR_IMPORT("dom", "ResizeObserver_unobserve") void wr_ResizeObserver_unobserve(uint64_t observer, uint64_t target);
+WR_IMPORT("dom", "ResizeObserver_disconnect") void wr_ResizeObserver_disconnect(uint64_t observer);
+// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+WR_IMPORT("dom", "ResizeObserver_observed") uint32_t wr_ResizeObserver_observed(uint64_t observer);
+// The entries being delivered, 72 bytes each, little endian: target u64, then eight f64: borderBoxSize (inline, block),
+// contentBoxSize, devicePixelContentBoxSize, and the content rect's left and top.
+WR_IMPORT("dom", "ResizeObserver_takeEntries") int32_t wr_ResizeObserver_takeEntries(uint64_t observer, uint8_t *_buf, uint32_t _cap);
+// new IntersectionObserver: `root` is the root element or document (0: the viewport), `thresholds` the f64 values
+// ascending (already checked to be in [0, 1]); `notify(user)` runs, from a task of the page, when entries were queued,
+// and takes them with IntersectionObserver_takeRecords. Syntax when a margin is not one to four lengths in px or %.
+WR_IMPORT("dom", "IntersectionObserver_create") int32_t wr_IntersectionObserver_create(uint32_t notify, int32_t user, uint64_t root, const uint8_t *root_margin, uint32_t root_margin_len, const uint8_t *scroll_margin, uint32_t scroll_margin_len, const uint8_t *thresholds, uint32_t thresholds_len, uint64_t *_ret);
+// observer.rootMargin / scrollMargin: the four sides, each a number and its unit ("10px 0px 10px 0px").
+WR_IMPORT("dom", "IntersectionObserver_rootMargin") int32_t wr_IntersectionObserver_rootMargin(uint64_t observer, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "IntersectionObserver_scrollMargin") int32_t wr_IntersectionObserver_scrollMargin(uint64_t observer, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("dom", "IntersectionObserver_observe") int32_t wr_IntersectionObserver_observe(uint64_t observer, uint64_t target);
+WR_IMPORT("dom", "IntersectionObserver_unobserve") void wr_IntersectionObserver_unobserve(uint64_t observer, uint64_t target);
+// observer.disconnect(): no more targets; the entries already queued stay for takeRecords.
+WR_IMPORT("dom", "IntersectionObserver_disconnect") void wr_IntersectionObserver_disconnect(uint64_t observer);
+// How many targets the observer observes (the engine keeps the observer alive while it is not 0).
+WR_IMPORT("dom", "IntersectionObserver_observed") uint32_t wr_IntersectionObserver_observed(uint64_t observer);
+// The entries waiting, 128 bytes each, little endian: target u64, time f64, intersectionRatio f64, flags u32 (bit 0
+// isIntersecting, bit 1 isVisible, bit 2 rootBounds is not null), 4 bytes of 0, then twelve f64: rootBounds,
+// boundingClientRect and intersectionRect as x, y, width, height. Nothing changes until IntersectionObserver_release,
+// so a call that did not fit can be made again.
+WR_IMPORT("dom", "IntersectionObserver_takeRecords") int32_t wr_IntersectionObserver_takeRecords(uint64_t observer, uint8_t *_buf, uint32_t _cap);
+// The engine made the entries it took: they leave the queue (and the pins of their targets go).
+WR_IMPORT("dom", "IntersectionObserver_release") void wr_IntersectionObserver_release(uint64_t observer);
 // window.print().
 WR_IMPORT("dom", "Window_print") void wr_Window_print(void);
 // element.attachShadow(init): Not_Supported for an element that cannot host one, a host already (unless its root
@@ -2378,13 +2411,6 @@ WR_IMPORT("storage", "StorageEvent_get") int32_t wr_StorageEvent_get(uint64_t ev
 WR_IMPORT("storage", "StorageEvent_storageArea") int32_t wr_StorageEvent_storageArea(uint64_t event, int32_t *_ret);
 
 /* module timers */
-// Some observer watches a target (true), or none does: while true, the browser runs the engine's observations after
-// the animation frame callbacks of every rendering update, and asks for one frame at once.
-WR_IMPORT("timers", "IntersectionObservers_schedule") void wr_IntersectionObservers_schedule(int32_t observing);
-// Some ResizeObserver observes a target (true), or none does: while true, the browser runs the observers' resize
-// observations (native/js/prelude/resize.js: wj_ro_update) at every rendering update, before the intersection ones,
-// and asks for one frame at once.
-WR_IMPORT("timers", "ResizeObservers_schedule") void wr_ResizeObservers_schedule(int32_t observing);
 // setTimeout(callback, delay_ms)
 WR_IMPORT("timers", "Timers_setTimeout") uint64_t wr_Timers_setTimeout(uint32_t callback, int32_t user, double delay_ms);
 // setInterval(callback, delay_ms)
