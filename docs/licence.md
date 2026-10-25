@@ -105,6 +105,8 @@ it). A licence made with it is refused by a build that carries the production ke
 
 An experimental build (`tools\experimental.ps1`, which builds with `WREN_ACCEPT_DEV_LICENSE_KEY=1`: `build.bat` passes `-define:WREN_ACCEPT_DEV_LICENSE_KEY=true`) accepts the licences of this pair too, as a development build does, so that the demonstration licence it is handed out with shows its card with no setting. A release never does.
 
+A **pre-registered** build carries a licence inside: `build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of the .wrenlicense>` (and a `WREN_VERSION_LABEL`, which it requires so that such a build is never an unlabelled one). The first time `about:wren` asks the profile for its licence and the profile holds none, the build's is written there (`license_seed`, `src/browser/license_shell.odin`) with a marker file `<licence file>.seeded`; it is then the profile's own: `Remove the licence` removes it and the marker stops it coming back, another licence replaces it, and a profile that already holds a licence keeps its own. A build that cannot check the text (a release with no key for it) puts nothing anywhere. `tools\experimental.ps1` builds this way with the development pair's demonstration licence. A release has no `WREN_EMBEDDED_LICENSE`.
+
 ### 4. Without the Worker
 
 `tools\license.ps1 issue` still works for a gift, a refund replacement or a licence given by hand, with the same key.

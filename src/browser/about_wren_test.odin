@@ -227,6 +227,46 @@ dev_license :: proc(name: string, seed: [32]byte = license.DEV_SEED) -> string {
 }
 
 @(test)
+the_licence_a_build_is_handed_out_with_is_put_in_once :: proc(t: ^testing.T) {
+	_ = os.make_directory_all("build/tmp")
+	path := "build/tmp/about_seed_test.wrenlicense"
+	marker := "build/tmp/about_seed_test.wrenlicense.seeded"
+	_ = os.remove(path); _ = os.remove(marker)
+	defer { _ = os.remove(path); _ = os.remove(marker) }
+	app := license_app(path, true)
+	defer license_app_free(app)
+	given := dev_license("Pre-registered")
+
+	// the profile holds none: it is given the build's, and the marker says so
+	license_seed(app, given)
+	st := license_state(app)
+	testing.expect(t, st.registered && st.lic.name == "Pre-registered", "a pre-registered build shows its licence")
+	testing.expect(t, os.exists(marker), "the licence was put in once")
+
+	// the user removes it: it stays removed (the next start is a new call of license_seed)
+	license_remove(app)
+	license_seed(app, given)
+	testing.expect(t, !license_state(app).stored, "a removed licence is not put back")
+
+	// the user registers another one: it is the profile's, and the build's does not replace it
+	mine := dev_license("Mine")
+	testing.expect_value(t, license_install(app, mine), license.Error.None)
+	license_seed(app, given)
+	testing.expect(t, license_state(app).lic.name == "Mine", "the licence of the user is kept")
+
+	// a profile that holds a licence of its own (shared with another Wren) is not touched, and gets no marker
+	_ = os.remove(marker)
+	license_seed(app, given)
+	testing.expect(t, license_state(app).lic.name == "Mine" && !os.exists(marker), "a licence already there is kept as it is")
+
+	// a text this build does not accept is put nowhere
+	_ = os.remove(path)
+	license_seed(app, dev_license("Elsewhere", license.OTHER_DEV_SEED))
+	testing.expect(t, !os.exists(path) && !os.exists(marker), "a licence this build cannot check is not put in")
+	license_seed(app, "")
+	testing.expect(t, !os.exists(path), "no licence in the build, nothing put in")
+}
+@(test)
 license_is_kept_checked_and_removed :: proc(t: ^testing.T) {
 	_ = os.make_directory_all("build/tmp")
 	path := "build/tmp/about_license_test.wrenlicense"

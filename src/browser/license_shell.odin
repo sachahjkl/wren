@@ -77,9 +77,44 @@ license_path :: proc(app: ^App) -> string {
 	return strings.concatenate({app.profile_dir, "/license", license.FILE_EXTENSION}, context.temp_allocator)
 }
 
+// The licence a build is handed out with, as the text of a .wrenlicense (build.bat: WREN_EMBEDDED_LICENSE; tools\experimental.ps1 sets it
+// for an experimental build): "" in every other build, a release above all. Such a build is "pre-registered": the first time the profile
+// is asked for its licence and holds none, this one is put there (license_seed), and from then on it is the profile's own like any other.
+EMBEDDED_LICENSE :: #config(WREN_EMBEDDED_LICENSE, "")
+
+@(private = "file") memory_seeded: bool
+
+// Puts `text`, the licence a build is handed out with, where the profile keeps its licence, ONCE: only when nothing is stored there and
+// it was never put there. The file `<licence file>.seeded` says it was: removing the licence (about:wren) then removes it for good, and
+// registering another one replaces it, as for a licence the user typed in. A profile that already holds a licence (a real one, kept
+// from another build: the profile is shared) keeps its own. A text this build does not accept (a release has no key for it) is not put
+// anywhere. Memory-only profiles (no file) are given it once per run.
+license_seed :: proc(app: ^App, text: string) {
+	if strings.trim_space(text) == "" { return }
+	path := license_path(app)
+	if path == "" {
+		if memory_seeded || memory_len > 0 { return }
+		memory_seeded = true
+		if lic, err := license_check(app, text, context.temp_allocator); err == .None {
+			_ = lic
+			memory_len = copy(memory_text[:], license.normalize(text, context.temp_allocator))
+		}
+		return
+	}
+	marker := strings.concatenate({path, ".seeded"}, context.temp_allocator)
+	if os.exists(path) || os.exists(marker) { return }
+	if _, err := license_check(app, text, context.temp_allocator); err != .None { return }
+	if dir := os.dir(path); dir != "" { _ = os.make_directory_all(dir) }
+	canonical := license.normalize(text, context.temp_allocator)
+	if write_file_atomic(path, strings.concatenate({canonical, "\n"}, context.temp_allocator)) {
+		_ = os.write_entire_file(marker, transmute([]byte)string("the licence of this build was put here once; removing it keeps it removed\n"))
+	}
+}
+
 // The stored key (temporary allocator), "" when there is none.
 @(private = "file")
 license_stored_text :: proc(app: ^App) -> string {
+	when EMBEDDED_LICENSE != "" { license_seed(app, EMBEDDED_LICENSE) }
 	path := license_path(app)
 	if path == "" { return string(memory_text[:memory_len]) }
 	info, err := os.stat(path, context.temp_allocator)
