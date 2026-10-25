@@ -257,6 +257,56 @@ build_section :: proc(sb: ^strings.Builder, d: Wren_Page) {
 	strings.write_string(sb, "</table>\n")
 }
 
+// The people and projects Wren owes its design or its code to: one link each, to the official site (the official X account
+// when there is none). The libraries are named by four of their links; about:licenses has every component.
+@(private = "file")
+thanks_section :: proc(sb: ^strings.Builder) {
+	strings.write_string(sb, "<h2>")
+	esc(sb, i18n.tr("Thanks"))
+	strings.write_string(sb, "</h2>\n<table>\n")
+	thanks_row(sb, "Casey Muratori", "https://caseymuratori.com", i18n.tr("Handmade Hero, Molly Rocket, and the immediate-mode GUI he popularised."))
+	thanks_row(sb, "Jonathan Blow", "https://x.com/Jonathan_Blow", i18n.tr("Braid and The Witness."))
+	thanks_row(sb, "United States Graphics Company", "https://usgraphics.com", i18n.tr("Engineering graphics, and the Berkeley Mono typeface."))
+	thanks_row(sb, "ThePrimeagen", "https://x.com/ThePrimeagen", i18n.tr("Programming videos and streams on YouTube and Twitch."))
+	thanks_row(sb, "Ginger Bill (Bill Hall)", "https://gingerbill.org", i18n.tr("Creator of Odin, the language Wren is written in."))
+	thanks_row(sb, "Dax Raad (OpenCode)", "https://opencode.ai", i18n.tr("OpenCode, the open source AI coding agent, and its team."))
+	thanks_row(sb, "Andreas Kling (Ladybird)", "https://ladybird.org", i18n.tr("An independent browser engine, written from scratch and developed in the open."))
+	thanks_row(sb, "Ryan Fleury", "https://rfleury.com", i18n.tr("RAD Debugger, whose immediate-mode interface inspired Wren's."))
+	thanks_row(sb, "Fabrice Bellard", "https://bellard.org", i18n.tr("QuickJS, the JavaScript engine that QuickJS-ng is a fork of."))
+	thanks_row(sb, "Alexander Borisov", "https://lexbor.com", i18n.tr("Lexbor, the HTML parser."))
+	strings.write_string(sb, "<tr><td class=\"k\">")
+	esc(sb, i18n.tr("Libraries"))
+	strings.write_string(sb, "</td><td>")
+	thanks_link(sb, "https://github.com/EricLengyel/Slug", "Slug")
+	strings.write_string(sb, " (Eric Lengyel), ")
+	thanks_link(sb, "https://github.com/bytecodealliance/wasmtime", "Wasmtime")
+	strings.write_string(sb, ", ")
+	thanks_link(sb, "https://github.com/quickjs-ng/quickjs", "QuickJS-ng")
+	strings.write_string(sb, ", ")
+	thanks_link(sb, "https://github.com/linebender/resvg", "resvg")
+	strings.write_string(sb, ", ")
+	fmt.sbprintf(sb, "<a href=\"%s\">%s</a>.", LICENSES_URL, escape_html(i18n.tr("the other components and their licences")))
+	strings.write_string(sb, "</td></tr>\n</table>\n")
+}
+
+@(private = "file")
+thanks_row :: proc(sb: ^strings.Builder, name, url, why: string) {
+	strings.write_string(sb, "<tr><td class=\"k\">")
+	thanks_link(sb, url, name)
+	strings.write_string(sb, "</td><td>")
+	esc(sb, why)
+	strings.write_string(sb, "</td></tr>\n")
+}
+
+@(private = "file")
+thanks_link :: proc(sb: ^strings.Builder, url, text: string) {
+	strings.write_string(sb, "<a href=\"")
+	esc(sb, url)
+	strings.write_string(sb, "\">")
+	esc(sb, text)
+	strings.write_string(sb, "</a>")
+}
+
 // The components, one row each: name (a link), version, license, and a link to the license text when it is embedded.
 @(private = "file")
 third_party_table :: proc(sb: ^strings.Builder, with_text_links: bool) {
@@ -304,6 +354,7 @@ wren_page_html :: proc(d: Wren_Page) -> string {
 	strings.write_string(&sb, "<p class=\"beta\"><b>Wren is a beta under development.</b> Every version is free; a licence only supports development.</p>\n")
 	licence_section(&sb, d)
 	build_section(&sb, d)
+	thanks_section(&sb)
 	strings.write_string(&sb, "<h2>Third-party software</h2>\n<p>Wren's own code is open source under the MIT licence. It is built from the components below, whose licences require this notice; the full texts are in <a href=\"about:licenses\">about:licenses</a>.</p>\n<p>Text rendering can use the Slug algorithm and shaders by Eric Lengyel (MIT licence), credited as its licence requires.</p>\n")
 	third_party_table(&sb, false)
 	strings.write_string(&sb, "<p class=\"weak\" style=\"margin-top: 10px\">The Rust libraries linked into the image decoders are listed with their licences in <a href=\"about:licenses#rust-crates\">about:licenses</a>.</p>\n")
