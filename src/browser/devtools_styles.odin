@@ -686,7 +686,7 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	}
 	if dt_bar("###dt_sty_tabs", dtm.bar - dt_px(2)) {
 		dt_gap(2)
-		room := dev.rect.max.x - dev.rect.min.x
+		room := dev_width()
 		narrow := room < dt_px(900)
 		for name, i in SIDE_TABS {
 			label := name

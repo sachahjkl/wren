@@ -423,7 +423,7 @@ elements_panel :: proc(app: ^App, t: ^Tab) {
 	e.hover = base.NIL_HANDLE
 	elements_picker(app, t, e)
 
-	room := dev.rect.max.x - dev.rect.min.x
+	room := dev_width()
 	wide := room == 0 || room >= dt_px(700)
 	split := f32(config_float(app, "browser.devtools.elements.split"))
 	ui.next({width = ui.fill(), height = ui.fill()})

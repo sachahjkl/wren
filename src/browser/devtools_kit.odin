@@ -206,7 +206,7 @@ dt_hsep :: proc(id: string, col: Maybe(draw.Color) = nil) {
 @(deferred_none = ui.pop_parent)
 dt_bar :: proc(id: string, h: f32 = 0, rule := true) -> bool {
 	hh := h > 0 ? h : dtm.bar
-	flags := ui.Box_Flags{.Draw_Background}
+	flags := ui.Box_Flags{.Draw_Background, .Clip}   // (a narrow panel cuts its toolbar at its edge)
 	if rule { flags += {.Draw_Side_Bottom} }
 	ui.next({width = ui.fill(), height = ui.px(hh), axis = .X, cross = .Center, bg = dtc.bar, border = dtc.border})
 	b := ui.build_box(flags, id)
@@ -276,17 +276,24 @@ btn_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 }
 
+// The width dt_btn gives a button (before it is built: a toolbar sizes its flexible field from the fixed widths around it).
+dt_btn_width :: proc(icon: Dt_Icon, label := "", caret := false, w: f32 = 0) -> f32 {
+	if w > 0 { return w }
+	if label == "" && !caret { return dtm.btn }
+	label_w := label != "" ? dt_w(dtm.ui_font, dtm.fs, label) : 0
+	return dt_px(6) * 2 + (icon != .None ? dtm.icon : 0) + (icon != .None && label != "" ? dt_px(4) : 0) + label_w + (caret ? dtm.icon * 0.7 + dt_px(label != "" || icon != .None ? 2 : 0) : 0)
+}
+
+// The narrowest a toolbar's filter field is made (logical px): below it the buttons around it are cut off by the panel's
+// edge rather than the field being squeezed away.
+DT_FILTER_MIN :: 150
+
 // A toolbar button: an icon (and maybe a label, a badge, a drop-down chevron) with no frame until the pointer is on it;
 // `on` shows it switched on (a toggle), `enabled` false mutes it. The tooltip shows its name and shortcut.
 dt_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut := "", on := false, enabled := true,
                badge := "", badge_col := draw.Color{}, caret := false, accent := false, w: f32 = 0, tone := draw.Color{}) -> ui.Signal {
 	label_w := label != "" ? dt_w(dtm.ui_font, dtm.fs, label) : 0
-	width := w
-	if width <= 0 {
-		if label == "" && !caret { width = dtm.btn } else {
-			width = dt_px(6) * 2 + (icon != .None ? dtm.icon : 0) + (icon != .None && label != "" ? dt_px(4) : 0) + label_w + (caret ? dtm.icon * 0.7 + dt_px(label != "" || icon != .None ? 2 : 0) : 0)
-		}
-	}
+	width := dt_btn_width(icon, label, caret, w)
 	sig: ui.Signal
 	if ui.disabled(!enabled) {
 		ui.next({width = ui.px(math.round(width)), height = ui.px(dtm.btn), cursor = .Arrow})
@@ -480,37 +487,33 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 	holder := ui.build_box({}, id)
 	res: ui.Edit_Result
 	if ui.parent(holder) {
-		right_pad := dt_px(6) + (flags ? dt_px(48) : 0)
 		active := f.field.buf != nil && len(f.field.buf) > 0
-		if active { right_pad += dt_px(20) }
+		// what the switches take at the right (the clear button, "Aa", ".*": 22 px each, 4 px from the edge)
+		reserve := dt_px(4) + (active ? dt_px(18) : 0) + (flags ? dt_px(44) : 0)
+		// the room the placeholder has: the field's width when the caller gave it, else the last frame's (a hint that is one
+		// frame late is harmless; the switches' places below never read a width)
+		fw := w > 0 ? w : holder.size.x
+		hint := placeholder
+		if fw > 0 { hint, _ = dt_fit(dtm.ui_font, dtm.fs, placeholder, max(fw - dt_px(24) - reserve - dt_px(4), 0)) }
 		if f.re_bad { ui.push_tags("bad") }
 		ui.next({width = ui.pct(1), height = ui.pct(1), radius = dtm.radius, text_pad = dt_px(24)})
-		res = ui.line_edit("###f", &f.field, placeholder)
+		res = ui.line_edit("###f", &f.field, hint)
 		if f.re_bad { ui.pop_tags() }
-		width := holder.size.x
 		// the magnifier
 		ui.next({fixed_x = dt_px(5), fixed_y = (h - dtm.icon) * 0.5, width = ui.px(dtm.icon), height = ui.px(dtm.icon)})
 		ui.custom("###mag", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			dt_icon(dc, .Search, draw.rect_center(b.rect), dtm.icon, dtc.faint, dtm.sc)
 		}, nil)
-		if width > 0 {
-			x := width - dt_px(4)
-			if active {
-				x -= dt_px(18)
-				ui.next({fixed_x = x, fixed_y = (h - dt_px(18)) * 0.5, width = ui.px(dt_px(18)), height = ui.px(dt_px(18))})
-				cb := ui.build_box({.Clickable}, "###clr")
-				cs := ui.signal(cb)
-				d := ui.frame_new(Dt_Btn_Draw)
-				d.icon, d.hot, d.down = .Close, cs.hovering, cs.dragging
-				cb.custom, cb.custom_user = field_clear_draw, d
-				if cs.clicked { ui.field_clear(&f.field); res.changed = true }
-				dt_tip(cs, "Clear the filter")
-			}
+		// the switches in a row over the field, pushed to its right edge by a spacer: placed by the layout of this frame, not
+		// from the width the field had in the last one (it was one frame behind a panel being resized)
+		ui.next({fixed_x = 0, fixed_y = 0, width = ui.pct(1), height = ui.pct(1), axis = .X, cross = .Center})
+		over := ui.build_box({}, "###ov")
+		if ui.parent(over) {
+			ui.spacer(ui.fill())
 			if flags {
-				for k in 0 ..< 2 {
-					x -= dt_px(22)
+				for k in ([2]int{1, 0}) {   // ".*", then "Aa" next to the clear button
 					on := k == 0 ? f.cased : f.use_re
-					ui.next({fixed_x = x, fixed_y = (h - dt_px(18)) * 0.5, width = ui.px(dt_px(21)), height = ui.px(dt_px(18))})
+					ui.next({width = ui.px(dt_px(21)), height = ui.px(dt_px(18))})
 					tb := ui.build_box({.Clickable}, k == 0 ? "###case" : "###re")
 					ts := ui.signal(tb)
 					d := ui.frame_new(Dt_Btn_Draw)
@@ -521,8 +524,20 @@ dt_search :: proc(id: string, f: ^Dt_Filter, placeholder: string, w: f32 = 0, fl
 						res.changed = true
 					}
 					dt_tip(ts, k == 0 ? "Match case" : "Use a regular expression")
+					dt_gap(1)
 				}
 			}
+			if active {
+				ui.next({width = ui.px(dt_px(18)), height = ui.px(dt_px(18))})
+				cb := ui.build_box({.Clickable}, "###clr")
+				cs := ui.signal(cb)
+				d := ui.frame_new(Dt_Btn_Draw)
+				d.icon, d.hot, d.down = .Close, cs.hovering, cs.dragging
+				cb.custom, cb.custom_user = field_clear_draw, d
+				if cs.clicked { ui.field_clear(&f.field); res.changed = true }
+				dt_tip(cs, "Clear the filter")
+			}
+			dt_gap(4)
 		}
 	}
 	return res

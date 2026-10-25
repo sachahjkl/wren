@@ -400,7 +400,7 @@ network_panel :: proc(app: ^App, t: ^Tab) {
 
 	sel := net_entry_of_id(t, v)
 	split := f32(config_float(app, "browser.devtools.network.split"))
-	room_w := dev.rect.max.x - dev.rect.min.x
+	room_w := dev_width()
 	side := room_w >= dt_px(640)
 	menu_key := ui.key_from_string(0, "###dt_net_menu")
 	// the table keeps its place in the tree (and so its scroll) whether or not a request is open beside or under it
@@ -427,7 +427,7 @@ net_split_body :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, sel: ^Net_Entry, sid
 			if dragging { net_split_apply(app, v, dx, room_w, split) }
 		} else {
 			dy, _, dragging := dt_hsplit("###dt_net_hs")
-			if dragging { net_split_apply(app, v, dy, dev.rect.max.y - dev.rect.min.y, split) }
+			if dragging { net_split_apply(app, v, dy, dev_height(), split) }
 		}
 		ui.next({width = ui.fill(), height = ui.fill()})
 		if ui.column(.Start, {.Clip}, "###dt_net_detail_box") { net_detail_panel(app, t, v, sel) }
@@ -474,9 +474,14 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		rec := dt_btn("###dt_net_rec", .Record, tooltip = v.paused ? "Start recording network log" : "Stop recording network log", tone = v.paused ? dtc.weak : dtc.bad)
 		if rec.clicked { v.paused = !v.paused }
 		dt_vsep("###dt_nb0")
-		ui.next({width = ui.fill(), height = ui.px(dtm.bar), axis = .X, cross = .Center})
+		// the filter takes what the other items leave (they never shrink), but never less than DT_FILTER_MIN: on a narrow
+		// panel the last buttons run past its edge instead of the field being squeezed to nothing under them
+		prof := net_profile_of(t)
+		fixed := dt_px(3) * 2 + dtm.btn * 4 + dtm.line * 3 + dt_btn_width(.None, "Invert") + dt_btn_width(.Pin, "Preserve log") + dt_btn_width(.None, "Disable cache") + dt_btn_width(.Throttle, prof.name, true)
+		filter_w := max(dev_width() - fixed, dt_px(DT_FILTER_MIN))
+		ui.next({width = ui.px(filter_w), height = ui.px(dtm.bar), axis = .X, cross = .Center})
 		if ui.row(.Center, {}, "###dt_net_fw") {
-			dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)")
+			dt_search("###dt_net_filter", &v.filter, "Filter  (-word excludes)", filter_w)
 		}
 		inv := dt_btn("###dt_net_inv", .None, "Invert", tooltip = "Invert the filter", on = v.filter.invert)
 		if inv.clicked { v.filter.invert = !v.filter.invert }
@@ -485,7 +490,6 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 		if pres.clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
 		dc := dt_btn("###dt_net_cache", .None, "Disable cache", tooltip = "Do not use the HTTP cache while the developer tools are open", on = net_prefs.disable_cache)
 		if dc.clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
-		prof := net_profile_of(t)
 		throttled := net_profile_active(prof)
 		tkey := dt_menu_btn("###dt_net_throttle", .Throttle, prof.name, tooltip = throttled ? fmt.tprintf("Network speed. Held to: %s", net_profile_text(prof)) : "Network speed", on = throttled, tone = throttled ? draw.Color{0.93, 0.62, 0.10, 1} : draw.Color{})
 		if ui.ctx_menu(tkey, dt_px(220)) { net_speed_menu(app, t, v) }
@@ -555,7 +559,7 @@ net_set_types :: proc(app: ^App, v: ^Dev_Network, mask: u32) {
 
 @(private = "file")
 net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
-	avail := dev.rect.max.x - dev.rect.min.x
+	avail := dev_width()
 	if v.has_sel { avail = avail * f32(config_float(app, "browser.devtools.network.split")) }
 	if avail <= 0 { avail = f32(app.win.size.x) }
 	scroll_w := dt_px(10)
