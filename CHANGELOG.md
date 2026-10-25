@@ -6,6 +6,9 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- **The drag picture of any element, wherever it is** (toolkit 0.35.2 `draw.offscreen_begin` / `render.readback_poll`): the element `setDragImage` names, or the dragged element's ghost, is painted alone into an offscreen target and read back, so an element placed off the page (`top: -1000px`), scrolled away or under others gives its picture; an element that is not rendered (`display: none`) gives the dragged element's ghost, as in other browsers. `wren ctl stats`: `dragPicture` (size, hot spot, middle pixel).
+- **Dragging selected text of the document shows the selection**: its selected text with each line's highlight, faded like the ghost, over the window and for the system's drag, instead of the system's bare cursor.
+
 - **`touch-action` directions**: `pan-left`, `pan-right`, `pan-up` and `pan-down` are their own (a gesture may only start by scrolling that way, then goes on along its axis, as the standard says), combined with the other axis and `pinch-zoom`, each group at most once.
 
 - **AltSnap resizing: one picture per step** (toolkit 0.35.2 `ui.wake_due` / `ui.wake_in_ms`): the second frame of each step came from the loop woken by the `WM_SIZING` AltSnap sends before the step, which made a frame because a caret blink was asked for (not yet due); `wren ctl stats` now says why the frames of a resize were made (`resizeFrameCauses`: `Ui_Timer` 882 of 1544 before). `tools\altdrag_sim.ps1 -Variants altsnap`: 893 presents for 500 steps to 494, CPU 969 to 578 ms.
