@@ -211,9 +211,19 @@ accept_main :: proc(_: ^thread.Thread) {
 	ev := win.CreateEventW(nil, true, false, nil)
 	defer win.CloseHandle(ev)
 	pipe := srv.first_pipe
-	for pipe != win.INVALID_HANDLE_VALUE {
+	failures := 0
+	// The server must always have an instance waiting: the loop only ends when it is asked to stop. A client that connects and
+	// goes at once (a security query, a probe) makes ConnectNamedPipe fail with ERROR_NO_DATA, and a new instance may not be
+	// made for a moment (out of resources): neither is a reason to stop listening, which would remove the pipe for good.
+	for {
+		if pipe == win.INVALID_HANDLE_VALUE {
+			if win.WaitForSingleObject(srv.stop_event, 100) == win.WAIT_OBJECT_0 { return }
+			pipe = create_instance(false)
+			continue
+		}
 		win.ResetEvent(ev)
 		ov := win.OVERLAPPED{hEvent = ev}
+		connected := true
 		if !win.ConnectNamedPipe(pipe, &ov) {
 			switch win.GetLastError() {
 			case win.ERROR_IO_PENDING:
@@ -225,12 +235,24 @@ accept_main :: proc(_: ^thread.Thread) {
 					win.CloseHandle(pipe)
 					return
 				}
+				n: win.DWORD
+				connected = bool(win.GetOverlappedResult(pipe, &ov, &n, false))
 			case win.ERROR_PIPE_CONNECTED:   // the client came between the creation and the call
-			case:
-				win.CloseHandle(pipe)
-				return
+			case: connected = false          // ERROR_NO_DATA: it came and went before we listened
 			}
 		}
+		if !connected {
+			failures += 1
+			next := create_instance(false)   // (before the old one goes: the name never disappears)
+			win.CloseHandle(pipe)
+			pipe = next
+			if failures > 3 && win.WaitForSingleObject(srv.stop_event, 50) == win.WAIT_OBJECT_0 {   // (no spin if it keeps failing)
+				if pipe != win.INVALID_HANDLE_VALUE { win.CloseHandle(pipe) }
+				return
+			}
+			continue
+		}
+		failures = 0
 		if sync.atomic_load(&srv.active) >= srv.max_clients {
 			win.CloseHandle(pipe)   // turned away: the client sees the pipe close
 		} else {
