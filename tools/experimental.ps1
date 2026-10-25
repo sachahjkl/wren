@@ -86,6 +86,10 @@ Copy-Item $licFile "$stage\demo-licence\WREN-DEMO.wrenlicense"
 
 # ---- 3. the packed exe itself must be what it says: pre-registered, or at least accepting the key
 if (-not $NoVerify) {
+    # `wren version` must say what it is: the version and the label (an exe that says "0.4.0" alone passes for the release)
+    $said = (cmd /c "`"$stage\$base.exe`" version 2>&1" | Out-String)
+    if ($said -notmatch [regex]::Escape("$version-$Label")) { throw "the packed exe does not say it is $version-$Label (wren version: $($said.Trim()))" }
+    Say "wren version: $(($said -split "`n")[0].Trim())"
     Say 'checking the packed exe on a throwaway profile'
     . .\tools\wrenctl.ps1
     $env:WREN_EXE = "$stage\$base.exe"

@@ -78,10 +78,11 @@ describe_build :: proc(k: Build_Kind, gpu_timing_define: bool, dev := false) -> 
 
 build_description :: proc() -> string { return describe_build(BUILD_KIND, render.GPU_TIMING, IS_DEV_BUILD) }
 
-// "0.2.0 (1a2b3c4, 2026-10-20)", or "0.2.0 (dev)".
+// "0.2.0 (1a2b3c4, 2026-10-20)", or "0.2.0 (dev)"; the version a user is shown, so with the build's label
+// ("0.4.0-experimental-2026-10-25 (1a2b3c4, 2026-10-25)").
 version_long :: proc() -> string {
-	if APP_COMMIT_DATE != "" { return fmt.tprintf("%s (%s, %s)", APP_VERSION, app_commit(), APP_COMMIT_DATE) }
-	return fmt.tprintf("%s (%s)", APP_VERSION, app_commit())
+	if APP_COMMIT_DATE != "" { return fmt.tprintf("%s (%s, %s)", APP_VERSION_SHOWN, app_commit(), APP_COMMIT_DATE) }
+	return fmt.tprintf("%s (%s)", APP_VERSION_SHOWN, app_commit())
 }
 
 HOME_URL :: "about:home"
