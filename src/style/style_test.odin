@@ -468,7 +468,7 @@ media_and_supports :: proc(t: ^testing.T) {
 	env.width = 600
 	env.prefers_dark = true
 	testing.expect(t, engine_set_environment(f.eng, env))
-	testing.expect(t, f.eng.dirty, "a viewport change invalidates the index when media queries are in use")
+	testing.expect(t, f.eng.gates_pending && f.eng.restyle_needed, "a viewport change flips the gates of the media blocks, and the color scheme asks for a full pass")
 	restyle(&f)
 	testing.expect(t, near(at(&f, "a").margin[.Top].v, 3))
 	testing.expect(t, near(at(&f, "e").margin[.Top].v, 8))
@@ -477,13 +477,95 @@ media_and_supports :: proc(t: ^testing.T) {
 	f.eng.restyle_needed = false
 	env.width = 700
 	testing.expect(t, engine_set_environment(f.eng, env))
-	testing.expect(t, !f.eng.dirty && !f.eng.restyle_needed, "resized between breakpoints")
-	// across one: rebuilt and restyled
+	testing.expect(t, !f.eng.dirty && !f.eng.restyle_needed && !f.eng.gates_pending, "resized between breakpoints")
+	// across one: the gates flip, the rules stay
 	env.width = 950
 	engine_set_environment(f.eng, env)
-	testing.expect(t, f.eng.dirty && f.eng.restyle_needed, "resized across a breakpoint")
+	testing.expect(t, !f.eng.dirty && f.eng.gates_pending, "resized across a breakpoint")
 	restyle(&f)
 	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2))
+}
+
+// A media query that changes value restyles the elements its rules reach, not the document (media_gate.odin): the same styles as
+// a full pass gives, the elements nothing reaches keep their records.
+@(test)
+media_flip_restyles_what_its_rules_reach :: proc(t: ^testing.T) {
+	f := load(`<style>
+		.w { margin-top: 1px }
+		@media (min-width: 900px) { .w { margin-top: 2px } #p { font-size: 30px } .q { display: none } }
+		@media (min-width: 900px) { @media (min-width: 1200px) { #n { margin-left: 9px } } }
+		@supports (display: grid) { @media (max-width: 899px) { #s { margin-left: 4px } } }
+	</style><div id=a class=w></div><div id=b></div><div id=p><span id=c style="margin-left: 2em"></span></div>
+	<div id=d class=w></div><div id=e class=q></div><div id=n></div><div id=s></div><div id=z><i id=y></i></div>`)
+	defer unload(&f)
+	e := f.eng
+	testing.expect(t, len(e.gates) == 5, "four blocks (and the unused first slot)")
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2) && at(&f, "e").display == .None && near(at(&f, "c").margin[.Left].v, 60))
+	testing.expect(t, near(at(&f, "n").margin[.Left].v, 9) || near(at(&f, "n").margin[.Left].v, 0))
+	env := e.env
+	before_z, before_y := at(&f, "z"), at(&f, "y")
+	env.width = 700
+	testing.expect(t, engine_set_environment(e, env))
+	testing.expect(t, !e.dirty && !e.restyle_needed && e.gates_pending, "a breakpoint is crossed: no rebuild, no full pass")
+	changed, ok := restyle_media(e, f.doc, f.st)
+	testing.expect(t, ok && changed && !e.gates_pending)
+	testing.expect_value(t, e.last_restyle.marked, 7)   // a, d, p and its child (font-size is inherited), e, n, s
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 1) && near(at(&f, "d").margin[.Top].v, 1), "the elements of .w")
+	testing.expect(t, at(&f, "e").display != .None && near(at(&f, "s").margin[.Left].v, 4), "display and a rule that comes in")
+	testing.expect(t, near(at(&f, "c").margin[.Left].v, 32), "a child whose em follows the font size of its parent")
+	testing.expect(t, at(&f, "z") == before_z && at(&f, "y") == before_y, "what no rule reaches keeps its record")
+	testing.expect_value(t, verify_styles(e, f.doc, f.st, context.temp_allocator), "")
+	// and back: the wide document again
+	env.width = 1300
+	engine_set_environment(e, env)
+	changed, ok = restyle_media(e, f.doc, f.st)
+	testing.expect(t, ok && changed)
+	testing.expect(t, near(at(&f, "n").margin[.Left].v, 9), "a nested block holds when both do")
+	testing.expect(t, near(at(&f, "a").margin[.Top].v, 2) && at(&f, "e").display == .None)
+	testing.expect_value(t, verify_styles(e, f.doc, f.st, context.temp_allocator), "")
+	// a width that crosses nothing asks for nothing
+	env.width = 1400
+	engine_set_environment(e, env)
+	testing.expect(t, !e.gates_pending && !e.restyle_needed)
+}
+
+// Preferences written that are not the style engine's (the developer tools' size at the end of a drag of their separator hands
+// every page its settings again) leave its rules and the styles alone.
+@(test)
+configure_with_the_same_settings_is_nothing :: proc(t: ^testing.T) {
+	f := load(`<style>#a { margin-top: 2px }</style><div id=a></div>`)
+	defer unload(&f)
+	same := settings_default()
+	testing.expect(t, !engine_configure(f.eng, same), "the same settings")
+	testing.expect(t, !f.eng.dirty, "no rebuild")
+	same.default_font_size += 1
+	testing.expect(t, engine_configure(f.eng, same), "another default font size")
+	testing.expect(t, f.eng.dirty)
+	settings_destroy(&same)
+}
+
+// Blocks that decide something when the rules are read (the order of the layers, animations, fonts), a media attribute on a sheet and
+// the preference keep the rebuild.
+@(test)
+media_blocks_that_stay_a_rebuild :: proc(t: ^testing.T) {
+	f := load(`<style>@media (min-width: 900px) { @keyframes k { to { opacity: 0 } } #a { margin-top: 2px } }</style><div id=a></div>`)
+	defer unload(&f)
+	testing.expect(t, len(f.eng.gates) == 0, "a block with @keyframes is not gated")
+	env := f.eng.env
+	env.width = 700
+	engine_set_environment(f.eng, env)
+	testing.expect(t, f.eng.dirty && !f.eng.gates_pending)
+
+	s := settings_default()
+	s.media_partial = false
+	g := load(`<style>@media (min-width: 900px) { #a { margin-top: 2px } }</style><div id=a></div>`, s)
+	defer unload(&g)
+	settings_destroy(&s)
+	testing.expect(t, len(g.eng.gates) == 0)
+	env = g.eng.env
+	env.width = 700
+	engine_set_environment(g.eng, env)
+	testing.expect(t, g.eng.dirty && g.eng.restyle_needed, "style.media_queries.partial off: as before")
 }
 
 // A sheet's own media list (<style media>, <link media>) counts like an @media rule.

@@ -81,6 +81,9 @@ demo_frame :: proc(d: ^Demo, dir: string) -> (style_diff: string) {
 	if !full && !style.state_equal(d.state, d.st.state) {
 		if _, ok := style.restyle_state(d.eng, d.doc, d.st, d.state); !ok { full = true } else { partial = true }
 	}
+	if !full && d.eng.gates_pending {   // a media query changed value: the elements its rules reach (style/media_gate.odin)
+		if _, ok := style.restyle_media(d.eng, d.doc, d.st); !ok { full = true } else { partial = true }
+	}
 	if full {
 		demo_sheets(d, dir)
 		old := d.st

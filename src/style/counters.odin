@@ -497,11 +497,12 @@ marker_for :: proc(s: List_Marker_Style, v: i64, allocator := context.allocator)
 
 // A partial restyle has no counter walk: a box keeps the resolved values of its previous style when nothing that feeds
 // the counters changed; otherwise the restyle cannot be scoped (false) and the caller does a full pass.
-counters_carry_over :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, old, c: ^Computed, alloc: runtime.Allocator) -> bool {
+counters_carry_over :: proc(s: ^Styled, doc: ^dom.Document, h: base.Handle, old, c: ^Computed, alloc: runtime.Allocator, in_task := false) -> bool {
 	used := s.counters_used
 	if old == nil { resolve_static(doc, h, c, alloc); return !used || !box_feeds_counters(c) }
 	if used {
-		if (old.display == .None) != (c.display == .None) && subtree_feeds_counters(s, doc, h, old, c) { return false }
+		// (a style thread cannot look at the following siblings' styles, which other threads write: the counters are resolved again)
+		if (old.display == .None) != (c.display == .None) && (in_task || subtree_feeds_counters(s, doc, h, old, c)) { return false }
 		if (old.display == .List_Item) != (c.display == .List_Item) { return false }
 		if !deep_equal(&old.counter_reset, &c.counter_reset, type_info_of(type_of(c.counter_reset))) ||
 		   !deep_equal(&old.counter_increment, &c.counter_increment, type_info_of(type_of(c.counter_increment))) ||
