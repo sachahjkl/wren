@@ -51,8 +51,12 @@ FRAME_PREFS := [?]config.Def{
 		description = "The time each frame shows (requestAnimationFrame timestamps, CSS animations, smooth scrolling) is the vblank it starts at, so motion advances by whole refresh periods. Off: the time the frame starts computing."},
 	{name = "browser.frame.input_immediate", kind = .Bool, default = {b = true},
 		description = "A frame woken by input (a click, a wheel notch, a key) is drawn and shown at once, without waiting for the swap chain's slot nor for a refresh: the interface answers within the next composition instead of one or two refreshes later. Off: frames keep their pacing. On a display without variable refresh, the frame may tear."},
+	{name = "browser.frame.input_idle_periods", kind = .Float, default = {f = 1.5}, bounded = true, min = 0, max = 100, unit = "refreshes",
+		description = "With input_immediate, only the frame that starts an answer to input is shown at once: one made after no frame was presented for this many refresh periods (the interface was at rest). While frames follow one another (a drag, a wheel, a pointer sweeping the window: input every millisecond) each waits for the screen's slot and is shown at the next refresh, one per refresh: the motion advances evenly. 0: every frame woken by input is shown at once (hundreds a second during a drag, which pile up in the swap chain and are shown a refresh each: the picture advances in jumps)."},
 	{name = "browser.frame.latency_probe", kind = .Bool, default = {b = false},
 		description = "Measures the time from each input event to the refresh that showed it, stage by stage (wait for the frame, build and draw, Present, scan-out): p50 / p95 / max in the `latency` field of `wren ctl stats` (`stats --reset-latency` starts a new measure). The environment variable WREN_LATENCY=1 turns it on for one run. Off: nothing is recorded."},
+	{name = "browser.frame.drag_probe", kind = .Bool, default = {b = false},
+		description = "Records, for each frame made while a tab is dragged, the pointer it was built from, where the tab was drawn and the refresh that showed it: `dragSamples` in `wren ctl stats` (`stats --reset-frames` starts a new run). Off: nothing is recorded."},
 	{name = "browser.frame.video_at_vblank", kind = .Bool, default = {b = true},
 		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
 	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
@@ -74,6 +78,8 @@ Pacer_Settings :: struct {
 	input_immediate: bool,
 	video_at_vblank: bool,
 	latency_probe: bool,
+	drag_probe: bool,
+	input_idle_periods: f64,
 }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
@@ -86,6 +92,8 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		resize_hold_ms = int(config.int_of(p, "browser.frame.resize_hold_ms")),
 		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
 		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
+		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
+		input_idle_periods = config.float_of(p, "browser.frame.input_idle_periods"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
@@ -153,6 +161,8 @@ Pacer :: struct {
 	resize_held: bool,        // this frame comes within browser.frame.resize_hold_ms of one: shown at once, paced as any frame (resize_burst)
 	input_frame: bool,        // this frame was woken by input: shown at once (browser.frame.input_immediate)
 	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize or an input frame)
+	read_tick:  i64,          // tick this frame had read its input (the key of its Displayed_Frame)
+	present_ns: i64,          // tick of the last present (pacer_end_frame)
 }
 
 pacer: Pacer
@@ -210,6 +220,12 @@ resize_burst :: proc(now_ns, last_ns: i64, hold_ms: int) -> bool {
 	return hold_ms > 0 && last_ns != 0 && now_ns - last_ns < i64(hold_ms) * 1_000_000
 }
 
+// Whether a frame woken by input starts an answer to it (shown at once) rather than continues one (waits for the slot like any
+// frame): the loop idled before it, or nothing was presented for `periods` refresh periods (0: every frame does).
+input_starts_answer :: proc(idled: bool, since_present_ns: i64, period_ms, periods: f64) -> bool {
+	return idled || periods <= 0 || f64(since_present_ns) > period_ms * periods * 1e6
+}
+
 // Present and the swap chain's latency for a frame: the resize step, a frame of the burst after it, an input frame.
 pacer_at_once :: proc() -> bool { return pacer.resizing || pacer.resize_held || pacer.input_frame }
 
@@ -247,7 +263,12 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	pacer.resize_held = !pacer.resizing && app.presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
 	if resized || dragged { pacer.resize_ns = tick }
 	input := shell_user_input_pending()
-	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate
+	// Only the frame that starts an answer to input is shown at once: while frames follow one another (a drag, the wheel,
+	// a pointer sweeping the page: input every millisecond) every frame waits for the screen's slot, one per refresh.
+	// Shown at once, each of the hundreds of frames a second was presented over the one before and the swap chain's
+	// three buffers filled with frames a millisecond apart that the screen then showed one per refresh: the picture
+	// advanced a millisecond for three refreshes, then jumped (see tools\drag_fluidity.ps1).
+	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
 	pacer_latency(app, &pacer.latency, pacer_at_once())
@@ -301,7 +322,10 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 		if ev.stamp._nsec != 0 && (first._nsec == 0 || ev.stamp._nsec < first._nsec) { first = ev.stamp }
 	}
 	if first._nsec != 0 { render.set_frame_input(&app.r, first) }
-	render.set_frame_read(&app.r, time.tick_now())
+	read := time.tick_now()
+	pacer.read_tick = read._nsec
+	render.set_frame_read(&app.r, read)
+	drag_probe_count_moves(events)
 	render.set_frame_continuous(&app.r, pacer.continuous)
 }
 
@@ -309,7 +333,9 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 pacer_end_frame :: proc(app: ^App) {
 	pacer.slot_held = false   // the present used it
 	shell_presented()
-	for d in render.take_displayed(&app.r) { hud_displayed(d) }
+	pacer.present_ns = time.tick_now()._nsec
+	drag_probe_presented()
+	for d in render.take_displayed(&app.r) { hud_displayed(d); drag_probe_displayed(d) }
 }
 
 // A tick of core:time on the event loop clock (ms since the loop started), the clock pages see.
