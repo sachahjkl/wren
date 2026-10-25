@@ -23,6 +23,7 @@ package browser
 
 import "core:fmt"
 import "core:math"
+import "core:os"
 import "core:strconv"
 import "core:strings"
 import "core:time"
@@ -50,6 +51,8 @@ FRAME_PREFS := [?]config.Def{
 		description = "The time each frame shows (requestAnimationFrame timestamps, CSS animations, smooth scrolling) is the vblank it starts at, so motion advances by whole refresh periods. Off: the time the frame starts computing."},
 	{name = "browser.frame.input_immediate", kind = .Bool, default = {b = true},
 		description = "A frame woken by input (a click, a wheel notch, a key) is drawn and shown at once, without waiting for the swap chain's slot nor for a refresh: the interface answers within the next composition instead of one or two refreshes later. Off: frames keep their pacing. On a display without variable refresh, the frame may tear."},
+	{name = "browser.frame.latency_probe", kind = .Bool, default = {b = false},
+		description = "Measures the time from each input event to the refresh that showed it, stage by stage (wait for the frame, build and draw, Present, scan-out): p50 / p95 / max in the `latency` field of `wren ctl stats` (`stats --reset-latency` starts a new measure). The environment variable WREN_LATENCY=1 turns it on for one run. Off: nothing is recorded."},
 	{name = "browser.frame.video_at_vblank", kind = .Bool, default = {b = true},
 		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
 	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
@@ -67,6 +70,7 @@ Pacer_Settings :: struct {
 	resize_immediate: bool,
 	input_immediate: bool,
 	video_at_vblank: bool,
+	latency_probe: bool,
 }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
@@ -78,6 +82,7 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
 		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
 		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
+		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
 	return s
@@ -148,12 +153,14 @@ pacer: Pacer
 
 pacer_init :: proc(app: ^App) {
 	pacer.cfg = pacer_settings_from_prefs(&app.prefs)
+	render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
 	CREATE_WAITABLE_TIMER_HIGH_RESOLUTION :: 0x2
 	pacer.timer = win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
 	if pacer.timer == nil { pacer.timer = win.CreateWaitableTimerExW(nil, nil, 0, win.TIMER_ALL_ACCESS) }   // before Windows 10 1803
 	pacer.watch = config.watch(&app.prefs, "browser.frame.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		pacer.cfg = pacer_settings_from_prefs(p)
+		render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
 		pacer.display.serial = 0   // plan again
 		app.frames_requested = max(app.frames_requested, 2)
 	}, app)
@@ -266,6 +273,7 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 		if ev.stamp._nsec != 0 && (first._nsec == 0 || ev.stamp._nsec < first._nsec) { first = ev.stamp }
 	}
 	if first._nsec != 0 { render.set_frame_input(&app.r, first) }
+	render.set_frame_read(&app.r, time.tick_now())
 	render.set_frame_continuous(&app.r, pacer.continuous)
 }
 

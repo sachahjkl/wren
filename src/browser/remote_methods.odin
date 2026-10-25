@@ -76,7 +76,7 @@ remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 	case "Wren.drag":            return m_drag(app, c)
 	case "Wren.type":            return m_type(app, c)
 	case "Wren.key":             return m_key(app, c)
-	case "Wren.stats":           return m_stats(app)
+	case "Wren.stats":           return m_stats(app, c)
 	case "Wren.console":         return m_console(app, c)
 	case "Wren.network":         return m_network(app, c)
 	case "Wren.getPref":         return m_pref_get(app, c)
@@ -998,10 +998,27 @@ key_from_name :: proc(n: string) -> (platform.Key, bool) {
 // Introspection
 
 @(private = "file")
-m_stats :: proc(app: ^App) -> Reply {
+m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	n := &hud.nums
 	b := builder()
+	reset_latency, _ := remote.param_bool(c.params, "resetLatency")
+	latency := render.latency_summary(&app.r)
+	latency_on := render.latency_probe_on(&app.r)
+	if reset_latency { render.latency_reset(&app.r) }
 	j_begin(&b)
+	if latency_on {
+		j_key(&b, "latency"); j_begin(&b)
+		j_bool(&b, "tearingSupported", render.tearing_supported(&app.r)); j_bool(&b, "tearing", render.present_mode(&app.r) == .Tearing)
+		j_int(&b, "samples", i64(latency.samples)); j_num(&b, "refreshMs", f64(latency.period_ms))
+		j_int(&b, "framesShown", i64(latency.frames)); j_int(&b, "framesShownFromInput", i64(latency.with_input))
+		j_num(&b, "queueMean", f64(latency.queue_mean)); j_int(&b, "queueMax", i64(latency.queue_max))
+		for st in ([?]struct { name: string, v: render.Latency_Stat }{{"waitMs", latency.wait}, {"workMs", latency.work}, {"presentMs", latency.present}, {"scanMs", latency.scan}, {"totalMs", latency.total}, {"totalRefreshes", latency.refreshes}}) {
+			j_key(&b, st.name); j_begin(&b)
+			j_num(&b, "p50", f64(st.v.p50)); j_num(&b, "p95", f64(st.v.p95)); j_num(&b, "max", f64(st.v.max)); j_num(&b, "mean", f64(st.v.mean))
+			j_end(&b)
+		}
+		j_end(&b)
+	}
 	j_num(&b, "fps", f64(n.fps)); j_int(&b, "frames", i64(n.frames))
 	j_num(&b, "cpuMs", f64(n.cpu_mean)); j_num(&b, "cpuP95Ms", f64(n.cpu_p95)); j_num(&b, "cpuP99Ms", f64(n.cpu_p99)); j_num(&b, "cpuMaxMs", f64(n.cpu_max))
 	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
