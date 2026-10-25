@@ -234,14 +234,13 @@ sites_page_html :: proc(app: ^App, filter, notice: string) -> string {
 }
 
 // about:sites, about:sites?q=filter; about:sites?clear=<host or *>&type=<all|local|session|idb|cookies|cache> removes data when
-// the browser itself or about:sites asks (a web page linking there does nothing).
-show_sites_page :: proc(app: ^App, t: ^Tab, target: string, from: ^page.Page) {
+// the person or about:sites itself asks (`acts`, from nav_judge: a web page linking there, or a navigation replayed, does nothing).
+show_sites_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 	query := ""
 	if i := strings.index_byte(target, '?'); i >= 0 { query = target[i + 1:] }
 	filter := sd_param(query, "q")
 	notice := ""
-	trusted := from == nil || is_sites_address(from.env.location.href)
-	if clear_host := sd_param(query, "clear"); clear_host != "" && trusted {
+	if clear_host := sd_param(query, "clear"); clear_host != "" && acts {
 		kinds: Clear_Kinds
 		switch sd_param(query, "type") {
 		case "local": kinds = {.Local}

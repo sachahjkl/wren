@@ -166,11 +166,12 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 
 @(private = "file") tab_ids: u64
 
-tab_open :: proc(app: ^App, address := "") -> ^Tab {
+tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav_Origin.Page) -> ^Tab {
 	t := tab_new(app)
 	app.current = len(app.tabs) - 1
 	ui.field_set(&app.address, address)
-	navigate(app, t, address)   // an empty address opens the homepage
+	// an empty address opens the homepage; one that is refused (nav_trust.odin) leaves the homepage too, not an empty tab
+	if !navigate(app, t, address, from, origin = origin) { navigate(app, t, "") }
 	return t
 }
 
@@ -234,7 +235,7 @@ tab_free :: proc(app: ^App, t: ^Tab) {
 tab_log :: proc(t: ^Tab, level: page.Log_Level, message: string) { console_append(t, level, message) }
 
 console_sink :: proc(user: rawptr, level: page.Log_Level, message: string) {
-	if the_remote.active && remote_take_console(message) { return }   // (an answer of a remote script, not a message)
+	if the_remote.active && remote_take_console(message, (^Tab)(user).id) { return }   // (an answer of a remote script, not a message)
 	t := (^Tab)(user)
 	tab_log(t, level, message)
 	if remote_subscribed() { remote_event("Runtime.consoleAPICalled", fmt.tprintf(`{{"tabId":%d,"type":%q,"text":%s}}`, t.id, level == .Error ? "error" : level == .Warn ? "warning" : "log", remote.quote(message))) }
@@ -260,16 +261,24 @@ normalize_address :: proc(input: string) -> string {
 }
 
 // Starts loading `address` in `t`. `from` is the page the navigation comes from (a link click), nil for the address bar.
+// `origin` says who chose the address (nav_trust.odin): a person (`.User`: the address bar, a menu, the command line), the
+// browser showing an entry again (`.Replay`: back, forward, reload, a restored tab), or a document (`.Page`, the default: a
+// navigation nobody vouches for has no privilege). false: refused, nothing changed and nothing recorded.
 // `record`: false when the navigation walks the history (back, forward, reload) instead of extending it.
 // `method` / `body` / `headers`: a form submission (POST); the history keeps the address only.
 // `restore`: the navigation shows the current entry again (back, forward, a reload, a restored tab): what it showed when it
 // was left comes back with it (history_restore.odin).
-navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil, restore := false, cache := fetch.Cache_Mode.Default) {
+navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, user_activation := false, record := true, method := "", body: []byte = nil, headers: []fetch.Header_Pair = nil, restore := false, cache := fetch.Cache_Mode.Default, origin := Nav_Origin.Page) -> (accepted: bool) {
 	// asked by the chrome during a chrome frame (shell_frames.odin): once the page holding the thread is done (a form's
 	// method and body come from page input, which is never handled there)
-	if shell_nested() { shell_defer({kind = .Navigate, tab = t.id, text = strings.clone(address), flag = user_activation, record = record, restore = restore, cache = cache}); return }
+	if shell_nested() { shell_defer({kind = .Navigate, tab = t.id, text = strings.clone(address), flag = user_activation, record = record, restore = restore, cache = cache, origin = origin, from = from}); return true }
 	target := strings.clone(normalize_address(address), context.temp_allocator)
-	if target == "" { target = strings.clone(app.cfg.homepage, context.temp_allocator) }
+	origin := origin
+	if target == "" { target, origin = strings.clone(app.cfg.homepage, context.temp_allocator), .User }   // (the person's own setting)
+	verdict := nav_judge(origin, from != nil ? &from.env : nil, app.loader.profile.settings.file_access, target)
+	if verdict.refuse != "" { nav_refused(t, from, target, verdict.refuse); return false }
+	accepted = true   // (from here on the early returns of the built-in pages are acceptances)
+	target = verdict.address
 	cache_prof_leave(t)   // (profile build: what the page cost, http_cache_ui.odin)
 	leave_page(app, t)   // the entry being left keeps what it shows; the page may go to the back/forward cache
 	t.nav_state.no_store = false
@@ -285,7 +294,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if restore && entry != nil && hcfg.restore_zoom && entry.persisted.zoom > 0 { t.zoom = entry.persisted.zoom }
 	if restore { timing_begin(t, false, target) }
 	defer if restore { restore_begin(app, t, entry, .New_Document) }
-	license_file := is_license_file_address(target) && (from == nil || builtin_document(from))   // license_shell.odin
+	license_file := is_license_file_address(target) && verdict.acts   // license_shell.odin
 	if is_builtin_address(target) || license_file { hold_release(t); bfcache_take(app, t) }   // (show_* closes the tab's navigation scope)
 	if target == "about:config" { show_config(app, t); return }
 	if is_history_address(target) { show_history(app, t, target); return }
@@ -293,10 +302,10 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if target == HOME_URL { show_home(app, t); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
-	if is_wren_address(target) { show_wren_page(app, t, target, from); return }   // about_wren.odin
+	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin
 	if license_file { license_open_file(app, t, target); return }
-	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, from); return }   // http_cache_ui.odin
-	if is_sites_address(target) { hold_release(t); bfcache_take(app, t); show_sites_page(app, t, target, from); return }   // site_data_ui.odin
+	if is_cache_address(target) { hold_release(t); bfcache_take(app, t); show_cache_page(app, t, target, verdict.acts); return }   // http_cache_ui.odin
+	if is_sites_address(target) { hold_release(t); bfcache_take(app, t); show_sites_page(app, t, target, verdict.acts); return }   // site_data_ui.odin
 	load := new(Doc_Load)
 	load.tab = t
 	load.started_ns = host.now_ns(&app.loop)
@@ -308,7 +317,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		target = strings.clone(normalize_address(target[len(VIEW_SOURCE):]), context.temp_allocator)
 	}
 	// (a link of a built-in page opens as the address bar would: about:demos links to local files)
-	if from != nil && !builtin_document(from) { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
+	if from != nil && !verdict.trusted { load.initiator, load.has_initiator = fetch.environment_clone(from.env), true }
 
 	// the previous page stays on screen until this one paints, or closes now (first_paint.odin)
 	hold_begin(app, t, target)
@@ -338,6 +347,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 		},
 		on_event = document_event, user = load, scope = t.nav, collect = true,
 	})
+	return
 }
 
 history_push :: proc(t: ^Tab, target: string) {
@@ -374,7 +384,7 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	page.session_goto(&t.session, e)
 	sync_history(t)
 	if bfcache_restore(app, t, e) { return }
-	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app))
+	navigate(app, t, strings.clone(e.url, context.temp_allocator), record = false, restore = true, cache = history_cache_mode(app), origin = .Replay)
 }
 
 same_document_url :: proc(app: ^App, t: ^Tab, address: string) {
@@ -395,9 +405,15 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	case .Assign:
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p)
 	case .Replace:
+		// judged before the entry changes: a refused address (nav_trust.odin) must not replace the page's entry
+		v := nav_judge(.Page, &p.env, app.loader.profile.settings.file_access, normalize_address(req.url))
+		if v.refuse != "" {
+			nav_refused(t, p, req.url, v.refuse)
+			break
+		}
 		leave_page(app, t, keep = false, save = false)
 		if cur := page.session_current(&t.session); cur != nil { page.persisted_clear(&cur.persisted) }   // another document in the entry
-		page.session_replace(&t.session, req.url)
+		page.session_replace(&t.session, v.address)
 		sync_history(t)
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p, record = false)
 	case .Reload:
@@ -425,7 +441,7 @@ attach_page :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 reload :: proc(app: ^App, t: ^Tab, bypass_cache := false) {
 	if shell_defer({kind = .Reload, tab = t.id, flag = bypass_cache}) { return }   // (shell_frames.odin)
 	leave_page(app, t, keep = false)
-	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, cache = bypass_cache ? .Reload : .No_Cache)
+	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, cache = bypass_cache ? .Reload : .No_Cache, origin = .Replay)
 }
 
 load_closed :: proc(data: rawptr) {
@@ -1160,8 +1176,8 @@ main :: proc() {
 	crashtrace.set_report_dir(strings.concatenate({app.profile_dir, "/crashes"}, context.temp_allocator), fmt.tprintf("%s %s (%s %s)", APP_NAME, APP_VERSION, app_commit(), APP_COMMIT_DATE))
 	_, _, prefs_file := profile_paths(app)
 	config.load_file(&app.prefs, prefs_file, .User)
-	if policy_file == "" { policy_file = "policies.txt" }
-	config.load_file(&app.prefs, policy_file, .Policy)
+	if policy_file == "" { policy_file = default_policy_file(desktop.executable_path(context.temp_allocator)) }   // beside the program, not in the working directory (policy_file.odin)
+	if policy_file != "" { config.load_file(&app.prefs, policy_file, .Policy) }
 	register_all_prefs(&app.prefs)
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
@@ -1216,9 +1232,9 @@ main :: proc() {
 	prof_mark(.Shell)
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
-	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address) }   // session.odin
+	if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
 	if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
-		for a in rest[1:] { tab_open(app, command_line_address(a)) }
+		for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
 		app.current = len(app.tabs) - len(rest)
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }

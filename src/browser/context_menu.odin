@@ -243,14 +243,14 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 	if r.link != "" {
 		sep(&groups)
 		if ui.menu_item("Open link").clicked { navigate(app, t, strings.clone(r.link, context.temp_allocator), p, user_activation = true) ; return }
-		if ui.menu_item("Open link in new tab").clicked { open_in_new_tab(app, r.link) }
+		if ui.menu_item("Open link in new tab").clicked { open_in_new_tab(app, r.link, p) }
 		ui.menu_separator()
 		if ui.menu_item("Copy link address").clicked { clip_set(r.link) }
 		if ui.menu_item("Copy link text", enabled = r.link_text != "").clicked { clip_set(r.link_text) }
 	}
 	if r.image != "" {
 		sep(&groups)
-		if ui.menu_item("Open image in new tab").clicked { open_in_new_tab(app, r.image) }
+		if ui.menu_item("Open image in new tab").clicked { open_in_new_tab(app, r.image, p) }
 		if ui.menu_item("Save image as…").clicked { save_as(app, r.image, suggested_name(r.image, "image")) }
 		view := page.image_view(p, r.image_node)
 		if ui.menu_item("Copy image", enabled = view.state == .Ready && view.id != 0).clicked { copy_image(app, view) }
@@ -261,7 +261,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Copy", "Ctrl+C").clicked { copy_selection(app, t) }
 		words := strings.trim_space(r.selection)
 		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(&ix), short(words, 28))).clicked {
-			open_in_new_tab(app, search_url(&ix, words))
+			open_in_new_tab(app, search_url(&ix, words), origin = .User)
 		}
 	}
 	if groups == 0 {
@@ -299,7 +299,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 	ui.menu_separator()
 	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
-	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url) }
+	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
 	if ui.menu_item("Close other tabs", enabled = len(app.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
@@ -319,7 +319,7 @@ address_menu_items :: proc(app: ^App) {
 	if ui.menu_item("Paste", "Ctrl+V", enabled = clip != "").clicked { ui.field_paste(f) }
 	if ui.menu_item("Paste and go", enabled = strings.trim_space(clip) != "").clicked {
 		target := strings.clone(strings.trim_space(clip), context.temp_allocator)
-		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(target)) }
+		if t := current_tab(app); t != nil { navigate(app, t, address_or_search(target), origin = .User) }
 	}
 	if ui.menu_item("Delete", "Del", enabled = sel).clicked { ui.field_delete(f) }
 	ui.menu_separator()
@@ -361,7 +361,7 @@ reopen_closed_tab :: proc(app: ^App) {
 	if len(closed_tabs) == 0 { return }
 	address := pop(&closed_tabs)
 	defer delete(address)
-	open_in_new_tab(app, address)
+	open_in_new_tab(app, address, origin = .Replay)
 }
 
 // A link of the page followed (a click, Enter on it): a fragment of the same document scrolls, anything else navigates.
@@ -374,9 +374,10 @@ follow_link :: proc(app: ^App, t: ^Tab, href: string) {
 	navigate(app, t, resolved.href, p, user_activation = true)
 }
 
-open_in_new_tab :: proc(app: ^App, address: string) {
+// `origin` and `from` as in navigate: the default is a document's choice, which gets no privilege (nav_trust.odin).
+open_in_new_tab :: proc(app: ^App, address: string, from: ^page.Page = nil, origin := Nav_Origin.Page) {
 	keep := strings.clone(address, context.temp_allocator)
-	tab_open(app, keep)
+	tab_open(app, keep, from, origin)
 }
 
 close_other_tabs :: proc(app: ^App, keep: int) {

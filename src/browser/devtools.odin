@@ -475,7 +475,7 @@ devtools_settings_menu :: proc(app: ^App, t: ^Tab) {
 	if ui.menu_item("Select an element in the page###dt_m_pick", cmd_key("view.devtools_pick")).clicked { devtools_pick(app) }
 	if ui.menu_item("Open the command palette###dt_m_palette", "Ctrl+Shift+P").clicked { palette_toggle(app) }
 	if ui.menu_item("Reset the layout of the panels###dt_m_layout").clicked { devtools_reset_layout(app) }
-	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools") }
+	if ui.menu_item("Open about:config for the developer tools###dt_m_cfg").clicked { open_in_new_tab(app, "about:config?q=browser.devtools", origin = .User) }
 	if ui.menu_item("Close the developer tools###dt_m_close", "F12").clicked { devtools_toggle(app) }
 }
 

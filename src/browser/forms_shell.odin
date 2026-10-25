@@ -1521,7 +1521,7 @@ post_done :: proc(job: ^Post_Job) {
 submit_navigate :: proc(app: ^App, t: ^Tab, from: ^page.Page, s: ^forms.Submission) {
 	dest := t
 	if strings.equal_fold(s.target, "_blank") {
-		dest = tab_open(app, "")
+		dest = tab_open(app, "", origin = .User)
 	}
 	if s.method == .Post {
 		headers := []fetch.Header_Pair{{"Content-Type", s.content_type}}
@@ -1548,7 +1548,7 @@ frames_take_submission :: proc(app: ^App, p: ^page.Page, s: ^forms.Submission) -
 	n := page.frames_find_target(p, target)
 	if n == nil {
 		// _blank, or a name nothing has: a new tab (a GET; a POST's body goes with it only from a tab)
-		tab_open(app, s.url)
+		tab_open(app, s.url, p)
 		return true
 	}
 	if n.parent == nil {

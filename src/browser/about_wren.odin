@@ -394,17 +394,16 @@ wren_page_data :: proc(app: ^App, notice: Wren_Notice) -> Wren_Page {
 	}
 }
 
-// about:wren / about:licenses in `t`. `from`: the page that navigated here (the form of about:wren, whose action is
+// about:wren / about:licenses in `t`. `acts`: the navigation may run the query (the form of about:wren, whose action is
 // about:wren?action=register&key=...: a form that does not post to http(s) always submits with GET). The query is acted
-// on only when it comes from this page or from the browser's own UI, never from a web page.
-show_wren_page :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, notice := Wren_Notice{}) {
+// on only when `acts` (nav_judge: the person typed it, or it comes from this page), never from a web page nor from a replay.
+show_wren_page :: proc(app: ^App, t: ^Tab, address: string, acts := false, notice := Wren_Notice{}) {
 	notice := notice
 	query := ""
 	if i := strings.index_byte(address, '?'); i >= 0 { query = address[i + 1:] }
-	trusted := from == nil || builtin_document(from)
 	shown := address
 	choose := false
-	if trusted && query != "" {
+	if acts && query != "" {
 		params := url.params_make(context.temp_allocator)
 		url.params_parse(&params, query)
 		notice = wren_query(app, params)

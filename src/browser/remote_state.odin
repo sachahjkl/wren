@@ -242,7 +242,7 @@ chrome_reset :: proc(app: ^App) {
 
 // One blank tab (or one at `address`) and no other: returns it. The tabs that stand in for a frame are not tabs.
 tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
-	fresh := tab_open(app, address == "" ? "about:blank" : address)
+	fresh := tab_open(app, address == "" ? "about:blank" : address, origin = .User)
 	for i := len(app.tabs) - 1; i >= 0; i -= 1 {
 		t := app.tabs[i]
 		if t == fresh || t.frame != nil { continue }
@@ -394,7 +394,7 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	// the tabs again, then the blank one that held the place goes
 	blank := app.tabs[app.current]
 	for t in cp.tabs {
-		nt := tab_open(app, t.url)
+		nt := tab_open(app, t.url, origin = .Replay)
 		zoom_set(app, nt, t.zoom)
 	}
 	for t, i in app.tabs { if t == blank { tab_close(app, i); break } }

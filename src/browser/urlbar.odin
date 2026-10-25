@@ -392,10 +392,10 @@ urlbar_open :: proc(app: ^App, t: ^Tab, i: int, new_tab: bool) -> bool {
 	}
 	urlbar_close()
 	if new_tab || t == nil {
-		tab_open(app, address)
+		tab_open(app, address, origin = .User)
 		ui.set_focus(0)
 	} else {
-		navigate(app, t, address)
+		navigate(app, t, address, origin = .User)
 		ui.set_focus(0)
 		forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
 	}
@@ -433,7 +433,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
 		if !urlbar_open(app, t, ub.sel, true) {
 			text := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
-			if text != "" { urlbar_close(); tab_open(app, address_or_search(text)); ui.set_focus(0) }
+			if text != "" { urlbar_close(); tab_open(app, address_or_search(text), origin = .User); ui.set_focus(0) }
 		}
 		return
 	}

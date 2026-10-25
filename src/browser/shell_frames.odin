@@ -105,6 +105,8 @@ Shell_Action :: struct {
 	flag:    bool,     // reload: bypass the cache; navigate: user activation
 	record, restore: bool,
 	cache:   fetch.Cache_Mode,
+	origin:  Nav_Origin,       // navigate: who chose the address (nav_trust.odin), kept across the wait
+	from:    ^page.Page,       // navigate: the document that asked; used only if a tab still shows it when the action runs
 }
 
 Shell_Frames :: struct {
@@ -488,7 +490,9 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 	case .Command:
 		if c := command(a.text); c != nil { command_run(app, t != nil ? t : current_tab(app), c) }
 	case .Navigate:
-		navigate(app, t, a.text, user_activation = a.flag, record = a.record, restore = a.restore, cache = a.cache)
+		from: ^page.Page   // (the page may be gone by now: it is passed only if a tab still has it)
+		for tab in app.tabs { if a.from != nil && tab.page == a.from { from = a.from; break } }
+		navigate(app, t, a.text, from, user_activation = a.flag, record = a.record, restore = a.restore, cache = a.cache, origin = a.origin)
 	case .Reload:
 		reload(app, t, a.flag)
 	case .History:

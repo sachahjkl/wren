@@ -786,7 +786,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 							go_entry(app, t, e)
 							return
 						}
-						open_in_new_tab(app, e.url)
+						open_in_new_tab(app, e.url, origin = .Replay)
 						tview.drag = {}
 						return
 					}
@@ -1088,7 +1088,7 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 			go_entry(app, t, e)
 			return
 		}
-		if ui.menu_item("Open in a new tab", "Middle click").clicked { ui.ctx_menu_close(); open_in_new_tab(app, address); return }
+		if ui.menu_item("Open in a new tab", "Middle click").clicked { ui.ctx_menu_close(); open_in_new_tab(app, address, origin = .Replay); return }
 		if ui.menu_item("Copy address", icon = GLYPH_COPY).clicked { clip_set(address); ui.ctx_menu_close() }
 		ui.menu_separator()
 		holds_current := false

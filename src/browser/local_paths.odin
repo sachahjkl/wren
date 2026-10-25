@@ -6,6 +6,7 @@ import "toolkit:ui"
 import "wb:config"
 import "wb:fetch"
 import "wb:host"
+import "wb:instance"
 import "wb:base"
 
 ////////////////////////////////
@@ -103,8 +104,9 @@ drop_files_init :: proc(app: ^App) {
 	if hwnd == nil { return }
 	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, 0)   // (core:sys/windows declares it without its result)
 	drop_hwnd = hwnd
-	// an elevated browser still takes drops from Explorer (UIPI lets these three messages through)
-	for m in ([]win.UINT{win.WM_DROPFILES, win.WM_COPYDATA, WM_COPYGLOBALDATA}) { ChangeWindowMessageFilterEx(hwnd, m, MSGFLT_ALLOW, nil) }
+	// an elevated browser still takes drops from Explorer (UIPI lets these three messages through). Only an elevated one: a normal
+	// browser keeps the default, which refuses them from processes of a lower integrity (a sandbox would otherwise open any path)
+	if instance.is_elevated() { for m in ([]win.UINT{win.WM_DROPFILES, win.WM_COPYDATA, WM_COPYGLOBALDATA}) { ChangeWindowMessageFilterEx(hwnd, m, MSGFLT_ALLOW, nil) } }
 	drop_files_apply(app)
 	config.watch(&app.prefs, "browser.drop.", proc(user: rawptr, name: string, p: ^config.Prefs) { drop_files_apply((^App)(user)) }, app)
 }
@@ -164,9 +166,9 @@ drop_open :: proc(data: rawptr) {
 		address := fetch.file_url_from_path(p, false, context.temp_allocator)   // a folder is redirected to its URL with '/'
 		if i == 0 && current_tab(app) != nil {
 			first = app.current
-			navigate(app, current_tab(app), address)
+			navigate(app, current_tab(app), address, origin = .User)
 		} else {
-			tab_open(app, address)
+			tab_open(app, address, origin = .User)
 			if first < 0 { first = app.current }
 		}
 	}

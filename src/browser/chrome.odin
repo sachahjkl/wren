@@ -193,7 +193,7 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	if res.committed && t != nil {
 		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
 		if address != "" {
-			navigate(app, t, address_or_search(address))
+			navigate(app, t, address_or_search(address), origin = .User)
 			ui.set_focus(0)
 			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
 		}

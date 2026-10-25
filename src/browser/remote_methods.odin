@@ -278,7 +278,7 @@ m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
 	address, _ := remote.param_string(c.params, "url")
 	background, _ := remote.param_bool(c.params, "background")
 	was := app.current
-	t := tab_open(app, address)
+	t := tab_open(app, address, origin = .User)
 	if background && was >= 0 && was < len(app.tabs) - 1 {
 		app.current = was
 		if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
@@ -346,7 +346,7 @@ m_navigate :: proc(app: ^App, c: ^Call) -> Reply {
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
 	if t == nil { return e }
-	navigate(app, t, address)
+	navigate(app, t, address, origin = .User)
 	app.frames_requested = max(app.frames_requested, 3)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url)))
@@ -427,7 +427,7 @@ m_evaluate :: proc(app: ^App, c: ^Call) -> Reply {
 		return rep
 	}
 	op := op_new(app, c, .Eval, timeout_of(c), "script")
-	op.eval_id = id
+	op.eval_id, op.tab = id, t.id   // (its answer counts from this tab only)
 	return Reply{deferred = true}
 }
 
