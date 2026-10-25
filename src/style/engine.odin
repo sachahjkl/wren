@@ -114,6 +114,7 @@ Engine :: struct {
 	registered_noninherited: int,               // how many of them do not inherit
 	container_sizes: map[base.Handle][2]f32,    // content boxes of query containers from the last layout (container.odin)
 	container_dependent: bool,                  // some @container rule or cq unit is in force
+	container_pending: [dynamic]base.Handle,    // containers whose size changed since the styles were computed: restyle_containers restyles their subtrees
 	rebuilds:  u64,                       // counts rebuilds: compiled keyframes and faces are stale after one
 	cur_base_url: string,                 // while flattening: the URL of the sheet being read
 	kf_order:  u32,
@@ -179,6 +180,7 @@ engine_destroy :: proc(e: ^Engine) {
 	delete(e.keyframe_sets)
 	delete(e.registered)
 	delete(e.container_sizes)
+	delete(e.container_pending)
 	delete(e.media_seen)
 	if e.has_spare { virtual.arena_destroy(&e.spare) }
 	settings_destroy(&e.settings)

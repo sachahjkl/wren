@@ -108,7 +108,7 @@ application_panel :: proc(app: ^App, t: ^Tab) {
 		dt_empty("###dt_app_none", .Tab_Application, "No page", "Storage of a web page appears here.")
 		return
 	}
-	room := dev.rect.max.x - dev.rect.min.x
+	room := dev_width()
 	ui.next({width = ui.fill(), height = ui.fill()})
 	if ui.row(.Start, {}, "###dt_app") {
 		// the areas
@@ -184,7 +184,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 	}
 	cookie_cols := a.area == .Cookies
 	// the header
-	w := dev.rect.max.x - dev.rect.min.x - (a.area == .Cookies ? 0 : 0)
+	w := dev_width() - (a.area == .Cookies ? 0 : 0)
 	widths := app_widths(a.area, max(w - dt_px(210), dt_px(260)))
 	app_header(a, widths)
 	if len(vis) == 0 {

@@ -344,7 +344,7 @@ items_list :: proc(app: ^App, d: ^Net_Detail, l: ^Dt_List, id: string, items: []
 @(private = "file")
 detail_headers :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	items := make([dynamic]Item, 0, 64, context.temp_allocator)
-	width := dev.rect.max.x - dev.rect.min.x
+	width := dev_width()
 	name_w := dt_px(172)
 	maxw := max(width * 0.5, dt_px(300)) - name_w - dt_px(40)
 	// general
@@ -392,7 +392,7 @@ detail_headers :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 @(private = "file")
 detail_payload :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	items := make([dynamic]Item, 0, 32, context.temp_allocator)
-	width := dev.rect.max.x - dev.rect.min.x
+	width := dev_width()
 	maxw := max(width * 0.5, dt_px(300)) - dt_px(172) - dt_px(40)
 	q := net_query_pairs(e.url)
 	if len(q) > 0 {
@@ -420,7 +420,7 @@ detail_payload :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 @(private = "file")
 detail_cookies :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	items := make([dynamic]Item, 0, 32, context.temp_allocator)
-	width := dev.rect.max.x - dev.rect.min.x
+	width := dev_width()
 	maxw := max(width * 0.5, dt_px(300)) - dt_px(172) - dt_px(40)
 	req_c := net_header(e.req_headers, "cookie")
 	sent := make([dynamic][2]string, 0, 8, context.temp_allocator)
