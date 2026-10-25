@@ -60,6 +60,22 @@ iridescent wash (a thin film: the hue goes round the spectrum with the angle bet
 of **glitter** flakes with a normal each that flash where the light mirrors into the eye, more on the slopes of the engraving; a **fresnel** rim
 on the lip of the frame. The result is toned (`1 - exp(-x)`) so that two lights never burn out the text above.
 
+### The card's turn, and its back (`card-back`)
+
+Three more arguments after `intensity`, `engrave` (1: texture 1 holds the lettering to raise) and the mode `seal` (0 the card, 1 the seal, 2 the
+back): `rx` and `ry`, the card's turn in **degrees** (`rotateX(rx) rotateY(ry)` as the page applies it: the CSS passes `var(--rx) var(--ry)`,
+registered numbers that transition together with the transform). The eye and the two lights are placed from it in the frame of the face the
+shader paints (`to_face`, `face_light` in `card_foil.wgsl`): the lights are points of the page over the card's plane, and the face's frame is the
+card's turned back by `rx`, `ry`; the back is the card turned half a turn about the vertical axis (`rotateY(180deg)` in the page), which mirrors x
+and z, so that the pointer's light stays where the pointer is on the screen and the back is lit as an object seen from behind. The pointer's own
+tilt (which used to be derived from `pointer-x`, `pointer-y`) is `rx = -py * 14`, `ry = px * 18`, written by the page's script.
+
+`card-back` is the same module in mode 2 with its own textures: texture 0 is the **front's relief inside out** (`about_card_back.odin`,
+`relief_map` with an `emboss` field: the height field negated, so the lip is a trough and the furrows of the guilloche ridges; the same grain) with
+the **logo of Wren raised** in the middle (the bird of `assets/logo_256.png`, taken from the light of the picture and its alpha, blurred for the
+bevel: `logo_height_field`); texture 1 is a line of raised lettering along the bottom (`back_engraving`, the brand: `WREN · FROMENT SOFTWARE`,
+nothing about the person). Two faces back to back, each `backface-visibility: hidden`; the one turned away is not painted (`open_plane`).
+
 ## Measured and tested
 
 * `src/style/wren_shader_test.odin`: parsing (names, numbers, percentages, `calc()`, `var()` and its fallback, the invalid forms), refusal in a
