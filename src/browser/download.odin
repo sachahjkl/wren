@@ -22,6 +22,7 @@ import win "core:sys/windows"
 import "toolkit:ui"
 import "wb:base"
 import "wb:config"
+import "wb:desktop"
 import "wb:fetch"
 import "wb:host"
 import "wb:http"
@@ -737,7 +738,9 @@ human_bytes :: proc(n: i64) -> string {
 @(private = "file")
 show_in_folder :: proc(path: string) {
 	args := win.utf8_to_wstring(fmt.tprintf("/select,\"%s\"", path), context.temp_allocator)
-	win.ShellExecuteW(nil, win.L("open"), win.L("explorer.exe"), args, nil, win.SW_SHOWNORMAL)
+	explorer := desktop.system_file("explorer.exe", .Windows)   // (a full path: a bare name is looked for in the working directory first)
+	if explorer == "" { return }
+	win.ShellExecuteW(nil, win.L("open"), win.utf8_to_wstring(explorer, context.temp_allocator), args, nil, win.SW_SHOWNORMAL)
 }
 
 downloads_init :: proc(app: ^App) { download_cfg(app) }

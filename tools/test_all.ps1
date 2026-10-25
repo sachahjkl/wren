@@ -210,6 +210,13 @@ Step 'the policy file is read beside the executable, never from the working dire
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\policy_file_e2e.ps1
 }
+Step 'a program of the working directory never runs in place of the system's (tools\planted_program_e2e.ps1: the report of a session that ended without one asks wevtutil.exe for Windows' record; one planted beside the document must not run)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\planted_program_e2e.ps1
+}
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null
