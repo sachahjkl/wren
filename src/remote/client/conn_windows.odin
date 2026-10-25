@@ -26,6 +26,8 @@ Conn :: struct {
 	pid:     int,             // the server's process, once known
 }
 
+@(private = "file") SECURITY_IDENTIFICATION :: 0x00010000   // SECURITY_IMPERSONATION_LEVEL SecurityIdentification << 16
+
 Call_Error :: enum u8 { None, No_Server, Timeout, Closed, Server }
 
 // Opens the pipe of `name`, retrying while it does not exist yet or is busy, for up to `wait_ms`.
@@ -34,7 +36,8 @@ connect :: proc(c: ^Conn, name: string, wait_ms: int) -> bool {
 	deadline := time.tick_add(time.tick_now(), time.Duration(wait_ms) * time.Millisecond)
 	delay := 1
 	for {
-		h := win.CreateFileW(path, win.GENERIC_READ | win.GENERIC_WRITE, 0, nil, win.OPEN_EXISTING, win.FILE_FLAG_OVERLAPPED, nil)
+		// (SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION: a server that is not Wren may read who we are but cannot act as us)
+		h := win.CreateFileW(path, win.GENERIC_READ | win.GENERIC_WRITE, 0, nil, win.OPEN_EXISTING, win.FILE_FLAG_OVERLAPPED | win.SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION, nil)
 		if h != win.INVALID_HANDLE_VALUE {
 			c.pipe = h
 			c.read_ev = win.CreateEventW(nil, true, false, nil)
