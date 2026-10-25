@@ -129,7 +129,34 @@ has_activation :: proc(f: ^Forms, h: base.Handle) -> bool {
 	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog:
 	}
 	if n != nil && (n.name == "a" || n.name == "area") && has_attr(n, "href") { return true }
+	if n != nil && n.name == "summary" && details_of_summary(f, h) != base.NIL_HANDLE { return true }
 	return false
+}
+
+// The <details> the <summary> `h` stands for (HTML §4.11.1: the first <summary> child of a <details>), else NIL.
+@(private)
+details_of_summary :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
+	p := parent_element(f, h)
+	pn := element(f, p)
+	if pn == nil || pn.name != "details" || pn.ns != .HTML { return base.NIL_HANDLE }
+	for c := pn.first_child; c != base.NIL_HANDLE; {
+		cn := dom.get(f.doc, c)
+		if cn == nil { break }
+		if cn.kind == .Element && cn.name == "summary" { return c == h ? p : base.NIL_HANDLE }
+		c = cn.next
+	}
+	return base.NIL_HANDLE
+}
+
+// The activation behaviour of a <summary>: its <details> opens or closes, and `toggle` is fired (it is queued, does not
+// bubble, and is not cancelable).
+@(private)
+toggle_details :: proc(f: ^Forms, details: base.Handle) {
+	n := element(f, details)
+	if n == nil { return }
+	if has_attr(n, "open") { dom.remove_attribute(f.doc, details, "open") } else { dom.set_attribute(f.doc, details, "open", "") }
+	changed_widely(f)
+	fire(f, details, "toggle")
 }
 
 // The activation target of a click on `target`: itself or the nearest ancestor with an activation behaviour.
@@ -250,6 +277,10 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 		sub.offset = {}
 		click(f, ctl, sub)
 	case .None, .Textarea, .Select, .Option, .Optgroup, .Fieldset, .Legend, .Output, .Form, .Object, .Datalist, .Dialog:
+		// (a <summary> has no kind of its own)
+		if n != nil && n.name == "summary" {
+			if d := details_of_summary(f, at); d != base.NIL_HANDLE { toggle_details(f, d) }
+		}
 	}
 }
 
@@ -376,6 +407,12 @@ key_down :: proc(f: ^Forms, key: Key, mods: Mods) -> bool {
 		}
 	case .Button:
 		if key == .Space || key == .Enter { click(f, h, Click_Info{trusted = true}); return true }
+	case .None:
+		// the summary of a details: Enter and Space click it, as they click a button
+		if n.name == "summary" && details_of_summary(f, h) != base.NIL_HANDLE && (key == .Space || key == .Enter) && !alt && !ctrl {
+			click(f, h, Click_Info{trusted = true})
+			return true
+		}
 	case .Select:
 		if is_disabled(f, h) { return false }
 		if key == .Up || key == .Down || key == .Home || key == .End || key == .Page_Up || key == .Page_Down {

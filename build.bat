@@ -90,7 +90,10 @@ call :step "building the JavaScript engine"  tools\build_js.ps1 || exit /b 1
 :: prefer to wren.exe when `wren` is typed; wren.exe embeds it (src\browser\console_launcher.odin) and Setup writes it beside
 :: itself with the PATH entry. A console program waits for `wren ctl ...` and hands its output and exit code to the caller. The
 :: same C runtime flags as wren.exe (below): nothing but the system's files.
-odin build src/tools/wrencom -vet -subsystem:console -o:size -out:build/wren.com -extra-linker-flags:"/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" || exit /b 1
+:: Built only when a source is newer than it: two builds that run at once (test_all -Jobs n) would otherwise both write it, and
+:: one of them is refused (Error(013)) when the other, or a test that runs it, holds the file.
+powershell -NoProfile -Command "$b = Get-Item build\wren.com -ErrorAction SilentlyContinue; if ($b -and -not (Get-ChildItem src\tools\wrencom -Filter *.odin | Where-Object { $_.LastWriteTimeUtc -gt $b.LastWriteTimeUtc })) { exit 0 } else { exit 1 }"
+if errorlevel 1 odin build src/tools/wrencom -vet -subsystem:console -o:size -out:build/wren.com -extra-linker-flags:"/NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib" || exit /b 1
 
 
 :: ------------------------------------------------------------------------------------------------------------
