@@ -149,7 +149,12 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		// classic: each tab is `overlap` wider than its pitch (it covers the next one's left foot) and the strip keeps the
 		// room of the feet's flare at both ends
 		extra := classic ? cg.d.ext * 2 : 0
-		fixed := lead + new_w + em * 0.3 + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
+		// classic: the new-tab button is placed as a tab is, its left foot under the last tab's right one (`plus_pull`), not after a gap
+		plus_w := new_w + extra * 0.5
+		plus_pull: f32
+		if classic { _, _, _, plus_pull = classic_plus_metrics(&cg, em, dpi, plus_w) }
+		plus_room := classic ? plus_w - plus_pull : new_w + em * 0.3
+		fixed := lead + plus_room + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
 		avail := max(f32(app.win.size.x) - fixed, em * 4)
 		n := len(app.tabs)
 		w := math.round(tab_width(avail - cg.overlap, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
@@ -161,8 +166,10 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		strip.follow_id, strip.follow_n = cur_id, n
 		strip.offset = strip_offset(strip.offset, n, w, view_w, app.current, follow)
 
-		ui.next({width = ui.px(area_w), height = ui.pct(1), axis = .X})
+		// (classic: the area also holds the new-tab button, which reaches back under the last tab)
+		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
+		add: ui.Signal
 		strip.area_key = area.key
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
@@ -171,6 +178,14 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		}
 		move_from, move_to := -1, -1
 		if ui.parent(area) {
+			if classic {
+				// the button first: the tabs draw over its left foot as each draws over the one before it, and take the clicks;
+				// the tabs themselves are clipped to their own part of the area (when they scroll they must not run under the button)
+				add = classic_new_tab_button(app, &cg, cc, h, plus_w, area_w - plus_pull)
+				ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(area_w), height = ui.pct(1), axis = .X})
+				ui.push_parent(ui.build_box({.Clip}, "###tabs_clip"))
+			}
+			defer if classic { ui.pop_parent() }
 			// the dragged tab is built last: it draws over the others (classic: the current one just before it, as it
 			// is the one in front of the others, and the clicks go to what is drawn on top)
 			dragged := -1
@@ -207,11 +222,8 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		}
 		if any_turning { spinner_wake(app) }
 
-		ui.spacer(ui.px(em * 0.3))
-		add: ui.Signal
-		if classic {
-			add = classic_new_tab_button(app, &cg, cc, h, new_w + extra * 0.5)
-		} else {
+		if !classic {
+			ui.spacer(ui.px(em * 0.3))
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 			add = ui.icon_button("###newtab", GLYPH_ADD)
 		}
@@ -301,10 +313,12 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		// classic: the content stays clear of the sloped sides (half the lean is at the middle of the tab's height)
 		side: f32
 		if classic {
+			// (the current tab, drawn on top, covers the left foot and the slope of the tab on its right by `overlap`: the icon starts clear
+			// of it, as the end of the title stops before the next tab's slope, below)
 			d := tab_dims(paint.m)
-			side = d.ext + d.run * 0.5
+			side = d.ext + max(cg.overlap - d.run * 0.5, d.run * 0.5)
 		}
-		pad := classic ? side + math.round(em * 0.45) : math.round(em * 0.65)
+		pad := classic ? side + math.round(em * 0.35) : math.round(em * 0.65)
 		ui.spacer(ui.px(pad))
 		isz := f32(tab_icon_px(app))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
