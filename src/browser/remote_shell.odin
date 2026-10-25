@@ -32,7 +32,7 @@ import "wb:remote"
 import "wb:remote/client"
 
 Remote_Wait :: enum u8 { Load, Idle, Stable, Selector, Function, Quiet }
-Remote_Op_Kind :: enum u8 { Wait, Capture, Frames, Eval, Click, Replay }
+Remote_Op_Kind :: enum u8 { Wait, Capture, Frames, Eval, Click, Replay, Drag }
 Capture_Target :: enum u8 { Window, Page, Rect, Selector }
 
 Remote_Op :: struct {
@@ -65,10 +65,11 @@ Remote_Op :: struct {
 	bytes:    bool,       // the answer carries the PNG (base64)
 	scale:    f32,
 	rect:     [4]f32,     // Rect: x, y, w, h (window pixels); Selector: filled when the element is found
-	// Click
+	// Click, Drag (count: the drag's steps, pos: where it starts, to: where it ends)
 	button:   platform.Mouse_Button,
 	count:    int,
 	pos:      [2]f32,
+	to:       [2]f32,
 	// Replay
 	events:   [dynamic]Rec_Event,
 	idx:      int,
@@ -376,7 +377,7 @@ op_polls :: proc(op: ^Remote_Op) -> bool {
 	case .Wait:    return true
 	case .Capture: return op.stage != 0 || render_capture_busy()
 	case .Replay:  return true
-	case .Frames, .Eval, .Click: return false
+	case .Frames, .Eval, .Click, .Drag: return false
 	}
 	return false
 }
@@ -562,7 +563,7 @@ op_tab :: proc(app: ^App, id: u64) -> ^Tab {
 op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	r := &the_remote
 	t := op_tab(app, op.tab)
-	if t == nil && op.kind != .Eval && op.kind != .Frames && op.kind != .Replay {
+	if t == nil && op.kind != .Eval && op.kind != .Frames && op.kind != .Replay && op.kind != .Drag {
 		op_finish(op, fail(remote.ERR_FAILED, "the tab was closed"))
 		return
 	}
@@ -610,5 +611,6 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	case .Capture: capture_step(app, op, t, timed_out)
 	case .Replay:  replay_step(app, op, now)
 	case .Click:   click_step(app, op, t, timed_out)
+	case .Drag:    drag_step(app, op)
 	}
 }

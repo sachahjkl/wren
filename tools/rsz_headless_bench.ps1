@@ -42,7 +42,7 @@ function Run-One([string]$name, [string]$url, [string]$what) {
             # the splitter of the panel docked at the right: 5 px wide, left of the 300 px panel
             $sc = 1.0
             $x0 = [int]($ww - 302.5 * $sc); $y = [int]($wh * 0.5)
-            # (ctl drag injects its steps at once: one frame; a call per step gives each its own frame)
+            # (a call per step: each its own frame, and the press held across the calls)
             function Mouse([string]$type, [int]$x, [int]$y) {
                 Wren-Ctl raw ('{"method":"Input.dispatchMouseEvent","params":{"type":"' + $type + '","x":' + $x + ',"y":' + $y + ',"button":"left","space":"window"}}') | Out-Null
             }
