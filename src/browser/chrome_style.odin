@@ -281,7 +281,7 @@ classic_colors :: proc(base_in, border: draw.Color, gloss: f32, edge: f32) -> (c
 	if !c.dark {
 		c.strip_top, c.strip_bot = shade(base, -0.17 * k), shade(base, -0.27 * k)
 		c.idle_top, c.idle_bot = shade(base, -0.045 * k), shade(base, -0.115 * k)
-		c.lit_top, c.lit_mid, c.lit_bot = shade(base, 0.8 * k), shade(base, 0.12 * k), shade(base, -0.06 * k)
+		c.lit_top, c.lit_mid, c.lit_bot = shade(base, 0.8 * k), shade(base, 0.03 * k), shade(base, -0.09 * k)
 		c.edge_dark = shade(border, -0.4)
 		c.edge_light = {1, 1, 1, 0.85}
 		c.rule = shade(border, -0.32)
@@ -290,7 +290,7 @@ classic_colors :: proc(base_in, border: draw.Color, gloss: f32, edge: f32) -> (c
 		c.field_edge = shade(border, -0.22)
 	} else {
 		c.strip_top, c.strip_bot = shade(base, -0.3 * k), shade(base, -0.52 * k)
-		c.idle_top, c.idle_bot = shade(base, 0.05 * k), shade(base, 0.012 * k)
+		c.idle_top, c.idle_bot = shade(base, 0.07 * k), shade(base, 0.025 * k)
 		c.lit_top, c.lit_mid, c.lit_bot = shade(base, 0.18 * k), shade(base, 0.115 * k), shade(base, 0.065 * k)
 		c.edge_dark = shade(base, -0.82)
 		c.edge_light = {1, 1, 1, 0.1}

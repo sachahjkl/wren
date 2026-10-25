@@ -352,7 +352,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
-	tip(sig, t.title)
+	if !(classic && strip.drag_active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder
 	if sig.dragging && favs.cfg.drag_reorder && n > 1 {
 		if !strip.drag_active && abs(sig.drag_delta.x) > favs.cfg.drag_threshold * dpi {
