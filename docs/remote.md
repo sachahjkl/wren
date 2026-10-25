@@ -168,8 +168,13 @@ minimized again. The wgpu render backend cannot read its frame back: `shot` answ
   processes cannot open it. The first instance is created with `FILE_FLAG_FIRST_PIPE_INSTANCE`: a name taken by another process is an
   error reported on stderr, in the console of the first tab and by a notice, not a second server.
 - A page cannot reach the channel: it has no way to open a pipe or to send a line. The results of scripts that the channel runs come
-  back through the page's console on a line that starts with a secret prefix made at each start (`BCryptGenRandom`), taken before the
-  tab's console sees it; a page that knows nothing of the prefix cannot make one up.
+  back through the page's console, on a line that starts with a mark (`\x01wren-remote:`), taken before the tab's console sees it.
+  That line goes through the page's own `console.log`, which a page can replace: it sees every line, so the mark is **not a
+  secret** (a secret prefix was read by such a page, which then answered in place of the script). What makes an answer count is
+  where it comes from: the tab the question was asked in, an id that still waits, the first answer only. The value is checked to be
+  one JSON value on one line before it goes into a reply (anything else is an error), so a page cannot add a line to the protocol.
+  What stays: **a page can lie about the value of what it is asked** (a script of the page runs in the page: it can as well redefine
+  `document.title`); nothing it writes reaches another tab or the client's own state.
 - A request line longer than `browser.remote.max_message_bytes` (8 MiB) is answered with an error and the connection is closed. At
   most `browser.remote.max_clients` (8) are served at once.
 - Everything a client does is what the user could do in the window; there is no way into the file system but the paths a client

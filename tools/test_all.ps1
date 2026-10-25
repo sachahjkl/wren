@@ -217,6 +217,13 @@ Step 'a program of the working directory never runs in place of the system's (to
     }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\planted_program_e2e.ps1
 }
+Step 'what a page can do to the answers of wren ctl eval (tools\remote_page_e2e.ps1: it sees the line, so the line holds no secret; another tab''s forgery and a value with a line break change nothing)' {
+    if (-not (Test-WrenBuildFresh)) {
+        cmd /c build.bat | Out-Null
+        if ($LASTEXITCODE) { return }
+    }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_page_e2e.ps1
+}
 Step 'who chose an address (tools\nav_trust_e2e.ps1: a page asking by script for about:sites?clear=..., a file or a share is refused and F5, Back and Forward never obey it; the same addresses typed by the person, and the links of about:sites, still work)' {
     if (-not (Test-WrenBuildFresh)) {
         cmd /c build.bat | Out-Null
