@@ -14,9 +14,9 @@ Set-Location $root
 . (Join-Path $PSScriptRoot 'test_env.ps1')
 if (-not $Exe) { $Exe = Join-Path $root 'build\wren_check.exe' }
 if (-not $Out) { $Out = Join-Path $root 'build\memcheck' }
-if (-not $NoBuild) {
-    cmd /c "build.bat check" | Out-Host
-    if ($LASTEXITCODE) { 'FAIL building the check build'; exit 1 }
+if (-not $NoBuild -and $Exe -eq (Join-Path $root 'build\wren_check.exe')) {
+    # (built unless newer than its sources, and never beside another build of this tree: the other steps of test_all that need it wait here)
+    if (-not (Ensure-WrenBuild 'check')) { $global:WrenBuildOutput; 'FAIL building the check build'; exit 1 }
 }
 
 # Runs the check build on `$script` (lines; {o} is the test server's origin) with a fresh profile; returns its exit code.

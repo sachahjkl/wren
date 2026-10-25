@@ -18,6 +18,12 @@
   Wait for a condition, not for a delay (`wren ctl wait quiet | function`, a file that appears, a process that ends), with a
   limit; one Wren serves many scenarios, `wren ctl reset` between them ([docs/remote.md](docs/remote.md)); a step that mostly waits
   is `-Light` in `test_all.ps1`; do not build twice what a run already built (`Test-WrenBuildFresh`, `Invoke-WrenBuildIfStale`).
+- A scenario does not get a Wren of its own, nor a new `build.bat`. Drive one shared Wren (`Start-Shared`, `Reset-Shared` in `tools/remote_e2e.ps1`)
+  and `wren ctl reset` (or `checkpoint restore`) between scenarios; start a process only when the check is about a process's life (crash, a
+  second instance, `--policy` or a program planted in the working directory, `wren ctl stop`, `wren.com`, quit with a client connected).
+  Build the browser through `Ensure-WrenBuild [dev|check]` (`tools/test_env.ps1`: built unless newer than its sources, one `build.bat` of a tree
+  at a time): two steps of a parallel run that both call `build.bat` refuse each other's files. A capture of a playing page uses `--settle 0`
+  (the next frame, not the third) and no more frames than the check needs: a frame costs 0.7 s on a runner. `test_all` prints how many Wren it started.
 - Performance tests are opt-in: a test that asserts on a duration, a CPU time, a throughput, a latency or a count of frames in a
   window of time depends on the machine, and the CI runners are of unknown speed, so the CI never runs them (`-CI`, or the `CI`
   variable, wins over everything). Run them yourself with `powershell -NoProfile -File tools\test_all.ps1 -Perf` (or `WREN_PERF=1`;

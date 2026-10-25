@@ -24,7 +24,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . "$PSScriptRoot\test_env.ps1"
 if (-not $Exe) { $Exe = Join-Path $root $(if ($Check) { 'build\wren_check.exe' } else { 'build\wren.exe' }) }
-if ($Check -and -not (Test-Path $Exe)) { cmd /c "build.bat check" | Out-Host; if ($LASTEXITCODE) { 'FAIL building the check build'; exit 1 } }
+if ($Check -and $Exe -eq (Join-Path $root 'build\wren_check.exe')) {
+    # (built unless newer than its sources, and never beside another build of this tree: memcheck_e2e.ps1 needs the same program)
+    if (-not (Ensure-WrenBuild 'check')) { $global:WrenBuildOutput; 'FAIL building the check build'; exit 1 }
+}
 $env:WREN_EXE = (Resolve-Path $Exe).Path
 . "$PSScriptRoot\wrenctl.ps1"
 Section '0 script start: Add-Type, helpers'
@@ -92,22 +95,25 @@ function Scenario([string]$name, [scriptblock]$body) {
 # ---- a playing video is a plane of the page's paint order: the same picture every frame ------------------------------------------
 # examples/site/remote/video-layers.htm: a video in a rounded overflow:hidden box, a fixed dialog (z-index) and a bar over it, a
 # rotated half-transparent rounded video, and a script that keeps the thread busy a few ms every frame (so that frames are made
-# under it, as under a player's). Forty captures in a row while it plays: in each the box's corners are rounded, the dialog and
+# under it, as under a player's). Thirty frames in a row while it plays (6 in -Check): in each the box's corners are rounded, the dialog and
 # the bar are above the video, and what is not the video is the same pixel for pixel in every capture.
-function Test-VideoLayers($server) {
+function Test-VideoLayers($server, [int]$n = 30) {
     Section '4a video layers: scale 100 %, a 1000x500 window, the page, the videos playing'
     $null = Wren-Ctl pref set browser.ui.scale 1
     $null = Wren-Ctl window --size 1000x500
     $null = Wren-Ctl nav "$($server.Origin)/site/remote/video-layers.htm" --wait idle
     $null = Wren-Ctl wait function 'document.getElementById("v1").currentTime > 1 && document.getElementById("v2").currentTime > 1' --timeout 30000
     Check 'video layers: both videos play' ($global:WrenExit -eq 0) "exit $global:WrenExit $global:WrenErr"
-    Section '4b video layers: 40 captures'
-    $n = 40
-    # (in the check build every allocation is tracked: forty captures of a playing video took more than the 120 s a call may take on a runner)
-$null = Wren-Ctl shot (Join-Path $tmp 'vl.png') --tab --count $n -TimeoutSec $(if ($Check) { 600 } else { 120 })
-    $shots = @(0..($n - 1) | ForEach-Object { Join-Path $tmp ('vl-{0:D2}.png' -f $_) })
+    Section "4b video layers: $n captures"
+    # --settle 0: each capture is the very next frame drawn (the default waits three, for a page that has just been changed: here the page is at
+    # rest and playing, so the n captures are n frames in a row, a third of the frames made, and each frame is compared with the one before).
+    # On the CI a frame of this page (two videos, a clipped and a rotated plane, a script busy 8 ms) costs about 0.7 s: 40 captures at the default
+    # settle were 80 s there. The check build (every allocation tracked) asks for fewer: it looks for leaks, the layers are checked in the other mode.
+    $null = Wren-Ctl shot (Join-Path $tmp 'vl.png') --tab --count $n --settle 0 -TimeoutSec $(if ($Check) { 600 } else { 240 })
+    $digits = "$($n - 1)".Length   # (the client numbers the files to the width of the last number)
+    $shots = @(0..($n - 1) | ForEach-Object { Join-Path $tmp ("vl-{0:D$digits}.png" -f $_) })
     Check "video layers: $n captures were made" (@($shots | Where-Object { Test-Path $_ }).Count -eq $n) "exit $global:WrenExit $global:WrenErr"
-    Section '4c video layers: pixels of the 40 captures (PowerShell GetPixel)'
+    Section "4c video layers: pixels of the $n captures (PowerShell GetPixel)"
     $badCorner = 0; $badDialog = 0; $badBar = 0
     $bmps = @()
     foreach ($f in $shots) { $bmps += ,(New-Object Drawing.Bitmap($f)) }
@@ -141,7 +147,7 @@ $null = Wren-Ctl shot (Join-Path $tmp 'vl.png') --tab --count $n -TimeoutSec $(i
         # the video moves at all (the test is of a playing video)
         $moves = 0
         for ($i = 1; $i -lt $n; $i++) { if ($bmps[$i - 1].GetPixel(120, 120).ToArgb() -ne $bmps[$i].GetPixel(120, 120).ToArgb() -or $bmps[$i - 1].GetPixel(330, 220).ToArgb() -ne $bmps[$i].GetPixel(330, 220).ToArgb()) { $moves++ } }
-        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt 3)
+        Check "video layers: the video plays ($moves of $($n - 1) captures differ in the video)" ($moves -gt [Math]::Min(3, [int](($n - 1) / 4)))
     } finally { foreach ($b in $bmps) { $b.Dispose() } }
 }
 
@@ -399,7 +405,7 @@ if ($Check) {
         Test-Reset $server
         Test-Checkpoints $server
         $null = Wren-Ctl reset
-        Test-VideoLayers $server
+        Test-VideoLayers $server 6
         Test-LayoutSized $server
         $null = Wren-Ctl reset
         Section 'check: quit and the leak report'

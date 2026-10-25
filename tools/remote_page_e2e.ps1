@@ -56,14 +56,9 @@ try {
         $null = Wren-Eval $hook
         $null = Wren-Eval '1+1'
         $seen += , (Prefix-Seen)
-        Stop-Wren
+        if ($run -eq 1) { Stop-Wren }   # (the second Wren goes on below: it has the page and the hook already, a third start would repeat them)
     }
     Check 'the page sees the same prefix in two runs (nothing per run to learn)' ($seen[0] -ne '' -and $seen[0] -eq $seen[1]) "$($seen -join ' | ')"
-
-    $null = Start-Wren
-    $null = Wren-Nav $page
-    $null = Wren-Eval $hook
-    $null = Wren-Eval '1+1'
 
     # --- a page of tab 2 forges the answer of a question that waits in tab 1
     $tab1 = (Wren-Ctl tabs | Select-Object -First 1) -replace '^(\d+).*', '$1'
