@@ -18,6 +18,13 @@
   Wait for a condition, not for a delay (`wren ctl wait quiet | function`, a file that appears, a process that ends), with a
   limit; one Wren serves many scenarios, `wren ctl reset` between them ([docs/remote.md](docs/remote.md)); a step that mostly waits
   is `-Light` in `test_all.ps1`; do not build twice what a run already built (`Test-WrenBuildFresh`, `Invoke-WrenBuildIfStale`).
+- Performance tests are opt-in: a test that asserts on a duration, a CPU time, a throughput, a latency or a count of frames in a
+  window of time depends on the machine, and the CI runners are of unknown speed, so the CI never runs them (`-CI`, or the `CI`
+  variable, wins over everything). Run them yourself with `powershell -NoProfile -File tools\test_all.ps1 -Perf` (or `WREN_PERF=1`;
+  steps run one at a time so that they do not skew each other): they run with their strict bounds and print their measures; without
+  it they say `perf: skipped, run with -Perf`. In Odin, `if base.perf_skip("what") { return }` (`src/base/perf.odin`); in a script,
+  `Check-Perf` / `Test-WrenPerf` (`tools/test_env.ps1`). What stays in the CI is correctness (results, states, protocols, leaks,
+  crashes) and waits with a generous time limit that only ends a failing run.
 - A new web API starts in `api/<module>.widl`; `build.bat` regenerates the bindings, the SDK and the docs, and
   `test_all.ps1` fails when a generated file is out of date.
 - A new preference is a `config.Def` in the package's `settings.odin`, registered with the others

@@ -5,6 +5,7 @@ import "core:math"
 import "core:strings"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:dom"
 import "wb:html"
 import "wb:style"
@@ -485,9 +486,11 @@ grid_subgrid :: proc(t: ^testing.T) {
 	expect_box(t, f, "h1", 100, 20, 200, 40)
 }
 
-// Layout time of a 10000-item grid against a flex container with the same items (the same order of magnitude).
+// Layout time of a 10000-item grid against a flex container with the same items (the same order of magnitude). A
+// performance test: off unless tools\test_all.ps1 -Perf (base.perf_skip).
 @(test)
 grid_vs_flex_timing :: proc(t: ^testing.T) {
+	if base.perf_skip("grid_vs_flex_timing: the layout time of 10000 items, grid against flex") { return }
 	make_page :: proc(container: string) -> string {
 		sb := strings.builder_make(context.temp_allocator)
 		strings.write_string(&sb, `<body style="margin:0;font-size:10px;line-height:10px"><div style="`)

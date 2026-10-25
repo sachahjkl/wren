@@ -3,6 +3,7 @@ package host
 import "core:sync"
 import "core:testing"
 import "core:time"
+import "wb:base"
 
 @(private = "file")
 Probe :: struct { depth: int, temp_ok: bool }
@@ -122,5 +123,9 @@ parallel_for_wait_hook :: proc(t: ^testing.T) {
 		time.sleep(2 * time.Millisecond)
 	}, &job)
 	for d, i in job.done { testing.expectf(t, d == 1, "item %d ran %d times", i, d) }
-	testing.expectf(t, job.hooks >= 5, "the hook ran while the items did (%d times)", job.hooks)
+	testing.expectf(t, job.hooks >= 1, "the hook ran while the items did (%d times)", job.hooks)
+	// how often it ran in the ~40 ms the items took depends on the scheduler: a performance test
+	if !base.perf_skip("parallel_for_wait_hook: the hook runs at least 5 times in the items' ~40 ms") {
+		testing.expectf(t, job.hooks >= 5, "the hook ran every 0.2 ms while the items did (%d times)", job.hooks)
+	}
 }
