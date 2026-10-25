@@ -198,7 +198,7 @@ function Test-Reset($server) {
     $wr = New-Object IO.StreamWriter($pipe); $wr.AutoFlush = $true
     $rd = New-Object IO.StreamReader($pipe)
     $wr.WriteLine('{"id":7,"method":"Wren.wait","params":{"for":"selector","selector":"#never","timeout":20000}}')
-    Start-Sleep -Milliseconds 100
+    $null = Wait-WrenPending 1
 
     $sw = [Diagnostics.Stopwatch]::StartNew()
     $r = Wren-Ctl reset --json | ConvertFrom-Json
@@ -398,7 +398,7 @@ if ($Check) {
         $null = Wren-Ctl html '#box'; $null = Wren-Ctl style '#box' width; $null = Wren-Ctl query 'div'
         $null = Wren-Ctl window --size 700x500
         $wr.WriteLine('{"id":9,"method":"Wren.wait","params":{"for":"selector","selector":"#never","timeout":20000}}')
-        Start-Sleep -Milliseconds 300
+        $null = Wait-WrenPending 1
         $pipe.Dispose()   # a client that vanishes in the middle of a wait
         $null = Wren-Ctl wait selector '#never' --timeout 200
         $null = Wren-Ctl reset   # (the session above left tabs, a window and preferences changed: the scenarios start from a clean Wren, as in the other mode)
@@ -575,7 +575,7 @@ try {
     Check 'protocol: unknown method is -32601' ($l2 -match '"code":-32601')
     Check 'protocol: bad JSON is -32700' ($l3 -match '"code":-32700')
     $wr.WriteLine('{"id":9,"method":"Wren.wait","params":{"for":"selector","selector":"#never","timeout":20000}}')
-    Start-Sleep -Milliseconds 200
+    $null = Wait-WrenPending 1
     $pipe.Dispose()
     $null = Wren-Ctl ping
     Check 'a client that vanishes during a wait does not hurt' ($global:WrenExit -eq 0)

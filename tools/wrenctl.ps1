@@ -137,6 +137,20 @@ function Wren-Run {
     return Wren-Ctl @a
 }
 
+# Waits until at least `$Count` commands wait inside the Wren (stats.pendingOps: a wait, a navigation's load): a request written to
+# the pipe is registered when this holds, so that what follows (a reset, a vanishing client, another tab) acts on it and not before.
+# Polls every 20 ms; true when it holds, false at the limit.
+function Wait-WrenPending {
+    param([int]$Count = 1, [double]$Seconds = 5)
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $Seconds) {
+        $s = Wren-Ctl stats --json | ConvertFrom-Json
+        if ($s -and [int]$s.pendingOps -ge $Count) { return $true }
+        Start-Sleep -Milliseconds 20
+    }
+    return $false
+}
+
 # Closes the Wren Start-Wren made (and removes its throwaway profile).
 function Stop-Wren {
     param([string]$Name = $env:WREN_REMOTE)

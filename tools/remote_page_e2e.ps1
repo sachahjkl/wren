@@ -69,7 +69,7 @@ try {
     Check 'two tabs' ($tab1 -ne $tab2 -and $tab1 -ne '' -and $tab2 -ne '') "$tab1 $tab2"
     $out = Join-Path ([IO.Path]::GetTempPath()) "remote_page_e2e_$PID.txt"
     $psi = Start-Process -FilePath $env:WREN_EXE -ArgumentList 'ctl', 'eval', '--await', '--tab-id', $tab1, '"new Promise(function (r) { setTimeout(function () { r(\"REAL\") }, 1500) })"' -NoNewWindow -PassThru -RedirectStandardOutput $out
-    Start-Sleep -Milliseconds 400
+    $null = Wait-WrenPending 1   # the question of tab 1 is registered before tab 2's page writes its forged answers
     $null = Wren-Ctl eval '1' --tab-id $tab2     # its console.log makes the tab 2 page write its forged answers
     $null = $psi.WaitForExit(15000)
     $got = (Get-Content $out -ErrorAction SilentlyContinue) -join ''
