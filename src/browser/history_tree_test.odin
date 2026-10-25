@@ -229,7 +229,11 @@ tree_large_model_is_cheap :: proc(t: ^testing.T) {
 	for _ in 0 ..< 100 { tree_cull(m.nodes[:], .Horizontal, {100, 100}, {180, 140}, &out) }
 	cull_ms := time.duration_milliseconds(time.tick_since(start)) / 100
 	fmt.printf("history tree, 5000 entries: model %.3f ms, cull %.4f ms (%d in view)\n", build_ms, cull_ms, len(out))
-	testing.expect(t, cull_ms < 1)
+	// a time bound means nothing under AddressSanitizer (every access instrumented, several times slower)
+	when .Address in ODIN_SANITIZER_FLAGS {
+	} else {
+		testing.expect(t, cull_ms < 1)
+	}
 }
 
 // "Fit" fills the view and keeps clear of the controls in its bottom-left corner (the vertical layout used to stop at

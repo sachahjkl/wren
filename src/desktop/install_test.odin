@@ -6,6 +6,7 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:testing"
+import "wb:base"
 import "core:time"
 
 @(private)
@@ -40,7 +41,7 @@ tree_make :: proc() -> Tree {
 
 @(private)
 tree_destroy :: proc(t: ^Tree) {
-	_ = os.remove_all(t.root)
+	_ = base.remove_tree(t.root)
 	delete(t.root); delete(t.src); delete(t.dst)
 }
 
