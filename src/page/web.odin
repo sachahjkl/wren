@@ -145,6 +145,7 @@ web_destroy :: proc(p: ^Page) {
 	if w.idle_timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.idle_timer) }
 	storage_page_closed(p)
 	idb_page_closed(p)
+	if w.live { sw_page_gone(p) }   // service_worker.odin: a waiting version may activate
 	for d in w.frozen_tasks {
 		t := (^Page_Task)(d)
 		t.fn(nil, t.data)   // the page is gone: the task frees its data

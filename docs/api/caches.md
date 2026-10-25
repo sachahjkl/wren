@@ -74,14 +74,28 @@ Host: `CacheStorage_names :: proc(c: ^Call) -> (string, Api_Error)`
 ### `Cache_matchIds`
 
 ```
-string Cache_matchIds(string cache, string url, string method, bool ignore_search, bool ignore_method) raises
+string Cache_matchIds(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
 ```
 
-The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
+The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
+ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
+in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (string, Api_Error)`
+Host: `Cache_matchIds :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (string, Api_Error)`
+
+### `Cache_entryRequestHeaders`
+
+```
+string Cache_entryRequestHeaders(string cache, u64 id) raises
+```
+
+The header lines of an entry's request (Not_Found when it is gone).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Cache_entryRequestHeaders :: proc(c: ^Call, cache: string, id: u64) -> (string, Api_Error)`
 
 ### `Cache_entryHead`
 
@@ -111,25 +125,25 @@ Host: `Cache_entryBody :: proc(c: ^Call, cache: string, id: u64) -> ([]u8, Api_E
 ### `Cache_putEntry`
 
 ```
-void Cache_putEntry(string cache, string url, i32 status, string status_text, string response_url, string headers, bytes body) raises
+void Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises
 ```
 
-cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
-caches.max_bytes_per_origin.
+cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
+considered). Quota past caches.max_bytes_per_origin.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_putEntry :: proc(c: ^Call, cache: string, url: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error`
+Host: `Cache_putEntry :: proc(c: ^Call, cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Api_Error`
 
 ### `Cache_deleteEntries`
 
 ```
-bool Cache_deleteEntries(string cache, string url, string method, bool ignore_search, bool ignore_method) raises
+bool Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises
 ```
 
 cache.delete(request, options)
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (bool, Api_Error)`
+Host: `Cache_deleteEntries :: proc(c: ^Call, cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (bool, Api_Error)`
 

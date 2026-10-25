@@ -103,6 +103,30 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DedicatedWorkerGlobalScope_name :: proc(c: ^Call) -> (string, Api_Error)`
 
+### `SharedWorkerGlobalScope_close`
+
+```
+void SharedWorkerGlobalScope_close() raises
+```
+
+close(), in a shared worker: no connect event any more; the worker stops after the current task.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `SharedWorkerGlobalScope_close :: proc(c: ^Call) -> Api_Error`
+
+### `SharedWorkerGlobalScope_name`
+
+```
+string SharedWorkerGlobalScope_name() raises
+```
+
+self.name, in a shared worker.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `SharedWorkerGlobalScope_name :: proc(c: ^Call) -> (string, Api_Error)`
+
 ### `WorkerGlobalScope_location`
 
 ```

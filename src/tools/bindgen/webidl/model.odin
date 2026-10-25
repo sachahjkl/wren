@@ -8,7 +8,7 @@ import "core:strings"
 // members gathered from every partial definition and every mixin it includes, with the exposure each member actually
 // has; dictionaries with their inherited chain; typedefs, enums and callbacks by name.
 
-Exposure :: enum u8 { Window, Worker }
+Exposure :: enum u8 { Window, Dedicated_Worker, Shared_Worker, Service_Worker }
 Exposures :: bit_set[Exposure; u8]
 
 Interface :: struct {
@@ -52,21 +52,27 @@ Source :: struct {
 	text: string,
 }
 
-// Exposure names of [Exposed] this browser has realms for. Worklets have none; shared and service workers run in worker
-// realms (their globals' own members are added by the engine when such a realm starts: runtime/web_sw.c), so their
-// interfaces (FetchEvent, Clients, ExtendableEvent...) are a worker realm's.
+// Exposure names of [Exposed] this browser has realms for. Worklets have none. Each kind of worker is a realm of its
+// own: what is [Exposed=ServiceWorker] (FetchEvent, Clients...) exists in service workers only, [Exposed=SharedWorker]
+// (SharedWorkerGlobalScope) in shared workers only, [Exposed=Worker] in all three.
 @(private)
 exposure_of :: proc(names: []string) -> Exposures {
 	out: Exposures
 	for n in names {
 		switch n {
-		case "*": out += {.Window, .Worker}
+		case "*": out += {.Window, .Dedicated_Worker, .Shared_Worker, .Service_Worker}
 		case "Window": out += {.Window}
-		case "Worker", "DedicatedWorker", "ServiceWorker", "SharedWorker": out += {.Worker}
+		case "Worker": out += WORKERS
+		case "DedicatedWorker": out += {.Dedicated_Worker}
+		case "SharedWorker": out += {.Shared_Worker}
+		case "ServiceWorker": out += {.Service_Worker}
 		}
 	}
 	return out
 }
+
+// Every kind of worker realm.
+WORKERS :: Exposures{.Dedicated_Worker, .Shared_Worker, .Service_Worker}
 
 @(private)
 exposed_attr :: proc(attrs: []Ext_Attr) -> (Exposures, bool) {

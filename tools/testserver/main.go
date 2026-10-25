@@ -125,6 +125,7 @@ func main() {
 	registerDownloadHandlers(mux)
 	registerCacheHandlers(mux)
 	registerFrameHandlers(mux)
+	registerSWHandlers(mux)
 
 	// every listener bound before anything is served or announced (ports.go)
 	l := bindPorts(selfSigned())

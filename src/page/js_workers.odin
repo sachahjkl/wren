@@ -19,15 +19,11 @@ import "wb:url"
 
 Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType) -> (u64, Api_Error) {
 	p := c.page
-	if type == .Module {
-		log(p, .Error, "Worker: module workers ({type: \"module\"}) are not supported by this browser yet")
-		return 0, fail(c, .Not_Supported, "NotSupportedError: module workers are not supported")
-	}
 	if p.worker != nil { return 0, fail(c, .Not_Supported, "NotSupportedError: nested workers are not supported") }
 	if _, ok := url.parse(u, &p.env.location, context.temp_allocator); !ok {
 		return 0, fail(c, .Syntax, fmt.tprintf("SyntaxError: %q is not a valid URL", u))
 	}
-	h := worker_create(p, u, name, c.owner, javascript = true)
+	h := worker_create(p, u, name, c.owner, javascript = true, module = type == .Module)
 	if h == 0 { return 0, fail(c, .Not_Allowed, "the worker was refused (see the console)") }
 	return h, .None
 }
@@ -50,10 +46,24 @@ js_worker_start :: proc(p: ^Page, g: ^Worker_Global) -> bool {
 		if !realm_halted(p) { worker_send_error(g, "Worker: JavaScript could not start in the worker") }
 		return false
 	}
-	js_run(p, g.image, g.url)
+	if g.module {
+		g.waiting = true
+		js_worker_module_start(p, g.url, g.image)   // js_load_modules.odin: runs once its imports arrived
+		return true
+	}
+	st := js_run(p, g.image, g.url)
+	if st == .Syntax_Error && g.shared {
+		// HTML: a shared worker's script that does not parse fires a plain error event at its SharedWorker objects
+		m := new(Worker_Msg)
+		m.kind, m.code = .Error, 1
+		m.text, m.text2 = strings.clone("the shared worker's script does not parse"), strings.clone(g.url)
+		link_send(g.link, false, m)
+	}
 	sw_script_ran(p)   // service_worker.odin: a service worker's events may come now
 	return true
 }
+
+WorkerGlobalScope_isModule :: proc(c: ^Call) -> bool { return c.page.worker != nil && c.page.worker.module }
 
 // UI thread: the worker of Worker object `w` is gone; the realm may let go of the object.
 js_worker_gone :: proc(p: ^Page, w: u64) {
@@ -70,6 +80,7 @@ WorkerGlobalScope_importScript :: proc(c: ^Call, u: string) -> (string, Api_Erro
 	p := c.page
 	g := p.worker
 	if g == nil { return "", fail(c, .Invalid_Argument, "not in a worker") }
+	if g.module { return "", fail(c, .Type, "TypeError: importScripts() is not allowed in module workers (use import)") }
 	resolved, ok := url.parse(u, &p.env.location, context.temp_allocator)
 	if !ok { return "", fail(c, .Syntax, fmt.tprintf("SyntaxError: %q is not a valid URL", u)) }
 	final_url, body, why := worker_fetch_sync(p, resolved.href)
