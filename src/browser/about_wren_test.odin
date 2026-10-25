@@ -153,8 +153,8 @@ about_page_with_a_license :: proc(t: ^testing.T) {
 	}
 	testing.expect(t, strings.index(html, `class="ics"`) < strings.index(html, `class="l-idle"`), "the icon is left of the text")
 	testing.expect(t, !strings.contains(html, "b.textContent"), "the label's text is never swapped: the button keeps its width")
-	// the seal's tick is a whole stroked path (the rotated bordered box it was cut at its foot in a filter)
-	for want in ([]string{`<path d="M31.75 27.5L40.25 36L56.25 17"`, `stroke-linecap="round"`}) {
+	// the seal: drawn by its own shader, the tick a whole stroked path (the rotated bordered box it was cut at its foot in a filter)
+	for want in ([]string{`class="relief" data-engrave="CERTIFIED"`, "-wren-shader: card-seal", `<path d="M31.75 27.5L40.25 36L56.25 17"`, `stroke-linecap="round"`, `.lic .seal[data-shader=off] .edge`}) {
 		testing.expectf(t, strings.contains(html, want), "the seal lacks %q", want)
 	}
 	testing.expect(t, !strings.contains(html, `class="tick"`), "no bordered box for the tick")

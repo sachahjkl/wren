@@ -30,7 +30,7 @@ the_registry_is_well_formed :: proc(t: ^testing.T) {
 		testing.expectf(t, len(d.passes) > 0, "shader %q draws nothing", d.name)
 		testing.expectf(t, shader_def(d.name) != nil, "shader %q is found by name", d.name)
 	}
-	testing.expect(t, shader_def("card-foil") != nil && shader_def("nope") == nil)
+	testing.expect(t, shader_def("card-foil") != nil && shader_def("card-seal") != nil && shader_def("nope") == nil)
 	testing.expect(t, shader_def("") == nil, "none is not a shader")
 }
 
@@ -70,6 +70,38 @@ the_relief_of_the_card_is_a_normal_map_and_the_same_every_time :: proc(t: ^testi
 	cuts := 0
 	for x in 42 ..< 42 + 24 * 12 { if at(a, x, 8 + 4) < at(a, x, 8 - 6) - 40 { cuts += 1 } }
 	testing.expectf(t, cuts > 40, "micro-lettering cut into the lip (%d dots)", cuts)
+}
+
+@(test)
+the_relief_of_the_seal_is_a_domed_medal_with_a_reeded_gold_edge :: proc(t: ^testing.T) {
+	a := seal_normal_map(context.allocator)
+	defer delete(a)
+	b := seal_normal_map(context.allocator)
+	defer delete(b)
+	testing.expect_value(t, len(a), SEAL_TEX * SEAL_TEX * 4)
+	testing.expect(t, string(a) == string(b), "the same bytes every time")
+	at :: proc(a: []u8, x, y, c: int) -> int { return int(a[(y * SEAL_TEX + x) * 4 + c]) }
+	// the normals are unit at most, and the dome tilts away from the middle: a point left of centre leans left, one above it leans up
+	for i := 0; i < len(a); i += 4 {
+		x, y := (f32(a[i]) - 128) / 127, (f32(a[i + 1]) - 128) / 127
+		if x * x + y * y > 1.02 { testing.fail_now(t, "a normal longer than a unit") }
+	}
+	mid := SEAL_TEX / 2
+	left, above := at(a, mid - 80, mid, 0), at(a, mid, mid - 80, 1)
+	testing.expectf(t, left < 112 && above < 112 && at(a, mid + 80, mid, 0) > 144 && at(a, mid, mid + 80, 1) > 144, "the face is a dome (%d %d)", left, above)
+	// the centre of the face is green, the edge and the lip are gold, and the edge is reeded: its normals turn round it
+	testing.expectf(t, at(a, mid, mid, 3) < 30 && at(a, mid + 4 * 40, mid, 3) > 220 && at(a, mid + 4 * 36, mid, 3) > 220, "the face is enamel, the edge and the lip are gold")
+	// the component of the normal along the circle changes sign twice a flute
+	turns, prev := 0, 0
+	for k in 0 ..< 1440 {
+		ang := f32(k) * math.PI / 720
+		x, y := mid + int(math.cos(ang) * 4 * 40), mid + int(math.sin(ang) * 4 * 40)
+		along := -(f32(at(a, x, y, 0)) - 128) * math.sin(ang) + (f32(at(a, x, y, 1)) - 128) * math.cos(ang)
+		s := along > 6 ? 1 : (along < -6 ? -1 : 0)
+		if s != 0 && prev != 0 && s != prev { turns += 1 }
+		if s != 0 { prev = s }
+	}
+	testing.expectf(t, turns >= 2 * SEAL_FLUTES - 4, "the edge has its flutes (%d changes of slope round it)", turns)
 }
 
 @(test)
