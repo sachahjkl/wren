@@ -80,9 +80,9 @@ Cursor :: enum u8 {
 }
 User_Select :: enum u8 { Auto, None, Text, All }
 // touch-action as what the browser must not do with fingers on the element: auto = {}, none = all of them,
-// manipulation = {.Double_Tap}, pan-x = everything but .Pan_X (pan-left / pan-right count as pan-x, pan-up / pan-down as
-// pan-y).
-Touch_Gesture :: enum u8 { Pan_X, Pan_Y, Pinch_Zoom, Double_Tap }
+// manipulation = {.Double_Tap}; pan-x lets .Pan_Left and .Pan_Right through, pan-left only a gesture that starts by
+// scrolling left (the finger going right), and so on.
+Touch_Gesture :: enum u8 { Pan_Left, Pan_Right, Pan_Up, Pan_Down, Pinch_Zoom, Double_Tap }
 Touch_Blocked :: bit_set[Touch_Gesture; u8]
 Object_Fit :: enum u8 { Fill, Contain, Cover, None, Scale_Down }
 Repeat :: enum u8 { Repeat, No_Repeat, Repeat_X, Repeat_Y, Space, Round }
