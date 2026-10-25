@@ -81,6 +81,8 @@ SITES_STYLE :: `
   .clear { border-color: #a83a2f; background-color: #3f1410; color: #f2a59c; }
   button:hover { background-color: #17305a; }
   .clear:hover { background-color: #561c16; }
+  td .clear { display: inline-block; padding: 0 10px; line-height: 22px; font-size: 13px; vertical-align: middle; }
+  td .clear:hover { text-decoration: none; }
   input[type=search]:hover { border-color: #3f4b6e; }
   tr:hover td { background-color: #121826; }
   table { width: 100%; border-collapse: collapse; }
