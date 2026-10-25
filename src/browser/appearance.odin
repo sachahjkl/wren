@@ -81,6 +81,7 @@ read_os_appearance :: proc() -> style.Os_Appearance {
 // Reads the appearance once (before the settings are derived) and starts watching it.
 appearance_init :: proc(app: ^App) {
 	style.set_os_appearance(read_os_appearance())
+	touch_devices_apply(app)   // touch_shell.odin: the pointing devices pages are told about, before the settings too
 	look_watch.app = app
 	look_watch.stop = windows.CreateEventW(nil, true, false, nil)
 	if look_watch.stop == nil { return }
@@ -137,5 +138,5 @@ host_post_appearance :: proc() {
 appearance_changed :: proc(data: rawptr) {
 	app := (^App)(data)
 	if !style.set_os_appearance(read_os_appearance()) { return }
-	apply_prefs(app)   // derives every setting again (`system` colors) and restyles every page (auto color scheme)
+	apply_prefs(app, "browser.appearance")   // derives every setting again (`system` colors) and restyles every page (auto color scheme); nothing of the network
 }

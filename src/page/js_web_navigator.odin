@@ -63,6 +63,8 @@ Navigator_hardwareConcurrency :: proc(c: ^Call) -> i32 {
 	return i32(max(n, 1))
 }
 
+Navigator_maxTouchPoints :: proc(c: ^Call) -> i32 { return i32(max(c.page.settings.js.touch_points, 0)) }
+
 Navigator_onLine :: proc(c: ^Call) -> bool {
 	flags: u32
 	return IsNetworkAlive(&flags) != 0

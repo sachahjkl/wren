@@ -517,13 +517,13 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
 /* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: WJ_START_*. 0 ok. */
 enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4 };
 
-/* javascript.touch_events off (or auto without a touch screen): the ontouch* event handler attributes are not exposed,
- * as in Chromium and Firefox on such a computer; pages test 'ontouchstart' in window to pick a phone's layout and
- * behaviour (Modernizr's touch class). The handlers live on the prototypes GlobalEventHandlers is mixed into, and on
- * the global object for the Window's. */
+/* browser.touch.expose off (or auto without a touch screen): the ontouch* event handler attributes and the Touch,
+ * TouchEvent and TouchList interfaces are not exposed, as in Firefox on such a computer; pages test 'ontouchstart' in
+ * window or 'TouchEvent' in window to pick a phone's layout and behaviour (Modernizr's touch class). The handlers live
+ * on the prototypes GlobalEventHandlers is mixed into, and on the global object for the Window's. */
 static void remove_touch_handlers(JSContext *ctx)
 {
-    static const char *const names[] = { "ontouchstart", "ontouchend", "ontouchmove", "ontouchcancel" };
+    static const char *const names[] = { "ontouchstart", "ontouchend", "ontouchmove", "ontouchcancel", "Touch", "TouchEvent", "TouchList" };
     const int ifaces[] = { WJ_IFACE_Window, WJ_IFACE_Document, WJ_IFACE_HTMLElement, WJ_IFACE_SVGElement, WJ_IFACE_MathMLElement };
     for (size_t n = 0; n < sizeof names / sizeof names[0]; n++) {
         JSAtom a = JS_NewAtom(ctx, names[n]);

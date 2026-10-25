@@ -891,7 +891,7 @@ apply_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 	     .Animation_Direction, .Animation_Fill_Mode, .Animation_Play_State, .Animation_Composition,
 	     .Counter_Reset, .Counter_Increment, .Counter_Set, .Quotes,
 	     .Object_Position, .Filter, .Backdrop_Filter, .Clip_Path, .Isolation, .Mix_Blend_Mode,
-	     .Will_Change, .Contain, .Content_Visibility, .Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y,
+	     .Will_Change, .Contain, .Content_Visibility, .Scroll_Behavior, .Overscroll_Behavior_X, .Overscroll_Behavior_Y, .Touch_Action,
 	     .Caret_Color, .Accent_Color, .Appearance, .Resize, .Column_Count, .Column_Width,
 	     .Grid_Template_Columns, .Grid_Template_Rows, .Grid_Template_Areas, .Grid_Auto_Columns, .Grid_Auto_Rows,
 	     .Grid_Auto_Flow, .Grid_Row_Start, .Grid_Row_End, .Grid_Column_Start, .Grid_Column_End, .Justify_Items, .Justify_Self:
