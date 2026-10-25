@@ -27,6 +27,7 @@ param(
     [switch]$Offscreen,
     [string]$StartPref = '',
     [switch]$Ghost,
+    [string]$GhostAt = '40,40',   # where the ghost window's corner goes (screen pixels: another monitor than the primary one: e.g. '-2000,560')
     [switch]$Single,
     [int]$Dump = 0, [int]$DumpShown = 0, [int]$Timeline = 0,
     [string]$Size = '1280x800'
@@ -74,11 +75,11 @@ public static class DragPoster {
     [DllImport("gdi32.dll")] static extern IntPtr CreateRectRgn(int a, int b, int c, int d);
     [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr h, IntPtr rgn, bool redraw);
     [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
-    public static void ShowGhost(IntPtr h) {
+    public static void ShowGhost(IntPtr h, int x, int y) {
         long ex = (long)GetLong(h, -20);
         SetLong(h, -20, (IntPtr)((ex | 0x80000 | 0x20 | 0x80 | 0x08000000) & ~0x40000L));   // LAYERED | TRANSPARENT | TOOLWINDOW | NOACTIVATE
         SetLayeredWindowAttributes(h, 0, 3, 2);   // 1 % opaque
-        SetWindowPos(h, (IntPtr)(-1), 40, 40, 0, 0, 0x0001 | 0x0010);   // topmost, NOSIZE | NOACTIVATE
+        SetWindowPos(h, (IntPtr)(-1), x, y, 0, 0, 0x0001 | 0x0010);   // topmost, NOSIZE | NOACTIVATE
         ShowWindow(h, 8);
     }
     public static void Move(IntPtr h, int x, int y) { SetThreadDpiAwarenessContext((IntPtr)(-4)); PostMessageW(h, 0x0200, IntPtr.Zero, Pos(x, y)); }
@@ -128,7 +129,7 @@ try {
     $st0 = Wren-Ctl stats --json --reset-frames | ConvertFrom-Json
     $hwnd = [DragPoster]::FindWindow([uint32]$st0.pid)
     if ($hwnd -eq [IntPtr]::Zero) { throw 'no window of the process' }
-    if ($Ghost) { [DragPoster]::ShowGhost($hwnd); Start-Sleep -Milliseconds 1500; Wren-Ctl stats --json --reset-frames | Out-Null }
+    if ($Ghost) { $gx, $gy = @($GhostAt -split ',') ; [DragPoster]::ShowGhost($hwnd, [int]$gx, [int]$gy); Start-Sleep -Milliseconds 1500; Wren-Ctl stats --json --reset-frames | Out-Null }
     if ($Offscreen) { [DragPoster]::ShowFarAway($hwnd); Start-Sleep -Milliseconds 1500; Wren-Ctl stats --json --reset-frames | Out-Null }
     if ($Single) {
         # one pointer move at a time with the window at rest between them: what a lone event costs from input to screen
