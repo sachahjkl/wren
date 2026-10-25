@@ -342,9 +342,9 @@ driver_step :: proc(app: ^App) {
 		}
 		switch s.kind {
 		case .Open:
-			tab_open(app, s.arg)
+			tab_open(app, s.arg, origin = .User)
 		case .Go:
-			if t != nil { navigate(app, t, s.arg) }
+			if t != nil { navigate(app, t, s.arg, origin = .User) }
 		case .Command:
 			if c := command(s.arg); c != nil { command_run(app, t, c) }
 		case .Load:

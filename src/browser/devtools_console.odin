@@ -545,7 +545,7 @@ console_toggle :: proc(c: ^Dev_Console, r: ^Con_Row) {
 @(private = "file")
 console_open_source :: proc(app: ^App, t: ^Tab, src: Con_Source) {
 	if src.url == "" { return }
-	open_in_new_tab(app, strings.concatenate({VIEW_SOURCE, src.url}, context.temp_allocator))
+	open_in_new_tab(app, strings.concatenate({VIEW_SOURCE, src.url}, context.temp_allocator), inspected_page(app))
 }
 
 @(private = "file")

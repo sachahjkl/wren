@@ -611,7 +611,7 @@ net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 				v.list.sel = k
 				ui.set_focus(v.list.key)
 			}
-			if sig.double_clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator)) }
+			if sig.double_clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 			if sig.right_clicked {
 				v.has_sel, v.sel_id = true, e.id
 				v.menu_id = e.id
@@ -818,7 +818,7 @@ net_row_menu :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, key: ui.Key) {
 net_row_menu_items :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	e := net_entry_of(&t.net, v.menu_id)
 	if e == nil { ui.ctx_menu_close(); return }
-	if ui.menu_item("Open in a new tab###dt_nm_open").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator)) }
+	if ui.menu_item("Open in a new tab###dt_nm_open").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 	if ui.menu_item("Copy link address###dt_nm_url", icon = GLYPH_COPY).clicked { clip_set(e.url) }
 	if ui.menu_submenu("Copy###dt_nm_copy") {
 		if ui.menu_item("Copy URL###dt_nm_c_url").clicked { clip_set(e.url) }

@@ -97,7 +97,7 @@ cmd_run :: proc(data: rawptr) {
 	case .Forward: go_history(app, t, +1)
 	case .Refresh: reload(app, t)
 	case .Stop: stop_loading(app, t)
-	case .Home: navigate(app, t, app.cfg.homepage)
+	case .Home: navigate(app, t, app.cfg.homepage, origin = .User)
 	case .None:
 	}
 	app.frames_requested = max(app.frames_requested, 2)

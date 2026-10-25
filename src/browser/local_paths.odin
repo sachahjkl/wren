@@ -164,9 +164,9 @@ drop_open :: proc(data: rawptr) {
 		address := fetch.file_url_from_path(p, false, context.temp_allocator)   // a folder is redirected to its URL with '/'
 		if i == 0 && current_tab(app) != nil {
 			first = app.current
-			navigate(app, current_tab(app), address)
+			navigate(app, current_tab(app), address, origin = .User)
 		} else {
-			tab_open(app, address)
+			tab_open(app, address, origin = .User)
 			if first < 0 { first = app.current }
 		}
 	}
