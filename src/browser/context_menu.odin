@@ -116,7 +116,8 @@ page_context_menu :: proc(app: ^App, t: ^Tab, target: base.Handle, pos: [2]f32, 
 	if p == nil { return }
 	scale := page_scale(app)
 	at := target != base.NIL_HANDLE ? target : p.body
-	allowed := page.dispatch_event(p, at, dom.Event{type = "contextmenu", bubbles = true, cancelable = true, x = f64(local.x / scale), y = f64(local.y / scale), button = 2})
+	cx, cy := page_client_xy(t, local, scale)
+	allowed := page.dispatch_event(p, at, dom.Event{type = "contextmenu", bubbles = true, cancelable = true, x = cx, y = cy, button = 2})
 	if t.page != p { return }
 	if !allowed && !(shift && ix.ctx_shift_forces) { return }
 	request(app, page_request(app, t, target, pos, keyboard))
@@ -147,8 +148,8 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 		if f.focus != base.NIL_HANDLE {
 			target = f.focus
 			if r, ok := lay.box_of(&t.layout, f.focus, view, t.scroll); ok {
-				y := r.fixed ? r.bounds.max.y : r.bounds.max.y - t.scroll
-				pos = app.page_rect.min + {r.bounds.min.x, y}
+				// (box_of's rects are document coordinates for every box, position: fixed ones included)
+				pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
 			}
 		}
 	}
@@ -158,7 +159,7 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 		if n != nil {
 			el := n.kind == .Text ? n.parent : a.node
 			target = el
-			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = app.page_rect.min + {r.bounds.min.x, (r.fixed ? r.bounds.max.y : r.bounds.max.y - t.scroll)} }
+			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
 		}
 	}
 	pos = {clamp(pos.x, app.page_rect.min.x, app.page_rect.max.x), clamp(pos.y, app.page_rect.min.y, app.page_rect.max.y)}
