@@ -20,11 +20,12 @@ The launcher starts `wren.exe` with the same arguments and decides from them (`d
 | Arguments | The launcher |
 |---|---|
 | `ctl ...` as the **first** argument | waits, ends with `wren.exe`'s exit code |
+| `version` or `help` as the **first** argument; `--version`, `-V`, `--help`, `-h`, `-?` anywhere | waits, same: `wren version` prints the version and the build, `wren help` the usage (`browser/cli_usage.odin`) |
 | `--desktop-integration[=...]` anywhere | waits, same |
 | `--cli` anywhere (it is the launcher's: `wren.exe` does not see it) | waits whatever the rest is |
 | anything else (an address, `--new-window`, `--setup`, `--profile ...`) | lets go and returns 0 |
 
-`wren.exe` reads `ctl` the same way: only the first argument (`./ctl` opens a file named ctl).
+`wren.exe` reads `ctl`, `help` and `version` the same way: only the first argument (`./ctl`, `./help`, `./version` open a file or host of that name; after an option the word is refused with a message and exit code 2, never opened as `https://help`).
 
 When it waits, it hands its own standard input, output and error to `wren.exe` (`STARTF_USESTDHANDLES`), so `> file`,
 `2> file`, `2>&1` and `| more` act on what `wren.exe` prints. It also puts itself in a Job Object with

@@ -33,6 +33,16 @@ ctl_waits :: proc(t: ^testing.T) {
 ctl_is_a_command_only_first :: proc(t: ^testing.T) {
 	// as wren.exe reads it: after an option it is an address (it answers with a message, and the window does not open)
 	expect_plan(t, {"--new-window", "ctl"}, .Detach, {"--new-window", "ctl"})
+	// the version and the usage are console commands too: the words as the first argument, the flags anywhere
+	expect_plan(t, {"version"}, .Wait, {"version"})
+	expect_plan(t, {"help"}, .Wait, {"help"})
+	expect_plan(t, {"--version"}, .Wait, {"--version"})
+	expect_plan(t, {"-V"}, .Wait, {"-V"})
+	expect_plan(t, {"--profile", "p", "--help"}, .Wait, {"--profile", "p", "--help"})
+	expect_plan(t, {"-h"}, .Wait, {"-h"})
+	expect_plan(t, {"-?"}, .Wait, {"-?"})
+	expect_plan(t, {"--new-window", "help"}, .Detach, {"--new-window", "help"})
+	expect_plan(t, {"./help"}, .Detach, {"./help"})
 	expect_plan(t, {"./ctl"}, .Detach, {"./ctl"})
 	expect_plan(t, {"ctl.example"}, .Detach, {"ctl.example"})
 }

@@ -1157,6 +1157,8 @@ main :: proc() {
 	// `wren ctl ...`: the remote control client, before anything else is set up (no profile opened, no window, no GPU, no
 	// script engine): only as the first argument (a file or host named ctl is written ./ctl)
 	if len(args) > 0 && args[0] == "ctl" { os.exit(ctl_main(args[1:])) }
+	// `wren --version`, `wren version`, `wren --help`, `wren help` (cli_usage.odin): said on the console, nothing else is set up
+	if info := cli_info_of(args); info != .None { desktop.console_write(cli_info_text(info)); os.exit(0) }
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
 	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
@@ -1185,8 +1187,8 @@ main :: proc() {
 	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
 	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
-	if len(rest) > 0 && rest[0] == "ctl" {
-		desktop.console_write("`ctl` is a command only as the first argument: wren ctl <command> [options]. To open a file or host named ctl, write ./ctl\n")
+	if len(rest) > 0 && is_info_word(rest[0]) {
+		desktop.console_write(fmt.tprintf("`%s` is a command only as the first argument (wren ctl <command>, wren help, wren version). To open a file or host named %s, write ./%s\n", rest[0], rest[0], rest[0]))
 		os.exit(2)
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
