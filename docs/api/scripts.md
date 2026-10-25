@@ -249,9 +249,55 @@ string WorkerGlobalScope_importScript(usvstring url) raises
 ```
 
 importScripts(url), one URL: fetched synchronously (same rules as the worker's script). The result is the
-response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript.
+response's URL, a NUL byte, then the script. Network when it cannot be fetched or is not JavaScript; Type in a
+module worker (importScripts is a classic worker's).
 
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `WorkerGlobalScope_importScript :: proc(c: ^Call, url: string) -> (string, Api_Error)`
+
+### `WorkerGlobalScope_isModule`
+
+```
+bool WorkerGlobalScope_isModule()
+```
+
+Whether the calling worker's script is a module ({type: "module"}).
+
+Host: `WorkerGlobalScope_isModule :: proc(c: ^Call) -> bool`
+
+### `SharedWorker_connect`
+
+```
+u64 SharedWorker_connect(usvstring url, usvstring name, WorkerType type, bool extended_lifetime) raises
+```
+
+new SharedWorker(url, {name, type, extendedLifetime}) from a document: the SharedWorker object (it gets `error`
+events), connected to the shared worker of (the document's storage key, the URL, the name), which starts if none
+runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
+Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `SharedWorker_connect :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool) -> (u64, Api_Error)`
+
+### `SharedWorker_portEnd`
+
+```
+u64 SharedWorker_portEnd(u64 worker)
+```
+
+The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
+
+Host: `SharedWorker_portEnd :: proc(c: ^Call, worker: u64) -> u64`
+
+### `SharedWorkerGlobalScope_takeConnection`
+
+```
+u64 SharedWorkerGlobalScope_takeConnection()
+```
+
+The end of the port of the next connect event of the calling shared worker (0: none waits).
+
+Host: `SharedWorkerGlobalScope_takeConnection :: proc(c: ^Call) -> u64`
 

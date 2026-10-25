@@ -811,8 +811,11 @@ member_flags :: proc(g: ^Gen, it: ^webidl.Interface, mb: ^webidl.Member, mi: Mem
 	if webidl.attr_has(mb.attrs, "LegacyLenientThis") { append(&f, "WJ_F_LENIENT_THIS") }
 	if webidl.attr_has(mb.attrs, "SecureContext") || webidl.attr_has(it.attrs, "SecureContext") { append(&f, "WJ_F_SECURE") }
 	e := webidl.member_exposure(it, mb)
-	if e == {.Window} && it.exposed != {.Window} { append(&f, "WJ_F_WINDOW_ONLY") }
-	if e == {.Worker} && it.exposed != {.Worker} { append(&f, "WJ_F_WORKER_ONLY") }
+	// realms that have the interface but not this member
+	if .Window in it.exposed && .Window not_in e { append(&f, "WJ_F_NOT_WINDOW") }
+	if .Dedicated_Worker in it.exposed && .Dedicated_Worker not_in e { append(&f, "WJ_F_NOT_DEDICATED") }
+	if .Shared_Worker in it.exposed && .Shared_Worker not_in e { append(&f, "WJ_F_NOT_SHARED") }
+	if .Service_Worker in it.exposed && .Service_Worker not_in e { append(&f, "WJ_F_NOT_SERVICE") }
 	if mi.kind != .None && !mb.readonly && mb.kind == .Attribute && mi.set_kind == .None { append(&f, "WJ_F_SETTER_UNSUPPORTED") }
 	if len(f) == 0 { return "0" }
 	return strings.join(f[:], " | ", context.temp_allocator)
@@ -947,7 +950,9 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 		if it.parent_ref != nil { parent = g.index_of[it.parent_ref.name] or_else -1 }
 		ex := make([dynamic]string, context.temp_allocator)
 		if .Window in it.exposed { append(&ex, "WJ_EXPOSE_WINDOW") }
-		if .Worker in it.exposed { append(&ex, "WJ_EXPOSE_WORKER") }
+		if .Dedicated_Worker in it.exposed { append(&ex, "WJ_EXPOSE_WORKER") }
+		if .Shared_Worker in it.exposed { append(&ex, "WJ_EXPOSE_SHARED_WORKER") }
+		if .Service_Worker in it.exposed { append(&ex, "WJ_EXPOSE_SERVICE_WORKER") }
 		flags := make([dynamic]string, context.temp_allocator)
 		if webidl.attr_has(it.attrs, "Global") { append(&flags, "WJ_I_GLOBAL") }
 		if webidl.attr_has(it.attrs, "LegacyNoInterfaceObject") { append(&flags, "WJ_I_NO_INTERFACE_OBJECT") }

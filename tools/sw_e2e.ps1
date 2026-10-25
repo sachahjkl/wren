@@ -2,7 +2,10 @@
 # the test server (http://127.0.0.1: a secure context): examples/site/sw/ registers sw.js, which caches data.txt at
 # install, claims the page, answers virtual.txt and a whole navigation (virtual-page.html) itself, serves data.txt from
 # its cache and answers messages. Checks the page's view (ready, controller, the answers, the messages, caches.keys)
-# and that a page with no service worker in its scope is not intercepted.
+# and that a page with no service worker in its scope is not intercepted. Then the Cache API's Vary / ignoreVary and
+# response URLs, which interfaces each realm has, a module service worker, and with tools/testserver/sw.go: versions
+# (update(), waiting, skipWaiting, controllerchange, the update check of a navigation), clients (matchAll, get,
+# openWindow, focus), an idle worker stopped and started again, navigation preload (preloadResponse, fallback).
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'wrenctl.ps1')
@@ -21,7 +24,7 @@ try {
   Wren-Ctl nav "$base/index.html" --wait load | Out-Null
   $scope = Wren-Ctl eval 'registered' --await
   Expect ($scope -eq "$base/") 'register() resolves with the registration (its scope)' $scope
-  $state = Wren-Ctl eval 'navigator.serviceWorker.ready.then((r) => r.active && r.active.state)' --await
+  $state = Wren-Ctl eval 'navigator.serviceWorker.ready.then((r) => r.active.state === "activated" ? "activated" : new Promise((ok) => { r.active.onstatechange = () => { if (r.active.state === "activated") ok("activated"); }; }))' --await
   Expect ($state -eq 'activated') 'ready: the worker installed (cache filled, skipWaiting) and activated' $state
   Start-Sleep -Milliseconds 300
   $ctl = Wren-Ctl eval '!!navigator.serviceWorker.controller'
@@ -32,6 +35,8 @@ try {
   Expect ($keys -eq 'v1') 'the page sees the cache the worker made (caches.keys)' $keys
   $cached = Wren-Ctl eval 'caches.open("v1").then((c) => c.match("data.txt")).then((r) => r ? r.text() : "none")' --await
   Expect ($cached -match 'data from the network') 'cache.addAll stored the response (cache.match from the page)' $cached
+  $est = Wren-Ctl eval 'navigator.storage.estimate().then((e) => e.usage > 0 && e.quota > e.usage)' --await
+  Expect ($est -eq 'true') 'navigator.storage.estimate() counts the Cache API' $est
   $data = Wren-Ctl eval 'fetch("data.txt").then((r) => r.text())' --await
   Expect ($data -match 'data from the network') 'a request answered from the cache (respondWith(caches.match))' $data
   $only = Wren-Ctl eval 'fetch("cached-only.txt").then((r) => r.text())' --await
@@ -46,6 +51,14 @@ try {
   Expect ($oc -eq '255,255 image/png true') 'OffscreenCanvas in a worker: drawn, read back, encoded' $oc
   $coi = Wren-Ctl eval 'String(crossOriginIsolated)'
   Expect ($coi -eq 'false') 'crossOriginIsolated is false (realms share no memory)' $coi
+  $vary = Wren-Ctl eval 'caches.open("vary").then((c) => c.put(new Request("vx", {headers: {"X-L": "a"}}), new Response("A", {headers: {"Vary": "X-L"}})).then(() => c.put(new Request("vx", {headers: {"X-L": "b"}}), new Response("B", {headers: {"Vary": "X-L"}}))).then(() => Promise.all([c.match(new Request("vx", {headers: {"X-L": "b"}})).then((r) => r.text()), c.match("vx").then((r) => String(r)), c.matchAll("vx", {ignoreVary: true}).then((rs) => rs.length), c.keys().then((ks) => ks.map((k) => k.headers.get("x-l")).join(""))]))).then((a) => a.join(" "))' --await
+  Expect ($vary -eq 'B undefined 2 ab') 'Cache API: Vary (one entry per varying request header), ignoreVary, the stored request headers' $vary
+  $rurl = Wren-Ctl eval 'caches.open("v1").then((c) => c.match("data.txt")).then((r) => new URL(r.url).pathname)' --await
+  Expect ($rurl -eq '/site/sw/data.txt') 'a response from the cache keeps its URL' $rurl
+  $ptypes = Wren-Ctl eval '[typeof FetchEvent, typeof Clients, typeof ExtendableEvent, typeof ServiceWorkerGlobalScope, typeof ServiceWorker].join(" ")'
+  Expect ($ptypes -eq 'undefined undefined undefined undefined function') 'a page has none of the service worker realm interfaces' $ptypes
+  $mod = Wren-Ctl eval 'navigator.serviceWorker.register("module-sw.js", {scope: "./module/", type: "module"}).then((r) => new Promise((ok) => { const go = () => { const w = r.active; if (!w) { setTimeout(go, 50); return; } const n = swMessages.length; w.postMessage("hi"); const t = setInterval(() => { if (swMessages.length > n) { clearInterval(t); ok(swMessages[swMessages.length - 1]); } }, 20); }; go(); }))' --await
+  Expect ($mod -eq 'module:imported TypeError') 'a module service worker ({type: "module"}): static import, no importScripts' $mod
 
   Wren-Ctl nav "$base/virtual-page.html" --wait load | Out-Null
   $page = Wren-Ctl eval 'document.getElementById("x") ? document.getElementById("x").textContent : document.body.textContent.slice(0, 80)'
@@ -53,11 +66,68 @@ try {
   $ctl2 = Wren-Ctl eval '!!navigator.serviceWorker.controller'
   Expect ($ctl2 -eq 'true') 'a page loaded in the scope after activation is controlled' $ctl2
 
-  Wren-Ctl nav "$($srv.Origin)/site/index.html" --wait load | Out-Null
-  $out = Wren-Ctl eval 'String(navigator.serviceWorker.controller)'
+  # --- versions (tools/testserver/sw.go: /sw/ver.js changes after /sw/bump), clients, idle stop, navigation preload
+  $o = $srv.Origin
+  Wren-Ctl nav "$o/sw/ver/page" --wait load | Out-Null
+  $tab1 = (Wren-Ctl tabs | Select-Object -First 1) -replace '^(\d+).*', '$1'
+  $askJs = 'window.ask = (m) => new Promise((ok) => { const n = swMessages.length; navigator.serviceWorker.controller.postMessage(m); const t = setInterval(() => { if (swMessages.length > n) { clearInterval(t); ok(swMessages[swMessages.length - 1]); } }, 20); setTimeout(() => ok("no answer"), 8000); }); 1'
+  $v1 = Wren-Ctl eval 'navigator.serviceWorker.register("/sw/ver.js", {scope: "/sw/ver/"}).then(() => navigator.serviceWorker.ready).then((r) => r.active.state === "activated" ? "activated" : new Promise((ok) => { r.active.onstatechange = () => { if (r.active.state === "activated") ok("activated"); }; }))' --await
+  Expect ($v1 -eq 'activated') 'a registration of /sw/ver.js (version 1) activated' $v1
+  Start-Sleep -Milliseconds 300
+  Wren-Ctl eval $askJs | Out-Null
+  $types = Wren-Ctl eval 'ask("types")' --await
+  Expect ($types -eq 'function function undefined undefined function') 'a service worker has FetchEvent and Clients, not DedicatedWorkerGlobalScope nor SharedWorkerGlobalScope' $types
+  $same = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => r.update()).then((r) => String(r.installing) + " " + String(r.waiting))' --await
+  Expect ($same -eq 'null null') 'update() with an unchanged script installs nothing' $same
+  Wren-Ctl eval 'fetch("/sw/bump").then((r) => r.text())' --await | Out-Null
+  $wait = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { r.onupdatefound = () => { const w = r.installing; w.onstatechange = () => { if (w.state === "installed") ok("waiting " + (r.waiting === w) + " " + (r.active !== w)); }; }; r.update(); setTimeout(() => ok("timeout"), 8000); }))' --await
+  Expect ($wait -eq 'waiting true true') 'update() of a changed script: updatefound, the new version installs and waits (the page uses the old one)' $wait
+  $who1 = Wren-Ctl eval 'ask("who")' --await
+  Expect ($who1 -eq 'v1') 'the waiting version does not control the page yet' $who1
+  $chg = Wren-Ctl eval 'new Promise((ok) => { navigator.serviceWorker.oncontrollerchange = () => ok("changed"); navigator.serviceWorker.getRegistration().then((r) => r.waiting.postMessage("skip")); setTimeout(() => ok("timeout"), 8000); })' --await
+  Expect ($chg -eq 'changed') 'skipWaiting() in the waiting version: it activates, controllerchange' $chg
+  Start-Sleep -Milliseconds 300
+  $who2 = Wren-Ctl eval 'ask("who")' --await
+  Expect ($who2 -eq 'v2') 'the new version controls the page' $who2
+  $vt = Wren-Ctl eval 'fetch("v.txt").then((r) => r.text())' --await
+  Expect ($vt -eq 'v2') 'requests go to the new version' $vt
+  $st = Wren-Ctl eval 'ask("state")' --await
+  Expect ($st -eq 'activated true') 'the worker sees its own state and registration.active' $st
+  $cl = Wren-Ctl eval 'ask("clients")' --await
+  Expect ($cl -eq '1 window:/sw/ver/page') 'clients.matchAll knows the open window clients of the scope' $cl
+  $get = Wren-Ctl eval 'ask("get")' --await
+  Expect ($get -eq 'got true top-level') 'clients.get(id)' $get
+  $op = Wren-Ctl eval 'ask("open")' --await
+  Expect ($op -eq 'opened /sw/ver/opened') 'clients.openWindow opens a tab and resolves with its WindowClient' $op
+  $fo = Wren-Ctl eval 'ask("focus")' --await --tab-id $tab1
+  Expect ($fo -eq 'focused true') 'WindowClient.focus() shows the client''s tab' $fo
+  Wren-Ctl pref set service_workers.idle_ms 400 | Out-Null
+  $rem = Wren-Ctl eval 'ask("remember")' --await --tab-id $tab1
+  Start-Sleep -Milliseconds 1500
+  $rec = Wren-Ctl eval 'ask("recall")' --await --tab-id $tab1
+  Expect ($rem -eq 'ok' -and $rec -eq 'nothing') 'an idle service worker stops (service_workers.idle_ms) and starts again for the next event' "$rem $rec"
+  Wren-Ctl pref set service_workers.idle_ms 30000 | Out-Null
+  Wren-Ctl pref set service_workers.update_check_hours 0 | Out-Null
+  Wren-Ctl eval 'fetch("/sw/bump").then((r) => r.text())' --await --tab-id $tab1 | Out-Null
+  Wren-Ctl nav "$o/sw/ver/page" --wait load --tab-id $tab1 | Out-Null
+  $nu = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { const go = () => (r.waiting || r.installing) ? ok("new version") : setTimeout(go, 50); go(); setTimeout(() => ok("none"), 8000); }))' --await --tab-id $tab1
+  Expect ($nu -eq 'new version') 'a navigation in the scope checks the script (service_workers.update_check_hours) and installs a changed one' $nu
+  Wren-Ctl pref set service_workers.update_check_hours 24 | Out-Null
+  $pre = Wren-Ctl eval 'navigator.serviceWorker.register("/sw/preload.js", {scope: "/sw/pre/"}).then((r) => new Promise((ok) => { const go = () => r.active && r.active.state === "activated" ? r.navigationPreload.getState().then((s) => ok(s.enabled + " " + s.headerValue)) : setTimeout(go, 50); go(); }))' --await --tab-id $tab1
+  Expect ($pre -eq 'true wren-test') 'navigationPreload.enable / setHeaderValue / getState' $pre
+  Wren-Ctl nav "$o/sw/pre/page" --wait load --tab-id $tab1 | Out-Null
+  $pp = Wren-Ctl eval 'document.getElementById("x") ? document.getElementById("x").textContent : document.body.textContent' --tab-id $tab1
+  Expect ($pp -eq 'preloaded 200 header=wren-test') 'FetchEvent.preloadResponse: the navigation''s request, with Service-Worker-Navigation-Preload' $pp
+  Wren-Ctl nav "$o/sw/pre/fallback" --wait load --tab-id $tab1 | Out-Null
+  $pf = Wren-Ctl eval 'document.body.textContent' --tab-id $tab1
+  Expect ($pf -eq 'header=wren-test') 'a navigation the worker does not answer gets the preload''s response' $pf
+  Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.filter((r) => new URL(r.scope).pathname.startsWith("/sw/")).map((r) => r.unregister())))' --await --tab-id $tab1 | Out-Null
+
+  Wren-Ctl nav "$($srv.Origin)/site/index.html" --wait load --tab-id $tab1 | Out-Null
+  $out = Wren-Ctl eval 'String(navigator.serviceWorker.controller)' --tab-id $tab1
   Expect ($out -eq 'null') 'a page outside the scope is not controlled' $out
-  $un = Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))).then((x) => x.join(","))' --await
-  Expect ($un -eq 'true') 'unregister()' $un
+  $un = Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))).then((x) => x.join(","))' --await --tab-id $tab1
+  Expect ($un -match '^true(,true)*$') 'unregister()' $un
 } finally {
   if ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
