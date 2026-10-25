@@ -6,6 +6,7 @@ package page
 // WREN_JS_PROFILE=<prefix>: the page's own functions: the engine counts the frames of the stack every few interrupt checks
 // (native/js/engine/qjs_realm.c), written as <prefix>.<n>.js.txt when the page closes: the functions with the most samples of their
 // own, and with the most on the stack.
+// WREN_JS_PROFILE_FROM=<ms>: with WREN_JS_PROFILE, count only from that many ms after the realm was made.
 // WREN_JS_PRELUDE=<file>: a script run in every window realm before the page's own scripts (the measuring tools wrap the engine's
 // functions with timers: tools\js_prelude\*.js).
 
@@ -15,6 +16,7 @@ import "core:slice"
 import "core:strconv"
 import "core:strings"
 import "wb:base"
+import "wb:host"
 import "wb:wasm"
 
 @(private = "file")
@@ -37,8 +39,20 @@ js_profile_begin :: proc(p: ^Page, inst: ^wasm.Instance) {
 	profile_seq += 1
 	if wasm_prefix != "" && wasm.profile_start(inst, js_engine_image()) { jp.path = fmt.aprintf("%s.%d.json", wasm_prefix, profile_seq) }
 	if js_prefix != "" {
-		argv := [1]u32{1}
-		if wasm.call_raw(inst, "wj_profile_set", argv[:]) == .Ok { jp.js_path = fmt.aprintf("%s.%d.js.txt", js_prefix, profile_seq) }
+		// WREN_JS_PROFILE_FROM=<ms>: the functions are counted from that long after the realm was made (a page that has settled: what
+		// it does when nothing moves), not from its first script
+		from_ms, _ := strconv.parse_f64(os.get_env("WREN_JS_PROFILE_FROM", context.temp_allocator))
+		argv := [1]u32{from_ms > 0 ? 0 : 1}
+		if wasm.call_raw(inst, "wj_profile_set", argv[:]) == .Ok {
+			jp.js_path = fmt.aprintf("%s.%d.js.txt", js_prefix, profile_seq)
+			if from_ms > 0 {
+				host.set_timer(p.loop, from_ms, 0, proc(data: rawptr) {
+					jp := (^Js_Profile)(data)
+					on := [1]u32{1}
+					wasm.call_raw(jp.inst, "wj_profile_set", on[:])
+				}, jp, p.scope)
+			}
+		}
 	}
 	if jp.path == "" && jp.js_path == "" { free(jp); return }
 	base.on_close(p.scope, proc(data: rawptr) {
