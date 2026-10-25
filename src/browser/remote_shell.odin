@@ -243,15 +243,17 @@ remote_handle :: proc(user: rawptr, conn: u64, line: []byte) {
 	remote_run_line(app, conn, line)
 }
 
+// The task that carries requests (remote.on_input) is no work that shows by itself (it is a quiet callback of the loop): a request
+// that changes something asks for its frames here, one that only reads asks for none.
 @(private = "file")
 remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
+	if !remote_reads_only(c.method) { app.frames_requested = max(app.frames_requested, 2) }
 	rep := remote_dispatch(app, &c)
 	if rep.deferred { return }
 	remote_answer(conn, c.id, rep)
-	app.frames_requested = max(app.frames_requested, 2)
 }
 
 remote_answer :: proc(conn: u64, id: string, rep: Reply) {

@@ -33,6 +33,17 @@ render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_
 ////////////////////////////////
 // Dispatch
 
+// Methods that only read: they change nothing on screen, so answering one draws no frame. (Every answer used to ask for two, and the
+// task that carried the request counted as work, so a poll of `stats` once a second kept a resting Wren drawing 3 to 8 frames per
+// call: the test that asks whether an idle Wren draws read its own question.)
+remote_reads_only :: proc(method: string) -> bool {
+	switch method {
+	case "Remote.ping", "Browser.getVersion", "Browser.getWindowBounds", "Target.getTargets", "Wren.stats", "Wren.getPref", "Wren.listPrefs", "Wren.listCommands":
+		return true
+	}
+	return false
+}
+
 remote_dispatch :: proc(app: ^App, c: ^Call) -> Reply {
 	switch c.method {
 	case "Remote.ping":          return done(fmt.tprintf(`{{"protocol":%d,"version":%s,"pid":%d}}`, remote.PROTOCOL_VERSION, remote.quote(APP_VERSION), win.GetCurrentProcessId()))
