@@ -412,7 +412,7 @@ unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	out := strings.builder_make(context.allocator)
 	fmt.sbprintf(&out, "%s\n\n*** a session ended without a crash report: no stack, the filter was not run (a fail-fast, the system or a watchdog ended the process).\nThe session file said (process id, start, program):\n%s\n", string(report_header[:report_header_len]), prev)
 	// Windows' own record: the Application Error event (id 1000) of that process id, which names the exception code and the offset
-	events := run_hidden("wevtutil.exe qe Application \"/q:*[System[(EventID=1000)]]\" /c:40 /rd:true /f:text")
+	events := run_hidden("wevtutil.exe", "qe Application \"/q:*[System[(EventID=1000)]]\" /c:40 /rd:true /f:text")
 	hex := fmt.tprintf("0x%X", pid)
 	dec := fmt.tprintf("%d", pid)
 	found := false
@@ -440,9 +440,31 @@ unclean_thread :: proc "system" (_: rawptr) -> win.DWORD {
 	return 0
 }
 
-// A command line run without a window, its output (the first 64 KB) read from a pipe.
+// The program `name` of the system folder (System32), by its full path and as the application of the process: given a bare name,
+// CreateProcess looks in the working directory (and the executable's) before the system folder, where anyone who got the person to
+// start the browser from a folder of theirs could have left a program of that name.
+@(private)
+system_tool_command :: proc(system_dir, name, args: string) -> (exe, line: string) {
+	exe = strings.concatenate({strings.trim_right(system_dir, "\\/"), "\\", name}, context.temp_allocator)
+	line = fmt.tprintf("\"%s\" %s", exe, args)
+	return
+}
+
+@(private)
+system_directory :: proc() -> string {
+	buf: [260]u16
+	n := win.GetSystemDirectoryW(&buf[0], len(buf))
+	if n == 0 || int(n) >= len(buf) { return "" }
+	s, err := win.utf16_to_utf8(buf[:n], context.temp_allocator)
+	return err == nil ? s : ""
+}
+
+// A system tool run without a window, its output (the first 64 KB) read from a pipe.
 @(private = "file")
-run_hidden :: proc(cmd: string) -> string {
+run_hidden :: proc(name, args: string) -> string {
+	system := system_directory()
+	if system == "" { return "" }
+	exe, cmd := system_tool_command(system, name, args)
 	sa := win.SECURITY_ATTRIBUTES{nLength = size_of(win.SECURITY_ATTRIBUTES), bInheritHandle = true}
 	rd, wr: win.HANDLE
 	if !win.CreatePipe(&rd, &wr, &sa, 0) { return "" }
@@ -450,7 +472,8 @@ run_hidden :: proc(cmd: string) -> string {
 	si := win.STARTUPINFOW{cb = size_of(win.STARTUPINFOW), dwFlags = 0x101, wShowWindow = 0, hStdOutput = wr, hStdError = wr}   // STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES
 	pi: win.PROCESS_INFORMATION
 	line := win.utf8_to_utf16(cmd, context.temp_allocator)
-	ok := win.CreateProcessW(nil, cstring16(raw_data(line)), nil, nil, true, 0x08000000, nil, nil, &si, &pi)   // CREATE_NO_WINDOW
+	app := win.utf8_to_wstring(exe, context.temp_allocator)
+	ok := win.CreateProcessW(app, cstring16(raw_data(line)), nil, nil, true, 0x08000000, nil, nil, &si, &pi)   // CREATE_NO_WINDOW
 	win.CloseHandle(wr)
 	if !ok { win.CloseHandle(rd); return "" }
 	out := make([dynamic]u8, context.temp_allocator)

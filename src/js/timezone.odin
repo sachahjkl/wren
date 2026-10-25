@@ -21,7 +21,7 @@ timezone_name :: proc() -> string {
 	tz_name_done = true
 	copy(tz_name_cache[:], "UTC")
 	tz_name_len = 3
-	lib := win.LoadLibraryW(win.L("icu.dll"))
+	lib := win.LoadLibraryExW(win.L("icu.dll"), nil, {.LOAD_LIBRARY_SEARCH_SYSTEM32})   // (the system's, never one beside the program or in the working directory)
 	if lib == nil { return "UTC" }
 	Get_Default :: #type proc "c" (result: [^]u16, capacity: i32, status: ^i32) -> i32
 	fp := win.GetProcAddress(lib, "ucal_getDefaultTimeZone")
