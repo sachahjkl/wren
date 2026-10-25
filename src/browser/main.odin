@@ -763,7 +763,6 @@ page_view :: proc(app: ^App, t: ^Tab) {
 
 build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restored tab loads when it is first shown
 	chrome_shortcuts(app)
-	em := ui.font_size()
 	t := current_tab(app)
 	if ui.style({width = ui.fill(), height = ui.fill()}) {
 		ui.next({axis = .Y})
@@ -773,8 +772,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
 			if !platform.is_fullscreen(app.win) {
 				if tab_strip(app, platform.is_integrated_title(app.win)) { return }
-				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-				if ui.row(.Center) { address_row(app, t) }
+				toolbar_row(app, t)   // chrome_style.odin
 			}
 			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
 			if !elem_fs { find_bar(app, t) }
@@ -1262,6 +1260,7 @@ main :: proc() {
 	smooth_init(app)
 	page_cursor_init(app)
 	window_chrome_init(app)
+	chrome_style_init(app)   // chrome_style.odin
 	favicons_init(app)   // favicon.odin
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
@@ -1385,6 +1384,7 @@ main :: proc() {
 	app_commands_destroy()
 	host.shutdown_step("window_chrome_destroy")
 	window_chrome_destroy(app)
+	chrome_style_destroy(app)
 	host.shutdown_step("pacer_destroy")
 	pacer_destroy(app)
 	host.shutdown_step("font.set_color_ready_callback")

@@ -165,9 +165,7 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
 	if ui.parent(col) {
 		if tab_strip(app, false) { return }
-		em := ui.font_size()
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.8))})
-		if ui.row(.Center) { address_row(app, t) }
+		toolbar_row(app, t)   // chrome_style.odin
 	}
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)
 	if col.rect != wchrome.overlay { app.frames_requested = max(app.frames_requested, 2) }
