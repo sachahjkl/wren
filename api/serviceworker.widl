@@ -1,0 +1,55 @@
+/// Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, one
+/// running worker per registration (a JavaScript worker hosted by a page of its own), requests intercepted by the
+/// loader for the pages it controls. Page side: register, ready, the registrations, the controller, messages. Worker
+/// side: the events the browser sends (install, activate, fetch, message) and what the worker answers.
+[Exposed=(Window,Worker)]
+module serviceworker {
+  /// What the current event of a service worker's realm is (kind 0: none waits).
+  struct SwEventInfo {
+    /// 1 install, 2 activate, 3 fetch, 4 message
+    i32 kind;
+    /// the fetch's id (ServiceWorkerGlobalScope_reply)
+    u64 id;
+    /// fetch: the request's mode and destination (fetch.Mode, fetch.Destination)
+    i32 mode;
+    i32 destination;
+    /// the client (a page's id), 0 for a navigation
+    u64 client;
+  }
+
+  /// navigator.serviceWorker.register(script, {scope, updateViaCache}): a promise of the registration's id, resolved
+  /// once the worker's script ran (TypeError when it failed). Security outside a secure context, for another origin
+  /// or a scope outside the script's directory.
+  Promise ServiceWorker_register(string script, optional string scope, string update_via_cache) raises;
+  /// navigator.serviceWorker.ready: a promise of the id of the active registration whose scope holds the page.
+  Promise ServiceWorker_ready();
+  /// getRegistration(clientURL): the id of the registration matching the URL (0: none).
+  u64 ServiceWorker_getRegistration(string client_url);
+  /// getRegistrations(): the ids of the origin's registrations, "\n"-separated.
+  string ServiceWorker_registrationIds();
+  /// navigator.serviceWorker.controller: the id of the registration controlling the page (0: none).
+  u64 ServiceWorker_controller();
+  /// A registration: scope, script URL, its version's state, 1 when a version is active, updateViaCache;
+  /// "\n"-separated, "" when it is gone.
+  string ServiceWorkerRegistration_info(u64 id);
+  /// registration.unregister(): true when it was the origin's and is gone.
+  bool ServiceWorkerRegistration_unregisterId(u64 id);
+  /// serviceWorker.postMessage(message): the serialized message to the registration's worker.
+  void ServiceWorker_postToWorker(u64 id, bytes data) raises;
+  /// The next message a service worker sent this page (Not_Found when none waits).
+  bytes ServiceWorker_takeMessage() raises;
+
+  /// In a service worker's realm: its registration's id (0 in any other realm), scope, script URL.
+  u64 ServiceWorkerGlobalScope_registration();
+  string ServiceWorkerGlobalScope_scope();
+  string ServiceWorkerGlobalScope_scriptURL();
+  /// The current event; its strings (0 URL, 1 method, 2 header lines), its body; done: the next one.
+  SwEventInfo SwEvent_next();
+  string SwEvent_text(i32 which);
+  bytes SwEvent_body();
+  void SwEvent_done();
+  /// What the worker did: 1 install done (code 1 ok, 0 failed), 2 activate done, 3 respond (code = status, headers,
+  /// body), 4 fall back to the network, 5 fail (text: why), 6 skipWaiting, 7 clients.claim, 8 a message to a client
+  /// (code = the client's id, 0 every controlled page; body = the serialized message).
+  void ServiceWorkerGlobalScope_reply(i32 kind, u64 id, i64 code, string headers, string text, bytes body);
+}

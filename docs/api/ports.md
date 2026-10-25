@@ -91,6 +91,30 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DedicatedWorkerGlobalScope_postSerializedPorts :: proc(c: ^Call, data: []u8, ports: []u64) -> Api_Error`
 
+### `Broadcast_open`
+
+```
+u64 Broadcast_open(string name)
+```
+
+new BroadcastChannel(name): a port end of the channel (the realm's origin and the name), owned by the calling
+realm; 0 for an opaque origin (the object sends and receives nothing). Port_close closes it.
+
+Host: `Broadcast_open :: proc(c: ^Call, name: string) -> u64`
+
+### `Broadcast_post`
+
+```
+void Broadcast_post(u64 end, bytes data) raises
+```
+
+broadcastChannel.postMessage: the serialized message to every other end of the channel, in every realm.
+Data_Clone for a message over frames.max_message_bytes.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Broadcast_post :: proc(c: ^Call, end: u64, data: []u8) -> Api_Error`
+
 ### `MessageEvent_portEnds`
 
 ```

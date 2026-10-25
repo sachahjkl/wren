@@ -24,7 +24,7 @@ test("navigator", async () => {
   eq(navigator.javaEnabled(), false, "javaEnabled");
   eq(navigator.doNotTrack, null, "doNotTrack (privacy.do_not_track)");
   eq(navigator.plugins.length, 0, "no plugins");
-  eq("serviceWorker" in navigator, false, "serviceWorker is absent");
+  eq(navigator.serviceWorker instanceof ServiceWorkerContainer, true, "serviceWorker is a ServiceWorkerContainer (tools\\sw_e2e.ps1 tests it)");
   eq("clipboard" in navigator, true, "clipboard is present (a secure context)");
   eq("geolocation" in navigator, false, "geolocation is absent");
   ok(navigator instanceof Navigator, "a Navigator");
