@@ -1240,8 +1240,8 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
-	// the screen: what the system reports (hzReported), its top mode (hzMax), the compositor's measured rate during the last run of
-	// frames (hzNow), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)
+	// the screen: what the system reports (hzReported), its top mode (hzMax), the highest rate the compositor reported during the current
+	// or last run of frames (hzNow; primary monitor only), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)
 	j_num(&b, "hzReported", pacer.display.hz); j_num(&b, "hzMax", pacer.display.max_hz); j_num(&b, "hzNow", pacer.live_hz)
 	j_num(&b, "hzSwapChain", render.measured_refresh_hz(&app.r)); j_bool(&b, "variableRefresh", pacer.variable)
 	j_bool(&b, "frameCapStrict", pacer.slots.strict || pacer.slots.escalated); j_num(&b, "framePeriodMs", pacer.period_ms)

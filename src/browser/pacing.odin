@@ -177,7 +177,7 @@ Pacer :: struct {
 	variable:   bool,         // the screen shows frames above the rate it reports (variable_plan): the target is its top rate
 	slots:      platform.Frame_Slots,   // the cap on the cadence: no frame starts before its slot (toolkit platform/frame_slots.odin)
 	slot_ns:    i64,          // the slot this frame was timed for (0: none)
-	live_hz:    f64,          // the compositor's measured refresh rate during the last run of frames (display_live_hz; 0: none yet)
+	live_hz:    f64,          // the highest rate the compositor reported during the current run of frames (display_live_hz; 0: none)
 	live_ns:    i64,          // tick of the last such measure
 	frame_ms:   f64,          // this frame's time, on the event loop clock (ms)
 	prev_ms:    f64,
@@ -435,14 +435,11 @@ pacer_end_frame :: proc(app: ^App) {
 	pacer.slot_held = false   // the present used it
 	shell_presented()
 	pacer.present_ns = time.tick_now()._nsec
-	// the compositor's real rate during a run of frames (a dynamic refresh rate goes up while something moves): measured every
-	// half second of it, started afresh after a rest
-	if !pacer.continuous {
-		platform.display_live_reset(app.win)
-		_, _ = platform.display_live_hz(app.win)   // the baseline of this run
-		pacer.live_ns = pacer.present_ns
-	} else if pacer.present_ns - pacer.live_ns >= 500_000_000 {
-		if hz, ok := platform.display_live_hz(app.win); ok { pacer.live_hz = hz }
+	// the compositor's rate during a run of frames (a dynamic refresh rate goes up while something moves): the highest one seen,
+	// read every 100 ms of the run and started afresh after a rest (primary monitor only: platform.display_live_hz)
+	if !pacer.continuous { pacer.live_hz = 0 }
+	if pacer.present_ns - pacer.live_ns >= 100_000_000 {
+		if hz, ok := platform.display_live_hz(app.win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
 		pacer.live_ns = pacer.present_ns
 	}
 	drag_probe_presented()
