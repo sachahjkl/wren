@@ -23,6 +23,7 @@ Settings :: struct {
 	background_tiles:  int,
 	broken_icon_px:    int,
 	decode_stack_bytes: int,
+	decode_idle_ms:    int,     // a decoding thread idle this long ends (0 = never)
 	svg_max_rasters:   int,     // rasters of one SVG image kept at once (one per size it is shown at)
 	svg_inline_enabled: bool,
 	svg_inline_max_bytes: int,
@@ -52,6 +53,8 @@ PREFS := [?]config.Def{
 		description = "Duration given to animation frames whose delay is under images.animation.min_delay_ms."},
 	{name = "images.decode.threads", kind = .Int, default = {i = -1}, bounded = true, min = -1, max = 64, restart = true,
 		description = "Threads that decode images, never the interface thread. -1 = half the logical processors, between 1 and 4; 0 = one thread."},
+	{name = "images.decode.thread_idle_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
+		description = "A decoding thread with nothing to do for this long ends, and gives back the stack its largest image made it use (an AVIF or a deep SVG commits megabytes of it, for good); another starts when an image needs it. 0 = the threads stay."},
 	{name = "images.decode.downscale", kind = .Bool, default = {b = true},
 		description = "Decode an image shown much smaller than its natural size directly at the smaller size (less memory, faster). It is decoded again, larger, if it is later shown larger."},
 	{name = "images.decode.downscale_below", kind = .Float, default = {f = 0.5}, bounded = true, min = 0.01, max = 1,
@@ -141,6 +144,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		background_tiles = int(config.int_of(p, "images.background.max_tiles")),
 		broken_icon_px = int(config.int_of(p, "images.broken.icon_px")),
 		decode_stack_bytes = int(config.int_of(p, "images.decode.stack_bytes")),
+		decode_idle_ms = int(config.int_of(p, "images.decode.thread_idle_ms")),
 		svg_max_rasters = int(config.int_of(p, "images.svg.max_rasters")),
 		svg_inline_enabled = config.bool_of(p, "images.svg.inline"),
 		svg_inline_max_bytes = int(config.int_of(p, "images.svg.inline_max_bytes")),

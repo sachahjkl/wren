@@ -190,7 +190,7 @@ eval_cq :: proc(n: ^css.Cq_Node, size: css.Container_Size, custom: ^Custom_Props
 	case .Style:
 		have := ""
 		ok := false
-		if custom != nil { have, ok = custom.values[n.style_name] }
+		if custom != nil { have, ok = custom_get(custom, n.style_name) }
 		if n.style_value == nil { return ok ? .True : .False }
 		if !ok { return .False }
 		want := css.serialize_values(n.style_value, context.temp_allocator)

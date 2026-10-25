@@ -138,9 +138,7 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 	// registered custom properties of the keyframe, computed against the element's own values
 	animated := make(map[string]bool, context.temp_allocator)
 	if len(block.customs) > 0 && len(e.registered) > 0 {
-		merged := new(Custom_Props, alloc)
-		merged.values = make(map[string]string, alloc)
-		if base.custom != nil { for k, v in base.custom.values { merged.values[k] = v } }
+		merged := custom_begin(base.custom, e.settings.custom_max_layers, alloc)
 		for cd in block.customs {
 			reg := registered(e, cd.name)
 			if reg == nil || reg.universal { continue }   // unregistered values cannot be interpolated
@@ -153,7 +151,7 @@ compute_keyframe :: proc(e: ^Engine, block: ^Keyframe_Block, base, parent, initi
 			}
 			text, ok := registered_compute(&cx, reg, vals, alloc)
 			if !ok { continue }
-			merged.values[cd.name] = text
+			custom_set(merged, cd.name, text)
 			animated[cd.name] = true
 		}
 		if len(animated) > 0 { env.final = merged }

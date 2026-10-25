@@ -438,7 +438,7 @@
 	must enumerate property indices in ascending numerical order: PASS
 	must enumerate property names in list order: PASS
 	must enumerate symbols after strings, regardless of which ones got added first: FAIL
-	must first enumerate property indices in ascending numerical order, then named properties in list order: FAIL
+	must first enumerate property indices in ascending numerical order, then named properties in list order: PASS
 /webidl/ecmascript-binding/legacy-platform-object/Set.html: OK
 	must allow assigning to a named property on an object which implements a named property getter but not a setter in strict mode: PASS
 	must allow assigning to a named property on an object which implements a named property getter but not a setter when not in strict mode: PASS

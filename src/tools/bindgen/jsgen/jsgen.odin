@@ -955,6 +955,7 @@ emit_c :: proc(g: ^Gen, impls: [][]Member_Impl) {
 		if it.kind == .Callback_Interface { append(&flags, "WJ_I_CALLBACK") }
 		if !g.supported[it.name] { append(&flags, "WJ_I_UNSUPPORTED") }
 		if webidl.attr_has(it.attrs, "LegacyOverrideBuiltIns") { append(&flags, "WJ_I_OVERRIDE_BUILTINS") }
+		if webidl.attr_has(it.attrs, "LegacyUnenumerableNamedProperties") { append(&flags, "WJ_I_UNENUMERABLE_NAMED") }
 		if webidl.attr_has(it.attrs, "SecureContext") { append(&flags, "WJ_I_SECURE") }
 		unforgeable := webidl.attr_has(it.attrs, "LegacyUnforgeable")
 		for mb in it.members { if webidl.attr_has(mb.attrs, "LegacyUnforgeable") { unforgeable = true } }

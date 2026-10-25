@@ -337,6 +337,7 @@ foreign _m_dom {
 	@(link_name = "Document_scrollingElement") _Document_scrollingElement :: proc() -> Element ---
 	@(link_name = "Document_set_body") _Document_set_body :: proc(body: u64) -> Error ---
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "DOMParser_parseHTMLNode") _DOMParser_parseHTMLNode :: proc(html: [^]u8, html_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
 	@(link_name = "Window_print") _Window_print :: proc() ---
@@ -3845,6 +3846,13 @@ DOMImplementation_createHTMLDocument :: proc "contextless" (title: Maybe(string)
 	_title_n := max(u32)
 	if v, ok := title.?; ok { _title_p, _title_n = raw_data(v), u32(len(v)) }
 	err = _DOMImplementation_createHTMLDocument(_title_p, _title_n, &result)
+	return
+}
+
+// new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
+// the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
+DOMParser_parseHTMLNode :: proc "contextless" (html: string) -> (result: Node, err: Error) {
+	err = _DOMParser_parseHTMLNode(raw_data(html), u32(len(html)), &result)
 	return
 }
 

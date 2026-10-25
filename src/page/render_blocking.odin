@@ -50,6 +50,7 @@ first_paint_done :: proc(p: ^Page) {
 	p.render.painted = true
 	p.render.collecting = false
 	timeline_painted(p)   // first-paint, first-contentful-paint (timeline.odin)
+	if p.scripts != nil { clear(&p.scripts.inserted_links) }
 }
 
 // Whether `owner` (<link> or <style>) may block the first paint: a parser's element before that paint, or any element
@@ -60,6 +61,8 @@ render_blocking_candidate :: proc(p: ^Page, owner: base.Handle) -> bool {
 		rest := v
 		for tok in strings.fields_iterator(&rest) { if strings.equal_fold(tok, "render") { return true } }
 	}
+	// one a script inserted does not (a chunk loader's: DuckDuckGo's first paint waited for a feedback dialog's CSS)
+	if p.scripts != nil && owner in p.scripts.inserted_links { return false }
 	return p.render.collecting && !p.render.painted
 }
 

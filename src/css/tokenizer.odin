@@ -33,8 +33,30 @@ Token :: struct {
 Lexer :: struct {
 	src:   []rune,
 	pos:   int,
-	arena: Arena_Alloc,
+	arena: Arena_Alloc,      // token texts (they live as long as the stylesheet)
+	buf:   [dynamic]u8,      // the text being read (scratch, reused): a text is copied once, at its final size
 }
+
+// The token text read into l.buf, copied into the texts' arena.
+@(private)
+buf_text :: proc(l: ^Lexer) -> string {
+	s := strings.clone(string(l.buf[:]), l.arena)
+	clear(&l.buf)
+	return s
+}
+
+@(private)
+buf_rune :: proc(l: ^Lexer, r: rune) {
+	b, n := utf8.encode_rune(r)
+	append(&l.buf, ..b[:n])
+}
+
+// One-character delimiters of ASCII as slices of this table: no allocation per <delim-token>.
+@(private)
+delim_chars: [128]u8
+
+@(private, init)
+init_delim_chars :: proc "contextless" () { for i in 0 ..< 128 { delim_chars[i] = u8(i) } }
 
 // Decodes and preprocesses the input: CR, CRLF and FF become LF, NUL becomes U+FFFD, invalid UTF-8 becomes U+FFFD.
 @(private)
@@ -114,13 +136,13 @@ rune_hex :: proc(r: rune) -> rune {
 
 @(private)
 consume_name :: proc(l: ^Lexer) -> string {
-	sb := strings.builder_make(l.arena)
+	clear(&l.buf)
 	for {
 		r := peek(l)
 		switch {
-		case is_name_char(r): strings.write_rune(&sb, r); l.pos += 1
-		case valid_escape(r, peek(l, 1)): l.pos += 1; strings.write_rune(&sb, consume_escape(l))
-		case: return strings.to_string(sb)
+		case is_name_char(r): buf_rune(l, r); l.pos += 1
+		case valid_escape(r, peek(l, 1)): l.pos += 1; buf_rune(l, consume_escape(l))
+		case: return buf_text(l)
 		}
 	}
 }
@@ -167,20 +189,20 @@ consume_number :: proc(l: ^Lexer) -> (v: f64, is_int: bool, signed: bool) {
 
 @(private)
 consume_string :: proc(l: ^Lexer, ending: rune) -> Token {
-	sb := strings.builder_make(l.arena)
+	clear(&l.buf)
 	for {
 		r := peek(l)
 		switch {
-		case r == ending: l.pos += 1; return Token{kind = .String, text = strings.to_string(sb)}
-		case r == -1:     return Token{kind = .String, text = strings.to_string(sb)}   // parse error: EOF ends the string
-		case r == '\n':   return Token{kind = .Bad_String, text = strings.to_string(sb)}   // newline is left for the next token
+		case r == ending: l.pos += 1; return Token{kind = .String, text = buf_text(l)}
+		case r == -1:     return Token{kind = .String, text = buf_text(l)}   // parse error: EOF ends the string
+		case r == '\n':   return Token{kind = .Bad_String, text = buf_text(l)}   // newline is left for the next token
 		case r == '\\':
 			n := peek(l, 1)
 			if n == -1 { l.pos += 1; continue }
 			if n == '\n' { l.pos += 2; continue }   // an escaped newline continues the string
 			l.pos += 1
-			strings.write_rune(&sb, consume_escape(l))
-		case: strings.write_rune(&sb, r); l.pos += 1
+			buf_rune(l, consume_escape(l))
+		case: buf_rune(l, r); l.pos += 1
 		}
 	}
 }
@@ -200,23 +222,23 @@ consume_bad_url_remnants :: proc(l: ^Lexer) {
 @(private)
 consume_url :: proc(l: ^Lexer) -> Token {
 	for is_ws(peek(l)) { l.pos += 1 }
-	sb := strings.builder_make(l.arena)
+	clear(&l.buf)
 	for {
 		r := peek(l)
 		switch {
-		case r == ')': l.pos += 1; return Token{kind = .Url, text = strings.to_string(sb)}
-		case r == -1:  return Token{kind = .Url, text = strings.to_string(sb)}
+		case r == ')': l.pos += 1; return Token{kind = .Url, text = buf_text(l)}
+		case r == -1:  return Token{kind = .Url, text = buf_text(l)}
 		case is_ws(r):
 			for is_ws(peek(l)) { l.pos += 1 }
-			if peek(l) == ')' || peek(l) == -1 { if peek(l) == ')' { l.pos += 1 }; return Token{kind = .Url, text = strings.to_string(sb)} }
+			if peek(l) == ')' || peek(l) == -1 { if peek(l) == ')' { l.pos += 1 }; return Token{kind = .Url, text = buf_text(l)} }
 			consume_bad_url_remnants(l)
 			return Token{kind = .Bad_Url}
 		case r == '"' || r == '\'' || r == '(' || is_non_printable(r):
 			consume_bad_url_remnants(l)
 			return Token{kind = .Bad_Url}
 		case r == '\\':
-			if valid_escape(r, peek(l, 1)) { l.pos += 1; strings.write_rune(&sb, consume_escape(l)) } else { consume_bad_url_remnants(l); return Token{kind = .Bad_Url} }
-		case: strings.write_rune(&sb, r); l.pos += 1
+			if valid_escape(r, peek(l, 1)) { l.pos += 1; buf_rune(l, consume_escape(l)) } else { consume_bad_url_remnants(l); return Token{kind = .Bad_Url} }
+		case: buf_rune(l, r); l.pos += 1
 		}
 	}
 }
@@ -305,22 +327,25 @@ next_token :: proc(l: ^Lexer) -> Token {
 	case is_name_start(r): return consume_ident_like(l)
 	}
 	l.pos += 1
-	// a single-character delimiter; store it as a string in the arena (cheap: one rune)
-	sb := strings.builder_make(l.arena)
-	strings.write_rune(&sb, r)
-	return Token{kind = .Delim, text = strings.to_string(sb)}
+	// a single-character delimiter: ASCII from the table, anything else copied
+	if r >= 0 && r < 128 { return Token{kind = .Delim, text = string(delim_chars[int(r):int(r) + 1])} }
+	clear(&l.buf)
+	buf_rune(l, r)
+	return Token{kind = .Delim, text = buf_text(l)}
 }
 
 // All tokens of `input` (without the trailing EOF).
 tokenize :: proc(input: string, arena: Arena_Alloc) -> []Token {
-	toks, _ := tokenize_with_source(input, arena)
+	toks, _ := tokenize_with_source(input, arena, arena)
 	return toks
 }
 
-// Tokens, and the preprocessed code points their `pos` fields index.
-tokenize_with_source :: proc(input: string, arena: Arena_Alloc) -> ([]Token, []rune) {
-	l := Lexer{src = preprocess(input, arena), arena = arena}
-	out := make([dynamic]Token, arena)
+// Tokens, and the preprocessed code points their `pos` fields index. The token texts go to `arena`; the token array,
+// the code points and the reading buffer to `scratch` (a stylesheet drops them once it is parsed).
+tokenize_with_source :: proc(input: string, arena: Arena_Alloc, scratch: Arena_Alloc) -> ([]Token, []rune) {
+	l := Lexer{src = preprocess(input, scratch), arena = arena, buf = make([dynamic]u8, 0, 64, scratch)}
+	// about one token per four bytes of CSS: one allocation in the common case
+	out := make([dynamic]Token, 0, len(input) / 4 + 16, scratch)
 	for {
 		for peek(&l) == '/' && peek(&l, 1) == '*' {
 			l.pos += 2

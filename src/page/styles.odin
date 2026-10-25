@@ -130,13 +130,12 @@ sync_styles :: proc(p: ^Page) {
 	pending :: proc(user: rawptr, owner: base.Handle) -> bool { return held_by_reveal((^Page)(user), owner) }
 	links := style.sync_document_sheets(p.engine, p.doc, p.env.location.href, keep_missing = revealing ? pending : nil, keep_user = p)
 
-	// links that disappeared
-	if !revealing {
-		for owner, l in p.link_loads {
-			found := false
-			for k in links { if k.owner == owner { found = true; break } }
-			if !found { free_load(p, l); delete_key(&p.link_loads, owner) }
-		}
+	// links that disappeared (while the parser reveals the document, those of the part not revealed yet stay; one a
+	// script changed, no longer a stylesheet, goes: scripts that wait for stylesheets would wait for it for ever)
+	for owner, l in p.link_loads {
+		found := false
+		for k in links { if k.owner == owner { found = true; break } }
+		if !found && !(revealing && pending(p, owner)) { free_load(p, l); delete_key(&p.link_loads, owner) }
 	}
 	// new or changed links
 	for k in links {

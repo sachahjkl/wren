@@ -48,7 +48,7 @@ inline_rule_of :: proc(p: ^Pass, text: string) -> ^Rule {
 	owner := p.alloc.data == s.alloc.data   // the pass that owns the Styled's arena (not a style thread)
 	if !owner || p.e.settings.inline_cache_entries <= 0 {
 		decls := css.parse_declarations(text, p.opt, context.temp_allocator)
-		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats)
+		pre, customs := compile_declarations(p.e, decls, p.alloc, &p.stats, &p.scratch)
 		own_custom_names(customs, p.alloc)   // (parsed in temp memory)
 		if len(pre) == 0 && len(customs) == 0 { return nil }
 		r := new(Rule, context.temp_allocator)
@@ -57,7 +57,7 @@ inline_rule_of :: proc(p: ^Pass, text: string) -> ^Rule {
 	}
 	// parsed into the arena: the compiled values point into what was parsed
 	decls := css.parse_declarations(text, p.opt, s.alloc)
-	pre, customs := compile_declarations(p.e, decls, s.alloc, &p.stats)
+	pre, customs := compile_declarations(p.e, decls, s.alloc, &p.stats, &p.scratch)
 	r: ^Rule
 	if len(pre) > 0 || len(customs) > 0 {
 		r = new(Rule, s.alloc)
