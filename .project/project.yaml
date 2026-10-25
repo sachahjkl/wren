@@ -1,0 +1,14 @@
+name: "wren"
+description: "A small Windows browser where WebAssembly runs everything."
+topics:
+  - "odin"
+  - "browser"
+  - "webassembly"
+  - "windows"
+  - "wasmtime"
+  - "direct3d"
+homepage: "https://sachahjkl.github.io/wren/"
+source:
+  provider: github
+  namespace: "sachahjkl"
+  path: "sachahjkl/wren"
