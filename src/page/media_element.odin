@@ -1146,14 +1146,22 @@ HTMLMediaElement_ranges :: proc(c: ^Call, e: Api_HTMLMediaElement, which: i32) -
 HTMLMediaElement_errorCode :: proc(c: ^Call, e: Api_HTMLMediaElement) -> i32 { return e.data.err_shown ? i32(e.data.err_code) : 0 }
 HTMLMediaElement_errorMessage :: proc(c: ^Call, e: Api_HTMLMediaElement) -> string { return e.data.err_shown ? e.data.err_message : "" }
 
-// getVideoPlaybackQuality(): creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames.
+// The numbers of a VideoPlaybackQuality from the native player's counters (Media Playback Quality): creationTime (the
+// page's clock, ms), droppedVideoFrames, totalVideoFrames (decoded: shown or dropped), corruptedVideoFrames (the
+// decoders report no damaged picture: a decoding error stops the playback instead, so 0, as in Chromium) and
+// totalFrameDelay (seconds the pictures shown were late, added up: Firefox's, from the old draft). Pure.
+video_quality_numbers :: proc(now_ms: f64, s: media.Player_Stats, has_player: bool) -> [5]f64 {
+	if !has_player { return {now_ms, 0, 0, 0, 0} }
+	total := max(s.decoded, s.presented + s.dropped)
+	return {now_ms, f64(s.dropped), f64(total), 0, f64(s.delay_ns) / 1e9}
+}
+
+// getVideoPlaybackQuality(): video_quality_numbers as five f64.
 HTMLVideoElement_playbackQuality :: proc(c: ^Call, e: Api_HTMLMediaElement) -> []u8 {
 	el := e.data
-	q := [4]f64{page_now_ms(c.page), 0, 0, 0}
-	if el.player != nil {
-		s := media.player_stats(el.player)
-		q[1], q[2] = f64(s.dropped), f64(s.decoded)
-	}
+	s: media.Player_Stats
+	if el.player != nil { s = media.player_stats(el.player) }
+	q := video_quality_numbers(page_now_ms(c.page), s, el.player != nil)
 	out := make([]u8, size_of(q), context.temp_allocator)
 	mem.copy(raw_data(out), &q, size_of(q))
 	return out
