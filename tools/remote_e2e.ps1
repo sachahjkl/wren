@@ -581,6 +581,20 @@ try {
     $null = Wren-Ctl ping
     Check 'the server lives after a giant request' ($global:WrenExit -eq 0)
 
+    # clients that connect and go at once (a security query such as Get-Acl, a probe): ConnectNamedPipe then fails with ERROR_NO_DATA,
+    # which once ended the accept thread for good (the pipe vanished while the process lived: no ctl could reach it again)
+    Add-Type -TypeDefinition @'
+using System; using System.Runtime.InteropServices;
+public static class PipeStorm {
+  [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)] static extern IntPtr CreateFileW(string n, uint a, uint s, IntPtr sa, uint c, uint f, IntPtr t);
+  [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr h);
+  public static int Run(string path, int n) { int ok = 0; for (int i = 0; i < n; i++) { IntPtr h = CreateFileW(path, 0xC0000000, 0, IntPtr.Zero, 3, 0, IntPtr.Zero); if (h != new IntPtr(-1)) { CloseHandle(h); ok++; } } return ok; }
+}
+'@
+    $touched = [PipeStorm]::Run("\\.\pipe\wren-remote-$name", 20000)
+    $null = Wren-Ctl ping
+    Check 'the server lives after clients that connect and go at once' ($global:WrenExit -eq 0 -and $touched -gt 0) "exit $global:WrenExit, $touched connections"
+
     # the pipe is for this user only
     # (the server makes the next instance of its pipe a moment after it ended a connection: a path that does not exist for an instant on a slow machine)
     $acl = $null; for ($try = 0; $try -lt 30 -and -not $acl; $try++) { try { $acl = (Get-Acl "\\.\pipe\wren-remote-$name" -ErrorAction Stop).Access } catch { Start-Sleep -Milliseconds 100 } }
@@ -616,7 +630,7 @@ try {
     $p3 = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList '--profile', $prof3, '--pref', 'blocker.update.enabled=false', "--remote=$name", '--no-single-instance', '--headless', 'about:blank' -RedirectStandardError $errFile -RedirectStandardOutput (Join-Path $tmp 'taken.out')
     $started += $p3
     $null = Wait-Until { (Test-Path $errFile) -and ((Get-Content $errFile -Raw) -match 'taken') -or $p3.HasExited } 15
-    Check 'a name taken by another Wren is reported' ((Get-Content $errFile -Raw) -match 'taken')
+    Check 'a name taken by another Wren is reported' ((@(Get-Content $errFile -ErrorAction SilentlyContinue) -join "`n") -match 'taken')
     Check 'the first instance still answers under that name' ((Wren-Ctl ping --json | ConvertFrom-Json).pid -eq $pidOf)
     if (-not $p3.HasExited) { Stop-Process -Id $p3.Id -Force }
 
