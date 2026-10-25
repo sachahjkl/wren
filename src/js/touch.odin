@@ -1,10 +1,21 @@
 package js
 
-import win "core:sys/windows"
+// The touch points of this computer's touch screen (0: none), for browser.touch.expose = auto and
+// navigator.maxTouchPoints. The browser sets it from the toolkit (platform.touch_max_points) when it starts and when the
+// preference changes; tools that do not set it see no touch screen.
+@(private)
+hardware_touch_points: int
 
-// Whether this computer has a touch screen (a digitizer that takes touches: GetSystemMetrics SM_MAXIMUMTOUCHES), for
-// javascript.touch_events = auto.
-has_touch_screen :: proc() -> bool {
-	SM_MAXIMUMTOUCHES :: 95
-	return win.GetSystemMetrics(SM_MAXIMUMTOUCHES) > 0
+set_touch_points :: proc(n: int) { hardware_touch_points = max(n, 0) }
+
+touch_points :: proc() -> int { return hardware_touch_points }
+
+// What pages are told about touch (browser.touch.expose): auto = the hardware, on = always a touch screen (at least one
+// point), off = never. `points` is navigator.maxTouchPoints; `handlers` exposes ontouch* and the Touch constructors.
+touch_exposure :: proc(mode: string, hardware: int) -> (points: int, handlers: bool) {
+	switch mode {
+	case "on": return max(hardware, 1), true
+	case "off": return 0, false
+	}
+	return hardware, hardware > 0
 }

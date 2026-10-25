@@ -151,7 +151,10 @@ engine_make :: proc(settings: Settings) -> ^Engine {
 	e.settings = clone_settings(settings)
 	_ = virtual.arena_init_growing(&e.arena)
 	e.alloc = virtual.arena_allocator(&e.arena)
-	e.env = css.Media_Env{type = .Screen, width = 1280, height = 800, dppx = 1, hover = true, pointer_fine = true, color_bits = 24}
+	e.env = css.Media_Env{type = .Screen, width = 1280, height = 800, dppx = 1, color_bits = 24}
+	pc := pointer_caps   // (the devices before the first style computation too: matchMedia may come first)
+	e.env.hover, e.env.pointer_fine, e.env.pointer_none = pc.hover, pc.fine, pc.none
+	e.env.any_fine, e.env.any_coarse, e.env.any_hover = pc.any_fine, pc.any_coarse, pc.any_hover
 	engine_reset_builtin_sheets(e)
 	return e
 }
@@ -918,12 +921,27 @@ media_env_from :: proc(s: ^Settings, width, height, dppx: f64, os_dark: bool) ->
 	case .Light: dark = false
 	case .Dark: dark = true
 	}
+	pc := pointer_caps
 	return css.Media_Env{
 		type = .Screen, width = width, height = height, dppx = dppx,
 		prefers_dark = dark, prefers_reduced_motion = s.reduced_motion, prefers_more_contrast = s.prefers_contrast,
-		hover = true, pointer_fine = true, color_bits = 24,
+		hover = pc.hover, pointer_fine = pc.fine, pointer_none = pc.none, any_fine = pc.any_fine, any_coarse = pc.any_coarse, any_hover = pc.any_hover,
+		color_bits = 24,
 	}
 }
+
+// The pointing devices as the media features pointer / any-pointer / hover / any-hover see them (the shell sets them
+// from the computer's devices and browser.touch.expose; tools keep a mouse).
+Pointer_Caps :: struct {
+	fine, none, hover:               bool,   // the primary pointer
+	any_fine, any_coarse, any_hover: bool,   // every pointer
+}
+
+@(private)
+pointer_caps := Pointer_Caps{fine = true, hover = true, any_fine = true, any_hover = true}
+
+set_pointer_caps :: proc(c: Pointer_Caps) { pointer_caps = c }
+get_pointer_caps :: proc() -> Pointer_Caps { return pointer_caps }
 
 ////////////////////////////////
 // @supports
