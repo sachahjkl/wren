@@ -384,7 +384,6 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	return .None
 }
 
-@(private = "file")
 close_cross_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	col := (^draw.Color)(user)^
 	c := draw.rect_center(b.rect)

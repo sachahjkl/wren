@@ -580,6 +580,10 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			menu_command(app, t, "view.console")
 			menu_command(app, t, "view.full_screen")
 			menu_command(app, t, "view.tabs_in_title_bar")
+			menu_command(app, t, "view.tabs_position.top")
+			menu_command(app, t, "view.tabs_position.left")
+			menu_command(app, t, "view.tabs_position.right")
+			menu_command(app, t, "view.tabs_sidebar_collapse")
 			menu_command(app, t, "view.chrome_style.classic")
 			menu_command(app, t, "view.chrome_style.modern")
 		}

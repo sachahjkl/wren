@@ -355,6 +355,19 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return wchrome.cfg.integrated },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.window.integrated_titlebar", !wchrome.cfg.integrated) }})
+	// the tabs along the top or in a sidebar (tab_sidebar.odin)
+	pos_titles := [Tabs_Position]string{.Top = i18n.tr("Tabs: at the top"), .Left = i18n.tr("Tabs: in a sidebar at the left"), .Right = i18n.tr("Tabs: in a sidebar at the right")}
+	for pos in Tabs_Position {
+		add(r, {name = fmt.aprintf("view.tabs_position.%s", TABS_POSITION_NAMES[pos], allocator = a), title = pos_titles[pos], category = "View", arg = TABS_POSITION_NAMES[pos],
+			keywords = "tabs sidebar vertical side bar position left right top row horizontal layout",
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return TABS_POSITION_NAMES[favs.cfg.position] == c.arg },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_set_position(app, tabs_position_of(c.arg)) }})
+	}
+	add(r, {name = "view.tabs_sidebar_collapse", title = i18n.tr("Tab sidebar: icons only"), category = "View", keywords = "tabs sidebar vertical collapse narrow compact titles",
+		keys = keys(&r.arena, {key = .Comma, mods = cs}),
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return favs.cfg.position != .Top },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return favs.cfg.side_collapsed },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for np in ui.NAMED_PALETTES {
 		name := strings.to_lower(np.name, virtual.arena_allocator(&r.arena))
 		add(r, {name = fmt.aprintf("view.theme.%s", name, allocator = a), title = fmt.aprintf("Theme: %s", np.name, allocator = a), category = "View",
@@ -369,7 +382,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		add(r, {name = fmt.aprintf("view.chrome_style.%s", style, allocator = a), category = "View", arg = style,
 			title = style == "classic" ? i18n.tr("Appearance: classic tabs") : i18n.tr("Appearance: modern tabs"),
 			keywords = "chrome tabs style look trapezoid sloped angular gradient flat pill appearance interface",
-			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == classic_on() },
+			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return (c.arg == "classic") == (chrome_cfg.style == .Classic) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
 				if err := config.set_from_string(&app.prefs, "browser.ui.chrome_style", c.arg, .User); err != .None { ui.toast(.Warn, "browser.ui.chrome_style: %s", config.set_error_text(err)) }
 			}})
