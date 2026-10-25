@@ -252,7 +252,7 @@ prof_init :: proc(app: ^App) {
 		win.DuplicateHandle(win.GetCurrentProcess(), win.GetCurrentThread(), win.GetCurrentProcess(), &h, 0, false, win.DUPLICATE_SAME_ACCESS)
 		prof.target = h
 		prof.samples = make([]Sample, 400_000)
-		if os.get_env("WREN_SAMPLE_STACK", context.temp_allocator) == "1" {
+		if os.get_env("WREN_SAMPLE_STACK", context.temp_allocator) == "1" || os.get_env("WREN_SAMPLE_STACKS", context.temp_allocator) == "1" {   // (the second spelling is the one the DuckDuckGo audit used)
 			prof.stacks = true
 			m := win.GetModuleHandleW(nil)
 			prof.exe_lo = u64(uintptr(m))

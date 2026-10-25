@@ -4329,13 +4329,13 @@
 	CustomStateSet interface: existence and properties of interface prototype object's "constructor" property: PASS
 	CustomStateSet interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	CustomStateSet interface: setlike<DOMString>: FAIL
-	DOMParser interface object length: FAIL
-	DOMParser interface object name: FAIL
-	DOMParser interface: existence and properties of interface object: FAIL
-	DOMParser interface: existence and properties of interface prototype object: FAIL
-	DOMParser interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DOMParser interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DOMParser interface: operation parseFromString((TrustedHTML or DOMString), DOMParserSupportedType): FAIL
+	DOMParser interface object length: PASS
+	DOMParser interface object name: PASS
+	DOMParser interface: existence and properties of interface object: PASS
+	DOMParser interface: existence and properties of interface prototype object: PASS
+	DOMParser interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DOMParser interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DOMParser interface: operation parseFromString((TrustedHTML or DOMString), DOMParserSupportedType): PASS
 	DOMStringList interface object length: PASS
 	DOMStringList interface object name: PASS
 	DOMStringList interface: attribute length: PASS
@@ -68448,15 +68448,15 @@
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-element-unblocks-rendering.optional.html: OK
 	Render-blocking on parser-inserted async module script is cancellable: PASS
-	Render-blocking on parser-inserted async script is cancellable: FAIL
-	Render-blocking on parser-inserted defer script is cancellable: PASS
+	Render-blocking on parser-inserted async script is cancellable: FAIL|PASS
+	Render-blocking on parser-inserted defer script is cancellable: PASS|FAIL
 	Render-blocking on parser-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted inline style is cancellable: PASS
 	Render-blocking on script-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted script is cancellable: PASS
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-pending-async-render-blocking-script.html: OK
-	Removed render-blocking script should not indefinitely block rendering: FAIL
+	Removed render-blocking script should not indefinitely block rendering: FAIL  # assert_equals: expected (undefined) undefined but got (number) 1
 /html/dom/render-blocking/script-inserted-inline-module-with-import.html: OK
 	Script-inserted module script elements with "blocking=render" are render-blocking: FAIL
 /html/dom/render-blocking/script-inserted-module-script.html: OK

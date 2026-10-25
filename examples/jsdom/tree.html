@@ -268,6 +268,26 @@ t("document.all: typeof undefined, falsy, == undefined, !== undefined", typeof d
 t("document.all: a live collection of all elements", document.all.length === document.getElementsByTagName("*").length && document.all[0] === document.documentElement && document.all.item(0) === document.documentElement);
 t("document.all is the same object", Object.is(document.all, document.all));
 t("a check of the form `v || v === document.all` is false for undefined and null", (function (v) { return !!(v || v === document.all); })(undefined) === false && (function (v) { return !!(v || v === document.all); })(null) === false);
+
+section("DOMParser", () => {
+  const p = new DOMParser();
+  t("DOMParser", p instanceof DOMParser);
+  throws("DOMParser needs new", () => DOMParser(), "TypeError");
+  const doc = p.parseFromString("<title>T</title><p id=a>one &amp; <b>two</b></p><script>window.ranInParsed = 1<\/script>", "text/html");
+  t("a new Document", doc instanceof Document && doc !== document && doc.nodeType === 9);
+  eq("its parts", [doc.documentElement.tagName, doc.head.firstChild.tagName, doc.body.firstChild.id, doc.head.textContent].join(","), "HTML,TITLE,a,T");
+  eq("textContent (the entity decoded)", doc.body.firstChild.textContent, "one & two");
+  eq("documentElement.textContent", doc.documentElement.textContent, "Tone & twowindow.ranInParsed = 1");
+  eq("its scripts do not run", window.ranInParsed, undefined);
+  t("a new document each time", p.parseFromString("", "text/html") !== p.parseFromString("", "text/html"));
+  eq("empty markup still has html, head and body", [p.parseFromString("", "text/html").body.tagName].join(), "BODY");
+  const sh = p.parseFromString("<div><template shadowrootmode=open><i></i></template></div>", "text/html");
+  t("no declarative shadow roots", sh.body.firstChild.shadowRoot === null && sh.querySelector("template") !== null);
+  eq("the page is untouched", document.querySelectorAll("#a").length, 0);
+  throws("XML types are not supported", () => p.parseFromString("<x/>", "application/xml"), "NotSupportedError");
+  throws("a type outside the enumeration", () => p.parseFromString("x", "text/plain"), "TypeError");
+});
+
 done();
 </script>
 </body></html>

@@ -45,6 +45,7 @@ foreign _m_performance {
 	@(link_name = "Performance_onTimeline") _Performance_onTimeline :: proc(callback: TimelineCallback, user: i32) ---
 	@(link_name = "Performance_setResourceTimingBufferSize") _Performance_setResourceTimingBufferSize :: proc(entries: u32) ---
 	@(link_name = "Performance_clearResourceTimings") _Performance_clearResourceTimings :: proc() ---
+	@(link_name = "Performance_timingOf") _Performance_timingOf :: proc(which: i32) -> f64 ---
 }
 
 // performance.now()
@@ -187,5 +188,13 @@ Performance_setResourceTimingBufferSize :: proc "contextless" (entries: u32) {
 
 Performance_clearResourceTimings :: proc "contextless" () {
 	_Performance_clearResourceTimings()
+}
+
+// performance.timing (Navigation Timing 1): the moment of attribute `which` of PerformanceTiming (0 navigationStart,
+// 1 unloadEventStart ... 20 loadEventEnd, in the interface's order) on the page's timeline (ms since the time
+// origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
+// document's own fetch are not measured: they are all the time origin.
+Performance_timingOf :: proc "contextless" (which: i32) -> f64 {
+	return _Performance_timingOf(which)
 }
 

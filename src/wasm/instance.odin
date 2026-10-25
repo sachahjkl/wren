@@ -218,5 +218,11 @@ guest_bytes :: proc(inst: ^Instance, offset: u64, length: u64) -> []byte {
 	return p[:length]
 }
 
+// The size of memory 0 now (bytes): what the module's linear memory costs (it only grows).
+memory_bytes :: proc(inst: ^Instance) -> u64 {
+	if inst == nil || inst.dead || !inst.wt.has_memory { return 0 }
+	return u64(wasmtime_memory_data_size(inst.wt.ctx, &inst.wt.memory))
+}
+
 // The context of the host calls (the Wasm import trampolines, generated): the process's (base.process_context).
 default_context :: #force_inline proc "contextless" () -> runtime.Context { return base.process_context() }

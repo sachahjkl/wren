@@ -987,6 +987,8 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
 	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
 	platform.set_dark_title(app.win, pal.dark)
+	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque
+	platform.set_border_color(app.win, platform.is_integrated_title(app.win) ? Maybe(u32)(pal.border >> 8) : nil)
 	return ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,

@@ -226,8 +226,9 @@ Parse_Result :: struct {
 }
 
 // Parses `data` and appends the resulting tree under `parent` (normally the Document node).
-parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_nodes: int) -> Parse_Result {
-	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = true, ctx = context}
+// `declarative_shadow`: <template shadowrootmode> attaches shadow roots (not for DOMParser).
+parse_into :: proc(d: ^dom.Document, parent: base.Handle, data: []byte, max_nodes: int, declarative_shadow := true) -> Parse_Result {
+	b := Builder{doc = d, max_nodes = max_nodes, shadow_ok = declarative_shadow, ctx = context}
 	defer delete(b.stack)
 	append(&b.stack, parent)
 	// the document's mutation hooks see parser-made nodes (scripts of a fragment never run: page/js_load.odin)

@@ -52,6 +52,8 @@ Journal :: struct {
 	names:   virtual.Arena,            // attribute names of the entries
 	names_ready: bool,
 	watch:   Watch,
+	live_bytes: int,                   // bytes of the names and old values the entries still hold (the rest of the arena is garbage)
+	compactions: int,                  // times the names were copied to a fresh arena (tests)
 }
 
 // Starts recording (again with a new bound: max_entries >= 16). The journal covers the mutations from now on.
@@ -62,6 +64,7 @@ journal_enable :: proc(d: ^Document, max_entries: int) {
 	j.on = true
 	j.from = d.mutations
 	clear(&j.entries)
+	j.live_bytes = 0
 }
 
 journal_disable :: proc(d: ^Document) {
@@ -76,6 +79,7 @@ journal_free :: proc(d: ^Document) {
 	j.entries = nil
 	watch_free(&j.watch)
 	if j.names_ready { virtual.arena_destroy(&j.names); j.names_ready = false }
+	j.live_bytes = 0
 }
 
 // The entries after `since` (a value of `mutations` the reader caught up with), and whether they are all there (false:
@@ -104,6 +108,7 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 		drop := len(j.entries) / 2
 		j.from = j.entries[drop - 1].mutation
 		for drop < len(j.entries) && j.entries[drop].mutation == j.from { drop += 1 }
+		for e in j.entries[:drop] { j.live_bytes -= len(e.name) + len(e.old) }
 		remove_range(&j.entries, 0, drop)
 		if j.names_ready && len(j.entries) == 0 { virtual.arena_free_all(&j.names) }
 	}
@@ -112,8 +117,10 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 		if !j.names_ready { _ = virtual.arena_init_growing(&j.names, 4096); j.names_ready = true }
 		if len(j.entries) == 0 {
 			virtual.arena_free_all(&j.names)
-		} else if int(j.names.total_used) > 64 * j.max + 4096 {
-			// names of forgotten entries add up: keep only those still referenced
+			j.live_bytes = 0
+		} else if int(j.names.total_used) > max(64 * j.max + 4096, 2 * j.live_bytes) {
+			// names of forgotten entries add up: keep only those still referenced (when they are at least half of the
+			// arena: a journal whose live names alone pass the bound copied them all at every record)
 			fresh: virtual.Arena
 			_ = virtual.arena_init_growing(&fresh, 4096)
 			for &e in j.entries {
@@ -122,12 +129,14 @@ journal_record :: proc(d: ^Document, kind: Journal_Kind, node, parent: base.Hand
 			}
 			virtual.arena_destroy(&j.names)
 			j.names = fresh
+			j.compactions += 1
 		}
 		nm = strings.clone(name, virtual.arena_allocator(&j.names))
 	}
 	// the old data of a text change is for the hook only: readers of the journal do not need it
 	ov := ""
 	if old != "" && kind == .Attribute { ov = strings.clone(old, virtual.arena_allocator(&j.names)) }
+	j.live_bytes += len(nm) + len(ov)
 	append(&j.entries, Journal_Entry{kind = kind, node = node, parent = parent, prev = prev, next = next, name = nm, old = ov, had_old = had_old, batch = d.batch, mutation = d.mutations, watch = watch, watch_gen = d.journal.watch.gen})
 }
 

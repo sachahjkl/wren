@@ -54,6 +54,15 @@ section("attributes", () => {
   eq("attributes[0].name", attrs[0].name, "id");
   eq("attributes.title.value", attrs.getNamedItem("title").value, "tip");
   t("one Attr per attribute", attrs.getNamedItem("title") === host.getAttributeNode("title"));
+  t("named property attributes.title", attrs.title === attrs.getNamedItem("title"));
+  t("named property, any case", attrs["TITLE"] === attrs.getNamedItem("title"));
+  eq("named property missing", attrs.nope, undefined);
+  t("'title' in attributes", "title" in attrs && !("nope" in attrs));
+  const f = document.createElement("form");
+  f.setAttribute("onsubmit", "t");
+  eq("jQuery 1 support test: attributes.onsubmit.expando", f.attributes["onsubmit"].expando, undefined);
+  eq("named properties are not enumerable", Object.keys(attrs).join(","), "0,1,2,3,4");
+  eq("own property names: indices then names", Object.getOwnPropertyNames(attrs).join(","), "0,1,2,3,4,id,class,data-user-id,data-x,title");
   const at = host.getAttributeNode("title");
   eq("Attr basics", at.nodeType + "|" + at.nodeName + "|" + at.localName + "|" + (at.ownerElement === host), "2|title|title|true");
   at.value = "changed";

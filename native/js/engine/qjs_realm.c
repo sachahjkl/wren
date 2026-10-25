@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "wj.h"
+#include "bindings.h"
 #include "qjs_internal.h"
 
 wj_realm wj_the_realm;
@@ -514,7 +515,26 @@ WJ_EXPORT("wj_preinit") int32_t wj_preinit(void)
 }
 
 /* Run time, once per realm: kind 1 = Window, 2 = Worker. `seed` reseeds Math.random. flags: WJ_START_*. 0 ok. */
-enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2 };
+enum { WJ_START_EXPOSE_UNIMPLEMENTED = 1, WJ_START_UNIMPLEMENTED_THROW = 2, WJ_START_NO_TOUCH_HANDLERS = 4 };
+
+/* javascript.touch_events off (or auto without a touch screen): the ontouch* event handler attributes are not exposed,
+ * as in Chromium and Firefox on such a computer; pages test 'ontouchstart' in window to pick a phone's layout and
+ * behaviour (Modernizr's touch class). The handlers live on the prototypes GlobalEventHandlers is mixed into, and on
+ * the global object for the Window's. */
+static void remove_touch_handlers(JSContext *ctx)
+{
+    static const char *const names[] = { "ontouchstart", "ontouchend", "ontouchmove", "ontouchcancel" };
+    const int ifaces[] = { WJ_IFACE_Window, WJ_IFACE_Document, WJ_IFACE_HTMLElement, WJ_IFACE_SVGElement, WJ_IFACE_MathMLElement };
+    for (size_t n = 0; n < sizeof names / sizeof names[0]; n++) {
+        JSAtom a = JS_NewAtom(ctx, names[n]);
+        for (size_t i = 0; i < sizeof ifaces / sizeof ifaces[0]; i++) {
+            JSValue proto = wj_the_realm.protos[ifaces[i]];
+            if (JS_IsObject(proto)) { JS_DeleteProperty(ctx, proto, a, 0); }
+        }
+        JS_DeleteProperty(ctx, wj_the_realm.global, a, 0);
+        JS_FreeAtom(ctx, a);
+    }
+}
 WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, double memory_limit, double gc_threshold, int32_t flags)
 {
     extern bool wj_start_expose_unimplemented, wj_start_unimplemented_throw;
@@ -530,6 +550,7 @@ WJ_EXPORT("wj_realm_start") int32_t wj_realm_start(int32_t kind, int64_t seed, d
     if (gc_threshold > 0) { JS_SetGCThreshold(rt, (size_t)gc_threshold); JS_SetGCThresholdFloor(rt, (size_t)gc_threshold); }
     wj_the_realm.kind = kind;
     if (wj_platform_start(ctx, kind) != 0) { return -2; }
+    if (flags & WJ_START_NO_TOUCH_HANDLERS) { remove_touch_handlers(ctx); }
     wj_the_realm.started = true;
     return 0;
 }

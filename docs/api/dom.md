@@ -3258,6 +3258,19 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DOMImplementation_createHTMLDocument :: proc(c: ^Call, title: Maybe(string)) -> (u64, Api_Error)`
 
+### `DOMParser_parseHTMLNode`
+
+```
+Node DOMParser_parseHTMLNode(string html) raises
+```
+
+new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
+the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DOMParser_parseHTMLNode :: proc(c: ^Call, html: string) -> (u64, Api_Error)`
+
 ### `DOMImplementation_createDocumentType`
 
 ```

@@ -69,18 +69,20 @@ custom_properties_shared_when_unchanged :: proc(t: ^testing.T) {
 	p := style_of(s, n.plain_p)
 	div := style_of(s, n.plain_div)
 	testing.expect(t, p.custom == div.custom, "a universal reset that changes nothing shares the parent's table")
-	testing.expect_value(t, p.custom.values["--brand"], "#123456")
-	_, has := p.custom.values["--tw-v3"]
+	brand, _ := custom_get(p.custom, "--brand")
+	testing.expect_value(t, brand, "#123456")
+	has := custom_has(p.custom, "--tw-v3")
 	testing.expect(t, !has, "initial: the guaranteed-invalid value")
 
 	ring := style_of(s, n.ring_sec)
-	testing.expect_value(t, ring.custom.values["--tw-v7"], "3px")
+	v7, _ := custom_get(ring.custom, "--tw-v7")
+	testing.expect_value(t, v7, "3px")
 	// its children reset --tw-v7 to initial: a value that differs, a table of their own without it
 	rd := style_of(s, n.ring_div)
 	testing.expect(t, rd.custom != ring.custom, "a value that changes gets its own table")
-	_, has = rd.custom.values["--tw-v7"]
-	testing.expect(t, !has)
-	testing.expect_value(t, rd.custom.values["--brand"], "#123456")
+	testing.expect(t, !custom_has(rd.custom, "--tw-v7"))
+	brand2, _ := custom_get(rd.custom, "--brand")
+	testing.expect_value(t, brand2, "#123456")
 }
 
 // Timing of a full pass over a Tailwind-like page (printed; the test only checks it runs).

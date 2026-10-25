@@ -115,7 +115,7 @@ restyle_dom_inline_custom_property_names :: proc(t: ^testing.T) {
 	host := style_of(f.st, by_id(f, "host"))
 	testing.expect(t, host != nil && host.custom != nil)
 	if host != nil && host.custom != nil {
-		_, found := host.custom.values["--accent"]
+		found := custom_has(host.custom, "--accent")
 		testing.expect(t, found, "the key is still --accent")
 	}
 	testing.expect(t, style_of(f.st, by_id(f, "b")).color == {0, 0, 1, 1})
