@@ -908,7 +908,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	have_move := false
 	defer if have_move && t.page != nil {
 		hovered := base.NIL_HANDLE
-		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
+		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
+		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(last_move.pos)
+		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
 		st.hover = hovered
