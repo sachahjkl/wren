@@ -178,7 +178,7 @@ pacing.odin FRAME_PREFS process  # a table
 pacing.odin pacer window  # exchanged by window_activate (pacer_adopt): the window's pacing, with the process's preferences and timer
 page_cursor.odin CURSOR_PREFS process  # a table
 page_cursor.odin ccfg process  # preferences read once and on change
-page_cursor.odin pcs window  # pcs.view is window_local (the cursor over the page)
+page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)
 page_frame.odin page_prep window  # the active window's page preparation of the frame
 page_input.odin din window  # the page input of the active window (presses, double clicks)
 page_thread.odin PAGE_THREAD_PREFS process  # a table
@@ -253,7 +253,7 @@ video_shell.odin vshell page  # the pages' video players
 web_font_faces.odin WEB_FACE_PREFS process  # a table
 web_font_faces.odin GENERIC_FAMILIES process  # a table
 window_chrome.odin WINDOW_PREFS process  # a table
-window_chrome.odin wchrome window  # wchrome.full is window_local (full screen); wchrome.cfg the process's
+window_chrome.odin wchrome process  # the preferences, the exe's icon, the system menu asked for (full screen's bars: Window_Own.full)
 windows.odin window_locals process
 windows.odin wake_target process
 windows.odin window_ids process
