@@ -6,6 +6,8 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- Text goes through the toolkit's new text backend interface (toolkit 0.37.0): DirectWrite is one backend among others, with the same result (pages captured before and after are identical); the `text.backend` preference (`default`, `dwrite`, `native`, at restart) picks the shaper of a build that has the native one.
+
 - **`SharedWorker`**: one worker shared by every document of the origin (and storage key) that names the same script and name, hosted by a page of its own that shows nothing; `connect` events at its `SharedWorkerGlobalScope` (`onconnect`, `e.ports[0]`, `self.name`, `close()`), the document's `port` talks to it thread to thread; it stops when the last document using it closes (`{extendedLifetime: true}`: after `shared_workers.extended_lifetime_ms`); a script that cannot load fires `error` at its `SharedWorker` objects; `shared_workers.enabled`.
 - **Module workers**: `new Worker(url, {type: "module"})`, `new SharedWorker(url, {type: "module"})` and `register(url, {type: "module"})`: static and dynamic `import`, `import.meta.url`, relative and absolute specifiers, one module map per realm; `importScripts` throws a `TypeError` there; messages wait until the graph ran.
 - **Each kind of worker is its own realm**: `FetchEvent`, `Clients`, `ExtendableEvent`... exist in service workers only, `SharedWorkerGlobalScope` in shared workers only, `DedicatedWorkerGlobalScope` in dedicated workers only (the bindings generator knows `[Exposed=DedicatedWorker / SharedWorker / ServiceWorker]`); a service worker's global is a real `ServiceWorkerGlobalScope`.
