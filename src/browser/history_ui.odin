@@ -58,8 +58,8 @@ History_View :: struct {
 
 hview: History_View
 
-// Nav button press tracking (long press opens the menu).
-@(private = "file") nav_press: struct { key: ui.Key, at: time.Tick, opened: bool }
+// A window's back/forward button held down (Window_Own.nav_press): a long press opens the menu.
+Nav_Press :: struct { key: ui.Key, at: time.Tick, opened: bool }
 
 history_ui_destroy :: proc() {
 	ui.field_destroy(&hview.search)
@@ -137,7 +137,8 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 	if sig.box == nil { return }
 	key := ui.key_from_string(sig.box.parent.key, fmt.tprintf("%s_menu", id))
 	open := false
-	if sig.pressed { nav_press = {key = sig.box.key, at = time.tick_now()} }
+	nav_press := &window_own(app).nav_press
+	if sig.pressed { nav_press^ = {key = sig.box.key, at = time.tick_now()} }
 	if sig.dragging && nav_press.key == sig.box.key && !nav_press.opened {
 		if f64(time.duration_milliseconds(time.tick_since(nav_press.at))) >= hcfg.long_press_ms {
 			nav_press.opened = true

@@ -22,7 +22,6 @@ blocker_ui.odin SHIELD_GREEN process  # a table
 blocker_ui.odin SHIELD_AMBER process  # a table
 blocker_ui.odin SHIELD_GREY process  # a table
 blocker_ui.odin BLOCK_RED process  # a table
-blocker_ui.odin panel window  # the blocker panel of the active window
 blocker_ui.odin COLUMNS process  # a table
 canvas_gpu.odin cgpu process
 canvas_gpu_test.odin test_lock test
@@ -44,9 +43,6 @@ compositor.odin comps process
 compositor_test.odin compositor_test_lock test
 console_eval.odin GLOBALS process  # a table
 console_eval.odin MEMBERS process  # a table
-context_menu.odin ctx_req window  # the context menu asked for in the active window
-context_menu.odin ctx_pending window  # the context menu asked for in the active window
-context_menu.odin ctx_open window  # the context menu open in the active window
 context_menu.odin closed_tabs process
 crash_recovery.odin CRASH_PREFS process  # a table
 crash_recovery.odin recovery process
@@ -90,7 +86,7 @@ devtools_styles.odin SIDE_TABS process  # a table
 devtools_styles.odin SIDE_PREFS process  # a table
 devtools_syntax.odin JS_KEYWORDS process  # a table
 devtools_syntax.odin JS_ATOMS process  # a table
-devtools_window.odin dev_win window  # the developer tools' own window (one per process)
+devtools_window.odin dev_win process  # the developer tools' own window (one per process, whichever browser window it inspects)
 devtools_window.odin dev_want process
 dnd_image.odin DND_IMAGE_PREFS process  # a table
 dnd_image.odin dimg page  # the picture of the page's drag
@@ -123,9 +119,6 @@ frame_log.odin frame_log process
 frames_shell.odin frame_views page  # the views of the frames (iframes) of pages
 frames_shell.odin frame_tab_ids page  # which tab each frame view is in
 frames_shell.odin paint_stack page  # the frames being painted
-frames_shell.odin hover_frame window  # the frame under the pointer in the active window
-frames_shell.odin focus_frame window  # the focused frame of the active window
-frames_shell.odin press_frame window  # the frame pressed in the active window
 fs_shell.odin ask_state page  # a page's file system permission prompt
 global_history.odin ghist process
 gpu_steps.odin gpu_steps_state process
@@ -141,7 +134,6 @@ history_tree.odin tcfg process  # preferences read once and on change
 history_tree.odin tree_watch process  # preferences read once and on change
 history_tree.odin tview page  # about:history's tree view
 history_ui.odin hview page  # about:history's view (a page of the browser)
-history_ui.odin nav_press window  # the back/forward button held in the active window
 history_ui.odin WEEKDAYS process  # a table
 history_ui.odin MONTHS process  # a table
 hud.odin HUD_PREFS process  # a table
@@ -171,8 +163,6 @@ pacing.odin pacer window  # exchanged by window_activate (pacer_adopt): the wind
 page_cursor.odin CURSOR_PREFS process  # a table
 page_cursor.odin ccfg process  # preferences read once and on change
 page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)
-page_frame.odin page_prep window  # the active window's page preparation of the frame
-page_input.odin din window  # the page input of the active window (presses, double clicks)
 page_thread.odin PAGE_THREAD_PREFS process  # a table
 page_thread.odin pt process
 page_thread.odin pt_thread_id process
@@ -220,7 +210,6 @@ shaders.odin CARD_FOIL_ARGS process  # a table
 shaders.odin SHADERS process  # a table
 shell_frames.odin SHELL_FRAME_PREFS process  # a table
 shell_frames.odin chrome_frames process
-shell_frames.odin page_snapshot_wanted window  # set by the active window's frame for its chrome frames
 smooth_scroll.odin SCROLL_PREFS process  # a table
 smooth_scroll.odin smooth_cfg process  # preferences read once and on change
 smooth_scroll.odin smooth_watch process  # preferences read once and on change

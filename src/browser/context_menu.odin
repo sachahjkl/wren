@@ -42,9 +42,12 @@ Context_Request :: struct {
 	selection:   string,         // owned
 }
 
-@(private = "file") ctx_req: Context_Request
-@(private = "file") ctx_pending: bool
-@(private = "file") ctx_open: Context_Request   // what the open menu is about
+// A window's context menu (Window_Own.ctx_menu).
+Context_Menu_State :: struct {
+	req:     Context_Request,   // asked for, opened by the next build
+	pending: bool,
+	open:    Context_Request,   // what the open menu is about
+}
 
 CTX_MENU_ID :: "###page_context_menu"
 
@@ -54,17 +57,20 @@ request_free :: proc(r: ^Context_Request) {
 	r^ = {}
 }
 
-context_menu_destroy :: proc() {
-	request_free(&ctx_req)
-	request_free(&ctx_open)
-	ctx_pending = false
+context_menu_state_destroy :: proc(cm: ^Context_Menu_State) {
+	request_free(&cm.req)
+	request_free(&cm.open)
+	cm.pending = false
 }
+
+context_menu_destroy :: proc(app: ^App) { context_menu_state_destroy(&window_own(app).ctx_menu) }
 
 @(private = "file")
 request :: proc(app: ^App, r: Context_Request) {
-	request_free(&ctx_req)
-	ctx_req = r
-	ctx_pending = true
+	cm := &window_own(app).ctx_menu
+	request_free(&cm.req)
+	cm.req = r
+	cm.pending = true
 	app.frames_requested = max(app.frames_requested, 2)
 }
 
@@ -189,15 +195,16 @@ short :: proc(s: string, n: int) -> string {
 // Builds the open context menu (call once per frame, after the chrome and the page area).
 context_menus_build :: proc(app: ^App) {
 	key := ui.key_from_string(0, CTX_MENU_ID)
-	if ctx_pending {
-		ctx_pending = false
-		request_free(&ctx_open)
-		ctx_open, ctx_req = ctx_req, {}
-		ui.ctx_menu_open(key, ctx_open.pos, from_keyboard = ctx_open.keyboard)
+	cm := &window_own(app).ctx_menu
+	if cm.pending {
+		cm.pending = false
+		request_free(&cm.open)
+		cm.open, cm.req = cm.req, {}
+		ui.ctx_menu_open(key, cm.open.pos, from_keyboard = cm.open.keyboard)
 	}
 	if !ui.ctx_menu_is_open(key) { return }
 	t := current_tab(app)
-	r := &ctx_open
+	r := &cm.open
 	if r.kind == .Page && (t == nil || t.page != r.page) { ui.ctx_menu_close(); return }
 	if ui.ctx_menu(key) {
 		switch r.kind {

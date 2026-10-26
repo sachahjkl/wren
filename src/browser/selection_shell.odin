@@ -73,7 +73,7 @@ interaction_destroy :: proc(app: ^App) {
 	interaction_settings_destroy(&ix)
 	find_destroy(find_state(app))
 	closed_tabs_destroy()
-	context_menu_destroy()
+	context_menu_destroy(app)
 }
 
 @(private = "file")

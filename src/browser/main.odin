@@ -924,7 +924,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	for ev, index in events {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
-		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(ev) { if t.page == nil { return }; continue }
+		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
@@ -1175,10 +1175,11 @@ frame :: proc(app: ^App, idled := false) {
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
-	page_snapshot_wanted = ran > 0
+	own := window_own(app)
+	own.page_snapshot_wanted = ran > 0
 	if t := current_tab(app); t != nil && t.page != nil {
 		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
-			page_snapshot_wanted = true
+			own.page_snapshot_wanted = true
 		}
 	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build

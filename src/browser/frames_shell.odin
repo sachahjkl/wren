@@ -45,12 +45,13 @@ frame_views: map[^page.Page]^Frame_View
 frame_tab_ids: u64 = 1 << 40
 @(private = "file")
 paint_stack: [dynamic]^page.Page   // the documents being painted, innermost last
-@(private = "file")
-hover_frame: ^page.Page           // the frame document whose :hover is set
-@(private = "file")
-focus_frame: ^page.Page           // the frame document that got the last press (keyboard goes there)
-@(private = "file")
-press_frame: ^page.Page           // where the button went down (its release goes there too)
+
+// A window's pointer and keyboard among the frames of its page (Window_Own.frames).
+Frames_Input :: struct {
+	hover: ^page.Page,   // the frame document whose :hover is set
+	focus: ^page.Page,   // the frame document that got the last press (keyboard goes there)
+	press: ^page.Page,   // where the button went down (its release goes there too)
+}
 
 // Shell start-up: the page package tells us about each document a frame gets.
 frames_shell_init :: proc(app: ^App) {
@@ -96,9 +97,15 @@ frame_view_closed :: proc(data: rawptr) {
 	fv, ok := frame_views[p]
 	if !ok { return }
 	delete_key(&frame_views, p)
-	if hover_frame == p { hover_frame = nil }
-	if focus_frame == p { focus_frame = nil }
-	if press_frame == p { press_frame = nil }
+	forget :: proc(fi: ^Frames_Input, p: ^page.Page) {
+		if fi.hover == p { fi.hover = nil }
+		if fi.focus == p { fi.focus = nil }
+		if fi.press == p { fi.press = nil }
+	}
+	if the_app != nil {
+		for w in the_app.windows { forget(&w.own.frames, p) }
+		forget(&the_app.bare_own.frames, p)
+	}
 	page_fonts_drop(&page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
 	smooth_destroy(&fv.tab.smooth)
@@ -273,29 +280,30 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 	case .Mouse_Move, .Mouse_Press, .Mouse_Release, .Scroll:
 	case: return false
 	}
+	fi := &window_own(app).frames
 	fv := frame_under(app, t, ev.pos, app.page_rect)
 	// hover leaves a frame the pointer left
 	if ev.kind == .Mouse_Move {
 		now: ^page.Page = fv != nil ? fv.tab.page : nil
-		if hover_frame != nil && hover_frame != now {
-			if hv := frame_view_of(hover_frame); hv != nil {
-				st := hover_frame.style_state
+		if fi.hover != nil && fi.hover != now {
+			if hv := frame_view_of(fi.hover); hv != nil {
+				st := fi.hover.style_state
 				st.hover = base.NIL_HANDLE
-				page.set_style_state(hover_frame, st)
+				page.set_style_state(fi.hover, st)
 			}
 		}
-		hover_frame = now
+		fi.hover = now
 	}
 	// a release goes where the press went (the click is the press target's), a frame or the tab's document
 	if ev.kind == .Mouse_Release {
-		pf := press_frame
-		press_frame = nil
+		pf := fi.press
+		fi.press = nil
 		fv = frame_view_of(pf)
 		if pf != nil && fv == nil { return true }   // that frame is gone
 	}
 	if ev.kind == .Mouse_Press {
-		focus_frame = fv != nil ? fv.tab.page : nil
-		press_frame = focus_frame
+		fi.focus = fv != nil ? fv.tab.page : nil
+		fi.press = fi.focus
 	}
 	if fv == nil { return false }
 	saved := app.page_rect
@@ -376,7 +384,7 @@ frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
 	case .Key_Press, .Key_Release, .Text:
 	case: return false
 	}
-	fv := frames_focused()
+	fv := frames_focused(app)
 	if fv == nil { return false }
 	saved := app.page_rect
 	app.page_rect = fv.rect
@@ -386,9 +394,10 @@ frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
 }
 
 // The frame document that has the keyboard (the last press went into it), its stand-in tab; nil: the tab's document.
-frames_focused :: proc() -> ^Frame_View {
-	if focus_frame == nil { return nil }
-	return frame_view_of(focus_frame)
+frames_focused :: proc(app: ^App) -> ^Frame_View {
+	focus := window_own(app).frames.focus
+	if focus == nil { return nil }
+	return frame_view_of(focus)
 }
 
 // A link followed in a frame's document (its default action): the frame navigates, or the navigable the link's target

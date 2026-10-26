@@ -81,6 +81,12 @@ Window_Own :: struct {
 	address_key:         ui.Key,              // chrome.odin: the address field's key, set when it is built
 	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
 	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
+	ctx_menu:            Context_Menu_State,  // context_menu.odin: the context menu asked for, and the one open
+	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused, pressed
+	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
+	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
+	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
+	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
@@ -98,6 +104,8 @@ window_own_destroy :: proc(own: ^Window_Own) {
 	urlbar_view_destroy(&own.urlbar)
 	find_destroy(&own.find)
 	forms_shell_destroy(&own.forms)
+	context_menu_state_destroy(&own.ctx_menu)
+	device_input_destroy(&own.devices)
 }
 
 ////////////////////////////////
