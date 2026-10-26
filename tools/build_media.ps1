@@ -18,9 +18,9 @@ $stampFile = Join-Path $out 'STAMP'
 
 # what the library is made of: change any of it and it is built again
 $inputs = @(Get-ChildItem (Join-Path $crate 'src') -Recurse -File) + @(Get-Item (Join-Path $crate 'Cargo.toml'), (Join-Path $crate 'Cargo.lock'), $PSCommandPath)
-# WREN_TEXT=native: the toolkit's text backend (ext\gui_toolkit\native\text) is built into the library (feature `text`):
-# one Rust static library per program
-$text = $env:WREN_TEXT -eq 'native'
+# the toolkit's native text backend (ext\gui_toolkit\native\text) is built into the library (feature `text`: one Rust
+# static library per program), unless WREN_TEXT=dwrite (a build that shapes with DirectWrite)
+$text = $env:WREN_TEXT -ne 'dwrite'
 if ($text) {
     $textCrate = Join-Path $root 'ext\gui_toolkit\native\text'
     $inputs += @(Get-ChildItem (Join-Path $textCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $textCrate 'Cargo.toml'))
