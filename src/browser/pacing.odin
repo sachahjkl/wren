@@ -262,10 +262,10 @@ frame_plan :: proc(d: platform.Display_Info, cfg: Pacer_Settings, tearing: bool)
 	return
 }
 
-// Whether a frame is a resize step (drawn and shown at once): the window changed size, or a panel is being dragged to a new
-// size under the pointer; never before the first frame is on screen, and not when the preference is off.
-resize_step :: proc(window_resized, panel_dragged, presented, enabled: bool) -> bool {
-	return (window_resized || panel_dragged) && presented && enabled
+// Whether a frame is a resize step (drawn and shown at once): the window changed size; never before the first frame is on
+// screen, and not when the preference is off. (A panel dragged to a new size inside the window is not: pacer_wait.)
+resize_step :: proc(window_resized, presented, enabled: bool) -> bool {
+	return window_resized && presented && enabled
 }
 
 // Whether `now_ns` is within `hold_ms` after the last size change (`last_ns`, 0: none): the frames of a resize that are
@@ -357,13 +357,14 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// (browser.frame.resize_immediate).
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
-	// (so is a drag of the developer tools' splitter or of their floating panel: the window keeps its size and the panel and the
-	// page are resized under the hand, which has to follow it at the same rate as the window's edge does)
-	dragged := devtools_dragging()
-	pacer.resizing = resize_step(resized, dragged, app.presented, pacer.cfg.resize_immediate)
+	// A drag of the developer tools' splitter or floating panel, or of the tab sidebar's width handle, is not: the window
+	// keeps its size (nothing is stretched by the composer), and its frames are those of any drag, one per slot (a step of
+	// a resize skips the slot: at the pointer's 1 kHz that was a frame a millisecond, hundreds a second the screen never
+	// showed, and the ones it did advanced unevenly). Each of them lays the panel and the page out at the pointer it read.
+	pacer.resizing = resize_step(resized, app.presented, pacer.cfg.resize_immediate)
 	tick := time.tick_now()._nsec
 	pacer.resize_held = !pacer.resizing && app.presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
-	if resized || dragged { pacer.resize_ns = tick }
+	if resized { pacer.resize_ns = tick }
 	input := shell_user_input_pending()
 	// Only the frame that starts an answer to input is shown at once: while frames follow one another (a drag, the wheel,
 	// a pointer sweeping the page: input every millisecond) every frame waits for the screen's slot, one per refresh.
