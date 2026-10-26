@@ -230,7 +230,20 @@ Window_isSecureContext :: proc(c: ^Call) -> bool { return c.page.env.secure_cont
 @(private)
 cookie_context :: proc(p: ^Page) -> (cc: cookies.Context, ok: bool) {
 	if p.worker != nil || p.env.origin.opaque || (p.env.location.scheme != "http" && p.env.location.scheme != "https") { return {}, false }
-	return cookies.Context{url = p.env.location, site_context = .Same_Site, http_api = false, now_ms = fetch.now_ms()}, true
+	cc = cookies.Context{url = p.env.location, site_context = .Same_Site, http_api = false, now_ms = fetch.now_ms()}
+	// a frame of another site than the tab's: a cross-site context, with its partition of the jar (storage.partitioned)
+	// unless it uses its storage access
+	if !url.same_site(p.env.site, p.env.top_level_site) && p.env.storage_access != .Active {
+		cc.site_context = .Cross_Site
+		if p.loader != nil && p.loader.profile.settings.partitioned { cc.partition = fetch.site_partition_text(p.env.top_level_site) }
+	}
+	return cc, true
+}
+
+// privacy.third_party_cookies = block: a cross-site frame's document.cookie reads "" and writes nothing.
+@(private)
+cookies_blocked :: proc(p: ^Page, cc: cookies.Context) -> bool {
+	return cc.site_context == .Cross_Site && p.loader != nil && p.loader.profile.settings.third_party_cookies == .Block
 }
 
 // document.cookie getter: the non-HttpOnly cookies of this document, "name=value; ...".
@@ -238,6 +251,7 @@ Document_cookie_get :: proc(c: ^Call) -> (string, Api_Error) {
 	p := c.page
 	cc, ok := cookie_context(p)
 	if !ok { return "", fail(c, .Security, "SecurityError: this document cannot use cookies") }
+	if cookies_blocked(p, cc) { return "", .None }
 	return cookies.header_for(&p.loader.profile.jar, cc, context.temp_allocator), .None
 }
 
@@ -246,6 +260,7 @@ Document_cookie_set :: proc(c: ^Call, cookie: string) -> (i32, Api_Error) {
 	p := c.page
 	cc, ok := cookie_context(p)
 	if !ok { return 0, fail(c, .Security, "SecurityError: this document cannot use cookies") }
+	if cookies_blocked(p, cc) { return 0, .None }
 	r := cookies.store(&p.loader.profile.jar, cookie, cc)
 	#partial switch r {
 	case .Stored, .Replaced, .Deleted: return 0, .None

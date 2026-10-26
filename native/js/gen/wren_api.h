@@ -348,6 +348,8 @@ enum wr_WorkerType {
 
 /* module dom (partial): types */
 
+/* module storageaccess: types */
+
 /* module navigator: types */
 // A string member of Navigator.
 enum wr_NavigatorField {
@@ -2444,6 +2446,15 @@ WR_IMPORT("scripts", "SharedWorker_connectBytes") int32_t wr_SharedWorker_connec
 WR_IMPORT("scripts", "SharedWorker_portEnd") uint64_t wr_SharedWorker_portEnd(uint64_t worker);
 // The end of the port of the next connect event of the calling shared worker (0: none waits).
 WR_IMPORT("scripts", "SharedWorkerGlobalScope_takeConnection") uint64_t wr_SharedWorkerGlobalScope_takeConnection(void);
+
+/* module storageaccess */
+// document.hasStorageAccess(): a promise of true when the document uses its unpartitioned storage and cookies (a
+// first-party document always does), false else.
+WR_IMPORT("storageaccess", "Document_hasStorageAccess") uint64_t wr_Document_hasStorageAccess(void);
+// document.requestStorageAccess(): resolves once the document uses its unpartitioned storage and cookies; rejects
+// with NotAllowedError when it is refused (no user gesture, a sandbox without
+// allow-storage-access-by-user-activation, the storage-access permission policy, the person or the preference).
+WR_IMPORT("storageaccess", "Document_requestStorageAccess") uint64_t wr_Document_requestStorageAccess(void);
 
 /* module navigator */
 // A string member of Navigator.

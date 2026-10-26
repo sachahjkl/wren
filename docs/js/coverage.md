@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 577 |
 | exposed by default | 298 |
 | members | 5102 |
-| members implemented | 3373 (66.1 %) |
+| members implemented | 3375 (66.2 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
 | `cssom.idl` | 16 (5) | 37 / 149 |
-| `dom.idl` | 35 (31) | 577 / 699 |
+| `dom.idl` | 35 (31) | 579 / 699 |
 | `encoding.idl` | 4 (2) | 9 / 19 |
 | `entries-api.idl` | 5 (5) | 13 / 13 |
 | `event-timing.idl` | 2 (1) | 6 / 8 |
@@ -1440,7 +1440,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Document : Node
 
-186 / 225 members.
+188 / 225 members.
 
 - `readonly rootElement`: not supported
 - `startViewTransition()`: not supported
@@ -1537,8 +1537,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly wasDiscarded`: not supported
 - `readonly fragmentDirective`: not supported
 - `getSelection()`: C `wjr_Document_getSelection`
-- `hasStorageAccess()`: not supported
-- `requestStorageAccess()`: not supported
+- `hasStorageAccess()`: import `storageaccess.Document_hasStorageAccess`
+- `requestStorageAccess()`: import `storageaccess.Document_requestStorageAccess`
 - `readonly timeline`: not supported
 - `readonly fonts` (FontFaceSource): C `wjr_FontFaceSource_get_fonts`
 - `getBoxQuads()` (GeometryUtils): not supported

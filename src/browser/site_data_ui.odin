@@ -20,6 +20,12 @@ SITES_URL :: "about:sites"
 
 is_sites_address :: proc(a: string) -> bool { return a == SITES_URL || strings.has_prefix(a, SITES_URL + "?") }
 
+@(private = "file")
+registrable_or_host :: proc(host: string) -> string {
+	if d, ok := url.registrable_domain(host); ok { return d }
+	return host
+}
+
 Clear_Kind :: enum u8 { Local, Session, Indexed_Db, Cookies, Cache }
 Clear_Kinds :: bit_set[Clear_Kind]
 CLEAR_ALL :: Clear_Kinds{.Local, .Session, .Indexed_Db, .Cookies, .Cache}
@@ -33,7 +39,10 @@ clear_site :: proc(app: ^App, host: string, kinds: Clear_Kinds) -> string {
 	if .Indexed_Db in kinds { storage_kinds += {.Indexed_Db} }
 	if storage_kinds != {} {
 		for s in page.storage_sites(&app.storage) {
-			if host == "*" || page.storage_key_host(s.key) == host { page.storage_clear_site(&app.storage, s.key, storage_kinds) }
+			// (a site's partitions of other sites' data, stored while it was the top level, go with it)
+			if host == "*" || page.storage_key_host(s.key) == host || page.storage_key_top_host(s.key) == registrable_or_host(host) {
+				page.storage_clear_site(&app.storage, s.key, storage_kinds)
+			}
 		}
 	}
 	cookie_count, entries := 0, 0
@@ -43,6 +52,7 @@ clear_site :: proc(app: ^App, host: string, kinds: Clear_Kinds) -> string {
 			cookies.clear_all(&app.profile.jar)
 		} else {
 			cookie_count = cookies.delete_for_host(&app.profile.jar, host)
+			cookie_count += cookies.delete_partitions_of(&app.profile.jar, registrable_or_host(host))
 		}
 	}
 	if .Cache in kinds && app.profile.cache != nil {

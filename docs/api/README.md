@@ -72,6 +72,7 @@ function not exposed to workers is not instantiated.
 | [`dnd`](dnd.md) | 32 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
 | [`entries`](entries.md) | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
 | [`scripts`](scripts.md) | 25 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
+| [`storageaccess`](storageaccess.md) | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
 | [`navigator`](navigator.md) | 8 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
 | [`htmlmedia`](htmlmedia.md) | 29 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
@@ -87,4 +88,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1161 imports in 1062 functions.
+1163 imports in 1064 functions.

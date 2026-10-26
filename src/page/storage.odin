@@ -71,6 +71,7 @@ storage_manager_destroy :: proc(m: ^Storage_Manager) {
 	if !m.ready { return }
 	shared_workers_shutdown()   // shared_worker.odin: their host pages use this manager too
 	sw_registry_shutdown()   // service_worker.odin: the workers' host pages use this manager
+	storage_access_reset()   // storage_access.odin: the session's grants
 	// a background write still queued may never run (the blocking pool drops what it has not started when it stops):
 	// every area it could be writing is written again here, the commit gate keeps the newest
 	storage_flush(m, sync_write = true, all = m.pending > 0)

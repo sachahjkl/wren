@@ -21030,6 +21030,34 @@ _t_dom_DocumentOrShadowRoot_adopt :: proc "c" (env: rawptr, caller: wasm.Caller,
 	return nil
 }
 
+// Document_hasStorageAccess :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_storageaccess_Document_hasStorageAccess :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_hasStorageAccess(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Document_requestStorageAccess :: proc(c: ^Call) -> u64
+@(private = "file")
+_t_storageaccess_Document_requestStorageAccess :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := Document_requestStorageAccess(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -> string
 @(private = "file")
 _t_navigator_Navigator_get :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -26469,6 +26497,8 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "CSSStyleSheet_setMediaText", fn = _t_dom_CSSStyleSheet_setMediaText, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CSSStyleSheet_isConstructed", fn = _t_dom_CSSStyleSheet_isConstructed, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DocumentOrShadowRoot_adopt", fn = _t_dom_DocumentOrShadowRoot_adopt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "storageaccess", name = "Document_hasStorageAccess", fn = _t_storageaccess_Document_hasStorageAccess, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
+	{module = "storageaccess", name = "Document_requestStorageAccess", fn = _t_storageaccess_Document_requestStorageAccess, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Navigator_get", fn = _t_navigator_Navigator_get, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigator", name = "Navigator_hardwareConcurrency", fn = _t_navigator_Navigator_hardwareConcurrency, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigator", name = "Navigator_onLine", fn = _t_navigator_Navigator_onLine, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},

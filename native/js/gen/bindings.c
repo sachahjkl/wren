@@ -3912,6 +3912,36 @@ static JSValue wjg_Document_get_onfreeze(JSContext *ctx, JSValueConst this_val) 
 static JSValue wjg_Document_set_onfreeze(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 240, "freeze", v, 0); }
 static JSValue wjg_Document_get_onresume(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 240, "resume"); }
 static JSValue wjg_Document_set_onresume(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 240, "resume", v, 0); }
+/* Document.hasStorageAccess() -> storageaccess.Document_hasStorageAccess */
+static JSValue wjg_Document_hasStorageAccess_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 240);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_hasStorageAccess();
+    return wj_promise_from_host(ctx, r, WJ_HOST_BOOL, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Document_hasStorageAccess(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Document_hasStorageAccess_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
+/* Document.requestStorageAccess() -> storageaccess.Document_requestStorageAccess */
+static JSValue wjg_Document_requestStorageAccess_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 240);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_requestStorageAccess();
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Document_requestStorageAccess(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Document_requestStorageAccess_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
 /* Document.getElementById() -> dom.Document_getElementById */
 static JSValue wjg_Document_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -13790,8 +13820,8 @@ static const wj_member wj_m_Document[] = {
     { "wasDiscarded", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fragmentDirective", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 58, NULL, NULL, NULL, 0 },
     { "getSelection", WJ_M_METHOD, 0, 0, wjr_Document_getSelection, NULL, NULL, 0 },
-    { "hasStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "requestStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "hasStorageAccess", WJ_M_METHOD, 0, 0, wjg_Document_hasStorageAccess, NULL, NULL, 0 },
+    { "requestStorageAccess", WJ_M_METHOD, 0, 0, wjg_Document_requestStorageAccess, NULL, NULL, 0 },
     { "timeline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fonts", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FontFaceSource_get_fonts, NULL, 0 },
     { "getBoxQuads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },

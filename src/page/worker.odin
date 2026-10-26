@@ -270,6 +270,7 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	h := worker_host_new(p, u, name, javascript, module, link_make(p.loop, ws.max_pending_bytes), &p.env)
 	h.owner, h.sw, h.shared = owner, sw, shared
 	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
+	if sw != nil { h.storage_key = strings.clone(sw.reg.origin) }    // (a service worker's: its registration's storage key)
 	h.self = object_create(p, &worker_vt, h, owner)
 	worker_host_load(h, image, &p.env)
 	return h.self

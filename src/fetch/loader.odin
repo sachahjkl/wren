@@ -425,9 +425,46 @@ cookies_allowed :: proc(t: ^Task) -> bool {
 	// a nested document's navigation is a third-party request like a subresource's (only top-level navigations are not)
 	if (t.mode != .Navigate || is_frame_destination(t.destination)) && t.initiator != nil && t.loader.profile.settings.third_party_cookies == .Block {
 		o := url.origin_of(t.target, context.temp_allocator)
-		if !url.same_site(url.site_of(o, context.temp_allocator), t.initiator.top_level_site) { return false }
+		s := url.site_of(o, context.temp_allocator)
+		// a frame that was granted storage access (and asked for it) sends its own site its cookies (Storage Access API)
+		if !url.same_site(s, t.initiator.top_level_site) && !storage_access_active_for(t, s) { return false }
 	}
 	return true
+}
+
+// The cookie partition of the request (temp; storage.partitioned): "" in a first-party context (a top-level navigation,
+// a request to the top-level site, a frame using its storage access for its own site), else the top-level site.
+cookie_partition :: proc(t: ^Task) -> string {
+	if !t.loader.profile.settings.partitioned || t.initiator == nil { return "" }
+	if t.mode == .Navigate && !is_frame_destination(t.destination) { return "" }
+	o := url.origin_of(t.target, context.temp_allocator)
+	s := url.site_of(o, context.temp_allocator)
+	top := t.initiator.top_level_site
+	if url.same_site(s, top) || storage_access_active_for(t, s) { return "" }
+	return site_partition_text(top)
+}
+
+// A site as partitions write it (temp): "scheme://domain", "null" for an opaque one.
+site_partition_text :: proc(s: url.Site) -> string {
+	if s.opaque { return "null" }
+	return strings.concatenate({s.scheme, "://", s.domain}, context.temp_allocator)
+}
+
+// The document of the request uses its storage access and the request goes to its own site.
+@(private)
+storage_access_active_for :: proc(t: ^Task, s: url.Site) -> bool {
+	return t.initiator.storage_access == .Active && url.same_site(s, t.initiator.site)
+}
+
+// Sec-Fetch-Storage-Access of a cross-site credentialed request to origin `o`.
+@(private)
+storage_access_name :: proc(t: ^Task, o: url.Origin) -> string {
+	switch t.initiator.storage_access {
+	case .None: return "none"
+	case .Inactive: return url.same_site(url.site_of(o, context.temp_allocator), t.initiator.site) ? "inactive" : "none"
+	case .Active: return url.same_site(url.site_of(o, context.temp_allocator), t.initiator.site) ? "active" : "none"
+	}
+	return "none"
 }
 
 @(private)
@@ -534,10 +571,18 @@ request_header_list :: proc(t: ^Task) -> http.Headers {
 		http.set_header(&h, "Sec-Fetch-Mode", mode_name(t.mode))
 		http.set_header(&h, "Sec-Fetch-Site", sec_fetch_site(t))
 		if t.mode == .Navigate && t.user_activation { http.set_header(&h, "Sec-Fetch-User", "?1") }
+		// Storage Access Headers: a credentialed request made in a cross-site context says whether its document may use
+		// (inactive) or uses (active) its first-party cookies
+		if t.initiator != nil && credentials_include(t) {
+			o := url.origin_of(t.target, context.temp_allocator)
+			if !url.same_site(url.site_of(o, context.temp_allocator), t.initiator.top_level_site) {
+				http.set_header(&h, "Sec-Fetch-Storage-Access", storage_access_name(t, o))
+			}
+		}
 	}
 	// Cookies
 	if cookies_allowed(t) {
-		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now_ms()}
+		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now_ms(), partition = cookie_partition(t)}
 		if c := cookies.header_for(&l.profile.jar, ctx, context.temp_allocator); c != "" { http.set_header(&h, "Cookie", c) }
 	}
 	return h
@@ -739,7 +784,7 @@ on_response_headers :: proc(t: ^Task, ev: ^net.Event) {
 
 	// cookies and HSTS are processed for every response, redirects included
 	if cookies_allowed(t) {
-		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now}
+		ctx := cookies.Context{url = t.target, site_context = site_context(t), http_api = true, now_ms = now, partition = cookie_partition(t)}
 		for v in http.get_all(raw, "set-cookie") { cookies.store(&l.profile.jar, v, ctx) }
 	}
 	if t.target.scheme == "https" && l.profile.settings.hsts {
