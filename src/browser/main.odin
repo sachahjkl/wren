@@ -1412,7 +1412,6 @@ main :: proc() {
 	hud_init(app)
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
-	windows_register_locals()   // windows.odin: what of all that is a window's own
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
