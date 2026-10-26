@@ -52,23 +52,21 @@ Touch_Dispatch :: struct {
 
 MOUSE_POINTER_ID :: 1
 
-@(private) pointer_pages: map[^Page]^Pointer_Page
-
+// (a field of the page, not a table of the process: pages run on several threads, and a table is not left behind at exit)
 @(private)
 pointer_page :: proc(p: ^Page, create := true) -> ^Pointer_Page {
-	pp := pointer_pages[p]
+	pp := p.pointer
 	if pp == nil && create && !p.closed {
 		pp = new(Pointer_Page)
-		pointer_pages[p] = pp
+		p.pointer = pp
 		base.on_close(p.scope, proc(data: rawptr) {
 			pg := (^Page)(data)
-			if pp := pointer_pages[pg]; pp != nil {
+			if pp := pg.pointer; pp != nil {
 				delete(pp.captures)
 				delete(pp.down)
 				delete(pp.touches)
 				free(pp)
-				delete_key(&pointer_pages, pg)
-				if len(pointer_pages) == 0 { delete(pointer_pages); pointer_pages = nil }   // (its table is not left behind at exit)
+				pg.pointer = nil
 			}
 		}, p)
 	}
