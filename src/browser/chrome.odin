@@ -133,18 +133,40 @@ nav_button :: proc(id, glyph, tooltip: string, enabled: bool) -> bool {
 ////////////////////////////////
 // The address row
 
+// The toolbar's row: navigation, the address bar, its chips, the blocker's shield and the menu. With the tabs in a sidebar
+// and an integrated title bar, the same parts are the title bar (sidebar_titlebar, tab_sidebar.odin).
 address_row :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	can_back := t != nil && t.hist > 0
-	can_forward := t != nil && t.hist + 1 < len(t.history)
-
 	ui.spacer(ui.px(em * 0.5))
-	// a right click or a long press lists the entries that way (history_ui.odin)
-	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", can_back, -1)
-	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", can_forward, +1)
-	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
+	nav_back_button(app, t)
+	nav_forward_button(app, t)
+	nav_reload_button(app, t)
 	ui.spacer(ui.px(em * 0.4))
+	address_bar(app, t)
+	address_chips(app, t)
+	ui.spacer(ui.px(em * 0.4))
+	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
+	ui.spacer(ui.px(em * 0.2))
+	main_menu_button(app, t)
+	ui.spacer(ui.px(em * 0.5))
+}
 
+// (a right click or a long press lists the entries that way: history_ui.odin)
+nav_back_button :: proc(app: ^App, t: ^Tab) {
+	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", t != nil && t.hist > 0, -1)
+}
+
+nav_forward_button :: proc(app: ^App, t: ^Tab) {
+	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", t != nil && t.hist + 1 < len(t.history), +1)
+}
+
+nav_reload_button :: proc(app: ^App, t: ^Tab) {
+	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
+}
+
+// The address bar: it fills what its row leaves it.
+address_bar :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
 	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
 	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
 	h := ui.dense(em * 2)
@@ -203,7 +225,11 @@ address_row :: proc(app: ^App, t: ^Tab) {
 	if res.focused && (ui.key_press(.Menu) || ui.key_press(.F10, {.Shift})) {
 		address_context_menu(app, {res.box.rect.min.x + em, res.box.rect.max.y}, keyboard = true)
 	}
+}
 
+// What follows the address bar only while it applies: the page zoom, a passkey dialog.
+address_chips :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
 	// page zoom, when not 100 %: click to reset
 	if t != nil && zoom_percent(t) != 100 {
 		ui.spacer(ui.px(em * 0.3))
@@ -215,12 +241,6 @@ address_row :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
-
-	ui.spacer(ui.px(em * 0.4))
-	blocker_button(app, t)   // blocker_ui.odin: the content blocker's icon and panel
-	ui.spacer(ui.px(em * 0.2))
-	main_menu_button(app, t)
-	ui.spacer(ui.px(em * 0.5))
 }
 
 // Makes tab `i` the current one.
