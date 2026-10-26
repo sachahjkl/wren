@@ -6985,6 +6985,75 @@ _t_fetch_Fetch_startWithSignal :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// Fetch_sync :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions, timeout_ms: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_fetch_Fetch_sync :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "method") }
+	_n2 := wasm.addr(&f, a[5])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[4]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "headers") }
+	_absent3 := wasm.is_absent(&f, a[7])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[6]), 0 if _absent3 else wasm.addr(&f, a[7]))
+	if !_k3 { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "body") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[15]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fetch.Fetch_sync", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "fetch.Fetch_sync: argument url is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "fetch.Fetch_sync: argument method is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "fetch.Fetch_sync: argument headers is not valid UTF-8")
+	}
+	_p3: Maybe([]u8)
+	if !_absent3 { _p3 = _s3[:wasm.addr(&f, a[7])] }
+	_p4: Api_FetchOptions
+	if !_valid_FetchMode(u32(a[8].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_sync: field options.mode is not a FetchMode")
+	}
+	_p4.mode = Api_FetchMode(u32(a[8].i32))
+	if !_valid_Credentials(u32(a[9].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_sync: field options.credentials is not a Credentials")
+	}
+	_p4.credentials = Api_Credentials(u32(a[9].i32))
+	if !_valid_RedirectMode(u32(a[10].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_sync: field options.redirect is not a RedirectMode")
+	}
+	_p4.redirect = Api_RedirectMode(u32(a[10].i32))
+	if !_valid_ReferrerPolicy(u32(a[11].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_sync: field options.referrer_policy is not a ReferrerPolicy")
+	}
+	_p4.referrer_policy = Api_ReferrerPolicy(u32(a[11].i32))
+	_p4.no_referrer = a[12].i32 != 0
+	if !_valid_RequestCache(u32(a[13].i32)) {
+		return _fail_status(&c, a, .Invalid_Argument, "fetch.Fetch_sync: field options.cache is not a RequestCache")
+	}
+	_p4.cache = Api_RequestCache(u32(a[13].i32))
+	_p5 := u32(a[14].i32)
+	_r, _err := Fetch_sync(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Response_text :: proc(c: ^Call, response: Api_Fetch) -> u64
 @(private = "file")
 _t_fetch_Response_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -9477,15 +9546,19 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
-// Fs_opfsRoot :: proc(c: ^Call) -> (u64, Api_Error)
+// Fs_opfsRoot :: proc(c: ^Call, bucket: string) -> (u64, Api_Error)
 @(private = "file")
 _t_fs_Fs_opfsRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "fs.Fs_opfsRoot", "bucket") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_opfsRoot", "result pointer") }
-	_r, _err := Fs_opfsRoot(&c)
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_r, _err := Fs_opfsRoot(&c, _p0)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -19550,6 +19623,23 @@ _t_scripts_Worker_createScriptBytes :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Worker_pendingError :: proc(c: ^Call) -> string
+@(private = "file")
+_t_scripts_Worker_pendingError :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "scripts.Worker_pendingError", "result buffer") }
+	_r := Worker_pendingError(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // SharedWorker_connectBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool, script: []u8) -> (u64, Api_Error)
 @(private = "file")
 _t_scripts_SharedWorker_connectBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -25676,6 +25766,7 @@ api_imports := [?]wasm.Import{
 	{module = "eventsource", name = "MessageEvent_lastEventId", fn = _t_eventsource_MessageEvent_lastEventId, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Fetch_promise", fn = _t_fetch_Fetch_promise, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Fetch_startWithSignal", fn = _t_fetch_Fetch_startWithSignal, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fetch", name = "Fetch_sync", fn = _t_fetch_Fetch_sync, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fetch", name = "Response_text", fn = _t_fetch_Response_text, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Response_arrayBuffer", fn = _t_fetch_Response_arrayBuffer, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "fetch", name = "Response_bytes", fn = _t_fetch_Response_bytes, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
@@ -25884,7 +25975,7 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLIFrameElement_srcdoc", fn = _t_dom_HTMLIFrameElement_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLIFrameElement_set_srcdoc", fn = _t_dom_HTMLIFrameElement_set_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "fs", name = "Fs_opfsRoot", fn = _t_fs_Fs_opfsRoot, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_opfsRoot", fn = _t_fs_Fs_opfsRoot, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fs", name = "Fs_getEntry", fn = _t_fs_Fs_getEntry, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "fs", name = "Fs_removeEntry", fn = _t_fs_Fs_removeEntry, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fs", name = "Fs_list", fn = _t_fs_Fs_list, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -26309,6 +26400,7 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "WorkerGlobalScope_isModule", fn = _t_scripts_WorkerGlobalScope_isModule, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_connect", fn = _t_scripts_SharedWorker_connect, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "Worker_createScriptBytes", fn = _t_scripts_Worker_createScriptBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Worker_pendingError", fn = _t_scripts_Worker_pendingError, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "SharedWorker_connectBytes", fn = _t_scripts_SharedWorker_connectBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_portEnd", fn = _t_scripts_SharedWorker_portEnd, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "SharedWorkerGlobalScope_takeConnection", fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},

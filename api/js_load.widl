@@ -75,6 +75,9 @@ module scripts {
   /// new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
   /// URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
   u64 Worker_createScriptBytes(usvstring url, usvstring name, WorkerType type, bytes script) raises;
+  /// While wj_worker_error_to_global runs: the worker's uncaught error that its Worker object's error event did not
+  /// cancel, "message TAB filename" (HTML: it is reported in the owner's global, window.onerror).
+  string Worker_pendingError();
   u64 SharedWorker_connectBytes(usvstring url, usvstring name, WorkerType type, bool extended_lifetime, bytes script) raises;
   /// The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
   u64 SharedWorker_portEnd(u64 worker);

@@ -20,6 +20,7 @@
 #include "wj.h"
 #include "bindings.h"
 #include "qjs_internal.h"
+#include "web.h"
 
 enum { REC_FREE = 0, REC_TIMER, REC_FRAME, REC_IDLE };
 
@@ -323,6 +324,92 @@ JSValue wjr_WindowOrWorkerGlobalScope_queueMicrotask(JSContext *ctx, JSValueCons
 void wj_cb_frame(int32_t user, double time);
 static uint32_t frame_callback_index(void) { return (uint32_t)(uintptr_t)&wj_cb_frame; }
 
+/* ---- animation frames of a dedicated worker ----
+ * HTML lets a dedicated worker have frames (AnimationFrameProvider); it renders nothing here (no OffscreenCanvas), so
+ * its frames follow a 60 Hz clock of its own: the callbacks registered before a frame run together in it, in order,
+ * with that frame's time (performance.now() at its start). They live on the global's hidden state: "rafList" holds
+ * [id, callback] pairs, "rafTimer" is set while a frame is due. */
+static uint32_t worker_raf_next;
+
+static JSValue worker_raf_frame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv);
+    JSValue g = wj_the_realm.global;
+    web_extra_set(ctx, g, "rafTimer", JS_UNDEFINED);
+    JSValue list = web_extra_get(ctx, g, "rafList");
+    web_extra_set(ctx, g, "rafList", JS_NewArray(ctx));
+    JSValue perf = JS_GetPropertyStr(ctx, g, "performance");
+    JSValue nowf = JS_GetPropertyStr(ctx, perf, "now");
+    JSValue now = JS_Call(ctx, nowf, perf, 0, NULL);
+    JS_FreeValue(ctx, nowf); JS_FreeValue(ctx, perf);
+    if (JS_IsException(now)) { JS_FreeValue(ctx, JS_GetException(ctx)); now = JS_NewFloat64(ctx, 0); }
+    int64_t n = 0;
+    JS_GetLength(ctx, list, &n);
+    for (int64_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyInt64(ctx, list, i);
+        JSValue fn = JS_GetPropertyUint32(ctx, e, 1);
+        if (JS_IsFunction(ctx, fn)) {
+            JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, 1, (JSValueConst *)&now);
+            if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
+        }
+        JS_FreeValue(ctx, fn); JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, list); JS_FreeValue(ctx, now);
+    return JS_UNDEFINED;
+}
+
+static JSValue worker_raf(JSContext *ctx, JSValueConst cb)
+{
+    JSValue g = wj_the_realm.global;
+    JSValue list = web_extra_get(ctx, g, "rafList");
+    if (!JS_IsArray(list)) { JS_FreeValue(ctx, list); list = JS_NewArray(ctx); web_extra_set(ctx, g, "rafList", JS_DupValue(ctx, list)); }
+    uint32_t id = ++worker_raf_next;
+    JSValue e = JS_NewArray(ctx);
+    JS_SetPropertyUint32(ctx, e, 0, JS_NewUint32(ctx, id));
+    JS_SetPropertyUint32(ctx, e, 1, JS_DupValue(ctx, cb));
+    int64_t n = 0;
+    JS_GetLength(ctx, list, &n);
+    JS_SetPropertyInt64(ctx, list, n, e);
+    JS_FreeValue(ctx, list);
+    JSValue timer = web_extra_get(ctx, g, "rafTimer");
+    bool due = !JS_IsUndefined(timer);
+    JS_FreeValue(ctx, timer);
+    if (!due) {
+        /* the next tick of the 60 Hz clock */
+        JSValue perf = JS_GetPropertyStr(ctx, g, "performance");
+        JSValue nowf = JS_GetPropertyStr(ctx, perf, "now");
+        JSValue now = JS_Call(ctx, nowf, perf, 0, NULL);
+        JS_FreeValue(ctx, nowf); JS_FreeValue(ctx, perf);
+        double t = 0;
+        if (JS_IsException(now)) { JS_FreeValue(ctx, JS_GetException(ctx)); } else { JS_ToFloat64(ctx, &t, now); JS_FreeValue(ctx, now); }
+        const double period = 1000.0 / 60.0;
+        double delay = period - fmod(t, period);
+        JSValue st = JS_GetPropertyStr(ctx, g, "setTimeout");
+        JSValue args[2] = { JS_NewCFunction(ctx, worker_raf_frame, "frame", 0), JS_NewFloat64(ctx, delay) };
+        JSValue h = JS_Call(ctx, st, g, 2, args);
+        JS_FreeValue(ctx, args[0]); JS_FreeValue(ctx, st);
+        if (JS_IsException(h)) { return JS_EXCEPTION; }
+        web_extra_set(ctx, g, "rafTimer", h);
+    }
+    return JS_NewUint32(ctx, id);
+}
+
+static void worker_raf_cancel(JSContext *ctx, uint32_t id)
+{
+    JSValue list = web_extra_get(ctx, wj_the_realm.global, "rafList");
+    int64_t n = 0;
+    JS_GetLength(ctx, list, &n);
+    for (int64_t i = 0; i < n; i++) {
+        JSValue e = JS_GetPropertyInt64(ctx, list, i);
+        JSValue v = JS_GetPropertyUint32(ctx, e, 0);
+        uint32_t x = 0;
+        JS_ToUint32(ctx, &x, v);
+        if (x == id) { JS_SetPropertyUint32(ctx, e, 1, JS_UNDEFINED); }
+        JS_FreeValue(ctx, v); JS_FreeValue(ctx, e);
+    }
+    JS_FreeValue(ctx, list);
+}
+
 JSValue wjr_AnimationFrameProvider_requestAnimationFrame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);
@@ -330,10 +417,7 @@ JSValue wjr_AnimationFrameProvider_requestAnimationFrame(JSContext *ctx, JSValue
     if (!JS_IsFunction(ctx, argv[0])) {
         return JS_ThrowTypeError(ctx, "Failed to execute 'requestAnimationFrame': The callback provided as parameter 1 is not a function.");
     }
-    if (wj_the_realm.kind == WJ_EXPOSE_WORKER) {
-        /* a dedicated worker renders nothing (no OffscreenCanvas): its frames would never come */
-        return wj_throw_dom(ctx, "NotSupportedError", "requestAnimationFrame is not supported in workers by this browser");
-    }
+    if (wj_the_realm.kind == WJ_EXPOSE_WORKER) { return worker_raf(ctx, argv[0]); }
     uint32_t slot = rec_alloc();
     if (slot == UINT32_MAX) { return JS_ThrowOutOfMemory(ctx); }
     cb_rec *r = &recs[slot];
@@ -354,6 +438,7 @@ JSValue wjr_AnimationFrameProvider_cancelAnimationFrame(JSContext *ctx, JSValueC
     if (argc < 1) { return wj_throw_arity(ctx, "cancelAnimationFrame", 1, argc); }
     uint32_t id = 0;
     if (!wj_to_uint32(ctx, argv[0], &id, 32, 0)) { return JS_EXCEPTION; }
+    if (wj_the_realm.kind == WJ_EXPOSE_WORKER) { worker_raf_cancel(ctx, id); return JS_UNDEFINED; }
     int64_t slot = index_get(tag_key(REC_FRAME, id));
     if (slot < 0) { return JS_UNDEFINED; }
     wr_cancelAnimationFrame(id);

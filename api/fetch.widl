@@ -16,6 +16,10 @@ module fetch {
   Promise<Response> Fetch_promise(string url, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises;
   /// The callback API (Fetch_start) with an abort signal and an optional buffer body.
   Fetch Fetch_startWithSignal(string url, FetchCallback callback, i32 user = 0, string method = "GET", string headers = "", optional bytes body, optional Buffer body_buffer, optional AbortSignal signal, FetchOptions options = none) raises;
+  /// A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's
+  /// thread; the finished record (read it with Fetch_status, Fetch_headers, Fetch_readBody..., then release it).
+  /// Not_Supported in a document (its thread is the page's), Timeout past `timeout_ms` (0: none), Network on a failure.
+  Fetch Fetch_sync(string url, string method = "GET", string headers = "", optional bytes body, FetchOptions options = none, u32 timeout_ms = 0) raises;
   /// response.text(): settles with the text (decoded as UTF-8) in the promise's text, its length as value.
   /// A callback fetch can be read once it is done (Invalid_State before).
   Promise<string> Response_text(Response response);

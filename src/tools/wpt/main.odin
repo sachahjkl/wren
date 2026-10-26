@@ -600,7 +600,7 @@ report :: proc(suites: []Suite, tests: []Test, results: map[string]^Result, expe
 			}
 		}
 		if e, has := expected[t.path]; has {
-			if status_ok(e.status, "OK") && r.status != "OK" {
+			if status_ok(e.status, "OK") && !status_ok(e.status, r.status) {
 				st.regressions += 1
 				fmt.sbprintfln(&regress, "REGRESSION %s: %s (expected %s) %s", t.path, r.status, e.status, r.message)
 			} else if !status_ok(e.status, r.status) && r.status == "OK" {

@@ -6,6 +6,18 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- **`WritableStream` follows the Streams Standard's algorithms**: the erroring state, one write or close in flight, `abort()` that waits for it and calls the sink's `abort`, the strategy's `size` and `highWaterMark`, backpressure through `desiredSize` and each writer's `ready`, each writer's own `closed`, and `controller.signal`. WPT `/streams/` (with `piping` now): 1662 of 2065 subtests, up from 1316 of 1565.
+- **`ReadableStream.pipeTo` / `pipeThrough`** with `preventClose`, `preventAbort`, `preventCancel` and `signal`. Errors and closing propagate both ways, and a shutdown waits for the last write. **`CountQueuingStrategy` and `ByteLengthQueuingStrategy`** are implemented too.
+- **`StorageBucket.getDirectory()`**: each storage bucket has its own origin private file system. Its `estimate()` counts it, it goes when the bucket is deleted, and its handles survive `structuredClone`.
+- **Synchronous `XMLHttpRequest` in workers.** The worker's thread waits for the request, made as an asynchronous one would be. A document's synchronous requests are still refused.
+- **Workers**:
+  - an uncaught error that the `Worker`'s `error` event does not cancel reaches the page's `window.onerror`;
+  - `requestAnimationFrame` works in dedicated workers (a 60 Hz clock);
+  - a worker's script and `importScripts()` must have a JavaScript MIME type over HTTP(S);
+  - a module shared worker whose imports fail fires `error` at its `SharedWorker`;
+  - `new FormData()` works in workers.
+- **WPT `/workers/`**: 992 of 1323 subtests (75 %), up from 655 of 1014. `docs/wpt-workers.md` classifies the remaining failures by cause. The WPT test server now runs a few Python handlers ported to Go, and `.headers` files replace its `Content-Type`.
+
 - **Workers from `blob:` URLs**: `new Worker(URL.createObjectURL(blob))` and `new SharedWorker(...)` run the Blob's script (revoking the URL right after the constructor is fine).
 - **`unregister()` lets its clients finish**: an unregistered service worker takes no new page and is no longer found, keeps controlling the pages it controlled, and goes with the last one.
 - **`clients.openWindow` and `WindowClient.focus` need a gesture**: a click or key press in a window of the site within `service_workers.window_activation_ms` (else `InvalidAccessError`).

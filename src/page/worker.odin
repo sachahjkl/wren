@@ -510,7 +510,20 @@ worker_fire_error :: proc(h: ^Worker_Host, message, file: string) {
 	allowed := true
 	h.pins += 1   // a listener may release the Worker object
 	if h.self != 0 { allowed = object_dispatch(p, h.self, dom.Event{type = "error", cancelable = true, data = message, text = file}) }
-	if allowed { log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", worker_label(h), message)) }
+	if allowed {
+		// HTML "run a worker": an error the Worker's error event did not cancel is reported in the owner's global (its
+		// error event, window.onerror); the engine says it on the console when nobody cancels that one either
+		// (an exception its script threw, "Uncaught ...": not a script that could not be fetched or parsed, which is only
+		// the Worker's error)
+		runtime := strings.has_prefix(message, "Uncaught") && !strings.has_prefix(message, "Uncaught SyntaxError")
+		if r := p.js; h.javascript && runtime && r != nil && !r.failed && r.inst != nil && !r.inst.dead {
+			worker_error_text = fmt.tprintf("%s\t%s", message, file)
+			js_call(p, r.inst, "wj_worker_error_to_global", nil)
+			worker_error_text = ""
+		} else {
+			log(p, .Error, fmt.tprintf("[worker %s] uncaught error: %s", worker_label(h), message))
+		}
+	}
 	h.pins -= 1
 	worker_maybe_free(h)
 }
@@ -847,9 +860,10 @@ worker_console :: proc(user: rawptr, level: Log_Level, message: string) {
 }
 
 @(private)
-worker_send_error :: proc(g: ^Worker_Global, message: string) {
+// `code` 1: its script could not start (not fetched, not parsed): a shared worker's SharedWorker objects get an error
+worker_send_error :: proc(g: ^Worker_Global, message: string, code := 0) {
 	m := new(Worker_Msg)
-	m.kind, m.text, m.text2 = .Error, strings.clone(message), strings.clone(g.url)
+	m.kind, m.code, m.text, m.text2 = .Error, i64(code), strings.clone(message), strings.clone(g.url)
 	link_send(g.link, false, m)
 }
 
