@@ -461,6 +461,12 @@ tab_icon_of :: proc(app: ^App, t: ^Tab, size: f32) -> ^Tab_Icon_Draw {
 	return d
 }
 
+// The font size that fits a glyph whose ink is `ink` at size `s` into an `s` square (the size itself when it fits).
+icon_glyph_fit :: proc(s: f32, ink: [2]f32) -> f32 {
+	big := max(ink.x, ink.y)
+	return big > s ? s * s / big : s
+}
+
 tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	d := (^Tab_Icon_Draw)(user)
 	app := the_app
@@ -472,9 +478,10 @@ tab_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	case .Favicon, .App:
 		draw.image(dc, d.tex, r)
 	case .File, .Gear:
-		// the glyph's ink centred in the icon's square (the pen is on the baseline: chrome.odin chip_icon_draw)
+		// the glyph's ink centred in the icon's square and no larger than it (the icon font's document is taller than its em:
+		// at the size of the square it overflowed the row) (the pen is on the baseline: chrome.odin chip_icon_draw)
 		glyph := d.kind == .File ? GLYPH_FILE : GLYPH_GEAR
-		size := s * 1.1
+		size := icon_glyph_fit(s, font.glyph(&app.fonts, app.icons, s, rune(glyph[0])).size)
 		g := font.glyph(&app.fonts, app.icons, size, rune(glyph[0]))
 		w := g.size.x > 0 ? g.size.x : g.advance
 		pen := draw.Vec2{math.round(c.x - w * 0.5 - g.offset.x), math.round(c.y - (g.offset.y + g.size.y * 0.5))}

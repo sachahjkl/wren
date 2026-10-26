@@ -25,6 +25,15 @@ sidebar_handle_width_follows_the_pointer :: proc(t: ^testing.T) {
 	testing.expect_value(t, sidebar_drag_width(240, 238, 5000, 1, .Left), SIDEBAR_MAX_CSS)
 }
 
+// A tab's glyph icon (a file, the settings) fits the icon's square: the icon font's document is taller than its size.
+@(test)
+tab_glyph_icon_fits_its_square :: proc(t: ^testing.T) {
+	testing.expect_value(t, icon_glyph_fit(16, {14, 15}), 16)          // fits: as asked
+	testing.expect_value(t, icon_glyph_fit(16, {14, 17}), 16 * 16.0 / 17)
+	testing.expect_value(t, icon_glyph_fit(24, {30, 20}), 24 * 24.0 / 30)
+	testing.expect_value(t, icon_glyph_fit(16, {}), 16)                // no ink known
+}
+
 // The preference takes the three positions and nothing else, at once; the widths are bounded.
 @(test)
 tabs_position_preferences :: proc(t: ^testing.T) {
