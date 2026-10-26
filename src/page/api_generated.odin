@@ -584,7 +584,8 @@ Api_FetchOptions :: struct {
 }
 
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
-// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
+// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
 Api_PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
@@ -594,6 +595,7 @@ Api_PerformanceEntryType :: enum i32 {
 	Paint = 5,
 	Event = 6,
 	First_Input = 7,
+	Long_Task = 8,
 }
 
 // What the current event of a service worker's realm is (kind 0: none waits).
@@ -799,7 +801,7 @@ _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { swi
 _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
-_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7: return true }; return false }
+_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8: return true }; return false }
 
 @(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
