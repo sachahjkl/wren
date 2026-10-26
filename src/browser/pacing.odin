@@ -41,6 +41,8 @@ _ :: fmt   // PACING_DEBUG only
 FRAME_PREFS := [?]config.Def{
 	{name = "browser.frame.target_hz", kind = .String, default = {s = "auto"},
 		description = "Frames per second while something moves (nothing moves: no frames). auto = the refresh rate of the monitor the window is on (followed when the window moves to another monitor or the display mode changes). A number of hertz (10 to 1000) paces frames at that rate instead, e.g. to see how pages behave at 60 or 120 Hz on a faster monitor: a whole divisor of the monitor's rate shows every n-th refresh, another rate is timed by the browser. The frame budget (status bar, profiler) follows it."},
+	{name = "browser.frame.variable_refresh", kind = .String, default = {s = "auto"}, choices = {"auto", "on", "off"},
+		description = "A screen with a variable or dynamic refresh rate (G-Sync, FreeSync, Windows 11's dynamic refresh rate, which rests at 60 Hz and goes up to 180 Hz while something moves) reports the rate it rests at, not the one it shows frames at. auto: when the monitor offers modes above the rate it reports, frames aim for the highest (browser.frame.target_hz = auto) and are timed by the browser, never faster, whatever the input rate (a mouse at 1000 Hz makes a frame per period, not per move). on: the same for a screen that reports its top rate but varies it (G-Sync without a dynamic rate). off: the rate the system reports. Reported as `variableRefresh`, `hz`, `hzMax` and `hzNow` in `wren ctl stats`."},
 	{name = "browser.frame.max_hz", kind = .Float, default = {f = 0}, bounded = true, min = 0, max = 1000, unit = "Hz",
 		description = "Most frames per second whatever the monitor (0 = no limit), e.g. 60 to save power on a 180 Hz monitor."},
 	{name = "browser.frame.present_mode", kind = .String, default = {s = "vsync"}, choices = {"vsync", "tearing"},
@@ -85,7 +87,10 @@ Pacer_Settings :: struct {
 	latency_probe: bool,
 	drag_probe: bool,
 	input_idle_periods: f64,
+	variable:   Variable_Refresh,
 }
+
+Variable_Refresh :: enum u8 { Auto, On, Off }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	s := Pacer_Settings{
@@ -103,7 +108,21 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
+	switch config.string_of(p, "browser.frame.variable_refresh") {
+	case "on":  s.variable = .On
+	case "off": s.variable = .Off
+	}
 	return s
+}
+
+// Whether the screen is taken for one that shows frames above the rate it reports (browser.frame.variable_refresh).
+variable_plan :: proc(mode: Variable_Refresh, hz, max_hz: f64) -> bool {
+	switch mode {
+	case .On:   return hz > 0
+	case .Off:  return false
+	case .Auto: return platform.refresh_is_variable(hz, max_hz)
+	}
+	return false
 }
 
 // "auto" (or anything that is no rate) = 0; a number of hertz, clamped to 10 .. 1000.
@@ -115,9 +134,10 @@ parse_target_hz :: proc(s: string) -> f64 {
 	return clamp(f, 10, 1000)
 }
 
-// The rate frames aim for: the target (0: the display's), under the ceiling (0: none).
-target_rate :: proc(display_hz, target_hz, max_hz: f64) -> f64 {
-	hz := target_hz > 0 ? target_hz : display_hz
+// The rate frames aim for: the target (0: the display's, or its top rate when it is variable: `top_hz`), under the ceiling
+// (0: none).
+target_rate :: proc(display_hz, target_hz, max_hz: f64, top_hz: f64 = 0) -> f64 {
+	hz := target_hz > 0 ? target_hz : (top_hz > display_hz ? top_hz : display_hz)
 	if hz <= 0 { hz = 60 }
 	if max_hz > 0 { hz = min(hz, max_hz) }
 	return hz
@@ -125,9 +145,10 @@ target_rate :: proc(display_hz, target_hz, max_hz: f64) -> f64 {
 
 // How a rate is reached on a display: vsync refreshes per frame, and whether the browser times the frames itself
 // (`timed`). A rate within 1 % of display / n (n = 1..4) is every n-th refresh; any other one is timed, and so is
-// everything in tearing mode. A rate above the display's cannot be shown with vsync: every refresh.
-pacing_plan :: proc(display_hz, hz: f64, tearing: bool) -> (interval: int, timed: bool) {
-	if tearing { return 1, true }
+// everything in tearing mode and on a variable refresh screen (its rate now says nothing about the rate frames are shown at).
+// A rate above the display's cannot be shown with vsync: every refresh.
+pacing_plan :: proc(display_hz, hz: f64, tearing: bool, variable := false) -> (interval: int, timed: bool) {
+	if tearing || variable { return 1, true }
 	if display_hz <= 0 || hz >= display_hz * 0.99 { return 1, false }
 	for n in 1 ..= 4 {
 		if abs(display_hz / f64(n) - hz) <= hz * 0.01 { return n, false }
@@ -153,7 +174,11 @@ Pacer :: struct {
 	timed:      bool,         // frames are timed by the browser (pacing_plan)
 	tearing:    bool,         // presenting with tearing (asked for and supported)
 	timer:      win.HANDLE,   // the timing of timed frames (high resolution waitable timer)
-	next_ns:    i64,          // tick of the next timed frame
+	variable:   bool,         // the screen shows frames above the rate it reports (variable_plan): the target is its top rate
+	slots:      platform.Frame_Slots,   // the cap on the cadence: no frame starts before its slot (toolkit platform/frame_slots.odin)
+	slot_ns:    i64,          // the slot this frame was timed for (0: none)
+	live_hz:    f64,          // the highest rate the compositor reported during the current run of frames (display_live_hz; 0: none)
+	live_ns:    i64,          // tick of the last such measure
 	frame_ms:   f64,          // this frame's time, on the event loop clock (ms)
 	prev_ms:    f64,
 	dt:         f32,          // seconds since the previous frame's time (UI animations)
@@ -207,13 +232,34 @@ pacer_update :: proc(app: ^App) {
 	if d.serial == pacer.display.serial && pacer.hz > 0 { return }
 	pacer.display = d
 	pacer.tearing = pacer.cfg.mode == .Tearing && render.tearing_supported(&app.r)
-	pacer.hz = target_rate(d.hz, pacer.cfg.target_hz, pacer.cfg.max_hz)
-	pacer.period_ms = 1000 / pacer.hz
-	pacer.interval, pacer.timed = pacing_plan(d.hz, pacer.hz, pacer.tearing)
+	plan := frame_plan(d, pacer.cfg, pacer.tearing)
+	pacer.variable, pacer.hz, pacer.period_ms, pacer.interval, pacer.timed, pacer.slots = plan.variable, plan.hz, plan.period_ms, plan.interval, plan.timed, plan.slots
 	render.set_present_mode(&app.r, pacer.tearing ? .Tearing : .Vsync)
 	render.set_sync_interval(&app.r, pacer.interval)
-	render.set_expected_refreshes(&app.r, pacer.timed && !pacer.tearing && pacer.hz > 0 ? d.hz / pacer.hz : 0)   // missed refreshes of timed frames
-	pacer.next_ns = 0
+	// missed refreshes of timed frames (a variable screen has no fixed refresh to miss)
+	render.set_expected_refreshes(&app.r, pacer.timed && !pacer.tearing && !pacer.variable && pacer.hz > 0 ? d.hz / pacer.hz : 0)
+	pacer.slot_ns = 0
+}
+
+// What the monitor and the preferences make of the frames' cadence.
+Frame_Plan :: struct {
+	variable:  bool,
+	hz:        f64,
+	period_ms: f64,
+	interval:  int,
+	timed:     bool,
+	slots:     platform.Frame_Slots,
+}
+
+frame_plan :: proc(d: platform.Display_Info, cfg: Pacer_Settings, tearing: bool) -> (p: Frame_Plan) {
+	p.variable = variable_plan(cfg.variable, d.hz, d.max_hz)
+	p.hz = target_rate(d.hz, cfg.target_hz, cfg.max_hz, p.variable ? d.max_hz : 0)
+	p.period_ms = 1000 / p.hz
+	p.interval, p.timed = pacing_plan(d.hz, p.hz, tearing, p.variable)
+	// The cap: the period itself where the browser is what paces the frames (timed: a rate the screen does not divide, tearing,
+	// a variable screen); a loose safety net where the screen's refresh does (platform.Frame_Slots)
+	p.slots = {period_ns = i64(p.period_ms * 1e6), strict = p.timed}
+	return
 }
 
 // Whether a frame is a resize step (drawn and shown at once): the window changed size, or a panel is being dragged to a new
@@ -328,21 +374,19 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
 	pacer_latency(app, &pacer.latency, pacer_at_once())
+	// The slot of this frame (platform.Frame_Slots): no frame starts before it, input or not. Only the frame that starts an
+	// answer to input (a click after a rest) and a step of a resize are made at once: the pointer's hover state follows the hand,
+	// not a refresh later. The frames of a drag (input every millisecond) wait for their slot, taking the input that comes
+	// meanwhile: one frame per period shows all of it, whatever the screen does with the swap chain's latency object (a variable
+	// refresh display releases it at once: nothing else paced the browser, and a mouse at 1 kHz made 1000 frames a second).
+	wait, slot := platform.frame_slot_wait(&pacer.slots, tick, idled, pacer.resizing || pacer.input_frame)
+	pacer.slot_ns = slot
 	if pacer.resizing { return }
-	// input waiting in the queue: the frame is made for it now, not at the next slot of the target rate (the pointer's
-	// hover state follows the hand, not a refresh later)
-	if pacer.timed && pacer.timer != nil && !input {
-		now := time.tick_now()._nsec
-		period := i64(pacer.period_ms * 1e6)
-		// a run starts now; a frame later than a whole period does not try to catch up
-		if idled || pacer.next_ns == 0 || now - pacer.next_ns > period { pacer.next_ns = now }
-		if wait := pacer.next_ns - now; wait > 200_000 {
-			due := win.LARGE_INTEGER(-(wait / 100))   // relative, in 100 ns units
-			if win.SetWaitableTimerEx(pacer.timer, &due, 0, nil, nil, nil, 0) {
-				platform.wait_handle(app.win, rawptr(pacer.timer), int(wait / 1_000_000) + 50)
-			}
+	if wait > 0 && pacer.timer != nil {
+		due := win.LARGE_INTEGER(-(wait / 100))   // relative, in 100 ns units
+		if win.SetWaitableTimerEx(pacer.timer, &due, 0, nil, nil, nil, 0) {
+			platform.wait_handle(app.win, rawptr(pacer.timer), int(wait / 1_000_000) + 50)
 		}
-		pacer.next_ns += period
 	}
 	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
 	// waiting would only run into the timeout
@@ -360,10 +404,11 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 	now_ms := loop_ms(app, time.tick_now())
 	t := now_ms
-	if pacer.cfg.vblank_clock && !pacer.tearing {
+	// (a variable refresh screen has no grid of vblanks to land on: the frames' own slots are the clock)
+	if pacer.cfg.vblank_clock && !pacer.tearing && !pacer.variable {
 		if last, per, ok := render.vblank_grid(&app.r); ok { t = vblank_at_or_before(now_ms, loop_ms(app, last), per / 1e6) }
-	} else if pacer.timed && pacer.next_ns != 0 {
-		t = min(loop_ms(app, time.Tick{_nsec = pacer.next_ns - i64(pacer.period_ms * 1e6)}), now_ms)   // the slot this frame was timed for
+	} else if pacer.timed && pacer.slot_ns != 0 {
+		t = min(loop_ms(app, time.Tick{_nsec = pacer.slot_ns}), now_ms)   // the slot this frame was timed for
 	}
 	if t <= pacer.prev_ms { t = min(now_ms, pacer.prev_ms + pacer.period_ms) }   // never backwards
 	if t <= pacer.prev_ms { t = pacer.prev_ms }
@@ -390,6 +435,13 @@ pacer_end_frame :: proc(app: ^App) {
 	pacer.slot_held = false   // the present used it
 	shell_presented()
 	pacer.present_ns = time.tick_now()._nsec
+	// the compositor's rate during a run of frames (a dynamic refresh rate goes up while something moves): the highest one seen,
+	// read every 100 ms of the run and started afresh after a rest (primary monitor only: platform.display_live_hz)
+	if !pacer.continuous { pacer.live_hz = 0 }
+	if pacer.present_ns - pacer.live_ns >= 100_000_000 {
+		if hz, ok := platform.display_live_hz(app.win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
+		pacer.live_ns = pacer.present_ns
+	}
 	drag_probe_presented()
 	for d in render.take_displayed(&app.r) { hud_displayed(d); drag_probe_displayed(d) }
 }

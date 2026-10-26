@@ -2,6 +2,7 @@ package browser
 
 import "core:math"
 import "core:testing"
+import "toolkit:platform"
 
 // The frame budget, the plan for a rate on a display, and the frame clock at simulated rates (pacing.odin).
 
@@ -78,6 +79,97 @@ a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^
 	pacer.cfg.drag_probe = false
 	drag_probe_note(1, 1)
 	testing.expect_value(t, drag_probe.n, 3)   // off: nothing recorded
+}
+
+// Frames started in `span_ms` by a loop woken by input every millisecond (a mouse at 1 kHz) on a screen whose swap chain
+// releases its latency object at once, each costing `cost_ms`, scheduled by the plan's slots as pacer_wait does. Also the
+// shortest distance between two frames after the first two.
+@(private = "file")
+simulate_frames :: proc(plan: Frame_Plan, span_ms: int, cost_ms: f64) -> (frames: int, shortest_ms: f64) {
+	ms :: 1_000_000
+	slots := plan.slots
+	now := i64(5_000) * ms
+	end := now + i64(span_ms) * ms
+	last: i64
+	shortest_ms = 1e9
+	for now < end {
+		wait, _ := platform.frame_slot_wait(&slots, now, frames == 0, false)
+		now += wait
+		if now >= end { break }
+		if frames >= 2 { shortest_ms = min(shortest_ms, f64(now - last) / 1e6) }
+		last = now
+		frames += 1
+		now += i64(cost_ms * 1e6)
+		now = (now / ms + 1) * ms   // the next move of the mouse
+	}
+	return
+}
+
+@(test)
+a_dynamic_refresh_screen_is_planned_at_its_top_rate_and_timed :: proc(t: ^testing.T) {
+	d := platform.Display_Info{hz = 60.001, max_hz = 180}   // Windows 11's dynamic refresh rate: rests at 60, reports 60
+	p := frame_plan(d, Pacer_Settings{}, false)
+	testing.expect(t, p.variable)
+	testing.expect_value(t, p.hz, 180)
+	testing.expect(t, p.timed, "the browser times the frames")
+	testing.expect_value(t, p.interval, 1)
+	testing.expect(t, p.slots.strict, "its cap is the period itself")
+	testing.expect_value(t, p.slots.period_ns, i64(5_555_555))
+	testing.expect(t, abs(p.period_ms - 5.5556) < 1e-3, "the budget follows")
+
+	p = frame_plan(d, Pacer_Settings{variable = .Off}, false)
+	testing.expect(t, !p.variable && !p.timed)
+	testing.expect_value(t, p.hz, 60.001)
+
+	p = frame_plan(d, Pacer_Settings{target_hz = 120}, false)
+	testing.expect_value(t, p.hz, 120)   // an explicit rate wins
+	p = frame_plan(d, Pacer_Settings{max_hz = 100}, false)
+	testing.expect_value(t, p.hz, 100)   // so does the ceiling
+	testing.expect(t, p.timed)
+
+	p = frame_plan({hz = 179.98, max_hz = 180}, Pacer_Settings{}, false)
+	testing.expect(t, !p.variable && !p.timed, "a screen at its top rate is a plain one")
+	testing.expect(t, !p.slots.strict, "its refresh paces the frames: the cap is only a net")
+
+	p = frame_plan({hz = 179.98, max_hz = 179.98}, Pacer_Settings{variable = .On}, false)
+	testing.expect(t, p.variable && p.timed, "variable_refresh = on: a screen that reports its top rate but varies it")
+}
+
+@(test)
+frames_under_a_1_khz_mouse_stay_within_the_target_rate_on_a_variable_screen :: proc(t: ^testing.T) {
+	plan := frame_plan({hz = 60.001, max_hz = 180}, Pacer_Settings{}, false)
+	n, shortest := simulate_frames(plan, 1000, 1.3)
+	testing.expectf(t, n <= 181 && n >= 170, "%d frames in a second at 180 Hz", n)
+	testing.expectf(t, shortest >= 5.5, "no two frames closer than a period (%v ms)", shortest)
+	// a frame that costs more than a period is not made up for
+	n, _ = simulate_frames(plan, 1000, 7)
+	testing.expectf(t, n <= 181 && n >= 100, "%d frames of 7 ms", n)
+}
+
+@(test)
+frames_under_a_1_khz_mouse_stay_near_the_screens_rate_when_nothing_paces_the_swap_chain :: proc(t: ^testing.T) {
+	// variable_refresh = off on a screen that varies: the system says 60, the swap chain does not pace the app
+	plan := frame_plan({hz = 60, max_hz = 180}, Pacer_Settings{variable = .Off}, false)
+	n, _ := simulate_frames(plan, 1000, 1.3)
+	testing.expectf(t, n <= 67, "%d frames in a second at 60 Hz (the loose cap proves itself useless and tightens)", n)
+	// and the plan without any cap is what a loop with input did: a frame per move
+	plan.slots.period_ns = 0
+	n, _ = simulate_frames(plan, 1000, 1.3)
+	testing.expectf(t, n > 400, "%d frames without a cap", n)
+}
+
+@(test)
+variable_refresh_modes :: proc(t: ^testing.T) {
+	testing.expect(t, variable_plan(.Auto, 60, 180))
+	testing.expect(t, !variable_plan(.Auto, 180, 180))
+	testing.expect(t, variable_plan(.On, 180, 180))
+	testing.expect(t, !variable_plan(.On, 0, 0), "no rate known")
+	testing.expect(t, !variable_plan(.Off, 60, 180))
+	testing.expect_value(t, target_rate(60, 0, 0, 180), 180)
+	testing.expect_value(t, target_rate(60, 0, 0, 0), 60)
+	testing.expect_value(t, target_rate(240, 0, 0, 180), 240)   // a top rate below the display's is no reason to slow down
+	i, timed := pacing_plan(60, 180, false, true)
+	testing.expect(t, i == 1 && timed)
 }
 
 @(test)

@@ -18,6 +18,20 @@ static JSValue reject_status(JSContext *ctx, int32_t st, const char *what)
     return web_promise_reject_pending(ctx);
 }
 
+/* The options of a query and the request's header lines (Vary). */
+typedef struct cache_q { bool is, im, iv; web_buf rh; } cache_q;
+
+/* The header lines of a Request into q->rh (nothing for a URL string) */
+static void request_headers(JSValueConst v, cache_q *q)
+{
+    if (!wj_unwrap(v, WJ_IFACE_Request)) { return; }
+    JSValue hv = JS_GetPropertyStr(wj_the_realm.ctx, v, "headers");
+    web_headers_serialize(hv, &q->rh);
+    JS_FreeValue(wj_the_realm.ctx, hv);
+}
+
+static const uint8_t *rh_ptr(const cache_q *q) { return q->rh.p ? q->rh.p : (const uint8_t *)""; }
+
 /* RequestInfo -> absolute URL and method (owned strings: wj_str_free) */
 static bool request_parts(JSContext *ctx, JSValueConst v, wj_str *url, wj_str *method)
 {
@@ -40,27 +54,29 @@ static bool request_parts(JSContext *ctx, JSValueConst v, wj_str *url, wj_str *m
     return ok;
 }
 
-static bool query_options(JSContext *ctx, JSValueConst opt, bool *ignore_search, bool *ignore_method, JSValue *cache_name)
+static bool query_options(JSContext *ctx, JSValueConst opt, cache_q *q, JSValue *cache_name)
 {
-    *ignore_search = *ignore_method = false;
+    q->is = q->im = q->iv = false;
     if (cache_name) { *cache_name = JS_UNDEFINED; }
     if (!web_dict_check(ctx, opt, "CacheQueryOptions")) { return false; }
     JSValue v;
     if (!web_dict_get(ctx, opt, "ignoreSearch", &v)) { return false; }
-    *ignore_search = JS_ToBool(ctx, v); JS_FreeValue(ctx, v);
+    q->is = JS_ToBool(ctx, v); JS_FreeValue(ctx, v);
     if (!web_dict_get(ctx, opt, "ignoreMethod", &v)) { return false; }
-    *ignore_method = JS_ToBool(ctx, v); JS_FreeValue(ctx, v);
+    q->im = JS_ToBool(ctx, v); JS_FreeValue(ctx, v);
+    if (!web_dict_get(ctx, opt, "ignoreVary", &v)) { return false; }
+    q->iv = JS_ToBool(ctx, v); JS_FreeValue(ctx, v);
     if (cache_name && !web_dict_get(ctx, opt, "cacheName", cache_name)) { return false; }
     return true;
 }
 
 /* the matching entry ids of cache `name` (url NULL: all), as a malloc'ed array */
-static int32_t match_ids(JSContext *ctx, const char *name, size_t nlen, const wj_str *url, const wj_str *method, bool is, bool im, uint64_t **out)
+static int32_t match_ids(JSContext *ctx, const char *name, size_t nlen, const wj_str *url, const wj_str *method, const cache_q *q, uint64_t **out)
 {
     *out = NULL;
     int32_t n;
     WJ_FETCH_STRING(n, wr_Cache_matchIds((const uint8_t *)name, (uint32_t)nlen, url ? (const uint8_t *)url->ptr : (const uint8_t *)"", url ? (uint32_t)url->len : 0,
-                                         (const uint8_t *)method->ptr, (uint32_t)method->len, is, im, wj_scratch.data, wj_scratch.cap));
+                                         (const uint8_t *)method->ptr, (uint32_t)method->len, rh_ptr(q), (uint32_t)q->rh.len, q->is, q->im, q->iv, wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return n; }
     uint32_t count = 0, cap = 8;
     uint64_t *ids = malloc(cap * sizeof *ids);
@@ -109,13 +125,16 @@ static JSValue entry_response(JSContext *ctx, const char *name, size_t nlen, uin
     JS_SetPropertyStr(ctx, init, "status", JS_NewInt32(ctx, status));
     JS_SetPropertyStr(ctx, init, "statusText", JS_NewString(ctx, f[1] ? f[1] : ""));
     JS_SetPropertyStr(ctx, init, "headers", headers);
-    free(head);
     JSValue ctor = global_ctor(ctx, "Response");
     JSValue args[2] = { body, init };
     JSValue r = JS_CallConstructor(ctx, ctor, 2, args);
     JS_FreeValue(ctx, ctor);
     JS_FreeValue(ctx, body);
     JS_FreeValue(ctx, init);
+    /* the response keeps the URL it had ("" for a Response a script constructed, as stored) */
+    extern void web_response_set_url(JSContext *ctx, JSValueConst resp, const char *url, size_t len);
+    if (!JS_IsException(r) && f[2] && f[2][0]) { web_response_set_url(ctx, r, f[2], strlen(f[2])); }
+    free(head);
     return r;
 }
 
@@ -134,10 +153,20 @@ static JSValue entry_request(JSContext *ctx, const char *name, size_t nlen, uint
         p = nl ? nl + 1 : end + 1;
     }
     JSValue url = JS_NewStringLen(ctx, line[4] ? line[4] : "", len[4]);
+    /* with the stored request's headers (those Vary was matched against) */
+    JSValue init = JS_NewObject(ctx);
+    WJ_FETCH_STRING(n, wr_Cache_entryRequestHeaders((const uint8_t *)name, (uint32_t)nlen, id, wj_scratch.data, wj_scratch.cap));
+    if (n > 0) {
+        JSValue headers = web_headers_new(ctx, WEB_GUARD_NONE);
+        web_headers_fill_lines(ctx, headers, (const char *)wj_scratch.data, (size_t)n);
+        JS_SetPropertyStr(ctx, init, "headers", headers);
+    }
     JSValue ctor = global_ctor(ctx, "Request");
-    JSValue r = JS_CallConstructor(ctx, ctor, 1, (JSValueConst *)&url);
+    JSValue args[2] = { url, init };
+    JSValue r = JS_CallConstructor(ctx, ctor, 2, args);
     JS_FreeValue(ctx, ctor);
     JS_FreeValue(ctx, url);
+    JS_FreeValue(ctx, init);
     return r;
 }
 
@@ -159,21 +188,23 @@ enum { OP_MATCH, OP_MATCH_ALL, OP_KEYS, OP_DELETE };
 
 static JSValue cache_query(JSContext *ctx, JSValueConst name_v, int op, JSValueConst request, JSValueConst opt)
 {
-    bool is, im;
-    if (!query_options(ctx, opt, &is, &im, NULL)) { return web_promise_reject_pending(ctx); }
+    cache_q q = {0};
+    if (!query_options(ctx, opt, &q, NULL)) { return web_promise_reject_pending(ctx); }
     wj_str name;
     if (!wj_to_str(ctx, name_v, &name, 0, NULL)) { return web_promise_reject_pending(ctx); }
     wj_str url = {0}, method = { "GET", 3, false };
     bool has_req = !JS_IsUndefined(request);
     if (has_req && !request_parts(ctx, request, &url, &method)) { wj_str_free(ctx, &name); return web_promise_reject_pending(ctx); }
+    if (has_req) { request_headers(request, &q); }
     JSValue result;
     if (op == OP_DELETE) {
         bool removed = false;
-        int32_t st = wr_Cache_deleteEntries((const uint8_t *)name.ptr, (uint32_t)name.len, (const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)method.ptr, (uint32_t)method.len, is, im, &removed);
+        int32_t st = wr_Cache_deleteEntries((const uint8_t *)name.ptr, (uint32_t)name.len, (const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)method.ptr, (uint32_t)method.len,
+                                            rh_ptr(&q), (uint32_t)q.rh.len, q.is, q.im, q.iv, (uint8_t *)&removed);
         result = st < 0 ? reject_status(ctx, st, "Cache.delete") : web_promise_take(ctx, JS_NewBool(ctx, removed));
     } else {
         uint64_t *ids = NULL;
-        int32_t n = match_ids(ctx, name.ptr, name.len, has_req ? &url : NULL, &method, is, im, &ids);
+        int32_t n = match_ids(ctx, name.ptr, name.len, has_req ? &url : NULL, &method, &q, &ids);
         if (n < 0) { result = reject_status(ctx, n, "Cache.match"); }
         else if (op == OP_MATCH) {
             JSValue v = n > 0 ? entry_response(ctx, name.ptr, name.len, ids[0]) : JS_UNDEFINED;
@@ -191,6 +222,7 @@ static JSValue cache_query(JSContext *ctx, JSValueConst name_v, int op, JSValueC
         free(ids);
     }
     if (has_req) { wj_str_free(ctx, &url); wj_str_free(ctx, &method); }
+    web_buf_free(&q.rh);
     wj_str_free(ctx, &name);
     return result;
 }
@@ -250,11 +282,15 @@ static JSValue put_body_read(JSContext *ctx, JSValueConst this_val, int argc, JS
     web_buf lines = {0};
     web_headers_serialize(hv, &lines);
     JS_FreeValue(ctx, hv);
-    int32_t st = wr_Cache_putEntry((const uint8_t *)name.ptr, (uint32_t)name.len, (const uint8_t *)url.ptr, (uint32_t)url.len, status,
+    size_t rhl = 0;
+    const char *rh = JS_ToCStringLen(ctx, &rhl, data[3]);
+    int32_t st = wr_Cache_putEntry((const uint8_t *)name.ptr, (uint32_t)name.len, (const uint8_t *)url.ptr, (uint32_t)url.len,
+                                   (const uint8_t *)(rh ? rh : ""), rh ? (uint32_t)rhl : 0, status,
                                    (const uint8_t *)(st_text.ptr ? st_text.ptr : ""), (uint32_t)st_text.len,
                                    (const uint8_t *)(rurl.ptr ? rurl.ptr : ""), (uint32_t)rurl.len,
                                    lines.p ? lines.p : (const uint8_t *)"", (uint32_t)lines.len, bytes, (uint32_t)n);
     web_buf_free(&lines);
+    if (rh) { JS_FreeCString(ctx, rh); }
     wj_str_free(ctx, &name); wj_str_free(ctx, &url);
     if (st_text.ptr) { wj_str_free(ctx, &st_text); }
     if (rurl.ptr) { wj_str_free(ctx, &rurl); }
@@ -289,10 +325,15 @@ static JSValue put_one(JSContext *ctx, JSValueConst name, JSValueConst request, 
     JSValue body = JS_Call(ctx, ab_fn, response, 0, NULL);
     JS_FreeValue(ctx, ab_fn);
     if (JS_IsException(body)) { JS_FreeValue(ctx, url_v); return web_promise_reject_pending(ctx); }
-    JSValueConst data[3] = { name, url_v, response };
-    JSValue r = web_then(ctx, body, put_body_read, NULL, 3, data);
+    cache_q q = {0};
+    request_headers(request, &q);
+    JSValue rh_v = JS_NewStringLen(ctx, (const char *)rh_ptr(&q), q.rh.len);
+    web_buf_free(&q.rh);
+    JSValueConst data[4] = { name, url_v, response, rh_v };
+    JSValue r = web_then(ctx, body, put_body_read, NULL, 4, data);
     JS_FreeValue(ctx, body);
     JS_FreeValue(ctx, url_v);
+    JS_FreeValue(ctx, rh_v);
     return r;
 }
 
@@ -456,11 +497,12 @@ JSValue wjr_CacheStorage_match(JSContext *ctx, JSValueConst t, int argc, JSValue
 {
     if (!storage_this(ctx, t)) { return web_promise_reject_pending(ctx); }
     if (argc < 1) { wj_throw_arity(ctx, "CacheStorage.match", 1, argc); return web_promise_reject_pending(ctx); }
-    bool is, im;
+    cache_q q = {0};
     JSValue cache_name;
-    if (!query_options(ctx, wj_arg(argc, (JSValue *)argv, 1), &is, &im, &cache_name)) { return web_promise_reject_pending(ctx); }
+    if (!query_options(ctx, wj_arg(argc, (JSValue *)argv, 1), &q, &cache_name)) { return web_promise_reject_pending(ctx); }
     wj_str url, method;
     if (!request_parts(ctx, argv[0], &url, &method)) { JS_FreeValue(ctx, cache_name); return web_promise_reject_pending(ctx); }
+    request_headers(argv[0], &q);
     JSValue names;
     if (!JS_IsUndefined(cache_name)) {
         names = JS_NewArray(ctx);
@@ -468,7 +510,7 @@ JSValue wjr_CacheStorage_match(JSContext *ctx, JSValueConst t, int argc, JSValue
     } else {
         int32_t n;
         WJ_FETCH_STRING(n, wr_CacheStorage_names(wj_scratch.data, wj_scratch.cap));
-        if (n < 0) { wj_str_free(ctx, &url); wj_str_free(ctx, &method); JS_FreeValue(ctx, cache_name); return reject_status(ctx, n, "CacheStorage.match"); }
+        if (n < 0) { wj_str_free(ctx, &url); wj_str_free(ctx, &method); web_buf_free(&q.rh); JS_FreeValue(ctx, cache_name); return reject_status(ctx, n, "CacheStorage.match"); }
         names = names_array(ctx, n);
     }
     JS_FreeValue(ctx, cache_name);
@@ -480,7 +522,7 @@ JSValue wjr_CacheStorage_match(JSContext *ctx, JSValueConst t, int argc, JSValue
         wj_str name;
         if (wj_to_str(ctx, nv, &name, 0, NULL)) {
             uint64_t *ids = NULL;
-            int32_t m = match_ids(ctx, name.ptr, name.len, &url, &method, is, im, &ids);
+            int32_t m = match_ids(ctx, name.ptr, name.len, &url, &method, &q, &ids);
             if (m > 0) { found = entry_response(ctx, name.ptr, name.len, ids[0]); }
             free(ids);
             wj_str_free(ctx, &name);
@@ -489,6 +531,7 @@ JSValue wjr_CacheStorage_match(JSContext *ctx, JSValueConst t, int argc, JSValue
     }
     JS_FreeValue(ctx, names);
     wj_str_free(ctx, &url); wj_str_free(ctx, &method);
+    web_buf_free(&q.rh);
     if (JS_IsException(found)) { return web_promise_reject_pending(ctx); }
     return web_promise_take(ctx, found);
 }
