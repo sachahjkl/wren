@@ -1237,6 +1237,16 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
 	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
+	// the frames of the thread through the frame gate (windows.odin): admitted, of which inside another, asked for where none
+	// may begin (a repaint later), and the moves the state machine does not have (0, or a bug)
+	{
+		g := platform.frame_gate()
+		j_key(&b, "frameGate"); j_begin(&b)
+		j_int(&b, "begun", i64(g.begun)); j_int(&b, "nested", i64(g.nested)); j_int(&b, "deferred", i64(g.deferred))
+		j_int(&b, "violations", i64(g.violations)); j_str(&b, "lastViolation", g.last_violation)
+		j_end(&b)
+	}
+	j_bool(&b, "menuOpen", ui.ctx_menu_any_open())   // a menu of the chrome is open (the page's context menu, the tab menu...)
 	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
 	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept

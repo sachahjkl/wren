@@ -121,8 +121,14 @@ devtools_window_tick :: proc(app: ^App) {
 // goes on as well, so the page, its timers and its loads do not stop while the panel's window is dragged. Not from a chrome frame:
 // nothing of the page may run there (shell_frames.odin).
 devtools_window_loop_frame :: proc(app: ^App) {
-	// (not inside a frame's page phase, build or drawing: windows.odin, Frame_Stage)
-	if frame_stage == .Busy || ui.building() { if dev_win != nil { dev_win.win.paint_requested = true }; return }
+	// (not inside a frame's page phase, build or drawing: windows.odin, the frame gate. Its frame is a Light one, but not in the
+	// page phase either: the panel's input (the console) may run the page's scripts)
+	g := platform.frame_gate()
+	if g.stage == .Work || !platform.frame_admits(g.stage, g.kind, .Light) || ui.building() {
+		platform.frame_gate_defer(g)
+		if dev_win != nil { dev_win.win.paint_requested = true }
+		return
+	}
 	devtools_window_frame(app)
 	if chrome_frames.nested || platform.is_closed(app.win) { return }
 	app.pass_first = true
@@ -143,6 +149,11 @@ devtools_window_frame :: proc(app: ^App) {
 	if w.size.x <= 0 || w.size.y <= 0 || platform.is_minimized(w) { return }
 	t := current_tab(app)
 	if t == nil || t.kind != .Web { return }
+	// a Light frame of the gate (windows.odin): after the main window's frame, or from its own window's loop of the system
+	gate := platform.frame_gate()
+	gate_token, admitted := platform.frame_gate_begin(gate, .Light)
+	if !admitted { w.paint_requested = true; return }
+	defer platform.frame_gate_end(gate, gate_token)
 	title := t.title != "" ? t.title : t.url
 	if title != dw.title {
 		delete(dw.title)
@@ -156,6 +167,7 @@ devtools_window_frame :: proc(app: ^App) {
 	defer render.surface_use(&app.r, &dw.surf)
 	render.resize(&app.r, w.size)
 	base_style := chrome_frame_style(app)
+	platform.frame_gate_stage(gate, .Building)
 	evs := devtools_events(app, events[:], true)
 	ui.begin_build(&dw.ui, {
 		window_size = size, events = evs, dt = pacer.dt, animations = os_animations_enabled(app),
@@ -165,6 +177,7 @@ devtools_window_frame :: proc(app: ^App) {
 	devtools_panel(app, t, false, {width = ui.fill(), height = ui.fill()}, fill = size)
 	ui.end_build()
 	if ui.needs_frame(&dw.ui) { dw.busy = true }
+	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(&dw.ui, &app.dc)
@@ -175,6 +188,7 @@ devtools_window_frame :: proc(app: ^App) {
 	dw.size_seen = w.size
 	pacer_latency(app, &dw.latency, resizing)   // (pacing.odin: two frames may queue during a resize step, as for the main window)
 	present_start := qpc()
+	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !resizing)
 	prof_window_frame(frame_start, present_start)   // prof.odin: the window's frames of a profile run
 	ui.use(app.ui_state)
