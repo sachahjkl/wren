@@ -98,6 +98,51 @@ try {
     $null = Probe collapse --pid $wpid --type button --name 'Menu'
     $null = Probe find --pid $wpid --type menu
     Check 'collapse closes it' ($script:ProbeExit -ne 0)
+
+    # a page: its tree grafted under the chrome's (examples\a11y\page.html: a form, a list, a table, a dialog, live regions)
+    $page = 'file:///' + ((Join-Path $root 'examples\a11y\page.html') -replace '\\', '/')
+    $null = Wren-Nav $page
+    $doc = Probe wait --pid $wpid --type document --name 'Accessibility sample' --timeout 8000
+    Check 'the page is a document named by its title' ($script:ProbeExit -eq 0) $doc
+    $pdump = Probe dump --pid $wpid
+    $plines = $pdump -split "`r?`n"
+    function PHas([string]$pattern) { return [bool]($plines | Where-Object { $_ -match $pattern }) }
+    Check 'a heading'                         (PHas '"Accessibility sample"')        $pdump
+    Check 'a link'                            (PHas '^link "Home"')
+    Check 'a field named by its label'        (PHas '^edit "Your name".*value="Ada"')
+    Check 'a check box, checked'              (PHas '^checkbox "Newsletter" checked')
+    Check 'a radio button, checked'           (PHas '^radio "Large"')
+    Check 'a combo box'                       (PHas '^combobox "Country"')
+    Check 'a disabled button'                 (PHas '^button "Save" disabled')
+    Check 'a button named by its title'       (PHas '^button "Delete"')
+    Check 'a table'                           (PHas '^table "Scores"')
+    Check 'an image named by its alt'         (PHas '^image "A cat"')
+    Check 'tabs of ARIA'                      (PHas '^tab "Grid" selected')
+    Check 'a slider'                          (PHas '^slider "Volume"')
+    Check 'a dialog'                          (PHas '"Confirm"')
+    Check 'aria-hidden is left out'           (-not (PHas '"Hidden"'))
+    Check 'hidden is left out'                (-not (PHas '"Hidden too"'))
+    Check 'inert is left out'                 (-not (PHas '^button "Inert"'))
+    Check 'display: none is left out'         (-not (PHas '^button "Gone"'))
+
+    $null = Probe set-value --pid $wpid --type edit --name 'Your name' --value 'Grace'
+    Check 'set the field' ($script:ProbeExit -eq 0)
+    Start-Sleep -Milliseconds 300
+    $val = Wren-Eval "document.getElementById('name').value"
+    Check 'the page sees the value' ($val -match 'Grace') $val
+    $null = Probe toggle --pid $wpid --type checkbox --name 'Newsletter'
+    Start-Sleep -Milliseconds 300
+    $chk = Wren-Eval "String(document.getElementById('news').checked)"
+    Check 'toggle unchecks the box' ($chk -match 'false') $chk
+    $null = Probe focus --pid $wpid --type edit --name 'Your name'
+    Start-Sleep -Milliseconds 300
+    $act = Wren-Eval "document.activeElement ? document.activeElement.id : ''"
+    Check 'focus moves the page''s focus' ($act -match 'name') $act
+    $null = Probe invoke --pid $wpid --type button --name 'OK'
+    Check 'invoke a page button' ($script:ProbeExit -eq 0)
+    $st = Wren-Ctl stats --json | ConvertFrom-Json
+    Check 'no update refused' ([int]$st.a11yRefused -eq 0 -and [int]$st.a11yPageRefused -eq 0) "chrome $($st.a11yRefused), page $($st.a11yPageRefused)"
+    "  page tree: $($st.a11yPageNodes) nodes, $($st.a11yPageBuilds) builds, $($st.a11yPageSends) updates"
 } finally {
     Stop-Wren $name
 }

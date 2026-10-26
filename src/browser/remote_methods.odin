@@ -1284,6 +1284,8 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		au, ar, an := ui.a11y_stats(app.ui_state)
 		j_int(&b, "a11yUpdates", i64(au)); j_int(&b, "a11yRefused", i64(ar)); j_int(&b, "a11yLastNodes", i64(an))
 		j_int(&b, "a11yNodes", i64(len(ui.a11y_tree(app.ui_state).nodes)))
+		pb, ps, pr, pn := page_a11y_stats()
+		j_int(&b, "a11yPageBuilds", i64(pb)); j_int(&b, "a11yPageSends", i64(ps)); j_int(&b, "a11yPageRefused", i64(pr)); j_int(&b, "a11yPageNodes", i64(pn))
 	}
 	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
 	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
