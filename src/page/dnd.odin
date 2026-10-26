@@ -378,6 +378,18 @@ DataTransfer_itemFile :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (u6
 	return local_file_object(c.page, it.file, c.owner), .None
 }
 
+// getAsFileSystemHandle(): a handle of what was dropped, read access granted (fs_api.odin); a folder is its root.
+DataTransfer_itemFsHandle :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error) {
+	it, err := item_at(c, dt, index)
+	if err != .None { return "", err }
+	if dt.data.mode == .Protected || !it.is_file || it.file.path == "" { return "", .None }
+	info, e := os.stat(it.file.path, context.temp_allocator)
+	if e != nil { return "", .None }
+	b := strings.builder_make(context.temp_allocator)
+	fs_given_handle(c.page, it.file.path, info.type == .Directory, false, &b)
+	return strings.trim_right(strings.to_string(b), "\n"), .None
+}
+
 DataTransfer_addString :: proc(c: ^Call, dt: Api_DataTransfer, data, type: string) -> Api_Error {
 	st := dt.data
 	if st.mode != .Read_Write { return fail(c, .Invalid_State, "the DataTransfer is not in read/write mode") }

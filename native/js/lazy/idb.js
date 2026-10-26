@@ -45,7 +45,7 @@
   const { utf8, utf8d, key: keyOf, keyValue: decodeKey, cmp: compareBytes, validPath: validKeyPath, pathKey, canInject, inject } = host;
   // ... and the execution of requests (what a request is made of, what its reply holds): the frames of src/idb/protocol.odin are
   // written and read there, the keys and values come back as values.
-  const { execGet, execCount, execGetAll, execPut, execDelete, execClear, execCursor } = host;
+  const { execGet, execCount, execGetAll, execPut, execDelete, execClear, execCursor, getDirectory } = host;
 
   const fdv = new DataView(new ArrayBuffer(8));
   class Wr {
@@ -1697,7 +1697,7 @@
     estimate() { try { sOf(smState, this); return Promise.resolve(estimateOf("")); } catch (e) { return Promise.reject(e); } }
     persist() { try { sOf(smState, this); return Promise.resolve(persistOf("", true)); } catch (e) { return Promise.reject(e); } }
     persisted() { try { sOf(smState, this); return Promise.resolve(persistOf("", false)); } catch (e) { return Promise.reject(e); } }
-    getDirectory() { return notSupported("The origin private file system"); }
+    getDirectory() { try { sOf(smState, this); return getDirectory(); } catch (e) { return Promise.reject(e); } }
   }
 
   const BUCKET_NAME = /^[a-z0-9][a-z0-9_-]{0,62}$/;

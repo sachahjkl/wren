@@ -511,6 +511,16 @@ JSValue web_blob_url_lookup(JSContext *ctx, const char *url, size_t n)
     return r;
 }
 
+/* The bytes of the in-memory Blob a blob: URL of this realm stands for (valid until JavaScript runs again); false when
+ * it is not one (or its Blob is a file not read). */
+bool web_blob_url_bytes(JSContext *ctx, const char *url, size_t n, const uint8_t **p, size_t *len)
+{
+    JSValue b = web_blob_url_lookup(ctx, url, n);
+    bool ok = !JS_IsUndefined(b) && web_blob_bytes(b, p, len);
+    JS_FreeValue(ctx, b);   /* (the map keeps the Blob: its bytes stay where they are) */
+    return ok;
+}
+
 JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);

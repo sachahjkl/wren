@@ -193,6 +193,8 @@ DEMOS := [?]Demo{
 		"Controls, validation, <code>FormData</code> and submission through the form page.", true, "formstest", false},
 	{.E2e, "Service worker test", "sw/index.html",
 		"Registers a service worker that caches files at install, claims the page, answers requests and a whole navigation itself and answers messages (<code>tools\\sw_e2e.ps1</code> drives it).", true, "sw_e2e", false},
+	{.E2e, "File System test", "fs/index.html",
+		"The origin private file system (handles, writables, a sync access handle in a worker) and the file pickers on files of your disk (<code>tools\\fs_e2e.ps1</code> drives it).", true, "fs_e2e", false},
 	{.E2e, "Shared and module workers test", "workers/index.html",
 		"Connects to a shared worker every tab of the origin shares (<code>connect</code>, ports both ways); <code>tools\\workers_e2e.ps1</code> also starts module workers (imports, <code>import()</code>, <code>import.meta.url</code>).", true, "workers_e2e", false},
 	{.E2e, "Images test", "images.html",
