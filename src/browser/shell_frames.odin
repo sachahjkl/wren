@@ -428,7 +428,7 @@ shell_split_input :: proc(app: ^App, polled: []platform.Event) -> []platform.Eve
 shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Event, hold_buttons_and_keys: bool) {
 	t := current_tab(app)
 	page_shown := t != nil && t.kind == .Web
-	over_page := page_shown && draw.rect_contains(app.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(ev.pos)
+	over_page := page_shown && draw.rect_contains(app.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
 	button := int(ev.button) % len(chrome_frames.press_to_page)
 	#partial switch ev.kind {
 	case .Mouse_Move:

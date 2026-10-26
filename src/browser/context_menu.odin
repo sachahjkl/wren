@@ -278,14 +278,14 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Find…", "Ctrl+F").clicked { find_open(app) }
 		ui.menu_separator()
 		if ui.menu_item("View page source", "Ctrl+U", enabled = !strings.has_prefix(t.url, "view-source:")).clicked { view_source(app, t) }
-		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { page_info_request = true }
+		if ui.menu_item("Page information", icon = GLYPH_INFO).clicked { window_own(app).page_info_request = true }
 	}
 	if _, filtered := blocker_page_host(t); filtered && bl.started && bl.b.cfg.enabled {
 		sep(&groups)
 		if ui.menu_item(i18n.tr("Block element…"), "Ctrl+Shift+K", icon = GLYPH_CLOSE).clicked { blocker_picker_target(app, t, r.target); return }
 		res := r.image != "" ? r.image : r.link
 		if ui.menu_item(i18n.tr("Block this resource"), enabled = res != "").clicked { blocker_block_resource(app, res) }
-		if ui.menu_item(i18n.tr("Content blocker panel…")).clicked { blocker_panel_request = true }
+		if ui.menu_item(i18n.tr("Content blocker panel…")).clicked { window_own(app).blocker_panel_request = true }
 	}
 	if r.target != base.NIL_HANDLE || groups == 0 {
 		ui.menu_separator()

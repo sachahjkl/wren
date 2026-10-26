@@ -240,7 +240,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	ui.pop_tags()
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###blocker_panel")
-	if blocker_panel_request { blocker_panel_request = false; if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key) } }
+	if own := window_own(app); own.blocker_panel_request { own.blocker_panel_request = false; if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key) } }
 	if sig.clicked {
 		if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else { ui.ctx_menu_open_rect(key, b.rect, b.key) }
 	}
@@ -257,7 +257,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	blocker_panel(app, t, key, state)
 }
 
-blocker_panel_request: bool
+// (Window_Own.blocker_panel_request: a command or the page's context menu asked for the panel.)
 
 ////////////////////////////////
 // The panel

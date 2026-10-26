@@ -158,15 +158,15 @@ dropped_address :: proc(d: ^platform.Drag_Data) -> (string, bool) {
 
 // Over the address field (the current tab loads it) or elsewhere in the browser's interface (a new tab).
 @(private = "file")
-over_address :: proc(pos: [2]f32) -> bool {
-	b := ui.box_from_key(address_key)
+over_address :: proc(app: ^App, pos: [2]f32) -> bool {
+	b := ui.box_from_key(address_key(app))
 	return b != nil && draw.rect_contains(b.rect, pos)
 }
 
 @(private = "file")
 chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 	if address == "" { return }
-	if over_address(pos) && current_tab(app) != nil {
+	if over_address(app, pos) && current_tab(app) != nil {
 		navigate(app, current_tab(app), address, origin = .User)
 		ui.field_set(&app.address, current_tab(app).url)
 	} else {
@@ -203,7 +203,7 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 	text := ""
 	// selected text of a field (the press kept the selection: forms_shell.odin)
 	if kind == .None {
-		if field, a, b, ftext, ok := forms_take_selection_press(p); ok && field == pressed {
+		if field, a, b, ftext, ok := forms_take_selection_press(app, p); ok && field == pressed {
 			kind, text, source = .Selection, ftext, field
 			dnd.cand_field, dnd.cand_a, dnd.cand_b = field, a, b
 		}
@@ -410,8 +410,8 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			host, hrange := dnd.cand_host, dnd.cand_range
 			press := dnd.cand_pos
 			dnd_clear_candidate()
-			forms_drop_selection_press()   // (the release is the drag's, not a click in the field's selection)
-			sshell.down = false   // the selection gesture, if any, is over
+			forms_drop_selection_press(app)   // (the release is the drag's, not a click in the field's selection)
+			window_own(app).selection.down = false   // the selection gesture, if any, is over
 			if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
 			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
 			if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }

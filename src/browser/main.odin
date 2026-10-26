@@ -869,7 +869,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					if pos == .Right { if tab_sidebar(app, pos) { return } }
 				}
 			} else {
-				sidebar.shown = false
+				window_own(app).sidebar.shown = false
 				page_column(app, t, elem_fs)
 			}
 			// status bar (status_bar.odin)
@@ -913,7 +913,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		hovered := base.NIL_HANDLE
 		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
-		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(last_move.pos)
+		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
 		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
@@ -925,18 +925,18 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(ev) { if t.page == nil { return }; continue }
-		if ev.kind == .Mouse_Release && ev.button == .Left { sshell.pending = false }   // whichever handler below takes the release (selection_pointer_up)
+		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
-		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
-		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
+		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
+		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
-		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
+		if !hud_captures(app, ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
 		if frames_route_keys(app, ev, index) { continue }
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
 		if t.page == nil { return }
-		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(ev.pos) { continue }   // the frame statistics panel
+		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(app, ev.pos) { continue }   // the frame statistics panel
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
@@ -1148,7 +1148,7 @@ frame :: proc(app: ^App, idled := false) {
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
 	route_page_input(app, events)
-	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
+	events = forms_unconsumed_events(app, events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
@@ -1412,7 +1412,6 @@ main :: proc() {
 	hud_init(app)
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
-	windows_register_locals()   // windows.odin: what of all that is a window's own
 	app.last_tick = time.tick_now()
 	app.frames_requested = 4
 	app.win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
@@ -1545,7 +1544,7 @@ main :: proc() {
 	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
-	forms_shell_destroy()
+	forms_shell_destroy(forms_view(app))
 	a11y_page_destroy()
 	host.shutdown_step("page_render_destroy")
 	page_render_destroy()

@@ -67,7 +67,7 @@ window_settings_from_prefs :: proc(p: ^config.Prefs) -> Window_Settings {
 	}
 }
 
-// What of the frame a window has of its own (window_local).
+// What of the frame a window has of its own (Window_Own.full).
 Window_Full :: struct {
 	revealed:     bool,          // full screen: the bars are shown over the page
 	overlay:      draw.Rect,     // where they were last frame
@@ -76,7 +76,6 @@ Window_Full :: struct {
 Window_Chrome :: struct {
 	cfg:          Window_Settings,
 	watch:        int,
-	using full:   Window_Full,
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
@@ -121,7 +120,7 @@ toggle_fullscreen :: proc(app: ^App) {
 	if fullscreen_shell_leave(app) { return }   // F11 in a page's full screen (a video): back to the page, window as it was
 	on := !platform.is_fullscreen(app.win)
 	platform.set_fullscreen(app.win, on)
-	wchrome.revealed = false
+	window_own(app).full.revealed = false
 	render.resize(&app.r, app.win.size)
 	app.frames_requested = max(app.frames_requested, 3)
 }
@@ -171,17 +170,18 @@ window_chrome_forget :: proc(w: ^platform.Window) {
 
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.
 fullscreen_bars :: proc(app: ^App, t: ^Tab) {
-	if !platform.is_fullscreen(app.win) { wchrome.revealed = false; return }
-	if !wchrome.cfg.reveal || fullscreen_shell_active(app.active) { wchrome.revealed = false; return }   // (a page's own full screen keeps the whole window)
+	fw := &window_own(app).full
+	if !platform.is_fullscreen(app.win) { fw.revealed = false; return }
+	if !wchrome.cfg.reveal || fullscreen_shell_active(app.active) { fw.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
-	if !wchrome.revealed {
-		wchrome.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(app.win.size.x)
+	if !fw.revealed {
+		fw.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(app.win.size.x)
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
-		over := m.y < wchrome.overlay.max.y + ui.font_size()
-		wchrome.revealed = over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key)
+		over := m.y < fw.overlay.max.y + ui.font_size()
+		fw.revealed = over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
 	}
-	if !wchrome.revealed { wchrome.overlay = {}; return }
+	if !fw.revealed { fw.overlay = {}; return }
 	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(app.win.size.x)), height = ui.children_sum(), axis = .Y})
 	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
 	if ui.parent(col) {
@@ -189,11 +189,12 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 		toolbar_row(app, t)   // chrome_style.odin
 	}
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)
-	if col.rect != wchrome.overlay { app.frames_requested = max(app.frames_requested, 2) }
-	wchrome.overlay = col.rect
+	if col.rect != fw.overlay { app.frames_requested = max(app.frames_requested, 2) }
+	fw.overlay = col.rect
 }
 
 // The full screen bars take the clicks and the wheel over them (the page under them does not get them).
-fullscreen_bars_capture :: proc(pos: draw.Vec2) -> bool {
-	return wchrome.revealed && draw.rect_contains(wchrome.overlay, pos)
+fullscreen_bars_capture :: proc(app: ^App, pos: draw.Vec2) -> bool {
+	fw := &window_own(app).full
+	return fw.revealed && draw.rect_contains(fw.overlay, pos)
 }

@@ -22,7 +22,6 @@ blocker_ui.odin SHIELD_GREEN process  # a table
 blocker_ui.odin SHIELD_AMBER process  # a table
 blocker_ui.odin SHIELD_GREY process  # a table
 blocker_ui.odin BLOCK_RED process  # a table
-blocker_ui.odin blocker_panel_request window  # the blocker panel of the active window
 blocker_ui.odin panel window  # the blocker panel of the active window
 blocker_ui.odin COLUMNS process  # a table
 canvas_gpu.odin cgpu process
@@ -31,11 +30,6 @@ canvas_gpu_test.odin op_global test
 canvas_gpu_test.odin test_glyph_a test
 canvas_gpu_test.odin test_glyph_o test
 canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
-chrome.odin page_info_request window  # a request of the active window's build
-chrome.odin address_key window  # the active window's address field key
-chrome.odin main_menu_request window  # a request of the active window's build
-chrome.odin chip_segment window  # the active window's security chip
-chrome.odin chip_icon window  # the active window's security chip
 chrome_style.odin CHROME_PREFS process  # a table
 chrome_style.odin chrome_cfg process  # preferences read once and on change
 chrome_style.odin chrome_watch process  # preferences read once and on change
@@ -111,7 +105,6 @@ effects_cache.odin fx_settings process  # preferences read once and on change
 effects_cache.odin FX_CACHE_PREFS process  # a table
 favicon.odin TAB_PREFS process  # a table
 favicon.odin favs process
-find_bar.odin find window  # window_local: the find bar
 first_paint.odin FIRST_PAINT_PREFS process  # a table
 first_paint.odin scheme_ui process
 first_paint.odin first_paint_watch process  # preferences read once and on change
@@ -123,7 +116,6 @@ font_settings.odin text_watch process  # preferences read once and on change
 fonts.odin ALIASES process  # a table
 fonts.odin text_ctx process
 forms_plane.odin ctl_plane process
-forms_shell.odin fview window  # window_local: the form controls' view (focus, caret)
 forms_shell.odin fview_blink_timer process
 forms_shell.odin fview_report_timer process
 forms_shell.odin page_focus_leave_backward page
@@ -178,7 +170,7 @@ pacing.odin FRAME_PREFS process  # a table
 pacing.odin pacer window  # exchanged by window_activate (pacer_adopt): the window's pacing, with the process's preferences and timer
 page_cursor.odin CURSOR_PREFS process  # a table
 page_cursor.odin ccfg process  # preferences read once and on change
-page_cursor.odin pcs window  # pcs.view is window_local (the cursor over the page)
+page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)
 page_frame.odin page_prep window  # the active window's page preparation of the frame
 page_input.odin din window  # the page input of the active window (presses, double clicks)
 page_thread.odin PAGE_THREAD_PREFS process  # a table
@@ -212,7 +204,6 @@ render.odin page_render process
 render_settings.odin RENDER_PREFS process  # a table
 render_settings.odin render_settings process  # preferences read once and on change
 render_settings.odin render_watch process  # preferences read once and on change
-selection_shell.odin sshell window  # window_local: the selection of the page shown
 selection_shell.odin ix process
 selection_shell.odin ix_watch process  # preferences read once and on change
 selection_shell.odin spaint page  # the painted selection of a page
@@ -238,23 +229,20 @@ storage_access_shell.odin sa_queue page  # the pages' storage access prompts
 tab_drag.odin tab_drag process
 tab_sidebar.odin SIDEBAR_PREFS process  # a table
 tab_sidebar.odin TABS_POSITION_NAMES process  # a table
-tab_sidebar.odin sidebar window  # window_local: the tab sidebar's scroll and resize
 tab_sidebar.odin TITLEBAR_SLOT_IDS process  # a table
-tab_strip.odin strip window  # window_local: the tab strip's scroll and layout
 test_globals_test.odin page_render_test_mutex test
 third_party.odin LICENSE_TEXTS process  # a table
 touch_shell.odin TOUCH_PREFS process  # a table
 touch_shell.odin tsh process
 update_check.odin upd process
 urlbar.odin URLBAR_PREFS process  # a table
-urlbar.odin ub window  # ub.view is window_local (the suggestions shown); the rest is the process's (history index)
+urlbar.odin ub process  # the history index, its build, the preferences (a window's suggestions: Window_Own.urlbar)
 urlbar_test.odin globals_lock test
 video_shell.odin vshell page  # the pages' video players
 web_font_faces.odin WEB_FACE_PREFS process  # a table
 web_font_faces.odin GENERIC_FAMILIES process  # a table
 window_chrome.odin WINDOW_PREFS process  # a table
-window_chrome.odin wchrome window  # wchrome.full is window_local (full screen); wchrome.cfg the process's
-windows.odin window_locals process
+window_chrome.odin wchrome process  # the preferences, the exe's icon, the system menu asked for (full screen's bars: Window_Own.full)
 windows.odin wake_target process
 windows.odin window_ids process
 windows.odin pass_order process
