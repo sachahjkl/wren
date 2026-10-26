@@ -552,6 +552,17 @@ static JSValue writable_make(JSContext *ctx, int iface, JSValueConst sink, doubl
     return obj;
 }
 
+/* 0 writable, 1 erroring, 2 errored, 3 closed (-1: not a WritableStream); `error`, when given, gets the stored error
+ * (counted) */
+int web_writable_state(JSContext *ctx, JSValueConst v, JSValue *error)
+{
+    wj_obj *o = wj_unwrap(v, WJ_IFACE_WritableStream);
+    ws_impl *w = o ? o->impl : NULL;
+    if (!w) { return -1; }
+    if (error) { *error = JS_DupValue(ctx, w->stored_error); }
+    return w->state;
+}
+
 JSValue web_writable_new(JSContext *ctx, int iface, JSValueConst sink, double hwm, JSValueConst proto_from)
 {
     return writable_make(ctx, iface, sink, hwm, JS_UNDEFINED, proto_from);

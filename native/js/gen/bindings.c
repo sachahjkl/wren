@@ -1422,10 +1422,20 @@ JSValue wjr_TaskAttributionTiming_get_entryType(JSContext *ctx, JSValueConst thi
 JSValue wjr_TaskAttributionTiming_get_name(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TaskAttributionTiming_get_startTime(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TaskAttributionTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextDecoderStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextDecoderStream_get_encoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextDecoderStream_get_fatal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextDecoderStream_get_ignoreBOM(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextDecoderStream_get_readable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextDecoderStream_get_writable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TextDecoder_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoder_decode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoder_get_fatal(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TextDecoder_get_ignoreBOM(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextEncoderStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextEncoderStream_get_encoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextEncoderStream_get_readable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextEncoderStream_get_writable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TextEncoder_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextEncoder_encode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextEncoder_encodeInto(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1467,6 +1477,13 @@ JSValue wjr_Touch_get_screenX(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Touch_get_screenY(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Touch_get_target(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Touch_get_touchType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TransformStreamDefaultController_enqueue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TransformStreamDefaultController_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TransformStreamDefaultController_get_desiredSize(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TransformStreamDefaultController_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TransformStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TransformStream_get_readable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TransformStream_get_writable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TransitionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TransitionEvent_get_elapsedTime(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TransitionEvent_get_propertyName(JSContext *ctx, JSValueConst this_val);
@@ -17706,11 +17723,11 @@ static const wj_member wj_m_TextDecoder[] = {
     { "ignoreBOM", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoder_get_ignoreBOM, NULL, 0 },
 };
 static const wj_member wj_m_TextDecoderStream[] = {
-    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "fatal", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "ignoreBOM", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoderStream_get_encoding, NULL, 0 },
+    { "fatal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoderStream_get_fatal, NULL, 0 },
+    { "ignoreBOM", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoderStream_get_ignoreBOM, NULL, 0 },
+    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoderStream_get_readable, NULL, 0 },
+    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextDecoderStream_get_writable, NULL, 0 },
 };
 static const wj_member wj_m_TextEncoder[] = {
     { "encode", WJ_M_METHOD, 0, 0, wjr_TextEncoder_encode, NULL, NULL, 0 },
@@ -17718,9 +17735,9 @@ static const wj_member wj_m_TextEncoder[] = {
     { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextEncoder_get_encoding, NULL, 0 },
 };
 static const wj_member wj_m_TextEncoderStream[] = {
-    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "encoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextEncoderStream_get_encoding, NULL, 0 },
+    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextEncoderStream_get_readable, NULL, 0 },
+    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextEncoderStream_get_writable, NULL, 0 },
 };
 static const wj_member wj_m_TextMetrics[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_width, NULL, 0 },
@@ -17767,14 +17784,14 @@ static const wj_member wj_m_TouchList[] = {
     { "item", WJ_M_METHOD, 0, 1, wjr_TouchList_item, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TransformStream[] = {
-    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TransformStream_get_readable, NULL, 0 },
+    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TransformStream_get_writable, NULL, 0 },
 };
 static const wj_member wj_m_TransformStreamDefaultController[] = {
-    { "desiredSize", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "enqueue", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "error", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "terminate", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "desiredSize", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TransformStreamDefaultController_get_desiredSize, NULL, 0 },
+    { "enqueue", WJ_M_METHOD, 0, 0, wjr_TransformStreamDefaultController_enqueue, NULL, NULL, 0 },
+    { "error", WJ_M_METHOD, 0, 0, wjr_TransformStreamDefaultController_error, NULL, NULL, 0 },
+    { "terminate", WJ_M_METHOD, 0, 0, wjr_TransformStreamDefaultController_terminate, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TreeWalker[] = {
     { "root", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 268, NULL, wjr_TreeWalker_get_root, NULL, 0 },
@@ -20205,7 +20222,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextDecoder, .n_members = 4, .subtree_end = 542,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextDecoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextDecoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextDecoderStream_constructor,
       .members = wj_m_TextDecoderStream, .n_members = 5, .subtree_end = 543,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -20213,7 +20230,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TextEncoder, .n_members = 3, .subtree_end = 544,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextEncoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextEncoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextEncoderStream_constructor,
       .members = wj_m_TextEncoderStream, .n_members = 3, .subtree_end = 545,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -20237,11 +20254,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TouchList, .n_members = 2, .subtree_end = 550,
       .index_get = wjr_TouchList_index_get, .length_get = wjr_TouchList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TransformStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TransformStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TransformStream_constructor,
       .members = wj_m_TransformStream, .n_members = 2, .subtree_end = 551,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TransformStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TransformStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TransformStreamDefaultController, .n_members = 4, .subtree_end = 552,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

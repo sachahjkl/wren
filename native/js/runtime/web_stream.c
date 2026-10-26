@@ -138,6 +138,15 @@ static web_reader *reader_of(JSValueConst v)
 }
 
 bool web_stream_is(JSValueConst v) { return stream_of(v) != NULL; }
+
+/* 0 readable, 1 closed, 2 errored (-1: not a stream); `error`, when given, gets the stored error (counted) */
+int web_stream_state(JSContext *ctx, JSValueConst v, JSValue *error)
+{
+    web_stream *s = stream_of(v);
+    if (!s) { return -1; }
+    if (error) { *error = JS_DupValue(ctx, s->error); }
+    return s->state == RS_READABLE ? 0 : s->state == RS_CLOSED ? 1 : 2;
+}
 bool web_stream_locked(JSValueConst v) { web_stream *s = stream_of(v); return s && !JS_IsUndefined(s->reader); }
 bool web_stream_disturbed(JSValueConst v) { web_stream *s = stream_of(v); return s && s->disturbed; }
 
