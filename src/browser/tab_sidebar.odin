@@ -272,7 +272,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	collapsed := favs.cfg.side_collapsed
 	width_css := sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w
 	extent := sidebar_extent(f32(app.win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
-	if ui.active_key() == 0 { strip.drag_id, strip.drag_active = 0, false }   // the button went up (wherever)
+	ui.reorder_frame(&strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
 	// classic (chrome_style.odin): the panel is the tab bar, its current tab flows into the page; the toolbar's line along
@@ -410,7 +410,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	first, last := side_visible_rows(area.view_off.y, area.view_target.y, view_h, rh, n, rh * 2)
 	dragged := -1
 	for t, i in app.tabs {
-		if strip.drag_active && t.id == strip.drag_id { dragged = i; break }
+		if ui.reorder_dragging(&strip.drag, t.id) { dragged = i; break }
 	}
 	focused := focused_tab_index(app)
 	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
@@ -469,15 +469,9 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 	on := i == app.current
 	id := fmt.tprintf("###tab_%d", t.id)
 	slot := f32(i) * rh
-	dragging := strip.drag_active && strip.drag_id == t.id
 	akey := ui.key_from_string(area.key, fmt.tprintf("y%d", t.id))
-	y: f32
-	if dragging {
-		y = clamp(ui.mouse_pos().y - area.rect.min.y + area.view_off.y - strip.drag_grab, 0, f32(n - 1) * rh)
-		_ = ui.anim(akey, y, 30, y)   // the release slides from here
-	} else {
-		y = math.round(ui.anim(akey, slot, 30, slot))
-	}
+	// (list coordinates: the scroll box places the rows; the release slides from where the pointer left it)
+	y, dragging := ui.reorder_item_pos(&strip.drag, akey, t.id, slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, f32(n - 1) * rh)
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -551,29 +545,21 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return true }
-	if !strip.drag_active { sidebar_tip(sig, t) }
+	if !strip.drag.active { sidebar_tip(sig, t) }
 
-	// drag to reorder, along Y
+	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		if !strip.drag_active && max(abs(sig.drag_delta.y), favs.cfg.drag_detach ? abs(sig.drag_delta.x) : 0) > favs.cfg.drag_threshold * dpi {   // (straight out sideways starts a drag too: it may leave the bar)
-			strip.drag_active, strip.drag_id = true, t.id
-			press_y := ui.mouse_pos().y - sig.drag_delta.y
-			strip.drag_grab = press_y - area.rect.min.y + area.view_off.y - slot   // where the pointer holds the row
-		}
-		if strip.drag_active && strip.drag_id == t.id {
+		ui.reorder_begin(&strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .Y, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
+			ui.mouse_pos().y - sig.drag_delta.y - area.rect.min.y + area.view_off.y, slot)
+		if ui.reorder_dragging(&strip.drag, t.id) {
 			to := drag_slot(y, rh, n)
 			if to != i { move_from^, move_to^ = i, to }
 			// the list follows the pointer to its ends: a row held past the edge scrolls it
-			view_h := area.size.y
-			if y < area.view_off.y {
-				area.view_target.y = clamp(y, 0, limit)
-			} else if y + rh > area.view_off.y + view_h {
-				area.view_target.y = clamp(y + rh - view_h, 0, limit)
-			}
+			area.view_target.y = ui.reorder_edge_scroll(y, rh, area.view_off.y, area.size.y, limit, area.view_target.y)
 			app.frames_requested = max(app.frames_requested, 2)
 			// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, favs.cfg.detach_distance_em * em) {
-				strip.drag_active = false
+				strip.drag.active = false
 				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return true }
 			}
 		}

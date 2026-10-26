@@ -1,33 +1,9 @@
 package browser
 
-import "core:strconv"
 import "core:strings"
 import "core:testing"
 
-@(test)
-cf_html_offsets_point_at_the_fragment :: proc(t: ^testing.T) {
-	frag := "<b>caf\u00e9</b> & co"
-	s := cf_html(frag, "https://example.test/page")
-	field :: proc(s, name: string) -> int {
-		i := strings.index(s, name)
-		if i < 0 { return -1 }
-		v, _ := strconv.parse_int(s[i + len(name):i + len(name) + 10])
-		return v
-	}
-	sf, ef := field(s, "StartFragment:"), field(s, "EndFragment:")
-	sh, eh := field(s, "StartHTML:"), field(s, "EndHTML:")
-	testing.expect_value(t, s[sf:ef], frag)
-	testing.expect(t, strings.has_prefix(s[sh:], "<html>"), "StartHTML is the markup")
-	testing.expect_value(t, eh, len(s))
-	testing.expect(t, strings.contains(s, "SourceURL:https://example.test/page\r\n"), "source URL")
-}
-
-@(test)
-png_of_pixels :: proc(t: ^testing.T) {
-	px := [16]u8{255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0, 255, 255, 255, 255}
-	png := encode_png(px[:], 2, 2, 8)
-	testing.expect(t, len(png) > 8 && string(png[1:4]) == "PNG", "a PNG file")
-}
+// (the clipboard's formats, "HTML Format" and PNG included, are the toolkit's: gui_toolkit tests/clipboard)
 
 @(test)
 search_urls :: proc(t: ^testing.T) {
