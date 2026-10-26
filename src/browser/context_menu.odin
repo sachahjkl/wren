@@ -302,15 +302,16 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 
 @(private = "file")
 tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
-	if r.tab < 0 || r.tab >= len(app.tabs) { ui.ctx_menu_close(); return }
-	t := app.tabs[r.tab]
+	wnd := active_window(app)
+	if r.tab < 0 || r.tab >= len(wnd.tabs) { ui.ctx_menu_close(); return }
+	t := wnd.tabs[r.tab]
 	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 	ui.menu_separator()
 	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
 	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
-	if ui.menu_item("Close other tabs", enabled = len(app.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
+	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
 	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()
 	menu_command(app, t, "tab.move_to_new_window")
@@ -336,7 +337,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 
 @(private = "file")
 address_menu_items :: proc(app: ^App) {
-	f := &app.address
+	f := &active_window(app).address
 	sel := ui.field_has_selection(f)
 	clip := clip_get()
 	if ui.menu_item("Undo", "Ctrl+Z", enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
@@ -409,12 +410,13 @@ open_in_new_tab :: proc(app: ^App, address: string, from: ^page.Page = nil, orig
 }
 
 close_other_tabs :: proc(app: ^App, keep: int) {
-	t := app.tabs[keep]
-	for i := len(app.tabs) - 1; i >= 0; i -= 1 {
-		if app.tabs[i] != t { tab_close(app, i) }
+	wnd := active_window(app)
+	t := wnd.tabs[keep]
+	for i := len(wnd.tabs) - 1; i >= 0; i -= 1 {
+		if wnd.tabs[i] != t { tab_close(app, i) }
 	}
-	for x, i in app.tabs { if x == t { app.current = i } }
-	ui.field_set(&app.address, current_tab(app).url)
+	for x, i in wnd.tabs { if x == t { wnd.current = i } }
+	ui.field_set(&wnd.address, current_tab(app).url)
 }
 
 ////////////////////////////////

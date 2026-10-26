@@ -168,6 +168,7 @@ nav_reload_button :: proc(app: ^App, t: ^Tab) {
 
 // The address bar: it fills what its row leaves it.
 address_bar :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	em := ui.font_size()
 	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
 	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
@@ -194,11 +195,11 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		window_own(app).address_key = ui.key_from_string(ui.parent_box().key, "###address")
 		urlbar_keys(app, t)   // the suggestions' keys, before the field sees them (urlbar.odin)
 		if ui.focus_key() != window_own(app).address_key {
-			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
+			wnd.address.cursor, wnd.address.mark, wnd.address.scroll_x = 0, 0, 0
 		}
 		ui.next(field)
 		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
-		res = ui.line_edit("###address", &app.address, i18n.tr("Search or enter an address"))
+		res = ui.line_edit("###address", &wnd.address, i18n.tr("Search or enter an address"))
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
 		security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
 	}
@@ -206,7 +207,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		bw.focus_address = false
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			ui.set_focus(b.key)
-			ui.field_select_all(&app.address)
+			ui.field_select_all(&wnd.address)
 			forms_page_blur(app)
 		}
 	}
@@ -216,14 +217,14 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	}
 	urlbar_popup(app, t, res.box)
 	if res.committed && t != nil {
-		address := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
+		address := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
 		if address != "" {
 			navigate(app, t, address_or_search(address), origin = .User)
 			ui.set_focus(0)
 			forms_focus_from_chrome(app, t, 1)   // the page has the keyboard after a navigation from the address bar
 		}
 	}
-	if res.cancelled && t != nil { ui.field_set(&app.address, t.url) }   // Escape restores the address of the page
+	if res.cancelled && t != nil { ui.field_set(&wnd.address, t.url) }   // Escape restores the address of the page
 	if res.right_clicked { address_context_menu(app, ui.mouse_pos()) }
 	if res.focused && (ui.key_press(.Menu) || ui.key_press(.F10, {.Shift})) {
 		address_context_menu(app, {res.box.rect.min.x + em, res.box.rect.max.y}, keyboard = true)
@@ -248,9 +249,10 @@ address_chips :: proc(app: ^App, t: ^Tab) {
 
 // Makes tab `i` the current one.
 tab_select :: proc(app: ^App, i: int) {
-	if i < 0 || i >= len(app.tabs) || i == app.current { return }
-	app.current = i
-	ui.field_set(&app.address, app.tabs[i].url)
+	wnd := active_window(app)
+	if i < 0 || i >= len(wnd.tabs) || i == wnd.current { return }
+	wnd.current = i
+	ui.field_set(&wnd.address, wnd.tabs[i].url)
 	app.frames_requested = max(app.frames_requested, 2)
 	recovery_touch(app)
 }
@@ -277,9 +279,10 @@ address_key :: proc(app: ^App) -> ui.Key { return window_own(app).address_key }
 
 // Moves the current tab one place left or right (Ctrl+Shift+Page Up / Page Down).
 tab_move_current :: proc(app: ^App, delta: int) {
-	to := app.current + delta
-	if to < 0 || to >= len(app.tabs) { return }
-	app.current = list_move(app.tabs[:], app.current, to, app.current)
+	wnd := active_window(app)
+	to := wnd.current + delta
+	if to < 0 || to >= len(wnd.tabs) { return }
+	wnd.current = list_move(wnd.tabs[:], wnd.current, to, wnd.current)
 	app.frames_requested = max(app.frames_requested, 2)
 	recovery_touch(app)
 }
@@ -628,7 +631,7 @@ chrome_shortcuts :: proc(app: ^App) {
 	// the open command palette has the keyboard (palette.odin), and so has the Setup dialog (setup_ui.odin)
 	if palette_open() || setup_is_open() { return }
 	t := current_tab(app)
-	n := len(app.tabs)
+	n := len(active_window(app).tabs)
 	ctrl := platform.Modifiers{.Ctrl}
 	switch {
 	case commands_dispatch(app):   // the registry's shortcuts (commands.odin)

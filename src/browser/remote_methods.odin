@@ -314,13 +314,14 @@ m_targets :: proc(app: ^App) -> Reply {
 
 @(private = "file")
 m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	address, _ := remote.param_string(c.params, "url")
 	background, _ := remote.param_bool(c.params, "background")
-	was := app.current
+	was := wnd.current
 	t := tab_open(app, address, origin = .User)
-	if background && was >= 0 && was < len(app.tabs) - 1 {
-		app.current = was
-		if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
+	if background && was >= 0 && was < len(wnd.tabs) - 1 {
+		wnd.current = was
+		if cur := current_tab(app); cur != nil { ui.field_set(&wnd.address, cur.url) }
 	}
 	if wait, ok := remote.param_string(c.params, "wait"); ok && wait != "none" && wait != "" { return start_wait(app, c, t, wait, fmt.tprintf(`{{"targetId":%d}}`, t.id)) }
 	return done(fmt.tprintf(`{{"targetId":%d}}`, t.id))
@@ -1248,7 +1249,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	j_bool(&b, "menuOpen", ui.ctx_menu_any_open())   // a menu of the chrome is open (the page's context menu, the tab menu...)
 	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
-	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
+	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(active_window(app).tabs)))
 	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
 	// pages out of it, by reason
 	j_key(&b, "bfcache"); j_begin(&b)

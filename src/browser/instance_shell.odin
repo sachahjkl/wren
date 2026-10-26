@@ -134,15 +134,16 @@ instance_open :: proc(data: rawptr) {
 	}
 	app := the_app
 	if app == nil { return }
+	wnd := active_window(app)
 	first := -1
 	for a in d.addresses {
 		tab_open(app, a, origin = .User)
-		if first < 0 { first = app.current }
+		if first < 0 { first = wnd.current }
 	}
 	// the first of the new tabs is shown (the others wait, as with files dropped on the window)
-	if first >= 0 && first < len(app.tabs) {
-		app.current = first
-		if t := current_tab(app); t != nil { ui.field_set(&app.address, t.url) }
+	if first >= 0 && first < len(wnd.tabs) {
+		wnd.current = first
+		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
 	if d.setup { setup_open(app, .Command) }
 	instance.focus(app.win.hwnd)

@@ -178,8 +178,8 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	tab := new(Tab)
 	defer free(tab)
 	tab.kind = .History
-	append(&app.tabs, tab)
-	defer delete(app.tabs)
+	append(&active_window(app).tabs, tab)
+	defer delete(active_window(app).tabs)
 	saved_mode := hview.mode
 	defer hview.mode = saved_mode
 	defer history_tree_destroy()   // the canvas's state, as about:history's closing leaves it
