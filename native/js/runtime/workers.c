@@ -129,7 +129,16 @@ JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst new_target, int argc
         }
     }
     uint64_t h = 0;
-    int32_t st = wr_Worker_createScript((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len, type, &h);
+    int32_t st;
+    extern bool web_blob_url_bytes(JSContext *ctx, const char *url, size_t len, const uint8_t **p, size_t *n);
+    const uint8_t *bp;
+    size_t bn;
+    if (web_blob_url_bytes(ctx, url.ptr, url.len, &bp, &bn)) {
+        /* a blob: URL of this realm: its Blob's bytes are the script */
+        st = wr_Worker_createScriptBytes((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len, type, bp ? bp : (const uint8_t *)"", (uint32_t)bn, &h);
+    } else {
+        st = wr_Worker_createScript((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len, type, &h);
+    }
     wj_str_free(ctx, &url);
     wj_str_free(ctx, &name);
     if (st < 0) {

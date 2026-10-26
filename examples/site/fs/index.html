@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>File System test</title>
+<p>The origin private file system and File System Access (tools\fs_e2e.ps1 drives this page).</p>
+<button id="open">Open a file</button>
+<button id="dir">Choose a folder</button>
+<button id="save">Save a file</button>
+<pre id="out"></pre>
+<script>
+// Helpers the test calls with wren ctl eval.
+window.text = async (h) => (await h.getFile()).text();
+window.put = async (h, data, opts) => { const w = await h.createWritable(opts); await w.write(data); await w.close(); };
+window.names = async (d) => { const out = []; for await (const [n, h] of d) out.push(n + ":" + h.kind[0]); return out.sort().join(","); };
+window.err = (p) => p.then(() => "ok", (e) => e.name);
+window.picked = null;
+window.pickError = null;
+const pick = (fn) => async () => { try { window.picked = await fn(); } catch (e) { window.pickError = e.name; } };
+document.getElementById("open").onclick = pick(() => showOpenFilePicker({types: [{description: "Text", accept: {"text/plain": [".txt"]}}]}));
+document.getElementById("dir").onclick = pick(() => showDirectoryPicker({mode: "readwrite"}));
+document.getElementById("save").onclick = pick(() => showSaveFilePicker({suggestedName: "saved.txt"}));
+</script>

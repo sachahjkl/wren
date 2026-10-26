@@ -28,7 +28,12 @@ enum {
     T_PORT,   /* a MessagePort of the transfer list: its index among the transferred ports */
     T_BLOB,   /* a Blob or File: is a file, its type, its bytes, and for a File its name and lastModified */
     T_GEOM,   /* DOMPoint, DOMRect, DOMMatrix (and their ReadOnly forms), ImageData: a kind, then their attributes */
+    T_FS_HANDLE,   /* a FileSystemHandle: its description (runtime/web_fs.c), restored in the receiving realm */
 };
+
+/* runtime/web_fs.c (weak: a build without it clones no handle) */
+__attribute__((weak)) char *web_fs_handle_describe(JSContext *ctx, JSValueConst v);
+__attribute__((weak)) JSValue web_fs_handle_restore(JSContext *ctx, const char *desc, size_t len);
 
 /* runtime/web_blob.c */
 extern bool web_blob_bytes(JSValueConst v, const uint8_t **ptr, size_t *len);
@@ -400,6 +405,17 @@ static bool serialize_object(ser *s, JSValueConst v)
     {
         int g = serialize_geom(s, v);
         if (g != 0) { return g > 0; }
+    }
+    if (web_fs_handle_describe && wj_unwrap(v, WJ_IFACE_FileSystemHandle)) {
+        char *desc = web_fs_handle_describe(ctx, v);
+        if (!desc) { return clone_error(ctx, "FileSystemHandle object could not be cloned."); }
+        if (!remember(s, v)) { free(desc); return false; }
+        JSValue str = JS_NewString(ctx, desc);
+        free(desc);
+        put_u8(&s->out, T_FS_HANDLE);
+        bool ok = put_string(ctx, &s->out, str);
+        JS_FreeValue(ctx, str);
+        return ok;
     }
     if (wj_obj_of(v) || JS_VALUE_GET_PTR(v) == JS_VALUE_GET_PTR(wj_the_realm.global)) {
         wj_obj *o = wj_obj_of(v);
@@ -1021,6 +1037,17 @@ static JSValue deserialize(deser *d)
         if (!get_u32(d, &i) || !JS_IsArray(d->ports)) { r = malformed(ctx); break; }
         r = JS_GetPropertyUint32(ctx, d->ports, i);
         if (JS_IsUndefined(r)) { r = malformed(ctx); }
+        break;
+    }
+    case T_FS_HANDLE: {
+        JSValue str = get_string(d);
+        if (JS_IsException(str)) { r = str; break; }
+        size_t n;
+        const char *s = JS_ToCStringLen(ctx, &n, str);
+        r = s && web_fs_handle_restore ? web_fs_handle_restore(ctx, s, n) : malformed(ctx);
+        if (s) { JS_FreeCString(ctx, s); }
+        JS_FreeValue(ctx, str);
+        if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
         break;
     }
     case T_GEOM: {

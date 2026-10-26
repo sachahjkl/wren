@@ -2,7 +2,9 @@
 # src\tools\wpt against the test server (tools\testserver\wpt.go), compared with the
 # expectations of wpt\expectations.
 #   powershell -NoProfile -File tools\wpt.ps1 [-Quick] [-Update] [-Only /dom/nodes/] [-Jobs n] [-TimeoutMs 10000]
-#       [-Fetch] [-UpdateManifest] [-NoServer] [-Port 8778] [-Pref name=value,...] [-Edge]
+#       [-Fetch] [-UpdateManifest] [-NoServer] [-Port 8778] [-Pref name=value,...] [-Edge] [-Suites file]
+# -Suites: run (and with -Update rewrite the expectations of) the folders of another list, a subset of wpt\suites.txt:
+# the checkout stays that of wpt\suites.txt.
 # Pinned: the WPT commit below; the checkout (build\wpt\wpt, a partial sparse clone of that commit: the measured folders
 # and the shared ones) is verified file by file against wpt\MANIFEST.txt (SHA-256 of every file). -UpdateManifest
 # rewrites that list after a change of the commit or of the folders (and says so); -Fetch only fetches and verifies.
@@ -17,7 +19,7 @@
 # -Edge runs the same tests in Microsoft Edge headless instead (build\wpt\edge_results.txt): the reference columns of
 # the table of later runs (how many subtests there are, how many Edge passes, the share of those Wren passes).
 param([switch]$Quick, [switch]$Update, [string]$Only = '', [int]$Jobs = 0, [int]$TimeoutMs = 10000, [switch]$Fetch,
-      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge)
+      [switch]$UpdateManifest, [switch]$NoServer, [int]$Port = 0, [string[]]$Pref = @(), [switch]$Edge, [string]$Suites = '')
 # (failures are checked by exit status: what native tools write on stderr is not an error; throw stops the script)
 $ErrorActionPreference = 'Continue'
 $WptCommit = '4ad507b28db0a636f528def9161d109fe11b93a3'
@@ -114,7 +116,7 @@ try {
 } finally { Pop-Location }
 
 if ($Port -le 0) { $Port = if (-not $NoServer) { 8778 } elseif ($env:WREN_TEST_BASE_PORT) { [int]$env:WREN_TEST_BASE_PORT + 3 } else { 8768 } }
-$runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $suitesFile, '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
+$runArgs = @('-server', "http://127.0.0.1:PORT", '-root', $wpt, '-suites', $(if ($Suites) { (Resolve-Path $Suites).Path } else { $suitesFile }), '-expect', (Join-Path $root 'wpt\expectations'), '-timeout', $TimeoutMs,
              '-md', (Join-Path $out 'report.md'), '-results', (Join-Path $out 'results.txt'))
 # media tests call play() without a gesture (the harness of other browsers runs with autoplay allowed too)
 $runArgs += @('--pref', 'media.autoplay.policy=allow-all')

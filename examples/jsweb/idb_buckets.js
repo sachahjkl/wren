@@ -24,9 +24,9 @@ test("storage: estimate, persisted, persist", async () => {
   eq(await navigator.storage.persisted(), false, "not persisted");
   eq(await navigator.storage.persist(), true, "persist grants");
   eq(await navigator.storage.persisted(), true, "persisted now");
-  let code = "";
-  try { await navigator.storage.getDirectory(); } catch (x) { code = x.name; }
-  eq(code, "NotSupportedError", "no origin private file system");
+  let kind = "";
+  try { kind = (await navigator.storage.getDirectory()).kind; } catch (x) { kind = x.name; }
+  eq(kind, "directory", "the origin private file system's root");
 });
 
 test("buckets: open, isolation, estimate, keys, delete", async () => {

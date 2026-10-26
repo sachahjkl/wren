@@ -63,14 +63,15 @@ function not exposed to workers is not instantiated.
 | [`fetch`](fetch.md) | 10 | Window | The promise side of the Fetch API, on the same records as the callback API of module net (a Response is a Fetch: |
 | [`forms`](forms.md) | 185 | Window | Form controls (HTML forms): values, checkedness, validity, selection, select / option / form members, focus, and |
 | [`frames`](frames.md) | 16 | Window | Nested browsing contexts for JavaScript (src/page/frames.odin, frames_scripts.odin; native/js/runtime/frames.c and |
+| [`fs`](fs.md) | 20 | Window, Worker | File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin; |
 | [`fullscreen`](fullscreen.md) | 6 | Window | The Fullscreen API (src/page/fullscreen.odin): an element fills the screen. The page keeps one fullscreen element per |
 | [`history`](history.md) | 14 | Window | Window, Location and History (HTML). Navigations requested by a module happen from a task of their own, never |
 | [`idb`](idb.md) | 1 | Window, Worker | IndexedDB (the JavaScript engine's prelude, native/js/lazy/idb.js, is the only caller). One entry point: the |
 | [`images`](images.md) | 6 | Window, Worker | Images: HTMLImageElement (<img> and <input type=image>) and decoding image files from buffers. naturalWidth and |
 | [`js`](js.md) | 11 | Window, Worker | What the JavaScript engine (native/js, a C guest) needs from the browser beyond the web API itself: the console with |
-| [`dnd`](dnd.md) | 31 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
-| [`entries`](entries.md) | 11 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
-| [`scripts`](scripts.md) | 22 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
+| [`dnd`](dnd.md) | 32 | Window | HTML drag and drop for JavaScript (src/page/dnd.odin; native/js/runtime/web_dnd.c): the drag data store behind a |
+| [`entries`](entries.md) | 12 | Window | The File and Directory Entries API for what the user dropped (src/page/dnd_entries.odin; |
+| [`scripts`](scripts.md) | 24 | Window, Worker | Script loading, the event loop and JavaScript workers as the engine needs them (HTML "scripting"): document.write / |
 | [`navigator`](navigator.md) | 8 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
 | [`htmlmedia`](htmlmedia.md) | 29 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
@@ -86,4 +87,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1135 imports in 1036 functions.
+1159 imports in 1060 functions.

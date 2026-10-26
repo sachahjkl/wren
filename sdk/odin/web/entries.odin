@@ -27,6 +27,7 @@ foreign _m_entries {
 	@(link_name = "FsEntry_fullPath") _FsEntry_fullPath :: proc(entry: FsEntry, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "FsEntry_filesystemName") _FsEntry_filesystemName :: proc(entry: FsEntry, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "FsEntry_parent") _FsEntry_parent :: proc(entry: FsEntry) -> FsEntry ---
+	@(link_name = "FsEntry_root") _FsEntry_root :: proc(entry: FsEntry) -> FsEntry ---
 	@(link_name = "FsEntry_file") _FsEntry_file :: proc(entry: FsEntry) -> Promise ---
 	@(link_name = "FsEntry_lookup") _FsEntry_lookup :: proc(dir: FsEntry, path: [^]u8, path_len: u32, directory: i32) -> Promise ---
 	@(link_name = "FsEntry_createReader") _FsEntry_createReader :: proc(dir: FsEntry) -> FsReader ---
@@ -136,6 +137,11 @@ FsEntry_filesystemName_alloc :: proc(entry: FsEntry, allocator: runtime.Allocato
 // getParent(): the folder above (an entry is its own parent at the top of what was dropped).
 FsEntry_parent :: proc "contextless" (entry: FsEntry) -> FsEntry {
 	return _FsEntry_parent(entry)
+}
+
+// entry.filesystem.root: the entry of what was dropped (the top of the entry's tree).
+FsEntry_root :: proc "contextless" (entry: FsEntry) -> FsEntry {
+	return _FsEntry_root(entry)
 }
 
 // fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).

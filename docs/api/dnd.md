@@ -298,6 +298,8 @@ string LocalFile_name(LocalFile file)
 
 A file's name (no directory).
 
+Exposed to: Window, Worker.
+
 Host: `LocalFile_name :: proc(c: ^Call, file: Api_LocalFile) -> string`
 
 ### `LocalFile_type`
@@ -308,6 +310,8 @@ string LocalFile_type(LocalFile file)
 
 Its MIME type ("" when unknown).
 
+Exposed to: Window, Worker.
+
 Host: `LocalFile_type :: proc(c: ^Call, file: Api_LocalFile) -> string`
 
 ### `LocalFile_info`
@@ -317,6 +321,8 @@ LocalFileInfo LocalFile_info(LocalFile file)
 ```
 
 Its size and time.
+
+Exposed to: Window, Worker.
 
 Host: `LocalFile_info :: proc(c: ^Call, file: Api_LocalFile) -> Api_LocalFileInfo`
 
@@ -329,9 +335,24 @@ i64 LocalFile_read(LocalFile file, i64 offset, out bytes into) raises
 Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
 changed since it was given: File API "NotReadableError").
 
+Exposed to: Window, Worker.
+
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `LocalFile_read :: proc(c: ^Call, file: Api_LocalFile, offset: i64, into: []u8) -> (i64, Api_Error)`
+
+### `DataTransfer_itemFsHandle`
+
+```
+string DataTransfer_itemFsHandle(DataTransfer dt, i32 index) raises
+```
+
+DataTransferItem.getAsFileSystemHandle(): the dropped file's or folder's handle (as Fs_showPicker describes one:
+root TAB path TAB kind TAB name), "" for a string item or outside read-only and read/write mode.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DataTransfer_itemFsHandle :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)`
 
 ### `DragEvent_dataTransfer`
 

@@ -75,9 +75,10 @@ fd_entry_destroy :: proc(p: ^Page, fd: ^Form_Data, e: ^forms.Entry) {
 
 FormData_create :: proc(c: ^Call, form: Api_Element, submitter: Api_Element) -> (u64, Api_Error) {
 	p := c.page
-	pf := page_forms(p)
 	list: [dynamic]forms.Entry
 	if form.handle != 0 {
+		// (only with a form: a worker has no document, hence no forms)
+		pf := page_forms(p)
 		if forms.kind(pf, H(form.handle)) != .Form { return 0, fail(c, .Invalid_Handle, "not a form") }
 		if submitter.handle != 0 && (!forms.is_submit_button(pf, H(submitter.handle)) || forms.form_owner(pf, H(submitter.handle)) != H(form.handle)) {
 			return 0, fail(c, .Invalid_Handle, "not a submit button of this form")
