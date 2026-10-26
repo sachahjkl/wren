@@ -497,6 +497,8 @@ enum wr_PerformanceEntryType {
 // has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
 typedef void (*wr_TimelineCallback)(int32_t user, int32_t kinds);
 
+/* module popover: types */
+
 /* module ports: types */
 
 /* module serviceworker: types */
@@ -2749,6 +2751,19 @@ WR_IMPORT("performance", "Performance_clearResourceTimings") void wr_Performance
 // origin), or NaN when it has not happened or does not apply (the attribute is then 0). The network phases of the
 // document's own fetch are not measured: they are all the time origin.
 WR_IMPORT("performance", "Performance_timingOf") double wr_Performance_timingOf(int32_t which);
+
+/* module popover */
+// element.showPopover({source}): Not_Supported without a valid popover attribute, Invalid_State when it is not
+// connected or is the fullscreen element; nothing when it is showing already or a beforetoggle listener cancelled.
+WR_IMPORT("popover", "Popover_show") int32_t wr_Popover_show(uint64_t element, uint64_t source);
+// element.hidePopover(): the same errors.
+WR_IMPORT("popover", "Popover_hide") int32_t wr_Popover_hide(uint64_t element);
+// element.togglePopover(force): force -1 none, 0 false (hide only), 1 true (show only). Whether it shows after.
+WR_IMPORT("popover", "Popover_toggle") int32_t wr_Popover_toggle(uint64_t element, int32_t force, uint64_t source, uint8_t *_ret);
+// The popover attribute's state: 0 none, 1 auto, 2 manual, 3 hint.
+WR_IMPORT("popover", "Popover_state") int32_t wr_Popover_state(uint64_t element);
+// The popover a button's popovertarget names (0: none).
+WR_IMPORT("popover", "Popover_targetOf") uint64_t wr_Popover_targetOf(uint64_t invoker);
 
 /* module ports */
 // A new pair of entangled port ends: the first end's id (the second is that id + 1), owned by nobody yet.

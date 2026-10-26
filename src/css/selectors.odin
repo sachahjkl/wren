@@ -22,9 +22,10 @@ Pseudo :: enum u8 {
 	Hover, Active, Focus, Focus_Visible, Focus_Within, Link, Any_Link, Visited, Target, Fullscreen,
 	Checked, Disabled, Enabled, Required, Optional, Read_Only, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range, Indeterminate, Default, Autofill,
+	Popover_Open,   // a popover that is showing (HTML: the page's popover state, through the style engine's control provider)
 	// other
 	Lang, Dir, Scope, Defined, Open,
-	Never,          // valid, but matches nothing in this engine's documents: :popover-open, :modal...
+	Never,          // valid, but matches nothing in this engine's documents: :modal, :picture-in-picture...
 	// shadow trees (CSS Scoping): :host, :host(<compound>) (argument in `list`), :host-context(<compound>); :state(x)
 	// (a custom element's custom state, ElementInternals.states; the name in `name`); :has-slotted
 	Host, Host_Context, State, Has_Slotted,
@@ -429,7 +430,8 @@ simple_pseudo_class :: proc(name: string) -> (Pseudo, bool) {
 	case "host": return .Host, true
 	case "has-slotted": return .Has_Slotted, true
 	case "fullscreen", "-webkit-full-screen": return .Fullscreen, true
-	case "popover-open", "modal", "picture-in-picture",
+	case "popover-open": return .Popover_Open, true
+	case "modal", "picture-in-picture",
 	     "playing", "paused", "seeking", "buffering", "stalled", "muted", "volume-locked", "current", "past", "future",
 	     "target-current", "active-view-transition", "xr-overlay":
 		return .Never, true

@@ -154,9 +154,11 @@ details_of_summary :: proc(f: ^Forms, h: base.Handle) -> base.Handle {
 toggle_details :: proc(f: ^Forms, details: base.Handle) {
 	n := element(f, details)
 	if n == nil { return }
-	if has_attr(n, "open") { dom.remove_attribute(f.doc, details, "open") } else { dom.set_attribute(f.doc, details, "open", "") }
+	was_open := has_attr(n, "open")
+	if was_open { dom.remove_attribute(f.doc, details, "open") } else { dom.set_attribute(f.doc, details, "open", "") }
 	changed_widely(f)
-	fire(f, details, "toggle")
+	// ToggleEvent: newState in `data`, oldState in `text`
+	fire(f, details, "toggle", data = was_open ? "closed" : "open", text = was_open ? "open" : "closed")
 }
 
 // The activation target of a click on `target`: itself or the nearest ancestor with an activation behaviour.
@@ -186,6 +188,8 @@ Click_Info :: struct {
 // because the target is a disabled control).
 click :: proc(f: ^Forms, target: base.Handle, info: Click_Info) -> bool {
 	if element(f, target) == nil && dom.get(f.doc, target) == nil { return true }
+	// a press outside the showing auto popovers closes them (HTML "light dismiss")
+	if info.trusted && f.in_activation == 0 && f.host.popover_dismiss != nil { f.host.popover_dismiss(f.host.user, target) }
 	// disabled form controls swallow user clicks
 	for cur := target; cur != base.NIL_HANDLE; cur = parent_element(f, cur) {
 		k := kind(f, cur)
@@ -237,6 +241,7 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 	switch kind_of(n) {
 	case .Input:
 		t := input_type_of(n)
+		if (t == .Button || ((t == .Submit || t == .Image || t == .Reset) && form_owner(f, at) == base.NIL_HANDLE)) && popover_invoker(f, at) { return }
 		#partial switch t {
 		case .Checkbox:
 			if !is_connected(f, at) { return }
@@ -260,6 +265,7 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 	case .Button:
 		if is_disabled(f, at) { return }
 		owner := form_owner(f, at)
+		if (button_type_of(n) == .Button || owner == base.NIL_HANDLE) && popover_invoker(f, at) { return }
 		switch button_type_of(n) {
 		case .Submit: if owner != base.NIL_HANDLE { submit(f, owner, at) }
 		case .Reset: if owner != base.NIL_HANDLE { reset(f, owner) }
@@ -282,6 +288,16 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 			if d := details_of_summary(f, at); d != base.NIL_HANDLE { toggle_details(f, d) }
 		}
 	}
+}
+
+// The popover target attributes' activation behaviour: a button with `popovertarget` shows, hides or toggles the popover
+// it names (the page decides). Returns whether the button is such an invoker.
+@(private)
+popover_invoker :: proc(f: ^Forms, at: base.Handle) -> bool {
+	n := element(f, at)
+	if n == nil || !has_attr(n, "popovertarget") || f.host.popover_invoke == nil { return false }
+	f.host.popover_invoke(f.host.user, at)
+	return true
 }
 
 // element.click(): a synthetic, untrusted click with activation behaviour.
@@ -316,6 +332,8 @@ Mods :: bit_set[Mod; u8]
 // the key did something here (the shell then does not use it). Clipboard keys are the shell's (it owns the clipboard),
 // as are Tab and opening a select's list.
 key_down :: proc(f: ^Forms, key: Key, mods: Mods) -> bool {
+	// Escape is a close request: the topmost auto popover goes first
+	if key == .Escape && mods == {} && f.host.close_request != nil && f.host.close_request(f.host.user) { return true }
 	h := f.focus
 	n := element(f, h)
 	if n == nil { return false }

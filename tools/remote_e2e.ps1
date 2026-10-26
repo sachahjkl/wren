@@ -212,6 +212,30 @@ function Test-WebApis($server) {
     $null = Wren-Eval 'window.short = "running"; document.getElementById("probe").animate({ opacity: [1, 0] }, 120).finished.then((a) => { window.short = a.playState; }); 1'
     $null = Wren-Ctl wait function 'window.short === "finished"' --timeout 10000
     Check 'finished resolves on the event loop' ((Wren-Eval 'window.short') -eq 'finished') "short = $(Wren-Eval 'window.short')"
+
+    # examples/site/popover.html: a real click on the invoker shows the menu (painted, its :popover-open background, above
+    # the card), a click outside light-dismisses it, Esc closes the nested one first
+    Section '7b web APIs in the browser: popovers'
+    $null = Wren-Ctl nav "$($server.Origin)/site/popover.html" --wait idle
+    $null = Wren-Ctl click --selector '#open-menu'
+    $null = Wren-Ctl wait function 'document.getElementById("menu").matches(":popover-open")' --timeout 5000
+    Check 'a click on the invoker shows the popover' ((Wren-Eval 'document.getElementById("menu").matches(":popover-open")') -eq 'true')
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'popover-menu.png'
+    $null = Wren-Shot $png -Selector '#menu'
+    if (Test-Path $png) {
+        $px = Pixel $png 6 30
+        Check "the popover is painted with its :popover-open style ($($px -join ','))" (Near $px @(255, 236, 153) 24)
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the popover was captured' $false $global:WrenErr }
+    $null = Wren-Ctl click --selector '#more'
+    $null = Wren-Ctl wait function 'document.getElementById("submenu").matches(":popover-open")' --timeout 5000
+    $null = Wren-Ctl key Escape
+    $state = Wren-Eval '["menu", "submenu"].map((id) => document.getElementById(id).matches(":popover-open")).join()'
+    Check "Esc closes the nested popover first ($state)" ($state -eq 'true,false')
+    $null = Wren-Ctl click --selector 'h1'   # (the menu is centred in the viewport: the heading is outside it)
+    $null = Wren-Ctl wait function '!document.getElementById("menu").matches(":popover-open")' --timeout 5000
+    Check 'a click outside closes the menu' ((Wren-Eval 'document.getElementById("menu").matches(":popover-open")') -eq 'false')
 }
 
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------
