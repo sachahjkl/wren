@@ -2,7 +2,8 @@
 # examples/site/workers/ connects to the shared worker "w" (shared.js) from two tabs and checks they share one worker
 # (connect events, ports both ways, self.name, its global's interfaces), that it stops when the last tab closes and
 # that close() makes the next constructor start another one; then a module worker (module.js: static imports, relative
-# and absolute, a dynamic import, import.meta.url, importScripts refused).
+# and absolute, a dynamic import, import.meta.url, importScripts refused); then nested workers (nested.js: a chain of
+# three, errors, transfers, a child of another origin, terminate() taking the children along, workers.max_depth).
 # -Check: the same on the check build (build.bat check), which must exit with nothing left allocated.
 param([switch]$Check)
 $ErrorActionPreference = 'Stop'
@@ -61,6 +62,25 @@ try {
   Expect ($pipe -eq 'ab') 'ReadableStream.pipeTo a WritableStream' $pipe
   $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 5000); })' --await
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
+
+  # --- nested workers (examples/site/workers/nested.js)
+  $ask = 'new Promise((ok) => { const w = new Worker("nested.js", {name: "level3"}); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); w.postMessage(MSG); setTimeout(() => ok("timeout"), 8000); })'
+  $chain = Wren-Ctl eval ($ask -replace 'MSG', '{op: "chain", depth: 3}') --await
+  Expect ($chain -eq 'bottom level1 < level2 < level3') 'a chain of three workers, each started by the one above: messages down and up' $chain
+  $types = Wren-Ctl eval ($ask -replace 'MSG', '{op: "types"}') --await
+  Expect ($types -eq 'function undefined') 'a worker has Worker but not SharedWorker (HTML: [Exposed=Window])' $types
+  $throw = Wren-Ctl eval ($ask -replace 'MSG', '{op: "throw"}') --await
+  Expect ($throw -eq 'child error true') 'an uncaught error of a nested worker: error event at its Worker object in the parent' $throw
+  $tr = Wren-Ctl eval ($ask -replace 'MSG', '{op: "transfer"}') --await
+  Expect ($tr -eq 'back 8 detached true port 8') 'a buffer and a MessagePort transferred to a nested worker, the buffer back' $tr
+  $cross = Wren-Ctl eval ($ask -replace 'MSG', '{op: "cross"}') --await
+  Expect ($cross -eq 'error event') 'a nested worker of another origin: an error event in the parent' $cross
+  $keep = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("nested.js"); let n = 0; w.onmessage = () => { n++; if (n === 5) { w.terminate(); setTimeout(() => { const at = n; setTimeout(() => ok(n === at ? "stopped" : "still ticking " + (n - at)), 300); }, 100); } }; w.postMessage({op: "keep"}); setTimeout(() => ok("timeout " + n), 8000); })' --await
+  Expect ($keep -eq 'stopped') 'terminating a worker terminates the workers it started' $keep
+  Wren-Ctl pref set workers.max_depth 2 | Out-Null
+  $deep = Wren-Ctl eval ($ask -replace 'MSG', '{op: "chain", depth: 3}') --await
+  Expect ($deep -eq 'error at level2 < level3') 'workers.max_depth: the worker one level too deep is refused with an error event' $deep
+  Wren-Ctl pref set workers.max_depth 16 | Out-Null
 } finally {
   if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
