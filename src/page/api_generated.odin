@@ -19513,6 +19513,81 @@ _t_scripts_SharedWorker_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	return nil
 }
 
+// Worker_createScriptBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_Worker_createScriptBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "name") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "script") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p3 := _s3[:_n3]
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.Worker_createScriptBytes: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_r, _err := Worker_createScriptBytes(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SharedWorker_connectBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool, script: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_SharedWorker_connectBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "name") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "script") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p4 := _s4[:_n4]
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.SharedWorker_connectBytes: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_p3 := a[5].i32 != 0
+	_r, _err := SharedWorker_connectBytes(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // SharedWorker_portEnd :: proc(c: ^Call, worker: u64) -> u64
 @(private = "file")
 _t_scripts_SharedWorker_portEnd :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -26233,6 +26308,8 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "WorkerGlobalScope_isModule", fn = _t_scripts_WorkerGlobalScope_isModule, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_connect", fn = _t_scripts_SharedWorker_connect, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Worker_createScriptBytes", fn = _t_scripts_Worker_createScriptBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "SharedWorker_connectBytes", fn = _t_scripts_SharedWorker_connectBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_portEnd", fn = _t_scripts_SharedWorker_portEnd, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "SharedWorkerGlobalScope_takeConnection", fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ResizeObserver_create", fn = _t_dom_ResizeObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},

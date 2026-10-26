@@ -51,6 +51,8 @@ try {
   Expect ($mod -eq '42 module dynamic /site/workers/module.js TypeError') 'module worker: static imports (relative, absolute, nested), import(), import.meta.url, importScripts throws TypeError' $mod
   $modsh = Wren-Ctl eval 'new Promise((ok) => { const s = new SharedWorker("module.js", {name: "m", type: "module"}); s.port.onmessage = (e) => ok(e.data); s.onerror = () => ok("error"); setTimeout(() => ok("connected"), 1500); })' --await
   Expect ($modsh -eq 'connected') 'a module shared worker starts (no error)' $modsh
+  $blob = Wren-Ctl eval 'new Promise((ok) => { const u = URL.createObjectURL(new Blob(["postMessage(\"dedicated \" + self.location.protocol)"], {type: "text/javascript"})); const w = new Worker(u); URL.revokeObjectURL(u); w.onmessage = (e) => { const su = URL.createObjectURL(new Blob(["onconnect = (e) => e.ports[0].postMessage(\"shared\")"])); const s = new SharedWorker(su); s.port.onmessage = (m) => ok(e.data + " " + m.data); }; w.onerror = () => ok("error"); setTimeout(() => ok("timeout"), 5000); })' --await
+  Expect ($blob -eq 'dedicated blob: shared') 'workers from blob: URLs (dedicated, revoked right after; shared)' $blob
   $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 5000); })' --await
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
 } finally {

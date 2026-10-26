@@ -281,6 +281,29 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `SharedWorker_connect :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool) -> (u64, Api_Error)`
 
+### `Worker_createScriptBytes`
+
+```
+u64 Worker_createScriptBytes(usvstring url, usvstring name, WorkerType type, bytes script) raises
+```
+
+new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
+URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Worker_createScriptBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error)`
+
+### `SharedWorker_connectBytes`
+
+```
+u64 SharedWorker_connectBytes(usvstring url, usvstring name, WorkerType type, bool extended_lifetime, bytes script) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `SharedWorker_connectBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool, script: []u8) -> (u64, Api_Error)`
+
 ### `SharedWorker_portEnd`
 
 ```

@@ -2428,6 +2428,10 @@ WR_IMPORT("scripts", "WorkerGlobalScope_isModule") int32_t wr_WorkerGlobalScope_
 // runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
 // Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
 WR_IMPORT("scripts", "SharedWorker_connect") int32_t wr_SharedWorker_connect(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, uint64_t *_ret);
+// new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
+// URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
+WR_IMPORT("scripts", "Worker_createScriptBytes") int32_t wr_Worker_createScriptBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
+WR_IMPORT("scripts", "SharedWorker_connectBytes") int32_t wr_SharedWorker_connectBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
 // The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
 WR_IMPORT("scripts", "SharedWorker_portEnd") uint64_t wr_SharedWorker_portEnd(uint64_t worker);
 // The end of the port of the next connect event of the calling shared worker (0: none waits).

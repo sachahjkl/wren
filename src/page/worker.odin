@@ -236,7 +236,7 @@ page_worker_count :: proc(p: ^Page) -> int {
 // Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
 // `image`: the script the browser already has (a service worker's stored version): it starts at once, nothing is fetched.
-worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil) -> u64 {
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil, shared: ^Shared_Worker = nil) -> u64 {
 	ws := &p.settings.workers
 	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
 	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
@@ -259,8 +259,9 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	}
 
 	h := new(Worker_Host)
-	h.page, h.owner, h.counted, h.javascript, h.module, h.sw = p, owner, true, javascript, javascript && module, sw
+	h.page, h.owner, h.counted, h.javascript, h.module, h.sw, h.shared = p, owner, true, javascript, javascript && module, sw, shared
 	h.url, h.name = strings.clone(u.href), strings.clone(name)
+	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
 	h.link = link_make(p.loop, ws.max_pending_bytes)
 	h.link.host = h
 	h.env = fetch.environment_make(u, p.env.referrer_policy)

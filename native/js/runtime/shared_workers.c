@@ -68,8 +68,17 @@ JSValue wjr_SharedWorker_constructor(JSContext *ctx, JSValueConst new_target, in
         goto fail;
     }
     uint64_t h = 0;
-    int32_t st = wr_SharedWorker_connect((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len,
-                                         type == 1 ? wr_WorkerType_Module : wr_WorkerType_Classic, extended, &h);
+    int32_t st;
+    extern bool web_blob_url_bytes(JSContext *ctx, const char *url, size_t len, const uint8_t **p, size_t *n);
+    const uint8_t *bp;
+    size_t bn;
+    if (web_blob_url_bytes(ctx, url.ptr, url.len, &bp, &bn)) {
+        st = wr_SharedWorker_connectBytes((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len,
+                                          type == 1 ? wr_WorkerType_Module : wr_WorkerType_Classic, extended, bp ? bp : (const uint8_t *)"", (uint32_t)bn, &h);
+    } else {
+        st = wr_SharedWorker_connect((const uint8_t *)url.ptr, (uint32_t)url.len, (const uint8_t *)name.ptr, (uint32_t)name.len,
+                                     type == 1 ? wr_WorkerType_Module : wr_WorkerType_Classic, extended, &h);
+    }
     wj_str_free(ctx, &url);
     wj_str_free(ctx, &name);
     if (st < 0) { return wj_throw_status(ctx, st, "SharedWorker"); }

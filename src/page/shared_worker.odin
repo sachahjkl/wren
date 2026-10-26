@@ -75,7 +75,7 @@ shared_by_id :: proc(id: u64) -> ^Shared_Worker {
 
 // Starts the shared worker of (key, href, name) in a host page made like `p` (its loop, loader, settings, storage).
 @(private)
-shared_start :: proc(p: ^Page, href, name, key: string, module: bool) -> ^Shared_Worker {
+shared_start :: proc(p: ^Page, href, name, key: string, module: bool, image: []byte = nil) -> ^Shared_Worker {
 	if shared_scope == nil { shared_scope = base.scope_make("shared-workers") }
 	s := new(Shared_Worker)
 	shared_next += 1
@@ -83,15 +83,13 @@ shared_start :: proc(p: ^Page, href, name, key: string, module: bool) -> ^Shared
 	s.key, s.url, s.name, s.module, s.loop = strings.clone(key), strings.clone(href), strings.clone(name), module, p.loop
 	hp := page_create(p.loop, p.loader, p.settings, shared_scope, p.env.location.href, shared_console, s)
 	hp.web.embedder.storage = p.web.embedder.storage
-	obj := worker_create(hp, href, name, 0, javascript = true, module = module)
+	obj := worker_create(hp, href, name, 0, javascript = true, module = module, image = image, shared = s)
 	h := (^Worker_Host)(object_data(hp, obj, &worker_vt)) if obj != 0 else nil
 	if h == nil {
 		page_close(hp)
 		shared_free(s)
 		return nil
 	}
-	h.shared = s
-	h.storage_key = strings.clone(key)
 	s.host_page, s.worker = hp, h
 	append(&shared_workers, s)
 	return s
@@ -199,6 +197,15 @@ shared_workers_shutdown :: proc() {
 // Module "scripts", a document's side
 
 SharedWorker_connect :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, extended_lifetime: bool) -> (u64, Api_Error) {
+	return shared_connect(c, u, name, type, extended_lifetime, nil)
+}
+
+SharedWorker_connectBytes :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, extended_lifetime: bool, script: []u8) -> (u64, Api_Error) {
+	return shared_connect(c, u, name, type, extended_lifetime, len(script) > 0 ? script : []u8{' '})
+}
+
+@(private)
+shared_connect :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, extended_lifetime: bool, image: []byte) -> (u64, Api_Error) {
 	p := c.page
 	if p.worker != nil || p.web == nil { return 0, fail(c, .Not_Supported, "NotSupportedError: a shared worker is started from a document") }
 	if !p.settings.sw.shared_enabled || !p.settings.workers.enabled || !p.settings.js.workers {
@@ -216,7 +223,7 @@ SharedWorker_connect :: proc(c: ^Call, u: string, name: string, type: Api_Worker
 	for x in shared_workers { if !x.gone && x.key == key && x.url == pu.href && x.name == name { s = x; break } }
 	mismatch := s != nil && s.module != module   // HTML: an error event, no connection
 	if s == nil {
-		s = shared_start(p, pu.href, name, key, module)
+		s = shared_start(p, pu.href, name, key, module, image)
 		if s == nil { return 0, fail(c, .Not_Allowed, "NotAllowedError: the shared worker was refused (see the console)") }
 	}
 	if extended_lifetime { s.extended = true }
