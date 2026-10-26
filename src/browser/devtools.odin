@@ -538,45 +538,19 @@ devtools_extent :: proc(app: ^App, vertical: bool) -> f32 {
 	return clamp(dev.size * ui.scale(), 80, math.max(room * 0.7, 80))
 }
 
-// A bar between the page and the panel: dragging it resizes the panel.
+// A bar between the page and the panel: dragging it resizes the panel (the toolkit's splitter; the panel is after the bar
+// unless it is docked on the left). Not a Tab stop: the page's and the panel's focus order stay as they were.
 devtools_splitter :: proc(app: ^App, vertical: bool) {
-	grab := dt_px(5)
-	ui.next({width = vertical ? ui.px(grab) : ui.fill(), height = vertical ? ui.fill() : ui.px(grab), cursor = vertical ? .Resize_H : .Resize_V})
-	b := ui.build_box({.Clickable}, "###dt_split")
-	sig := ui.signal(b)
-	line := ui.frame_new(Split_Draw)
-	hot := sig.hovering || dev.drag == .Size
-	line^ = {col = hot ? ui.color("accent") : ui.color("border"), thick = hot ? 2 : 1}
-	b.custom, b.custom_user = devtools_split_draw, line
-	if sig.pressed { dev.drag, dev.drag_from = .Size, {dev.size, 0} }
-	if sig.dragging && dev.drag == .Size {
-		delta := vertical ? sig.drag_delta.x : sig.drag_delta.y
-		if dev.dock == .Left { delta = -delta }
-		room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
-		dev.size = clamp(dev.drag_from[0] - delta / ui.scale(), 80, math.max(room / ui.scale() - 160, 80))
+	room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
+	r := ui.splitter("###dt_split", vertical ? .X : .Y, &dev.size, 80, math.max(room / ui.scale() - 160, 80),
+		{after = dev.dock != .Left, thickness = dt_px(5), no_keyboard = true})
+	if r.dragging {
+		dev.drag = .Size
 		app.frames_requested = max(app.frames_requested, 2)
 	}
-	if !sig.dragging && dev.drag == .Size {
+	if !r.dragging && dev.drag == .Size {
 		dev.drag = .None
 		set_pref_string(app, "browser.devtools.size", fmt.tprintf("%d", int(dev.size)))
-	}
-}
-
-@(private = "file")
-Split_Draw :: struct { col: draw.Color, thick: f32 }
-
-@(private = "file")
-devtools_split_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	d := (^Split_Draw)(user)
-	c := d.col
-	r := b.rect
-	th := max(math.round(ui.scale()), 1) * d.thick
-	if r.max.x - r.min.x < r.max.y - r.min.y {
-		x := math.round((r.min.x + r.max.x) * 0.5)
-		draw.rect(dc, {{x - th * 0.5, r.min.y}, {x + th * 0.5, r.max.y}}, c)
-	} else {
-		y := math.round((r.min.y + r.max.y) * 0.5)
-		draw.rect(dc, {{r.min.x, y - th * 0.5}, {r.max.x, y + th * 0.5}}, c)
 	}
 }
 
