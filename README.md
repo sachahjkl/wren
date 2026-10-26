@@ -444,9 +444,14 @@ Binaries are built by [GitHub Actions](.github/workflows/release.yml) from a ver
 each version. To make one (see [CONTRIBUTING.md](CONTRIBUTING.md)):
 
 ```bat
+powershell -File tools\changelog.ps1 -Assemble -Version X.Y.Z
+git commit -am "Wren X.Y.Z" && git push
 git tag -a vX.Y.Z -m "Wren X.Y.Z"
 git push origin vX.Y.Z
 ```
+
+(`changelog.ps1 -Assemble` turns the fragments of [changelog.d/](changelog.d/README.md) into the version's section and
+writes `APP_VERSION`.)
 
 ## License and credits
 
