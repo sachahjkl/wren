@@ -563,7 +563,9 @@ static JSValue client_from_line(JSContext *ctx, const char *line, size_t len)
     c->frame = JS_NewStringLen(ctx, f[3], fl[3]);
     c->visibility = JS_NewStringLen(ctx, f[4], fl[4]);
     c->focused = fl[5] == 1 && f[5][0] == '1';
-    JSValue obj = wj_new_object(ctx, WJ_IFACE_WindowClient, NULL, NULL);
+    /* a window is a WindowClient; a worker or a shared worker a plain Client */
+    bool window = fl[2] == 6 && !memcmp(f[2], "window", 6);
+    JSValue obj = wj_new_object(ctx, window ? WJ_IFACE_WindowClient : WJ_IFACE_Client, NULL, NULL);
     if (JS_IsException(obj)) { client_free(c); return obj; }
     web_set_impl(obj, c, client_free, client_mark);
     return obj;

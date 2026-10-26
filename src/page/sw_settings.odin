@@ -13,6 +13,7 @@ Sw_Settings :: struct {
 	opfs_max_bytes:   i64,
 	shared_enabled:   bool,
 	shared_linger_ms: int,      // extendedLifetime: how long a shared worker outlives its last document
+	window_activation_ms: int,  // clients.openWindow / WindowClient.focus: how recent a gesture in a window must be
 	fs_pickers:       bool,     // showOpenFilePicker & co.
 	fs_activation_ms: int,      // how recent a user gesture must be for a picker or a permission prompt
 	fs_permission:    string,   // "ask", "allow", "deny": what requestPermission does for a folder of the user's disk
@@ -27,6 +28,8 @@ SW_PREFS := [?]config.Def{
 		description = "A service worker that has had no event to handle (and none pending) for this long is stopped to free its memory and thread; it starts again with the next event. 0: never stopped while the profile is open."},
 	{name = "service_workers.update_check_hours", kind = .Int, default = {i = 24}, bounded = true, min = 0, max = 8760, unit = "h",
 		description = "A navigation in a service worker's scope checks whether its script changed when the last check is older than this (Service Workers: 24 hours). 0: at every navigation."},
+	{name = "service_workers.window_activation_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600_000, unit = "ms",
+		description = "A service worker may open a tab (clients.openWindow) or bring one forward (WindowClient.focus) only when a click or key press happened in a window of its site this recently: a site cannot pop windows up by itself."},
 	{name = "shared_workers.enabled", kind = .Bool, default = {b = true},
 		description = "Let pages start shared workers (new SharedWorker): one worker that every document of the same origin naming it shares. Off: the constructor is refused."},
 	{name = "shared_workers.extended_lifetime_ms", kind = .Int, default = {i = 5_000}, bounded = true, min = 0, max = 600_000, unit = "ms",
@@ -51,6 +54,7 @@ sw_settings_from_prefs :: proc(p: ^config.Prefs) -> Sw_Settings {
 		update_hours = int(config.int_of(p, "service_workers.update_check_hours")),
 		shared_enabled = config.bool_of(p, "shared_workers.enabled"),
 		shared_linger_ms = int(config.int_of(p, "shared_workers.extended_lifetime_ms")),
+		window_activation_ms = int(config.int_of(p, "service_workers.window_activation_ms")),
 		fs_pickers = config.bool_of(p, "file_system.pickers"),
 		fs_activation_ms = int(config.int_of(p, "file_system.user_activation_ms")),
 		fs_permission = config.string_of(p, "file_system.write_permission"),

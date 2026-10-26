@@ -28,6 +28,16 @@ Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerT
 	return h, .None
 }
 
+Worker_createScriptBytes :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error) {
+	p := c.page
+	if p.worker != nil { return 0, fail(c, .Not_Supported, "NotSupportedError: nested workers are not supported") }
+	// (an empty Blob is a script too: the image must not be nil, which means "fetch it")
+	image := len(script) > 0 ? script : []u8{' '}
+	h := worker_create(p, u, name, c.owner, javascript = true, module = type == .Module, image = image)
+	if h == 0 { return 0, fail(c, .Not_Allowed, "the worker was refused (see the console)") }
+	return h, .None
+}
+
 Worker_postSerialized :: proc(c: ^Call, worker: u64, data: []u8) -> Api_Error {
 	p := c.page
 	if p.worker != nil { return fail(c, .Invalid_Argument, "a worker posts with DedicatedWorkerGlobalScope_postSerialized") }

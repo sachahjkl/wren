@@ -99,6 +99,8 @@ Sw_Registration :: struct {
 	job_error:   string,
 	job_requests: [dynamic]u64,   // worker requests (update) answered when the job ends: version id << 32 | request id
 	last_check:  i64,             // unix seconds of the last update check
+	uninstalling: bool,           // unregistered while it controls pages: no new client, gone with the last one
+	uninstall_after: u64,         // ... the pages created after it was unregistered are not its clients
 	preload:     bool,            // navigation preload enabled
 	preload_header: string,
 	dir:         string,          // the profile directory it is kept in
@@ -241,7 +243,7 @@ sw_save :: proc(dir: string) {
 	if dir == "" { return }
 	b := strings.builder_make(context.temp_allocator)
 	for r in sw_registry.regs {
-		if r.dir != dir || r.active == nil { continue }
+		if r.dir != dir || r.active == nil || r.uninstalling { continue }
 		v := r.active
 		fmt.sbprintf(&b, "2\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n", r.id, r.origin, r.scope, v.script, r.via_cache, r.last_check,
 			r.preload ? "1" : "0", sw_escape(r.preload_header), v.id, v.module ? "1" : "0")
@@ -327,10 +329,11 @@ sw_note_page :: proc(p: ^Page) {
 }
 
 // The registration whose scope is the longest prefix of `u` (Service Workers "match service worker registration").
-sw_match :: proc(u: string, active_only: bool) -> ^Sw_Registration {
+sw_match :: proc(u: string, active_only: bool, uninstalling := false) -> ^Sw_Registration {
 	best: ^Sw_Registration
 	for r in sw_registry.regs {
 		if active_only && r.active == nil { continue }
+		if r.uninstalling && !uninstalling { continue }
 		if strings.has_prefix(u, r.scope) && (best == nil || len(r.scope) > len(best.scope)) { best = r }
 	}
 	return best
@@ -364,8 +367,10 @@ sw_is_host :: proc(p: ^Page) -> bool {
 // The registration controlling page `p` (nil: none).
 sw_controller :: proc(p: ^Page) -> ^Sw_Registration {
 	if p == nil || p.web == nil || p.worker != nil || sw_registry.active == 0 || sw_is_host(p) { return nil }
-	r := sw_match(p.env.location.href, true)
+	// (an unregistered registration still controls the pages it controlled: Service Workers "Unregister")
+	r := sw_match(p.env.location.href, true, uninstalling = true)
 	if r == nil { return nil }
+	if r.uninstalling && !r.claimed[p.web.id] && p.web.id > r.uninstall_after { return nil }
 	if p.web.id > r.after_page || r.claimed[p.web.id] { return r }
 	return nil
 }
@@ -544,6 +549,17 @@ sw_redundant :: proc(v: ^Sw_Version) {
 	sw_version_free(v)
 	if was_active && r.counted && r.active == nil { r.counted = false; sw_registry.active -= 1 }
 	if r.installing == nil && r.waiting == nil && r.active == nil && r.job == base.NIL_HANDLE { sw_remove(r) } else { sw_save(r.dir) }
+}
+
+// registration.unregister(): gone at once when it controls no page, else it stops taking new clients and goes when the
+// last page it controls closes (Service Workers "Unregister", "Try Clear Registration").
+@(private)
+sw_unregister :: proc(r: ^Sw_Registration) {
+	r.uninstalling = true
+	r.uninstall_after = next_page_id
+	if !sw_has_clients(r) { sw_remove(r); return }
+	sw_save(r.dir)   // (not kept: a restart forgets it)
+	sw_changed(r)
 }
 
 // The registration goes (unregister, or nothing left of it).
@@ -815,7 +831,14 @@ sw_page_gone :: proc(p: ^Page) {
 		delete_key(&sw_registry.inbox, p.web.id)
 	}
 	if len(sw_registry.regs) == 0 || sw_registry.loop == nil || sw_is_host(p) { return }
-	host.post(sw_registry.loop, proc(_: rawptr) { for r in sw_registry.regs { if r.waiting != nil { sw_try_activate(r) } } }, nil)
+	host.post(sw_registry.loop, proc(_: rawptr) {
+		for i := len(sw_registry.regs) - 1; i >= 0; i -= 1 {
+			if i >= len(sw_registry.regs) { continue }
+			r := sw_registry.regs[i]
+			if r.uninstalling && !sw_has_clients(r) { sw_remove(r); continue }   // its last client went
+			if r.waiting != nil { sw_try_activate(r) }
+		}
+	}, nil)
 }
 
 @(private)
@@ -891,9 +914,26 @@ sw_client_page :: proc(r: ^Sw_Registration, text: string) -> ^Page {
 	return pg
 }
 
+// Service Workers: openWindow and focus need a user activation. A service worker has no input of its own (it would be a
+// notification click, which this browser does not have): a click or key press in a window of its origin within
+// service_workers.window_activation_ms stands for it.
+@(private)
+sw_origin_activated :: proc(origin: string) -> bool {
+	ms := sw_registry.settings != nil ? sw_registry.settings.sw.window_activation_ms : 5000
+	for _, pg in live_pages {
+		if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != origin { continue }
+		if age, had := activation_age_ns(pg); had && age <= i64(ms) * 1_000_000 { return true }
+	}
+	return false
+}
+
 @(private)
 sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra: string) {
 	r := v.reg
+	if (op == .Open_Window || op == .Focus) && !sw_origin_activated(r.origin) {
+		sw_answer(v.id, request, false, "InvalidAccessError: opening or focusing a window needs a user gesture")
+		return
+	}
 	switch op {
 	case .None:
 		sw_answer(v.id, request, false, "unknown request")
@@ -916,6 +956,25 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 				for k in 0 ..< i { if ids[k] > ids[k + 1] { ids[k], ids[k + 1] = ids[k + 1], ids[k] } }
 			}
 			for i := len(ids) - 1; i >= 0; i -= 1 { sw_client_line(&b, page_by_id(ids[i])) }
+		}
+		if type == "worker" || type == "all" {
+			// dedicated workers: clients of their document's controller (HTML: a worker inherits it)
+			for _, pg in live_pages {
+				if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { continue }
+				if !uncontrolled && sw_controller(pg) != r { continue }
+				for h in pg.workers.hosts {
+					if !h.javascript || h.terminated || h.state != .Running || h.sw != nil || h.shared != nil { continue }
+					if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
+					fmt.sbprintf(&b, "%d\t%s\tworker\tnone\thidden\t0", h.self, h.url)
+				}
+			}
+		}
+		if (type == "sharedworker" || type == "all") && uncontrolled {
+			for s in shared_workers {
+				if s.gone || s.host_page == nil || !strings.has_prefix(s.key, r.origin) { continue }
+				if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
+				fmt.sbprintf(&b, "%d\t%s\tsharedworker\tnone\thidden\t0", s.host_page.web.id, s.url)
+			}
 		}
 		sw_answer(v.id, request, true, strings.to_string(b))
 	case .Get:
@@ -960,7 +1019,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		sw_update(r, r.script, r.module, nil, force_network = true)
 	case .Unregister:
 		sw_answer(v.id, request, true, "1")
-		sw_remove(r)
+		sw_unregister(r)
 	}
 }
 
@@ -1181,6 +1240,7 @@ ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), v
 		append(&sw_registry.regs, r)
 	}
 	if r.via_cache != via_cache { delete(r.via_cache); r.via_cache = strings.clone(via_cache) }
+	if r.uninstalling { r.uninstalling = false; sw_save(r.dir) }   // registered again before it went
 	newest := r.installing != nil ? r.installing : (r.waiting != nil ? r.waiting : r.active)
 	if newest != nil && newest.script == su && newest.module == module && r.job == base.NIL_HANDLE && newest != r.installing {
 		// Service Workers "register": the same script is already there: the registration, at once
@@ -1216,7 +1276,7 @@ ServiceWorker_registrationIds :: proc(c: ^Call) -> string {
 	origin := url.origin_serialize(c.page.env.origin, context.temp_allocator)
 	b := strings.builder_make(context.temp_allocator)
 	for r in sw_registry.regs {
-		if r.origin != origin { continue }
+		if r.origin != origin || r.uninstalling { continue }
 		if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 		fmt.sbprintf(&b, "%d", r.id)
 	}
@@ -1255,8 +1315,8 @@ ServiceWorker_info :: proc(c: ^Call, version: u64) -> string {
 ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool {
 	if sw_off_thread(c) { return false }
 	r := sw_by_id(id)
-	if r == nil || r.origin != url.origin_serialize(c.page.env.origin, context.temp_allocator) { return false }
-	sw_remove(r)
+	if r == nil || r.uninstalling || r.origin != url.origin_serialize(c.page.env.origin, context.temp_allocator) { return false }
+	sw_unregister(r)
 	return true
 }
 

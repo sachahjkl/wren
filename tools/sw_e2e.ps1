@@ -97,8 +97,15 @@ try {
   Expect ($cl -eq '1 window:/sw/ver/page') 'clients.matchAll knows the open window clients of the scope' $cl
   $get = Wren-Ctl eval 'ask("get")' --await
   Expect ($get -eq 'got true top-level') 'clients.get(id)' $get
+  $nofocus = Wren-Ctl eval 'ask("focus")' --await
+  Expect ($nofocus -eq 'refused InvalidAccessError') 'WindowClient.focus() without a user gesture in a window of the site is refused' $nofocus
+  Wren-Ctl eval 'window.wk = new Worker("data:text/javascript,setTimeout(() => 0, 1e9)"); 1' | Out-Null
+  $wcl = Wren-Ctl eval 'ask("workers")' --await
+  Expect ($wcl -match '^worker:') 'clients.matchAll({type: "worker"}) lists the dedicated workers of its clients' $wcl
+  Wren-Ctl click --selector '#x' | Out-Null
   $op = Wren-Ctl eval 'ask("open")' --await
   Expect ($op -eq 'opened /sw/ver/opened') 'clients.openWindow opens a tab and resolves with its WindowClient' $op
+  Wren-Ctl click --selector '#x' --tab-id $tab1 | Out-Null
   $fo = Wren-Ctl eval 'ask("focus")' --await --tab-id $tab1
   Expect ($fo -eq 'focused true') 'WindowClient.focus() shows the client''s tab' $fo
   Wren-Ctl pref set service_workers.idle_ms 400 | Out-Null
@@ -121,6 +128,11 @@ try {
   Wren-Ctl nav "$o/sw/pre/fallback" --wait load --tab-id $tab1 | Out-Null
   $pf = Wren-Ctl eval 'document.body.textContent' --tab-id $tab1
   Expect ($pf -eq 'header=wren-test') 'a navigation the worker does not answer gets the preload''s response' $pf
+  $unr = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => r.unregister()).then(async (ok) => ok + " " + !!navigator.serviceWorker.controller + " " + String(await navigator.serviceWorker.getRegistration()))' --await --tab-id $tab1
+  Expect ($unr -eq 'true true undefined') 'unregister(): the page it controls stays controlled, the registration is no longer found' $unr
+  Wren-Ctl nav "$o/sw/pre/page" --wait load --tab-id $tab1 | Out-Null
+  $gone = Wren-Ctl eval 'document.body.textContent + " " + !!navigator.serviceWorker.controller' --tab-id $tab1
+  Expect ($gone -eq 'header= false') 'its last client gone, the registration is too (a new page is not controlled)' $gone
   Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.filter((r) => new URL(r.scope).pathname.startsWith("/sw/")).map((r) => r.unregister())))' --await --tab-id $tab1 | Out-Null
 
   Wren-Ctl nav "$($srv.Origin)/site/index.html" --wait load --tab-id $tab1 | Out-Null
