@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>top</title>
+<body style="margin:0">
+<iframe id="f" style="border:0;width:400px;height:200px;display:block"></iframe>
+<script>
+// A page that embeds the third party given as ?t= (tools/partition_e2e.ps1): ask(msg) posts to it and resolves with
+// its answer; what it says unasked (a click's storage access) is kept in `said`.
+const said = [];
+const waiters = [];
+addEventListener("message", (e) => { if (waiters.length) waiters.shift()(e.data); else said.push(e.data); });
+const ask = (msg) => new Promise((ok) => { waiters.push(ok); f.contentWindow.postMessage(msg, "*"); });
+const loaded = new Promise((ok) => { f.onload = () => ok("loaded"); });
+f.src = new URLSearchParams(location.search).get("t");
+</script>
+</body>

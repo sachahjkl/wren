@@ -112,7 +112,13 @@ Environment :: struct {
 	cache_override:  Cache_Mode,        // the mode of this document's requests that ask for the default (a reload without the cache)
 	counts:          Fetch_Counts,      // what this document's requests cost (status bar, measurements)
 	tag:             u64,               // the content blocker's handle for the document's tab (copied by environment_clone; intercept.odin)
+	storage_access:  Storage_Access,    // a cross-site frame's unpartitioned storage and cookies (Storage Access API)
 }
+
+// The Storage Access API's state of a document (Sec-Fetch-Storage-Access): no permission for its site under the
+// top-level site; permission granted but not used by this document yet; in use (document.requestStorageAccess()
+// resolved): its requests carry its first-party cookies, its storage is its origin's.
+Storage_Access :: enum u8 { None, Inactive, Active }
 
 // The requests of a document by where their responses came from (http_cache.odin), and the body bytes the network
 // brought for them.
@@ -147,6 +153,7 @@ environment_clone :: proc(e: Environment) -> Environment {
 	c.referrer_policy = e.referrer_policy
 	c.file_root = strings.clone(e.file_root)
 	c.tag = e.tag
+	c.storage_access = e.storage_access
 	return c
 }
 

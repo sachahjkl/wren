@@ -31,7 +31,7 @@ jar_destroy :: proc(j: ^Jar) {
 @(private)
 free_cookie :: proc(j: ^Jar, c: ^Cookie) {
 	a := j.allocator
-	delete(c.name, a); delete(c.value, a); delete(c.domain, a); delete(c.path, a)
+	delete(c.name, a); delete(c.value, a); delete(c.domain, a); delete(c.path, a); delete(c.partition, a)
 	c^ = {}
 }
 
@@ -120,7 +120,7 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 	eff := c.same_site == .Unspecified ? j.settings.same_site_default : c.same_site
 	if eff != .None && ctx.site_context == .Cross_Site { return .Rejected_Same_Site }
 
-	idx := find(j, c.name, c.domain, c.path)
+	idx := find(j, c.name, c.domain, c.path, ctx.partition)
 	if idx >= 0 && j.cookies[idx].http_only && !ctx.http_api { return .Rejected_Http_Only }
 
 	if expired {
@@ -131,7 +131,7 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 	// "Leave Secure Cookies Alone": an insecure origin must not shadow or replace a Secure cookie
 	if !secure_origin {
 		for o in j.cookies {
-			if o.secure && o.name == c.name &&
+			if o.secure && o.name == c.name && o.partition == ctx.partition &&
 			   (domain_match(c.domain, o.domain) || domain_match(o.domain, c.domain)) &&
 			   (path_match(c.path, o.path) || path_match(o.path, c.path)) {
 				return .Rejected_Secure_Overwrite
@@ -144,6 +144,7 @@ store :: proc(j: ^Jar, header: string, ctx: Context) -> Store_Result {
 	c.value = strings.clone(c.value, a)
 	c.domain = strings.clone(c.domain, a)
 	c.path = strings.clone(c.path, a)
+	c.partition = strings.clone(ctx.partition, a)
 	c.accessed_ms = now
 	c.created_ms = now
 	result := Store_Result.Stored
@@ -168,9 +169,14 @@ prefix_ok_ci :: proc(c: Cookie, secure_origin: bool) -> bool {
 	return true
 }
 
+// (`partition`: Maybe nil matches any partition: the developer tools name a cookie by name, domain and path)
 @(private)
-find :: proc(j: ^Jar, name, domain, path: string) -> int {
-	for c, i in j.cookies { if c.name == name && c.domain == domain && c.path == path { return i } }
+find :: proc(j: ^Jar, name, domain, path: string, partition: Maybe(string) = nil) -> int {
+	for c, i in j.cookies {
+		if c.name != name || c.domain != domain || c.path != path { continue }
+		if pk, has := partition.?; has && c.partition != pk { continue }
+		return i
+	}
 	return -1
 }
 
@@ -222,6 +228,7 @@ header_for :: proc(j: ^Jar, ctx: Context, allocator := context.allocator) -> str
 
 	for &c, i in j.cookies {
 		if c.expires_ms != 0 && c.expires_ms <= ctx.now_ms { continue }
+		if c.partition != ctx.partition { continue }
 		if c.host_only { if u.host != c.domain { continue } } else if !domain_match(u.host, c.domain) { continue }
 		if !path_match(u.path, c.path) { continue }
 		if c.secure && !secure_origin { continue }
@@ -282,6 +289,31 @@ delete_for_host :: proc(j: ^Jar, host: string) -> int {
 	return n
 }
 
+// The cookies third parties set under top-level site `site` (a partition: "https://example.com"), and their removal
+// (clearing a site's data clears what was stored while it was the top level, too).
+count_in_partition :: proc(j: ^Jar, site: string, at: i64 = 0) -> int {
+	n := 0
+	now := at == 0 ? now_ms() : at
+	for c in j.cookies { if c.partition == site && (c.expires_ms == 0 || c.expires_ms > now) { n += 1 } }
+	return n
+}
+
+delete_partition :: proc(j: ^Jar, site: string) -> int {
+	n := 0
+	for i := len(j.cookies) - 1; i >= 0; i -= 1 { if j.cookies[i].partition == site { remove_at(j, i); n += 1 } }
+	return n
+}
+
+// The partitions of top-level site domain `domain` (any scheme) removed: what third parties stored on that site.
+delete_partitions_of :: proc(j: ^Jar, domain: string) -> int {
+	n := 0
+	for i := len(j.cookies) - 1; i >= 0; i -= 1 {
+		p := j.cookies[i].partition
+		if k := strings.index(p, "://"); k >= 0 && p[k + 3:] == domain { remove_at(j, i); n += 1 }
+	}
+	return n
+}
+
 clear_all :: proc(j: ^Jar) {
 	for len(j.cookies) > 0 { remove_at(j, len(j.cookies) - 1) }
 }
@@ -293,12 +325,13 @@ copy_all :: proc(j: ^Jar, allocator := context.allocator) -> []Cookie {
 		out[i] = c
 		out[i].name, out[i].value = strings.clone(c.name, allocator), strings.clone(c.value, allocator)
 		out[i].domain, out[i].path = strings.clone(c.domain, allocator), strings.clone(c.path, allocator)
+		out[i].partition = strings.clone(c.partition, allocator)
 	}
 	return out
 }
 
 copy_destroy :: proc(list: []Cookie, allocator := context.allocator) {
-	for c in list { delete(c.name, allocator); delete(c.value, allocator); delete(c.domain, allocator); delete(c.path, allocator) }
+	for c in list { delete(c.name, allocator); delete(c.value, allocator); delete(c.domain, allocator); delete(c.path, allocator); delete(c.partition, allocator) }
 	delete(list, allocator)
 }
 
@@ -309,6 +342,7 @@ replace_all :: proc(j: ^Jar, list: []Cookie) {
 		n := c
 		n.name, n.value = strings.clone(c.name, j.allocator), strings.clone(c.value, j.allocator)
 		n.domain, n.path = strings.clone(c.domain, j.allocator), strings.clone(c.path, j.allocator)
+		n.partition = strings.clone(c.partition, j.allocator)
 		append(&j.cookies, n)
 	}
 	j.dirty = true
@@ -317,7 +351,8 @@ replace_all :: proc(j: ^Jar, list: []Cookie) {
 ////////////////////////////////
 // Persistence: one line per persistent cookie, written atomically.
 
-MAGIC :: "wbcookies 1"
+MAGIC :: "wbcookies 2"      // a tenth field: the partition
+MAGIC_V1 :: "wbcookies 1"   // read: nine fields, every cookie unpartitioned
 
 @(private)
 escape :: proc(s: string, allocator := context.temp_allocator) -> string {
@@ -354,8 +389,8 @@ save :: proc(j: ^Jar, path: string, now: i64 = 0) -> bool {
 		if c.host_only { flags |= 1 }
 		if c.secure { flags |= 2 }
 		if c.http_only { flags |= 4 }
-		fmt.sbprintf(&sb, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\n", escape(c.name), escape(c.value), escape(c.domain), escape(c.path),
-			c.expires_ms, c.created_ms, c.accessed_ms, flags, int(c.same_site))
+		fmt.sbprintf(&sb, "%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%s\n", escape(c.name), escape(c.value), escape(c.domain), escape(c.path),
+			c.expires_ms, c.created_ms, c.accessed_ms, flags, int(c.same_site), escape(c.partition))
 	}
 	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
 	if err := os.write_entire_file(tmp, transmute([]byte)strings.to_string(sb)); err != nil { return false }
@@ -374,11 +409,20 @@ load :: proc(j: ^Jar, path: string, now: i64 = 0) -> (loaded: int, ok: bool) {
 	nowv := now == 0 ? now_ms() : now
 	text := string(data)
 	first := true
+	fields := 10
 	a := j.allocator
 	for line in strings.split_lines_iterator(&text) {
-		if first { first = false; if line != MAGIC { return 0, false }; continue }
+		if first {
+			first = false
+			switch line {
+			case MAGIC:
+			case MAGIC_V1: fields = 9
+			case: return 0, false
+			}
+			continue
+		}
 		f := strings.split(line, "\t", context.temp_allocator)
-		if len(f) != 9 { continue }
+		if len(f) != fields { continue }
 		c: Cookie
 		exp, ok1 := strconv.parse_i64(f[4], 10)
 		cre, ok2 := strconv.parse_i64(f[5], 10)
@@ -393,7 +437,8 @@ load :: proc(j: ^Jar, path: string, now: i64 = 0) -> (loaded: int, ok: bool) {
 		c.expires_ms, c.created_ms, c.accessed_ms = exp, cre, acc
 		c.host_only, c.secure, c.http_only = flags & 1 != 0, flags & 2 != 0, flags & 4 != 0
 		c.same_site = Same_Site(ss)
-		if idx := find(j, c.name, c.domain, c.path); idx >= 0 { free_cookie(j, &j.cookies[idx]); j.cookies[idx] = c } else { append(&j.cookies, c) }
+		if fields == 10 { c.partition = strings.clone(unescape(f[9]), a) }
+		if idx := find(j, c.name, c.domain, c.path, c.partition); idx >= 0 { free_cookie(j, &j.cookies[idx]); j.cookies[idx] = c } else { append(&j.cookies, c) }
 		loaded += 1
 	}
 	return loaded, true

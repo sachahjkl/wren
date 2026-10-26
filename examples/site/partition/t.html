@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>third party</title>
+<body style="margin:0">
+<button id="b" style="width:400px;height:200px">storage access</button>
+<script>
+// A third party (tools/partition_e2e.ps1): embedded in pages of two other sites, and opened as a tab of its own. It
+// answers its parent's questions about what it stores; a click asks for storage access.
+const say = (x) => parent.postMessage(x, "*");
+const cookie = () => { const m = /(?:^|; )v=([^;]*)/.exec(document.cookie); return m ? m[1] : "none"; };
+const got = [];
+let bc = null;
+async function run(d) {
+  switch (d.op) {
+    case "write":
+      localStorage.v = d.v;
+      sessionStorage.v = d.v;
+      document.cookie = "v=" + d.v + "; Path=/; Max-Age=600; SameSite=None; Secure";
+      await (await caches.open("p")).put("/x", new Response(d.v));
+      return "written";
+    case "read": {
+      const r = await (await caches.open("p")).match("/x");
+      return [localStorage.v || "none", sessionStorage.v || "none", cookie(), r ? await r.text() : "none"].join("|");
+    }
+    case "hdr":
+      return (await fetch("/partition/hdr", {credentials: "include"})).text();
+    case "listen":
+      bc = new BroadcastChannel("p");
+      bc.onmessage = (m) => got.push(m.data);
+      return "listening";
+    case "post":
+      new BroadcastChannel("p").postMessage(d.v);
+      return "posted";
+    case "got":
+      return got.join(",") || "nothing";
+    case "sw":
+      await navigator.serviceWorker.register("sw.js", {scope: "./scope/"});
+      return String((await navigator.serviceWorker.getRegistrations()).length);
+    case "swcount":
+      return String((await navigator.serviceWorker.getRegistrations()).length);
+    case "has":
+      return String(await document.hasStorageAccess());
+    case "request":
+      return document.requestStorageAccess().then(() => "granted", (e) => "refused " + e.name);
+  }
+  return "unknown " + d.op;
+}
+window.run = run;
+onmessage = (e) => run(e.data).then(say, (x) => say("error " + x));
+b.onclick = () => document.requestStorageAccess().then(() => say("granted"), (e) => say("refused " + e.name + ": " + e.message));
+</script>
+</body>

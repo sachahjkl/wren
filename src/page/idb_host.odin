@@ -28,7 +28,6 @@ import "core:time"
 import "wb:base"
 import "wb:host"
 import "wb:idb"
-import "wb:url"
 
 Idb_Host :: struct {
 	m:     idb.Manager,
@@ -373,8 +372,8 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 		// every bucket has an origin private file system of its own (fs_store.odin; keyed by its storage key)
 		if sm != nil { quota += p.settings.sw.opfs_max_bytes }
 		if bucket == "" && sm != nil {
-			// the Cache API's bytes and allowance count too (cache_store.odin; keyed by origin)
-			usage += cache_usage(sm.dir, url.origin_serialize(p.env.origin, context.temp_allocator))
+			// the Cache API's bytes and allowance count too (cache_store.odin; keyed by the same storage key)
+			usage += cache_usage(sm.dir, ip.key)
 			quota += p.settings.sw.cache_max_bytes
 		}
 		idb.w_uv(&out, u64(usage)); idb.w_uv(&out, u64(quota))

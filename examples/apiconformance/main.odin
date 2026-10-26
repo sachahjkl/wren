@@ -996,6 +996,13 @@ foreign _m_scripts {
 	@(link_name = "SharedWorkerGlobalScope_takeConnection") c_SharedWorkerGlobalScope_takeConnection :: proc() -> i64 ---
 }
 
+foreign import _m_storageaccess "storageaccess"
+@(default_calling_convention = "contextless")
+foreign _m_storageaccess {
+	@(link_name = "Document_hasStorageAccess") c_Document_hasStorageAccess :: proc() -> i64 ---
+	@(link_name = "Document_requestStorageAccess") c_Document_requestStorageAccess :: proc() -> i64 ---
+}
+
 foreign import _m_navigator "navigator"
 @(default_calling_convention = "contextless")
 foreign _m_navigator {

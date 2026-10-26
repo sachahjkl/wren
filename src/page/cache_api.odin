@@ -13,8 +13,10 @@ import "wb:url"
 cache_realm :: proc(c: ^Call) -> (dir, origin: string, err: Api_Error) {
 	p := c.page
 	if !p.env.secure_context { return "", "", fail(c, .Security, "SecurityError: the Cache API needs a secure context") }
-	origin = url.origin_serialize(p.env.origin, context.temp_allocator)
-	if origin == "null" || origin == "" { return "", "", fail(c, .Security, "SecurityError: an opaque origin has no caches") }
+	if p.env.origin.opaque { return "", "", fail(c, .Security, "SecurityError: an opaque origin has no caches") }
+	// (the storage key: the origin, partitioned by the top-level site in a third-party frame and its workers)
+	origin = realm_storage_key(p)
+	if origin == "" { origin = url.origin_serialize(p.env.origin, context.temp_allocator) }
 	if sm := p.web.embedder.storage; sm != nil && sm.ready { dir = sm.dir }
 	return dir, origin, .None
 }

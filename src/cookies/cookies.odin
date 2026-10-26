@@ -22,6 +22,7 @@ Cookie :: struct {
 	secure:      bool,
 	http_only:   bool,
 	same_site:   Same_Site,
+	partition:   string,   // the top-level site it was set under in a third-party context ("": first-party, unpartitioned)
 }
 
 // What kind of request a cookie is attached to / received from, as far as SameSite is concerned.
@@ -36,6 +37,9 @@ Context :: struct {
 	site_context: Site_Context,
 	http_api:     bool,          // true: HTTP request/response; false: script (document.cookie)
 	now_ms:       i64,
+	// the cookie partition of the context (storage partitioning, as Firefox's Total Cookie Protection): "" for a first-
+	// party context, else the top-level site; a context only sees and sets the cookies of its own partition
+	partition:    string,
 }
 
 ////////////////////////////////

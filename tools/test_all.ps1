@@ -248,6 +248,10 @@ Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
 } -Weight 20
+Step 'storage partitioning end to end (tools\partition_e2e.ps1: a third party embedded in another site has its own cookies, localStorage, sessionStorage, Cache API, BroadcastChannel and service workers there, Sec-Fetch-Storage-Access, document.requestStorageAccess() after a click; no window shown)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\partition_e2e.ps1
+} -Weight 10
 Step 'origin private file system and File System Access end to end (tools\fs_e2e.ps1: handles, writables, a sync access handle in a worker, IndexedDB clones, quota, pickers on files of the disk through browser.dialogs.test_answer; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
@@ -415,9 +419,9 @@ if ($CI -or -not $Quick) {
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     } -Weight 30
-    Step 'service workers, workers, file systems and the back/forward cache on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1, bfcache_e2e.ps1 -Check)' {
+    Step 'service workers, workers, file systems, the back/forward cache and storage partitioning on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1, bfcache_e2e.ps1, partition_e2e.ps1 -Check)' {
         $bad = 0
-        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e', 'partition_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
     } -Weight 30

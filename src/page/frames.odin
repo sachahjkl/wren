@@ -197,15 +197,30 @@ feature_enabled :: proc(p: ^Page, f: Feature) -> bool {
 	return f in p.frames.features
 }
 
-// The key of the document's Web Storage (temp): its origin, followed by "^" and the top-level site when it is a frame
-// whose site is not the tab's (frames.storage_partitioning, Chromium's and Firefox's storage partitioning).
+// The document's storage key (temp): its origin, followed by "^" and the top-level site when it is a frame whose site
+// is not the tab's (storage.partitioned: Chromium's, Firefox's and Safari's storage partitioning), unless the frame
+// was granted storage access (document.requestStorageAccess(): storage_access.odin). Every store keys by it: Web
+// Storage, IndexedDB, the Cache API, OPFS and buckets, service worker registrations, BroadcastChannel, shared workers.
 storage_origin_key :: proc(p: ^Page) -> string {
-	origin := url.origin_serialize(p.env.origin, context.temp_allocator)
-	if !p.settings.frames.storage_partition || p.frames == nil || p.frames.nav == nil || p.frames.nav.parent == nil { return origin }
-	if url.same_site(p.env.site, p.env.top_level_site) { return origin }
-	top := p.env.top_level_site
-	if top.opaque { return strings.concatenate({origin, "^null"}, context.temp_allocator) }
-	return strings.concatenate({origin, "^", top.scheme, "://", top.domain}, context.temp_allocator)
+	framed := p.frames != nil && p.frames.nav != nil && p.frames.nav.parent != nil
+	return storage_key_of(p.env.origin, p.env.site, p.env.top_level_site, framed, p.settings.frames.storage_partition, p.env.storage_access)
+}
+
+// The storage key of a document of `origin` (site `site`) under top-level site `top` (temp): its origin, unless it is
+// a frame of another site with partitioning on and no storage access in use.
+storage_key_of :: proc(origin: url.Origin, site, top: url.Site, framed, partitioned: bool, access: fetch.Storage_Access) -> string {
+	o := url.origin_serialize(origin, context.temp_allocator)
+	if !partitioned || !framed || url.same_site(site, top) || access == .Active { return o }
+	return strings.concatenate({o, "^", site_text(top)}, context.temp_allocator)
+}
+
+// A site as storage keys write it (temp).
+site_text :: proc(s: url.Site) -> string { return fetch.site_partition_text(s) }
+
+// The storage key of any realm: a worker's is its creator's (worker.odin), a document's storage_origin_key.
+realm_storage_key :: proc(p: ^Page) -> string {
+	if p.worker != nil { return p.worker.storage_key }
+	return storage_origin_key(p)
 }
 
 ////////////////////////////////
@@ -811,6 +826,7 @@ frame_install_page :: proc(n: ^Navigable, href: string, mode: Origin_Mode) -> ^P
 	top := page_top(p)
 	url.site_destroy(&c.env.top_level_site)
 	c.env.top_level_site = url.site_of(top.env.origin)
+	c.env.storage_access = storage_access_initial(c)   // storage_access.odin: a permission granted before is "inactive"
 	c.env.secure_context = c.env.secure_context && p.env.secure_context
 	if mode == .Inherit {
 		c.env.referrer_policy = p.env.referrer_policy
