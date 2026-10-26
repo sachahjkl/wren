@@ -137,7 +137,8 @@ FEATURE_NAMES := [Feature]string{
 
 // Features whose default allowlist is * (every document, cross-origin frames included, unless a policy says
 // otherwise); every other one defaults to 'self' (Chromium's defaults).
-FEATURES_DEFAULT_ALL :: bit_set[Feature]{.Attribution_Reporting, .Browsing_Topics, .Cross_Origin_Isolated, .Gamepad, .Picture_In_Picture, .Sync_Xhr}
+// (storage-access: * by the Storage Access API, its whole point being cross-site frames)
+FEATURES_DEFAULT_ALL :: bit_set[Feature]{.Attribution_Reporting, .Browsing_Topics, .Cross_Origin_Isolated, .Gamepad, .Picture_In_Picture, .Storage_Access, .Sync_Xhr}
 
 feature_by_name :: proc(name: string) -> (Feature, bool) {
 	for n, f in FEATURE_NAMES { if n == name { return f, true } }

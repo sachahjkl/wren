@@ -2,6 +2,7 @@ package page
 
 import "wb:canvas2d"
 import "wb:config"
+import "wb:fetch"
 import "wb:forms"
 import "wb:html"
 import "wb:idb"
@@ -68,6 +69,7 @@ register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, JS_DOM_PREFS[:])
 	webauthn.register_prefs(p)
 	config.register(p, FRAME_PREFS[:])
+	config.register(p, fetch.STORAGE_PREFS[:])   // storage.partitioned (frames_settings.odin reads it)
 	media.register_prefs(p)
 	canvas2d.register_prefs(p)
 	config.register(p, FULLSCREEN_PREFS[:])

@@ -212,6 +212,7 @@ initiator_type :: proc(d: fetch.Destination) -> string {
 	case .Audio: return "audio"
 	case .Video: return "video"
 	case .Iframe: return "iframe"
+	case .Frame: return "frame"
 	case .Empty: return "fetch"
 	case .Document, .Manifest, .Report: return "other"
 	}

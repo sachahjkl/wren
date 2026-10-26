@@ -11,6 +11,7 @@ import "core:slice"
 import "core:strings"
 import "wb:base"
 import "wb:idb"
+import "wb:url"
 
 Site_Kind :: enum u8 { Local, Session, Indexed_Db }
 Site_Kinds :: bit_set[Site_Kind]
@@ -25,6 +26,8 @@ Site_Data :: struct {
 	idb_bytes:    i64,
 	idb_dbs:      int,      // -1: not loaded (only its file's size is known)
 	opfs_bytes:   i64,      // its origin private file system (counted in idb_bytes too: "Clear site data" removes both)
+	cache_bytes:  i64,      // its Cache API caches (counted in idb_bytes too, removed with it, as its service workers)
+	service_workers: int,   // its service worker registrations
 }
 
 // The key a file name stands for (the inverse of the escaping of area_path and idb.origin_key_path: _XX for each byte outside
@@ -89,7 +92,11 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 				}
 			}
 		}
+		// the Cache API's caches (cache_store.odin)
+		for k in cache_keys(m.dir) { if bytes := cache_usage(m.dir, k); bytes > 0 { s := get(&out, k); s.cache_bytes = bytes } }
 	}
+	// the service worker registrations (service_worker.odin), per storage key
+	for r in sw_registry.regs { if !r.uninstalling { s := get(&out, r.origin); s.service_workers += 1 } }
 	for _, a in m.areas {
 		if a.state != .Loaded { continue }
 		s := get(&out, a.origin)
@@ -118,10 +125,11 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 	}
 	list := make([dynamic]Site_Data, 0, len(out), allocator)
 	for _, s in out {
-		s.idb_bytes += s.opfs_bytes
+		s.idb_bytes += s.opfs_bytes + s.cache_bytes
 		// (an area that was cleared leaves an empty file: nothing to list)
 		if s.local_bytes <= 8 && s.local_keys <= 0 { s.local_bytes = 0 }
-		if s.local_bytes == 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes - s.opfs_bytes <= 8 && s.idb_dbs <= 0 && s.opfs_bytes == 0 { continue }
+		extra := s.opfs_bytes + s.cache_bytes
+		if s.local_bytes == 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes - extra <= 8 && s.idb_dbs <= 0 && extra == 0 && s.service_workers == 0 { continue }
 		append(&list, s^)
 	}
 	slice.sort_by(list[:], proc(a, b: Site_Data) -> bool { return a.key < b.key })
@@ -146,7 +154,29 @@ storage_clear_site :: proc(m: ^Storage_Manager, key: string, kinds: Site_Kinds) 
 	if .Indexed_Db in kinds {
 		idb_clear_origin(m, key)
 		opfs_clear(m.dir, key)   // the origin private file system goes with it (fs_store.odin)
+		cache_clear_key(m.dir, key)   // and the Cache API's caches (cache_store.odin)
+		sw_clear_key(key)   // and its service workers (service_worker.odin)
+		// the storage access decisions about its site (as a frame's or as a tab's: storage_access.odin)
+		storage_access_forget(storage_key_site(key))
 	}
+}
+
+// The domain of a storage key's top-level site ("https://t.example^https://a.example" -> a.example; "" unpartitioned).
+storage_key_top_host :: proc(key: string) -> string {
+	i := strings.index_byte(key, '^')
+	if i < 0 { return "" }
+	top := key[i + 1:]
+	if j := strings.index(top, "://"); j >= 0 { return top[j + 3:] }
+	return top
+}
+
+// The site of a storage key's origin, as storage keys write sites ("https://a.example:8443^..." -> "https://example").
+storage_key_site :: proc(key: string) -> string {
+	k := key
+	if i := strings.index_byte(k, '^'); i >= 0 { k = k[:i] }
+	u, ok := url.parse_absolute(k, context.temp_allocator)
+	if !ok { return "" }
+	return site_text(url.site_of(url.origin_of(u, context.temp_allocator), context.temp_allocator))
 }
 
 // The host of a storage key (an origin, possibly followed by "^top-level site"): "https://a.example:8443^https://b.example" -> a.example.

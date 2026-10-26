@@ -139,6 +139,15 @@ try {
   Expect ($gone -eq 'header= false') 'its last client gone, the registration is too (a new page is not controlled)' $gone
   Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.filter((r) => new URL(r.scope).pathname.startsWith("/sw/")).map((r) => r.unregister())))' --await --tab-id $tab1 | Out-Null
 
+  # --- frame navigations: a scope given to register() is resolved against the document (its query kept); the worker
+  # answers the navigations of an <iframe> and of a <frame> with destination "iframe" / "frame" and mode "navigate"
+  Wren-Ctl nav "$o/sw/sub/host" --wait load --tab-id $tab1 | Out-Null
+  $fs = Wren-Ctl eval 'navigator.serviceWorker.register("/sw/frames.js", {scope: "../frm/?q"}).then((r) => new Promise((ok) => { const go = () => r.active && r.active.state === "activated" ? ok(new URL(r.scope).pathname + new URL(r.scope).search) : setTimeout(go, 50); go(); }))' --await --tab-id $tab1
+  Expect ($fs -eq '/sw/frm/?q') 'register(): a given scope is parsed against the document''s URL and keeps its query' $fs
+  $fr = Wren-Ctl eval 'new Promise((ok) => { for (const [tag, q] of [["iframe", "?q=i"], ["frame", "?q=f"]]) { const f = document.createElement(tag); f.src = "/sw/frm/" + q; document.body.appendChild(f); } const go = () => said.length >= 2 ? ok(said.slice().sort().join(",")) : setTimeout(go, 50); go(); setTimeout(() => ok("timeout " + said.join(",")), 8000); })' --await --tab-id $tab1
+  Expect ($fr -eq 'frame navigate ?q=f,iframe navigate ?q=i') 'the worker answers frame navigations in its scope (request.destination iframe / frame, mode navigate)' $fr
+  Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.filter((r) => new URL(r.scope).pathname.startsWith("/sw/")).map((r) => r.unregister())))' --await --tab-id $tab1 | Out-Null
+
   Wren-Ctl nav "$($srv.Origin)/site/index.html" --wait load --tab-id $tab1 | Out-Null
   $out = Wren-Ctl eval 'String(navigator.serviceWorker.controller)' --tab-id $tab1
   Expect ($out -eq 'null') 'a page outside the scope is not controlled' $out

@@ -541,7 +541,11 @@ JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, in
     if (o) { JS_FreeCString(ctx, o); }
     JS_FreeValue(ctx, origin);
     if (source) {
-        wr_MediaSource_registerObjectURL(source->handle, (const uint8_t *)buf, (uint32_t)strlen(buf));
+        /* (a worker's MediaSource has none: URL.createObjectURL(MediaSource) is a window's, the worker transfers its
+         * handle instead) */
+        if (wr_MediaSource_registerObjectURL(source->handle, (const uint8_t *)buf, (uint32_t)strlen(buf)) < 0) {
+            return JS_ThrowTypeError(ctx, "Failed to execute 'createObjectURL' on 'URL': a MediaSource of a worker has no object URL (use its handle as the element's srcObject).");
+        }
         return JS_NewString(ctx, buf);
     }
     JSValue args[2] = { JS_NewString(ctx, buf), JS_DupValue(ctx, argv[0]) };

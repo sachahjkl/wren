@@ -2,7 +2,9 @@
 // Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds
 // the coded frames a container parser made of what scripts appended (src/media), which a media element plays; the objects
 // are EventTargets: sourceopen / sourceended / sourceclose, updatestart / update / updateend / error / abort,
-// addsourcebuffer / removesourcebuffer are events of the host objects.
+// addsourcebuffer / removesourcebuffer are events of the host objects. In a dedicated worker the same functions drive
+// a MediaSource whose media element is in the page (src/page/mse_worker.odin): its MediaSourceHandle is transferred to
+// the page and set as the element's srcObject.
 package web
 
 import "base:runtime"
@@ -13,12 +15,17 @@ SourceBuffer :: distinct Object
 
 SourceBufferList :: distinct Object
 
+MediaSourceHandle :: distinct Object
+
 foreign import _m_mse "mse"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_mse {
 	@(link_name = "MediaSource_create") _MediaSource_create :: proc(_ret: ^MediaSource) -> Error ---
-	@(link_name = "MediaSource_registerObjectURL") _MediaSource_registerObjectURL :: proc(source: MediaSource, url: [^]u8, url_len: u32) ---
+	@(link_name = "MediaSource_registerObjectURL") _MediaSource_registerObjectURL :: proc(source: MediaSource, url: [^]u8, url_len: u32) -> Error ---
+	@(link_name = "MediaSource_handle") _MediaSource_handle :: proc(source: MediaSource, _ret: ^MediaSourceHandle) -> Error ---
+	@(link_name = "MediaSourceHandle_take") _MediaSourceHandle_take :: proc(h: MediaSourceHandle, _ret: ^u64) -> Error ---
+	@(link_name = "MediaSourceHandle_adopt") _MediaSourceHandle_adopt :: proc(token: u64, _ret: ^MediaSourceHandle) -> Error ---
 	@(link_name = "MediaSource_revokeObjectURL") _MediaSource_revokeObjectURL :: proc(url: [^]u8, url_len: u32) ---
 	@(link_name = "MediaSource_isTypeSupported") _MediaSource_isTypeSupported :: proc(type: [^]u8, type_len: u32) -> i32 ---
 	@(link_name = "MediaSource_sourceBuffers") _MediaSource_sourceBuffers :: proc(source: MediaSource) -> SourceBufferList ---
@@ -49,16 +56,35 @@ foreign _m_mse {
 	@(link_name = "SourceBuffer_remove") _SourceBuffer_remove :: proc(buffer: SourceBuffer, start: f64, end: f64) -> Error ---
 }
 
-// new MediaSource(): closed until an element attaches it.
+// new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
 MediaSource_create :: proc "contextless" () -> (result: MediaSource, err: Error) {
 	err = _MediaSource_create(&result)
 	return
 }
 
 // URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
-// that URL plays this source. Called by the engine with the URL it made.
-MediaSource_registerObjectURL :: proc "contextless" (source: MediaSource, url: string) {
-	_MediaSource_registerObjectURL(source, raw_data(url), u32(len(url)))
+// that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
+MediaSource_registerObjectURL :: proc "contextless" (source: MediaSource, url: string) -> Error {
+	return _MediaSource_registerObjectURL(source, raw_data(url), u32(len(url)))
+}
+
+// mediaSource.handle: the same MediaSourceHandle each time (a dedicated worker's MediaSource; NotSupported else).
+MediaSource_handle :: proc "contextless" (source: MediaSource) -> (result: MediaSourceHandle, err: Error) {
+	err = _MediaSource_handle(source, &result)
+	return
+}
+
+// A MediaSourceHandle in the transfer list of a message: the token the receiving realm adopts (DataClone when it
+// was transferred before or its MediaSource is attached already).
+MediaSourceHandle_take :: proc "contextless" (h: MediaSourceHandle) -> (result: u64, err: Error) {
+	err = _MediaSourceHandle_take(h, &result)
+	return
+}
+
+// The receiving realm's MediaSourceHandle for a token.
+MediaSourceHandle_adopt :: proc "contextless" (token: u64) -> (result: MediaSourceHandle, err: Error) {
+	err = _MediaSourceHandle_adopt(token, &result)
+	return
 }
 
 // URL.revokeObjectURL(url): the URL no longer names a Media Source (one already attached keeps playing).

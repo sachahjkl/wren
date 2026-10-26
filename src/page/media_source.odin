@@ -43,6 +43,13 @@ Media_Source_Object :: struct {
 	live:      [2]f64,
 	has_live:  bool,
 	orphan:    bool,               // its handle was released while attached: freed when the element lets go
+	// a dedicated worker's MediaSource (mse_worker.odin): the worker's object mirrors the one the element plays in
+	// the page (`remote_ui`); both are tied by the channel
+	remote:    ^Mse_Channel,
+	remote_ui: bool,
+	handle_obj: u64,               // the worker's: its MediaSourceHandle (0: not asked yet)
+	next_rid:  u32,                // the worker's: the next source buffer's id
+	seq:       u32,                // the worker's: commands sent; the page's: commands done
 }
 
 // What an element holds of its Media Source.
@@ -83,6 +90,8 @@ Source_Buffer_Object :: struct {
 	seq_first: bool,
 	parse_error: bool,
 	init_duration: f64,
+	rid:       u32,                 // a worker's MediaSource: the id both sides know the buffer by
+	ranges:    [dynamic][2]f64,     // the worker's mirror of what the page's buffer holds (buffered)
 }
 
 media_source_vt := Object_VTable{
@@ -107,6 +116,7 @@ source_buffer_vt := Object_VTable{
 		sb_free_resources(sb)
 		delete(sb.op_data)
 		delete(sb.mime)
+		delete(sb.ranges)
 		free(sb)
 	},
 }
@@ -134,6 +144,7 @@ ms_free :: proc(ms: ^Media_Source_Object, release_children: bool) {
 	delete(ms.buffers)
 	delete(ms.dead)
 	delete(ms.url)
+	if ms.remote != nil { mse_unbind(ms) }   // mse_worker.odin
 	free(ms)
 }
 
@@ -166,6 +177,7 @@ Mse_Event :: struct {
 @(private)
 mse_fire :: proc(p: ^Page, handle: u64, type: string) {
 	if handle == 0 || p.closed { return }
+	if mse_forward(p, handle, type) { return }   // the page's side of a worker's MediaSource: to the worker (mse_worker.odin)
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		ev := (^Mse_Event)(data)
 		defer { delete(ev.type); free(ev) }
@@ -180,10 +192,11 @@ mse_fire :: proc(p: ^Page, handle: u64, type: string) {
 MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error) {
 	p := c.page
 	if !p.settings.media.enabled || !p.settings.media.mse_enabled { return 0, fail(c, .Not_Supported, "Media Source Extensions are disabled (media.mse.enabled)") }
-	if p.worker != nil { return 0, fail(c, .Not_Supported, "MediaSource is not available in workers") }
+	if p.worker != nil && (p.worker.shared || p.worker.sw.version != 0) { return 0, fail(c, .Not_Supported, "MediaSource is available in windows and dedicated workers only") }
 	ms := new(Media_Source_Object)
 	ms.page, ms.owner = p, c.owner
 	ms.duration = math.nan_f64()
+	if p.worker != nil { mse_bind_worker(p, ms) }   // mse_worker.odin: its element will be in the page
 	h := object_create(p, &media_source_vt, ms, c.owner)
 	ms.self = h
 	ms.list_all = object_create(p, &source_buffer_list_vt, new_clone(Source_Buffer_List_Object{ms = ms}), c.owner)
@@ -191,15 +204,20 @@ MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error) {
 	return h, .None
 }
 
-MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string) {
-	pm := media_pm(c.page)
+MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string) -> Api_Error {
 	ms := source.data
+	// a worker's MediaSource: the URL is made but names nothing (MSE: a media element of the page cannot load it, it
+	// takes the transferred handle as srcObject instead)
+	if c.page.worker != nil || ms.remote != nil { return .None }
+	pm := media_pm(c.page)
 	if ms.url != "" { delete_key(&pm.urls, ms.url); delete(ms.url) }
 	ms.url = strings.clone(url)
 	pm.urls[ms.url] = ms.self
+	return .None
 }
 
 MediaSource_revokeObjectURL :: proc(c: ^Call, url: string) {
+	if c.page.worker != nil { return }
 	pm := c.page.media
 	if pm == nil { return }
 	h, ok := pm.urls[url]
@@ -256,6 +274,7 @@ ms_updating :: proc(ms: ^Media_Source_Object) -> bool {
 ms_reopen :: proc(ms: ^Media_Source_Object) {
 	if ms.state != .Ended { return }
 	ms.state = .Open
+	if mse_proxy(ms) { return }   // (the page's side reopens with the command and its sourceopen comes from there)
 	mse_fire(ms.page, ms.self, "sourceopen")
 	if el := ms_element(ms); el != nil && el.player != nil { media.player_set_source_ended(el.player, false) }
 }
@@ -267,6 +286,7 @@ MediaSource_set_duration :: proc(c: ^Call, source: Api_MediaSource, value: f64) 
 	if ms_updating(ms) { return fail(c, .Invalid_State, "A SourceBuffer is still updating.") }
 	// a duration below what is buffered is refused: the script removes that range first (SourceBuffer.remove)
 	if hi := ms_highest_pts(ms); value < hi { return fail(c, .Invalid_State, "The duration provided is less than the highest presentation timestamp of the buffered coded frames.") }
+	if mse_proxy(ms) { ms.duration = value; mse_command(ms, .Duration, 0, value); return .None }
 	ms_set_duration(ms, value)
 	return .None
 }
@@ -319,10 +339,18 @@ MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: str
 	sb.vtrack, sb.atrack = -1, -1
 	sb.is_webm = pt.container == .WebM
 	sb.want_video, sb.want_audio = media.type_tracks(pt)
-	sb_new_parser(sb)
 	h := object_create(p, &source_buffer_vt, sb, c.owner)
 	sb.self = h
 	append(&ms.buffers, sb)
+	if mse_proxy(ms) {
+		// a worker's: the page's side makes the real one (its addsourcebuffer comes back from there)
+		ms.next_rid += 1
+		sb.rid = ms.next_rid
+		mse_command(ms, .Add, sb.rid, text = type)
+		return h, .None
+	}
+	sb_new_parser(sb)
+	if ms.remote_ui { sb.rid = ms.next_rid }   // (the page's side of a worker's: the id the worker gave it, before its event)
 	mse_fire(p, ms.list_all, "addsourcebuffer")
 	return h, .None
 }
@@ -351,14 +379,18 @@ sb_new_parser :: proc(sb: ^Source_Buffer_Object) {
 ms_remove_buffer :: proc(ms: ^Media_Source_Object, idx: int, events: bool) {
 	p := ms.page
 	sb := ms.buffers[idx]
+	proxy := mse_proxy(ms)   // (a worker's: the events come from the page's side)
+	fire := events && !proxy
 	if sb.updating {
 		sb.op_gen += 1
 		sb.updating = false
 		sb.op = .None
 		delete(sb.op_data)
 		sb.op_data = nil
-		mse_fire(p, sb.self, "abort")
-		mse_fire(p, sb.self, "updateend")
+		if !proxy {
+			mse_fire(p, sb.self, "abort")
+			mse_fire(p, sb.self, "updateend")
+		}
 	}
 	ordered_remove(&ms.buffers, idx)
 	sb.ms = nil
@@ -374,7 +406,7 @@ ms_remove_buffer :: proc(ms: ^Media_Source_Object, idx: int, events: bool) {
 	was_active := sb.init_received
 	sb.init_received = false
 	append(&ms.dead, sb)
-	if events {
+	if fire {
 		mse_fire(p, ms.list_all, "removesourcebuffer")
 		if was_active { mse_fire(p, ms.list_active, "removesourcebuffer") }
 	}
@@ -385,6 +417,7 @@ MediaSource_removeSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, buffer
 	idx := -1
 	for b, i in ms.buffers { if b == sb { idx = i; break } }
 	if idx < 0 { return fail(c, .Not_Found, "The SourceBuffer provided is not contained in this MediaSource.") }
+	if mse_proxy(ms) { mse_command(ms, .Remove_Buffer, sb.rid) }
 	ms_remove_buffer(ms, idx, true)
 	return .None
 }
@@ -394,6 +427,7 @@ MediaSource_endOfStream :: proc(c: ^Call, source: Api_MediaSource, error: string
 	if error != "" && error != "network" && error != "decode" { return fail(c, .Type, "The provided value is not a valid enum value of type EndOfStreamError.") }
 	if ms.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
 	if ms_updating(ms) { return fail(c, .Invalid_State, "A SourceBuffer is still updating.") }
+	if mse_proxy(ms) { ms.state = .Ended; mse_command(ms, .End, 0, text = error); return .None }
 	ms_end_of_stream(ms, error)
 	return .None
 }
@@ -426,12 +460,14 @@ MediaSource_setLiveSeekableRange :: proc(c: ^Call, source: Api_MediaSource, star
 	if ms.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
 	if start < 0 || start > end { return fail(c, .Type, "The start and end values are invalid.") }
 	ms.live, ms.has_live = {start, end}, true
+	if mse_proxy(ms) { mse_command(ms, .Live, 0, start, end) }
 	return .None
 }
 
 MediaSource_clearLiveSeekableRange :: proc(c: ^Call, source: Api_MediaSource) -> Api_Error {
 	if source.data.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
 	source.data.has_live = false
+	if mse_proxy(source.data) { mse_command(source.data, .Clear_Live, 0) }
 	return .None
 }
 
@@ -472,9 +508,17 @@ media_source_attach_url :: proc(el: ^Media_Element, href: string) -> bool {
 	if !ok { return false }
 	ms := (^Media_Source_Object)(object_data(p, h, &media_source_vt))
 	if ms == nil { return false }
+	ms_attach(el, ms)
+	return true
+}
+
+// The element plays `ms` (an object URL's, or the page's side of a worker's: mse_worker.odin).
+@(private)
+ms_attach :: proc(el: ^Media_Element, ms: ^Media_Source_Object) {
+	p := el.page
 	if ms.state != .Closed || ms.el_node != base.NIL_HANDLE {
 		media_failed(el, MEDIA_ERR_SRC_NOT_SUPPORTED, "the MediaSource is already attached")
-		return true
+		return
 	}
 	link := new(Media_Source_Link)
 	link.ms = ms
@@ -484,7 +528,6 @@ media_source_attach_url :: proc(el: ^Media_Element, href: string) -> bool {
 	ms.state = .Open
 	el.network_state = NETWORK_LOADING
 	mse_fire(p, ms.self, "sourceopen")
-	return true
 }
 
 // The element lets go of its Media Source (a new load, removal): it is closed, its buffers removed.
@@ -505,6 +548,11 @@ media_source_detach :: proc(el: ^Media_Element) {
 		quiet := el.page.closed
 		for len(ms.buffers) > 0 { ms_remove_buffer(ms, len(ms.buffers) - 1, !quiet) }
 		if !quiet { mse_fire(el.page, ms.self, "sourceclose") }
+	}
+	if ms.remote_ui {
+		// the page's side of a worker's MediaSource has no script of the page holding it: it goes now
+		if !el.page.closed { object_release(el.page, ms.self) }
+		return
 	}
 	if ms.orphan { ms_free(ms, !el.page.closed) }
 }
@@ -614,6 +662,7 @@ SourceBuffer_set_mode :: proc(c: ^Call, b: Api_SourceBuffer, mode: string) -> Ap
 	if m == .Sequence && sb.mode != .Sequence { sb.group_end = sb_highest_end(sb) }
 	sb.mode = m
 	sb.seq_first = true
+	if mse_proxy(sb.ms) { mse_command(sb.ms, .Mode, sb.rid, text = mode) }
 	return .None
 }
 
@@ -657,6 +706,7 @@ sb_ranges :: proc(sb: ^Source_Buffer_Object) -> [][2]f64 {
 SourceBuffer_ranges :: proc(c: ^Call, b: Api_SourceBuffer) -> ([]u8, Api_Error) {
 	sb := b.data
 	if e := sb_check(c, sb); e != .None { return nil, e }
+	if mse_proxy(sb.ms) { return ranges_bytes(sb.ranges[:]), .None }   // the mirror of the page's buffer
 	return ranges_bytes(sb_ranges(sb)), .None
 }
 
@@ -667,6 +717,7 @@ SourceBuffer_set_timestampOffset :: proc(c: ^Call, b: Api_SourceBuffer, value: f
 	if e := sb_check_idle(c, sb); e != .None { return e }
 	ms_reopen(sb.ms)
 	sb.ts_offset = value
+	if mse_proxy(sb.ms) { mse_command(sb.ms, .Ts_Offset, sb.rid, value) }
 	return .None
 }
 
@@ -678,6 +729,7 @@ SourceBuffer_set_appendWindowStart :: proc(c: ^Call, b: Api_SourceBuffer, value:
 	if e := sb_check_idle(c, sb); e != .None { return e }
 	if math.is_nan(value) || value < 0 || value >= sb.win_end { return fail(c, .Type, "The value provided is outside the range [0, appendWindowEnd).") }
 	sb.win_start = value
+	if mse_proxy(sb.ms) { mse_command(sb.ms, .Window, sb.rid, sb.win_start, sb.win_end) }
 	return .None
 }
 
@@ -686,6 +738,7 @@ SourceBuffer_set_appendWindowEnd :: proc(c: ^Call, b: Api_SourceBuffer, value: f
 	if e := sb_check_idle(c, sb); e != .None { return e }
 	if math.is_nan(value) || value <= sb.win_start { return fail(c, .Type, "The value provided is not greater than appendWindowStart.") }
 	sb.win_end = value
+	if mse_proxy(sb.ms) { mse_command(sb.ms, .Window, sb.rid, sb.win_start, sb.win_end) }
 	return .None
 }
 
@@ -733,6 +786,12 @@ SourceBuffer_appendBuffer :: proc(c: ^Call, b: Api_SourceBuffer, data: []u8) -> 
 	sb := b.data
 	if e := sb_check_idle(c, sb); e != .None { return e }
 	ms_reopen(sb.ms)
+	if mse_proxy(sb.ms) {
+		// a worker's: the page's buffer parses it; updating until its updateend comes back (with its buffered ranges)
+		sb.updating = true
+		mse_command(sb.ms, .Append, sb.rid, data = data)
+		return .None
+	}
 	if !sb_make_room(sb, len(data)) { return fail(c, .Quota, "The SourceBuffer is full, and cannot free space to append additional buffers.") }
 	sb.updating = true
 	sb.op = .Append
@@ -749,6 +808,7 @@ SourceBuffer_remove :: proc(c: ^Call, b: Api_SourceBuffer, start, end: f64) -> A
 	d := sb.ms.duration
 	if math.is_nan(end) || start < 0 || start > end || (!math.is_nan(d) && start > d) { return fail(c, .Type, "The start and end times are invalid.") }
 	ms_reopen(sb.ms)
+	if mse_proxy(sb.ms) { sb.updating = true; mse_command(sb.ms, .Remove_Range, sb.rid, start, end); return .None }
 	sb.updating = true
 	sb.op = .Remove
 	sb.op_range = {start, end}
@@ -760,6 +820,13 @@ SourceBuffer_abort :: proc(c: ^Call, b: Api_SourceBuffer) -> Api_Error {
 	sb := b.data
 	if e := sb_check(c, sb); e != .None { return e }
 	if sb.ms.state != .Open { return fail(c, .Invalid_State, "The MediaSource's readyState is not 'open'.") }
+	if mse_proxy(sb.ms) {
+		// (the page's side fires abort and updateend when an operation was running)
+		sb.updating = false
+		sb.win_start, sb.win_end = 0, math.inf_f64(1)
+		mse_command(sb.ms, .Abort, sb.rid)
+		return .None
+	}
 	if sb.updating {
 		sb.op_gen += 1
 		sb.updating = false
@@ -789,8 +856,9 @@ SourceBuffer_changeType :: proc(c: ^Call, b: Api_SourceBuffer, type: string) -> 
 	set_string(&sb.mime, type)
 	sb.is_webm = pt.container == .WebM
 	sb.want_video, sb.want_audio = media.type_tracks(pt)
-	sb_new_parser(sb)
 	sb.init_received = false   // (a new initialization segment is expected)
+	if mse_proxy(sb.ms) { mse_command(sb.ms, .Change_Type, sb.rid, text = type); return .None }
+	sb_new_parser(sb)
 	return .None
 }
 

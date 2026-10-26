@@ -1,18 +1,28 @@
 /// Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds
 /// the coded frames a container parser made of what scripts appended (src/media), which a media element plays; the objects
 /// are EventTargets: sourceopen / sourceended / sourceclose, updatestart / update / updateend / error / abort,
-/// addsourcebuffer / removesourcebuffer are events of the host objects.
-[Exposed=Window]
+/// addsourcebuffer / removesourcebuffer are events of the host objects. In a dedicated worker the same functions drive
+/// a MediaSource whose media element is in the page (src/page/mse_worker.odin): its MediaSourceHandle is transferred to
+/// the page and set as the element's srcObject.
+[Exposed=(Window,Worker)]
 module mse {
   handle MediaSource : Object = Media_Source_Object via lookup_MediaSource;
   handle SourceBuffer : Object = Source_Buffer_Object via lookup_SourceBuffer;
   handle SourceBufferList : Object = Source_Buffer_List_Object via lookup_SourceBufferList;
+  handle MediaSourceHandle : Object = Mse_Handle_Object via lookup_MediaSourceHandle;
 
-  /// new MediaSource(): closed until an element attaches it.
+  /// new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
   MediaSource MediaSource_create() raises;
   /// URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
-  /// that URL plays this source. Called by the engine with the URL it made.
-  void MediaSource_registerObjectURL(MediaSource source, string url);
+  /// that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
+  void MediaSource_registerObjectURL(MediaSource source, string url) raises;
+  /// mediaSource.handle: the same MediaSourceHandle each time (a dedicated worker's MediaSource; NotSupported else).
+  MediaSourceHandle MediaSource_handle(MediaSource source) raises;
+  /// A MediaSourceHandle in the transfer list of a message: the token the receiving realm adopts (DataClone when it
+  /// was transferred before or its MediaSource is attached already).
+  u64 MediaSourceHandle_take(MediaSourceHandle h) raises;
+  /// The receiving realm's MediaSourceHandle for a token.
+  MediaSourceHandle MediaSourceHandle_adopt(u64 token) raises;
   /// URL.revokeObjectURL(url): the URL no longer names a Media Source (one already attached keeps playing).
   void MediaSource_revokeObjectURL(string url);
   /// MediaSource.isTypeSupported(type)

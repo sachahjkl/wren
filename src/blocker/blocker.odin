@@ -410,7 +410,7 @@ resource_of :: proc(q: ^fetch.Intercept_Query) -> adblock.Resource {
 	case .Audio, .Video: return .Media
 	case .Manifest: return .Other
 	case .Report: return .Csp_Report
-	case .Iframe: return .Subdocument
+	case .Iframe, .Frame: return .Subdocument
 	}
 	return .Other
 }
@@ -628,7 +628,7 @@ response_hook :: proc(user: rawptr, q: ^fetch.Intercept_Query, headers: http.Hea
 		host: string
 		pf: adblock.Page_Flags
 		switch {
-		case nav || q.destination == .Iframe:
+		case nav || fetch.is_frame_destination(q.destination):
 			host = req.host
 			pf, _ = adblock.page_flags(e, q.url)
 			if .Document in pf { scr = false }

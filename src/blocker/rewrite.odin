@@ -817,7 +817,7 @@ rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf:
 	second: fetch.Body_Filter
 	if scriptlets {
 		if h := host_rules_for(b, host, pf); h != nil {
-			nav := q.destination == .Document || q.destination == .Iframe
+			nav := q.destination == .Document || fetch.is_frame_destination(q.destination)
 			switch {
 			case q.destination == .Empty && !q.ping:
 				if len(h.prune) + len(h.replace) + len(h.xml) > 0 {

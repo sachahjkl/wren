@@ -45,7 +45,7 @@
 /html/semantics/embedded-content/the-iframe-element/iframe-allow.html: OK
 	iframe-cross-origin-allow: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe-allowfullscreen.html: OK
-	iframe-cross-origin-allowfullscreen: FAIL
+	iframe-cross-origin-allowfullscreen: PASS
 	iframe-noload-allowfullscreen: FAIL
 	iframe-noload-noallowfullscreen: FAIL
 	iframe-same-origin-allowfullscreen: FAIL
@@ -209,12 +209,12 @@
 	<a download> triggered download in sandbox is blocked.: FAIL
 	<a target="_blank" > triggered download in sandbox is blocked.: FAIL
 	<a target="_blank" rel="noopener" > triggered download in sandbox is blocked.: FAIL
-/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-1.html: TIMEOUT
-	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
-/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-2.html: TIMEOUT
-	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
-/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-3.html: TIMEOUT
-	Frames without `allow-modals` should not be able to open modal dialogs: TIMEOUT
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-1.html: OK
+	Frames without `allow-modals` should not be able to open modal dialogs: FAIL
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-2.html: OK
+	Frames without `allow-modals` should not be able to open modal dialogs: PASS
+/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-3.html: OK
+	Frames without `allow-modals` should not be able to open modal dialogs: PASS
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_block_modals-4.html: OK
 	Frames without `allow-modals` should not be able to open modal dialogs: FAIL
 /html/semantics/embedded-content/the-iframe-element/iframe_sandbox_navigate_ancestor-1.html: OK
@@ -364,11 +364,11 @@
 	Block localStorage and sessionStorage inside iframe with the sandbox attribute.: PASS
 /html/semantics/embedded-content/the-iframe-element/sandbox_032.htm: OK
 	Block XMLHttpRequest in an iframe with the sandbox attribute.: PASS
-/html/semantics/embedded-content/the-iframe-element/src-repeated-in-ancestor.html: OK
-	different path name: FAIL
-	same path name, different document fragment: FAIL
-	same path name, no document fragement (intermediary browsing context): FAIL
-	same path name, no document fragment: FAIL
+/html/semantics/embedded-content/the-iframe-element/src-repeated-in-ancestor.html: TIMEOUT
+	different path name: TIMEOUT
+	same path name, different document fragment: NOTRUN
+	same path name, no document fragement (intermediary browsing context): NOTRUN
+	same path name, no document fragment: NOTRUN
 /html/semantics/embedded-content/the-iframe-element/srcdoc-anchor.html: OK
 	Verify srcdoc content loads when src is about:srcdoc#foo.: FAIL
 /html/semantics/embedded-content/the-iframe-element/srcdoc-attribute-reset.html: OK

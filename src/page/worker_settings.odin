@@ -23,6 +23,7 @@ Worker_Settings :: struct {
 	wasm:               wasm.Options,   // value stack, memory and instruction budget of a worker's module
 	max_message_bytes:  int,
 	max_pending_bytes:  int,
+	max_depth:          int,
 }
 
 WORKER_PREFS := [?]config.Def{
@@ -46,6 +47,8 @@ WORKER_PREFS := [?]config.Def{
 		description = "Largest message (text plus transferred buffers) a page and a worker may send each other. Larger ones are refused."},
 	{name = "workers.max_pending_bytes", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 10, max = 1 << 42, bytes = true, unit = "bytes",
 		description = "Bytes of messages waiting to be delivered in one direction between a page and one of its workers. Past it, sending fails until the receiver catches up, so a flood cannot exhaust memory."},
+	{name = "workers.max_depth", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 1024,
+		description = "Most levels of workers a page may nest (a worker started by a worker started by the page counts 2). Past it, new Worker() in the deepest worker fires an error event. Nested workers also count in workers.max_per_page."},
 }
 
 worker_settings_from_prefs :: proc(p: ^config.Prefs) -> Worker_Settings {
@@ -62,5 +65,6 @@ worker_settings_from_prefs :: proc(p: ^config.Prefs) -> Worker_Settings {
 		wasm = opt,
 		max_message_bytes = int(config.int_of(p, "workers.max_message_bytes")),
 		max_pending_bytes = int(config.int_of(p, "workers.max_pending_bytes")),
+		max_depth = int(config.int_of(p, "workers.max_depth")),
 	}
 }

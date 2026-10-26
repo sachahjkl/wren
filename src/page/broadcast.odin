@@ -10,13 +10,14 @@ import "core:strings"
 import "core:sync"
 import "wb:url"
 
-// The key of a channel: the realm's origin (an opaque origin has a channel of its own) and the name.
+// The key of a channel: the realm's storage key (its origin, partitioned by the top-level site in a third-party frame
+// and its workers; an opaque origin has a channel of its own) and the name.
 @(private)
 broadcast_key :: proc(p: ^Page, name: string) -> string {
-	o := p.env.origin
-	ser := url.origin_serialize(o, context.temp_allocator)
-	if ser == "null" { return "" }
-	return strings.concatenate({ser, "\x00", name})
+	if p.env.origin.opaque { return "" }
+	key := realm_storage_key(p)
+	if key == "" { key = url.origin_serialize(p.env.origin, context.temp_allocator) }
+	return strings.concatenate({key, "\x00", name})
 }
 
 // new BroadcastChannel(name): an end of the router owned by the calling realm (0: an opaque origin, which can talk to

@@ -929,6 +929,8 @@ static JSValue respond_value(JSContext *ctx, JSValueConst this_val, int argc, JS
 
 /* fetch modes and destinations as the browser numbers them (fetch.Mode, fetch.Destination) */
 static const char *mode_names[] = { "navigate", "same-origin", "no-cors", "cors" };
+static const char *dest_names[] = { "", "document", "script", "style", "image", "font", "audio", "video", "manifest", "report",
+                                    "worker", "iframe", "frame" };
 
 static JSValue make_request(JSContext *ctx, wr_SwEventInfo *info)
 {
@@ -955,6 +957,10 @@ static JSValue make_request(JSContext *ctx, wr_SwEventInfo *info)
     JS_FreeValue(ctx, ctor); JS_FreeValue(ctx, url); JS_FreeValue(ctx, init);
     extern void web_request_set_mode(JSValueConst req, int mode);
     if (info->mode == 0 && !JS_IsException(r)) { web_request_set_mode(r, 3); }   /* a navigation: mode "navigate" */
+    extern void web_request_set_destination(JSValueConst req, const char *name);
+    if (info->destination > 0 && info->destination < (int32_t)(sizeof dest_names / sizeof *dest_names) && !JS_IsException(r)) {
+        web_request_set_destination(r, dest_names[info->destination]);
+    }
     return r;
 }
 

@@ -129,6 +129,7 @@ Ws_Ctx :: struct {
 	protocols: []string,
 	with_cookies: bool,
 	site_ctx:  cookies.Site_Context,
+	partition: string,   // owned: the cookie partition (storage.partitioned), "" first-party
 	on_event:  Socket_Proc,
 	user:      rawptr,
 }
@@ -212,7 +213,9 @@ websocket_connect :: proc(l: ^Loader, d: Socket_Desc) -> (sock: base.Handle, err
 		site := url.site_of(http_origin_of(u), context.temp_allocator)
 		if !url.same_site(site, env.top_level_site) {
 			ctx.site_ctx = .Cross_Site
-			if p.settings.third_party_cookies == .Block { ctx.with_cookies = false }
+			own := env.storage_access == .Active && url.same_site(site, env.site)   // (Storage Access API)
+			if p.settings.third_party_cookies == .Block && !own { ctx.with_cookies = false }
+			if p.settings.partitioned && !own { ctx.partition = strings.clone(site_partition_text(env.top_level_site)) }
 		}
 	}
 
@@ -223,7 +226,7 @@ websocket_connect :: proc(l: ^Loader, d: Socket_Desc) -> (sock: base.Handle, err
 	http.append_header(&h, "Pragma", "no-cache")
 	if p.settings.accept_language != "" { http.append_header(&h, "Accept-Language", p.settings.accept_language) }
 	if ctx.with_cookies {
-		cc := cookies.Context{url = u, site_context = ctx.site_ctx, http_api = true, now_ms = now_ms()}
+		cc := cookies.Context{url = u, site_context = ctx.site_ctx, http_api = true, now_ms = now_ms(), partition = ctx.partition}
 		if c := cookies.header_for(&p.jar, cc, context.temp_allocator); c != "" { http.append_header(&h, "Cookie", c) }
 	}
 	if p.settings.fetch_metadata && url.is_potentially_trustworthy(u) {
@@ -367,6 +370,7 @@ ws_ctx_free :: proc(user: rawptr) {
 	url.destroy(&ctx.target)
 	for s in ctx.protocols { delete(s) }
 	delete(ctx.protocols)
+	delete(ctx.partition)
 	free(ctx)
 }
 
@@ -406,7 +410,7 @@ ws_net_event :: proc(user: rawptr, sock: base.Handle, ev: ^net.Ws_Event) {
 	case .Handshake:
 		raw := http.parse_header_block(ev.headers, context.temp_allocator)
 		if ctx.with_cookies {
-			cc := cookies.Context{url = ctx.target, site_context = ctx.site_ctx, http_api = true, now_ms = now_ms()}
+			cc := cookies.Context{url = ctx.target, site_context = ctx.site_ctx, http_api = true, now_ms = now_ms(), partition = ctx.partition}
 			for v in http.get_all(raw, "set-cookie") { cookies.store(&l.profile.jar, v, cc) }
 		}
 		if ctx.target.scheme == "wss" && l.profile.settings.hsts {

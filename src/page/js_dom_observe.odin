@@ -444,6 +444,12 @@ Range_contents :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_No
 		dom.destroy_unpinned(c.page.doc, frag)
 		return 0, .None
 	}
+	// the clones of a range of the page's document are created in its realm (DOM "clone a node": "create an element"
+	// enqueues their upgrade); a template's contents or another document stay inert. Extracted nodes that were not
+	// cloned are already custom or failed: the walk only upgrades elements without a state.
+	if rn := dom.get(c.page.doc, dom.shadow_including_root(c.page.doc, H(start.handle))); rn != nil && !rn.as_document && !(rn.kind == .Fragment && rn.held) {
+		custom_elements_cloned(c.page, frag)
+	}
 	return u64(frag), .None
 }
 

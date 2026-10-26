@@ -52,7 +52,13 @@
 	GC/CC should not discard a Response's FormData body Blob before it is read: PASS
 	GC/CC should not discard a cloned FormData body's Blob before it is read: PASS
 	GC/CC should not discard a moved FormData body's Blob before it is read: PASS
-/fetch/api/basic/gc.any.worker.html: CRASH
+/fetch/api/basic/gc.any.worker.html: OK
+	GC/CC should not abruptly close the stream while being consumed by Response: PASS
+	GC/CC should not discard a FormData body's Blob before its stream is read: PASS
+	GC/CC should not discard a Request's FormData body Blob before it is read: PASS
+	GC/CC should not discard a Response's FormData body Blob before it is read: PASS
+	GC/CC should not discard a cloned FormData body's Blob before it is read: PASS
+	GC/CC should not discard a moved FormData body's Blob before it is read: PASS
 /fetch/api/basic/header-value-combining.any.html: OK
 	response.headers.get('content-length') expects 0: FAIL
 	response.headers.get('content-length') expects 0, 0: FAIL
@@ -137,7 +143,7 @@
 	simple keepalive test for web workers: TIMEOUT
 	simple keepalive test for web workers;: PASS
 /fetch/api/basic/mediasource.window.html: OK
-	Cannot fetch blob: URL from a MediaSource: FAIL
+	Cannot fetch blob: URL from a MediaSource: PASS
 /fetch/api/basic/mode-no-cors.sub.any.html: ERROR
 	Fetch ../resources/top.txt with no-cors mode: PASS
 	Fetch http://127.0.0.1:8778/fetch/api/resources/top.txt with no-cors mode: PASS
@@ -412,7 +418,32 @@
 	Fetch with PUT without body: FAIL
 	Fetch with TacO and mode "cors" needs an Origin header: FAIL
 	Fetch with TacO and mode "same-origin" needs an Origin header: FAIL
-/fetch/api/basic/request-headers.any.worker.html: CRASH
+/fetch/api/basic/request-headers.any.worker.html: OK
+	Fetch with Chicken: FAIL
+	Fetch with Chicken with body: FAIL
+	Fetch with GET: FAIL
+	Fetch with GET and mode "cors" does not need an Origin header: FAIL
+	Fetch with HEAD: FAIL
+	Fetch with POST and mode "no-cors" needs an Origin header: FAIL
+	Fetch with POST and mode "same-origin" needs an Origin header: FAIL
+	Fetch with POST with ArrayBuffer body: FAIL
+	Fetch with POST with Blob body: FAIL
+	Fetch with POST with Blob body with mime type: FAIL
+	Fetch with POST with DataView body: FAIL
+	Fetch with POST with Float16Array body: FAIL
+	Fetch with POST with Float32Array body: FAIL
+	Fetch with POST with Float64Array body: FAIL
+	Fetch with POST with FormData body: FAIL
+	Fetch with POST with Int8Array body: FAIL
+	Fetch with POST with URLSearchParams body: FAIL
+	Fetch with POST with Uint8Array body: FAIL
+	Fetch with POST with text body: FAIL
+	Fetch with POST without body: FAIL
+	Fetch with PUT and mode "same-origin" needs an Origin header: FAIL
+	Fetch with PUT with body: FAIL
+	Fetch with PUT without body: FAIL
+	Fetch with TacO and mode "cors" needs an Origin header: FAIL
+	Fetch with TacO and mode "same-origin" needs an Origin header: FAIL
 /fetch/api/basic/request-referrer-redirected-worker.html: TIMEOUT
 /fetch/api/basic/request-referrer.any.html: OK
 	about:client referrer: FAIL

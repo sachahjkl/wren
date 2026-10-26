@@ -19,7 +19,7 @@ import "wb:url"
 
 Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType) -> (u64, Api_Error) {
 	p := c.page
-	if p.worker != nil { return 0, fail(c, .Not_Supported, "NotSupportedError: nested workers are not supported") }
+	if p.worker != nil && p.worker.sw.version != 0 { return 0, fail(c, .Not_Supported, "NotSupportedError: a service worker does not start workers") }
 	if _, ok := url.parse(u, &p.env.location, context.temp_allocator); !ok {
 		return 0, fail(c, .Syntax, fmt.tprintf("SyntaxError: %q is not a valid URL", u))
 	}
@@ -30,7 +30,7 @@ Worker_createScript :: proc(c: ^Call, u: string, name: string, type: Api_WorkerT
 
 Worker_createScriptBytes :: proc(c: ^Call, u: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error) {
 	p := c.page
-	if p.worker != nil { return 0, fail(c, .Not_Supported, "NotSupportedError: nested workers are not supported") }
+	if p.worker != nil && p.worker.sw.version != 0 { return 0, fail(c, .Not_Supported, "NotSupportedError: a service worker does not start workers") }
 	// (an empty Blob is a script too: the image must not be nil, which means "fetch it")
 	image := len(script) > 0 ? script : []u8{' '}
 	h := worker_create(p, u, name, c.owner, javascript = true, module = type == .Module, image = image)
@@ -39,9 +39,7 @@ Worker_createScriptBytes :: proc(c: ^Call, u: string, name: string, type: Api_Wo
 }
 
 Worker_postSerialized :: proc(c: ^Call, worker: u64, data: []u8) -> Api_Error {
-	p := c.page
-	if p.worker != nil { return fail(c, .Invalid_Argument, "a worker posts with DedicatedWorkerGlobalScope_postSerialized") }
-	return dom_error(worker_post(p, worker, string(data), nil))
+	return dom_error(worker_post(c.page, worker, string(data), nil))
 }
 
 DedicatedWorkerGlobalScope_postSerialized :: proc(c: ^Call, data: []u8) -> Api_Error {
@@ -74,8 +72,8 @@ js_worker_start :: proc(p: ^Page, g: ^Worker_Global) -> bool {
 }
 
 // The worker's error being reported in its owner's global (worker_fire_error), temporary.
-@(private)
-worker_error_text: string
+@(private, thread_local)
+worker_error_text: string   // (per thread: a worker reports its nested workers' errors in its own realm)
 
 Worker_pendingError :: proc(c: ^Call) -> string { return worker_error_text }
 

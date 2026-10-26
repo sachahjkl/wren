@@ -38,6 +38,9 @@ module htmlmedia {
   /// element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
   /// makes the TimeRanges object of them.
   bytes HTMLMediaElement_ranges(HTMLMediaElement element, i32 which);
+  /// element.srcObject = a MediaSourceHandle (its object handle; 0: null): the element loads it, srcObject before src
+  /// (HTML "media provider object"). Type for another kind of object.
+  void HTMLMediaElement_setSourceHandle(HTMLMediaElement element, u64 handle) raises;
   /// element.error: the code (0 when null) and the message.
   i32 HTMLMediaElement_errorCode(HTMLMediaElement element);
   string HTMLMediaElement_errorMessage(HTMLMediaElement element);

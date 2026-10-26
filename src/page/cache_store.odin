@@ -440,6 +440,22 @@ cache_delete_entries :: proc(dir, origin, name, url, method: string, q: Cache_Qu
 	return removed
 }
 
+// Every cache of a storage key removed ("Clear site data").
+cache_clear_key :: proc(dir, key: string) {
+	names := strings.split(cache_names(dir, key), "\n", context.temp_allocator)
+	for n in names { if n != "" { cache_delete_named(dir, key, n) } }
+}
+
+// The storage keys that have caches on the disk (temporary), from the folder names (cache_origin_dir's escaping).
+cache_keys :: proc(dir: string) -> []string {
+	out := make([dynamic]string, context.temp_allocator)
+	if dir == "" { return nil }
+	if dirs, err := os.read_all_directory_by_path(strings.concatenate({dir, "/caches"}, context.temp_allocator), context.temp_allocator); err == nil {
+		for d in dirs { if d.type == .Directory { if k, ok := key_of_file(d.name, ""); ok { append(&out, k) } } }
+	}
+	return out[:]
+}
+
 // Bytes the Cache API keeps for an origin (StorageManager.estimate).
 cache_usage :: proc(dir, origin: string) -> i64 {
 	sync.mutex_lock(&cache_store.mu)

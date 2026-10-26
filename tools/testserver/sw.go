@@ -7,6 +7,10 @@ package main
 //	/sw/ver/page      a page in ver.js's scope (/sw/ver/)
 //	/sw/preload.js    a service worker of scope /sw/pre/ enabling navigation preload with the header value "wren-test"
 //	/sw/pre/page      text: the Service-Worker-Navigation-Preload header it got
+//	/sw/frames.js     a service worker (registered with scope "../frm/?q" from /sw/sub/host) answering the navigations of
+//	                  frames with a document that tells its parent the request's destination and mode
+//	/sw/sub/host      a page outside that scope, to put the frames in
+//	/sw/frm/          what the network says when the worker did not answer
 
 import (
 	"fmt"
@@ -54,7 +58,28 @@ self.addEventListener("fetch", (e) => {
 });
 `
 
+const swFramesScript = `// frame navigations (tools/testserver/sw.go)
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("fetch", (e) => {
+  if (e.request.mode !== "navigate") return;
+  const said = e.request.destination + " " + e.request.mode + " " + new URL(e.request.url).search;
+  e.respondWith(new Response("<!doctype html><script>parent.postMessage(" + JSON.stringify(said) + ", '*');</script>", {headers: {"content-type": "text/html"}}));
+});
+`
+
 func registerSWHandlers(mux *http.ServeMux) {
+	mux.HandleFunc("/sw/frames.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/javascript")
+		io.WriteString(w, swFramesScript)
+	})
+	mux.HandleFunc("/sw/sub/host", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, `<!doctype html><meta charset="utf-8"><body><script>window.said = []; addEventListener("message", (e) => said.push(String(e.data)));</script></body>`)
+	})
+	mux.HandleFunc("/sw/frm/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		io.WriteString(w, `<!doctype html><script>parent.postMessage("network", "*");</script>`)
+	})
 	swVersion.Store(1)
 	mux.HandleFunc("/sw/ver.js", func(w http.ResponseWriter, r *http.Request) {
 		v := swVersion.Load()

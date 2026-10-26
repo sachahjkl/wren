@@ -81,7 +81,7 @@ Sw_Version :: struct {
 
 Sw_Registration :: struct {
 	id:          u64,
-	origin:      string,
+	origin:      string,          // its storage key: the origin, "^" and the top-level site when partitioned (frames.odin)
 	scope:       string,
 	script:      string,          // the script URL of the last register() / update
 	module:      bool,            // ... of type module
@@ -328,12 +328,15 @@ sw_note_page :: proc(p: ^Page) {
 	if p.web != nil && p.web.embedder.storage != nil { sw_registry.storage = p.web.embedder.storage }
 }
 
-// The registration whose scope is the longest prefix of `u` (Service Workers "match service worker registration").
-sw_match :: proc(u: string, active_only: bool, uninstalling := false) -> ^Sw_Registration {
+// The registration of storage key `key` whose scope is the longest prefix of `u` (Service Workers "match service worker
+// registration"; a registration belongs to the storage key of the document that made it: a frame's of another site
+// than its tab's is its partition's, storage.partitioned).
+sw_match :: proc(u: string, key: string, active_only: bool, uninstalling := false) -> ^Sw_Registration {
 	best: ^Sw_Registration
 	for r in sw_registry.regs {
 		if active_only && r.active == nil { continue }
 		if r.uninstalling && !uninstalling { continue }
+		if r.origin != key { continue }
 		if strings.has_prefix(u, r.scope) && (best == nil || len(r.scope) > len(best.scope)) { best = r }
 	}
 	return best
@@ -368,7 +371,7 @@ sw_is_host :: proc(p: ^Page) -> bool {
 sw_controller :: proc(p: ^Page) -> ^Sw_Registration {
 	if p == nil || p.web == nil || p.worker != nil || sw_registry.active == 0 || sw_is_host(p) { return nil }
 	// (an unregistered registration still controls the pages it controlled: Service Workers "Unregister")
-	r := sw_match(p.env.location.href, true, uninstalling = true)
+	r := sw_match(p.env.location.href, storage_origin_key(p), true, uninstalling = true)
 	if r == nil { return nil }
 	if r.uninstalling && !r.claimed[p.web.id] && p.web.id > r.uninstall_after { return nil }
 	if p.web.id > r.after_page || r.claimed[p.web.id] { return r }
@@ -391,7 +394,7 @@ sw_console :: proc(user: rawptr, level: Log_Level, message: string) {
 	text := fmt.tprintf("[service worker %s] %s", v.script, message)
 	for _, pg in live_pages {
 		if pg.closed || sw_is_host(pg) { continue }
-		if url.origin_serialize(pg.env.origin, context.temp_allocator) == v.reg.origin { log(pg, level, text) }
+		if storage_origin_key(pg) == v.reg.origin { log(pg, level, text) }
 	}
 }
 
@@ -496,7 +499,7 @@ sw_changed :: proc(r: ^Sw_Registration, also: ^Sw_Version = nil) {
 		link_send(v.worker.link, true, m)
 	}
 	for _, pg in live_pages {
-		if pg.closed || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { continue }
+		if pg.closed || sw_is_host(pg) || storage_origin_key(pg) != r.origin { continue }
 		sw_notify_page(pg, 2, nil)
 	}
 }
@@ -562,6 +565,14 @@ sw_unregister :: proc(r: ^Sw_Registration) {
 	sw_changed(r)
 }
 
+// "Clear site data": every registration of storage key `key` is unregistered (Service Workers "Unregister": the pages it
+// controls keep it until they close).
+sw_clear_key :: proc(key: string) {
+	gone := make([dynamic]^Sw_Registration, context.temp_allocator)
+	for r in sw_registry.regs { if r.origin == key && !r.uninstalling { append(&gone, r) } }
+	for r in gone { sw_unregister(r) }
+}
+
 // The registration goes (unregister, or nothing left of it).
 @(private)
 sw_remove :: proc(r: ^Sw_Registration) {
@@ -574,7 +585,7 @@ sw_remove :: proc(r: ^Sw_Registration) {
 	}
 	sw_reject_registering(r, "the registration was removed")
 	for _, pg in live_pages {
-		if !pg.closed && !sw_is_host(pg) && url.origin_serialize(pg.env.origin, context.temp_allocator) == r.origin { sw_notify_page(pg, 2, nil) }
+		if !pg.closed && !sw_is_host(pg) && storage_origin_key(pg) == r.origin { sw_notify_page(pg, 2, nil) }
 	}
 	sw_save(r.dir)
 	sw_reg_free(r)
@@ -642,7 +653,11 @@ sw_job_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 }
 
 @(private)
-sw_script_dir :: proc(script: string) -> string { return script[:strings.last_index_byte(script, '/') + 1] }
+sw_script_dir :: proc(script: string) -> string {
+	s := script
+	if q := strings.index_byte(s, '?'); q >= 0 { s = s[:q] }   // (a slash of the query is not the script's directory)
+	return s[:strings.last_index_byte(s, '/') + 1]
+}
 
 @(private)
 sw_has_allowed :: proc(list: []http.Header) -> bool {
@@ -804,7 +819,7 @@ sw_fetch_done :: proc(f: ^Sw_Fetch) {
 @(private)
 sw_claim :: proc(r: ^Sw_Registration) {
 	for id, pg in live_pages {
-		if pg.closed || sw_is_host(pg) || sw_match(pg.env.location.href, true) != r { continue }
+		if pg.closed || sw_is_host(pg) || sw_match(pg.env.location.href, storage_origin_key(pg), true) != r { continue }
 		if pg.web.id > r.after_page || r.claimed[id] { continue }
 		r.claimed[id] = true
 		sw_notify_page(pg, 0, nil)
@@ -861,7 +876,7 @@ sw_wake_ready :: proc() {
 	for w in sw_registry.ready {
 		pg := page_by_id(w.page)
 		if pg == nil || pg.closed { continue }
-		if r := sw_match(pg.env.location.href, true); r != nil { promise_resolve(pg, w.promise, i64(r.id)); continue }
+		if r := sw_match(pg.env.location.href, storage_origin_key(pg), true); r != nil { promise_resolve(pg, w.promise, i64(r.id)); continue }
 		sw_registry.ready[k] = w
 		k += 1
 	}
@@ -924,7 +939,7 @@ sw_client_page :: proc(r: ^Sw_Registration, text: string) -> ^Page {
 	id, ok := strconv.parse_u64(strings.trim_space(text))
 	if !ok { return nil }
 	pg := page_by_id(id)
-	if pg == nil || pg.closed || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { return nil }
+	if pg == nil || pg.closed || sw_is_host(pg) || storage_origin_key(pg) != r.origin { return nil }
 	return pg
 }
 
@@ -935,7 +950,7 @@ sw_client_page :: proc(r: ^Sw_Registration, text: string) -> ^Page {
 sw_origin_activated :: proc(origin: string) -> bool {
 	ms := sw_registry.settings != nil ? sw_registry.settings.sw.window_activation_ms : 5000
 	for _, pg in live_pages {
-		if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != origin { continue }
+		if pg.closed || pg.worker != nil || sw_is_host(pg) || storage_origin_key(pg) != origin { continue }
 		if age, had := activation_age_ns(pg); had && age <= i64(ms) * 1_000_000 { return true }
 	}
 	return false
@@ -961,7 +976,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 			ids := make([dynamic]u64, context.temp_allocator)
 			for id, pg in live_pages {
 				// (a document in the back/forward cache is not a client: it is not fully active)
-				if pg.closed || pg.worker != nil || pg.web.frozen || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { continue }
+				if pg.closed || pg.worker != nil || pg.web.frozen || sw_is_host(pg) || storage_origin_key(pg) != r.origin { continue }
 				if !uncontrolled && sw_controller(pg) != r { continue }
 				append(&ids, id)
 			}
@@ -974,7 +989,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		if type == "worker" || type == "all" {
 			// dedicated workers: clients of their document's controller (HTML: a worker inherits it)
 			for _, pg in live_pages {
-				if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { continue }
+				if pg.closed || pg.worker != nil || sw_is_host(pg) || storage_origin_key(pg) != r.origin { continue }
 				if !uncontrolled && sw_controller(pg) != r { continue }
 				for h in pg.workers.hosts {
 					if !h.javascript || h.terminated || h.state != .Running || h.sw != nil || h.shared != nil { continue }
@@ -985,7 +1000,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		}
 		if (type == "sharedworker" || type == "all") && uncontrolled {
 			for s in shared_workers {
-				if s.gone || s.worker == nil || !strings.has_prefix(s.key, r.origin) { continue }
+				if s.gone || s.worker == nil || s.key != r.origin { continue }
 				if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 				fmt.sbprintf(&b, "%d\t%s\tsharedworker\tnone\thidden\t0", s.worker.client_id, s.url)
 			}
@@ -1058,7 +1073,7 @@ sw_opens_poll :: proc(_: rawptr) {
 		timed_out := time.tick_diff(o.deadline, time.tick_now()) > 0
 		if found == nil && !timed_out { sw_registry.opens[k] = o; k += 1; continue }
 		b := strings.builder_make(context.temp_allocator)
-		if v := sw_version_by_id(o.version); found != nil && v != nil && url.origin_serialize(found.env.origin, context.temp_allocator) == v.reg.origin { sw_client_line(&b, found) }
+		if v := sw_version_by_id(o.version); found != nil && v != nil && storage_origin_key(found) == v.reg.origin { sw_client_line(&b, found) }
 		sw_answer(o.version, o.request, true, strings.to_string(b))
 		delete(o.url)
 	}
@@ -1143,9 +1158,9 @@ sw_intercept :: proc(t: ^fetch.Task) -> bool {
 	if client != nil && (client.closed || sw_is_host(client) || !client.settings.sw.enabled) { return false }
 	if client != nil { sw_note_page(client) }
 	r: ^Sw_Registration
-	navigation := t.mode == .Navigate && (t.destination == .Document || t.destination == .Iframe)
+	navigation := t.mode == .Navigate && (t.destination == .Document || fetch.is_frame_destination(t.destination))
 	if navigation {
-		r = sw_match(t.target.href, true)
+		r = sw_match(t.target.href, sw_navigation_key(t, client), true)
 	} else {
 		r = sw_controller(client)
 	}
@@ -1188,6 +1203,18 @@ sw_intercept :: proc(t: ^fetch.Task) -> bool {
 	return true
 }
 
+// The storage key of the document a navigation makes (temp): a top-level one is its origin's; a frame's is
+// partitioned by its tab's site when it is of another site (storage.partitioned; a new document has no storage access
+// yet).
+@(private)
+sw_navigation_key :: proc(t: ^fetch.Task, client: ^Page) -> string {
+	origin := url.origin_serialize(url.origin_of(t.target, context.temp_allocator), context.temp_allocator)
+	if !fetch.is_frame_destination(t.destination) || client == nil || !client.settings.frames.storage_partition { return origin }
+	top := client.env.top_level_site
+	if url.same_site(url.site_of(url.origin_of(t.target, context.temp_allocator), context.temp_allocator), top) { return origin }
+	return strings.concatenate({origin, "^", site_text(top)}, context.temp_allocator)
+}
+
 // A fetch event's flag (Worker_Msg.code2): a navigation preload runs for it.
 @(private)
 SW_FETCH_PRELOAD :: i64(1) << 62
@@ -1210,7 +1237,7 @@ sw_fetch_timeout :: proc(data: rawptr) {
 // Module "serviceworker", page side (api/serviceworker.widl)
 
 @(private)
-sw_scope_of :: proc(c: ^Call, script, scope: string) -> (script_url, scope_url: string, err: Api_Error) {
+sw_scope_of :: proc(c: ^Call, script: string, scope: Maybe(string)) -> (script_url, scope_url: string, err: Api_Error) {
 	p := c.page
 	if !p.env.secure_context { return "", "", fail(c, .Security, "SecurityError: service workers need a secure context") }
 	if !p.settings.sw.enabled { return "", "", fail(c, .Security, "SecurityError: service workers are disabled (service_workers.enabled)") }
@@ -1218,12 +1245,13 @@ sw_scope_of :: proc(c: ^Call, script, scope: string) -> (script_url, scope_url: 
 	su, ok := url.parse(script, &base_u, context.temp_allocator)
 	if !ok || (su.scheme != "http" && su.scheme != "https") { return "", "", fail(c, .Type, "TypeError: invalid script URL") }
 	if !url.same_origin(url.origin_of(su, context.temp_allocator), p.env.origin) { return "", "", fail(c, .Security, "SecurityError: the script's origin is not the document's") }
-	sc := scope
-	if sc == "" { sc = "./" }
-	scu, ok2 := url.parse(sc, &su, context.temp_allocator)
+	// (Service Workers "register": a given scope is parsed against the document's URL, the default "./" against the
+	// script's; the query stays part of the scope, only the fragment goes)
+	scu: url.URL
+	ok2: bool
+	if s, given := scope.?; given { scu, ok2 = url.parse(s, &base_u, context.temp_allocator) } else { scu, ok2 = url.parse("./", &su, context.temp_allocator) }
 	if !ok2 || !url.same_origin(url.origin_of(scu, context.temp_allocator), p.env.origin) { return "", "", fail(c, .Security, "SecurityError: the scope's origin is not the document's") }
 	scope_str := url.without_fragment(scu)
-	if q := strings.index_byte(scope_str, '?'); q >= 0 { scope_str = scope_str[:q] }
 	// (a scope above the script's directory needs the script's Service-Worker-Allowed header: checked by the job)
 	return url.without_fragment(su), scope_str, .None
 }
@@ -1236,13 +1264,13 @@ sw_off_thread :: #force_inline proc(c: ^Call) -> bool { return c.page.worker != 
 ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), via_cache: string, module: bool) -> (u64, Api_Error) {
 	p := c.page
 	if sw_off_thread(c) { return 0, fail(c, .Not_Supported, "NotSupportedError: service workers are registered from documents") }
-	su, sc, err := sw_scope_of(c, script, scope.? or_else "")
+	su, sc, err := sw_scope_of(c, script, scope)
 	if err != .None { return 0, err }
 	sw_note_page(p)
 	pr := promise_create(p, c.owner)
-	origin := url.origin_serialize(p.env.origin, context.temp_allocator)
+	origin := storage_origin_key(p)   // (the registration's storage key: Sw_Registration.origin)
 	r: ^Sw_Registration
-	for x in sw_registry.regs { if x.scope == sc { r = x; break } }
+	for x in sw_registry.regs { if x.scope == sc && x.origin == origin { r = x; break } }
 	if r == nil {
 		sw_registry.next += 1
 		r = new(Sw_Registration)
@@ -1272,7 +1300,7 @@ ServiceWorker_ready :: proc(c: ^Call) -> u64 {
 		if g := sw_client_view(c); g != nil && g.client_sw_reg != 0 { promise_resolve(p, pr, i64(g.client_sw_reg)) }
 		return pr
 	}
-	if r := sw_match(p.env.location.href, true); r != nil { promise_resolve(p, pr, i64(r.id)); return pr }
+	if r := sw_match(p.env.location.href, storage_origin_key(p), true); r != nil { promise_resolve(p, pr, i64(r.id)); return pr }
 	append(&sw_registry.ready, Sw_Waiter{page_id(p), pr})
 	return pr
 }
@@ -1283,14 +1311,14 @@ ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -> u64 {
 	base_u := p.env.location
 	u := p.env.location.href
 	if client_url != "" { if pu, ok := url.parse(client_url, &base_u, context.temp_allocator); ok { u = pu.href } }
-	r := sw_match(u, false)
-	if r == nil || r.origin != url.origin_serialize(p.env.origin, context.temp_allocator) { return 0 }
+	r := sw_match(u, storage_origin_key(p), false)
+	if r == nil { return 0 }
 	return r.id
 }
 
 ServiceWorker_registrationIds :: proc(c: ^Call) -> string {
 	if sw_off_thread(c) { g := sw_client_view(c); return g != nil && g.client_sw_reg != 0 ? fmt.tprintf("%d", g.client_sw_reg) : "" }
-	origin := url.origin_serialize(c.page.env.origin, context.temp_allocator)
+	origin := storage_origin_key(c.page)
 	b := strings.builder_make(context.temp_allocator)
 	for r in sw_registry.regs {
 		if r.origin != origin || r.uninstalling { continue }
@@ -1348,7 +1376,7 @@ ServiceWorker_info :: proc(c: ^Call, version: u64) -> string {
 ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool {
 	if sw_off_thread(c) { return false }
 	r := sw_by_id(id)
-	if r == nil || r.uninstalling || r.origin != url.origin_serialize(c.page.env.origin, context.temp_allocator) { return false }
+	if r == nil || r.uninstalling || r.origin != storage_origin_key(c.page) { return false }
 	sw_unregister(r)
 	return true
 }
@@ -1357,7 +1385,7 @@ ServiceWorkerRegistration_updateId :: proc(c: ^Call, id: u64) -> (u64, Api_Error
 	p := c.page
 	if sw_off_thread(c) { return 0, fail(c, .Not_Supported, "NotSupportedError: not from a worker") }
 	r := sw_by_id(id)
-	if r == nil || r.origin != url.origin_serialize(p.env.origin, context.temp_allocator) { return 0, fail(c, .Invalid_State, "InvalidStateError: the registration is gone") }
+	if r == nil || r.origin != storage_origin_key(p) { return 0, fail(c, .Invalid_State, "InvalidStateError: the registration is gone") }
 	if r.installing == nil && r.waiting == nil && r.active == nil { return 0, fail(c, .Invalid_State, "InvalidStateError: the registration has no version") }
 	sw_note_page(p)
 	pr := promise_create(p, c.owner)
