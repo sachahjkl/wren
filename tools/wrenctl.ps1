@@ -158,3 +158,25 @@ function Stop-Wren {
     Wren-Ctl stop $Name | Out-Null
     if ($env:WREN_REMOTE -eq $Name) { Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue }
 }
+
+# The -Check of an end-to-end script: the check build (built when stale; test_env.ps1 Ensure-WrenBuild) with a profile of
+# its own. Stop-WrenChecked quits it normally and returns the first line of its leak report (memtrack.txt);
+# Test-WrenCheckClean says whether that line reports nothing left allocated.
+function Start-WrenChecked {
+    param([string]$Size = '1000x700', [string[]]$Pref = @())
+    if (-not (Ensure-WrenBuild 'check')) { throw "building the check build failed: $global:WrenBuildOutput" }
+    $script:WrenExe = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\wren_check.exe'
+    $script:WrenCheckProfile = Join-Path $env:TEMP "wren-check-profile-$PID"
+    Remove-Item -Recurse -Force $script:WrenCheckProfile -ErrorAction SilentlyContinue
+    return Start-Wren -Size $Size -ProfileDir $script:WrenCheckProfile -Pref $Pref
+}
+function Stop-WrenChecked {
+    $q = Wren-Ctl quit
+    if ($env:WREN_REMOTE) { Remove-Item Env:\WREN_REMOTE -ErrorAction SilentlyContinue }
+    $rep = Join-Path $script:WrenCheckProfile 'memtrack.txt'
+    $text = if (Test-Path $rep) { [string](Get-Content $rep -TotalCount 1) } else { "no leak report ($q)" }
+    if (Test-Path $rep) { Get-Content $rep | Select-Object -Skip 1 -First 30 | ForEach-Object { "  $_" } | Out-Host }
+    Remove-Item -Recurse -Force $script:WrenCheckProfile -ErrorAction SilentlyContinue
+    return $text
+}
+function Test-WrenCheckClean([string]$line) { return $line -match ' 0 leaked block\(s\), 0 byte\(s\); 0 bad free\(s\)' }

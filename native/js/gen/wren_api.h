@@ -166,6 +166,8 @@ enum wr_FormEnctype {
 
 /* module dom (partial): types */
 
+/* module fs: types */
+
 /* module fullscreen: types */
 // FullscreenOptions.navigationUI: whether the browser's interface (address bar, tabs) may be shown over the page.
 enum wr_FullscreenNavigation {
@@ -2129,6 +2131,50 @@ WR_IMPORT("frames", "Window_get_name") int32_t wr_Window_get_name(uint8_t *_buf,
 // window.name = value
 WR_IMPORT("frames", "Window_set_name") void wr_Window_set_name(const uint8_t *value, uint32_t value_len);
 
+/* module fs */
+// navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
+// context, for an opaque origin or a profile without a folder.
+WR_IMPORT("fs", "Fs_opfsRoot") int32_t wr_Fs_opfsRoot(uint64_t *_ret);
+// getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
+// Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
+WR_IMPORT("fs", "Fs_getEntry") int32_t wr_Fs_getEntry(uint64_t root, const uint8_t *path, uint32_t path_len, const uint8_t *name, uint32_t name_len, int32_t directory, int32_t create, uint8_t *_buf, uint32_t _cap);
+// removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
+// for an entry in use.
+WR_IMPORT("fs", "Fs_removeEntry") int32_t wr_Fs_removeEntry(uint64_t root, const uint8_t *path, uint32_t path_len, const uint8_t *name, uint32_t name_len, int32_t recursive);
+// The directory's entries: "f" or "d", a tab, the name, one per line.
+WR_IMPORT("fs", "Fs_list") int32_t wr_Fs_list(uint64_t root, const uint8_t *path, uint32_t path_len, uint8_t *_buf, uint32_t _cap);
+// resolve(): the names from the first entry down to the second, "/"-joined (Not_Found: not below it).
+WR_IMPORT("fs", "Fs_resolve") int32_t wr_Fs_resolve(uint64_t root, const uint8_t *path, uint32_t path_len, uint64_t root2, const uint8_t *path2, uint32_t path2_len, uint8_t *_buf, uint32_t _cap);
+// isSameEntry
+WR_IMPORT("fs", "Fs_same") int32_t wr_Fs_same(uint64_t root, const uint8_t *path, uint32_t path_len, uint64_t root2, const uint8_t *path2, uint32_t path2_len);
+// getFile(): a File object (a LocalFile of module dnd: read on demand).
+WR_IMPORT("fs", "Fs_getFile") int32_t wr_Fs_getFile(uint64_t root, const uint8_t *path, uint32_t path_len, uint64_t *_ret);
+// createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (`sync`: the file itself,
+// exclusive): an open entry's id. No_Modification_Allowed while it is locked.
+WR_IMPORT("fs", "Fs_open") int32_t wr_Fs_open(uint64_t root, const uint8_t *path, uint32_t path_len, int32_t keep, int32_t sync, uint64_t *_ret);
+// Writes at `at` (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.
+WR_IMPORT("fs", "Fs_write") int32_t wr_Fs_write(uint64_t id, int64_t at, const uint8_t *data, uint32_t data_len, int64_t *_ret);
+// Reads into `into` from `at` (-1: the cursor): the bytes read.
+WR_IMPORT("fs", "Fs_read") int32_t wr_Fs_read(uint64_t id, int64_t at, uint8_t *into, uint32_t into_cap, int64_t *_ret);
+WR_IMPORT("fs", "Fs_seek") int32_t wr_Fs_seek(uint64_t id, int64_t position);
+WR_IMPORT("fs", "Fs_truncate") int32_t wr_Fs_truncate(uint64_t id, int64_t size);
+WR_IMPORT("fs", "Fs_size") int32_t wr_Fs_size(uint64_t id, int64_t *_ret);
+WR_IMPORT("fs", "Fs_flush") int32_t wr_Fs_flush(uint64_t id);
+// close(): a writable's temporary file replaces the entry (`commit` false: abort); a sync handle's lock goes.
+WR_IMPORT("fs", "Fs_close") int32_t wr_Fs_close(uint64_t id, int32_t commit);
+// queryPermission: 0 granted, 1 prompt, 2 denied.
+WR_IMPORT("fs", "Fs_permission") int32_t wr_Fs_permission(uint64_t root, int32_t write);
+// requestPermission({mode}): a promise of the state after (the user may be asked).
+WR_IMPORT("fs", "Fs_requestPermission") int32_t wr_Fs_requestPermission(uint64_t root, int32_t write, uint64_t *_ret);
+// showOpenFilePicker (kind 0), showSaveFilePicker (1), showDirectoryPicker (2): a promise of the number of
+// handles, its text one line per handle: root TAB path TAB "f" or "d" TAB name. Abort when cancelled, Security
+// without a user gesture, Not_Supported when disabled. `types`: a line per type, description TAB patterns...
+WR_IMPORT("fs", "Fs_showPicker") int32_t wr_Fs_showPicker(int32_t kind, const uint8_t *types, uint32_t types_len, int32_t multiple, int32_t exclude_all, const uint8_t *suggested, uint32_t suggested_len, const uint8_t *start_in, uint32_t start_in_len, uint64_t start_root, const uint8_t *start_path, uint32_t start_path_len, const uint8_t *id, uint32_t id_len, int32_t readwrite, uint64_t *_ret);
+// A root as structuredClone keeps it ("" when unknown).
+WR_IMPORT("fs", "Fs_describe") int32_t wr_Fs_describe(uint64_t root, uint8_t *_buf, uint32_t _cap);
+// The root a kept description stands for in this realm. Data_Clone for another origin's.
+WR_IMPORT("fs", "Fs_restore") int32_t wr_Fs_restore(const uint8_t *description, uint32_t description_len, uint64_t *_ret);
+
 /* module fullscreen */
 // element.requestFullscreen(options): settled once the window is in full screen. Rejected with TypeError when the
 // element cannot go (not connected, not an element that may, the document is not allowed by the permissions policy or
@@ -2287,6 +2333,9 @@ WR_IMPORT("dnd", "LocalFile_info") void wr_LocalFile_info(uint64_t file, wr_Loca
 // Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
 // changed since it was given: File API "NotReadableError").
 WR_IMPORT("dnd", "LocalFile_read") int32_t wr_LocalFile_read(uint64_t file, int64_t offset, uint8_t *into, uint32_t into_cap, int64_t *_ret);
+// DataTransferItem.getAsFileSystemHandle(): the dropped file's or folder's handle (as Fs_showPicker describes one:
+// root TAB path TAB kind TAB name), "" for a string item or outside read-only and read/write mode.
+WR_IMPORT("dnd", "DataTransfer_itemFsHandle") int32_t wr_DataTransfer_itemFsHandle(uint64_t dt, int32_t index, uint8_t *_buf, uint32_t _cap);
 // DragEvent.dataTransfer of an event the browser dispatches (0 for another event).
 WR_IMPORT("dnd", "DragEvent_dataTransfer") uint64_t wr_DragEvent_dataTransfer(uint64_t event);
 // input.files.length (0 for an element that is not a file input).
@@ -2310,6 +2359,8 @@ WR_IMPORT("entries", "FsEntry_fullPath") int32_t wr_FsEntry_fullPath(uint64_t en
 WR_IMPORT("entries", "FsEntry_filesystemName") int32_t wr_FsEntry_filesystemName(uint64_t entry, uint8_t *_buf, uint32_t _cap);
 // getParent(): the folder above (an entry is its own parent at the top of what was dropped).
 WR_IMPORT("entries", "FsEntry_parent") uint64_t wr_FsEntry_parent(uint64_t entry);
+// entry.filesystem.root: the entry of what was dropped (the top of the entry's tree).
+WR_IMPORT("entries", "FsEntry_root") uint64_t wr_FsEntry_root(uint64_t entry);
 // fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).
 WR_IMPORT("entries", "FsEntry_file") uint64_t wr_FsEntry_file(uint64_t entry);
 // dirEntry.getFile(path) / getDirectory(path): a promise of the entry (NotFoundError, TypeMismatchError when it is
@@ -2377,6 +2428,10 @@ WR_IMPORT("scripts", "WorkerGlobalScope_isModule") int32_t wr_WorkerGlobalScope_
 // runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
 // Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
 WR_IMPORT("scripts", "SharedWorker_connect") int32_t wr_SharedWorker_connect(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, uint64_t *_ret);
+// new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
+// URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
+WR_IMPORT("scripts", "Worker_createScriptBytes") int32_t wr_Worker_createScriptBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
+WR_IMPORT("scripts", "SharedWorker_connectBytes") int32_t wr_SharedWorker_connectBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
 // The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
 WR_IMPORT("scripts", "SharedWorker_portEnd") uint64_t wr_SharedWorker_portEnd(uint64_t worker);
 // The end of the port of the next connect event of the calling shared worker (0: none waits).

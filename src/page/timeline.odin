@@ -436,7 +436,8 @@ Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, fro
 	kind := Tl_Kind(entry_type)
 	list := make([dynamic]Tl_Entry, context.temp_allocator)
 	if kind == .Navigation {
-		if from_seq > 0 { return "[]" }
+		// (a worker has no navigation: Navigation Timing is a document's)
+		if from_seq > 0 || p.worker != nil { return "[]" }
 		e := nav_entry(p)
 		defer tl_entry_free(&e)
 		append(&list, e)

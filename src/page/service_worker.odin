@@ -99,6 +99,8 @@ Sw_Registration :: struct {
 	job_error:   string,
 	job_requests: [dynamic]u64,   // worker requests (update) answered when the job ends: version id << 32 | request id
 	last_check:  i64,             // unix seconds of the last update check
+	uninstalling: bool,           // unregistered while it controls pages: no new client, gone with the last one
+	uninstall_after: u64,         // ... the pages created after it was unregistered are not its clients
 	preload:     bool,            // navigation preload enabled
 	preload_header: string,
 	dir:         string,          // the profile directory it is kept in
@@ -241,7 +243,7 @@ sw_save :: proc(dir: string) {
 	if dir == "" { return }
 	b := strings.builder_make(context.temp_allocator)
 	for r in sw_registry.regs {
-		if r.dir != dir || r.active == nil { continue }
+		if r.dir != dir || r.active == nil || r.uninstalling { continue }
 		v := r.active
 		fmt.sbprintf(&b, "2\t%d\t%s\t%s\t%s\t%s\t%d\t%s\t%s\t%d\t%s\n", r.id, r.origin, r.scope, v.script, r.via_cache, r.last_check,
 			r.preload ? "1" : "0", sw_escape(r.preload_header), v.id, v.module ? "1" : "0")
@@ -327,10 +329,11 @@ sw_note_page :: proc(p: ^Page) {
 }
 
 // The registration whose scope is the longest prefix of `u` (Service Workers "match service worker registration").
-sw_match :: proc(u: string, active_only: bool) -> ^Sw_Registration {
+sw_match :: proc(u: string, active_only: bool, uninstalling := false) -> ^Sw_Registration {
 	best: ^Sw_Registration
 	for r in sw_registry.regs {
 		if active_only && r.active == nil { continue }
+		if r.uninstalling && !uninstalling { continue }
 		if strings.has_prefix(u, r.scope) && (best == nil || len(r.scope) > len(best.scope)) { best = r }
 	}
 	return best
@@ -364,8 +367,10 @@ sw_is_host :: proc(p: ^Page) -> bool {
 // The registration controlling page `p` (nil: none).
 sw_controller :: proc(p: ^Page) -> ^Sw_Registration {
 	if p == nil || p.web == nil || p.worker != nil || sw_registry.active == 0 || sw_is_host(p) { return nil }
-	r := sw_match(p.env.location.href, true)
+	// (an unregistered registration still controls the pages it controlled: Service Workers "Unregister")
+	r := sw_match(p.env.location.href, true, uninstalling = true)
 	if r == nil { return nil }
+	if r.uninstalling && !r.claimed[p.web.id] && p.web.id > r.uninstall_after { return nil }
 	if p.web.id > r.after_page || r.claimed[p.web.id] { return r }
 	return nil
 }
@@ -544,6 +549,17 @@ sw_redundant :: proc(v: ^Sw_Version) {
 	sw_version_free(v)
 	if was_active && r.counted && r.active == nil { r.counted = false; sw_registry.active -= 1 }
 	if r.installing == nil && r.waiting == nil && r.active == nil && r.job == base.NIL_HANDLE { sw_remove(r) } else { sw_save(r.dir) }
+}
+
+// registration.unregister(): gone at once when it controls no page, else it stops taking new clients and goes when the
+// last page it controls closes (Service Workers "Unregister", "Try Clear Registration").
+@(private)
+sw_unregister :: proc(r: ^Sw_Registration) {
+	r.uninstalling = true
+	r.uninstall_after = next_page_id
+	if !sw_has_clients(r) { sw_remove(r); return }
+	sw_save(r.dir)   // (not kept: a restart forgets it)
+	sw_changed(r)
 }
 
 // The registration goes (unregister, or nothing left of it).
@@ -731,6 +747,20 @@ sw_page_reply :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		if v == r.active && v.state == .Activated { sw_claim(r) } else { v.claim_pending = true }
 	case .Post_Client:
 		target := u64(m.code2)
+		if target >= SW_WORKER_CLIENT_BASE {
+			// a worker client: its thread gets it (sw_client_message)
+			for _, pg in live_pages {
+				for wh in pg.workers.hosts {
+					if wh.client_id != target || wh.terminated || wh.state != .Running { continue }
+					msg := new(Worker_Msg)
+					msg.kind, msg.id = .Sw_Client, v.id
+					msg.bytes = make([]byte, len(m.bytes))
+					copy(msg.bytes, m.bytes)
+					link_send(wh.link, true, msg)
+				}
+			}
+			return
+		}
 		for id, pg in live_pages {
 			if pg.closed || sw_is_host(pg) || (target != 0 && id != target) { continue }
 			if sw_controller(pg) != r && target == 0 { continue }
@@ -815,7 +845,14 @@ sw_page_gone :: proc(p: ^Page) {
 		delete_key(&sw_registry.inbox, p.web.id)
 	}
 	if len(sw_registry.regs) == 0 || sw_registry.loop == nil || sw_is_host(p) { return }
-	host.post(sw_registry.loop, proc(_: rawptr) { for r in sw_registry.regs { if r.waiting != nil { sw_try_activate(r) } } }, nil)
+	host.post(sw_registry.loop, proc(_: rawptr) {
+		for i := len(sw_registry.regs) - 1; i >= 0; i -= 1 {
+			if i >= len(sw_registry.regs) { continue }
+			r := sw_registry.regs[i]
+			if r.uninstalling && !sw_has_clients(r) { sw_remove(r); continue }   // its last client went
+			if r.waiting != nil { sw_try_activate(r) }
+		}
+	}, nil)
 }
 
 @(private)
@@ -891,9 +928,26 @@ sw_client_page :: proc(r: ^Sw_Registration, text: string) -> ^Page {
 	return pg
 }
 
+// Service Workers: openWindow and focus need a user activation. A service worker has no input of its own (it would be a
+// notification click, which this browser does not have): a click or key press in a window of its origin within
+// service_workers.window_activation_ms stands for it.
+@(private)
+sw_origin_activated :: proc(origin: string) -> bool {
+	ms := sw_registry.settings != nil ? sw_registry.settings.sw.window_activation_ms : 5000
+	for _, pg in live_pages {
+		if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != origin { continue }
+		if age, had := activation_age_ns(pg); had && age <= i64(ms) * 1_000_000 { return true }
+	}
+	return false
+}
+
 @(private)
 sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra: string) {
 	r := v.reg
+	if (op == .Open_Window || op == .Focus) && !sw_origin_activated(r.origin) {
+		sw_answer(v.id, request, false, "InvalidAccessError: opening or focusing a window needs a user gesture")
+		return
+	}
 	switch op {
 	case .None:
 		sw_answer(v.id, request, false, "unknown request")
@@ -916,6 +970,25 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 				for k in 0 ..< i { if ids[k] > ids[k + 1] { ids[k], ids[k + 1] = ids[k + 1], ids[k] } }
 			}
 			for i := len(ids) - 1; i >= 0; i -= 1 { sw_client_line(&b, page_by_id(ids[i])) }
+		}
+		if type == "worker" || type == "all" {
+			// dedicated workers: clients of their document's controller (HTML: a worker inherits it)
+			for _, pg in live_pages {
+				if pg.closed || pg.worker != nil || sw_is_host(pg) || url.origin_serialize(pg.env.origin, context.temp_allocator) != r.origin { continue }
+				if !uncontrolled && sw_controller(pg) != r { continue }
+				for h in pg.workers.hosts {
+					if !h.javascript || h.terminated || h.state != .Running || h.sw != nil || h.shared != nil { continue }
+					if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
+					fmt.sbprintf(&b, "%d\t%s\tworker\tnone\thidden\t0", h.client_id, h.url)
+				}
+			}
+		}
+		if (type == "sharedworker" || type == "all") && uncontrolled {
+			for s in shared_workers {
+				if s.gone || s.worker == nil || !strings.has_prefix(s.key, r.origin) { continue }
+				if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
+				fmt.sbprintf(&b, "%d\t%s\tsharedworker\tnone\thidden\t0", s.worker.client_id, s.url)
+			}
 		}
 		sw_answer(v.id, request, true, strings.to_string(b))
 	case .Get:
@@ -960,7 +1033,7 @@ sw_request :: proc(v: ^Sw_Version, request: u64, op: Sw_Request_Op, text, extra:
 		sw_update(r, r.script, r.module, nil, force_network = true)
 	case .Unregister:
 		sw_answer(v.id, request, true, "1")
-		sw_remove(r)
+		sw_unregister(r)
 	}
 }
 
@@ -1181,6 +1254,7 @@ ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), v
 		append(&sw_registry.regs, r)
 	}
 	if r.via_cache != via_cache { delete(r.via_cache); r.via_cache = strings.clone(via_cache) }
+	if r.uninstalling { r.uninstalling = false; sw_save(r.dir) }   // registered again before it went
 	newest := r.installing != nil ? r.installing : (r.waiting != nil ? r.waiting : r.active)
 	if newest != nil && newest.script == su && newest.module == module && r.job == base.NIL_HANDLE && newest != r.installing {
 		// Service Workers "register": the same script is already there: the registration, at once
@@ -1194,7 +1268,10 @@ ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), v
 ServiceWorker_ready :: proc(c: ^Call) -> u64 {
 	p := c.page
 	pr := promise_create(p, c.owner)
-	if sw_off_thread(c) { return pr }
+	if sw_off_thread(c) {
+		if g := sw_client_view(c); g != nil && g.client_sw_reg != 0 { promise_resolve(p, pr, i64(g.client_sw_reg)) }
+		return pr
+	}
 	if r := sw_match(p.env.location.href, true); r != nil { promise_resolve(p, pr, i64(r.id)); return pr }
 	append(&sw_registry.ready, Sw_Waiter{page_id(p), pr})
 	return pr
@@ -1202,7 +1279,7 @@ ServiceWorker_ready :: proc(c: ^Call) -> u64 {
 
 ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -> u64 {
 	p := c.page
-	if sw_off_thread(c) { return 0 }
+	if sw_off_thread(c) { g := sw_client_view(c); return g != nil ? g.client_sw_reg : 0 }
 	base_u := p.env.location
 	u := p.env.location.href
 	if client_url != "" { if pu, ok := url.parse(client_url, &base_u, context.temp_allocator); ok { u = pu.href } }
@@ -1212,11 +1289,11 @@ ServiceWorker_getRegistration :: proc(c: ^Call, client_url: string) -> u64 {
 }
 
 ServiceWorker_registrationIds :: proc(c: ^Call) -> string {
-	if sw_off_thread(c) { return "" }
+	if sw_off_thread(c) { g := sw_client_view(c); return g != nil && g.client_sw_reg != 0 ? fmt.tprintf("%d", g.client_sw_reg) : "" }
 	origin := url.origin_serialize(c.page.env.origin, context.temp_allocator)
 	b := strings.builder_make(context.temp_allocator)
 	for r in sw_registry.regs {
-		if r.origin != origin { continue }
+		if r.origin != origin || r.uninstalling { continue }
 		if strings.builder_len(b) > 0 { strings.write_byte(&b, '\n') }
 		fmt.sbprintf(&b, "%d", r.id)
 	}
@@ -1224,14 +1301,20 @@ ServiceWorker_registrationIds :: proc(c: ^Call) -> string {
 }
 
 ServiceWorker_controller :: proc(c: ^Call) -> u64 {
-	if sw_off_thread(c) { return 0 }
+	if sw_off_thread(c) {
+		g := sw_client_view(c)
+		if g == nil || g.client_sw == "" { return 0 }
+		f := strings.split(g.client_sw, "\n", context.temp_allocator)
+		id, _ := strconv.parse_u64(len(f) > 4 ? f[4] : "0")
+		return id
+	}
 	r := sw_controller(c.page)
 	return r != nil && r.active != nil ? r.active.id : 0
 }
 
 ServiceWorkerRegistration_info :: proc(c: ^Call, id: u64) -> string {
 	if g := sw_global(c); g != nil { return id == g.reg ? g.info : "" }   // a service worker's copy
-	if c.page.worker != nil { return "" }
+	if c.page.worker != nil { g := sw_client_view(c); return g != nil && id == g.client_sw_reg ? g.client_sw : "" }
 	r := sw_by_id(id)
 	if r == nil { return "" }
 	return sw_reg_info(r)
@@ -1246,7 +1329,17 @@ ServiceWorker_info :: proc(c: ^Call, version: u64) -> string {
 		}
 		return version == g.version ? fmt.tprintf("redundant\n%s", g.script) : ""
 	}
-	if c.page.worker != nil { return "" }
+	if c.page.worker != nil {
+		// a worker client: its copy of the registration (version lines: id TAB state TAB script)
+		g := sw_client_view(c)
+		if g == nil { return "" }
+		rest := g.client_sw
+		for line in strings.split_lines_iterator(&rest) {
+			f := strings.split(line, "\t", context.temp_allocator)
+			if len(f) == 3 && f[0] == fmt.tprintf("%d", version) { return fmt.tprintf("%s\n%s", f[1], f[2]) }
+		}
+		return ""
+	}
 	v := sw_version_by_id(version)
 	if v == nil { return "" }
 	return fmt.tprintf("%s\n%s", SW_STATE_NAMES[v.state], v.script)
@@ -1255,8 +1348,8 @@ ServiceWorker_info :: proc(c: ^Call, version: u64) -> string {
 ServiceWorkerRegistration_unregisterId :: proc(c: ^Call, id: u64) -> bool {
 	if sw_off_thread(c) { return false }
 	r := sw_by_id(id)
-	if r == nil || r.origin != url.origin_serialize(c.page.env.origin, context.temp_allocator) { return false }
-	sw_remove(r)
+	if r == nil || r.uninstalling || r.origin != url.origin_serialize(c.page.env.origin, context.temp_allocator) { return false }
+	sw_unregister(r)
 	return true
 }
 
@@ -1296,7 +1389,16 @@ ServiceWorkerRegistration_preload :: proc(c: ^Call, id: u64, op: i32, header: st
 
 // serviceWorker.postMessage from a page: a "message" event in the worker with the page as its source.
 ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -> Api_Error {
-	if sw_off_thread(c) { return fail(c, .Not_Supported, "NotSupportedError: a worker cannot post to a service worker in this browser") }
+	if sw_off_thread(c) {
+		// a worker client: the UI thread delivers it (sw_client_post)
+		if sw_client_view(c) == nil { return fail(c, .Not_Supported, "NotSupportedError: a service worker cannot post to a service worker") }
+		m := new(Worker_Msg)
+		m.kind, m.id = .Sw_Post, version
+		m.bytes = make([]byte, len(data))
+		copy(m.bytes, data)
+		link_send(c.page.worker.link, false, m)
+		return .None
+	}
 	v := sw_version_by_id(version)
 	if v == nil || v.state == .Redundant { return fail(c, .Invalid_State, "InvalidStateError: the service worker is redundant") }
 	sw_note_page(c.page)
@@ -1312,7 +1414,16 @@ ServiceWorker_postToWorker :: proc(c: ^Call, version: u64, data: []u8) -> Api_Er
 
 // The next message a service worker sent the page (Not_Found when none waits): the version's id then the data.
 ServiceWorker_takeMessage :: proc(c: ^Call) -> ([]byte, Api_Error) {
-	if sw_off_thread(c) { return nil, .Not_Found }
+	if sw_off_thread(c) {
+		g := sw_client_view(c)
+		if g == nil || len(g.client_inbox) == 0 { return nil, fail(c, .Not_Found, "no message") }
+		m := g.client_inbox[0]
+		ordered_remove(&g.client_inbox, 0)
+		out := make([]byte, len(m), context.temp_allocator)
+		copy(out, m)
+		delete(m)
+		return out, .None
+	}
 	id := page_id(c.page)
 	q, ok := sw_registry.inbox[id]
 	if !ok || len(q) == 0 { return nil, fail(c, .Not_Found, "no message") }
@@ -1323,6 +1434,55 @@ ServiceWorker_takeMessage :: proc(c: ^Call) -> ([]byte, Api_Error) {
 	copy(out, m)
 	delete(m)
 	return out, .None
+}
+
+////////////////////////////////
+// Workers as clients (dedicated and shared workers: navigator.serviceWorker in a worker)
+
+// Worker clients' ids start here (a page's id is far below).
+SW_WORKER_CLIENT_BASE :: u64(1) << 40
+
+// At a worker's start (UI thread): its view of the registration controlling its document (a dedicated worker is a
+// client of its document's controller; a shared worker has none here).
+sw_client_init :: proc(g: ^Worker_Global, p: ^Page) {
+	r := sw_controller(p)
+	if r == nil { return }
+	g.client_sw_reg = r.id
+	g.client_sw = strings.clone(sw_reg_info(r))
+}
+
+// A service worker's message to a worker client arrived (the worker's thread): navigator.serviceWorker's message.
+sw_client_message :: proc(p: ^Page, m: ^Worker_Msg) {
+	g := p.worker
+	data := make([]byte, 8 + len(m.bytes))
+	for i in 0 ..< 8 { data[i] = u8(m.id >> (8 * uint(i))) }
+	copy(data[8:], m.bytes)
+	append(&g.client_inbox, data)
+	if r := js_realm(p); r != nil {
+		argv := [1]u32{1}
+		js_call(p, r.inst, "wj_sw_container_event", argv[:])
+		js_after_task(p, r, "message")
+	}
+}
+
+// serviceWorker.postMessage from a worker client (UI thread): a message event in the service worker.
+sw_client_post :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
+	v := sw_version_by_id(m.id)
+	if v == nil || v.state == .Redundant { return }
+	if v.worker == nil && !sw_version_start(v, h.page) { return }
+	e := sw_event(.Message)
+	e.bytes, m.bytes = m.bytes, nil
+	e.code2 = i64(h.client_id) << 16
+	e.text = strings.clone(h.url)
+	sw_send(v, e)
+}
+
+// A worker client's own view (its thread): nil when the realm is not one.
+@(private)
+sw_client_view :: proc(c: ^Call) -> ^Worker_Global {
+	g := c.page.worker
+	if g == nil || g.sw.reg != 0 { return nil }
+	return g
 }
 
 ////////////////////////////////

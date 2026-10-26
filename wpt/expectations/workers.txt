@@ -1,19 +1,19 @@
 # web-platform-tests expectations of Wren for workers, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
 /workers/SharedWorker-constructor.html: OK
-	Test SharedWorker constructor suceeds.: FAIL
-	Test SharedWorker constructor with null name does not result in an exception.: FAIL
-	Test SharedWorker constructor with undefined name does not result in an exception.: FAIL
-	Test SharedWorker constructor without a name does not result in an exception.: FAIL
-	Test SharedWorker creation without arguments results in exception.: FAIL
-	Test recursive worker creation results in exception.: FAIL
-	Test toString exception propagated correctly.: FAIL
+	Test SharedWorker constructor suceeds.: PASS
+	Test SharedWorker constructor with null name does not result in an exception.: PASS
+	Test SharedWorker constructor with undefined name does not result in an exception.: PASS
+	Test SharedWorker constructor without a name does not result in an exception.: PASS
+	Test SharedWorker creation without arguments results in exception.: PASS
+	Test recursive worker creation results in exception.: PASS
+	Test toString exception propagated correctly.: PASS
 /workers/SharedWorker-detach-frame-in-error-event.html: OK
 	Test frame detach in shared worker's error handler: FAIL
 /workers/SharedWorker-exception-propagation.html: OK
-	Uncaught error in shared worker should not propagate to window: FAIL
+	Uncaught error in shared worker should not propagate to window: PASS
 /workers/SharedWorker-exception.html: OK
-	This test checks whether exceptions in SharedWorkers are logged to the parent document. An exception should be logged to the error console.: FAIL
+	This test checks whether exceptions in SharedWorkers are logged to the parent document. An exception should be logged to the error console.: PASS
 /workers/SharedWorker-extendedLifetime-blob.html: TIMEOUT
 	Blob URL SharedWorker should survive across navigations with extendedLifetime: TIMEOUT
 /workers/SharedWorker-extendedLifetime-data.html: TIMEOUT
@@ -24,10 +24,10 @@
 /workers/SharedWorker-extendedLifetime.html: TIMEOUT
 	SharedWorker lifetime should be extended with extendedLifetime: TIMEOUT
 /workers/SharedWorker-script-error.html: OK
-	Test script error handled.: FAIL
-	Test script error unhandled.: FAIL
+	Test script error handled.: PASS
+	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
-	Test simple shared worker construction case.: FAIL
+	Test simple shared worker construction case.: PASS
 /workers/SharedWorkerPerformanceNow.html: OK
 	performance.now() exists in shared workers and reports reasonable times: FAIL
 /workers/SharedWorker_blobUrl.html: TIMEOUT
@@ -41,11 +41,12 @@
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
-	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT
+/workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
+	Tests that creation of a "new Worker()" will occur in parallel: FAIL|TIMEOUT
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
-/workers/Worker-formdata.any.worker.html: CRASH
+/workers/Worker-formdata.any.worker.html: OK
+	Test FormData interface object: PASS
 /workers/Worker-location.sub.any.worker.html: OK
 	Test WorkerLocation properties.: FAIL
 /workers/Worker-messageport.html: OK
@@ -78,13 +79,13 @@
 /workers/Worker-structure-message.html: OK
 	Tests sending structure message to/from worker.: PASS
 /workers/Worker-terminate-forever-during-evaluation.html: OK
-	Worker is terminated during dynamic import(): FAIL
-	Worker is terminated during dynamic import() (module): FAIL
+	Worker is terminated during dynamic import(): PASS
+	Worker is terminated during dynamic import() (module): PASS
 	Worker is terminated during importScripts() call: PASS
 	Worker is terminated during nested importScripts() call: PASS
-	Worker is terminated during top-level await: FAIL
+	Worker is terminated during top-level await: PASS
 	Worker is terminated during top-level script evaluation: PASS
-	Worker is terminated during top-level script evaluation (module): FAIL
+	Worker is terminated during top-level script evaluation (module): PASS
 /workers/Worker-terminate-forever.html: OK
 	Tests terminating a worker that is trying to run forever.: PASS
 /workers/Worker-termination-with-port-messages.html: OK
@@ -202,38 +203,229 @@
 /workers/Worker_script_mimetype.htm: TIMEOUT
 	HTTP(S) URLs which respond with text/plain MIME type must not work: FAIL
 	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: TIMEOUT
-	blob: URLs should load, despite no MIME type for the backing Blob: FAIL
-	blob: URLs should load, despite the wrong MIME type for the backing Blob: FAIL
+	blob: URLs should load, despite no MIME type for the backing Blob: PASS
+	blob: URLs should load, despite the wrong MIME type for the backing Blob: PASS
 	data: URLs should load, despite the wrong MIME type: PASS
 /workers/Worker_terminate_event_queue.htm: OK
 	 AbstractWorker terminate(): clear event queue : PASS
 /workers/abrupt-completion.html: OK
 	DedicatedWorker should correctly handle abrupt completion: PASS
-	SharedWorker should correctly handle abrupt completion: FAIL
+	SharedWorker should correctly handle abrupt completion: PASS
+/workers/baseurl/alpha/import-in-moduleworker.html: OK
+	Base URL in module dedicated workers: import: FAIL
+/workers/baseurl/alpha/importScripts-in-sharedworker.html: TIMEOUT
+/workers/baseurl/alpha/importScripts-in-worker.html: TIMEOUT
+/workers/baseurl/alpha/worker-in-worker.html: OK
+	Base URL in workers: new Worker(): FAIL
+/workers/baseurl/alpha/xhr-in-moduleworker.html: OK
+	Base URL in module dedicated workers: XHR: FAIL
+/workers/baseurl/alpha/xhr-in-sharedworker.html: TIMEOUT
+/workers/baseurl/alpha/xhr-in-worker.html: TIMEOUT
+/workers/constructors/SharedWorker/Infinity-arguments.html: OK
+	Test constructing a shared worker with Infinity: PASS
+/workers/constructors/SharedWorker/NaN-arguments.html: OK
+	Test constructing a shared worker with NaN: PASS
+/workers/constructors/SharedWorker/SharedWorker-constructor.html: OK
+	Test Sharedworker creation with no arguments: PASS
+	Test invalid script URL.: PASS
+	Test toString propagation exception.: PASS
+/workers/constructors/SharedWorker/URLMismatchError.htm: OK
+	Web Workers: SharedWorker - same name, different URL: PASS
+/workers/constructors/SharedWorker/connect-event.html: OK
+	Test connect event for a shared worker: PASS
+/workers/constructors/SharedWorker/dummy-name.html: OK
+	creating a dummy shared worker with name "foo": PASS
+/workers/constructors/SharedWorker/dummy-shared-worker.html: OK
+	creating a dummy shared worker: PASS
+/workers/constructors/SharedWorker/empty-name.html: OK
+	creating a dummy shared worker with explicit name "": PASS
+/workers/constructors/SharedWorker/global-members.html: OK
+	Test if global members exist in a shared worker: PASS
+/workers/constructors/SharedWorker/interface-objects.html: OK
+	Test if interface objects exist in a shared worker: PASS
+/workers/constructors/SharedWorker/name.html: OK
+	Test self.name in a shared worker: PASS
+/workers/constructors/SharedWorker/no-arguments-ctor.html: OK
+	no arguments: PASS
+/workers/constructors/SharedWorker/null-arguments.html: OK
+	Test constructing a shared worker with null: PASS
+/workers/constructors/SharedWorker/number-arguments.html: OK
+	Test constructing a shared worker with 1: PASS
+/workers/constructors/SharedWorker/port-onmessage.html: OK
+	Test SharedWorker.port.onmessage: PASS
+/workers/constructors/SharedWorker/port-properties.html: OK
+	worker.port: PASS
+/workers/constructors/SharedWorker/port-readonly.html: OK
+	setting worker.port: PASS
+/workers/constructors/SharedWorker/same-origin.html: OK
+	about_blank: FAIL
+	data_url: PASS
+	http_port_8012: FAIL
+	https_port_80: FAIL
+	https_port_8000: FAIL
+	javascript_url: FAIL
+	non-parsable URL: PASS
+	opera_com: FAIL
+	port_81: FAIL
+	unsupported_scheme: FAIL
+/workers/constructors/SharedWorker/setting-port-members.html: OK
+	addEventListener: PASS
+	close: PASS
+	despatchEvent: PASS
+	onmessage: PASS
+	postMessage: PASS
+	removeEventListener: PASS
+	start: PASS
+/workers/constructors/SharedWorker/undefined-arguments.html: OK
+	Test constructing a shared worker with undefined: PASS
+/workers/constructors/SharedWorker/unexpected-global-properties.html: OK
+	Test unexpected properties are not in global scope: PASS
+/workers/constructors/SharedWorker/unresolvable-url.html: OK
+	resolving broken url: PASS
+/workers/constructors/Worker/AbstractWorker.onerror.html: TIMEOUT
+	AbstractWorker.onerror: TIMEOUT
+/workers/constructors/Worker/Blob-url.html: OK
+	Worker supports Blob url: PASS
+/workers/constructors/Worker/DedicatedWorkerGlobalScope-members.worker.html: OK
+	existence of addEventListener: PASS
+	existence of atob: PASS
+	existence of btoa: PASS
+	existence of clearInterval: PASS
+	existence of clearTimeout: PASS
+	existence of close: PASS
+	existence of dispatchEvent: PASS
+	existence of importScripts: PASS
+	existence of location: PASS
+	existence of navigator: PASS
+	existence of onerror: PASS
+	existence of onmessage: PASS
+	existence of onoffline: PASS
+	existence of ononline: PASS
+	existence of postMessage: PASS
+	existence of removeEventListener: PASS
+	existence of self: PASS
+	existence of setInterval: PASS
+	existence of setTimeout: PASS
+/workers/constructors/Worker/Worker-constructor.html: OK
+	Test Worker creation with empty script URL.: PASS
+	Test invalid script URL.: PASS
+	Test not existent script URL.: PASS
+	Test recursive Worker creation.: PASS
+	Test the Worker object defines postMessage() and addEventListener().: PASS
+	Test toString propagation exception.: PASS
+	Test worker creation with no arguments: PASS
+/workers/constructors/Worker/constructor-utf16-bom.html: OK
+	Worker with UTF-16BE BOM: PASS
+	Worker with UTF-16LE BOM: PASS
+/workers/constructors/Worker/ctor-1.html: OK
+	1 as argument: PASS
+/workers/constructors/Worker/ctor-null.html: OK
+	null as argument: PASS
+/workers/constructors/Worker/ctor-undefined.html: OK
+	undefined as argument: PASS
+/workers/constructors/Worker/expected-self-properties.worker.html: OK
+	existence of EventSource: PASS
+	existence of MessageChannel: PASS
+	existence of WebSocket: PASS
+	existence of Worker: PASS
+	existence of XMLHttpRequest: PASS
+/workers/constructors/Worker/same-origin.html: OK
+	about_blank: FAIL
+	data_url: PASS
+	example_invalid: FAIL
+	http_post_8012: FAIL
+	https_port_80: FAIL
+	https_port_8000: FAIL
+	javascript_url: FAIL
+	non-parsable URL: PASS
+	port_81: FAIL
+	unsupported_scheme: FAIL
+/workers/constructors/Worker/terminate.html: OK
+	terminate(): PASS
+/workers/constructors/Worker/unexpected-self-properties.worker.html: OK
+	existence of Audio: PASS
+	existence of ByteArray: PASS
+	existence of DOMParser: PASS
+	existence of Image: PASS
+	existence of Option: PASS
+	existence of Packages: PASS
+	existence of SVGUnitTypes: PASS
+	existence of SVGZoomAndPan: PASS
+	existence of SharedWorker: PASS
+	existence of XMLSerializer: PASS
+	existence of XPathEvaluator: PASS
+	existence of XSLTProcessor: PASS
+	existence of addEventStream: PASS
+	existence of alert: PASS
+	existence of attachEvent: PASS
+	existence of back: PASS
+	existence of captureEvents: PASS
+	existence of closed: PASS
+	existence of confirm: PASS
+	existence of defaultStatus: PASS
+	existence of detachEvent: PASS
+	existence of document: PASS
+	existence of event: PASS
+	existence of forward: PASS
+	existence of frameElement: PASS
+	existence of frames: PASS
+	existence of getComputedStyle: PASS
+	existence of getSelection: PASS
+	existence of history: PASS
+	existence of innerHeight: PASS
+	existence of innerWidth: PASS
+	existence of java: PASS
+	existence of length: PASS
+	existence of navigate: PASS
+	existence of netscape: PASS
+	existence of open: PASS
+	existence of opener: PASS
+	existence of opera: PASS
+	existence of outerHeight: PASS
+	existence of outerWidth: PASS
+	existence of pageXOffset: PASS
+	existence of pageYOffset: PASS
+	existence of parent: PASS
+	existence of print: PASS
+	existence of prompt: PASS
+	existence of releaseEvents: PASS
+	existence of removeEventStream: PASS
+	existence of screen: PASS
+	existence of screenLeft: PASS
+	existence of screenTop: PASS
+	existence of screenX: PASS
+	existence of screenY: PASS
+	existence of status: PASS
+	existence of stop: PASS
+	existence of sun: PASS
+	existence of top: PASS
+	existence of window: PASS
+/workers/constructors/Worker/use-base-url.html: OK
+	Use the document base url when resolving worker URLs: FAIL
 /workers/data-url-shared.html: TIMEOUT
 	A data: URL shared worker should not be shared among origins.: TIMEOUT
-	application/javascript MIME allowed: FAIL
-	communication goes both ways: FAIL
-	cross-origin worker: FAIL
-	empty MIME allowed: FAIL
-	indexedDB is inaccessible: FAIL
-	indexedDB is present: FAIL
-	text/plain MIME allowed: FAIL
-	worker has opaque origin: FAIL
+	application/javascript MIME allowed: PASS
+	communication goes both ways: PASS
+	cross-origin worker: PASS
+	empty MIME allowed: PASS
+	indexedDB is inaccessible: PASS
+	indexedDB is present: PASS
+	text/plain MIME allowed: PASS
+	worker has opaque origin: PASS
 /workers/data-url.html: OK
 	application/javascript MIME allowed: PASS
 	communication goes both ways: PASS
 	cross-origin worker: PASS
 	empty MIME allowed: PASS
 	indexedDB is inaccessible: PASS
-	indexedDB is present: FAIL
+	indexedDB is present: PASS
 	invalid javascript produces error: PASS
 	text/plain MIME allowed: PASS
 	worker has opaque origin: PASS
 /workers/dedicated-worker-from-blob-url.window.html: OK
-	Blob URLs should not resolve relative to document base URL.: FAIL
-	Creating a dedicated worker from a blob URL works immediately before revoking.: FAIL
-	Creating a dedicated worker from a blob URL works.: FAIL
+	Blob URLs should not resolve relative to document base URL.: PASS
+	Creating a dedicated worker from a blob URL works immediately before revoking.: PASS
+	Creating a dedicated worker from a blob URL works.: PASS
 /workers/dedicated-worker-in-data-url-context.window.html: OK
 	Create a data url dedicated worker in a data url dedicated worker: FAIL
 	Create a data url dedicated worker in a data url frame: PASS
@@ -246,6 +438,14 @@
 	JSON.parse() error dispatches ErrorEvent at Worker: PASS
 	Script parse error dispatches plain Event at Worker: FAIL
 	eval() with syntax error dispatches ErrorEvent at Worker: PASS
+/workers/examples/fetch_tests_from_worker.html: OK
+	Test that should pass: PASS
+/workers/examples/general.any.worker.html: OK
+	Test that should pass: PASS
+	Worker top-level script is a generated script.: PASS
+/workers/examples/general.worker.html: OK
+	Test that should pass: PASS
+	Worker top-level script is the .worker.js file itself.: PASS
 /workers/importscripts_mime.any.worker.html: OK
 	importScripts() requires scripty MIME types: TEXT/HTML is blocked.: PASS
 	importScripts() requires scripty MIME types: TeXt/HtMl is blocked.: PASS
@@ -320,10 +520,512 @@
 	importScripts() requires scripty MIME types for data: URLs: text/potato is blocked.: FAIL
 	importScripts() requires scripty MIME types for data: URLs: video/mpeg is blocked.: PASS
 	importScripts() requires scripty MIME types for data: URLs: zzz/zzz is blocked.: FAIL
-/workers/name-property.html: ERROR
+/workers/interfaces/DedicatedWorkerGlobalScope/EventTarget.worker.html: OK
+	removeEventListener: PASS
+	target: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/onmessage.worker.html: OK
+	Setting onmessage to 1: PASS
+	Setting onmessage to 1 (again): PASS
+	Setting onmessage to a function: PASS
+	Setting onmessage to an object: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/event-ports-dedicated.html: OK
+	e.ports in dedicated worker: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/imagedata-cloned-canvas-in-array.html: OK
+	posting an imagedata (from a cloned canvas) in an array: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/message-event.html: OK
+	Properties of the 'message' event: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/return-value.worker.html: OK
+	return value of postMessage: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-dictionary.html: OK
+	Using dictionary as postMessage's second argument: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-null-in-array.html: OK
+	Using [null] in postMessage's second argument: FAIL
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-null.html: OK
+	Using null in postMessage's second argument: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/second-argument-undefined.html: OK
+	Using undefined in postMessage's second argument: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/setting-postMessage.html: OK
+	setting postMessage: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/structured-clone-imagedata.html: OK
+	structured clone of ImageData: PASS
+/workers/interfaces/DedicatedWorkerGlobalScope/postMessage/structured-clone-message.html: OK
+	1: PASS
+	Infinity: PASS
+	NaN: PASS
+	array: PASS
+	date: PASS
+	error: PASS
+	false: PASS
+	null: PASS
+	object: PASS
+	regexp: PASS
+	self: PASS
+	string: PASS
+	structured clone of message: PASS
+	true: PASS
+	undefined: PASS
+/workers/interfaces/SharedWorkerGlobalScope/name/getting.html: OK
+	getting name: PASS
+	getting name 1: PASS
+	getting name 2: PASS
+/workers/interfaces/SharedWorkerGlobalScope/name/setting.html: OK
+	setting name: PASS
+/workers/interfaces/WorkerGlobalScope/close/incoming-message.html: OK
+	close() and incoming message: PASS
+/workers/interfaces/WorkerGlobalScope/close/sending-messages.html: OK
+	close() and sending messages: PASS
+/workers/interfaces/WorkerGlobalScope/close/setInterval.html: OK
+	close() and setInterval: PASS
+/workers/interfaces/WorkerGlobalScope/close/setTimeout.html: OK
+	close() and setTimeout: PASS
+/workers/interfaces/WorkerGlobalScope/location/members.html: OK
+	members of WorkerLocation: PASS
+/workers/interfaces/WorkerGlobalScope/location/redirect-module.html: TIMEOUT
+	WorkerLocation with redirects: module dedicated workers: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/location/redirect-sharedworker.html: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/location/redirect.html: TIMEOUT
+	WorkerLocation with redirects: classic dedicated workers: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/location/returns-same-object.any.worker.html: OK
+	location === location: PASS
+/workers/interfaces/WorkerGlobalScope/location/setting-members.html: OK
+	setting members of WorkerLocation: FAIL
+/workers/interfaces/WorkerGlobalScope/location/worker-separate-file.html: OK
+	location with a worker in separate file: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/exception-in-onerror.html: OK
+	Throw in message handler: classic: handler: PASS
+	Throw in message handler: classic: listener: PASS
+	Throw in message handler: module: handler: PASS
+	Throw in message handler: module: listener: PASS
+	Throw in setTimeout(function): classic: handler: PASS
+	Throw in setTimeout(function): classic: listener: PASS
+	Throw in setTimeout(function): module: handler: PASS
+	Throw in setTimeout(function): module: listener: PASS
+	Throw in setTimeout(string): classic: handler: PASS
+	Throw in setTimeout(string): classic: listener: PASS
+	Throw in setTimeout(string): module: handler: PASS
+	Throw in setTimeout(string): module: listener: PASS
+	Throw in worker initialization: classic: handler: PASS
+	Throw in worker initialization: classic: listener: PASS
+	Throw in worker initialization: module: handler: PASS
+	Throw in worker initialization: module: listener: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/handled.html: OK
+	onerror, "handled": PASS
+/workers/interfaces/WorkerGlobalScope/onerror/message-classic-DOMException.html: OK
+	Throw DOMException-TypeError in onerror: classic: handler: PASS
+	Throw DOMException-TypeError in onerror: classic: listener: PASS
+	Throw DOMException-TypeError in onmessage: classic: handler: PASS
+	Throw DOMException-TypeError in onmessage: classic: listener: PASS
+	Throw DOMException-TypeError in setTimeout-function: classic: handler: PASS
+	Throw DOMException-TypeError in setTimeout-function: classic: listener: PASS
+	Throw DOMException-TypeError in setTimeout-string: classic: handler: PASS
+	Throw DOMException-TypeError in setTimeout-string: classic: listener: PASS
+	Throw DOMException-TypeError in toplevel: classic: handler: PASS
+	Throw DOMException-TypeError in toplevel: classic: listener: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/message-classic-Error.html: OK
+	Throw Error in onerror: classic: handler: PASS
+	Throw Error in onerror: classic: listener: PASS
+	Throw Error in onmessage: classic: handler: PASS
+	Throw Error in onmessage: classic: listener: PASS
+	Throw Error in setTimeout-function: classic: handler: PASS
+	Throw Error in setTimeout-function: classic: listener: PASS
+	Throw Error in setTimeout-string: classic: handler: PASS
+	Throw Error in setTimeout-string: classic: listener: PASS
+	Throw Error in toplevel: classic: handler: PASS
+	Throw Error in toplevel: classic: listener: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/message-module-DOMException.html: OK
+	Throw DOMException-TypeError in onerror: module: handler: PASS
+	Throw DOMException-TypeError in onerror: module: listener: PASS
+	Throw DOMException-TypeError in onmessage: module: handler: PASS
+	Throw DOMException-TypeError in onmessage: module: listener: PASS
+	Throw DOMException-TypeError in setTimeout-function: module: handler: PASS
+	Throw DOMException-TypeError in setTimeout-function: module: listener: PASS
+	Throw DOMException-TypeError in setTimeout-string: module: handler: PASS
+	Throw DOMException-TypeError in setTimeout-string: module: listener: PASS
+	Throw DOMException-TypeError in toplevel: module: handler: PASS
+	Throw DOMException-TypeError in toplevel: module: listener: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/message-module-Error.html: OK
+	Throw Error in onerror: module: handler: PASS
+	Throw Error in onerror: module: listener: PASS
+	Throw Error in onmessage: module: handler: PASS
+	Throw Error in onmessage: module: listener: PASS
+	Throw Error in setTimeout-function: module: handler: PASS
+	Throw Error in setTimeout-function: module: listener: PASS
+	Throw Error in setTimeout-string: module: handler: PASS
+	Throw Error in setTimeout-string: module: listener: PASS
+	Throw Error in toplevel: module: handler: PASS
+	Throw Error in toplevel: module: listener: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/not-handled.html: OK
+	Not handled evaluation error => Worker error listener: PASS
+	Not handled evaluation error => Worker.onerror handler: PASS
+/workers/interfaces/WorkerGlobalScope/onerror/propagate-to-window-onerror.html: TIMEOUT
+	onerror, "not handled" with only window.onerror defined: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/self.any.worker.html: OK
+	'self' in self: PASS
+	self = 1: PASS
+	self === self: PASS
+	self instanceof WorkerGlobalScope: PASS
+/workers/interfaces/WorkerUtils/WindowTimers/001.html: OK
+	setTimeout: PASS
+/workers/interfaces/WorkerUtils/WindowTimers/002.html: OK
+	clearTimeout: PASS
+/workers/interfaces/WorkerUtils/WindowTimers/003.html: OK
+	setInterval: PASS
+/workers/interfaces/WorkerUtils/WindowTimers/004.html: OK
+	clearInterval: PASS
+/workers/interfaces/WorkerUtils/WindowTimers/005.html: OK
+	setInterval when closing: PASS
+/workers/interfaces/WorkerUtils/importScripts/001.worker.html: OK
+	001: PASS
+/workers/interfaces/WorkerUtils/importScripts/002.worker.html: OK
+	002: PASS
+/workers/interfaces/WorkerUtils/importScripts/003.html: OK
+	importScripts running scripts: PASS
+/workers/interfaces/WorkerUtils/importScripts/004.html: OK
+	importScripts broken script: PASS
+/workers/interfaces/WorkerUtils/importScripts/005.html: OK
+	importScripts separate scripts: PASS
+/workers/interfaces/WorkerUtils/importScripts/006.html: OK
+	importScripts uncaught exception: PASS
+/workers/interfaces/WorkerUtils/importScripts/007.html: OK
+	postMessage in importScripts: PASS
+/workers/interfaces/WorkerUtils/importScripts/008.html: OK
+	variables and functions crossing importScripts boundary: PASS
+/workers/interfaces/WorkerUtils/importScripts/009.html: OK
+	variables and functions crossing importScripts boundary, take 2: PASS
+/workers/interfaces/WorkerUtils/importScripts/010.html: OK
+	importScripts(undefined): PASS
+/workers/interfaces/WorkerUtils/importScripts/011.html: OK
+	importScripts(null): PASS
+/workers/interfaces/WorkerUtils/importScripts/012.html: OK
+	importScripts(1): PASS
+/workers/interfaces/WorkerUtils/importScripts/blob-url.worker.html: OK
+	A revoked blob URL will fail: PASS
+	Blob URLs work on importScripts: FAIL
+	Revoking a blob URL in an earlier script will not fail: FAIL
+/workers/interfaces/WorkerUtils/importScripts/catch.sub.any.worker.html: OK
+	Cross-origin syntax error: PASS
+	Cross-origin throw: PASS
+	Redirect-to-Cross-origin throw: PASS
+	Redirect-to-cross-origin syntax error: PASS
+	Same-origin syntax error: PASS
+	Same-origin throw: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-cross-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: FAIL
+	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-redirect-to-cross-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: FAIL
+	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-same-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-cross-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: FAIL
+	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-redirect-to-cross-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: FAIL
+	WorkerGlobalScope error event: lineno: FAIL
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/importScripts/report-error-setTimeout-same-origin.sub.any.worker.html: OK
+	WorkerGlobalScope error event: error: PASS
+	WorkerGlobalScope error event: filename: PASS
+	WorkerGlobalScope error event: lineno: PASS
+	WorkerGlobalScope error event: message: PASS
+/workers/interfaces/WorkerUtils/navigator/002.html: OK
+	navigator.appName: PASS
+/workers/interfaces/WorkerUtils/navigator/003.html: OK
+	navigator.appVersion: FAIL
+/workers/interfaces/WorkerUtils/navigator/004.html: OK
+	navigator.platform: PASS
+/workers/interfaces/WorkerUtils/navigator/005.html: OK
+	navigator.userAgent: FAIL
+/workers/interfaces/WorkerUtils/navigator/006.html: OK
+	navigator.onLine: PASS
+/workers/interfaces/WorkerUtils/navigator/007.html: OK
+	readonlyness of members of Navigator: PASS
+/workers/interfaces/WorkerUtils/navigator/008.worker.html: OK
+	navigator properties are read-only: PASS
+/workers/interfaces/WorkerUtils/navigator/language.html: OK
+	navigator.language: PASS
+/workers/modules/dedicated-worker-import-blob-url.any.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: PASS
+	Static import.: PASS
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-import-blob-url.any.worker.html: OK
+	Dynamic import and then static import.: FAIL
+	Dynamic import.: FAIL
+	Nested dynamic import.: FAIL
+	Nested static import.: FAIL
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: FAIL
+	Static import.: FAIL
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-import-csp.html: TIMEOUT
+	script-src 'self' directive should disallow cross origin dynamic import.: NOTRUN
+	script-src 'self' directive should disallow cross origin static import.: NOTRUN
+	script-src * directive should allow cross origin dynamic import.: NOTRUN
+	script-src * directive should allow cross origin static import.: NOTRUN
+	script-src-elem 'self' directive should disallow cross origin dynamic import.: NOTRUN
+	script-src-elem 'self' directive should not take effect on static import.: NOTRUN
+	worker-src 'self' directive should disallow cross origin static import.: TIMEOUT
+	worker-src 'self' directive should not take effect on dynamic import.: NOTRUN
+	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: NOTRUN
+	worker-src * directive should allow cross origin static import.: NOTRUN
+	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: NOTRUN
+/workers/modules/dedicated-worker-import-data-url-cross-origin.html: OK
+	dynamic import data url from data: URL should be allowed.: PASS
+	dynamic import script from data: URL should be blocked.: PASS
+	static import data url from data: URL should be allowed.: PASS
+	static import script from data: URL should be allowed.: FAIL
+/workers/modules/dedicated-worker-import-data-url.any.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: PASS
+	Static import.: PASS
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-import-data-url.any.worker.html: OK
+	Dynamic import and then static import.: FAIL
+	Dynamic import.: FAIL
+	Nested dynamic import.: FAIL
+	Nested static import.: FAIL
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: FAIL
+	Static import.: FAIL
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-import-failure.html: OK
+	Dynamic import for non-existent script should throw an exception.: PASS
+	Static import for non-existent script should dispatch an ErrorEvent.: PASS
+	Worker construction for a file URL should fail: FAIL
+	Worker construction for an invalid URL should throw an exception.: PASS
+	Worker construction for non-existent script should dispatch an ErrorEvent.: PASS
+	importScripts() on module worker should throw an exception.: PASS
+/workers/modules/dedicated-worker-import-meta.html: OK
+	Test import.meta.url on the imported module script with a fragment.: PASS
+	Test import.meta.url on the imported module script.: PASS
+	Test import.meta.url on the top-level module script.: PASS
+/workers/modules/dedicated-worker-import-referrer.html: TIMEOUT
+	Cross-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
+	Cross-origin dynamic import with "origin" referrer policy.: NOTRUN
+	Cross-origin dynamic import with "same-origin" referrer policy.: NOTRUN
+	Cross-origin static import with "no-referrer" referrer policy.: NOTRUN
+	Cross-origin static import with "origin" referrer policy.: NOTRUN
+	Cross-origin static import with "same-origin" referrer policy.: NOTRUN
+	Same-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
+	Same-origin dynamic import with "origin" referrer policy.: NOTRUN
+	Same-origin dynamic import with "same-origin" referrer policy.: NOTRUN
+	Same-origin static import with "no-referrer" referrer policy.: NOTRUN
+	Same-origin static import with "origin" referrer policy.: NOTRUN
+	Same-origin static import with "same-origin" referrer policy.: NOTRUN
+	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
+	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
+	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
+/workers/modules/dedicated-worker-import.any.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: PASS
+	Static import.: PASS
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-import.any.worker.html: OK
+	Dynamic import and then static import.: FAIL
+	Dynamic import.: FAIL
+	Nested dynamic import.: FAIL
+	Nested static import.: FAIL
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: FAIL
+	Static import.: FAIL
+	eval(import()).: FAIL
+/workers/modules/dedicated-worker-options-credentials.html: TIMEOUT
+	Test initialization: setting up cross-origin cookie: FAIL
+	new Worker() with type-module credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
+	new Worker() with type-module credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (default).: NOTRUN
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (include).: NOTRUN
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (omit).: NOTRUN
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: NOTRUN
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: NOTRUN
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new Worker() with type=module and credentials=include should send the credentials: NOTRUN
+	new Worker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
+	new Worker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
+	new Worker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
+	new Worker() with type=module and credentials=include should send the credentials for same-origin static imports: NOTRUN
+	new Worker() with type=module and credentials=omit should not send the credentials: NOTRUN
+	new Worker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
+	new Worker() with type=module and credentials=omit should not send the credentials for same-origin static imports: NOTRUN
+	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
+	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
+	new Worker() with type=module and credentials=same-origin should send the credentials: NOTRUN
+	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
+	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: NOTRUN
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: NOTRUN
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: TIMEOUT
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: NOTRUN
+/workers/modules/dedicated-worker-options-type.html: OK
+	Test worker construction with an empty worker type.: PASS
+	Test worker construction with an unknown worker type.: PASS
+	Test worker construction with the "classic" worker type.: PASS
+	Test worker construction with the "module" worker type.: PASS
+	Test worker construction with the default worker type.: PASS
+/workers/modules/dedicated-worker-parse-error-failure.html: OK
+	Module worker construction for script with syntax error should dispatch an event named error.: FAIL
+	Static import on module worker for script with syntax error should dispatch an event named error.: FAIL
+/workers/modules/shared-worker-import-blob-url.window.html: TIMEOUT
+	Dynamic import and then static import.: NOTRUN
+	Dynamic import.: NOTRUN
+	Nested dynamic import.: NOTRUN
+	Nested static import.: NOTRUN
+	Static import (cross-origin).: TIMEOUT
+	Static import (redirect).: NOTRUN
+	Static import and then dynamic import.: NOTRUN
+	Static import.: PASS
+	eval(import()).: NOTRUN
+/workers/modules/shared-worker-import-csp.html: TIMEOUT
+	script-src 'self' directive should disallow cross origin dynamic import.: NOTRUN
+	script-src 'self' directive should disallow cross origin static import.: NOTRUN
+	script-src * directive should allow cross origin dynamic import.: NOTRUN
+	script-src * directive should allow cross origin static import.: NOTRUN
+	worker-src 'self' directive should disallow cross origin static import.: TIMEOUT
+	worker-src 'self' directive should not take effect on dynamic import.: NOTRUN
+	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: NOTRUN
+	worker-src * directive should allow cross origin static import.: NOTRUN
+	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: NOTRUN
+/workers/modules/shared-worker-import-data-url-cross-origin.html: TIMEOUT
+	dynamic import data url from data: URL should be allowed.: NOTRUN
+	dynamic import script from data: URL should be blocked.: NOTRUN
+	static import data url from data: URL should be allowed.: PASS
+	static import script from data: URL should be allowed.: TIMEOUT
+/workers/modules/shared-worker-import-data-url.window.html: TIMEOUT
+	Dynamic import and then static import.: NOTRUN
+	Dynamic import.: NOTRUN
+	Nested dynamic import.: NOTRUN
+	Nested static import.: NOTRUN
+	Static import (cross-origin).: TIMEOUT
+	Static import (redirect).: NOTRUN
+	Static import and then dynamic import.: NOTRUN
+	Static import.: PASS
+	eval(import()).: NOTRUN
+/workers/modules/shared-worker-import-failure.html: TIMEOUT
+	Dynamic import for non-existent script should throw an exception.: NOTRUN
+	SharedWorker construction for a file URL should throw an exception.: FAIL
+	SharedWorker construction for an invalid URL should throw an exception.: PASS
+	Static import for non-existent script should dispatch an ErrorEvent.: TIMEOUT
+	Worker construction for non-existent script should dispatch an ErrorEvent.: PASS
+	importScripts() on module worker should throw an exception.: PASS
+/workers/modules/shared-worker-import-meta.html: OK
+	Test import.meta.url on the imported module script with a fragment.: PASS
+	Test import.meta.url on the imported module script.: PASS
+	Test import.meta.url on the top-level module script.: PASS
+/workers/modules/shared-worker-import-referrer.html: TIMEOUT
+	Cross-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
+	Cross-origin dynamic import with "origin" referrer policy.: NOTRUN
+	Cross-origin dynamic import with "same-origin" referrer policy.: NOTRUN
+	Cross-origin static import with "no-referrer" referrer policy.: NOTRUN
+	Cross-origin static import with "origin" referrer policy.: NOTRUN
+	Cross-origin static import with "same-origin" referrer policy.: NOTRUN
+	Same-origin dynamic import with "no-referrer" referrer policy.: NOTRUN
+	Same-origin dynamic import with "origin" referrer policy.: NOTRUN
+	Same-origin dynamic import with "same-origin" referrer policy.: NOTRUN
+	Same-origin static import with "no-referrer" referrer policy.: NOTRUN
+	Same-origin static import with "origin" referrer policy.: NOTRUN
+	Same-origin static import with "same-origin" referrer policy.: NOTRUN
+	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
+	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
+	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
+/workers/modules/shared-worker-import.window.html: TIMEOUT
+	Dynamic import and then static import.: NOTRUN
+	Dynamic import.: NOTRUN
+	Nested dynamic import.: NOTRUN
+	Nested static import.: NOTRUN
+	Static import (cross-origin).: TIMEOUT
+	Static import (redirect).: NOTRUN
+	Static import and then dynamic import.: NOTRUN
+	Static import.: PASS
+	eval(import()).: NOTRUN
+/workers/modules/shared-worker-options-credentials.html: TIMEOUT
+	Test initialization: setting up cross-origin cookie: FAIL
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (default).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (include).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (omit).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: NOTRUN
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: NOTRUN
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: TIMEOUT
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: NOTRUN
+/workers/modules/shared-worker-options-type.html: OK
+	Test worker construction with an empty worker type.: PASS
+	Test worker construction with an unknown worker type.: PASS
+	Test worker construction with the "classic" worker type.: PASS
+	Test worker construction with the "module" worker type.: PASS
+	Test worker construction with the default worker type.: PASS
+/workers/modules/shared-worker-parse-error-failure.html: TIMEOUT
+	Module shared worker construction for script with syntax error should dispatch an event named error.: TIMEOUT
+	Static import on module shared worker for script with syntax error should dispatch an event named error.: NOTRUN
+/workers/multi-globals/url-parsing.html: OK
+	Multiple globals for Worker constructor: parsing scriptURL: FAIL
+/workers/name-property.html: OK
 	Declaring name as an accidental global must not cause a harness error for DedicatedWorkerGlobalScope: PASS
+	Declaring name as an accidental global must not cause a harness error for SharedWorkerGlobalScope: PASS
 	name property is replaceable for DedicatedWorkerGlobalScope: PASS
+	name property is replaceable for SharedWorkerGlobalScope: PASS
 	name property value for DedicatedWorkerGlobalScope: PASS
+	name property value for SharedWorkerGlobalScope: PASS
 /workers/nested_worker.worker.html: OK
 	Nested worker: FAIL
 /workers/nested_worker_close_from_parent_worker.html: OK
@@ -368,23 +1070,189 @@
 	Worker: same-origin-to-cross-origin-redirect (module): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (classic): PASS
 	Worker: same-origin-to-cross-origin-to-same-origin-redirect (module): PASS
-/workers/shared-worker-from-blob-url.window.html: TIMEOUT
-	Blob URLs should not resolve relative to document base URL.: NOTRUN
-	Connecting to a shared worker on a revoked blob URL works.: NOTRUN
-	Creating a shared worker from a blob URL works immediately before revoking.: NOTRUN
-	Creating a shared worker from a blob URL works.: TIMEOUT
+/workers/same-site-cookies/first-party.all.tentative.https.window.html: OK
+	Check SharedWorker sameSiteCookies option all for first-party: FAIL
+/workers/same-site-cookies/first-party.default.tentative.https.window.html: OK
+	Check SharedWorker sameSiteCookies option default for first-party: FAIL
+/workers/same-site-cookies/first-party.none.tentative.https.window.html: OK
+	Check SharedWorker sameSiteCookies option none for first-party: FAIL
+/workers/same-site-cookies/third-party.all.tentative.sub.https.window.html: OK
+	Check SharedWorker sameSiteCookies option all for third-party: FAIL
+/workers/same-site-cookies/third-party.default.tentative.sub.https.window.html: OK
+	Check SharedWorker sameSiteCookies option default for third-party: FAIL
+/workers/same-site-cookies/third-party.none.tentative.sub.https.window.html: OK
+	Check SharedWorker sameSiteCookies option none for third-party: FAIL
+/workers/semantics/encodings/001.html: OK
+	encoding, dedicated worker: PASS
+/workers/semantics/encodings/002.html: OK
+	encoding, shared worker: PASS
+/workers/semantics/encodings/003.html: TIMEOUT
+	URL encoding, dedicated worker: TIMEOUT
+/workers/semantics/encodings/004.html: TIMEOUT
+	URL encoding, shared worker: TIMEOUT
+/workers/semantics/encodings/004.worker.html: TIMEOUT
+/workers/semantics/interface-objects/001.worker.html: OK
+	The ArrayBuffer interface object should be exposed.: PASS
+	The Blob interface object should be exposed.: PASS
+	The BroadcastChannel interface object should be exposed.: PASS
+	The ByteLengthQueuingStrategy interface object should be exposed.: FAIL
+	The CanvasGradient interface object should be exposed.: PASS
+	The CanvasPattern interface object should be exposed.: PASS
+	The CloseEvent interface object should be exposed.: PASS
+	The CountQueuingStrategy interface object should be exposed.: FAIL
+	The CustomEvent interface object should be exposed.: PASS
+	The DOMException interface object should be exposed.: PASS
+	The DataView interface object should be exposed.: PASS
+	The DedicatedWorkerGlobalScope interface object should be exposed.: PASS
+	The ErrorEvent interface object should be exposed.: PASS
+	The Event interface object should be exposed.: PASS
+	The EventSource interface object should be exposed.: PASS
+	The EventTarget interface object should be exposed.: PASS
+	The File interface object should be exposed.: PASS
+	The FileList interface object should be exposed.: PASS
+	The FileReader interface object should be exposed.: PASS
+	The FileReaderSync interface object should be exposed.: FAIL
+	The Float16Array interface object should be exposed.: PASS
+	The Float32Array interface object should be exposed.: PASS
+	The Float64Array interface object should be exposed.: PASS
+	The FormData interface object should be exposed.: PASS
+	The IDBCursor interface object should be exposed.: PASS
+	The IDBCursorWithValue interface object should be exposed.: PASS
+	The IDBDatabase interface object should be exposed.: PASS
+	The IDBFactory interface object should be exposed.: PASS
+	The IDBIndex interface object should be exposed.: PASS
+	The IDBKeyRange interface object should be exposed.: PASS
+	The IDBObjectStore interface object should be exposed.: PASS
+	The IDBOpenDBRequest interface object should be exposed.: PASS
+	The IDBRequest interface object should be exposed.: PASS
+	The IDBTransaction interface object should be exposed.: PASS
+	The IDBVersionChangeEvent interface object should be exposed.: PASS
+	The ImageBitmap interface object should be exposed.: PASS
+	The ImageData interface object should be exposed.: PASS
+	The Int16Array interface object should be exposed.: PASS
+	The Int32Array interface object should be exposed.: PASS
+	The Int8Array interface object should be exposed.: PASS
+	The MessageChannel interface object should be exposed.: PASS
+	The MessageEvent interface object should be exposed.: PASS
+	The MessagePort interface object should be exposed.: PASS
+	The Path2D interface object should be exposed.: PASS
+	The ProgressEvent interface object should be exposed.: PASS
+	The PromiseRejectionEvent interface object should be exposed.: PASS
+	The ReadableStream interface object should be exposed.: PASS
+	The TextMetrics interface object should be exposed.: PASS
+	The URL interface object should be exposed.: PASS
+	The URLSearchParams interface object should be exposed.: PASS
+	The Uint16Array interface object should be exposed.: PASS
+	The Uint32Array interface object should be exposed.: PASS
+	The Uint8Array interface object should be exposed.: PASS
+	The Uint8ClampedArray interface object should be exposed.: PASS
+	The WebSocket interface object should be exposed.: PASS
+	The Worker interface object should be exposed.: PASS
+	The WorkerGlobalScope interface object should be exposed.: PASS
+	The WorkerLocation interface object should be exposed.: FAIL
+	The WorkerNavigator interface object should be exposed.: PASS
+	The WritableStream interface object should be exposed.: PASS
+	The XMLHttpRequest interface object should be exposed.: PASS
+	The XMLHttpRequestEventTarget interface object should be exposed.: PASS
+	The XMLHttpRequestUpload interface object should be exposed.: FAIL
+/workers/semantics/interface-objects/002.worker.html: OK
+	The AbstractView interface object should not be exposed.: PASS
+	The AbstractWorker interface object should not be exposed.: PASS
+	The ApplicationCache interface object should not be exposed.: PASS
+	The Audio interface object should not be exposed.: PASS
+	The BeforeUnloadEvent interface object should not be exposed.: PASS
+	The CanvasPath interface object should not be exposed.: PASS
+	The CanvasProxy interface object should not be exposed.: PASS
+	The CanvasRenderingContext2D interface object should not be exposed.: PASS
+	The CompositionEvent interface object should not be exposed.: PASS
+	The DOMImplementation interface object should not be exposed.: PASS
+	The Database interface object should not be exposed.: PASS
+	The DrawingStyle interface object should not be exposed.: PASS
+	The FocusEvent interface object should not be exposed.: PASS
+	The HTMLCanvasElement interface object should not be exposed.: PASS
+	The HashChangeEvent interface object should not be exposed.: PASS
+	The IDBEnvironment interface object should not be exposed.: PASS
+	The InputEvent interface object should not be exposed.: PASS
+	The KeyboardEvent interface object should not be exposed.: PASS
+	The Location interface object should not be exposed.: PASS
+	The MouseEvent interface object should not be exposed.: PASS
+	The Navigator interface object should not be exposed.: PASS
+	The PageTransitionEvent interface object should not be exposed.: PASS
+	The Path interface object should not be exposed.: PASS
+	The PopStateEvent interface object should not be exposed.: PASS
+	The SharedWorker interface object should not be exposed.: PASS
+	The SharedWorkerGlobalScope interface object should not be exposed.: PASS
+	The UIEvent interface object should not be exposed.: PASS
+	The VTTCue interface object should not be exposed.: PASS
+	The VTTRegion interface object should not be exposed.: PASS
+	The WheelEvent interface object should not be exposed.: PASS
+/workers/semantics/multiple-workers/001.html: OK
+	dedicated: PASS
+	shared: PASS
+/workers/semantics/multiple-workers/002.html: OK
+	creating 3 sibling dedicated workers: PASS
+/workers/semantics/multiple-workers/003.html: OK
+	creating 3 nested dedicated workers: FAIL
+/workers/semantics/multiple-workers/004.html: OK
+	shared worker with multiple documents: PASS
+/workers/semantics/multiple-workers/008.html: TIMEOUT
+	messagechannel in shared worker: TIMEOUT
+/workers/semantics/multiple-workers/exposure.any.html: OK
+	SharedWorker exposure: PASS
+	Worker exposure: PASS
+/workers/semantics/multiple-workers/exposure.any.worker.html: OK
+	SharedWorker exposure: PASS
+	Worker exposure: PASS
+/workers/semantics/navigation/001.html: TIMEOUT
+	navigating: NOTRUN
+/workers/semantics/navigation/002.html: TIMEOUT
+	navigating 2: TIMEOUT
+/workers/semantics/reporting-errors/001.html: OK
+	shared worker, not handled: FAIL
+/workers/semantics/reporting-errors/002.html: OK
+	shared worker, addEventListener: FAIL
+/workers/semantics/reporting-errors/003.html: OK
+	shared worker, no error event on worker or port: PASS
+/workers/semantics/reporting-errors/004.html: TIMEOUT
+	shared worker in two documents and window.onerror: TIMEOUT
+/workers/semantics/run-a-worker/001.html: OK
+	worker global scope, dedicated worker: PASS
+/workers/semantics/run-a-worker/002.html: OK
+	worker global scope, shared worker: PASS
+/workers/semantics/run-a-worker/003.html: OK
+	shared: PASS
+	worker: PASS
+/workers/semantics/structured-clone/dedicated.html: ERROR
+/workers/semantics/structured-clone/shared.html: ERROR
+/workers/semantics/xhr/001.html: OK
+	async XMLHttpRequest in dedicated worker: PASS
+/workers/semantics/xhr/002.html: TIMEOUT
+	sync XMLHttpRequest in dedicated worker: TIMEOUT
+/workers/semantics/xhr/003.html: OK
+	async XMLHttpRequest in shared worker: PASS
+/workers/semantics/xhr/004.html: TIMEOUT
+	sync XMLHttpRequest in shared worker: TIMEOUT
+/workers/semantics/xhr/005.html: TIMEOUT
+	base url, dedicated worker: TIMEOUT
+/workers/semantics/xhr/006.html: TIMEOUT
+	base url, shared worker: TIMEOUT
+/workers/shared-worker-from-blob-url.window.html: OK
+	Blob URLs should not resolve relative to document base URL.: PASS
+	Connecting to a shared worker on a revoked blob URL works.: PASS
+	Creating a shared worker from a blob URL works immediately before revoking.: PASS
+	Creating a shared worker from a blob URL works.: PASS
 /workers/shared-worker-in-data-url-context.window.html: OK
-	Create a data url shared worker in a data url frame: FAIL
+	Create a data url shared worker in a data url frame: PASS
 	Create a shared worker in a data url frame: FAIL
 /workers/shared-worker-name-via-options.html: OK
-	Test the name property of shared workers mixing constructor options and constructor strings: FAIL
+	Test the name property of shared workers mixing constructor options and constructor strings: PASS
 /workers/shared-worker-options-mismatch.html: OK
-	Connecting to shared worker with different options should be blocked: classic to module: FAIL
+	Connecting to shared worker with different options should be blocked: classic to module: PASS
 	Connecting to shared worker with different options should be blocked: default to extended in classic: FAIL
 	Connecting to shared worker with different options should be blocked: default to extended in module: FAIL
 	Connecting to shared worker with different options should be blocked: default to include in classic: FAIL
 	Connecting to shared worker with different options should be blocked: default to include in module: FAIL
-	Connecting to shared worker with different options should be blocked: default to module: FAIL
+	Connecting to shared worker with different options should be blocked: default to module: PASS
 	Connecting to shared worker with different options should be blocked: default to omit in classic: FAIL
 	Connecting to shared worker with different options should be blocked: default to omit in module: FAIL
 	Connecting to shared worker with different options should be blocked: extended to default in classic: FAIL
@@ -397,8 +1265,8 @@
 	Connecting to shared worker with different options should be blocked: include to omit in module: FAIL
 	Connecting to shared worker with different options should be blocked: include to same-origin in classic: FAIL
 	Connecting to shared worker with different options should be blocked: include to same-origin in module: FAIL
-	Connecting to shared worker with different options should be blocked: module to classic: FAIL
-	Connecting to shared worker with different options should be blocked: module to default: FAIL
+	Connecting to shared worker with different options should be blocked: module to classic: PASS
+	Connecting to shared worker with different options should be blocked: module to default: PASS
 	Connecting to shared worker with different options should be blocked: omit to default in classic: FAIL
 	Connecting to shared worker with different options should be blocked: omit to default in module: FAIL
 	Connecting to shared worker with different options should be blocked: omit to include in classic: FAIL
@@ -412,16 +1280,16 @@
 	Connecting to shared worker with different options should be blocked: true to false in classic: FAIL
 	Connecting to shared worker with different options should be blocked: true to false in module: FAIL
 /workers/shared-worker-parse-error-failure.html: OK
-	Classic shared worker construction for script with syntax error should dispatch an event named error.: FAIL
-	Static import on classic shared worker should dispatch an event named error.: FAIL
+	Classic shared worker construction for script with syntax error should dispatch an event named error.: PASS
+	Static import on classic shared worker should dispatch an event named error.: PASS
 /workers/shared-worker-partitioned-cookies.tentative.https.html: OK
 	SharedWorker: Partitioned Cookies: FAIL
 /workers/shared-worker-partitioned.tentative.html: TIMEOUT
 	Test partitioning of shared workers: TIMEOUT
 /workers/shared-worker-runtime-error-is-not-parse-error.html: OK
-	JSON.parse() error fires at global scope but not at SharedWorker: FAIL
-	Script parse error dispatches plain Event at SharedWorker: FAIL
-	eval() with syntax error fires at global scope but not at SharedWorker: FAIL
+	JSON.parse() error fires at global scope but not at SharedWorker: PASS
+	Script parse error dispatches plain Event at SharedWorker: PASS
+	eval() with syntax error fires at global scope but not at SharedWorker: PASS
 /workers/worker-performance.worker.html: OK
 	Can use clearMarks and clearMeasures in workers: PASS
 	Can use performance.getEntriesByName in workers: PASS
@@ -431,7 +1299,7 @@
 	Can use performance.now in workers: PASS
 	Performance marks and measures seem to be working correctly in workers: PASS
 	Resource timing seems to work in workers: FAIL
-	There are no navigation type performance entries in workers: FAIL
+	There are no navigation type performance entries in workers: PASS
 	performance.clearResourceTimings in workers: PASS
 	performance.navigation is not available in workers: PASS
 	performance.setResourceTimingBufferSize in workers: FAIL

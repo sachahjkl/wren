@@ -72,6 +72,10 @@ module scripts {
   /// runs. Its port: SharedWorker_portEnd. Syntax for an invalid URL, Security for a URL of another origin,
   /// Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
   u64 SharedWorker_connect(usvstring url, usvstring name, WorkerType type, bool extended_lifetime) raises;
+  /// new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
+  /// URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
+  u64 Worker_createScriptBytes(usvstring url, usvstring name, WorkerType type, bytes script) raises;
+  u64 SharedWorker_connectBytes(usvstring url, usvstring name, WorkerType type, bool extended_lifetime, bytes script) raises;
   /// The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
   u64 SharedWorker_portEnd(u64 worker);
   /// The end of the port of the next connect event of the calling shared worker (0: none waits).

@@ -9477,6 +9477,541 @@ _t_dom_HTMLIFrameElement_set_srcdoc :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Fs_opfsRoot :: proc(c: ^Call) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_opfsRoot :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_opfsRoot", "result pointer") }
+	_r, _err := Fs_opfsRoot(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_getEntry :: proc(c: ^Call, root: u64, path: string, name: string, directory: bool, create: bool) -> (string, Api_Error)
+@(private = "file")
+_t_fs_Fs_getEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_getEntry", "path") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_getEntry", "name") }
+	_on := wasm.addr(&f, a[8])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[7]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "fs.Fs_getEntry", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "fs.Fs_getEntry: argument path is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_size(&c, &f, a, .Type, "fs.Fs_getEntry: argument name is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p3 := a[5].i32 != 0
+	_p4 := a[6].i32 != 0
+	_r, _err := Fs_getEntry(&c, _p0, _p1, _p2, _p3, _p4)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Fs_removeEntry :: proc(c: ^Call, root: u64, path: string, name: string, recursive: bool) -> Api_Error
+@(private = "file")
+_t_fs_Fs_removeEntry :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_removeEntry", "path") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_removeEntry", "name") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "fs.Fs_removeEntry: argument path is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "fs.Fs_removeEntry: argument name is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p3 := a[5].i32 != 0
+	_err := Fs_removeEntry(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_list :: proc(c: ^Call, root: u64, path: string) -> (string, Api_Error)
+@(private = "file")
+_t_fs_Fs_list :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_list", "path") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "fs.Fs_list", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "fs.Fs_list: argument path is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r, _err := Fs_list(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Fs_resolve :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -> (string, Api_Error)
+@(private = "file")
+_t_fs_Fs_resolve :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_resolve", "path") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "fs.Fs_resolve", "path2") }
+	_on := wasm.addr(&f, a[7])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[6]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "fs.Fs_resolve", "result buffer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_size(&c, &f, a, .Type, "fs.Fs_resolve: argument path is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_size(&c, &f, a, .Type, "fs.Fs_resolve: argument path2 is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p2 := u64(a[3].i64)
+	_r, _err := Fs_resolve(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Fs_same :: proc(c: ^Call, root: u64, path: string, root2: u64, path2: string) -> bool
+@(private = "file")
+_t_fs_Fs_same :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_same", "path") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "fs.Fs_same", "path2") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "fs.Fs_same: argument path is not valid UTF-8") }
+		return wasm.trap_new("fs.Fs_same: argument path is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "fs.Fs_same: argument path2 is not valid UTF-8") }
+		return wasm.trap_new("fs.Fs_same: argument path2 is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p2 := u64(a[3].i64)
+	_r := Fs_same(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Fs_getFile :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_getFile :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_getFile", "path") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_getFile", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "fs.Fs_getFile: argument path is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_r, _err := Fs_getFile(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_open :: proc(c: ^Call, root: u64, path: string, keep: bool, sync: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_open :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_open", "path") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_open", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "fs.Fs_open: argument path is not valid UTF-8")
+	}
+	_p0 := u64(a[0].i64)
+	_p2 := a[3].i32 != 0
+	_p3 := a[4].i32 != 0
+	_r, _err := Fs_open(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_write :: proc(c: ^Call, id: u64, at: i64, data: []u8) -> (i64, Api_Error)
+@(private = "file")
+_t_fs_Fs_write :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_write", "data") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_write", "result pointer") }
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_r, _err := Fs_write(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_read :: proc(c: ^Call, id: u64, at: i64, into: []u8) -> (i64, Api_Error)
+@(private = "file")
+_t_fs_Fs_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "fs.Fs_read", "into") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_read", "result pointer") }
+	_p2 := _s2[:_n2]
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_r, _err := Fs_read(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_seek :: proc(c: ^Call, id: u64, position: i64) -> Api_Error
+@(private = "file")
+_t_fs_Fs_seek :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_err := Fs_seek(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_truncate :: proc(c: ^Call, id: u64, size: i64) -> Api_Error
+@(private = "file")
+_t_fs_Fs_truncate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i64
+	_err := Fs_truncate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_size :: proc(c: ^Call, id: u64) -> (i64, Api_Error)
+@(private = "file")
+_t_fs_Fs_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_size", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_r, _err := Fs_size(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^i64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_flush :: proc(c: ^Call, id: u64) -> Api_Error
+@(private = "file")
+_t_fs_Fs_flush :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_err := Fs_flush(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_close :: proc(c: ^Call, id: u64, commit: bool) -> Api_Error
+@(private = "file")
+_t_fs_Fs_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	_err := Fs_close(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_permission :: proc(c: ^Call, root: u64, write: bool) -> i32
+@(private = "file")
+_t_fs_Fs_permission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	_r := Fs_permission(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Fs_requestPermission :: proc(c: ^Call, root: u64, write: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_requestPermission :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_requestPermission", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_p1 := a[1].i32 != 0
+	_r, _err := Fs_requestPermission(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_showPicker :: proc(c: ^Call, kind: i32, types: string, multiple: bool, exclude_all: bool, suggested: string, start_in: string, start_root: u64, start_path: string, id: string, readwrite: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_showPicker :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "types") }
+	_n4 := wasm.addr(&f, a[6])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[5]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "suggested") }
+	_n5 := wasm.addr(&f, a[8])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[7]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "start_in") }
+	_n7 := wasm.addr(&f, a[11])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[10]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "start_path") }
+	_n8 := wasm.addr(&f, a[13])
+	_s8, _k8 := wasm.span(&f, wasm.addr(&f, a[12]), _n8)
+	if !_k8 { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "id") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[15]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_showPicker", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "fs.Fs_showPicker: argument types is not valid UTF-8")
+	}
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "fs.Fs_showPicker: argument suggested is not valid UTF-8")
+	}
+	_p5 := string(_s5[:_n5])
+	if !wasm.valid_utf8(_p5) {
+		return _fail_status(&c, a, .Type, "fs.Fs_showPicker: argument start_in is not valid UTF-8")
+	}
+	_p7 := string(_s7[:_n7])
+	if !wasm.valid_utf8(_p7) {
+		return _fail_status(&c, a, .Type, "fs.Fs_showPicker: argument start_path is not valid UTF-8")
+	}
+	_p8 := string(_s8[:_n8])
+	if !wasm.valid_utf8(_p8) {
+		return _fail_status(&c, a, .Type, "fs.Fs_showPicker: argument id is not valid UTF-8")
+	}
+	_p0 := a[0].i32
+	_p2 := a[3].i32 != 0
+	_p3 := a[4].i32 != 0
+	_p6 := u64(a[9].i64)
+	_p9 := a[14].i32 != 0
+	_r, _err := Fs_showPicker(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Fs_describe :: proc(c: ^Call, root: u64) -> string
+@(private = "file")
+_t_fs_Fs_describe :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "fs.Fs_describe", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := Fs_describe(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Fs_restore :: proc(c: ^Call, description: string) -> (u64, Api_Error)
+@(private = "file")
+_t_fs_Fs_restore :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "fs.Fs_restore", "description") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "fs.Fs_restore", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "fs.Fs_restore: argument description is not valid UTF-8")
+	}
+	_r, _err := Fs_restore(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // Element_requestFullscreen :: proc(c: ^Call, element: Api_Element, navigationUI: Api_FullscreenNavigation) -> u64
 @(private = "file")
 _t_fullscreen_Element_requestFullscreen :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -11026,6 +11561,32 @@ _t_dnd_LocalFile_read :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.
 	intrinsics.unaligned_store((^i64)(_rs), _r)
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// DataTransfer_itemFsHandle :: proc(c: ^Call, dt: Api_DataTransfer, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_dnd_DataTransfer_itemFsHandle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dnd.DataTransfer_itemFsHandle", "result buffer") }
+	_p0 := Api_DataTransfer{handle = u64(a[0].i64)}
+	_p0.data = lookup_DataTransfer(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "dnd.DataTransfer_itemFsHandle: argument dt is not a live DataTransfer")
+	}
+	_p1 := a[1].i32
+	_r, _err := DataTransfer_itemFsHandle(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
 
@@ -18145,6 +18706,26 @@ _t_entries_FsEntry_parent :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	return nil
 }
 
+// FsEntry_root :: proc(c: ^Call, entry: Api_FsEntry) -> u64
+@(private = "file")
+_t_entries_FsEntry_root :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_FsEntry{handle = u64(a[0].i64)}
+	_p0.data = lookup_FsEntry(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "entries.FsEntry_root: argument entry is not a live FsEntry") }
+		return wasm.trap_new("entries.FsEntry_root: argument entry is not a live FsEntry")
+	}
+	_r := FsEntry_root(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // FsEntry_file :: proc(c: ^Call, entry: Api_FsEntry) -> u64
 @(private = "file")
 _t_entries_FsEntry_file :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -18921,6 +19502,81 @@ _t_scripts_SharedWorker_connect :: proc "c" (env: rawptr, caller: wasm.Caller, a
 	_p2 := Api_WorkerType(_e2)
 	_p3 := a[5].i32 != 0
 	_r, _err := SharedWorker_connect(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Worker_createScriptBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_Worker_createScriptBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "name") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "script") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.Worker_createScriptBytes", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p3 := _s3[:_n3]
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.Worker_createScriptBytes: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_r, _err := Worker_createScriptBytes(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// SharedWorker_connectBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, extended_lifetime: bool, script: []u8) -> (u64, Api_Error)
+@(private = "file")
+_t_scripts_SharedWorker_connectBytes :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "url") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "name") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "script") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[8]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "scripts.SharedWorker_connectBytes", "result pointer") }
+	_p0 := utf8_scrub(string(_s0[:_n0]), context.temp_allocator)
+	_p1 := utf8_scrub(string(_s1[:_n1]), context.temp_allocator)
+	_p4 := _s4[:_n4]
+	_e2 := i32(a[4].i32)
+	if !_valid_WorkerType(_e2) {
+		return _fail_status(&c, a, .Invalid_Argument, "scripts.SharedWorker_connectBytes: argument type is not a WorkerType")
+	}
+	_p2 := Api_WorkerType(_e2)
+	_p3 := a[5].i32 != 0
+	_r, _err := SharedWorker_connectBytes(&c, _p0, _p1, _p2, _p3, _p4)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -25228,6 +25884,26 @@ api_imports := [?]wasm.Import{
 	{module = "frames", name = "Window_set_name", fn = _t_frames_Window_set_name, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "HTMLIFrameElement_srcdoc", fn = _t_dom_HTMLIFrameElement_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "HTMLIFrameElement_set_srcdoc", fn = _t_dom_HTMLIFrameElement_set_srcdoc, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_opfsRoot", fn = _t_fs_Fs_opfsRoot, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_getEntry", fn = _t_fs_Fs_getEntry, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "fs", name = "Fs_removeEntry", fn = _t_fs_Fs_removeEntry, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_list", fn = _t_fs_Fs_list, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "fs", name = "Fs_resolve", fn = _t_fs_Fs_resolve, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "fs", name = "Fs_same", fn = _t_fs_Fs_same, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_getFile", fn = _t_fs_Fs_getFile, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_open", fn = _t_fs_Fs_open, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_write", fn = _t_fs_Fs_write, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_read", fn = _t_fs_Fs_read, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_seek", fn = _t_fs_Fs_seek, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_truncate", fn = _t_fs_Fs_truncate, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_size", fn = _t_fs_Fs_size, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_flush", fn = _t_fs_Fs_flush, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_close", fn = _t_fs_Fs_close, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_permission", fn = _t_fs_Fs_permission, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_requestPermission", fn = _t_fs_Fs_requestPermission, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_showPicker", fn = _t_fs_Fs_showPicker, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "fs", name = "Fs_describe", fn = _t_fs_Fs_describe, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "fs", name = "Fs_restore", fn = _t_fs_Fs_restore, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "fullscreen", name = "Element_requestFullscreen", fn = _t_fullscreen_Element_requestFullscreen, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "fullscreen", name = "Document_exitFullscreen", fn = _t_fullscreen_Document_exitFullscreen, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "fullscreen", name = "Document_fullscreenElement", fn = _t_fullscreen_Document_fullscreenElement, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
@@ -25295,10 +25971,11 @@ api_imports := [?]wasm.Import{
 	{module = "dnd", name = "DataTransfer_fileCount", fn = _t_dnd_DataTransfer_fileCount, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dnd", name = "DataTransfer_file", fn = _t_dnd_DataTransfer_file, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dnd", name = "DataTransfer_mode", fn = _t_dnd_DataTransfer_mode, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "dnd", name = "LocalFile_name", fn = _t_dnd_LocalFile_name, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "dnd", name = "LocalFile_type", fn = _t_dnd_LocalFile_type, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "dnd", name = "LocalFile_info", fn = _t_dnd_LocalFile_info, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "dnd", name = "LocalFile_read", fn = _t_dnd_LocalFile_read, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "LocalFile_name", fn = _t_dnd_LocalFile_name, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_type", fn = _t_dnd_LocalFile_type, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dnd", name = "LocalFile_info", fn = _t_dnd_LocalFile_info, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dnd", name = "LocalFile_read", fn = _t_dnd_LocalFile_read, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dnd", name = "DataTransfer_itemFsHandle", fn = _t_dnd_DataTransfer_itemFsHandle, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dnd", name = "DragEvent_dataTransfer", fn = _t_dnd_DragEvent_dataTransfer, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "dnd", name = "InputFiles_count", fn = _t_dnd_InputFiles_count, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "dnd", name = "InputFiles_item", fn = _t_dnd_InputFiles_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
@@ -25593,6 +26270,7 @@ api_imports := [?]wasm.Import{
 	{module = "entries", name = "FsEntry_fullPath", fn = _t_entries_FsEntry_fullPath, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "FsEntry_filesystemName", fn = _t_entries_FsEntry_filesystemName, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "FsEntry_parent", fn = _t_entries_FsEntry_parent, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "entries", name = "FsEntry_root", fn = _t_entries_FsEntry_root, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "FsEntry_file", fn = _t_entries_FsEntry_file, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "FsEntry_lookup", fn = _t_entries_FsEntry_lookup, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "FsEntry_createReader", fn = _t_entries_FsEntry_createReader, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
@@ -25630,6 +26308,8 @@ api_imports := [?]wasm.Import{
 	{module = "scripts", name = "WorkerGlobalScope_importScript", fn = _t_scripts_WorkerGlobalScope_importScript, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "WorkerGlobalScope_isModule", fn = _t_scripts_WorkerGlobalScope_isModule, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_connect", fn = _t_scripts_SharedWorker_connect, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "Worker_createScriptBytes", fn = _t_scripts_Worker_createScriptBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "scripts", name = "SharedWorker_connectBytes", fn = _t_scripts_SharedWorker_connectBytes, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "scripts", name = "SharedWorker_portEnd", fn = _t_scripts_SharedWorker_portEnd, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "scripts", name = "SharedWorkerGlobalScope_takeConnection", fn = _t_scripts_SharedWorkerGlobalScope_takeConnection, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "ResizeObserver_create", fn = _t_dom_ResizeObserver_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},
