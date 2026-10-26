@@ -6,6 +6,7 @@
 //   wpt [-root build/wpt/wpt] [-suites wpt/suites.txt] [-expect wpt/expectations] [-server http://127.0.0.1:8768]
 //       [-timeout ms] [-idle ms] [-jobs n] [-quick] [-update] [-md report.md] [-results results.txt] [-only prefix]
 //       [-reference edge_results.txt] [-list] [--pref name=value]...
+// WPT_CONSOLE=1 writes every console message of the tests to the children's logs (build/wpt/children/log_*.txt).
 // -list prints the tests (path, long timeout, folder) and stops; -reference adds the subtests of a reference run in
 // another browser to the table (tools\wpt.ps1 -Edge writes it in the format of the expectations).
 //
@@ -720,6 +721,8 @@ child_on_console :: proc(d: ^headless.Doc, level: page.Log_Level, text: string) 
 		return
 	}
 	if text == "WPTFORCED" { cs.forced = true; return }
+	// WPT_CONSOLE=1: every console message of the tests on stderr (to see why one times out)
+	if os.get_env("WPT_CONSOLE", context.temp_allocator) != "" { fmt.eprintfln("console %v: %s", level, text) }
 	if level == .Error && cs.first_error == "" { cs.first_error = strings.clone(text) }
 }
 

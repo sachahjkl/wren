@@ -119,7 +119,7 @@ cache_key :: proc(t: ^Task, c: ^httpcache.Cache) -> string {
 			from := site_text(t.initiator.site)
 			if from != site { nav = "n" }   // a cross-site navigation does not see what same-site ones stored
 		}
-	} else if t.destination == .Iframe {
+	} else if is_frame_destination(t.destination) {
 		// a nested document: the top level's site, and the frame's own (the document it will be)
 		top = site_text(t.initiator.top_level_site)
 		frame = site_text(url.site_of(url.origin_of(t.target, context.temp_allocator), context.temp_allocator))
@@ -507,7 +507,7 @@ revalidate_in_background :: proc(t: ^Task, c: ^httpcache.Cache, e: ^httpcache.En
 	if cookies_allowed(t) {
 		r.cookies = true
 		r.cookie_url = url.clone(t.target)
-		r.cookie_ctx = cookies.Context{site_context = site_context(t), http_api = true}
+		r.cookie_ctx = cookies.Context{site_context = site_context(t), http_api = true, partition = strings.clone(cookie_partition(t))}
 	}
 	append(&l.revalidations, r)
 	r.req = net.fetch(l.net, {
@@ -574,7 +574,7 @@ revalidation_done :: proc(r: ^Revalidation, body: []byte) {
 revalidation_free :: proc(l: ^Loader, r: ^Revalidation) {
 	for x, i in l.revalidations { if x == r { unordered_remove(&l.revalidations, i); break } }
 	delete(r.key); delete(r.target); delete(r.sent); delete(r.headers)
-	if r.cookies { url.destroy(&r.cookie_url) }
+	if r.cookies { url.destroy(&r.cookie_url); delete(r.cookie_ctx.partition) }
 	free(r)
 }
 

@@ -710,8 +710,10 @@ JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_preload(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_srcObject(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMediaElement_set_preload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLMediaElement_set_srcObject(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMeterElement_get_high(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_labels(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMeterElement_get_low(JSContext *ctx, JSValueConst this_val);
@@ -3059,6 +3061,17 @@ static JSValue wjg_MediaQueryList_get_matches(JSContext *ctx, JSValueConst this_
 
 static JSValue wjg_MediaQueryList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 224, "change"); }
 static JSValue wjg_MediaQueryList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 224, "change", v, 0); }
+/* MediaSource.handle -> mse.MediaSource_handle */
+static JSValue wjg_MediaSource_get_handle(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 225);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = 0;
+    int32_t st = wr_MediaSource_handle(self->handle, (void *)&r);
+    if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.handle"); }
+    return wj_wrap_host(ctx, r, 440);
+}
+
 /* MediaSource.readyState -> mse.MediaSource_readyState */
 static JSValue wjg_MediaSource_get_readyState(JSContext *ctx, JSValueConst this_val)
 {
@@ -3912,6 +3925,36 @@ static JSValue wjg_Document_get_onfreeze(JSContext *ctx, JSValueConst this_val) 
 static JSValue wjg_Document_set_onfreeze(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 240, "freeze", v, 0); }
 static JSValue wjg_Document_get_onresume(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 240, "resume"); }
 static JSValue wjg_Document_set_onresume(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 240, "resume", v, 0); }
+/* Document.hasStorageAccess() -> storageaccess.Document_hasStorageAccess */
+static JSValue wjg_Document_hasStorageAccess_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 240);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_hasStorageAccess();
+    return wj_promise_from_host(ctx, r, WJ_HOST_BOOL, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Document_hasStorageAccess(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Document_hasStorageAccess_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
+/* Document.requestStorageAccess() -> storageaccess.Document_requestStorageAccess */
+static JSValue wjg_Document_requestStorageAccess_body(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, 240);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t r = wr_Document_requestStorageAccess();
+    return wj_promise_from_host(ctx, r, WJ_HOST_UNDEFINED, NULL, JS_UNDEFINED);
+}
+
+static JSValue wjg_Document_requestStorageAccess(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    JSValue r = wjg_Document_requestStorageAccess_body(ctx, this_val, argc, argv);
+    return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
+}
+
 /* Document.getElementById() -> dom.Document_getElementById */
 static JSValue wjg_Document_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -13498,7 +13541,7 @@ static const wj_member wj_m_MediaQueryList[] = {
     { "onchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaQueryList_get_onchange, wjg_MediaQueryList_set_onchange, 0 },
 };
 static const wj_member wj_m_MediaSource[] = {
-    { "handle", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_NOT_WINDOW, 46, NULL, NULL, NULL, 0 },
+    { "handle", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_NOT_WINDOW, 46, NULL, wjg_MediaSource_get_handle, NULL, 0 },
     { "sourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaSource_get_sourceBuffers, NULL, 0 },
     { "activeSourceBuffers", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_MediaSource_get_activeSourceBuffers, NULL, 0 },
     { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MediaSource_get_readyState, NULL, 0 },
@@ -13790,8 +13833,8 @@ static const wj_member wj_m_Document[] = {
     { "wasDiscarded", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fragmentDirective", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 58, NULL, NULL, NULL, 0 },
     { "getSelection", WJ_M_METHOD, 0, 0, wjr_Document_getSelection, NULL, NULL, 0 },
-    { "hasStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "requestStorageAccess", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "hasStorageAccess", WJ_M_METHOD, 0, 0, wjg_Document_hasStorageAccess, NULL, NULL, 0 },
+    { "requestStorageAccess", WJ_M_METHOD, 0, 0, wjg_Document_requestStorageAccess, NULL, NULL, 0 },
     { "timeline", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fonts", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_FontFaceSource_get_fonts, NULL, 0 },
     { "getBoxQuads", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
@@ -14689,7 +14732,7 @@ static const wj_member wj_m_HTMLMarqueeElement[] = {
 static const wj_member wj_m_HTMLMediaElement[] = {
     { "error", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_error, NULL, 0 },
     { "src", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_src, wjg_HTMLMediaElement_set_src, 0 },
-    { "srcObject", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "srcObject", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_srcObject, wjr_HTMLMediaElement_set_srcObject, 0 },
     { "currentSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_currentSrc, NULL, 0 },
     { "crossOrigin", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLMediaElement_get_crossOrigin, wjr_HTMLMediaElement_set_crossOrigin, 0 },
     { "NETWORK_EMPTY", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 0 },
@@ -19534,7 +19577,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaSession, .n_members = 7, .subtree_end = 440,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "MediaSourceHandle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "MediaSourceHandle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_MediaSourceHandle, .n_members = 0, .subtree_end = 441,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

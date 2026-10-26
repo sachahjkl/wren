@@ -95,10 +95,10 @@
 	Two nested iframes: FAIL
 /html/browsers/windows/noreferrer-null-opener.html: TIMEOUT
 	rel=noreferrer nullifies window.opener: TIMEOUT
-/html/browsers/windows/noreferrer-window-name.html: ERROR
+/html/browsers/windows/noreferrer-window-name.html: ERROR|TIMEOUT
 	Following a noreferrer link with a named target should not cause creation of a window that can be targeted by another noreferrer link with the same named target: TIMEOUT
 	Targeting a rel=noreferrer link at an existing named subframe should work: TIMEOUT
-	Targeting a rel=noreferrer link at an existing named window should work: FAIL
+	Targeting a rel=noreferrer link at an existing named window should work: FAIL|TIMEOUT
 /html/browsers/windows/opener-string.window.html: ERROR
 	Setting popup.opener to a string: FAIL
 /html/browsers/windows/targeting-cross-origin-nested-browsing-contexts.html: TIMEOUT

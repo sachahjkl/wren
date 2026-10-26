@@ -121,7 +121,7 @@ resource_bytes :: proc(s: ^Stand_In, dest: fetch.Destination) -> Resource_Data {
 		#partial switch dest {
 		case .Script, .Worker: return {"text/javascript; charset=utf-8", nil}
 		case .Style: return {"text/css; charset=utf-8", nil}
-		case .Document, .Iframe: return {"text/html; charset=utf-8", nil}
+		case .Document, .Iframe, .Frame: return {"text/html; charset=utf-8", nil}
 		case .Image: return {"image/gif", generated("1x1.gif", .Gif, 1, 1)}
 		}
 		return {"text/plain; charset=utf-8", nil}

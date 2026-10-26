@@ -258,10 +258,10 @@ js_port_deliver :: proc(p: ^Page, end: u64, m: Port_Msg) {
 
 Worker_postSerializedPorts :: proc(c: ^Call, worker: u64, data: []u8, ports: []u64) -> Api_Error {
 	p := c.page
-	if p.worker != nil { for x in ports { port_close_end(x) }; return fail(c, .Invalid_Argument, "a worker posts with DedicatedWorkerGlobalScope_postSerializedPorts") }
 	h := (^Worker_Host)(object_data(p, worker, &worker_vt))
-	if h == nil || h.terminated || h.state == .Closed || h.state == .Exited { for x in ports { port_close_end(x) }; return .None }
-	err := post_message(p, h.link, true, string(data), nil, ports)
+	n := nested_of(p, worker)   // a worker's own Worker object (nested_workers.odin)
+	if (h == nil || h.terminated || h.state == .Closed || h.state == .Exited) && (n == nil || n.terminated || n.gone) { for x in ports { port_close_end(x) }; return .None }
+	err := worker_post(p, worker, string(data), nil, ports)
 	if err != .None { for x in ports { port_close_end(x) } }
 	return dom_error(err)
 }

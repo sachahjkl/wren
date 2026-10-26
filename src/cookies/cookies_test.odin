@@ -258,6 +258,45 @@ persistence_roundtrip :: proc(t: ^testing.T) {
 }
 
 @(test)
+partitions_keep_third_party_cookies_apart :: proc(t: ^testing.T) {
+	j := jar_make()
+	defer jar_destroy(&j)
+	in_a := ctx_for("https://tracker.net/", .Cross_Site)
+	in_a.partition = "https://a.com"
+	in_b := in_a
+	in_b.partition = "https://b.com"
+	first := ctx_for("https://tracker.net/")
+	testing.expect_value(t, store(&j, "id=a; SameSite=None; Secure; Max-Age=3600", in_a), Store_Result.Stored)
+	testing.expect_value(t, store(&j, "id=b; SameSite=None; Secure; Max-Age=3600", in_b), Store_Result.Stored)
+	testing.expect_value(t, store(&j, "id=first; Max-Age=3600", first), Store_Result.Stored)   // the same name: three cookies
+	testing.expect_value(t, count(&j), 3)
+	testing.expect_value(t, header_for(&j, in_a, context.temp_allocator), "id=a")
+	testing.expect_value(t, header_for(&j, in_b, context.temp_allocator), "id=b")
+	testing.expect_value(t, header_for(&j, first, context.temp_allocator), "id=first")
+	testing.expect_value(t, count_in_partition(&j, "https://a.com", NOW), 1)
+
+	// persisted with their partition; a file of the first format loads unpartitioned
+	path := "build/cookies_partition_test.tsv"
+	defer os.remove(path)
+	testing.expect(t, save(&j, path, NOW))
+	j2 := jar_make()
+	defer jar_destroy(&j2)
+	n, ok := load(&j2, path, NOW)
+	testing.expect(t, ok)
+	testing.expect_value(t, n, 3)
+	testing.expect_value(t, header_for(&j2, in_b, context.temp_allocator), "id=b")
+	testing.expect_value(t, delete_partition(&j2, "https://a.com"), 1)
+	testing.expect_value(t, count(&j2), 2)
+	v1 := fmt.tprintf("wbcookies 1\nold\tv\ttracker.net\t/\t%d\t%d\t%d\t3\t1\n", NOW + 60_000, NOW, NOW)
+	testing.expect(t, os.write_entire_file(path, transmute([]byte)v1) == nil)
+	j3 := jar_make()
+	defer jar_destroy(&j3)
+	n, ok = load(&j3, path, NOW)
+	testing.expect(t, ok && n == 1)
+	testing.expect_value(t, header_for(&j3, first, context.temp_allocator), "old=v")
+}
+
+@(test)
 cookies_of_a_host_can_be_counted_and_cleared :: proc(t: ^testing.T) {
 	j := jar_make()
 	defer jar_destroy(&j)

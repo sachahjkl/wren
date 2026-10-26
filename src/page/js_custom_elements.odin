@@ -69,14 +69,14 @@ ce_queue :: proc(p: ^Page, ce: ^Custom_Elements, r: Ce_Reaction) {
 
 // The reactions an insertion or a removal causes, for every element of the subtree.
 @(private)
-ce_walk :: proc(p: ^Page, ce: ^Custom_Elements, d: ^dom.Document, root: base.Handle, inserted, connected: bool) {
+ce_walk :: proc(p: ^Page, ce: ^Custom_Elements, d: ^dom.Document, root: base.Handle, inserted, connected: bool, upgrade := true) {
 	// shadow-including: the custom elements of shadow trees enter and leave the document with their hosts
 	for h := root; h != base.NIL_HANDLE; h = dom.next_shadow_including(d, h, root) {
 		n := dom.get(d, h)
 		if n == nil || n.kind != .Element || !(n.name in ce.defined) { continue }
 		st := ce.state[h]
 		switch {
-		case inserted && st == 0: ce_queue(p, ce, Ce_Reaction{kind = CE_UPGRADE, element = h})
+		case inserted && st == 0: if upgrade { ce_queue(p, ce, Ce_Reaction{kind = CE_UPGRADE, element = h}) }
 		case inserted && st == CE_STATE_CUSTOM && connected: ce_queue(p, ce, Ce_Reaction{kind = CE_CONNECTED, element = h})
 		case !inserted && st == CE_STATE_CUSTOM && connected: ce_queue(p, ce, Ce_Reaction{kind = CE_DISCONNECTED, element = h})
 		}
@@ -90,15 +90,26 @@ ce_mutation :: proc(p: ^Page, d: ^dom.Document, e: ^dom.Journal_Entry) {
 	if ce == nil || len(ce.defined) == 0 { return }
 	#partial switch e.kind {
 	case .Insert:
-		// template contents belong to an inert document: no definition applies there
 		root := dom.shadow_including_root(d, e.node)
-		if rn := dom.get(d, root); rn != nil && rn.kind == .Fragment && rn.held { return }
+		rn := dom.get(d, root)
+		if rn == nil { return }
+		// another document (the templates' inert one, createHTMLDocument's, new Document()): a node in it is connected, so
+		// an element that is already custom gets its connectedCallback (its definition goes with it), but nothing is
+		// upgraded there: such a document has no custom element registry (HTML "look up a custom element definition")
+		if rn.as_document {
+			ce_walk(p, ce, d, e.node, true, true, upgrade = false)
+			return
+		}
+		// template contents belong to an inert document: no definition applies there
+		if rn.kind == .Fragment && rn.held { return }
 		// a script's insertion into a tree that is not the document's reacts to nothing (HTML "insert": only a connected
 		// node is upgraded or connected); the parser's fragments are upgraded where they were made (innerHTML)
 		if root != d.root && d.parser_inserting == 0 { return }
 		ce_walk(p, ce, d, e.node, true, root == d.root)
 	case .Remove:
-		if e.parent != base.NIL_HANDLE && dom.is_connected(d, e.parent) { ce_walk(p, ce, d, e.node, false, true) }
+		if e.parent == base.NIL_HANDLE { return }
+		root := dom.shadow_including_root(d, e.parent)
+		if rn := dom.get(d, root); root == d.root || (rn != nil && rn.as_document) { ce_walk(p, ce, d, e.node, false, true) }
 	case .Attribute:
 		if ce.state[e.node] != CE_STATE_CUSTOM { return }
 		cur, has := dom.get_attribute(d, e.node, e.name)

@@ -32,6 +32,7 @@ Settings :: struct {
 	bad_ports_allowed:      []int,    // owned: ports taken off the built-in blocklist
 	bad_ports_blocked:      []int,    // owned: ports added to it
 	files:                  File_Settings,   // file: folders: index, listing (directory.odin)
+	partitioned:            bool,     // storage.partitioned: third-party cookies are kept per top-level site
 }
 
 PREFS := [?]config.Def{
@@ -65,9 +66,16 @@ PREFS := [?]config.Def{
 	{name = "network.bad_ports.blocked", kind = .String, default = {s = ""}, description = "Comma-separated ports to add to the blocklist."},
 }
 
+// Storage partitioning: the network's cookies and the page's stores read it (package page registers it too).
+STORAGE_PREFS := [?]config.Def{
+	{name = "storage.partitioned", kind = .Bool, default = {b = true},
+		description = "Keep what a site stores while embedded in another site (a frame, its workers, its requests) apart per top-level site, as Firefox, Safari and Chromium do: cookies, localStorage, sessionStorage, IndexedDB, the Cache API, the origin private file system and storage buckets, service workers, BroadcastChannel, shared workers. A tracker embedded in two sites sees two separate storages. A frame that needs its own (a sign-in, a payment or a comment widget) calls document.requestStorageAccess() (storage.access_requests). Off: one storage per origin whoever embeds it."},
+}
+
 register_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, PREFS[:])
 	config.register(p, FILE_PREFS[:])
+	config.register(p, STORAGE_PREFS[:])
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
@@ -93,6 +101,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	s.bad_ports_allowed = parse_port_list(config.string_of(p, "network.bad_ports.allowed"))
 	s.bad_ports_blocked = parse_port_list(config.string_of(p, "network.bad_ports.blocked"))
 	s.files = file_settings_from_prefs(p)
+	s.partitioned = config.bool_of(p, "storage.partitioned")
 	return s
 }
 

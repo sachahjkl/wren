@@ -14,7 +14,11 @@ Frame_Settings :: struct {
 	max_message_bytes:  int,
 	storage_partition:  bool,
 	error_pages:        bool,
+	access_requests:    Storage_Access_Policy,   // storage.access_requests (storage_access.odin)
+	access_activation_ms: int,
 }
+
+Storage_Access_Policy :: enum u8 { Ask, Allow, Deny }
 
 FRAME_PREFS := [?]config.Def{
 	{name = "frames.enabled", kind = .Bool, default = {b = true},
@@ -33,8 +37,10 @@ FRAME_PREFS := [?]config.Def{
 		description = "Honour Content-Security-Policy frame-ancestors of framed documents (who may embed them). Off only to debug; security.csp.enabled off turns it off too."},
 	{name = "frames.max_message_bytes", kind = .Int, default = {i = 256 << 20}, bounded = true, min = 1 << 10, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Largest message window.postMessage may send to another document (a frame, the parent). Larger ones throw DataCloneError."},
-	{name = "frames.storage_partitioning", kind = .Bool, default = {b = true},
-		description = "localStorage and sessionStorage of a frame whose site differs from the tab's top-level site are kept apart per top-level site, as Chromium and Firefox do (a tracker embedded in two sites sees two storages). Off: one storage per origin whoever embeds it."},
+	{name = "storage.access_requests", kind = .String, default = {s = "ask"}, choices = {"ask", "allow", "deny"},
+		description = "What happens when a frame of another site asks for its own cookies and storage (document.requestStorageAccess(), after a click in it): ask shows a prompt over the page (Allow / Block, remembered for the session per frame site and page site); allow grants it without asking; deny refuses it. Only meaningful with storage.partitioned or privacy.third_party_cookies = block."},
+	{name = "storage.access_activation_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 0, max = 600_000, unit = "ms",
+		description = "How long after a click or a key press in a frame document.requestStorageAccess() may still ask (HTML's transient user activation)."},
 	{name = "frames.error_pages", kind = .Bool, default = {b = true},
 		description = "A frame whose document cannot be shown (refused by X-Frame-Options or frame-ancestors, network error) shows a short explanation, as Chromium does. Off: it stays blank."},
 }
@@ -49,7 +55,9 @@ frame_settings_from_prefs :: proc(p: ^config.Prefs) -> Frame_Settings {
 		x_frame_options = config.bool_of(p, "frames.x_frame_options"),
 		frame_ancestors = config.bool_of(p, "frames.frame_ancestors"),
 		max_message_bytes = int(config.int_of(p, "frames.max_message_bytes")),
-		storage_partition = config.bool_of(p, "frames.storage_partitioning"),
+		storage_partition = config.bool_of(p, "storage.partitioned"),   // (declared with the network's: fetch/settings.odin)
 		error_pages = config.bool_of(p, "frames.error_pages"),
+		access_requests = config.string_of(p, "storage.access_requests") == "allow" ? .Allow : config.string_of(p, "storage.access_requests") == "deny" ? .Deny : .Ask,
+		access_activation_ms = int(config.int_of(p, "storage.access_activation_ms")),
 	}
 }
