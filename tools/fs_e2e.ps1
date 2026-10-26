@@ -4,6 +4,8 @@
 # worker and its lock, structuredClone through IndexedDB and postMessage, the quota and navigator.storage.estimate(),
 # then the pickers on real files (browser.dialogs.test_answer stands for the system's dialog: it needs a person), the
 # user gesture they need, and the permission to write.
+# -Check: the same on the check build (build.bat check), which must exit with nothing left allocated.
+param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'wrenctl.ps1')
@@ -18,7 +20,7 @@ New-Item -ItemType Directory -Force $tmp | Out-Null
 $srv = Start-WrenTestServer
 $name = $null
 try {
-  $name = Start-Wren -Size 1000x700
+  $name = if ($Check) { Start-WrenChecked } else { Start-Wren -Size 1000x700 }
   $env:WREN_REMOTE = $name
   Wren-Ctl nav "$($srv.Origin)/site/fs/index.html" --wait load | Out-Null
   $r0 = Wren-Ctl eval 'navigator.storage.getDirectory().then(async (r) => { window.R = r; for (const n of await names(r).then((s) => s ? s.split(",") : [])) await r.removeEntry(n.split(":")[0], {recursive: true}); return r.kind + " " + JSON.stringify(r.name) + " " + (r instanceof FileSystemDirectoryHandle); })' --await
@@ -80,7 +82,7 @@ try {
   Expect ($ab -eq 'AbortError') 'a cancelled picker rejects with AbortError' $ab
   Wren-Ctl pref set browser.dialogs.test_answer '' | Out-Null
 } finally {
-  if ($name) { Stop-Wren $name }
+  if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
   Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 }

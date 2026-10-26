@@ -3,6 +3,8 @@
 # (connect events, ports both ways, self.name, its global's interfaces), that it stops when the last tab closes and
 # that close() makes the next constructor start another one; then a module worker (module.js: static imports, relative
 # and absolute, a dynamic import, import.meta.url, importScripts refused).
+# -Check: the same on the check build (build.bat check), which must exit with nothing left allocated.
+param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'wrenctl.ps1')
@@ -16,7 +18,7 @@ $srv = Start-WrenTestServer
 $name = $null
 try {
   $base = "$($srv.Origin)/site/workers"
-  $name = Start-Wren -Size 1000x700
+  $name = if ($Check) { Start-WrenChecked } else { Start-Wren -Size 1000x700 }
   $env:WREN_REMOTE = $name
   Wren-Ctl nav "$base/index.html" --wait load | Out-Null
   $tab1 = (Wren-Ctl tabs | Select-Object -First 1) -replace '^(\d+).*', '$1'
@@ -56,7 +58,7 @@ try {
   $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 5000); })' --await
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
 } finally {
-  if ($name) { Stop-Wren $name }
+  if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
 }
 if ($fails -gt 0) { "workers_e2e: $fails failure(s)"; exit 1 }

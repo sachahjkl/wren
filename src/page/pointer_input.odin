@@ -68,6 +68,7 @@ pointer_page :: proc(p: ^Page, create := true) -> ^Pointer_Page {
 				delete(pp.touches)
 				free(pp)
 				delete_key(&pointer_pages, pg)
+				if len(pointer_pages) == 0 { delete(pointer_pages); pointer_pages = nil }   // (its table is not left behind at exit)
 			}
 		}, p)
 	}
