@@ -203,6 +203,19 @@ makes the TimeRanges object of them.
 
 Host: `HTMLMediaElement_ranges :: proc(c: ^Call, element: Api_HTMLMediaElement, which: i32) -> []u8`
 
+### `HTMLMediaElement_setSourceHandle`
+
+```
+void HTMLMediaElement_setSourceHandle(HTMLMediaElement element, u64 handle) raises
+```
+
+element.srcObject = a MediaSourceHandle (its object handle; 0: null): the element loads it, srcObject before src
+(HTML "media provider object"). Type for another kind of object.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLMediaElement_setSourceHandle :: proc(c: ^Call, element: Api_HTMLMediaElement, handle: u64) -> Api_Error`
+
 ### `HTMLMediaElement_errorCode`
 
 ```

@@ -180,11 +180,36 @@ JSValue wjr_MediaSource_constructor(JSContext *ctx, JSValueConst new_target, int
     return wj_wrap_owned(ctx, h, WJ_IFACE_MediaSource, new_target);
 }
 
-/* MediaSource in a worker is not offered (the browser's media elements live in windows) */
+/* A dedicated worker's MediaSource plays in the page through its handle (src/page/mse_worker.odin) */
 JSValue wjr_MediaSource_static_get_canConstructInDedicatedWorker(JSContext *ctx, JSValueConst this_val)
 {
-    WJ_UNUSED(this_val);
-    return JS_FALSE;
+    WJ_UNUSED(ctx); WJ_UNUSED(this_val);
+    return JS_TRUE;
+}
+
+/* element.srcObject: what was set (a MediaSourceHandle or null), the same object; setting it loads the element */
+JSValue wjr_HTMLMediaElement_get_srcObject(JSContext *ctx, JSValueConst this_val)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_HTMLMediaElement)) { return JS_EXCEPTION; }
+    JSValue v = web_extra_get(ctx, this_val, "srcObject");
+    if (JS_IsUndefined(v)) { return JS_NULL; }
+    return v;
+}
+
+JSValue wjr_HTMLMediaElement_set_srcObject(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    wj_obj *self = wj_this(ctx, this_val, WJ_IFACE_HTMLMediaElement);
+    if (!self) { return JS_EXCEPTION; }
+    uint64_t h = 0;
+    if (!JS_IsNull(v) && !JS_IsUndefined(v)) {
+        wj_obj *o = wj_unwrap(v, WJ_IFACE_MediaSourceHandle);
+        if (!o) { return JS_ThrowTypeError(ctx, "Failed to set the 'srcObject' property on 'HTMLMediaElement': only a MediaSourceHandle (or null) is supported."); }
+        h = o->handle;
+    }
+    int32_t st = wr_HTMLMediaElement_setSourceHandle(self->handle, h);
+    if (st < 0) { return wj_throw_status(ctx, st, "HTMLMediaElement.srcObject"); }
+    web_extra_set(ctx, this_val, "srcObject", h ? JS_DupValue(ctx, v) : JS_NULL);
+    return JS_UNDEFINED;
 }
 
 /* The wrappers of a MediaSource's lists and source buffers are kept by the MediaSource's own: a script that only wrote

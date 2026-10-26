@@ -394,6 +394,7 @@ typedef uint64_t wr_HTMLMediaElement;
 typedef uint64_t wr_MediaSource;
 typedef uint64_t wr_SourceBuffer;
 typedef uint64_t wr_SourceBufferList;
+typedef uint64_t wr_MediaSourceHandle;
 
 /* module net: types */
 // A request and, once it arrived, its response.
@@ -2523,6 +2524,9 @@ WR_IMPORT("htmlmedia", "HTMLMediaElement_set_muted") void wr_HTMLMediaElement_se
 // element.buffered (0), played (1) or seekable (2) as pairs of f64 (start, end), seconds, little endian: the engine
 // makes the TimeRanges object of them.
 WR_IMPORT("htmlmedia", "HTMLMediaElement_ranges") int32_t wr_HTMLMediaElement_ranges(uint64_t element, int32_t which, uint8_t *_buf, uint32_t _cap);
+// element.srcObject = a MediaSourceHandle (its object handle; 0: null): the element loads it, srcObject before src
+// (HTML "media provider object"). Type for another kind of object.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_setSourceHandle") int32_t wr_HTMLMediaElement_setSourceHandle(uint64_t element, uint64_t handle);
 // element.error: the code (0 when null) and the message.
 WR_IMPORT("htmlmedia", "HTMLMediaElement_errorCode") int32_t wr_HTMLMediaElement_errorCode(uint64_t element);
 WR_IMPORT("htmlmedia", "HTMLMediaElement_errorMessage") int32_t wr_HTMLMediaElement_errorMessage(uint64_t element, uint8_t *_buf, uint32_t _cap);
@@ -2542,11 +2546,18 @@ WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElem
 WR_IMPORT("htmlmedia", "HTMLVideoElement_playbackQuality") int32_t wr_HTMLVideoElement_playbackQuality(uint64_t element, uint8_t *_buf, uint32_t _cap);
 
 /* module mse */
-// new MediaSource(): closed until an element attaches it.
+// new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
 WR_IMPORT("mse", "MediaSource_create") int32_t wr_MediaSource_create(uint64_t *_ret);
 // URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
-// that URL plays this source. Called by the engine with the URL it made.
-WR_IMPORT("mse", "MediaSource_registerObjectURL") void wr_MediaSource_registerObjectURL(uint64_t source, const uint8_t *url, uint32_t url_len);
+// that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
+WR_IMPORT("mse", "MediaSource_registerObjectURL") int32_t wr_MediaSource_registerObjectURL(uint64_t source, const uint8_t *url, uint32_t url_len);
+// mediaSource.handle: the same MediaSourceHandle each time (a dedicated worker's MediaSource; NotSupported else).
+WR_IMPORT("mse", "MediaSource_handle") int32_t wr_MediaSource_handle(uint64_t source, uint64_t *_ret);
+// A MediaSourceHandle in the transfer list of a message: the token the receiving realm adopts (DataClone when it
+// was transferred before or its MediaSource is attached already).
+WR_IMPORT("mse", "MediaSourceHandle_take") int32_t wr_MediaSourceHandle_take(uint64_t h, uint64_t *_ret);
+// The receiving realm's MediaSourceHandle for a token.
+WR_IMPORT("mse", "MediaSourceHandle_adopt") int32_t wr_MediaSourceHandle_adopt(uint64_t token, uint64_t *_ret);
 // URL.revokeObjectURL(url): the URL no longer names a Media Source (one already attached keeps playing).
 WR_IMPORT("mse", "MediaSource_revokeObjectURL") void wr_MediaSource_revokeObjectURL(const uint8_t *url, uint32_t url_len);
 // MediaSource.isTypeSupported(type)

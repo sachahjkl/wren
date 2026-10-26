@@ -33,6 +33,7 @@ foreign _m_htmlmedia {
 	@(link_name = "HTMLMediaElement_muted") _HTMLMediaElement_muted :: proc(element: HTMLMediaElement) -> i32 ---
 	@(link_name = "HTMLMediaElement_set_muted") _HTMLMediaElement_set_muted :: proc(element: HTMLMediaElement, value: i32) ---
 	@(link_name = "HTMLMediaElement_ranges") _HTMLMediaElement_ranges :: proc(element: HTMLMediaElement, which: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLMediaElement_setSourceHandle") _HTMLMediaElement_setSourceHandle :: proc(element: HTMLMediaElement, handle: u64) -> Error ---
 	@(link_name = "HTMLMediaElement_errorCode") _HTMLMediaElement_errorCode :: proc(element: HTMLMediaElement) -> i32 ---
 	@(link_name = "HTMLMediaElement_errorMessage") _HTMLMediaElement_errorMessage :: proc(element: HTMLMediaElement, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "HTMLMediaElement_play") _HTMLMediaElement_play :: proc(element: HTMLMediaElement) -> Promise ---
@@ -182,6 +183,12 @@ HTMLMediaElement_ranges_alloc :: proc(element: HTMLMediaElement, which: i32, all
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// element.srcObject = a MediaSourceHandle (its object handle; 0: null): the element loads it, srcObject before src
+// (HTML "media provider object"). Type for another kind of object.
+HTMLMediaElement_setSourceHandle :: proc "contextless" (element: HTMLMediaElement, handle: u64) -> Error {
+	return _HTMLMediaElement_setSourceHandle(element, handle)
 }
 
 // element.error: the code (0 when null) and the message.
