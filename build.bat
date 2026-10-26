@@ -14,8 +14,12 @@
 ::  build\wren.channel, which tools\package.ps1 checks before packaging.
 ::
 ::  Compile speed: Odin hands LLVM one module per package with -use-separate-modules, and LLVM then works on all
-::  cores (about 5 s instead of 55 s for a full build). The development, debug and check builds use it; `release`
-::  and `profile` keep a single module (inlining across packages; measurements as in the shipped build).
+::  cores. Measured on 2026-10-26: the Odin step of `build.bat` (development: -o:speed -debug, separate modules) takes
+::  about 25 s and `check` about 17 s, against 140 to 230 s for `release`, one module. The development, debug and check
+::  builds use it; `release` and `profile` keep a single module (inlining across packages; measurements as in the
+::  shipped build). A build that takes minutes more than that has a trap in it: -o:speed with -debug on a function that
+::  holds a large value (kilobytes) in a local makes LLVM spend ten minutes on its module (render.Surface in window_open:
+::  see render.surface_init). Bisect with the exact command of the variant, and give a build a time limit.
 ::
 ::  Steps: 1. checks   2. dependencies   3. generated code   4. common flags   5. the build itself
 :: ============================================================================================================
@@ -163,6 +167,9 @@ if defined WREN_TAG set "WREN_SUFFIX=%WREN_SUFFIX%%WREN_TAG%"
 :: etc. (the system's fonts and their fallback come from DirectWrite in both)
 if not "%WREN_TEXT%"=="dwrite" set "FLAGS=%FLAGS% -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false"
 if "%WREN_TEXT%"=="dwrite" set "WREN_SUFFIX=%WREN_SUFFIX%_dwrite"
+:: accessibility: the toolkit's AccessKit adapter (UI Automation: screen readers read the chrome and the pages), built
+:: into the same library (feature `a11y` of native\media)
+set "FLAGS=%FLAGS% -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false"
 if "%WREN_RENDER%"=="wgpu" powershell -NoProfile -ExecutionPolicy Bypass -File ext\gui_toolkit\tools\fetch_wgpu.ps1 -Dest build >nul || (echo fetching the wgpu dependencies failed & exit /b 1)
 
 set "FAST=-use-separate-modules"

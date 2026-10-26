@@ -425,6 +425,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 			d.badges, d.tones, d.badge_w, d.label_w = bs, tones, bw, lw
 			d.warn = p == .Network && net_profile_active(net_profile_of(t))
 			tb.custom, tb.custom_user = tab_paint, d
+			ui.a11y_set(tb, {role = .Tab, name = DEV_PANEL_TITLES[p], selected = on, position = int(p) + 1, set_size = len(Dev_Panel)})
 			if sig.clicked && !on {
 				dev.panel = p
 				if p != .Elements { dev.picking = false }

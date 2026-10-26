@@ -802,6 +802,7 @@ page_view :: proc(app: ^App, t: ^Tab) {
 		// a Tab stop of the chrome: reaching it hands the keyboard to the page (forms_focus_from_chrome)
 		pb := ui.custom("###page_area", page_draw, nil, {.Focusable})
 		page_area_focus(app, t, pb)
+		page_a11y_graft(app, t, pb)   // a11y_page.odin: the page's tree for screen readers
 		blocker_picker_frame(app, t)   // blocker_picker.odin
 	}
 }
@@ -1197,6 +1198,7 @@ frame :: proc(app: ^App, idled := false) {
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
 	remote_notice(app)   // remote_shell.odin: the notice of a remote channel that did not start
 	ui.end_build()
+	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
 	if ui.needs_frame(app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
@@ -1369,6 +1371,7 @@ main :: proc() {
 	prof_mark(.UI_Fonts)
 	draw.init(&app.dc, &app.r, &app.fonts)
 	ui.init(app.ui_state, &app.fonts, &app.theme)
+	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
 	first_paint_init(app)
@@ -1536,6 +1539,7 @@ main :: proc() {
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
 	forms_shell_destroy()
+	a11y_page_destroy()
 	host.shutdown_step("page_render_destroy")
 	page_render_destroy()
 	host.shutdown_step("config_view_destroy")

@@ -27,9 +27,16 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # The build takes one to two minutes here (dependencies from the caches). A build that runs for 20 minutes is a defect (a local
+      # render.Surface in window_open once kept the -o:speed -debug codegen of one module going past the job's 90 minutes): it fails.
       - name: Build (optimized, development channel)
-        shell: cmd
-        run: call build.bat
+        timeout-minutes: 20
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          cmd /c build.bat
+          $code = $LASTEXITCODE
+          "build.bat took {0:N0} s" -f $sw.Elapsed.TotalSeconds
+          exit $code
 
       # Two steps of test_all at a time (-Jobs 0 is two under -CI; the end-to-end timeouts of -CI are three times the usual). Measured on this runner
       # (4 vCPU) with the same steps: two at a time 514 s; three 539 s with three checks failing under the load; four 765 s, the sum of the steps'
@@ -94,8 +101,13 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Build (the dependencies, and the program the libraries are read from)
-        shell: cmd
-        run: call build.bat
+        timeout-minutes: 20
+        run: |
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          cmd /c build.bat
+          $code = $LASTEXITCODE
+          "build.bat took {0:N0} s" -f $sw.Elapsed.TotalSeconds
+          exit $code
 
       - name: Unit tests under AddressSanitizer (tools\asan.ps1 -Jobs 3)
         shell: cmd
