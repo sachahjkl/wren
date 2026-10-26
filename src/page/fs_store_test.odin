@@ -1,6 +1,7 @@
 package page
 
 import "core:os"
+import "wb:base"
 import "core:strings"
 import "core:testing"
 
@@ -30,8 +31,8 @@ fs_names_are_checked_and_encoded :: proc(t: ^testing.T) {
 @(test)
 fs_entries_writables_locks_and_quota :: proc(t: ^testing.T) {
 	dir := "build/tmp/fs_store_test"
-	_ = os.remove_all(dir)
-	defer { fs_store_shutdown(); _ = os.remove_all(dir) }
+	_ = base.remove_tree(dir)
+	defer { fs_store_shutdown(); _ = base.remove_tree(dir) }
 	root, e := fs_opfs_root(dir, "https://a.example")
 	testing.expect_value(t, e, Fs_Error.None)
 	f, e1 := fs_get_entry(root, "", "Data.bin", false, true)

@@ -19,6 +19,7 @@ package page
 
 import "core:fmt"
 import "core:os"
+import "wb:base"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -299,7 +300,7 @@ fs_remove_entry :: proc(root: u64, dir_path, name: string, recursive: bool) -> F
 		entries, _ := os.read_all_directory_by_path(p, context.temp_allocator)
 		if len(entries) > 0 && !recursive { return .Not_Empty }
 		freed = fs_dir_bytes(p)
-		if os.remove_all(p) != nil { return .Io }
+		if !base.remove_tree(p) { return .Io }
 	} else {
 		freed = info.size
 		if os.remove(p) != nil { return .Io }
@@ -444,7 +445,7 @@ fs_quota_ok :: proc(root: u64, delta: i64, max_bytes: i64) -> bool {
 opfs_clear :: proc(profile_dir, key: string) {
 	dir := opfs_dir(profile_dir, key, context.temp_allocator)
 	if dir == "" { return }
-	_ = os.remove_all(dir)
+	_ = base.remove_tree(dir)
 	sync.mutex_lock(&fs_store.mu)
 	defer sync.mutex_unlock(&fs_store.mu)
 	for _, r in fs_store.roots { if r.kind == .Opfs && r.dir == dir { r.usage = 0 } }
