@@ -190,3 +190,29 @@ test("TextDecoderStream and TextEncoderStream", async () => {
   for await (const s of round) back += s;
   eq(back, "h\u00e9llo", "encoded then decoded");
 });
+test("CompressionStream and DecompressionStream", async () => {
+  const text = "Wren ".repeat(2000) + "\u00e9t\u00e9";
+  const bytesOf = async (readable) => { const out = []; for await (const c of readable) out.push(...c); return new Uint8Array(out); };
+  const source = () => new ReadableStream({ start(c) { const b = new TextEncoder().encode(text); c.enqueue(b.subarray(0, 100)); c.enqueue(b.subarray(100)); c.close(); } });
+  for (const format of ["gzip", "deflate", "deflate-raw"]) {
+    const packed = await bytesOf(source().pipeThrough(new CompressionStream(format)));
+    ok(packed.length > 0 && packed.length < 200, format + ": compressed " + packed.length + " bytes");
+    if (format === "gzip") eq(packed[0] + "," + packed[1], "31,139", "gzip: its magic number");
+    if (format === "deflate") eq(packed[0], 0x78, "deflate: the zlib header");
+    const back = await bytesOf(new ReadableStream({ start(c) { for (const b of packed) c.enqueue(new Uint8Array([b])); c.close(); } }).pipeThrough(new DecompressionStream(format)));
+    eq(new TextDecoder().decode(back), text, format + ": decompressed byte by byte, the same text");
+  }
+  throws(() => new CompressionStream("zip"), "TypeError", "an unknown format");
+  const junk = new ReadableStream({ start(c) { c.enqueue(new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])); c.close(); } });
+  await rejects(bytesOf(junk.pipeThrough(new DecompressionStream("gzip"))), "TypeError", "data that is not gzip");
+  const whole = await bytesOf(source().pipeThrough(new CompressionStream("gzip")));
+  const cut = new ReadableStream({ start(c) { c.enqueue(whole.subarray(0, whole.length - 4)); c.close(); } });
+  await rejects(bytesOf(cut.pipeThrough(new DecompressionStream("gzip"))), "TypeError", "data cut before its end");
+  const extra = new ReadableStream({ start(c) { c.enqueue(whole); c.enqueue(new Uint8Array([0])); c.close(); } });
+  await rejects(bytesOf(extra.pipeThrough(new DecompressionStream("gzip"))), "TypeError", "data after the end");
+  const notBytes = new CompressionStream("gzip");
+  const w = notBytes.writable.getWriter();
+  const pending = notBytes.readable.getReader().read();
+  await rejects(w.write("text"), "TypeError", "a chunk that is not a BufferSource");
+  await rejects(pending, "TypeError", "errors the readable side too");
+});

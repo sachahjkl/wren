@@ -62,6 +62,14 @@ enum wr_StyleKind {
     wr_StyleKind_Pattern = 2,
 };
 
+/* module compression: types */
+typedef uint64_t wr_Compressor;
+enum wr_CompressionFormat {
+    wr_CompressionFormat_Gzip = 0,
+    wr_CompressionFormat_Deflate = 1,
+    wr_CompressionFormat_Deflate_Raw = 2,
+};
+
 /* module console: types */
 
 /* module credentials: types */
@@ -997,6 +1005,17 @@ WR_IMPORT("canvas", "ImageBitmap_close") void wr_ImageBitmap_close(uint64_t bitm
 WR_IMPORT("canvas", "Canvas_createBitmap") int32_t wr_Canvas_createBitmap(uint64_t source, int32_t form, double sx, double sy, double sw, double sh, int32_t flip_y, uint64_t *_ret);
 // An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob).
 WR_IMPORT("canvas", "Canvas_bitmapFromPixels") int32_t wr_Canvas_bitmapFromPixels(const uint8_t *data, uint32_t data_len, int32_t width, int32_t height, int32_t flip_y, uint64_t *_ret);
+
+/* module compression */
+// A compressor (decompress false) or a decompressor of `format`.
+WR_IMPORT("compression", "Compression_create") int32_t wr_Compression_create(int32_t format, int32_t decompress, uint64_t *_ret);
+// Feeds `input`: the output it made (Compression_output reads it again when the buffer was too small). Type for
+// data that is not of the format, or that follows the end of the compressed data; Quota past the bound.
+WR_IMPORT("compression", "Compression_push") int32_t wr_Compression_push(uint64_t compressor, const uint8_t *input, uint32_t input_len, uint8_t *_buf, uint32_t _cap);
+// The end of the input: what is left of the output. Type when the compressed data ended before its end.
+WR_IMPORT("compression", "Compression_finish") int32_t wr_Compression_finish(uint64_t compressor, uint8_t *_buf, uint32_t _cap);
+// The output of the last push or finish.
+WR_IMPORT("compression", "Compression_output") int32_t wr_Compression_output(uint64_t compressor, uint8_t *_buf, uint32_t _cap);
 
 /* module console */
 // console.log(message)

@@ -138,6 +138,18 @@ Api_StyleKind :: enum i32 {
 	Pattern = 2,
 }
 
+// A live Compressor: its handle and what lookup_Compressor found.
+Api_Compressor :: struct {
+	handle: u64,
+	data:   ^Zip_Stream,
+}
+
+Api_CompressionFormat :: enum i32 {
+	Gzip = 0,
+	Deflate = 1,
+	Deflate_Raw = 2,
+}
+
 // A PublicKeyCredential: the authenticator's answer, with its response (attestation or assertion).
 // A live PublicKeyCredential: its handle and what lookup_PublicKeyCredential found.
 Api_PublicKeyCredential :: struct {
@@ -718,6 +730,9 @@ _valid_PromiseState :: #force_inline proc "contextless" (v: i32) -> bool { switc
 
 @(private = "file")
 _valid_StyleKind :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
+_valid_CompressionFormat :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
 _valid_CredentialMediation :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
@@ -5589,6 +5604,109 @@ _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller,
 	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// Compression_create :: proc(c: ^Call, format: Api_CompressionFormat, decompress: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_compression_Compression_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "compression.Compression_create", "result pointer") }
+	_e0 := i32(a[0].i32)
+	if !_valid_CompressionFormat(_e0) {
+		return _fail_status(&c, a, .Invalid_Argument, "compression.Compression_create: argument format is not a CompressionFormat")
+	}
+	_p0 := Api_CompressionFormat(_e0)
+	_p1 := a[1].i32 != 0
+	_r, _err := Compression_create(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Compression_push :: proc(c: ^Call, compressor: Api_Compressor, input: []u8) -> ([]u8, Api_Error)
+@(private = "file")
+_t_compression_Compression_push :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "compression.Compression_push", "input") }
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_push", "result buffer") }
+	_p1 := _s1[:_n1]
+	_p0 := Api_Compressor{handle = u64(a[0].i64)}
+	_p0.data = lookup_Compressor(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "compression.Compression_push: argument compressor is not a live Compressor")
+	}
+	_r, _err := Compression_push(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Compression_finish :: proc(c: ^Call, compressor: Api_Compressor) -> ([]u8, Api_Error)
+@(private = "file")
+_t_compression_Compression_finish :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_finish", "result buffer") }
+	_p0 := Api_Compressor{handle = u64(a[0].i64)}
+	_p0.data = lookup_Compressor(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "compression.Compression_finish: argument compressor is not a live Compressor")
+	}
+	_r, _err := Compression_finish(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Compression_output :: proc(c: ^Call, compressor: Api_Compressor) -> []u8
+@(private = "file")
+_t_compression_Compression_output :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "compression.Compression_output", "result buffer") }
+	_p0 := Api_Compressor{handle = u64(a[0].i64)}
+	_p0.data = lookup_Compressor(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "compression.Compression_output: argument compressor is not a live Compressor") }
+		return wasm.trap_new("compression.Compression_output: argument compressor is not a live Compressor")
+	}
+	_r := Compression_output(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
 	return nil
 }
 
@@ -26579,6 +26697,10 @@ api_imports := [?]wasm.Import{
 	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "compression", name = "Compression_create", fn = _t_compression_Compression_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "compression", name = "Compression_push", fn = _t_compression_Compression_push, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "compression", name = "Compression_finish", fn = _t_compression_Compression_finish, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "compression", name = "Compression_output", fn = _t_compression_Compression_output, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "console", name = "console_log", fn = _t_console_console_log, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_warn", fn = _t_console_console_warn, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "console", name = "console_error", fn = _t_console_console_error, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
