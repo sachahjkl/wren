@@ -191,9 +191,9 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		if chip_w > 0 { field.text_pad = chip_w + inset + em * 0.5 }
 		// not being edited: the address shows from its start (scheme and host), as in Chrome, not scrolled to its end
 		// (by key: the focused box's name is last frame's, its text may be gone with that frame's memory)
-		address_key = ui.key_from_string(ui.parent_box().key, "###address")
+		window_own(app).address_key = ui.key_from_string(ui.parent_box().key, "###address")
 		urlbar_keys(app, t)   // the suggestions' keys, before the field sees them (urlbar.odin)
-		if ui.focus_key() != address_key {
+		if ui.focus_key() != window_own(app).address_key {
 			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
 		}
 		ui.next(field)
@@ -207,10 +207,10 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			ui.set_focus(b.key)
 			ui.field_select_all(&app.address)
-			forms_page_blur()
+			forms_page_blur(app)
 		}
 	}
-	if res.focused { forms_page_blur() }
+	if res.focused { forms_page_blur(app) }
 	if urlbar_edited(app, t, res) {
 		res.committed = false   // Enter opened the chosen suggestion
 	}
@@ -268,15 +268,12 @@ page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 	forms_focus_from_chrome(app, t, ui.tab_direction(app.ui_state) < 0 ? -1 : 1)
 }
 
-// Set by the page's context menu: open the page information popup of the security chip.
-page_info_request: bool
+// (Window_Own.page_info_request, set by the page's context menu, opens the page information popup of the security chip;
+// Window_Own.main_menu_request, set by Alt+F / Alt+E, the main menu.)
 
-// Key of the address field (set when it is built): whether it has the keyboard is asked by key, never by
+// The key of the window's address field (set when it is built): whether it has the keyboard is asked by key, never by
 // ui.focused_name(), which reads the name of a box of the last frame (freed when the build starts).
-address_key: ui.Key
-
-// Set by Alt+F / Alt+E: open the main menu.
-main_menu_request: bool
+address_key :: proc(app: ^App) -> ui.Key { return window_own(app).address_key }
 
 // Moves the current tab one place left or right (Ctrl+Shift+Page Up / Page Down).
 tab_move_current :: proc(app: ^App, delta: int) {
@@ -295,9 +292,7 @@ tab_move_current :: proc(app: ^App, delta: int) {
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
 Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
-
-@(private = "file")
-chip_segment: Chip_Segment
+Chip_Icon :: struct { glyph: string, color: draw.Color }
 
 // The chip as the address bar's left segment: its tint up to a divider, rounded on the left like the bar.
 @(private = "file")
@@ -319,6 +314,8 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	em := ui.font_size()
 	sec := security_of(t)
 	if sec.label == "" { return }
+	own := window_own(app)
+	chip_segment, chip_icon := &own.chip_segment, &own.chip_icon
 
 	var_tone: draw.Color
 	if ui.tags(tone_tag(sec.tone)) { var_tone = ui.color("text") }
@@ -332,7 +329,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 		flags = {.Clickable}
 		base := sec.tone != .Weak ? var_tone : ui.color("text")
 		a: f32 = sec.tone != .Weak ? 0.14 : 0
-		chip_segment = {color = a > 0 ? ui.tuned(draw.Color{base.r, base.g, base.b, a}) : {}, radius = radius}
+		chip_segment^ = {color = a > 0 ? ui.tuned(draw.Color{base.r, base.g, base.b, a}) : {}, radius = radius}
 		window_bg := ui.color("background")
 		window_bg.a = 1
 		if ui.tags("input") {
@@ -345,8 +342,8 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 				chip_segment.under = ui.srgb_step(cc.field_top, cc.field, 0.5)
 			}
 		}
-		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(window_own(app).security_chip_width), height = ui.px(height)})
-		ui.custom("###sec_segment", chip_segment_draw, &chip_segment)
+		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(own.security_chip_width), height = ui.px(height)})
+		ui.custom("###sec_segment", chip_segment_draw, chip_segment)
 	} else if sec.tone != .Weak {
 		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)
 		next.bg = ui.tuned(draw.Color{var_tone.r, var_tone.g, var_tone.b, 0.14})
@@ -356,7 +353,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	b: ^ui.Box
 	if ui.row(.Center, flags, "###sec_chip") {
 		b = ui.parent_box()
-		window_own(app).security_chip_width = b.rect.max.x - b.rect.min.x
+		own.security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
 		// under the pointer / pressed: the theme's step over the segment's tint, as on the chrome's other buttons (the
 		// segment is drawn after the build: this frame's state)
@@ -375,7 +372,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			ui.label(fmt.aprintf("%s###sec_label", sec.label, allocator = ui.frame_allocator()))
 		}
 		ui.spacer(ui.px(em * 0.65))
-		if page_info_request { page_info_request = false; sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
+		if own.page_info_request { own.page_info_request = false; sig.clicked = !ui.ctx_menu_is_open(ui.key_from_string(ui.parent_box().parent.key, "###page_info")) }
 		if sig.clicked {
 			key := ui.key_from_string(ui.parent_box().parent.key, "###page_info")
 			if ui.ctx_menu_is_open(key) { ui.ctx_menu_close() } else {
@@ -387,12 +384,10 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	if b != nil { page_info_popup(app, t, sec, b) }
 }
 
-@(private = "file")
-chip_icon: struct { glyph: string, color: draw.Color }
-
 // Width of the ink of the chip's icon glyph at this text size (physical pixels).
 @(private = "file")
 chip_icon_ink :: proc(app: ^App, size: f32) -> f32 {
+	chip_icon := &window_own(app).chip_icon
 	if chip_icon.glyph == "" { return 0 }
 	g := font.glyph(&app.fonts, app.icons, size, rune(chip_icon.glyph[0]))
 	return g.size.x > 0 ? g.size.x : g.advance
@@ -404,6 +399,7 @@ chip_icon_ink :: proc(app: ^App, size: f32) -> f32 {
 @(private = "file")
 chip_icon_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := (^App)(user)
+	chip_icon := &window_own(app).chip_icon
 	if chip_icon.glyph == "" { return }
 	size := b.font_size
 	m := font.metrics(&app.fonts, app.ui_font, size)
@@ -555,9 +551,9 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 	ui.pop_tags()
 	sig := ui.signal(b)
 	key := ui.key_from_string(b.parent.key, "###main_menu")
-	if main_menu_request {
+	if own := window_own(app); own.main_menu_request {
 		// Alt+F / Alt+E: opened from the keyboard, its first item active
-		main_menu_request = false
+		own.main_menu_request = false
 		if !ui.ctx_menu_is_open(key) { ui.ctx_menu_open_rect(key, b.rect, b.key, from_keyboard = true) }
 	}
 	if sig.clicked {

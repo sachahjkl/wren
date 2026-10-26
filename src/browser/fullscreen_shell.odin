@@ -114,7 +114,7 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 	fullscreen_settle_arm(app, fs, top, fs.shell.tab_id, !fs.shell.window_was)
 	fs.shell.page_id = 0
 	if !fs.shell.window_was { window_fullscreen(app, false) }
-	wchrome.revealed = false
+	app.active.own.full.revealed = false
 	app.frames_requested = max(app.frames_requested, 3)
 	return true
 }
@@ -149,7 +149,7 @@ window_fullscreen :: proc(app: ^App, on: bool) {
 		platform.set_fullscreen(app.win, on)
 		render.resize(&app.r, app.win.size)
 	}
-	wchrome.revealed = false
+	window_own(app).full.revealed = false
 	app.frames_requested = max(app.frames_requested, 3)
 }
 

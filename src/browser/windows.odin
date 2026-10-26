@@ -5,8 +5,8 @@ package browser
 // (its scripts, its video, its forms, its history, its zoom) as it is: only the pointer to the tab moves.
 //
 // The shell was written for one window, and still reads `app.win`, `app.tabs`, `app.current`, `app.page_rect`... : those fields
-// are the *active* window's. `window_activate` puts the active window's share of the App (and of a few globals of the chrome that
-// belong to a window: window_local) aside in its Browser_Window and takes the other's in. A frame is made for one window at a
+// are the *active* window's. `window_activate` puts the active window's share of the App aside in its Browser_Window and takes
+// the other's in; what the chrome keeps of a window is in its Browser_Window (Window_Own) and is never exchanged. A frame is made for one window at a
 // time, with that window active; what runs outside a frame (tasks of the loop, remote calls, menus) acts on the front window (the
 // last one used), or finds a tab's own window (window_of_tab).
 //
@@ -21,7 +21,6 @@ package browser
 //     frames goes to every window that shows (windows_spill);
 //   * a closed window closes its tabs; the last one ends the browser.
 
-import "core:mem"
 import "core:slice"
 import "core:strings"
 import "core:sync"
@@ -54,7 +53,6 @@ Browser_Window :: struct {
 	ui:      ^ui.State,
 	ctx:     Window_Ctx,          // valid while the window is not active
 	pacer:   Pacer,               // ... and its pacing (the preferences and the timer stay the process's)
-	locals:  [dynamic][]byte,     // ... and its copy of each window_local global
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
 	closing_force: bool,          // ... with the tabs it still has (a remote call asked)
@@ -66,12 +64,27 @@ Browser_Window :: struct {
 }
 
 // What the chrome keeps of one window from frame to frame. It lives in the window: the procedures that read it are given
-// the window (or read window_own(app), the active window's, at the frame's entry points). It replaces the globals that
-// window_activate exchanged (window_local, below), one group at a time: tools\globals_allowed.txt lists those left.
+// the window (or read window_own(app), the active window's, at the frame's entry points). No global of the chrome is a
+// window's (tools\lint_globals.ps1: a new one fails); a window starts with this zeroed.
 Window_Own :: struct {
 	security_chip_width: f32,                 // chrome.odin: the security chip's width at the last layout
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
+	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
+	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows
+	urlbar:              Urlbar_View,         // urlbar.odin: the address bar's suggestions
+	selection:           Selection_Shell,     // selection_shell.odin: the text selection gesture in the page shown
+	strip:               Tab_Strip,           // tab_strip.odin: the tabs' scroll, the tab dragged, the tabs' box
+	sidebar:             Tab_Sidebar,         // tab_sidebar.odin: the sidebar's width handle, whether it was shown
+	find:                Find_State,          // find_bar.odin: the find bar, its text and its matches
+	forms:               Forms_View,          // forms_shell.odin: the form controls as painted, the keyboard in the page, the drop-down
+	address_key:         ui.Key,              // chrome.odin: the address field's key, set when it is built
+	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
+	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
+	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
+	page_info_request:     bool,              // chrome.odin: the security chip's page information
+	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
+	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
 }
 
 // The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
@@ -79,66 +92,12 @@ window_own :: proc(app: ^App) -> ^Window_Own {
 	return app.active != nil ? &app.active.own : &app.bare_own
 }
 
-////////////////////////////////
-// Globals that belong to a window
-
-// A global of the chrome that holds the state of one window (the tab strip's scroll, the find bar, the keyboard focus of the page):
-// registered once, it is exchanged by window_activate, so each window has its own and the code keeps using the global. A new window
-// starts with the value the global had when it was registered. `destroy` frees what the value owns (called with the window's
-// value in place, when the window closes).
-Window_Local :: struct {
-	ptr:      rawptr,
-	size:     int,
-	pristine: []byte,
-	destroy:  proc(),
-}
-
-@(private = "file") window_locals: [dynamic]Window_Local
-
-window_local :: proc(p: ^$T, destroy: proc() = nil) {
-	l := Window_Local{ptr = p, size = size_of(T), destroy = destroy}
-	l.pristine = make([]byte, l.size)
-	mem.copy(raw_data(l.pristine), p, l.size)
-	append(&window_locals, l)
-}
-
-// The globals of the chrome that are one window's (called once the shell is set up: a new window starts with their values then).
-windows_register_locals :: proc() {
-	window_local(&strip)
-	window_local(&sidebar)
-	window_local(&find, find_destroy)
-	window_local(&fview, forms_shell_destroy)
-	window_local(&sshell)
-	window_local(&ub.view, urlbar_view_destroy)
-	window_local(&wchrome.full)
-	page_cursor_window_local()
-}
-
-windows_locals_destroy :: proc() {
-	for l in window_locals { delete(l.pristine) }
-	delete(window_locals)
-	window_locals = nil
-}
-
-// The active window's values go into its record; `w`'s come back (a window that never had any starts from the pristine ones).
-@(private = "file")
-locals_swap :: proc(from, to: ^Browser_Window) {
-	if from != nil {
-		for len(from.locals) < len(window_locals) { append(&from.locals, nil) }
-		for l, i in window_locals {
-			if from.locals[i] == nil { from.locals[i] = make([]byte, l.size) }
-			mem.copy(raw_data(from.locals[i]), l.ptr, l.size)
-		}
-	}
-	if to != nil {
-		for l, i in window_locals {
-			if i < len(to.locals) && to.locals[i] != nil {
-				mem.copy(l.ptr, raw_data(to.locals[i]), l.size)
-			} else {
-				mem.copy(l.ptr, raw_data(l.pristine), l.size)
-			}
-		}
-	}
+// What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
+window_own_destroy :: proc(own: ^Window_Own) {
+	page_cursor_view_destroy(&own.cursor)
+	urlbar_view_destroy(&own.urlbar)
+	find_destroy(&own.find)
+	forms_shell_destroy(&own.forms)
 }
 
 ////////////////////////////////
@@ -172,7 +131,6 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if w == nil { return }
 	ctx_load(app, &w.ctx)
 	w.ctx = {}
-	locals_swap(nil, w)
 	pacer_adopt(w)
 	app.win, app.ui_state = w.win, w.ui
 	app.active = w
@@ -186,7 +144,6 @@ window_deactivate :: proc(app: ^App) {
 	if w == nil { return }
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
 	ctx_store(app, &w.ctx)
-	locals_swap(w, nil)
 	w.pacer = pacer
 	app.tabs, app.address = nil, {}
 	app.active = nil
@@ -411,19 +368,14 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 window_close :: proc(app: ^App, w: ^Browser_Window) {
 	if w == nil || len(app.windows) <= 1 { return }
 	was_front := app.front == w
-	// its own globals die with it: with its values in place
+	// its tabs go with it (the App holds them while it is active), then what it owns
 	window_activate(app, w)
 	for len(app.tabs) > 0 {
 		t := pop(&app.tabs)
 		tab_discard(app, t)
 	}
-	for l, i in window_locals {
-		if l.destroy != nil { l.destroy() }
-		_ = i
-	}
+	window_own_destroy(&w.own)
 	window_deactivate(app)
-	for b in w.locals { delete(b) }
-	delete(w.locals)
 	delete(w.ctx.tabs)
 	ui.field_destroy(&w.ctx.address)
 	// the swap chain: another window's becomes the renderer's own when it is the primary one that goes
@@ -642,14 +594,13 @@ window_label :: proc(app: ^App, w: ^Browser_Window) -> string {
 ////////////////////////////////
 // Shutdown (main.odin, in the order the browser's own steps run)
 
-// The loop ended: the windows other than the front one give up what they own through their window_local globals (the front
-// window's are freed by the browser's own steps, with the values that are in the globals).
+// The loop ended: the windows other than the front one give up what they own (the front window's is freed by the browser's
+// own steps, which read it as the active window's: urlbar_destroy, page_cursor_shutdown, forms_shell_destroy...).
 windows_shutdown_begin :: proc(app: ^App) {
 	front := window_front(app)
 	for w in app.windows {
 		if w == front { continue }
-		window_activate(app, w)
-		for l in window_locals { if l.destroy != nil { l.destroy() } }
+		window_own_destroy(&w.own)
 	}
 	window_activate(app, front)
 	sync.atomic_store(&wake_target, 0)
@@ -681,8 +632,6 @@ windows_destroy_surfaces :: proc(app: ^App) {
 
 windows_destroy :: proc(app: ^App) {
 	for w in app.windows {
-		for b in w.locals { delete(b) }
-		delete(w.locals)
 		delete(w.title)
 		delete(w.ctx.tabs)   // (the active window's list went to it when windows_destroy_surfaces deactivated it)
 		free(w.ui)
@@ -694,5 +643,4 @@ windows_destroy :: proc(app: ^App) {
 	pass_order, pass_causes = nil, nil
 	app.windows = nil
 	app.active, app.front, app.win, app.ui_state = nil, nil, nil, nil
-	windows_locals_destroy()
 }
