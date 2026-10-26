@@ -93,6 +93,13 @@ jobs:
           path: build/dist/*.zip
           retention-days: 14
 
+      # the build's map (tools\symbols.ps1): names the frames of its crash reports (tools\crash_symbolize.ps1); not in the package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wren-symbols-${{ github.sha }}
+          path: build/dist/symbols/*.map
+          retention-days: 14
+
   # The unit tests of every package under AddressSanitizer (tools\asan.ps1): what test_all -CI runs without -NoAsan. A job of its own, so that
   # the wall clock of a run is the longer of the two, not their sum. It builds the browser's dependencies as the first job does (the caches
   # are shared: the second to start restores what the first saved, or builds the same), because asan.ps1 reads the libraries the browser links.

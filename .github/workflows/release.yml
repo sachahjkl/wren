@@ -51,6 +51,15 @@ jobs:
           powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -Version ${{ steps.version.outputs.version }} || exit /b 1
           powershell -NoProfile -ExecutionPolicy Bypass -File tools\release_notes.ps1 -Tag ${{ github.ref_name }} -Out build\dist\NOTES.md || exit /b 1
 
+      # the release's map (tools\symbols.ps1): not published with it; tools\crash_symbolize.ps1 names the frames of its crash
+      # reports with it. Kept as long as GitHub keeps an artifact.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wren-${{ steps.version.outputs.version }}-symbols
+          path: build/dist/symbols/*.map
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
