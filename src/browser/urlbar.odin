@@ -428,10 +428,11 @@ urlbar_open :: proc(app: ^App, t: ^Tab, i: int, new_tab: bool) -> bool {
 // Before the field is built: the keys of the list while it is open (the field does not see them).
 urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	uv := urlbar_view(app)
-	focused := address_key != 0 && ui.focus_key() == address_key
+	akey := address_key(app)
+	focused := akey != 0 && ui.focus_key() == akey
 	// a press on the list takes the keyboard from the field (the rows are no Tab stops): it goes back to the field
 	if !focused && uv.focused && uv.open {
-		if r, ok := ui.popover_rect(URLBAR_POPUP); ok && draw.rect_contains(r, ui.mouse_pos()) { ui.set_focus(address_key); focused = true }
+		if r, ok := ui.popover_rect(URLBAR_POPUP); ok && draw.rect_contains(r, ui.mouse_pos()) { ui.set_focus(akey); focused = true }
 	}
 	if !focused {
 		if uv.open { urlbar_close(uv) }

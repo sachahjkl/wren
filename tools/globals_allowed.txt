@@ -22,7 +22,6 @@ blocker_ui.odin SHIELD_GREEN process  # a table
 blocker_ui.odin SHIELD_AMBER process  # a table
 blocker_ui.odin SHIELD_GREY process  # a table
 blocker_ui.odin BLOCK_RED process  # a table
-blocker_ui.odin blocker_panel_request window  # the blocker panel of the active window
 blocker_ui.odin panel window  # the blocker panel of the active window
 blocker_ui.odin COLUMNS process  # a table
 canvas_gpu.odin cgpu process
@@ -31,11 +30,6 @@ canvas_gpu_test.odin op_global test
 canvas_gpu_test.odin test_glyph_a test
 canvas_gpu_test.odin test_glyph_o test
 canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
-chrome.odin page_info_request window  # a request of the active window's build
-chrome.odin address_key window  # the active window's address field key
-chrome.odin main_menu_request window  # a request of the active window's build
-chrome.odin chip_segment window  # the active window's security chip
-chrome.odin chip_icon window  # the active window's security chip
 chrome_style.odin CHROME_PREFS process  # a table
 chrome_style.odin chrome_cfg process  # preferences read once and on change
 chrome_style.odin chrome_watch process  # preferences read once and on change
