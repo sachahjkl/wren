@@ -13,7 +13,8 @@ Exposed to: Window, Worker. Source: `api/performance.widl`.
 ### enum `PerformanceEntryType` : i32
 
 The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
-timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
+timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
+tasks (Long_Task: a task of the window's realm that took 50 ms or more).
 
 | member | value | |
 |---|---:|---|
@@ -25,6 +26,7 @@ timeline entries (Performance_timeline): the document's navigation, its resource
 | `Paint` | 5 |  |%!(EXTRA false)
 | `Event` | 6 |  |%!(EXTRA false)
 | `First_Input` | 7 |  |%!(EXTRA false)
+| `Long_Task` | 8 |  |%!(EXTRA false)
 
 ### callback `TimelineCallback`
 

@@ -264,7 +264,10 @@ var po = new PerformanceObserver((list, obs) => {
 });
 po.observe({ type: "mark", buffered: true });
 po.observe({ type: "measure" });
-new PerformanceObserver(() => {}).observe({ type: "longtask" });
+new PerformanceObserver(() => {}).observe({ type: "layout-shift" });
+var lt = new PerformanceObserver((list) => { for (const e of list.getEntries()) console.log("lt", e.entryType, e.name, e.duration >= 50, e.attribution.length, e.attribution[0].containerType, e.attribution === e.attribution, e.toJSON().entryType, performance.getEntriesByType("longtask").length); });
+lt.observe({ type: "longtask" });
+setTimeout(() => { const t = performance.now(); while (performance.now() - t < 70) {} }, 0);
 performance.mark("m2");
 performance.measure("ms", "early", "m2");
 console.log("types", PerformanceObserver.supportedEntryTypes.join(), PerformanceObserver.supportedEntryTypes === PerformanceObserver.supportedEntryTypes, Object.isFrozen(PerformanceObserver.supportedEntryTypes));
@@ -277,12 +280,13 @@ console.log("take", p2.takeRecords().length);
 p2.disconnect();
 </script></body>`)
 		settle()
-		check(logged("types event,first-input,mark,measure,navigation,paint,resource true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
+		check(logged("types event,first-input,longtask,mark,measure,navigation,paint,resource true true"), "supportedEntryTypes: a frozen [SameObject] array of what the timeline records")
+		check(logged("lt longtask self true 1 window true longtask 0"), "a task of 70 ms is a long task: observed (attribution: the window), not in getEntriesByType")
 		check(logged("mixed InvalidModificationError") && logged("empty TypeError"), "observe(): the errors of Performance Timeline")
 		check(logged("take 1") && !logged("p2 called"), "takeRecords empties the buffer, disconnect stops delivery")
 		check(logged("po mark:early,measure:ms,mark:m2,mark:m3 true 3 1"), "buffered entries, then new marks and measures, delivered by one task in start time order")
 		warned := false
-		for l in logs { if strings.contains(l, "'longtask' does not exist") { warned = true } }
+		for l in logs { if strings.contains(l, "'layout-shift' does not exist") { warned = true } }
 		check(warned, "an unsupported entry type is ignored with a warning")
 		page.page_close(p)
 	}

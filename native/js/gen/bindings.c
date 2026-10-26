@@ -1096,6 +1096,12 @@ JSValue wjr_PerformanceEventTiming_get_processingEnd(JSContext *ctx, JSValueCons
 JSValue wjr_PerformanceEventTiming_get_processingStart(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEventTiming_get_target(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceEventTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_PerformanceLongTaskTiming_get_attribution(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceLongTaskTiming_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceLongTaskTiming_get_entryType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceLongTaskTiming_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceLongTaskTiming_get_startTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PerformanceLongTaskTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceMark_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PerformanceMark_get_detail(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PerformanceMeasure_get_detail(JSContext *ctx, JSValueConst this_val);
@@ -1407,6 +1413,15 @@ JSValue wjr_SubtleCrypto_sign(JSContext *ctx, JSValueConst this_val, int argc, J
 JSValue wjr_SubtleCrypto_unwrapKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_SubtleCrypto_verify(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_SubtleCrypto_wrapKey(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TaskAttributionTiming_get_containerId(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_containerName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_containerSrc(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_containerType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_duration(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_entryType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_name(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_get_startTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TaskAttributionTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoder_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoder_decode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextDecoder_get_fatal(JSContext *ctx, JSValueConst this_val);
@@ -17091,12 +17106,12 @@ static const wj_member wj_m_PerformanceEventTiming[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceEventTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceLongTaskTiming[] = {
-    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "attribution", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceLongTaskTiming_get_startTime, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceLongTaskTiming_get_duration, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceLongTaskTiming_get_name, NULL, 0 },
+    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceLongTaskTiming_get_entryType, NULL, 0 },
+    { "attribution", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceLongTaskTiming_get_attribution, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceLongTaskTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_PerformanceMark[] = {
     { "detail", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PerformanceMark_get_detail, NULL, 0 },
@@ -17157,15 +17172,15 @@ static const wj_member wj_m_PerformanceNavigationTiming[] = {
     { "toJSON", WJ_M_METHOD, 0, 0, wjr_PerformanceNavigationTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TaskAttributionTiming[] = {
-    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "containerType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "containerSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "containerId", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "containerName", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "toJSON", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_startTime, NULL, 0 },
+    { "duration", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_duration, NULL, 0 },
+    { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_name, NULL, 0 },
+    { "entryType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_entryType, NULL, 0 },
+    { "containerType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_containerType, NULL, 0 },
+    { "containerSrc", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_containerSrc, NULL, 0 },
+    { "containerId", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_containerId, NULL, 0 },
+    { "containerName", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TaskAttributionTiming_get_containerName, NULL, 0 },
+    { "toJSON", WJ_M_METHOD, 0, 0, wjr_TaskAttributionTiming_toJSON, NULL, NULL, 0 },
 };
 static const wj_member wj_m_VisibilityStateEntry[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -19902,7 +19917,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceEventTiming, .n_members = 7, .subtree_end = 470,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceLongTaskTiming", .parent = 467, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "PerformanceLongTaskTiming", .parent = 467, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_PerformanceLongTaskTiming, .n_members = 6, .subtree_end = 471,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -19926,7 +19941,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_PerformanceNavigationTiming, .n_members = 14, .subtree_end = 476,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TaskAttributionTiming", .parent = 467, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TaskAttributionTiming", .parent = 467, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TaskAttributionTiming, .n_members = 9, .subtree_end = 477,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
