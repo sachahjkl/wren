@@ -408,6 +408,8 @@ enum wr_ScreenField {
 
 /* module forms (partial): types */
 
+/* module dom (partial): types */
+
 /* module htmlmedia: types */
 // A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 typedef uint64_t wr_HTMLMediaElement;
@@ -1816,6 +1818,9 @@ WR_IMPORT("dom", "CSSStyleSheet_isConstructed") int32_t wr_CSSStyleSheet_isConst
 // document.adoptedStyleSheets / shadowRoot.adoptedStyleSheets = sheets (constructed sheets, in order):
 // Not_Allowed for a sheet that was not constructed.
 WR_IMPORT("dom", "DocumentOrShadowRoot_adopt") int32_t wr_DocumentOrShadowRoot_adopt(uint64_t root, const uint64_t *sheets, uint32_t sheets_len);
+// new XMLSerializer().serializeToString(node): the node and its subtree as XML (DOM Parsing §3.2, not
+// well-formed-checked). Range past page.max_fetch_bytes.
+WR_IMPORT("dom", "XMLSerializer_serialize") int32_t wr_XMLSerializer_serialize(uint64_t node, uint8_t *_buf, uint32_t _cap);
 
 /* module encoding */
 // new TextEncoder().encode(text): a buffer of UTF-8. Quota past the page's memory limit.

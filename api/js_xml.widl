@@ -1,0 +1,6 @@
+/// XMLSerializer for JavaScript (src/page/js_xml.odin; the object: native/js/runtime/dom_core.c).
+partial module dom {
+  /// new XMLSerializer().serializeToString(node): the node and its subtree as XML (DOM Parsing §3.2, not
+  /// well-formed-checked). Range past page.max_fetch_bytes.
+  string XMLSerializer_serialize(Node node) raises;
+}

@@ -1720,6 +1720,8 @@ JSValue wjr_XMLHttpRequest_setRequestHeader(JSContext *ctx, JSValueConst this_va
 JSValue wjr_XMLHttpRequest_set_responseType(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_XMLHttpRequest_set_timeout(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_XMLHttpRequest_set_withCredentials(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_XMLSerializer_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_XMLSerializer_serializeToString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_assert(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_clear(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_console_count(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -17993,7 +17995,7 @@ static const wj_member wj_m_WritableStreamDefaultWriter[] = {
     { "write", WJ_M_METHOD, 0, 0, wjr_WritableStreamDefaultWriter_write, NULL, NULL, 0 },
 };
 static const wj_member wj_m_XMLSerializer[] = {
-    { "serializeToString", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "serializeToString", WJ_M_METHOD, 0, 1, wjr_XMLSerializer_serializeToString, NULL, NULL, 0 },
 };
 static const wj_member wj_m_XPathEvaluator[] = {
     { "createExpression", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -20360,7 +20362,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_WritableStreamDefaultWriter, .n_members = 7, .subtree_end = 575,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "XMLSerializer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "XMLSerializer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_XMLSerializer_constructor,
       .members = wj_m_XMLSerializer, .n_members = 1, .subtree_end = 576,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
