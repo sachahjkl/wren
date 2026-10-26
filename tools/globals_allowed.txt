@@ -1,0 +1,261 @@
+# The globals of src\browser and their class (tools\lint_globals.ps1 fails on one that is not here). "<file> <name> <class>  # why".
+# process: the process's; window: one window's (to move into Browser_Window); page: one page's or tab's (to move into Page / Tab);
+# test: a test's. Inventory of 2026-10-27 (refactor T4); see windows.odin.
+a11y_page.odin pa page  # the accessibility tree of the page shown
+about_card_relief.odin GLYPHS process  # a table
+about_card_seal.odin SEAL_TICK process  # a table
+about_pages.odin ABOUT_PAGES process  # a table
+app_commands.odin APP_COMMAND_PREFS process  # a table
+app_commands.odin cmd_hwnd process
+appearance.odin LOOK_KEYS process  # a table
+appearance.odin look_watch process  # preferences read once and on change
+bfcache.odin bf process
+blocker_dashboard.odin DASH_NAMES process  # a table
+blocker_dashboard.odin dash page  # the blocker's dashboard page
+blocker_measure.odin lm process
+blocker_measure.odin report_path process
+blocker_measure.odin settle_ms process
+blocker_measure.odin checked process
+blocker_picker.odin pick page  # the element picker on a page
+blocker_shell.odin bl process
+blocker_ui.odin SHIELD_GREEN process  # a table
+blocker_ui.odin SHIELD_AMBER process  # a table
+blocker_ui.odin SHIELD_GREY process  # a table
+blocker_ui.odin BLOCK_RED process  # a table
+blocker_ui.odin blocker_panel_request window  # the blocker panel of the active window
+blocker_ui.odin panel window  # the blocker panel of the active window
+blocker_ui.odin COLUMNS process  # a table
+canvas_gpu.odin cgpu process
+canvas_gpu_test.odin test_lock test
+canvas_gpu_test.odin op_global test
+canvas_gpu_test.odin test_glyph_a test
+canvas_gpu_test.odin test_glyph_o test
+canvas_shell.odin outline_cache page  # cached outlines of a page's canvas text
+chrome.odin page_info_request window  # a request of the active window's build
+chrome.odin address_key window  # the active window's address field key
+chrome.odin main_menu_request window  # a request of the active window's build
+chrome.odin chip_segment window  # the active window's security chip
+chrome.odin chip_icon window  # the active window's security chip
+chrome_style.odin CHROME_PREFS process  # a table
+chrome_style.odin chrome_cfg process  # preferences read once and on change
+chrome_style.odin chrome_watch process  # preferences read once and on change
+chrome_style.odin shape_cache process
+chrome_style.odin cur_gap process
+commands.odin cmds process
+commands.odin RESERVED_SHORTCUTS process  # a table
+compositor.odin COMPOSITOR_PREFS process  # a table
+compositor.odin compositor_settings process  # preferences read once and on change
+compositor.odin composite_stats process
+compositor.odin comps process
+compositor_test.odin compositor_test_lock test
+console_eval.odin GLOBALS process  # a table
+console_eval.odin MEMBERS process  # a table
+context_menu.odin ctx_req window  # the context menu asked for in the active window
+context_menu.odin ctx_pending window  # the context menu asked for in the active window
+context_menu.odin ctx_open window  # the context menu open in the active window
+context_menu.odin closed_tabs process
+crash_recovery.odin CRASH_PREFS process  # a table
+crash_recovery.odin recovery process
+demos.odin DEMOS_PREFS process  # a table
+desktop_shell.odin DESKTOP_PREFS process  # a table
+desktop_shell.odin dsk process
+devtools.odin DEV_DOCK_NAMES process  # a table
+devtools.odin DEV_PANEL_NAMES process  # a table
+devtools.odin DEV_PANEL_TITLES process  # a table
+devtools.odin DEV_PANEL_ICONS process  # a table
+devtools.odin DEV_DOCK_TITLES process  # a table
+devtools.odin DEV_DOCK_COMMANDS process  # a table
+devtools.odin DEV_DOCK_ICONS process  # a table
+devtools.odin DEVTOOLS_PREFS process  # a table
+devtools.odin dev page  # the developer tools' state (the tab they show, the docking)
+devtools_console_log.odin CONSOLE_PREFS process  # a table
+devtools_console_log.odin con_prefs process  # preferences read once and on change
+devtools_elements.odin VOID_ELEMENTS process  # a table
+devtools_kit.odin dtm process
+devtools_kit.odin dtc process
+devtools_net_detail.odin DETAIL_TABS process  # a table
+devtools_net_detail.odin DETAIL_PREFS process  # a table
+devtools_net_detail.odin TABS_STREAM process  # a table
+devtools_net_detail.odin TABS_PLAIN process  # a table
+devtools_net_detail.odin TABS_ALL process  # a table
+devtools_net_media.odin net_media process
+devtools_net_model.odin NET_TYPE_NAMES process  # a table
+devtools_net_model.odin NET_TYPE_LONG process  # a table
+devtools_net_model.odin NET_TYPE_ICONS process  # a table
+devtools_net_model.odin NETWORK_PREFS process  # a table
+devtools_net_model.odin net_prefs process  # preferences read once and on change
+devtools_net_model.odin net_owner process
+devtools_net_model.odin NET_COL_NAMES process  # a table
+devtools_net_model.odin NET_COL_TITLES process  # a table
+devtools_net_preview.odin HEADING_SCALE process  # a table
+devtools_net_throttle.odin NET_BUILTIN process  # a table
+devtools_net_throttle.odin net_custom process
+devtools_performance.odin perf_names process
+devtools_styles.odin ELEMENTS_PREFS process  # a table
+devtools_styles.odin SIDE_TABS process  # a table
+devtools_styles.odin SIDE_PREFS process  # a table
+devtools_syntax.odin JS_KEYWORDS process  # a table
+devtools_syntax.odin JS_ATOMS process  # a table
+devtools_window.odin dev_win window  # the developer tools' own window (one per process)
+devtools_window.odin dev_want process
+dnd_image.odin DND_IMAGE_PREFS process  # a table
+dnd_image.odin dimg page  # the picture of the page's drag
+dnd_image.odin dnd_last_picture page  # the picture of the page's drag
+dnd_shell.odin DND_PREFS process  # a table
+dnd_shell.odin dnd page  # the drag of a page (one at a time in the process)
+download.odin DOWNLOAD_PREFS process  # a table
+download.odin dls process
+drag_probe.odin drag_probe process
+drag_probe.odin drag_probe_moves process
+effects_cache.odin fx_settings process  # preferences read once and on change
+effects_cache.odin FX_CACHE_PREFS process  # a table
+favicon.odin TAB_PREFS process  # a table
+favicon.odin favs process
+find_bar.odin find window  # window_local: the find bar
+first_paint.odin FIRST_PAINT_PREFS process  # a table
+first_paint.odin scheme_ui process
+first_paint.odin first_paint_watch process  # preferences read once and on change
+first_paint.odin first_paint_timer process
+font_settings.odin FONT_PREFS process  # a table
+font_settings.odin emoji_applied process
+font_settings.odin font_watch process  # preferences read once and on change
+font_settings.odin text_watch process  # preferences read once and on change
+fonts.odin ALIASES process  # a table
+fonts.odin text_ctx process
+forms_plane.odin ctl_plane process
+forms_shell.odin fview window  # window_local: the form controls' view (focus, caret)
+forms_shell.odin fview_blink_timer process
+forms_shell.odin fview_report_timer process
+forms_shell.odin page_focus_leave_backward page
+frame_log.odin frame_log process
+frames_shell.odin frame_views page  # the views of the frames (iframes) of pages
+frames_shell.odin frame_tab_ids page  # which tab each frame view is in
+frames_shell.odin paint_stack page  # the frames being painted
+frames_shell.odin hover_frame window  # the frame under the pointer in the active window
+frames_shell.odin focus_frame window  # the focused frame of the active window
+frames_shell.odin press_frame window  # the frame pressed in the active window
+fs_shell.odin ask_state page  # a page's file system permission prompt
+global_history.odin ghist process
+gpu_steps.odin gpu_steps_state process
+gpu_steps.odin GPU_STEP_NAMES process  # a table
+gpu_steps.odin gpu_slow process
+gpu_steps.odin gpu_slow_frames process
+gpu_steps.odin gpu_kept process
+history_settings.odin HISTORY_PREFS process  # a table
+history_settings.odin hcfg process  # preferences read once and on change
+history_settings.odin history_watch process  # preferences read once and on change
+history_tree.odin HISTORY_TREE_PREFS process  # a table
+history_tree.odin tcfg process  # preferences read once and on change
+history_tree.odin tree_watch process  # preferences read once and on change
+history_tree.odin tview page  # about:history's tree view
+history_ui.odin hview page  # about:history's view (a page of the browser)
+history_ui.odin nav_press window  # the back/forward button held in the active window
+history_ui.odin WEEKDAYS process  # a table
+history_ui.odin MONTHS process  # a table
+hud.odin HUD_PREFS process  # a table
+hud.odin HUD_SERIES_NAMES process  # a table
+hud.odin HUD_SERIES_HELP process  # a table
+hud.odin hud process
+hud.odin TITLE_FIELD_NAMES process  # a table
+images_shell.odin shell process
+instance_shell.odin INSTANCE_PREFS process  # a table
+interaction_settings.odin INTERACTION_PREFS process  # a table
+license_shell.odin LICENSE_PREFS process  # a table
+license_shell.odin memory_text process
+license_shell.odin memory_len process
+license_shell.odin memory_seeded process
+local_paths.odin LOCAL_PATH_PREFS process  # a table
+local_paths.odin drop_hwnd process
+main.odin the_app process
+main.odin tab_ids process
+measure_test.odin MEASURE_TEXTS test
+memcheck.odin driver process
+memory_trim.odin MEMORY_PREFS process  # a table
+memory_trim.odin trim_state process
+os_settings.odin OS_SETTINGS_PREFS process  # a table
+os_settings.odin os_anim process
+pacing.odin FRAME_PREFS process  # a table
+pacing.odin pacer window  # exchanged by window_activate (pacer_adopt): the window's pacing, with the process's preferences and timer
+page_cursor.odin CURSOR_PREFS process  # a table
+page_cursor.odin ccfg process  # preferences read once and on change
+page_cursor.odin pcs window  # pcs.view is window_local (the cursor over the page)
+page_frame.odin page_prep window  # the active window's page preparation of the frame
+page_input.odin din window  # the page input of the active window (presses, double clicks)
+page_thread.odin PAGE_THREAD_PREFS process  # a table
+page_thread.odin pt process
+page_thread.odin pt_thread_id process
+paint_backgrounds.odin gradient_dither process
+paint_effects.odin EFFECTS_PREFS process  # a table
+paint_effects.odin effects_settings process  # preferences read once and on change
+paint_effects.odin effects_watch process  # preferences read once and on change
+paint_effects.odin effects_font_watch process  # preferences read once and on change
+paint_masks.odin text_clip_caches process
+paint_planes.odin PLANE_PREFS process  # a table
+paint_planes.odin plane_settings process  # preferences read once and on change
+paint_planes.odin planes_watch process  # preferences read once and on change
+paint_planes.odin planes_culled process
+paint_planes.odin plane_mem process
+paint_planes.odin plane_settle process
+paint_srgb_test.odin png_tex test
+palette.odin PALETTE_PREFS process  # a table
+palette.odin cpal process  # preferences read once and on change
+prefs_apply.odin prefs_apply_counts process
+print.odin PRINT_PREFS process  # a table
+print.odin print_last process
+prof.odin phase_clock process
+remote_methods.odin inject_held process
+remote_shell.odin the_remote process
+remote_shell.odin remote_exit_code process
+remote_shell.odin remote_fast_exit process
+remote_state.odin KEEP_NAMES process  # a table
+render.odin page_render process
+render_settings.odin RENDER_PREFS process  # a table
+render_settings.odin render_settings process  # preferences read once and on change
+render_settings.odin render_watch process  # preferences read once and on change
+selection_shell.odin sshell window  # window_local: the selection of the page shown
+selection_shell.odin ix process
+selection_shell.odin ix_watch process  # preferences read once and on change
+selection_shell.odin spaint page  # the painted selection of a page
+session.odin SESSION_PREFS process  # a table
+session.odin session_last process
+session.odin rest_text process
+settings.odin PREFS process  # a table
+setup.odin SETUP_PAYLOAD process  # a table
+setup.odin stp process
+setup.odin SETUP_PREFS process  # a table
+setup_test.odin TEST_FILE_TYPES test
+shaders.odin CARD_FOIL_PASSES process  # a table
+shaders.odin CARD_FOIL_ARGS process  # a table
+shaders.odin SHADERS process  # a table
+shell_frames.odin SHELL_FRAME_PREFS process  # a table
+shell_frames.odin chrome_frames process
+shell_frames.odin page_snapshot_wanted window  # set by the active window's frame for its chrome frames
+smooth_scroll.odin SCROLL_PREFS process  # a table
+smooth_scroll.odin smooth_cfg process  # preferences read once and on change
+smooth_scroll.odin smooth_watch process  # preferences read once and on change
+smooth_scroll_test.odin CURVES test
+storage_access_shell.odin sa_queue page  # the pages' storage access prompts
+tab_drag.odin tab_drag process
+tab_sidebar.odin SIDEBAR_PREFS process  # a table
+tab_sidebar.odin TABS_POSITION_NAMES process  # a table
+tab_sidebar.odin sidebar window  # window_local: the tab sidebar's scroll and resize
+tab_sidebar.odin TITLEBAR_SLOT_IDS process  # a table
+tab_strip.odin strip window  # window_local: the tab strip's scroll and layout
+test_globals_test.odin page_render_test_mutex test
+third_party.odin LICENSE_TEXTS process  # a table
+touch_shell.odin TOUCH_PREFS process  # a table
+touch_shell.odin tsh process
+update_check.odin upd process
+urlbar.odin URLBAR_PREFS process  # a table
+urlbar.odin ub window  # ub.view is window_local (the suggestions shown); the rest is the process's (history index)
+urlbar_test.odin globals_lock test
+video_shell.odin vshell page  # the pages' video players
+web_font_faces.odin WEB_FACE_PREFS process  # a table
+web_font_faces.odin GENERIC_FAMILIES process  # a table
+window_chrome.odin WINDOW_PREFS process  # a table
+window_chrome.odin wchrome window  # wchrome.full is window_local (full screen); wchrome.cfg the process's
+windows.odin window_locals process
+windows.odin wake_target process
+windows.odin window_ids process
+windows.odin pass_order process
+windows.odin pass_causes process
