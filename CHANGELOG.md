@@ -6,6 +6,8 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- **Text is shaped by Fontations, HarfRust and ICU4X by default** (the toolkit's native text backend, toolkit 0.39.0) instead of DirectWrite: `build.bat` builds it in; `WREN_TEXT=dwrite build.bat` builds `wren_dwrite.exe` with DirectWrite's shaper. Same widths and metrics on the toolkit's multilingual corpus, 2.6 times faster shaping; better: kerned Hebrew pairs close as the font says (DirectWrite drops their placements), words are found in Lao, Khmer and Myanmar lines, an emoji with its skin tone is one caret stop; simulated bold and italic are drawn as DirectWrite drew them. The system's fonts and their fallback still come from Windows. The `text.backend` preference (restart) picks DirectWrite back.
+
 - `WREN_TEXT=native build.bat release` builds `build\wren_native.exe`, whose text is shaped by Fontations, HarfRust and ICU4X (the toolkit's native text backend, built into the image decoders' library: one Rust library per program) instead of DirectWrite: the test pages draw the same to within 0.07 % of their pixels, shaping is 2.6 times faster, the exe is 2.2 MB larger.
 - Kerning is kept under `letter-spacing` and `font-feature-settings` (toolkit 0.38.0: DirectWrite dropped its default features when given a list).
 - Toolkit 0.38.2: `ui.text_edit` wraps long lines, grows with its content and gives its caret rectangle (for the shell's own editors).
