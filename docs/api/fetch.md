@@ -48,6 +48,20 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Fetch_startWithSignal :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), body_buffer: Api_Buffer, signal: Api_AbortSignal, options: Api_FetchOptions) -> (u64, Api_Error)`
 
+### `Fetch_sync`
+
+```
+Fetch Fetch_sync(string url, string method = "GET", string headers = "", optional bytes body, FetchOptions options = none, u32 timeout_ms = 0) raises
+```
+
+A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's
+thread; the finished record (read it with Fetch_status, Fetch_headers, Fetch_readBody..., then release it).
+Not_Supported in a document (its thread is the page's), Timeout past `timeout_ms` (0: none), Network on a failure.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Fetch_sync :: proc(c: ^Call, url: string, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions, timeout_ms: u32) -> (u64, Api_Error)`
+
 ### `Response_text`
 
 ```

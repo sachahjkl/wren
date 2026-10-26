@@ -94,7 +94,8 @@ fetch_update :: proc(f: ^Fetch, ev: Fetch_Update) {
 		if ev.error != .Transport { log(p, .Error, ev.detail) }
 	}
 	inst := instance_by_index(p, f.instance)
-	if inst == nil { return }
+	// (a record without a callback is waited for: Fetch_sync)
+	if inst == nil || f.callback == 0 { return }
 	// the guest learns about it through its callback: (user: i32, fetch: i64, state: i32)
 	h := f.self
 	argv := [4]u32{f.user, u32(u64(h)), u32(u64(h) >> 32), u32(f.state)}

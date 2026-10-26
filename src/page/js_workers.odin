@@ -73,6 +73,12 @@ js_worker_start :: proc(p: ^Page, g: ^Worker_Global) -> bool {
 	return true
 }
 
+// The worker's error being reported in its owner's global (worker_fire_error), temporary.
+@(private)
+worker_error_text: string
+
+Worker_pendingError :: proc(c: ^Call) -> string { return worker_error_text }
+
 WorkerGlobalScope_isModule :: proc(c: ^Call) -> bool { return c.page.worker != nil && c.page.worker.module }
 
 // UI thread: the worker of Worker object `w` is gone; the realm may let go of the object.
@@ -106,8 +112,6 @@ WorkerGlobalScope_importScript :: proc(c: ^Call, u: string) -> (string, Api_Erro
 // events of this request are taken from the worker's queue meanwhile; the rest stays there, in order.
 @(private)
 worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body: []byte, why: string) {
-	g := p.worker
-	l := g.link
 	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = max(u32)})
 	f.self = h
 	defer {
@@ -121,45 +125,22 @@ worker_fetch_sync :: proc(p: ^Page, target: string) -> (final_url: string, body:
 	// HTML "fetch a classic worker-imported script": destination script, mode no-cors, credentials include (a script
 	// of another origin is imported as a page's classic script is: opaque, run all the same)
 	worker_fetch_start(p, f, target, "GET", "", nil, 2 | 2 << 2 | FETCH_OPTION_CLASSIC_SCRIPT)
-	limit := p.settings.js_load.import_scripts_ms
-	start := time.tick_now()
-	for {
-		rec := base.pool_get(&p.fetches, h)
-		if rec == nil || rec.state >= 2 { break }
-		if link_stopping(l) { return "", nil, "the worker is stopping" }
-		if limit >= 0 && i64(time.duration_milliseconds(time.tick_since(start))) > limit {
-			return "", nil, "timed out (javascript.workers.import_scripts_timeout_ms)"
-		}
-		sync.atomic_store(&l.loop.pending, false)
-		mine := make([dynamic]^Worker_Msg, context.temp_allocator)
-		sync.mutex_lock(&l.mu)
-		rest := make([dynamic]^Worker_Msg, 0, len(l.to_worker))
-		for m in l.to_worker {
-			if m.kind == .Fetch_Event && m.id == u64(h) { append(&mine, m); l.worker_bytes -= m.size } else { append(&rest, m) }
-		}
-		delete(l.to_worker)
-		l.to_worker = rest
-		sync.mutex_unlock(&l.mu)
-		for m in mine { worker_fetch_event(p, m); msg_free(m) }
-		if rec = base.pool_get(&p.fetches, h); rec == nil || rec.state >= 2 { break }
-		sync.sema_wait_with_timeout(&l.loop.sema, 50 * time.Millisecond)
+	switch worker_fetch_wait(p, h, p.settings.js_load.import_scripts_ms) {
+	case .Done:
+	case .Stopping: return "", nil, "the worker is stopping"
+	case .Timed_Out: return "", nil, "timed out (javascript.workers.import_scripts_timeout_ms)"
 	}
-	host_signal_after_wait(p)
 	rec := base.pool_get(&p.fetches, h)
 	if rec == nil { return "", nil, "the request was lost" }
 	if rec.state == 3 { return "", nil, strings.clone(rec.error, context.temp_allocator) }
 	if rec.type != .Opaque && (rec.status < 200 || rec.status >= 300) { return "", nil, fmt.tprintf("HTTP %d", rec.status) }
-	// a classic script's MIME rules (the request itself is a plain fetch)
-	mime := header_value(rec.headers, "content-type")
-	nosniff := strings.equal_fold(strings.trim_space(header_value(rec.headers, "x-content-type-options")), "nosniff")
-	if m, okm := http.parse_mime(mime, context.temp_allocator); okm {
+	// HTML "fetch a classic worker-imported script": over HTTP(S), a JavaScript MIME type (an opaque response shows no
+	// headers: it is not checked; a data: or blob: URL may have any type)
+	if rec.type != .Opaque && (strings.has_prefix(target, "http:") || strings.has_prefix(target, "https:")) {
+		m, okm := http.parse_mime(header_value(rec.headers, "content-type"), context.temp_allocator)
 		js_type := false
-		for t in js_mime_types { if strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator) == t { js_type = true } }
-		if m.type == "audio" || m.type == "image" || m.type == "video" || (m.type == "text" && m.subtype == "csv") || (nosniff && !js_type) {
-			return "", nil, fmt.tprintf("its MIME type %s/%s is not a script's", m.type, m.subtype)
-		}
-	} else if nosniff {
-		return "", nil, "nosniff without a JavaScript MIME type"
+		if okm { for t in js_mime_types { if strings.concatenate({m.type, "/", m.subtype}, context.temp_allocator) == t { js_type = true } } }
+		if !js_type { return "", nil, okm ? fmt.tprintf("its MIME type %s/%s is not a JavaScript MIME type", m.type, m.subtype) : "it has no JavaScript MIME type" }
 	}
 	body = make([]byte, len(rec.body), context.temp_allocator)
 	copy(body, rec.body[:])
@@ -186,4 +167,62 @@ header_value :: proc(lines: string, name: string) -> string {
 		if strings.equal_fold(strings.trim_space(l[:colon]), name) { return strings.trim_space(l[colon + 1:]) }
 	}
 	return ""
+}
+
+@(private)
+Sync_Wait :: enum u8 { Done, Stopping, Timed_Out }
+
+// Waits on the worker's thread for its request `h` (a record of p.fetches) to finish: only that request's events are
+// taken from the worker's queue meanwhile, the rest stays there, in order. `limit_ms` < 0: no limit.
+@(private)
+worker_fetch_wait :: proc(p: ^Page, h: base.Handle, limit_ms: i64) -> (res: Sync_Wait) {
+	l := p.worker.link
+	start := time.tick_now()
+	defer host_signal_after_wait(p)
+	for {
+		rec := base.pool_get(&p.fetches, h)
+		if rec == nil || rec.state >= 2 { return .Done }
+		if link_stopping(l) { return .Stopping }
+		if limit_ms >= 0 && i64(time.duration_milliseconds(time.tick_since(start))) > limit_ms { return .Timed_Out }
+		sync.atomic_store(&l.loop.pending, false)
+		mine := make([dynamic]^Worker_Msg, context.temp_allocator)
+		sync.mutex_lock(&l.mu)
+		rest := make([dynamic]^Worker_Msg, 0, len(l.to_worker))
+		for m in l.to_worker {
+			if m.kind == .Fetch_Event && m.id == u64(h) { append(&mine, m); l.worker_bytes -= m.size } else { append(&rest, m) }
+		}
+		delete(l.to_worker)
+		l.to_worker = rest
+		sync.mutex_unlock(&l.mu)
+		for m in mine { worker_fetch_event(p, m); msg_free(m) }
+		if rec = base.pool_get(&p.fetches, h); rec == nil || rec.state >= 2 { return .Done }
+		sync.sema_wait_with_timeout(&l.loop.sema, 50 * time.Millisecond)
+	}
+}
+
+// A synchronous XMLHttpRequest of a worker (HTML lets a worker's thread block on one): the request is made as an
+// asynchronous one would be (relayed to the UI thread: the page's policy applies), then waited for here. The record
+// is the guest's (it reads it with Fetch_status, Fetch_readBody... and releases it).
+Fetch_sync :: proc(c: ^Call, u: string, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions, timeout_ms: u32) -> (u64, Api_Error) {
+	p := c.page
+	if p.worker == nil { return 0, fail(c, .Not_Supported, "NotSupportedError: a document's thread does not wait for a request") }
+	abs := u
+	if pu, ok := url.parse(u, &p.env.location, context.temp_allocator); ok { abs = pu.href }
+	h, f := base.pool_insert(&p.fetches, Fetch{page = p, instance = c.owner})
+	f.self = h
+	worker_fetch_start(p, f, abs, method, headers, body.? or_else nil, fetch_options_pack(options))
+	res := worker_fetch_wait(p, h, timeout_ms > 0 ? i64(timeout_ms) : -1)
+	rec := base.pool_get(&p.fetches, h)
+	if res != .Done || rec == nil || rec.state == 3 {
+		why := res == .Timed_Out ? "the request timed out" : res == .Stopping ? "the worker is stopping" : rec != nil ? strings.clone(rec.error, context.temp_allocator) : "the request was lost"
+		if rec != nil {
+			fetch_abort(p, rec)
+			p.held -= len(rec.body)
+			removed, _ := base.pool_remove(&p.fetches, h)
+			free_fetch(&removed)
+		}
+		if res == .Timed_Out { return 0, fail(c, .Timeout, fmt.tprintf("TimeoutError: %s", why)) }
+		return 0, fail(c, .Network, fmt.tprintf("NetworkError: %s", why))
+	}
+	return u64(h), .None
 }

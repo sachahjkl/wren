@@ -6,8 +6,8 @@
  * events, upload events when there is a body. The body is copied once into the engine when it is complete; responseText,
  * response (text, json, arraybuffer, blob) are made from it on demand. A request in flight keeps its object alive.
  * timeout uses a timeout signal of the browser; abort() releases the request (no callback comes after it).
- * Not supported: synchronous requests (send() throws a NetworkError, as for a network failure; the console says why),
- * responseType "document" (response is null), progress events while the body arrives (one before load). */
+ * Synchronous requests: a worker's thread waits for them (Fetch_sync); a document's are not supported (send() throws a
+ * NetworkError, as for a network failure; the console says why). Not supported: responseType "document" (response is null), progress events while the body arrives (one before load). */
 #include <stdlib.h>
 #include "web.h"
 
@@ -315,6 +315,78 @@ JSValue wjr_XMLHttpRequest_setRequestHeader(JSContext *ctx, JSValueConst this_va
     return r;
 }
 
+/* The response of a finished request record: status, URL, headers, the whole body (wj_cb_xhr does the same in steps). */
+static void take_response(JSContext *ctx, web_xhr *x, uint64_t fetch)
+{
+    int type = (int)wr_Fetch_type(fetch);
+    bool opaque = type == wr_ResponseType_Opaque || type == wr_ResponseType_Opaque_Redirect;
+    x->status = opaque ? 0 : wr_Fetch_status(fetch);
+    JS_FreeValue(ctx, x->status_text);
+    x->status_text = JS_NewString(ctx, opaque ? "" : web_status_text(x->status));
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Fetch_url(fetch, wj_scratch.data, wj_scratch.cap));
+    JS_FreeValue(ctx, x->response_url);
+    x->response_url = JS_NewStringLen(ctx, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
+    JS_FreeValue(ctx, x->response_headers);
+    x->response_headers = web_headers_new(ctx, WEB_GUARD_IMMUTABLE);
+    if (!opaque) {
+        WJ_FETCH_STRING(n, wr_Fetch_headers(fetch, wj_scratch.data, wj_scratch.cap));
+        if (n > 0) { web_headers_fill_lines(ctx, x->response_headers, (const char *)wj_scratch.data, (size_t)n); }
+    }
+    uint64_t len = wr_Fetch_bodyLength(fetch);
+    free(x->body);
+    x->body = len < SIZE_MAX ? malloc(len ? (size_t)len : 1) : NULL;
+    x->body_len = 0;
+    while (x->body && x->body_len < len) {
+        uint64_t chunk = len - x->body_len;
+        if (chunk > 0x40000000u) { chunk = 0x40000000u; }
+        int32_t got = wr_Fetch_readBody(fetch, x->body_len, x->body + x->body_len, (uint32_t)chunk);
+        if (got <= 0) { break; }
+        x->body_len += (size_t)got;
+    }
+    x->body_done = true;
+}
+
+/* send() of a synchronous request (XHR "send" step 12): a worker's thread waits for it (Fetch_sync); a document's
+ * cannot (its thread is the page's: the console says so and it fails as a network error would). Only the final
+ * readystatechange, load and loadend fire; a failure throws instead. */
+static JSValue xhr_send_sync(JSContext *ctx, web_xhr *x, const char *method, bool has_body, web_extracted *e)
+{
+    size_t ul;
+    const char *u = JS_ToCStringLen(ctx, &ul, x->url);
+    if (!u) { return JS_EXCEPTION; }
+    web_buf hb = {0};
+    web_headers_serialize(x->headers, &hb);
+    uint64_t f = 0;
+    int32_t st = wr_Fetch_sync((const uint8_t *)u, (uint32_t)ul, (const uint8_t *)method, (uint32_t)strlen(method), hb.p ? hb.p : (const uint8_t *)"", (uint32_t)hb.len,
+                               has_body ? (e->data ? e->data : (const uint8_t *)"") : NULL, has_body ? (uint32_t)e->len : WR_ABSENT,
+                               wr_FetchMode_Cors, x->with_credentials ? wr_Credentials_Include : wr_Credentials_Same_Origin,
+                               wr_RedirectMode_Follow, wr_ReferrerPolicy_Default, 0, wr_RequestCache_Default, x->timeout, &f);
+    JS_FreeCString(ctx, u);
+    web_buf_free(&hb);
+    if (st < 0 || !f) {
+        x->state = XS_DONE;
+        x->send_flag = false;
+        reset_response(ctx, x);
+        x->failed = true;
+        if (st == wr_Error_Not_Supported) {
+            static const char warn[] = "XMLHttpRequest: a document's synchronous requests are not supported by this browser (a worker's are)";
+            wj_console_text(wr_ConsoleLevel_Warn, warn, sizeof warn - 1);
+            return wj_throw_dom(ctx, "NetworkError", "Failed to execute 'send' on 'XMLHttpRequest': synchronous requests of a document are not supported");
+        }
+        return wj_throw_dom(ctx, st == wr_Error_Timeout ? "TimeoutError" : "NetworkError", "Failed to execute 'send' on 'XMLHttpRequest': the request failed.");
+    }
+    take_response(ctx, x, f);
+    wr_Fetch_release(f);
+    x->upload_complete = true;
+    x->state = XS_DONE;
+    x->send_flag = false;
+    web_fire_simple(ctx, x->self, "readystatechange");
+    fire_progress(ctx, x->self, "load", (double)x->body_len, (double)x->body_len, true);
+    fire_progress(ctx, x->self, "loadend", (double)x->body_len, (double)x->body_len, true);
+    return JS_UNDEFINED;
+}
+
 JSValue wjr_XMLHttpRequest_send(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     web_xhr *x = xhr_this(ctx, this_val);
@@ -341,13 +413,10 @@ JSValue wjr_XMLHttpRequest_send(JSContext *ctx, JSValueConst this_val, int argc,
         if (e.type && !web_headers_has(x->headers, "content-type")) { web_headers_append_raw(x->headers, "Content-Type", 12, e.type, strlen(e.type)); }
     }
     if (x->sync) {
+        JSValue r = xhr_send_sync(ctx, x, method, has_body, &e);
         JS_FreeCString(ctx, method);
         web_extracted_free(ctx, &e);
-        static const char warn[] = "XMLHttpRequest: synchronous requests are not supported by this browser";
-        wj_console_text(wr_ConsoleLevel_Warn, warn, sizeof warn - 1);
-        x->state = XS_DONE;
-        x->failed = true;
-        return wj_throw_dom(ctx, "NetworkError", "Failed to execute 'send' on 'XMLHttpRequest': synchronous requests are not supported");
+        return r;
     }
     x->upload_complete = !has_body;
     x->send_flag = true;

@@ -43,7 +43,10 @@ Bf_Entry :: struct {
 Bfcache :: struct {
 	entries: [dynamic]^Bf_Entry,   // oldest first
 	timer:   base.Handle,
-	stores, restores, evictions, refusals: int,   // statistics (about:history)
+	stores, restores, evictions, refusals: int,   // statistics (about:history, wren ctl stats)
+	traversals, misses: int,       // back / forward to a document: how many, and how many found no cached page
+	reasons: map[string]int,       // owned keys: why pages were not kept (each page blocker counted apart), and why a
+	                               // traversal missed ("evicted or never kept")
 	last_refusal: string,          // owned: why the last page could not be kept
 }
 
@@ -54,7 +57,15 @@ bfcache_shutdown :: proc(app: ^App) {
 	for e in bf.entries { bf_entry_free(e, close = true) }
 	delete(bf.entries)
 	delete(bf.last_refusal)
+	for k in bf.reasons { delete(k) }
+	delete(bf.reasons)
 	bf = {}
+}
+
+// One more page (or traversal) for why (bf.reasons).
+@(private = "file")
+bf_count :: proc(why: string) {
+	if why in bf.reasons { bf.reasons[why] += 1 } else { bf.reasons[strings.clone(why)] = 1 }
 }
 
 @(private = "file")
@@ -98,6 +109,11 @@ leave_page :: proc(app: ^App, t: ^Tab, keep := true, save := true) {
 		bf.refusals += 1
 		delete(bf.last_refusal)
 		bf.last_refusal = strings.clone(why)
+		if b := page.bfcache_blockers(p); b != {} {
+			for x in page.Bfcache_Blocker { if x in b { bf_count(fmt.tprintf("%v", x)) } }
+		} else {
+			bf_count(why)
+		}
 		page.page_unload(p)
 		return
 	}
@@ -238,7 +254,8 @@ bfcache_has :: proc(t: ^Tab, entry: u64) -> bool {
 bfcache_restore :: proc(app: ^App, t: ^Tab, entry: ^page.History_Entry) -> bool {
 	at := -1
 	for e, i in bf.entries { if e.tab == t.id && e.entry == entry.id && !e.page.closed { at = i; break } }
-	if at < 0 { return false }
+	bf.traversals += 1
+	if at < 0 { bf.misses += 1; bf_count("evicted or never kept"); return false }
 	e := bf.entries[at]
 	ordered_remove(&bf.entries, at)
 	// the tab's own page, frozen by leave_page when it may be kept, or closed

@@ -5,8 +5,9 @@
 [Exposed=(Window,Worker)]
 module fs {
   /// navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-  /// context, for an opaque origin or a profile without a folder.
-  u64 Fs_opfsRoot() raises;
+  /// context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
+  /// "" for the default one; Invalid_State once the bucket was deleted.
+  u64 Fs_opfsRoot(usvstring bucket) raises;
   /// getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
   /// Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
   string Fs_getEntry(u64 root, string path, string name, bool directory, bool create) raises;
