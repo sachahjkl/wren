@@ -35,6 +35,7 @@ self.addEventListener("message", (e) => {
   else if (d === "get") self.clients.get(e.source.id).then((c) => say(c ? "got " + (c.id === e.source.id) + " " + c.frameType : "none"));
   else if (d === "focus") self.clients.get(e.source.id).then((c) => c.focus()).then((c) => say("focused " + c.focused), (x) => say("refused " + x.name));
   else if (d === "open") self.clients.openWindow("/sw/ver/opened").then((c) => say(c ? "opened " + new URL(c.url).pathname : "null"), (x) => say("refused " + x.name));
+  else if (d === "workers") self.clients.matchAll({type: "worker"}).then((cs) => say(cs.map((c) => c.type + ":" + (c instanceof WindowClient)).join(",")));
   else if (d === "remember") { remembered = "kept"; say("ok"); }
   else if (d === "recall") say(remembered);
   else if (d === "state") say(self.serviceWorker.state + " " + (self.registration.active === self.serviceWorker));

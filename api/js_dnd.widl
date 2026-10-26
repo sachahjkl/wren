@@ -67,14 +67,17 @@ module dnd {
   i32 DataTransfer_mode(DataTransfer dt);
 
   /// A file's name (no directory).
-  string LocalFile_name(LocalFile file);
+  [Exposed=(Window,Worker)] string LocalFile_name(LocalFile file);
   /// Its MIME type ("" when unknown).
-  string LocalFile_type(LocalFile file);
+  [Exposed=(Window,Worker)] string LocalFile_type(LocalFile file);
   /// Its size and time.
-  LocalFileInfo LocalFile_info(LocalFile file);
+  [Exposed=(Window,Worker)] LocalFileInfo LocalFile_info(LocalFile file);
   /// Reads up to `into`'s capacity from `offset`: the number of bytes read (Not_Found when the file is gone or
   /// changed since it was given: File API "NotReadableError").
-  i64 LocalFile_read(LocalFile file, i64 offset, out bytes into) raises;
+  [Exposed=(Window,Worker)] i64 LocalFile_read(LocalFile file, i64 offset, out bytes into) raises;
+  /// DataTransferItem.getAsFileSystemHandle(): the dropped file's or folder's handle (as Fs_showPicker describes one:
+  /// root TAB path TAB kind TAB name), "" for a string item or outside read-only and read/write mode.
+  string DataTransfer_itemFsHandle(DataTransfer dt, i32 index) raises;
 
   /// DragEvent.dataTransfer of an event the browser dispatches (0 for another event).
   DataTransfer DragEvent_dataTransfer(Event event);

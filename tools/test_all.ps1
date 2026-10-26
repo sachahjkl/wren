@@ -240,6 +240,10 @@ Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1
 } -Weight 20
+Step 'origin private file system and File System Access end to end (tools\fs_e2e.ps1: handles, writables, a sync access handle in a worker, IndexedDB clones, quota, pickers on files of the disk through browser.dialogs.test_answer; no window shown)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
+} -Weight 10
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
@@ -398,6 +402,12 @@ if ($CI -or -not $Quick) {
     } -Weight 120
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
+    } -Weight 30
+    Step 'service workers, workers and file systems on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1 -Check)' {
+        $bad = 0
+        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        "$bad of them failed"
+        $global:LASTEXITCODE = [int]($bad -gt 0)
     } -Weight 30
 }
 

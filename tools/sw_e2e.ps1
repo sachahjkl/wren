@@ -6,6 +6,8 @@
 # response URLs, which interfaces each realm has, a module service worker, and with tools/testserver/sw.go: versions
 # (update(), waiting, skipWaiting, controllerchange, the update check of a navigation), clients (matchAll, get,
 # openWindow, focus), an idle worker stopped and started again, navigation preload (preloadResponse, fallback).
+# -Check: the same on the check build (build.bat check), which must exit with nothing left allocated.
+param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'wrenctl.ps1')
@@ -19,7 +21,7 @@ $srv = Start-WrenTestServer
 $name = $null
 try {
   $base = "$($srv.Origin)/site/sw"
-  $name = Start-Wren -Size 1000x700
+  $name = if ($Check) { Start-WrenChecked } else { Start-Wren -Size 1000x700 }
   $env:WREN_REMOTE = $name
   Wren-Ctl nav "$base/index.html" --wait load | Out-Null
   $scope = Wren-Ctl eval 'registered' --await
@@ -97,8 +99,17 @@ try {
   Expect ($cl -eq '1 window:/sw/ver/page') 'clients.matchAll knows the open window clients of the scope' $cl
   $get = Wren-Ctl eval 'ask("get")' --await
   Expect ($get -eq 'got true top-level') 'clients.get(id)' $get
+  $nofocus = Wren-Ctl eval 'ask("focus")' --await
+  Expect ($nofocus -eq 'refused InvalidAccessError') 'WindowClient.focus() without a user gesture in a window of the site is refused' $nofocus
+  Wren-Ctl eval 'window.wk = new Worker("data:text/javascript,setTimeout(() => 0, 1e9)"); 1' | Out-Null
+  $wcl = Wren-Ctl eval 'ask("workers")' --await
+  Expect ($wcl -match '^worker:') 'clients.matchAll({type: "worker"}) lists the dedicated workers of its clients' $wcl
+  $wsw = Wren-Ctl eval 'new Promise((ok) => { const src = "const c = navigator.serviceWorker; c.onmessage = (e) => postMessage(c.controller.state + \" \" + e.data + \" \" + (e.source instanceof ServiceWorker)); if (c.controller) c.controller.postMessage(\"who\"); else postMessage(\"no controller\");"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout"), 5000); })' --await
+  Expect ($wsw -match '^activated v\d+ true$') 'navigator.serviceWorker in a dedicated worker: its document''s controller, messages both ways' $wsw
+  Wren-Ctl click --selector '#x' | Out-Null
   $op = Wren-Ctl eval 'ask("open")' --await
   Expect ($op -eq 'opened /sw/ver/opened') 'clients.openWindow opens a tab and resolves with its WindowClient' $op
+  Wren-Ctl click --selector '#x' --tab-id $tab1 | Out-Null
   $fo = Wren-Ctl eval 'ask("focus")' --await --tab-id $tab1
   Expect ($fo -eq 'focused true') 'WindowClient.focus() shows the client''s tab' $fo
   Wren-Ctl pref set service_workers.idle_ms 400 | Out-Null
@@ -121,6 +132,11 @@ try {
   Wren-Ctl nav "$o/sw/pre/fallback" --wait load --tab-id $tab1 | Out-Null
   $pf = Wren-Ctl eval 'document.body.textContent' --tab-id $tab1
   Expect ($pf -eq 'header=wren-test') 'a navigation the worker does not answer gets the preload''s response' $pf
+  $unr = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => r.unregister()).then(async (ok) => ok + " " + !!navigator.serviceWorker.controller + " " + String(await navigator.serviceWorker.getRegistration()))' --await --tab-id $tab1
+  Expect ($unr -eq 'true true undefined') 'unregister(): the page it controls stays controlled, the registration is no longer found' $unr
+  Wren-Ctl nav "$o/sw/pre/page" --wait load --tab-id $tab1 | Out-Null
+  $gone = Wren-Ctl eval 'document.body.textContent + " " + !!navigator.serviceWorker.controller' --tab-id $tab1
+  Expect ($gone -eq 'header= false') 'its last client gone, the registration is too (a new page is not controlled)' $gone
   Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.filter((r) => new URL(r.scope).pathname.startsWith("/sw/")).map((r) => r.unregister())))' --await --tab-id $tab1 | Out-Null
 
   Wren-Ctl nav "$($srv.Origin)/site/index.html" --wait load --tab-id $tab1 | Out-Null
@@ -129,7 +145,7 @@ try {
   $un = Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))).then((x) => x.join(","))' --await --tab-id $tab1
   Expect ($un -match '^true(,true)*$') 'unregister()' $un
 } finally {
-  if ($name) { Stop-Wren $name }
+  if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
 }
 if ($fails -gt 0) { "sw_e2e: $fails failure(s)"; exit 1 }

@@ -19,7 +19,8 @@ $Files = @(
     'cookiestore', 'beacon', 'compression', 'web-locks', 'scheduling-apis', 'paint-timing', 'largest-contentful-paint',
     'event-timing', 'longtasks', 'device-memory', 'netinfo', 'ua-client-hints', 'vibration', 'css-highlight-api',
     'css-typed-om', 'css-view-transitions', 'speech-api', 'webaudio', 'mediacapture-streams', 'html-media-capture',
-    'entries-api', 'badging', 'credential-management', 'storage-access', 'is-input-pending', 'css-properties-values-api', 'webauthn'
+    'entries-api', 'badging', 'credential-management', 'storage-access', 'is-input-pending', 'css-properties-values-api', 'webauthn',
+    'fs', 'file-system-access'
 )
 
 $root = Split-Path $PSScriptRoot -Parent

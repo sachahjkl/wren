@@ -33,6 +33,8 @@ Settings :: struct {
 }
 
 PREFS := [?]config.Def{
+	{name = "browser.dialogs.test_answer", kind = .String, default = {s = ""},
+		description = "For automated tests only: when set, the file pickers pages open (showOpenFilePicker...) and their permission prompts answer with it instead of asking you: \"|\"-separated paths chosen (a prompt: allowed), or cancel. Empty: you are asked."},
 	{name = "browser.homepage", kind = .String, default = {s = "about:home"}, description = "Opened by a new tab and at start-up when no address is given. about:home is the start page, about:config the settings."},
 	{name = "browser.console.max_lines", kind = .Int, default = {i = 500}, bounded = true, min = 10, max = 100_000,
 		description = "Console lines kept per tab."},

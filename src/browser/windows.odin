@@ -633,6 +633,7 @@ windows_destroy :: proc(app: ^App) {
 		for b in w.locals { delete(b) }
 		delete(w.locals)
 		delete(w.title)
+		delete(w.ctx.tabs)   // (the active window's list went to it when windows_destroy_surfaces deactivated it)
 		free(w.ui)
 		platform.destroy_window(w.win)
 		free(w)

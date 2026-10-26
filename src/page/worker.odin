@@ -50,6 +50,8 @@ Worker_Msg_Kind :: enum u8 {
 	Sw_Event,       // page -> service worker: an event to fire (service_worker.odin)
 	Sw_Reply,       // service worker -> page: what it did (service_worker.odin)
 	Connect,        // page -> shared worker: a new connection, ports[0] is its port's end (shared_worker.odin)
+	Sw_Client,      // page -> worker: a message of a service worker to it as a client (id = the version, bytes)
+	Sw_Post,        // worker -> page: serviceWorker.postMessage from a worker client (id = the version, bytes)
 }
 
 Worker_Msg :: struct {
@@ -185,6 +187,7 @@ Worker_Host :: struct {
 	shared:     ^Shared_Worker,         // the shared worker this runs (shared_worker.odin), nil for a Worker
 	module:     bool,                   // its script is a module ({type: "module"}): js_workers.odin
 	storage_key: string,                // owned: the storage key of its realm when not its page's (a shared worker's)
+	client_id:  u64,                    // its id as a service worker's client (service_worker.odin)
 }
 
 Relay :: struct {
@@ -211,6 +214,10 @@ Delivery :: struct {
 @(private)
 worker_total: i32
 
+// Worker clients' ids (SW_WORKER_CLIENT_BASE + n: above every page's id).
+@(private)
+worker_client_next: u64
+
 worker_vt := Object_VTable{
 	name = "Worker",
 	destroy = proc(p: ^Page, data: rawptr) {
@@ -236,7 +243,7 @@ page_worker_count :: proc(p: ^Page) -> int {
 // Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
 // `image`: the script the browser already has (a service worker's stored version): it starts at once, nothing is fetched.
-worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil) -> u64 {
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil, shared: ^Shared_Worker = nil) -> u64 {
 	ws := &p.settings.workers
 	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
 	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
@@ -259,8 +266,11 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	}
 
 	h := new(Worker_Host)
-	h.page, h.owner, h.counted, h.javascript, h.module, h.sw = p, owner, true, javascript, javascript && module, sw
+	h.page, h.owner, h.counted, h.javascript, h.module, h.sw, h.shared = p, owner, true, javascript, javascript && module, sw, shared
 	h.url, h.name = strings.clone(u.href), strings.clone(name)
+	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
+	worker_client_next += 1
+	h.client_id = SW_WORKER_CLIENT_BASE + worker_client_next
 	h.link = link_make(p.loop, ws.max_pending_bytes)
 	h.link.host = h
 	h.env = fetch.environment_make(u, p.env.referrer_policy)
@@ -350,9 +360,11 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.js_web.platform = strings.clone(p.settings.js_web.platform)
 	g.settings.js_web.vendor = strings.clone(p.settings.js_web.vendor)
 	g.settings.forms.password_mask = ""
+	g.settings.sw.fs_permission = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.module, g.shared = h.module, h.shared != nil
-	if h.sw != nil { sw_global_init(&g.sw, h.sw) }   // service_worker.odin: a service worker's instance
+	// service_worker.odin: a service worker's instance, or another worker's view as a client of its document's controller
+	if h.sw != nil { sw_global_init(&g.sw, h.sw) } else { sw_client_init(g, p) }
 	g.image = make([]byte, len(image))
 	copy(g.image, image)
 	link_retain(h.link)
@@ -479,7 +491,9 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		}
 	case .Sw_Reply:
 		if !h.terminated { sw_page_reply(h, m) }   // service_worker.odin
-	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect:
+	case .Sw_Post:
+		if !h.terminated { sw_client_post(h, m) }   // service_worker.odin
+	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect, .Sw_Client:
 	}
 }
 
@@ -680,6 +694,9 @@ Worker_Global :: struct {
 	connects: [dynamic]u64,     // a shared worker's connections waiting for their connect event: their port ends
 	waiting:  bool,             // a module graph is still loading: the page's messages wait (held) until it ran
 	held:     [dynamic]^Worker_Msg,
+	client_sw_reg: u64,         // a worker client's controller's registration (0: none)
+	client_sw: string,          // a worker client's view of its controller's registration (ServiceWorkerRegistration_info), "" when none
+	client_inbox: [dynamic][]byte,   // service workers' messages to it: the version's id (8 bytes) then the data
 }
 
 @(private)
@@ -691,6 +708,9 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	js_web_settings_destroy(&g.settings.js_web)
 	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
 	sw_global_free(&g.sw)
+	delete(g.client_sw)
+	for m in g.client_inbox { delete(m) }
+	delete(g.client_inbox)
 	for e in g.connects { port_close_end(e) }
 	delete(g.connects)
 	for m in g.inbox { msg_free(m) }
@@ -790,7 +810,8 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 			case .Port_Wake:   ports_wake_worker(p, m.id)   // ports.odin
 			case .Sw_Event:    sw_worker_event(p, m); continue   // service_worker.odin (keeps the message)
 			case .Connect:     shared_connect_event(p, m)   // shared_worker.odin (takes the port end)
-			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply:
+			case .Sw_Client:   sw_client_message(p, m)   // service_worker.odin
+			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply, .Sw_Post:
 			}
 		}
 		msg_free(m)

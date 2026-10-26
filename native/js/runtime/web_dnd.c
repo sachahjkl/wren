@@ -275,8 +275,17 @@ JSValue wjr_DataTransferItem_getAsFile(JSContext *ctx, JSValueConst this_val, in
     return web_file_from_host(ctx, f);
 }
 
-// TODO(webapi): getAsFileSystemHandle: a FileSystemFileHandle / FileSystemDirectoryHandle of the same dropped path
-// (DataTransfer_itemEntry gives the path and its kind), once the File System Access API exists.
+/* getAsFileSystemHandle(): a FileSystemFileHandle / FileSystemDirectoryHandle of the dropped file or folder, read
+ * access granted (runtime/web_fs.c), null for a string item */
+extern JSValue web_fs_item_handle(JSContext *ctx, uint64_t dt, int32_t index);
+JSValue wjr_DataTransferItem_getAsFileSystemHandle(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    list_impl *l = item_this(ctx, this_val);
+    if (!l) { return web_promise_reject_pending(ctx); }
+    return web_fs_item_handle(ctx, l->store, l->index);
+}
+
 /* webkitGetAsEntry(): the entry of a dropped file or folder (web_entries.c), null for a string item or outside drop */
 JSValue wjr_DataTransferItem_webkitGetAsEntry(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {

@@ -373,6 +373,9 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 			// the Cache API's bytes and allowance count too (cache_store.odin; keyed by origin)
 			usage += cache_usage(sm.dir, url.origin_serialize(p.env.origin, context.temp_allocator))
 			quota += p.settings.sw.cache_max_bytes
+			// and the origin private file system's (fs_store.odin; keyed by storage key)
+			usage += opfs_usage(sm.dir, ip.key)
+			quota += p.settings.sw.opfs_max_bytes
 		}
 		idb.w_uv(&out, u64(usage)); idb.w_uv(&out, u64(quota))
 	case IDB_OP_PERSIST:

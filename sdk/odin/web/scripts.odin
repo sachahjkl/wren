@@ -52,6 +52,8 @@ foreign _m_scripts {
 	@(link_name = "WorkerGlobalScope_importScript") _WorkerGlobalScope_importScript :: proc(url: [^]u8, url_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "WorkerGlobalScope_isModule") _WorkerGlobalScope_isModule :: proc() -> i32 ---
 	@(link_name = "SharedWorker_connect") _SharedWorker_connect :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, extended_lifetime: i32, _ret: ^u64) -> Error ---
+	@(link_name = "Worker_createScriptBytes") _Worker_createScriptBytes :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, script: [^]u8, script_len: u32, _ret: ^u64) -> Error ---
+	@(link_name = "SharedWorker_connectBytes") _SharedWorker_connectBytes :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, extended_lifetime: i32, script: [^]u8, script_len: u32, _ret: ^u64) -> Error ---
 	@(link_name = "SharedWorker_portEnd") _SharedWorker_portEnd :: proc(worker: u64) -> u64 ---
 	@(link_name = "SharedWorkerGlobalScope_takeConnection") _SharedWorkerGlobalScope_takeConnection :: proc() -> u64 ---
 }
@@ -265,6 +267,18 @@ WorkerGlobalScope_isModule :: proc "contextless" () -> bool {
 // Not_Allowed when the browser refuses (shared workers disabled, too many: the console says why).
 SharedWorker_connect :: proc "contextless" (url: string, name: string, type: WorkerType, extended_lifetime: bool) -> (result: u64, err: Error) {
 	err = _SharedWorker_connect(raw_data(url), u32(len(url)), raw_data(name), u32(len(name)), type, i32(1 if extended_lifetime else 0), &result)
+	return
+}
+
+// new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
+// URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
+Worker_createScriptBytes :: proc "contextless" (url: string, name: string, type: WorkerType, script: []u8) -> (result: u64, err: Error) {
+	err = _Worker_createScriptBytes(raw_data(url), u32(len(url)), raw_data(name), u32(len(name)), type, raw_data(script), u32(len(script)), &result)
+	return
+}
+
+SharedWorker_connectBytes :: proc "contextless" (url: string, name: string, type: WorkerType, extended_lifetime: bool, script: []u8) -> (result: u64, err: Error) {
+	err = _SharedWorker_connectBytes(raw_data(url), u32(len(url)), raw_data(name), u32(len(name)), type, i32(1 if extended_lifetime else 0), raw_data(script), u32(len(script)), &result)
 	return
 }
 
