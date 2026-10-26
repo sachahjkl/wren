@@ -1,0 +1,3 @@
+type: Fixed
+
+**The control pipe's client no longer lets a server that is not Wren act as the person** (`conn_windows.odin`, security review of 2026-10-25, finding 7): `wren ctl` opened the pipe with the default impersonation level, so a process that had taken the (predictable) pipe name first, with the privilege to impersonate (a service account), could act with the person's identity once the client wrote to it. The pipe is opened with `SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION`: the server can see who connected, not act as them. Not changed, left as a proposal: checking the server's process id against the one expected (`GetNamedPipeServerProcessId`), and the pipe names, which stay predictable.

@@ -1,0 +1,3 @@
+type: Changed
+
+**Text is shaped by Fontations, HarfRust and ICU4X by default** (the toolkit's native text backend, toolkit 0.39.0) instead of DirectWrite: `build.bat` builds it in; `WREN_TEXT=dwrite build.bat` builds `wren_dwrite.exe` with DirectWrite's shaper. Same widths and metrics on the toolkit's multilingual corpus, 2.6 times faster shaping; better: kerned Hebrew pairs close as the font says (DirectWrite drops their placements), words are found in Lao, Khmer and Myanmar lines, an emoji with its skin tone is one caret stop; simulated bold and italic are drawn as DirectWrite drew them. The system's fonts and their fallback still come from Windows. The `text.backend` preference (restart) picks DirectWrite back.

@@ -25,6 +25,15 @@ jobs:
         with:
           submodules: recursive
 
+      # A few seconds: every fragment of changelog.d is well formed and none was already released (CONTRIBUTING.md); then the
+      # script's own tests.
+      - name: CHANGELOG fragments (tools\changelog.ps1 -Check)
+        run: |
+          ./tools/changelog.ps1 -Check
+          if ($LASTEXITCODE) { exit 1 }
+          ./tools/changelog_test.ps1
+          if ($LASTEXITCODE) { exit 1 }
+
       - uses: ./.github/actions/setup
 
       # The build takes one to two minutes here (dependencies from the caches). A build that runs for 20 minutes is a defect (a local
