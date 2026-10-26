@@ -15,7 +15,10 @@
 # wren.exe there). The release does not publish it: those files belong to the repository (examples\site, tools\testserver).
 # Signing: when SIGN_PFX or SIGN_SERVICE is set (see tools\sign.ps1), every executable is signed before it is published;
 # otherwise the files are left as they are.
-param([string]$Version = '', [switch]$Dev, [switch]$Extras)
+# A release package (no -Dev, no WREN_VERSION_LABEL) is a published version: its CHANGELOG.md section must be there, assembled
+# from changelog.d, with no fragment left (tools\changelog.ps1 -Check -Release); -AllowUnreleased packages a release build before
+# that, to try it.
+param([string]$Version = '', [switch]$Dev, [switch]$Extras, [switch]$AllowUnreleased)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
@@ -45,6 +48,10 @@ if ($dumpbin) {
 }
 
 $label = if ($env:WREN_VERSION_LABEL) { "-" + ($env:WREN_VERSION_LABEL -replace '[^A-Za-z0-9._-]', '-') } else { "" }   # build.bat: WREN_VERSION_LABEL
+if (-not $Dev -and -not $label -and -not $AllowUnreleased) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'changelog.ps1') -Check -Release $Version
+    if ($LASTEXITCODE) { throw "the CHANGELOG is not ready for ${Version}: tools\changelog.ps1 -Assemble -Version $Version (or -AllowUnreleased to try a package)" }
+}
 $name = if ($Dev) { "wren-$Version$label-dev-windows-x64" } else { "wren-$Version$label-windows-x64" }
 $dist = Join-Path $root 'build\dist'
 New-Item -ItemType Directory -Force $dist | Out-Null

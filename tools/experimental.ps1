@@ -1,6 +1,6 @@
 # An experimental build of Wren, ready to hand out: built as a release (the amber one) with a label, the development licence key
-# accepted (so the demonstration licence shows its card with no setting), a demonstration licence, notes made from the CHANGELOG, a
-# zip, and the link of its upload to buzzheavier (anonymous: the link lives a few days).
+# accepted (so the demonstration licence shows its card with no setting), a demonstration licence, notes made from what the next version
+# brings (the CHANGELOG's fragments, changelog.d), a zip, and the link of its upload to buzzheavier (anonymous: the link lives a few days).
 #
 #   powershell -File tools\experimental.ps1                  build, check, pack, upload
 #   powershell -File tools\experimental.ps1 -NoUpload        everything but the upload
@@ -121,19 +121,24 @@ if (-not $NoVerify) {
         Remove-Item Env:WREN_EXE -ErrorAction SilentlyContinue
     }
 }
-# ---- 4. the notes: what is new (the CHANGELOG's Unreleased, titles only) and what to know
+# ---- 4. the notes: what is new since the last release (titles only) and what to know. What is new is what the next version
+# would bring: the fragments of changelog.d and what a branch still wrote under the CHANGELOG's "## Unreleased" (tools\changelog.ps1 -Assemble)
+$changes = Join-Path $out 'changes.md'
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\changelog.ps1 -Assemble -Out $changes | Out-Host
+if ($LASTEXITCODE -ne 0) { throw 'tools\changelog.ps1 -Assemble failed: a fragment of changelog.d is malformed (tools\changelog.ps1 -Check)' }
 $titles = @{}
 $section = ''
-foreach ($l in Get-Content CHANGELOG.md) {
-    if ($l -match '^## ') { if ($section -ne '') { break }; if ($l -match '^## Unreleased') { $section = '-' }; continue }
-    if ($section -eq '') { continue }
+foreach ($l in [IO.File]::ReadAllLines($changes)) {
     if ($l -match '^### (.+)$') { $section = $Matches[1].Trim(); if (-not $titles.ContainsKey($section)) { $titles[$section] = New-Object Collections.Generic.List[string] }; continue }
-    if ($section -ne '-' -and $l -match '^- \*\*(.+?)\*\*') {
-        $t = ($Matches[1] -replace '`', '' -replace '\s+', ' ').Trim().TrimEnd('.', ':')
-        if ($t.Length -gt 150) { $t = $t.Substring(0, 147) + '...' }
-        $titles[$section].Add($t)
-    }
+    if ($section -eq '' -or $l -notmatch '^- (.+)$') { continue }
+    # an entry's title: its bold lead, else its text up to the first colon or full stop
+    $e = $Matches[1]
+    $t = if ($e -match '^\*\*(.+?)\*\*') { $Matches[1] } else { ($e -split '(?<=[^ ]): |\. ', 2)[0] }
+    $t = ($t -replace '`', '' -replace '\*\*', '' -replace '\s+', ' ').Trim().TrimEnd('.', ':')
+    if ($t.Length -gt 150) { $t = $t.Substring(0, 147) + '...' }
+    $titles[$section].Add($t)
 }
+Remove-Item $changes
 $known = @'
 - The exe is not signed: Windows SmartScreen or an antivirus may warn on the first start ("More info", then "Run anyway"). Its SHA-256 is below.
 - Windows 10 or 11, 64 bits. Nothing else to install.
@@ -165,7 +170,7 @@ if ($NoEmbed) {
 [void]$nb.AppendLine('-------')
 [void]$nb.AppendLine($known.TrimEnd())
 [void]$nb.AppendLine('')
-foreach ($s in 'Added', 'Changed', 'Fixed') {
+foreach ($s in 'Added', 'Changed', 'Removed', 'Fixed') {
     if ($titles.ContainsKey($s) -and $titles[$s].Count -gt 0) {
         [void]$nb.AppendLine("$s since the last release ($($titles[$s].Count))")
         [void]$nb.AppendLine(('-' * ("$s since the last release ($($titles[$s].Count))").Length))
@@ -179,7 +184,7 @@ foreach ($s in 'Added', 'Changed', 'Fixed') {
 $notesText = $nb.ToString()
 [IO.File]::WriteAllText("$stage\README.txt", $notesText, (New-Object Text.UTF8Encoding $false))
 [IO.File]::WriteAllText("$stage\SHA256.txt", "$sha  $base.exe`r`n", (New-Object Text.UTF8Encoding $false))
-Say ("notes: {0} lines, {1} titles from the CHANGELOG" -f ($notesText -split "`n").Count, (($titles.Values | ForEach-Object { $_.Count } | Measure-Object -Sum).Sum))
+Say ("notes: {0} lines, {1} titles from the CHANGELOG's fragments" -f ($notesText -split "`n").Count, (($titles.Values | ForEach-Object { $_.Count } | Measure-Object -Sum).Sum))
 
 # ---- 5. the zip
 $zip = Join-Path $out "$base.zip"

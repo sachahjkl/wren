@@ -1,5 +1,5 @@
-# Writes the notes of a release: docs\releases\<tag>.md when it exists (the highlights, written by hand), then the
-# changes since the previous version tag, generated from the first-parent history (merges of feature branches and
+# Writes the notes of a release: docs\releases\<tag>.md when it exists (the highlights, written by hand), the version's
+# section of CHANGELOG.md when there is one, then the changes since the previous version tag, generated from the first-parent history (merges of feature branches and
 # direct commits, one line each).
 #   powershell -NoProfile -File tools\release_notes.ps1 -Tag v0.2.0 [-Ref HEAD] [-Out build\dist\NOTES.md]
 # -Ref: the commit the tag is (or will be) on, to preview the notes before tagging (default: the tag itself).
@@ -14,6 +14,14 @@ if (-not $Ref) { $Ref = $Tag }
 $notes = New-Object Collections.Generic.List[string]
 $intro = Join-Path $root "docs\releases\$Tag.md"
 if (Test-Path $intro) { $notes.Add([IO.File]::ReadAllText($intro).TrimEnd()); $notes.Add('') }
+# then what CHANGELOG.md says of the version (assembled from changelog.d by tools\changelog.ps1 -Assemble -Version)
+$section = Join-Path ([IO.Path]::GetTempPath()) "wren-notes-$([guid]::NewGuid().ToString('N')).md"
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot 'changelog.ps1') -Section -Version ($Tag -replace '^v', '') -Out $section | Out-Null
+if ($LASTEXITCODE -eq 0 -and (Test-Path $section)) {
+    $s = [IO.File]::ReadAllText($section).Trim()
+    if ($s) { $notes.Add($s); $notes.Add('') }
+}
+Remove-Item $section -ErrorAction SilentlyContinue
 
 $ErrorActionPreference = 'Continue'   # no earlier tag is a normal case: git's message on stderr must not stop the script
 $prev = (& git describe --tags --abbrev=0 --match 'v*' "$Ref^" 2>$null)
