@@ -50,7 +50,7 @@ test("the API surface", () => {
   ok(typeof MediaSource.isTypeSupported('video/webm; codecs="av01.0.00M.08, opus"') === "boolean", "isTypeSupported AV1 + Opus in WebM answers");
   eq(MediaSource.isTypeSupported('video/ogg; codecs="theora"'), false, "Theora");
   eq(MediaSource.isTypeSupported(""), false, "empty");
-  eq(MediaSource.canConstructInDedicatedWorker, false, "canConstructInDedicatedWorker");
+  eq(MediaSource.canConstructInDedicatedWorker, true, "canConstructInDedicatedWorker (a worker may construct one: MediaSourceHandle)");
   const ms = new MediaSource();
   eq(ms.readyState, "closed", "closed before it is attached");
   ok(Number.isNaN(ms.duration), "duration NaN");

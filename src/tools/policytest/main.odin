@@ -266,8 +266,13 @@ main :: proc() {
 		r = get(testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
 		check(!r.failed && r.body == "", "third-party cookies are blocked by policy")
 		profile.settings.third_party_cookies = .Allow
+		// (partitioned, as it is by default, the cookies B set as a top-level site are not the ones B gets inside A: storage_access, storage_partition_test)
 		r = get(testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
-		check(r.body == "none=1", "with the policy relaxed only SameSite=None cookies travel cross-site")
+		check(r.body == "", "with the policy relaxed, a partitioned third party does not get the cookies it has as a first party")
+		profile.settings.partitioned = false
+		r = get(testenv.url(B + "/cookie/show"), doc, .Cors, .Include)
+		check(r.body == "none=1", "with the policy relaxed and no partitioning only SameSite=None cookies travel cross-site")
+		profile.settings.partitioned = true
 		profile.settings.third_party_cookies = .Block
 		r = run({url = testenv.url(B + "/cookie/show"), mode = .Navigate, credentials = .Include, initiator = doc, user_activation = true})
 		check(r.body == "lax=1; none=1" || r.body == "none=1; lax=1", "a top-level cross-site GET navigation sends Lax cookies")
