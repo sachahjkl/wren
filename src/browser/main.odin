@@ -1461,6 +1461,10 @@ main :: proc() {
 	page_thread_destroy()   // page_thread.odin
 	host.shutdown_step("lay.shutdown_threads")
 	lay.shutdown_threads()
+	// what the pages' threads posted last (a worker's "exited", a link's drain): run now that every page is closed, so that it
+	// frees what it owns instead of being dropped with the loop
+	host.shutdown_step("host.loop_drain")
+	host.loop_drain(&app.loop)
 	host.shutdown_step("page.images_shutdown")
 	page.images_shutdown()   // the image cache and its decoding threads
 	host.shutdown_step("page.fonts_shutdown")
@@ -1509,6 +1513,9 @@ main :: proc() {
 	page.js_shutdown()
 	host.shutdown_step("page.frames_shutdown")
 	page.frames_shutdown()   // the registry of navigables (every page is closed): a top-level page asks for its navigable on first use
+	host.shutdown_step("page stores")
+	page.cache_store_shutdown()   // the Cache API's index of every origin
+	page.fs_store_shutdown()   // file system roots, open writables and sync handles, locks
 	host.shutdown_step("wasm.runtime_destroy")
 	wasm.runtime_destroy()
 	host.shutdown_step("measure_destroy")

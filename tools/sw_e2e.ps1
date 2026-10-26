@@ -6,6 +6,8 @@
 # response URLs, which interfaces each realm has, a module service worker, and with tools/testserver/sw.go: versions
 # (update(), waiting, skipWaiting, controllerchange, the update check of a navigation), clients (matchAll, get,
 # openWindow, focus), an idle worker stopped and started again, navigation preload (preloadResponse, fallback).
+# -Check: the same on the check build (build.bat check), which must exit with nothing left allocated.
+param([switch]$Check)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'wrenctl.ps1')
@@ -19,7 +21,7 @@ $srv = Start-WrenTestServer
 $name = $null
 try {
   $base = "$($srv.Origin)/site/sw"
-  $name = Start-Wren -Size 1000x700
+  $name = if ($Check) { Start-WrenChecked } else { Start-Wren -Size 1000x700 }
   $env:WREN_REMOTE = $name
   Wren-Ctl nav "$base/index.html" --wait load | Out-Null
   $scope = Wren-Ctl eval 'registered' --await
@@ -143,7 +145,7 @@ try {
   $un = Wren-Ctl eval 'navigator.serviceWorker.getRegistrations().then((rs) => Promise.all(rs.map((r) => r.unregister()))).then((x) => x.join(","))' --await --tab-id $tab1
   Expect ($un -match '^true(,true)*$') 'unregister()' $un
 } finally {
-  if ($name) { Stop-Wren $name }
+  if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv
 }
 if ($fails -gt 0) { "sw_e2e: $fails failure(s)"; exit 1 }

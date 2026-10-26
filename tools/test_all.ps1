@@ -403,6 +403,12 @@ if ($CI -or -not $Quick) {
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     } -Weight 30
+    Step 'service workers, workers and file systems on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1 -Check)' {
+        $bad = 0
+        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        "$bad of them failed"
+        $global:LASTEXITCODE = [int]($bad -gt 0)
+    } -Weight 30
 }
 
 # The steps below talk to the test server: -Jobs 1, one server for all, on this run's block of ports (ready once it

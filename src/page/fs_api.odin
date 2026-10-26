@@ -75,11 +75,11 @@ Fs_getFile :: proc(c: ^Call, root: u64, path: string) -> (u64, Api_Error) {
 	if r.read != .Granted { return 0, fs_fail(c, .Not_Allowed, "getFile") }
 	disk, e := fs_disk_path(r, path)
 	if e != .None { return 0, fs_fail(c, e, "getFile") }
-	f, found := local_file_from_path(disk)
+	// (temporary: the object keeps a copy)
+	f, found := local_file_from_path(disk, context.temp_allocator)
 	if !found { return 0, fs_fail(c, .Not_Found, "getFile") }
 	// its name is the entry's (an origin private file system's file is stored under an encoded name)
-	name := path[strings.last_index_byte(path, '/') + 1:]
-	if path != "" && f.name != name { delete(f.name); f.name = strings.clone(name) }
+	if path != "" { f.name = path[strings.last_index_byte(path, '/') + 1:] }
 	return local_file_object(c.page, f, c.owner), .None
 }
 
