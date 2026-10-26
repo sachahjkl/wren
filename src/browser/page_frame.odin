@@ -31,7 +31,7 @@ Page_Prep :: struct {
 page_update :: proc(app: ^App) {
 	t := current_tab(app)
 	if t == nil || t.kind != .Web || t.page == nil { return }
-	size := draw.rect_size(app.page_rect)
+	size := draw.rect_size(active_window(app).page_rect)
 	if size.x <= 0 || size.y <= 0 { return }
 	page_prepare(app, t, size)
 }

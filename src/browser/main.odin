@@ -118,7 +118,7 @@ Session_History :: page.Session_History   // (a field named `page` hides the pac
 
 // The browser has several windows (windows.odin). The fields marked [window] are the active window's: window_activate
 // exchanges them with the ones a window keeps, so the code that reads `app.win` stays the one of a single window.
-// What is no longer exchanged is read in the window itself: active_window(app).tabs, .current, .address, .presented,
+// What is no longer exchanged is read in the window itself: active_window(app).tabs, .current, .address, .page_rect, .presented,
 // window_own(app).
 App :: struct {
 	win:      ^platform.Window,   // [window]
@@ -148,7 +148,6 @@ App :: struct {
 	measure:  Measure,        // text measurement cache of the layout
 	show_console:  bool,
 
-	page_rect: draw.Rect,   // [window] where the page was painted last frame (physical pixels)
 	frames_requested: int,  // [window]
 	last_tick:        time.Tick,
 
@@ -712,14 +711,15 @@ run_ready_scripts :: proc(load: ^Doc_Load) {
 
 page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
-	app.page_rect = b.rect
+	wnd := active_window(app)
+	wnd.page_rect = b.rect
 	t := current_tab(app)
 	if shell_nested() {
 		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		return
 	}
-	for other in active_window(app).tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
+	for other in wnd.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
@@ -885,7 +885,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
-	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
+	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
 	ui.toasts_build()
 }
 
@@ -904,6 +904,7 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
+	wnd := active_window(app)
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
 	page_world_check("route_page_input: page input in a chrome frame, or during a page thread pass")
@@ -915,7 +916,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
 		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
-		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+		if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
 		st.hover = hovered
@@ -923,12 +924,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
 	}
 	for ev, index in events {
-		inside := draw.rect_contains(app.page_rect, ev.pos)
+		inside := draw.rect_contains(wnd.page_rect, ev.pos)
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
-		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, wnd.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
@@ -947,14 +948,14 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
 			} else if inside {
-				d := ev.delta * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
-				smooth_wheel(app, t, ev.pos - app.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
+				d := ev.delta * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
+				smooth_wheel(app, t, ev.pos - wnd.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
-			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			pressed := hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll)
+			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
@@ -966,8 +967,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
-			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
+			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if t.page == nil { return }
 			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }

@@ -168,7 +168,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 		n := dom.get(p.doc, m.start.node)
 		if n == nil { continue }
 		el := n.kind == .Text ? n.parent : m.start.node
-		if r, ok := lay.box_of(&t.layout, el, draw.rect_size(app.page_rect), t.scroll); ok && r.border.max.y >= t.scroll { fs.active = i; break }
+		if r, ok := lay.box_of(&t.layout, el, draw.rect_size(active_window(app).page_rect), t.scroll); ok && r.border.max.y >= t.scroll { fs.active = i; break }
 	}
 	fs.reveal = true
 }
@@ -266,7 +266,7 @@ find_reveal :: proc(app: ^App, fs: ^Find_State, t: ^Tab) {
 	items := lay.items_of_text(l, t.page.doc, m.start.node, m.start.offset, m.start.offset + 1)
 	if len(items) == 0 { return }
 	it := &l.items[items[0]]
-	view := draw.rect_size(app.page_rect)
+	view := draw.rect_size(active_window(app).page_rect)
 	margin := view.y * 0.25
 	rect := it.rect
 	for s := it.space; s != lay.NONE; s = l.spaces[s].parent {

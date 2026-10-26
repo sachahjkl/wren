@@ -5,7 +5,7 @@ package browser
 // (its scripts, its video, its forms, its history, its zoom) as it is: only the pointer to the tab moves.
 //
 // The shell was written for one window. Its tabs, current tab and address field are read in the window itself
-// (active_window(app).tabs, w.tabs); it still reads `app.win`, `app.page_rect`... : those fields are the *active* window's. `window_activate` puts the active window's share of the App aside in its Browser_Window and takes
+// (active_window(app).tabs, w.tabs); it still reads `app.win`, `app.frames_requested`... : those fields are the *active* window's. `window_activate` puts the active window's share of the App aside in its Browser_Window and takes
 // the other's in; what the chrome keeps of a window is in its Browser_Window (Window_Own) and is never exchanged. A frame is made for one window at a
 // time, with that window active; what runs outside a frame (tasks of the loop, remote calls, menus) acts on the front window (the
 // last one used), or finds a tab's own window (window_of_tab).
@@ -41,7 +41,7 @@ Window_Ctx :: struct {
 	current:          int,            // the tab shown (an index in tabs)
 	address:          ui.Text_Field,  // the address field
 	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
-	page_rect:        draw.Rect,      // [copied]
+	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
 	frames_requested: int,            // [copied]
 	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
@@ -117,13 +117,13 @@ window_own_destroy :: proc(own: ^Window_Own) {
 
 @(private = "file")
 ctx_store :: proc(app: ^App, c: ^Window_Ctx) {
-	c.page_rect, c.frames_requested = app.page_rect, app.frames_requested
+	c.frames_requested = app.frames_requested
 }
 
 @(private = "file")
 ctx_load :: proc(app: ^App, c: ^Window_Ctx) {
-	app.page_rect, app.frames_requested = c.page_rect, c.frames_requested
-	c.page_rect, c.frames_requested = {}, 0
+	app.frames_requested = c.frames_requested
+	c.frames_requested = 0
 }
 
 // Pacing is the window's (its monitor's rate, its swap chain's queue, its resize steps); the preferences and the timer are not.

@@ -207,7 +207,7 @@ Pick_Draw :: struct { app: ^App, t: ^Tab, outline: draw.Color, fill: draw.Color 
 outline_node :: proc(dc: ^draw.Context, d: ^Pick_Draw, h: base.Handle, fill, line: draw.Color) {
 	t := d.t
 	if t.page == nil || !t.layout.valid { return }
-	area := d.app.page_rect
+	area := active_window(d.app).page_rect
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
 	shift := draw.Vec2{area.min.x, area.min.y - t.scroll}   // (box_of: document coordinates, position: fixed boxes included)
@@ -235,7 +235,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 	if !pick.active { return }
 	if t == nil || t.id != pick.tab || t.kind != .Web || t.page == nil { blocker_picker_cancel(app); return }
 	em := ui.font_size()
-	area := app.page_rect
+	area := active_window(app).page_rect
 	d := ui.frame_new(Pick_Draw)
 	d.app, d.t = app, t
 	if pick.stage == 0 {

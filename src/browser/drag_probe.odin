@@ -56,7 +56,7 @@ drag_probe_presented :: proc() {
 	if s.read != pacer.read_tick { return }
 	s.done = time.tick_now()._nsec
 	if app := the_app; app != nil {
-		s.area_w = draw.rect_size(app.page_rect).x
+		s.area_w = draw.rect_size(active_window(app).page_rect).x
 		if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == chrome_frames.frame_no { s.page_w = pp.size.x }
 	}
 }

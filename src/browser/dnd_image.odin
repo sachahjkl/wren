@@ -74,7 +74,7 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 	el, off := page.drag_session_image(p)
 	given := el != base.NIL_HANDLE
 	fade := given ? f32(1) : f32(config.float_of(&app.prefs, "browser.dnd.image_opacity"))
-	local := pointer - app.page_rect.min
+	local := pointer - active_window(app).page_rect.min
 	if !given {
 		if s.kind == .Selection && page.selection_active(p) {
 			// the selection of the document: its lines, as they are highlighted
@@ -114,7 +114,7 @@ dnd_image_begin :: proc(app: ^App, t: ^Tab, p: ^page.Page, pointer: [2]f32) {
 @(private = "file")
 element_paint_bounds :: proc(app: ^App, t: ^Tab, el: base.Handle) -> (draw.Rect, bool) {
 	if t.page == nil || !t.layout.valid { return {}, false }
-	r, found := lay.box_of(&t.layout, el, draw.rect_size(app.page_rect), t.scroll)
+	r, found := lay.box_of(&t.layout, el, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if !found || r.bounds.max.x <= r.bounds.min.x || r.bounds.max.y <= r.bounds.min.y { return {}, false }
 	return draw.Rect{{r.bounds.min.x, r.bounds.min.y - t.scroll}, {r.bounds.max.x, r.bounds.max.y - t.scroll}}, true
 }
@@ -126,7 +126,7 @@ selection_bounds :: proc(app: ^App, t: ^Tab) -> (draw.Rect, bool) {
 	a, b, ok := page.selection_range(p)
 	if !ok || a == b || !t.layout.valid { return {}, false }
 	l := &t.layout
-	v := lay.view_make(l, draw.rect_size(app.page_rect), t.scroll, cull = false)
+	v := lay.view_make(l, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
 	api := page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style)
 	out: draw.Rect
 	found := false
@@ -177,7 +177,7 @@ paint_picture :: proc(app: ^App, dc: ^draw.Context) -> render.Readback_Id {
 	if !draw.offscreen_begin(dc, size) { return 0 }
 	circular := draw.set_circular_corners(dc, true)
 	interp := draw.set_interpolation(dc, .Srgb)
-	v := lay.view_make(l, draw.rect_size(app.page_rect), t.scroll, cull = false)
+	v := lay.view_make(l, draw.rect_size(active_window(app).page_rect), t.scroll, cull = false)
 	sel_a, sel_b, has_sel := page.selection_range(p)
 	api := page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style)
 	for i in 0 ..< len(l.items) {

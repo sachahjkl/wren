@@ -80,4 +80,4 @@ keyboard_scroll :: proc(app: ^App, t: ^Tab, start: base.Handle, k: Key_Scroll) -
 }
 
 @(private = "file")
-draw_size :: proc(app: ^App) -> [2]f32 { return {app.page_rect.max.x - app.page_rect.min.x, app.page_rect.max.y - app.page_rect.min.y} }
+draw_size :: proc(app: ^App) -> [2]f32 { return {active_window(app).page_rect.max.x - active_window(app).page_rect.min.x, active_window(app).page_rect.max.y - active_window(app).page_rect.min.y} }

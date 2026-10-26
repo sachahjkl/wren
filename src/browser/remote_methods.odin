@@ -157,12 +157,13 @@ builder :: proc() -> strings.Builder { return strings.builder_make(context.temp_
 
 // The window rectangle (x, y, w, h) of a laid out element, whether or not it is in view.
 element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32, ok: bool) {
+	wnd := active_window(app)
 	if t.page == nil || !t.layout.valid { return {}, false }
-	r, found := lay.box_of(&t.layout, h, draw.rect_size(app.page_rect), t.scroll)
+	r, found := lay.box_of(&t.layout, h, draw.rect_size(wnd.page_rect), t.scroll)
 	if !found { return {}, false }
 	b := r.bounds   // where the border box is drawn (its transforms applied)
 	// document coordinates, a position: fixed box's too (box_of adds the scroll to the fixed space's)
-	x, y := app.page_rect.min.x + b.min.x, app.page_rect.min.y + b.min.y - t.scroll
+	x, y := wnd.page_rect.min.x + b.min.x, wnd.page_rect.min.y + b.min.y - t.scroll
 	return {x, y, b.max.x - b.min.x, b.max.y - b.min.y}, true
 }
 
@@ -170,7 +171,7 @@ element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32
 element_visible :: proc(app: ^App, t: ^Tab, h: base.Handle) -> bool {
 	r, ok := element_window_rect(app, t, h)
 	if !ok || r[2] <= 0 || r[3] <= 0 { return false }
-	pr := app.page_rect
+	pr := active_window(app).page_rect
 	return r[0] < pr.max.x && r[0] + r[2] > pr.min.x && r[1] < pr.max.y && r[1] + r[3] > pr.min.y
 }
 
@@ -546,6 +547,7 @@ m_outer_html :: proc(app: ^App, c: ^Call) -> Reply {
 
 @(private = "file")
 m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
@@ -565,7 +567,7 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 		j_str(&b, "outerHTML", html[:min(len(html), 300)])
 		if r, ok := element_window_rect(app, t, h); ok {
 			s := f64(page_scale(app))
-			j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", f64(r[0] - app.page_rect.min.x) / s, f64(r[1] - app.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s))
+			j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s))
 		}
 		j_end(&b)
 	}
@@ -576,6 +578,7 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 // The element's box: in CSS pixels from the page's top-left corner (what getBoundingClientRect says), and in window pixels.
 @(private = "file")
 m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
@@ -587,7 +590,7 @@ m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
 	if !ok { return fail(remote.ERR_FAILED, "the element has no box (display: none, or the layout is not made yet)") }
 	s := f64(page_scale(app))
 	return done(fmt.tprintf(`{{"found":true,"visible":%v,"x":%.2f,"y":%.2f,"width":%.2f,"height":%.2f,"window":{{"x":%.1f,"y":%.1f,"width":%.1f,"height":%.1f}}}}`,
-		element_visible(app, t, h), f64(r[0] - app.page_rect.min.x) / s, f64(r[1] - app.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
+		element_visible(app, t, h), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
 }
 
 @(private = "file")
@@ -672,7 +675,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			return
 		}
 		rect: [4]int
-		pr := app.page_rect
+		pr := active_window(app).page_rect
 		switch op.target {
 		case .Window:
 		case .Page: rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
@@ -799,7 +802,7 @@ point_of :: proc(app: ^App, c: ^Call, xk, yk: string) -> (p: [2]f32, ok: bool) {
 	if !hx || !hy { return {}, false }
 	if space, _ := remote.param_string(c.params, "space"); space == "window" { return {f32(x), f32(y)}, true }
 	s := page_scale(app)
-	return app.page_rect.min + {f32(x) * s, f32(y) * s}, true
+	return active_window(app).page_rect.min + {f32(x) * s, f32(y) * s}, true
 }
 
 @(private = "file")
@@ -875,6 +878,7 @@ click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: i
 // A click on an element: it is scrolled into view first, and the click goes to the middle of its box once the page has
 // scrolled.
 click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
+	wnd := active_window(app)
 	r := &the_remote
 	app.frames_requested = max(app.frames_requested, 2)
 	if r.frame_no < op.until { return }
@@ -889,11 +893,11 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 	switch op.stage {
 	case 0:
-		pr := app.page_rect
+		pr := wnd.page_rect
 		center_y := er[1] + er[3] / 2
 		if center_y < pr.min.y || center_y > pr.max.y {
 			// document coordinates of the element's middle, to the middle of the view
-			doc_y := er[1] - app.page_rect.min.y + t.scroll
+			doc_y := er[1] - wnd.page_rect.min.y + t.scroll
 			scroll_document_to(app, t, max(doc_y + er[3] / 2 - (pr.max.y - pr.min.y) / 2, 0), false)
 			op.until = r.frame_no + 2
 		}
@@ -966,7 +970,7 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 			y, yok := num(pt[1])
 			if !xok || !yok { continue }
 			p := [2]f32{x, y}
-			append(&op.via, space == "window" ? p : app.page_rect.min + p * s)
+			append(&op.via, space == "window" ? p : active_window(app).page_rect.min + p * s)
 		}
 	}
 	op.until = the_remote.frame_no

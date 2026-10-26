@@ -62,6 +62,7 @@ page_a11y_graft :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 
 // After the chrome's build (its tree sent): the page's requests, then its tree when it changed.
 page_a11y_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	grafted := pa.grafted
 	pa.grafted = 0
 	t := current_tab(app)
@@ -84,14 +85,14 @@ page_a11y_frame :: proc(app: ^App) {
 		st.tab_id, st.tree, st.sent, st.sig = t.id, tree, false, 0
 		platform.a11y_diff_reset(&st.diff)
 	}
-	size := draw.rect_size(app.page_rect)
+	size := draw.rect_size(wnd.page_rect)
 	sig := page_a11y_signature(app, t, p, f, size)
 	if st.sent && sig == st.sig { return }
 
 	platform.a11y_update_clear(&st.full)
 	v := a11y.View{
 		src = {doc = p.doc, styled = p.styled, forms = f},
-		layout = &t.layout, viewport = size, doc_scroll = t.scroll, origin = app.page_rect.min,
+		layout = &t.layout, viewport = size, doc_scroll = t.scroll, origin = wnd.page_rect.min,
 		focus = forms_view(app).page_focus ? f.focus : base.NIL_HANDLE, title = t.title, url = t.url,
 		max_nodes = 50_000,
 	}
@@ -134,7 +135,7 @@ page_a11y_signature :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, 
 	s := Sig{
 		mutations = p.doc.mutations, tree_v = p.doc.tree_version, attr_v = p.doc.attr_version, forms_serial = f.serial,
 		layout_mut = u64(t.layout.mutations), focus = f.focus, page_focus = forms_view(app).page_focus, scroll = t.scroll,
-		rect = app.page_rect, title_hash = hash.fnv64a(transmute([]u8)t.title), url_hash = hash.fnv64a(transmute([]u8)t.url),
+		rect = active_window(app).page_rect, title_hash = hash.fnv64a(transmute([]u8)t.title), url_hash = hash.fnv64a(transmute([]u8)t.url),
 	}
 	_ = size
 	return hash.fnv64a(mem.ptr_to_bytes(&s))
@@ -143,6 +144,7 @@ page_a11y_signature :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, 
 // A request of a screen reader for a node of the page: what the user would do.
 @(private = "file")
 page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, r: platform.A11y_Request) {
+	wnd := active_window(app)
 	h := base.Handle(r.target)
 	if h == base.NIL_HANDLE || p.doc == nil { return }
 	if r.target == u64(p.doc.root) && r.action != .Scroll_Into_View { return }
@@ -170,7 +172,7 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, r:
 		// a range or number input: one step (stepUp / stepDown, firing input and change as the arrow keys do)
 		forms.step(f, h, r.action == .Increment ? 1 : -1, by_user = true)
 	case .Scroll_Down, .Scroll_Up:
-		page_h := app.page_rect.max.y - app.page_rect.min.y
+		page_h := wnd.page_rect.max.y - wnd.page_rect.min.y
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_h * 0.9 : 60
 		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), 0)
 	}

@@ -877,7 +877,7 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 @(private = "file")
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
 	if t.page == nil || !t.layout.valid { return }
-	view := draw.rect_size(app.page_rect)
+	view := draw.rect_size(active_window(app).page_rect)
 	if r, ok := lay.box_of(&t.layout, h, view, 0); ok { t.scroll = max(r.border.min.y - view.y * 0.15, 0); app.frames_requested = max(app.frames_requested, 3) }
 }
 
@@ -1111,11 +1111,12 @@ crumbs_make :: proc(p: ^page.Page, e: ^Dev_Elements) {
 // While picking (Ctrl+Shift+C): the element under the pointer in the page is shown, a click selects it.
 @(private = "file")
 elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
+	wnd := active_window(app)
 	e.picked = base.NIL_HANDLE
 	if !dev.picking { return }
 	mp := ui.mouse_pos()
-	if !draw.rect_contains(app.page_rect, mp) || !t.layout.valid { return }
-	h := hit_test(&t.layout, mp - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll)
+	if !draw.rect_contains(wnd.page_rect, mp) || !t.layout.valid { return }
+	h := hit_test(&t.layout, mp - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 	if h == base.NIL_HANDLE { return }
 	e.picked = h
 	app.frames_requested = max(app.frames_requested, 2)
@@ -1123,11 +1124,12 @@ elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 
 // Called by route_page_input for each event of the frame while picking: the click picks, nothing reaches the page.
 devtools_pick_event :: proc(app: ^App, t: ^Tab, kind: int, pos: draw.Vec2, pressed: bool) -> bool {
+	wnd := active_window(app)
 	if !dev.picking || !dev.visible || t == nil || t.page == nil { return false }
-	if !draw.rect_contains(app.page_rect, pos) { return false }
+	if !draw.rect_contains(wnd.page_rect, pos) { return false }
 	if pressed {
 		h := dev.els.picked
-		if h == base.NIL_HANDLE && t.layout.valid { h = hit_test(&t.layout, pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+		if h == base.NIL_HANDLE && t.layout.valid { h = hit_test(&t.layout, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
 		if h != base.NIL_HANDLE { elements_select(t, h) }
 		dev.picking = false
 		app.frames_requested = max(app.frames_requested, 3)

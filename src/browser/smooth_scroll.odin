@@ -204,8 +204,9 @@ find_anim :: proc(s: ^Smooth_Scroll, node: base.Handle) -> ^Scroller_Anim {
 
 // Current offset and largest offset of a scroller (NIL: the document, vertical only).
 scroller_state :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (cur, limit: [2]f32, ok: bool) {
+	wnd := active_window(app)
 	if node == base.NIL_HANDLE {
-		h := app.page_rect.max.y - app.page_rect.min.y
+		h := wnd.page_rect.max.y - wnd.page_rect.min.y
 		return {0, t.scroll}, {0, max(t.layout.height - h, 0)}, t.layout.valid
 	}
 	m, mok := lay.scroll_max(&t.layout, node)
@@ -339,7 +340,7 @@ touch_scroll :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 @(private = "file")
 wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	l := &t.layout
-	h := lay.hit_test(l, p, draw.rect_size(app.page_rect), t.scroll)
+	h := lay.hit_test(l, p, draw.rect_size(active_window(app).page_rect), t.scroll)
 	if h.item == lay.NONE { return base.NIL_HANDLE }
 	can :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) -> bool {
 		_, limit, ok := scroller_state(app, t, node)
@@ -401,7 +402,7 @@ Bar_Hit :: struct {
 scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: bool) {
 	l := &t.layout
 	if !l.valid { return }
-	size := draw.rect_size(app.page_rect)
+	size := draw.rect_size(active_window(app).page_rect)
 	slop := l.settings.scrollbar_margin * l.scale   // the margin around a thin bar takes the press too
 	grow :: proc(r: lay.Rect, by: f32) -> lay.Rect { return {r.min - by, r.max + by} }
 	inside :: proc(r: lay.Rect, p: draw.Vec2) -> bool { return p.x >= r.min.x && p.x < r.max.x && p.y >= r.min.y && p.y < r.max.y }
@@ -429,12 +430,13 @@ scrollbar_at :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (hit: Bar_Hit, ok: boo
 // Pointer events for the scroll bars of the page (`ev.pos` in window coordinates). True when the event was theirs: a
 // press on a bar, the moves and the release of a thumb drag.
 scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
 	if t.page == nil || !t.layout.valid { return false }
 	s := smooth_of(t)
-	p := ev.pos - app.page_rect.min
+	p := ev.pos - wnd.page_rect.min
 	#partial switch ev.kind {
 	case .Mouse_Press:
-		if ev.button != .Left || !draw.rect_contains(app.page_rect, ev.pos) { return false }
+		if ev.button != .Left || !draw.rect_contains(wnd.page_rect, ev.pos) { return false }
 		hit, ok := scrollbar_at(app, t, p)
 		when PACING_DEBUG { fmt.eprintln("scrollbar press", p, ok, hit) }
 		if !ok || hit.limit <= 0 { return false }

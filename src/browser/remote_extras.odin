@@ -202,12 +202,13 @@ need_string_extra :: proc(c: ^Call, key: string) -> (string, Reply) {
 
 // The HTML and the boxes next to a snapshot's picture.
 snapshot_files :: proc(app: ^App, t: ^Tab, prefix: string) -> string {
+	wnd := active_window(app)
 	if t == nil || t.page == nil { return "" }
 	html := page.serialize_html(t.page.doc, t.page.doc.root, false)
 	if err := os.write_entire_file(strings.concatenate({prefix, ".html"}, context.temp_allocator), transmute([]byte)html); err != nil { return "cannot write the .html" }
 	s := f64(page_scale(app))
 	b := strings.builder_make(context.temp_allocator)
-	fmt.sbprintf(&b, `{{"url":%s,"title":%s,"width":%d,"height":%d,"scale":%.3f,"scroll":%.1f,"elements":[`, remote.quote(t.url), remote.quote(t.title), int(app.page_rect.max.x - app.page_rect.min.x), int(app.page_rect.max.y - app.page_rect.min.y), s, f64(t.scroll) / s)
+	fmt.sbprintf(&b, `{{"url":%s,"title":%s,"width":%d,"height":%d,"scale":%.3f,"scroll":%.1f,"elements":[`, remote.quote(t.url), remote.quote(t.title), int(wnd.page_rect.max.x - wnd.page_rect.min.x), int(wnd.page_rect.max.y - wnd.page_rect.min.y), s, f64(t.scroll) / s)
 	hs, _ := page.query_all(t.page, "*", 5000)
 	first := true
 	for h in hs {
@@ -218,7 +219,7 @@ snapshot_files :: proc(app: ^App, t: ^Tab, prefix: string) -> string {
 		id, _ := dom.get_attribute(t.page.doc, h, "id")
 		if !first { strings.write_byte(&b, ',') }
 		first = false
-		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, remote.quote(n.name), remote.quote(id), f64(r[0] - app.page_rect.min.x) / s, f64(r[1] - app.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
+		fmt.sbprintf(&b, `{{"tag":%s,"id":%s,"x":%.1f,"y":%.1f,"w":%.1f,"h":%.1f}}`, remote.quote(n.name), remote.quote(id), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y + t.scroll) / s, f64(r[2]) / s, f64(r[3]) / s)
 	}
 	strings.write_string(&b, "]}\n")
 	if err := os.write_entire_file(strings.concatenate({prefix, ".json"}, context.temp_allocator), transmute([]byte)strings.to_string(b)); err != nil { return "cannot write the .json" }
