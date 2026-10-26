@@ -27,6 +27,14 @@ qcms = { version = "=0.3.0", default-features = false, features = ["iccv4-enable
 # WOFF2 web fonts (src/woff2.rs): Dropbox's Brotli decompressor, safe Rust (bounds checks kept: no "unsafe" feature)
 brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }
 
+# The toolkit's native text backend (Fontations, HarfRust, ICU4X), built into this library when Wren is built with
+# WREN_TEXT=native: a program links one Rust static library at most (each carries Rust's standard library). Its gt_*
+# functions stay exported; the toolkit is then built with -define:FONT_NATIVE_LINK=false.
+gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
+
+[features]
+text = ["dep:gt_text"]
+
 [dev-dependencies]
 # tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
 skrifa = "=0.44.0"

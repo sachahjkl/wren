@@ -6,6 +6,10 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- `WREN_TEXT=native build.bat release` builds `build\wren_native.exe`, whose text is shaped by Fontations, HarfRust and ICU4X (the toolkit's native text backend, built into the image decoders' library: one Rust library per program) instead of DirectWrite: the test pages draw the same to within 0.07 % of their pixels, shaping is 2.6 times faster, the exe is 2.2 MB larger.
+- Kerning is kept under `letter-spacing` and `font-feature-settings` (toolkit 0.38.0: DirectWrite dropped its default features when given a list).
+- Toolkit 0.38.2: `ui.text_edit` wraps long lines, grows with its content and gives its caret rectangle (for the shell's own editors).
+
 - Text goes through the toolkit's new text backend interface (toolkit 0.37.0): DirectWrite is one backend among others, with the same result (pages captured before and after are identical); the `text.backend` preference (`default`, `dwrite`, `native`, at restart) picks the shaper of a build that has the native one.
 
 - **`SharedWorker`**: one worker shared by every document of the origin (and storage key) that names the same script and name, hosted by a page of its own that shows nothing; `connect` events at its `SharedWorkerGlobalScope` (`onconnect`, `e.ports[0]`, `self.name`, `close()`), the document's `port` talks to it thread to thread; it stops when the last document using it closes (`{extendedLifetime: true}`: after `shared_workers.extended_lifetime_ms`); a script that cannot load fires `error` at its `SharedWorker` objects; `shared_workers.enabled`.
