@@ -232,7 +232,7 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	if chrome_frames.pending_scroll != 0 {
 		for t in tabs_all(app) {
 			if t.id != chrome_frames.pending_tab || t.kind != .Web || t.page == nil { continue }
-			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(app.page_rect).y, 0)), false)
+			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0)), false)
 		}
 		chrome_frames.pending_scroll = 0
 		app.frames_requested = max(app.frames_requested, 2)
@@ -383,7 +383,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	// the chrome's cursor over the chrome; over the page, the page's as the last full frame set it (page_cursor.odin
 	// hit-tests the layout, which is not read here)
 	pos := ui.mouse_pos()
-	if !draw.rect_contains(app.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
+	if !draw.rect_contains(active_window(app).page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
 		platform.set_cursor(app.win, ui.cursor(app.ui_state))
 	}
 	platform.frame_gate_stage(gate, .Drawing)
@@ -426,9 +426,10 @@ shell_split_input :: proc(app: ^App, polled: []platform.Event) -> []platform.Eve
 
 @(private = "file")
 shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Event, hold_buttons_and_keys: bool) {
+	wnd := active_window(app)
 	t := current_tab(app)
 	page_shown := t != nil && t.kind == .Web
-	over_page := page_shown && draw.rect_contains(app.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
+	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
 	button := int(ev.button) % len(chrome_frames.press_to_page)
 	#partial switch ev.kind {
 	case .Mouse_Move:
@@ -453,7 +454,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)
 	case .Scroll:
 		if over_page && .Ctrl not_in ev.mods && t.page != nil {
-			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
+			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
 			return
 		}
 		if over_page { append(&chrome_frames.deferred, ev); return }   // zoom: the page's layout
@@ -471,7 +472,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 shell_async_scroll :: proc(app: ^App, t: ^Tab, dy: f32) {
 	if chrome_frames.pending_tab != t.id { chrome_frames.pending_scroll, chrome_frames.pending_tab = 0, t.id }
 	limit: f32
-	if !chrome_frames.page_locked { limit = max(t.layout.height - draw.rect_size(app.page_rect).y, 0) }   // (page thread: not read)
+	if !chrome_frames.page_locked { limit = max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0) }   // (page thread: not read)
 	if s := shell_snapshot_of(t.id); s != nil { limit = max(limit, s.limit) }
 	to := clamp(t.scroll + chrome_frames.pending_scroll + dy, 0, limit)
 	chrome_frames.pending_scroll = to - t.scroll

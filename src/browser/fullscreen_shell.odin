@@ -63,7 +63,7 @@ fullscreen_shell_destroy :: proc(app: ^App) {
 
 @(private = "file")
 fullscreen_settle_arm :: proc(app: ^App, fs: ^Window_Fullscreen, top: ^page.Page, tab_id: u64, changes: bool) {
-	fs.settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(app.page_rect), changes = changes}
+	fs.settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(active_window(app).page_rect), changes = changes}
 }
 
 // Each frame of the window `w` (the active one), before the animation frames: once the page has been laid out for the
@@ -79,7 +79,7 @@ fullscreen_shell_settle :: proc(app: ^App, w: ^Browser_Window) {
 		return
 	}
 	settle.frames += 1
-	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(app.page_rect) != settle.area : settle.frames >= 2)
+	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(active_window(app).page_rect) != settle.area : settle.frames >= 2)
 	if !ready { app.frames_requested = max(app.frames_requested, 2); return }
 	settle.armed = false
 	page.fullscreen_settled(tab_of.page)

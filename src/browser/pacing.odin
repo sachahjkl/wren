@@ -305,7 +305,7 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 	step := app.win.size != app.r.size
 	if t := current_tab(app); t != nil && t.page != nil {
 		if len(t.smooth.anims) > 0 { wants = true; cause = .Scrolling }
-		if pp := &window_own(app).page_prep; pp.tab == t && pp.size != draw.rect_size(app.page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
+		if pp := &window_own(app).page_prep; pp.tab == t && pp.size != draw.rect_size(active_window(app).page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
 	}
 	held := pacer.resize_held || pacer.resizing
 	if !resize_echo(held, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) {

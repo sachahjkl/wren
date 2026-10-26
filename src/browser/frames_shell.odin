@@ -276,12 +276,13 @@ frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Fra
 // A pointer event of the page area over a frame: handled as the page's own input on the frame's stand-in tab, with
 // the page area moved to the frame's content box. True when it was a frame's.
 frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) -> bool {
+	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Mouse_Move, .Mouse_Press, .Mouse_Release, .Scroll:
 	case: return false
 	}
 	fi := &window_own(app).frames
-	fv := frame_under(app, t, ev.pos, app.page_rect)
+	fv := frame_under(app, t, ev.pos, wnd.page_rect)
 	// hover leaves a frame the pointer left
 	if ev.kind == .Mouse_Move {
 		now: ^page.Page = fv != nil ? fv.tab.page : nil
@@ -306,9 +307,9 @@ frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int)
 		fi.press = fi.focus
 	}
 	if fv == nil { return false }
-	saved := app.page_rect
-	app.page_rect = fv.rect
-	defer app.page_rect = saved
+	saved := wnd.page_rect
+	wnd.page_rect = fv.rect
+	defer wnd.page_rect = saved
 	used := frame_pointer_event(app, fv, ev, index)
 	if ev.kind == .Mouse_Move {
 		hovered := hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll)
@@ -328,7 +329,7 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 	t := &fv.tab
 	if forms_route_event(app, t, ev, index) { return true }
 	if t.page == nil { return true }
-	rect := app.page_rect
+	rect := active_window(app).page_rect
 	size := draw.rect_size(rect)
 	#partial switch ev.kind {
 	case .Scroll:
@@ -380,15 +381,16 @@ frame_anchor :: proc(d: ^dom.Document, h: base.Handle) -> (el: base.Handle, href
 // Keyboard and text events while a frame has the keyboard (the last press was in it): its document's. True when the
 // event was a key or text event the frame took.
 frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
+	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Key_Press, .Key_Release, .Text:
 	case: return false
 	}
 	fv := frames_focused(app)
 	if fv == nil { return false }
-	saved := app.page_rect
-	app.page_rect = fv.rect
-	defer app.page_rect = saved
+	saved := wnd.page_rect
+	wnd.page_rect = fv.rect
+	defer wnd.page_rect = saved
 	forms_route_event(app, &fv.tab, ev, index)
 	return true
 }

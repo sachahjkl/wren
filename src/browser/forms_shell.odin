@@ -259,7 +259,7 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 // the bounds of the transformed box when a CSS transform applies.
 @(private = "file")
 layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return draw.Rect{r.bounds.min, r.bounds.max}, true
 }
@@ -267,7 +267,7 @@ layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
 // A document point relative to the border box of `h`, in the box's own (untransformed) coordinates: offsetX / offsetY.
 @(private = "file")
 layout_offset :: proc(t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return lay.box_point_to_local(r, doc_pos) - r.border.min, true
 }
@@ -287,10 +287,11 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 }
 
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
+	wnd := active_window(app)
 	if t == nil || h == base.NIL_HANDLE { return }
 	r, ok := layout_rect(t, h)
 	if !ok { return }
-	view_h := app.page_rect.max.y - app.page_rect.min.y
+	view_h := wnd.page_rect.max.y - wnd.page_rect.min.y
 	if r.min.y < t.scroll { t.scroll = max(r.min.y - 16, 0) } else if r.max.y > t.scroll + view_h { t.scroll = r.max.y - view_h + 16 }
 }
 
@@ -1067,7 +1068,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	f := page.page_forms(p)
 	#partial switch ev.kind {
 	case .Mouse_Press:
-		inside := draw.rect_contains(app.page_rect, ev.pos)
+		inside := draw.rect_contains(active_window(app).page_rect, ev.pos)
 		fv.page_focus = inside
 		if fv.popup.open {
 			if draw.rect_contains(fv.popup.rect, ev.pos) {

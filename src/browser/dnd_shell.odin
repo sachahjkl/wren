@@ -177,10 +177,11 @@ chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 
 @(private = "file")
 page_point :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (hit: base.Handle, cx, cy: f64) {
+	wnd := active_window(app)
 	scale := max(page_scale(app), 0.01)
-	if t.layout.valid { hit = hit_test(&t.layout, pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+	if t.layout.valid { hit = hit_test(&t.layout, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
 	if hit == base.NIL_HANDLE && t.page != nil { hit = t.page.body }
-	return hit, f64((pos.x - app.page_rect.min.x) / scale), f64((pos.y - app.page_rect.min.y) / scale)
+	return hit, f64((pos.x - wnd.page_rect.min.x) / scale), f64((pos.y - wnd.page_rect.min.y) / scale)
 }
 
 @(private = "file")
@@ -223,7 +224,7 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 	}
 	if kind == .None { return false }
 	dnd.candidate, dnd.cand_page, dnd.cand_source, dnd.cand_kind = true, p, source, kind
-	dnd.cand_pos, dnd.cand_local = ev.pos, ev.pos - app.page_rect.min + {0, t.scroll}
+	dnd.cand_pos, dnd.cand_local = ev.pos, ev.pos - active_window(app).page_rect.min + {0, t.scroll}
 	dnd.cand_text = strings.clone(text)
 	return true
 }
@@ -307,7 +308,7 @@ dnd_sync :: proc(user: rawptr, w: ^platform.Window, ev: platform.Event) -> Maybe
 	t := dnd.sync_tab
 	p := dnd.src_page
 	if t == nil || p == nil || t.page != p || page.drag_session(p) == nil { return nil }
-	over_page := draw.rect_contains(app.page_rect, ev.pos)
+	over_page := draw.rect_contains(active_window(app).page_rect, ev.pos)
 	#partial switch ev.kind {
 	case .Drop_Enter, .Drop_Over:
 		if !over_page {
@@ -448,7 +449,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		}
 		dnd.handoff_pending = false
 		dnd_image_move(ev.pos)
-		if draw.rect_contains(app.page_rect, ev.pos) {
+		if draw.rect_contains(active_window(app).page_rect, ev.pos) {
 			dnd.over_chrome = false
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
@@ -528,7 +529,7 @@ end_external :: proc() {
 dnd_external :: proc(app: ^App, ev: platform.Event) {
 	data := platform.drop_data(app.win)
 	t := web_tab(app)
-	over_page := t != nil && draw.rect_contains(app.page_rect, ev.pos) && dnd_page_events(app)
+	over_page := t != nil && draw.rect_contains(active_window(app).page_rect, ev.pos) && dnd_page_events(app)
 	if t != nil && dnd.ext_page != nil && t.page != dnd.ext_page { end_external() }
 	#partial switch ev.kind {
 	case .Drop_Enter, .Drop_Over:

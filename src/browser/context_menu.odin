@@ -143,19 +143,20 @@ page_context_press :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 // The Menu key / Shift+F10 while the page has the keyboard: at the focused element, else at the selection, else at
 // the top left corner of the page.
 page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	p := t.page
 	if p == nil { return }
 	em := ui.font_size()
-	pos := app.page_rect.min + {em, em}
+	pos := wnd.page_rect.min + {em, em}
 	target := p.body
-	view := draw.rect_size(app.page_rect)
+	view := draw.rect_size(wnd.page_rect)
 	if p.formctl != nil {
 		f := page.page_forms(p)
 		if f.focus != base.NIL_HANDLE {
 			target = f.focus
 			if r, ok := lay.box_of(&t.layout, f.focus, view, t.scroll); ok {
 				// (box_of's rects are document coordinates for every box, position: fixed ones included)
-				pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
+				pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
 			}
 		}
 	}
@@ -165,11 +166,11 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 		if n != nil {
 			el := n.kind == .Text ? n.parent : a.node
 			target = el
-			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
+			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
 		}
 	}
-	pos = {clamp(pos.x, app.page_rect.min.x, app.page_rect.max.x), clamp(pos.y, app.page_rect.min.y, app.page_rect.max.y)}
-	page_context_menu(app, t, target, pos, pos - app.page_rect.min + {0, t.scroll}, false, keyboard = true)
+	pos = {clamp(pos.x, wnd.page_rect.min.x, wnd.page_rect.max.x), clamp(pos.y, wnd.page_rect.min.y, wnd.page_rect.max.y)}
+	page_context_menu(app, t, target, pos, pos - wnd.page_rect.min + {0, t.scroll}, false, keyboard = true)
 }
 
 tab_context_menu :: proc(app: ^App, index: int, pos: [2]f32, keyboard := false) {

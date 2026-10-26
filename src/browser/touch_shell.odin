@@ -169,6 +169,7 @@ touch_frame :: proc(app: ^App) {
 
 @(private = "file")
 touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
+	wnd := active_window(app)
 	if ge.kind == .None || t.page == nil { return }
 	p := t.page
 	switch ge.kind {
@@ -183,7 +184,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		}
 		if ge.first { tsh.x_ok, tsh.y_ok = touch_pan_axes(-ge.pan, tsh.blocked) }
 		d := touch_scroll_delta(ge.pan, tsh.x_ok, tsh.y_ok)
-		if d != {} { tsh.scroller = touch_scroll(app, t, ge.pos - app.page_rect.min, d) }
+		if d != {} { tsh.scroller = touch_scroll(app, t, ge.pos - wnd.page_rect.min, d) }
 	case .Fling:
 		if tsh.cancelled || !config.bool_of(&app.prefs, "browser.touch.fling") { return }
 		dist, ms := platform.touch_fling(ge.velocity, f32(config.float_of(&app.prefs, "browser.touch.fling_friction")))
@@ -200,7 +201,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		app.frames_requested = max(app.frames_requested, 3)
 	case .Long_Press:
 		if tsh.cancelled { return }
-		local := ge.pos - app.page_rect.min + {0, t.scroll}
+		local := ge.pos - wnd.page_rect.min + {0, t.scroll}
 		page_context_press(app, t, ge.pos)
 		if t.page == p { page_context_menu(app, t, tsh.hit, ge.pos, local, false) }
 	case .End:
