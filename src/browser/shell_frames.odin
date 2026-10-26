@@ -359,7 +359,12 @@ shell_chrome_frame :: proc(app: ^App) {
 	saved_probe := latency_probe_save()
 	defer latency_probe_restore(saved_probe)
 
+	// (windows.odin: Frame_Stage. The poll may begin a loop of the system, whose frames are chrome frames: window_frame.)
+	outer_stage := frame_stage
+	frame_stage = .Poll
 	polled := platform.poll_events(app.win, false)   // (nil inside the system's resize loop: nothing new to read)
+	frame_stage = .Busy
+	defer frame_stage = outer_stage
 	chrome := shell_split_input(app, polled)
 	pacer_begin_frame(app, chrome)
 	render.resize(&app.r, app.win.size)

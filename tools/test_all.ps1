@@ -576,6 +576,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
 } -UiOnly
+Step 'the system menu of the Wren icon (tools\system_menu_e2e.ps1: a click on the icon opens it, Escape closes it, tabs on top and in a sidebar; its loop paints the window meanwhile, and the process must live: the menu was opened during the build and its frames were built inside it, the crash of the 2026-10-26 experimental build)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\system_menu_e2e.ps1
+} -UiOnly
 }
 # AddressSanitizer on the unit tests of every package (tools\asan.ps1, three packages at a time): -CI and full runs, unless -NoAsan (the CI runs
 # it as a job of its own, beside the others).

@@ -22,6 +22,7 @@ package browser
 //   * a closed window closes its tabs; the last one ends the browser.
 
 import "core:mem"
+import "core:slice"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -302,12 +303,42 @@ window_adopt_primary :: proc(app: ^App, w: ^platform.Window) -> ^Browser_Window 
 	return bw
 }
 
+// Where the thread is in a frame (full or chrome only), for the frames a window asks for from its window procedure
+// (window_on_frame: WM_PAINT inside a loop of the system). Such a loop is entered from a frame's poll (a press on the
+// window's border, Alt+Space): a frame made there comes before anything of the frame that polls. A loop entered later,
+// during the build or the drawing (TrackPopupMenu, a modal dialog: they pump the thread's messages), would build the
+// interface inside the one being built: ui.begin_build empties the parent stack, frees the frame arena and selects another
+// window's state under it, and the outer build goes on with that (the crash of 2026-10-26: ui.spacer after app_icon,
+// the system menu opened from the build). Those frames are not made: the window repaints at the next pass.
+Frame_Stage :: enum u8 {
+	None,   // between frames
+	Poll,   // the frame's wait and poll: a loop of the system may run its frames here
+	Busy,   // the page phase, the build, the drawing: no other frame may begin
+}
+
+frame_stage: Frame_Stage
+
+// A frame from the window procedure can be made now (frame_stage).
+window_frame_allowed :: proc(app: ^App, bw: ^Browser_Window) -> bool {
+	if ui.building() { return false }   // (a build of any window: the developer tools' own too)
+	switch frame_stage {
+	case .None: return true
+	case .Poll: return !chrome_frames.nested || app.active == bw   // (a chrome frame is the current window's: shell_frames.odin)
+	case .Busy: return false
+	}
+	return false
+}
+
 window_on_frame :: proc(user: rawptr) {
 	bw := (^Browser_Window)(user)
 	app := the_app
 	if app == nil || bw.win == nil { return }
+	if !window_frame_allowed(app, bw) { bw.win.paint_requested = true; return }
+	// the window whose frame polled (or the pass's) is the App's again afterwards: its frame goes on with its own tabs
+	prev := app.active
 	window_activate(app, bw)
 	window_frame(app)   // shell_frames.odin
+	if prev != nil && prev != bw && slice.contains(app.windows[:], prev) { window_activate(app, prev) }
 }
 
 // Shows the window (maximized when a restored session left it so: platform.set_placement).
@@ -392,6 +423,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	free(w.ui)
 	delete(w.title)
 	dnd_window_detach(w.win)
+	window_chrome_forget(w.win)
 	platform.destroy_window(w.win)
 	free(w)
 	if was_front || app.front == w { app.front = nil }
