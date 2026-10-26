@@ -174,6 +174,9 @@ JSValue wjr_CloseEvent_get_wasClean(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Comment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CompositionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CompositionEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CompressionStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CompressionStream_get_readable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CompressionStream_get_writable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CountQueuingStrategy_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CountQueuingStrategy_get_highWaterMark(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CountQueuingStrategy_get_size(JSContext *ctx, JSValueConst this_val);
@@ -408,6 +411,9 @@ JSValue wjr_DataTransfer_constructor(JSContext *ctx, JSValueConst this_val, int 
 JSValue wjr_DataTransfer_get_files(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DataTransfer_get_items(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DataTransfer_get_types(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DecompressionStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DecompressionStream_get_readable(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_DecompressionStream_get_writable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DocumentFragment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DocumentOrShadowRoot_getAnimations(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -12683,8 +12689,8 @@ static const wj_member wj_m_ClipboardItem[] = {
     { "supports", WJ_M_STATIC_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CompressionStream[] = {
-    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CompressionStream_get_readable, NULL, 0 },
+    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CompressionStream_get_writable, NULL, 0 },
 };
 static const wj_member wj_m_CookieStoreManager[] = {
     { "subscribe", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
@@ -12989,8 +12995,8 @@ static const wj_member wj_m_DataTransferItemList[] = {
     { "clear", WJ_M_METHOD, 0, 0, wjr_DataTransferItemList_clear, NULL, NULL, 0 },
 };
 static const wj_member wj_m_DecompressionStream[] = {
-    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "readable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DecompressionStream_get_readable, NULL, 0 },
+    { "writable", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_DecompressionStream_get_writable, NULL, 0 },
 };
 static const wj_member wj_m_ElementInternals[] = {
     { "shadowRoot", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ElementInternals_get_shadowRoot, NULL, 0 },
@@ -18410,7 +18416,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_ClipboardItem, .n_members = 4, .subtree_end = 89,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CompressionStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "CompressionStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_CompressionStream_constructor,
       .members = wj_m_CompressionStream, .n_members = 2, .subtree_end = 90,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18534,7 +18540,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_DataTransferItemList, .n_members = 4, .subtree_end = 120,
       .index_get = wjr_DataTransferItemList_index_get, .length_get = wjr_DataTransferItemList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DecompressionStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "DecompressionStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_DecompressionStream_constructor,
       .members = wj_m_DecompressionStream, .n_members = 2, .subtree_end = 121,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
