@@ -367,15 +367,15 @@ Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 			usage, quota = storage_estimate(sm, ip.key, bucket, p.settings.idb.quota_bytes, p.settings.web.storage_quota)
 		} else {
 			bytes, _, _ := idb.manager_usage(&sm.idb.m, bucket_key(ip.key, bucket))
-			usage, quota = bytes, p.settings.idb.quota_bytes
+			// (storage_estimate counts the origin private file system with IndexedDB: here it is added)
+			usage, quota = bytes + opfs_usage(sm.dir, bucket_key(ip.key, bucket)), p.settings.idb.quota_bytes
 		}
+		// every bucket has an origin private file system of its own (fs_store.odin; keyed by its storage key)
+		if sm != nil { quota += p.settings.sw.opfs_max_bytes }
 		if bucket == "" && sm != nil {
 			// the Cache API's bytes and allowance count too (cache_store.odin; keyed by origin)
 			usage += cache_usage(sm.dir, url.origin_serialize(p.env.origin, context.temp_allocator))
 			quota += p.settings.sw.cache_max_bytes
-			// and the origin private file system's (fs_store.odin; keyed by storage key)
-			usage += opfs_usage(sm.dir, ip.key)
-			quota += p.settings.sw.opfs_max_bytes
 		}
 		idb.w_uv(&out, u64(usage)); idb.w_uv(&out, u64(quota))
 	case IDB_OP_PERSIST:

@@ -1845,6 +1845,10 @@ WR_IMPORT("eventsource", "MessageEvent_lastEventId") int32_t wr_MessageEvent_las
 WR_IMPORT("fetch", "Fetch_promise") int32_t wr_Fetch_promise(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
 // The callback API (Fetch_start) with an abort signal and an optional buffer body.
 WR_IMPORT("fetch", "Fetch_startWithSignal") int32_t wr_Fetch_startWithSignal(const uint8_t *url, uint32_t url_len, uint32_t callback, int32_t user, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint64_t body_buffer, uint64_t signal, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint64_t *_ret);
+// A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's
+// thread; the finished record (read it with Fetch_status, Fetch_headers, Fetch_readBody..., then release it).
+// Not_Supported in a document (its thread is the page's), Timeout past `timeout_ms` (0: none), Network on a failure.
+WR_IMPORT("fetch", "Fetch_sync") int32_t wr_Fetch_sync(const uint8_t *url, uint32_t url_len, const uint8_t *method, uint32_t method_len, const uint8_t *headers, uint32_t headers_len, const uint8_t *body, uint32_t body_len, uint32_t options_mode, uint32_t options_credentials, uint32_t options_redirect, uint32_t options_referrer_policy, int32_t options_no_referrer, uint32_t options_cache, uint32_t timeout_ms, uint64_t *_ret);
 // response.text(): settles with the text (decoded as UTF-8) in the promise's text, its length as value.
 // A callback fetch can be read once it is done (Invalid_State before).
 WR_IMPORT("fetch", "Response_text") uint64_t wr_Response_text(uint64_t response);
@@ -2133,8 +2137,9 @@ WR_IMPORT("frames", "Window_set_name") void wr_Window_set_name(const uint8_t *va
 
 /* module fs */
 // navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-// context, for an opaque origin or a profile without a folder.
-WR_IMPORT("fs", "Fs_opfsRoot") int32_t wr_Fs_opfsRoot(uint64_t *_ret);
+// context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
+// "" for the default one; Invalid_State once the bucket was deleted.
+WR_IMPORT("fs", "Fs_opfsRoot") int32_t wr_Fs_opfsRoot(const uint8_t *bucket, uint32_t bucket_len, uint64_t *_ret);
 // getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
 // Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
 WR_IMPORT("fs", "Fs_getEntry") int32_t wr_Fs_getEntry(uint64_t root, const uint8_t *path, uint32_t path_len, const uint8_t *name, uint32_t name_len, int32_t directory, int32_t create, uint8_t *_buf, uint32_t _cap);
@@ -2431,6 +2436,9 @@ WR_IMPORT("scripts", "SharedWorker_connect") int32_t wr_SharedWorker_connect(con
 // new Worker(blobURL) / new SharedWorker(blobURL): the same, with the script the engine read from the Blob the
 // URL stands for (blob: URLs live in the realm that made them, the browser cannot fetch them).
 WR_IMPORT("scripts", "Worker_createScriptBytes") int32_t wr_Worker_createScriptBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
+// While wj_worker_error_to_global runs: the worker's uncaught error that its Worker object's error event did not
+// cancel, "message TAB filename" (HTML: it is reported in the owner's global, window.onerror).
+WR_IMPORT("scripts", "Worker_pendingError") int32_t wr_Worker_pendingError(uint8_t *_buf, uint32_t _cap);
 WR_IMPORT("scripts", "SharedWorker_connectBytes") int32_t wr_SharedWorker_connectBytes(const uint8_t *url, uint32_t url_len, const uint8_t *name, uint32_t name_len, int32_t type, int32_t extended_lifetime, const uint8_t *script, uint32_t script_len, uint64_t *_ret);
 // The port end of the SharedWorker's port, given once (the caller binds it with Port_bind); 0 afterwards.
 WR_IMPORT("scripts", "SharedWorker_portEnd") uint64_t wr_SharedWorker_portEnd(uint64_t worker);

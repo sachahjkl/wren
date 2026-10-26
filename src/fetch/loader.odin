@@ -814,6 +814,12 @@ send_response :: proc(t: ^Task, status: int, raw: http.Headers, m: http.Mime, ha
 @(private)
 check_task_mime :: proc(t: ^Task, m: http.Mime, has: bool, nosniff: bool) -> (why: string, ok: bool) {
 	if (t.destination == .Script || t.destination == .Worker) && t.script != .Wasm {
+		// HTML "fetch a classic worker script": over HTTP(S), a worker's script must have a JavaScript MIME type (a data:
+		// or blob: URL may have any)
+		if t.destination == .Worker && t.script == .Classic && (strings.has_prefix(t.target.href, "http:") || strings.has_prefix(t.target.href, "https:")) &&
+		   !(has && is_javascript_mime(m.type, m.subtype)) {
+			return "a worker's script must be served with a JavaScript MIME type", false
+		}
 		return check_script_mime(t.script, m.type, m.subtype, has, nosniff)
 	}
 	return check_destination_mime(t.destination, m, has, nosniff)

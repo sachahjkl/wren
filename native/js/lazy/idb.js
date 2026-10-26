@@ -1690,14 +1690,13 @@
   function persistOf(bucket, request) {
     return bucketCall(OP.PERSIST, (w) => { w.str(bucket); w.u8(request ? 1 : 0); }).u8() !== 0;
   }
-  const notSupported = (what) => Promise.reject(dom("NotSupportedError", what + " is not supported."));
 
   class StorageManager {
     constructor() { throw new TypeError("Illegal constructor"); }
     estimate() { try { sOf(smState, this); return Promise.resolve(estimateOf("")); } catch (e) { return Promise.reject(e); } }
     persist() { try { sOf(smState, this); return Promise.resolve(persistOf("", true)); } catch (e) { return Promise.reject(e); } }
     persisted() { try { sOf(smState, this); return Promise.resolve(persistOf("", false)); } catch (e) { return Promise.reject(e); } }
-    getDirectory() { try { sOf(smState, this); return getDirectory(); } catch (e) { return Promise.reject(e); } }
+    getDirectory() { try { sOf(smState, this); return getDirectory(""); } catch (e) { return Promise.reject(e); } }
   }
 
   const BUCKET_NAME = /^[a-z0-9][a-z0-9_-]{0,62}$/;
@@ -1767,7 +1766,7 @@
       } catch (e) { return Promise.reject(e); }
     }
     expires() { try { const B = sOf(sbState, this); return Promise.resolve(B.expires < 0 ? null : B.expires); } catch (e) { return Promise.reject(e); } }
-    getDirectory() { return notSupported("The origin private file system"); }
+    getDirectory() { try { return getDirectory(sOf(sbState, this).name); } catch (e) { return Promise.reject(e); } }
   }
   // ---- the global ---------------------------------------------------------------------------------------------------
   const factory = Object.create(IDBFactory.prototype);

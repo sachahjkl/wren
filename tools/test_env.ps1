@@ -221,6 +221,9 @@ function Invoke-WrenBuildIfStale([string]$Output, [string]$Flags, [scriptblock]$
             }
             if (-not $fresh) { break }
         }
+        # the JavaScript engine's image is compiled into the programs (src\js\image: #load)
+        $image = Join-Path $root 'build\js\wren_js.wasm'
+        if ($fresh -and (Test-Path $image) -and [IO.File]::GetLastWriteTimeUtc($image) -gt $built) { $fresh = $false }
     }
     if ($fresh) { return $true }
     & $Build
