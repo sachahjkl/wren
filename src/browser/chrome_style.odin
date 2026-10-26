@@ -504,6 +504,15 @@ toolbar_row :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
+// The toolbar as the window's title bar (the tabs in a sidebar: sidebar_titlebar): its gradient and the line along its
+// bottom; none along its top, the window's edge.
+titlebar_toolbar_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	c := (^Classic_Colors)(user)
+	r := b.rect
+	vgradient(dc, r, r.min.y, r.max.y, c.lit_mid, c.lit_bot)
+	draw.rect(dc, {{r.min.x, r.max.y - c.edge}, {r.max.x, r.max.y}}, c.rule)
+}
+
 ////////////////////////////////
 // The classic sidebar (tab_sidebar.odin)
 //
@@ -627,13 +636,3 @@ classic_side_tab_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	if t.selected < 0.999 { draw.pop_alpha(dc) }
 }
 
-// The new-tab button of the sidebar's head: the top's small trapezoid (classic_new_tab_button), of the same size as in
-// the row of tabs. Built in a row: its place is the row's.
-classic_side_new_tab :: proc(app: ^App, cc: ^Classic_Colors) -> (sig: ui.Signal) {
-	em := ui.font_size()
-	dpi := ui_scale_of(app)
-	cg := classic_geom(em, dpi, ui.dense(em * 2.6), chrome_cfg.slope_deg)   // (tab_strip's height and button width)
-	m, _, hb, _ := classic_plus_metrics(&cg, em, dpi, math.round(em * 2.4) + cg.d.ext)
-	ui.next({width = ui.px(tab_dims(m).box_w), height = ui.px(hb)})
-	return classic_plus_box(cc, m)
-}

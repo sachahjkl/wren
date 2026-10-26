@@ -11,6 +11,7 @@ reordering are those of the row of tabs (`src/browser/tab_strip.odin`); `src/bro
 | `browser.tabs.sidebar_collapsed` | off | Icons only. |
 | `browser.tabs.sidebar_collapsed_width` | 48 | 32 to 96 interface pixels. |
 | `browser.tabs.sidebar_row_em` | 2.4 | 1.6 to 5 em: the height of a tab. |
+| `browser.tabs.sidebar_address_min_em` | 10 | 4 to 40 em: the narrowest address bar in the title bar (below it, parts of the toolbar make room). |
 
 Change them in about:config, with `wren ctl pref set browser.tabs.position left`, from the View menu, from the `Tab bar`
 submenu of a tab's context menu or from the command palette (`Tabs: in a sidebar at the left`, `Tabs: at the top`, ...).
@@ -19,14 +20,41 @@ submenu of a tab's context menu or from the command palette (`Tabs: in a sidebar
 ## Layout
 
 ```
-integrated title bar:  [icon] ......drag area...... [min][max][close]      (the system's one when it is not integrated)
-address row:           [back][forward][reload][ address ......... ][menu]
+integrated title bar:  [icon][back][forward][reload] [ address ....... ][chips] [shield][menu] ..drag.. [min][max][close]
 body:                  [sidebar][ page (and docked developer tools) ]       left
                        [ page (and docked developer tools) ][sidebar]       right
+
+system's title bar:    (Windows draws it)
+address row:           [back][forward][reload][ address ......... ][chips][shield][menu]
+body:                  as above
 ```
 
-* The title bar's row is a caption (`.Window_Caption`) as the row of tabs is: empty parts drag the window, double click
-  maximizes, Snap Layouts work on the maximize button.
+The sidebar's header holds the icons-only toggle and the new-tab button: the "+" glyph alone, lit under the pointer as the
+toolbar's buttons are (both styles, both widths; centred in the narrow column).
+
+### The toolbar in the title bar
+
+With an integrated title bar (`browser.window.integrated_titlebar`, the default) the toolbar *is* the title bar: one row,
+as high as the row of tabs would be (never lower than the system's title bar), instead of a title bar holding only the icon
+and the window buttons above the toolbar (`sidebar_titlebar` in `tab_sidebar.odin`).
+
+* The row is a caption (`.Window_Caption`) as the row of tabs is. Each part is a box of its own; what is clickable in them
+  (the icon, the buttons, the address field, the chips) is a hole, the rest drags the window: the space around the icon,
+  the gaps on either side of the address bar and the strip before the window buttons (`browser.window.min_drag_em`).
+  Double click maximizes, the window buttons are the system's for its hit tests (Snap Layouts), the top resize band
+  works over the whole row.
+* `titlebar_layout` (pure) places the parts: they touch, in order, from the left edge to the right one; the address bar takes
+  what is left. Under `browser.tabs.sidebar_address_min_em` the drag strip narrows first (to half an em), then the shield
+  goes, then forward, then reload (the drag strip gets back what they freed beyond the field's minimum). Back, the
+  address bar, the menu and the window buttons always stay; their shortcuts work whatever is hidden.
+* The chips after the address bar (page zoom, passkey dialog) are as wide as they are; the layout counts last frame's width
+  and the address bar absorbs the difference.
+* The classic style draws the toolbar's gradient and its bottom line on the row ([chrome-style.md](chrome-style.md)).
+* With the system's title bar there is nothing to merge: the toolbar is its own row under it. With the tabs at the top,
+  nothing changes. Full screen: the bars that slide over the page hold the row of tabs and the toolbar, as before.
+
+### Frame
+
 * The window's left, right and bottom resize bands are the system's invisible frame, outside the client area; the top band is
   the title bar's. The sidebar starts below the title bar and cannot cover any of them. Its own width handle is inside it.
 * `page_rect` is a result of the layout (the page's box in the column next to the sidebar): nothing that uses it changed.
@@ -53,4 +81,7 @@ drawn for the sidebar otherwise.
 
 `src/browser/tab_sidebar_test.odin`: the position names and preferences (the three values, a refused value, the bounds), the
 width of the sidebar, the page and the sidebar sharing the window without overlap for the three positions, the rows built for a
-view of 1000 tabs, the geometry of the reorder along Y.
+view of 1000 tabs, the geometry of the reorder along Y, the toolbar in the title bar (`titlebar_parts_share_the_window`: the
+parts touch and make the window's width, the field's minimum, what hides and in which order; `titlebar_row_regions`: the row
+built by `titlebar_row_build` gives the window a caption whose holes are the parts' clickable boxes, the window buttons, and
+the hit test of each part, the drag areas and the top resize band).
