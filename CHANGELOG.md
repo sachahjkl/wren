@@ -6,6 +6,8 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- **Text is shaped by Fontations, HarfRust and ICU4X by default** (the toolkit's native text backend, toolkit 0.39.0) instead of DirectWrite: `build.bat` builds it in; `WREN_TEXT=dwrite build.bat` builds `wren_dwrite.exe` with DirectWrite's shaper. Same widths and metrics on the toolkit's multilingual corpus, 2.6 times faster shaping; better: kerned Hebrew pairs close as the font says (DirectWrite drops their placements), words are found in Lao, Khmer and Myanmar lines, an emoji with its skin tone is one caret stop; simulated bold and italic are drawn as DirectWrite drew them. The system's fonts and their fallback still come from Windows. The `text.backend` preference (restart) picks DirectWrite back.
+
 - **Workers from `blob:` URLs**: `new Worker(URL.createObjectURL(blob))` and `new SharedWorker(...)` run the Blob's script (revoking the URL right after the constructor is fine).
 - **`unregister()` lets its clients finish**: an unregistered service worker takes no new page and is no longer found, keeps controlling the pages it controlled, and goes with the last one.
 - **`clients.openWindow` and `WindowClient.focus` need a gesture**: a click or key press in a window of the site within `service_workers.window_activation_ms` (else `InvalidAccessError`).
