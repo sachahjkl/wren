@@ -244,6 +244,10 @@ Step 'origin private file system and File System Access end to end (tools\fs_e2e
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
 } -Weight 10
+Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
+} -Weight 5
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
@@ -403,9 +407,9 @@ if ($CI -or -not $Quick) {
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     } -Weight 30
-    Step 'service workers, workers and file systems on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1 -Check)' {
+    Step 'service workers, workers, file systems and the back/forward cache on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1, bfcache_e2e.ps1 -Check)' {
         $bad = 0
-        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
     } -Weight 30
