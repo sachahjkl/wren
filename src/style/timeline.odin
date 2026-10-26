@@ -89,6 +89,7 @@ Anim_Run :: struct {
 	ended:       bool,
 	iteration:   f64,          // last iteration reported
 	key:         [3]f64,       // phase, directed progress, effect of the last tick
+	set:         ^Keyframes_Set,   // the keyframes of a script's effect (script_anim.odin); nil: the @keyframes `name`
 }
 
 @(private)
@@ -96,6 +97,7 @@ Element_Anim :: struct {
 	node:        base.Handle,
 	transitions: [dynamic]^Transition,
 	runs:        [dynamic]^Anim_Run,
+	scripts:     [dynamic]^Script_Run,   // effects of Web Animations on it, in composite order (owned by Timeline.scripts)
 	base:        ^Computed,    // its cascaded style as of the last restyle
 	base_gen:    u64,          // changes with `base` (pointers into recycled style memory may repeat)
 }
@@ -127,6 +129,7 @@ Timeline :: struct {
 	base_gens:   u64,
 	last_props:  Prop_Set,     // properties the overlays wrote at the last application
 	retired:     [dynamic]^Anim_Run,   // animations that ended in this restyle, freed once update_element is done with the old style
+	scripts:     map[u64]^Script_Run,  // the effects of Web Animations, by animation (script_anim.odin)
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -134,6 +137,7 @@ timeline_make :: proc(e: ^Engine) -> ^Timeline {
 	tl.engine = e
 	tl.elements = make(map[base.Handle]^Element_Anim)
 	tl.overlays = make(map[base.Handle]^Overlay)
+	tl.scripts = make(map[u64]^Script_Run)
 	tl.order = make([dynamic]^Element_Anim)
 	tl.events = make([dynamic]Anim_Event)
 	_ = virtual.arena_init_growing(&tl.event_arena, 64 * 1024)
@@ -147,6 +151,8 @@ timeline_destroy :: proc(tl: ^Timeline, s: ^Styled = nil) {
 	if s != nil { restore_overlays(tl, s) }
 	for _, ea in tl.elements { element_free(tl, ea) }
 	delete(tl.elements)
+	for _, sr in tl.scripts { script_run_free(sr) }
+	delete(tl.scripts)
 	for _, ov in tl.overlays { overlay_free(ov) }
 	delete(tl.overlays)
 	delete(tl.order)
@@ -165,6 +171,8 @@ timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
 	}
 	for _, ea in tl.elements { element_free(tl, ea) }
 	clear(&tl.elements)
+	for _, sr in tl.scripts { script_run_free(sr) }
+	clear(&tl.scripts)
 	for _, ov in tl.overlays { overlay_free(ov) }
 	clear(&tl.overlays)
 	clear(&tl.order)
@@ -178,8 +186,10 @@ timeline_reset :: proc(tl: ^Timeline, s: ^Styled) {
 element_free :: proc(tl: ^Timeline, ea: ^Element_Anim) {
 	for tr in ea.transitions { transition_free(tr); tl.running -= 1 }
 	for r in ea.runs { run_free(r); tl.running -= 1 }
+	for sr in ea.scripts { sr.node = base.NIL_HANDLE }
 	delete(ea.transitions)
 	delete(ea.runs)
+	delete(ea.scripts)
 	free(ea)
 }
 
@@ -371,9 +381,18 @@ drop_element :: proc(tl: ^Timeline, doc: ^dom.Document, h: base.Handle) {
 	alive := dom.get(doc, h) != nil
 	for tr in ea.transitions { if alive { cancel_event(tl, h, tr) } }
 	for r in ea.runs { if alive { run_cancel_event(tl, h, r) } }
+	tl.order_dirty, tl.dirty = true, true
+	if len(ea.scripts) > 0 {
+		// the effects of scripts stay with their target (it may be shown or inserted again); its CSS ones go
+		for tr in ea.transitions { transition_free(tr); tl.running -= 1 }
+		for r in ea.runs { run_free(r); tl.running -= 1 }
+		clear(&ea.transitions)
+		clear(&ea.runs)
+		ea.base = nil
+		return
+	}
 	element_free(tl, ea)
 	delete_key(&tl.elements, h)
-	tl.order_dirty, tl.dirty = true, true
 }
 
 @(private)
@@ -398,7 +417,7 @@ update_element :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, h: base.Ha
 	if old_eff != nil { update_transitions(tl, ea, old_eff, c) }
 	for r in tl.retired { run_free(r) }
 	clear(&tl.retired)
-	if len(ea.runs) == 0 && len(ea.transitions) == 0 {
+	if len(ea.runs) == 0 && len(ea.transitions) == 0 && len(ea.scripts) == 0 {
 		element_free(tl, ea)
 		delete_key(&tl.elements, h)
 		tl.order_dirty = true
@@ -663,7 +682,7 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 	a := virtual.arena_allocator(&r.frames_arena)
 	r.frames, r.props = nil, {}
 	r.frames_gen, r.frames_rebuilds, r.frames_ready = ea.base_gen, tl.engine.rebuilds, true
-	set := keyframes_lookup(tl.engine, r.name)
+	set := r.set != nil ? r.set : keyframes_lookup(tl.engine, r.name)
 	if set == nil || ea.base == nil { return }
 	parent: ^Computed
 	if n := dom.get(doc, ea.node); n != nil && n.parent != base.NIL_HANDLE { parent = base_style_of(s, n.parent) }
@@ -814,6 +833,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			}
 		}
 	}
+	if len(tl.scripts) > 0 && script_tick(tl, now, &next) { changed = true }
 	tl.next_ms = next
 	// a finished transition leaves the cascaded value in place; the overlays that pointed into it are rebuilt below
 	// before anything reads them
@@ -833,7 +853,7 @@ remove_finished :: proc(tl: ^Timeline, tr: ^Transition) {
 	for h, ea in tl.elements {
 		if _, i := find_transition(ea, tr.prop); i >= 0 && ea.transitions[i] == tr {
 			remove_transition(tl, ea, tr, false)
-			if len(ea.transitions) == 0 && len(ea.runs) == 0 {
+			if len(ea.transitions) == 0 && len(ea.runs) == 0 && len(ea.scripts) == 0 {
 				element_free(tl, ea)
 				delete_key(&tl.elements, h)
 				tl.order_dirty = true
@@ -917,7 +937,13 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 		if style_of(s, ea.node) == nil { continue }
 		has := len(ea.transitions) > 0
 		for r in ea.runs { if run_state(r).effect { has = true } }
+		for sr in ea.scripts { if script_state_of(sr, tl.now).has_active { has = true } }
 		if !has { continue }
+		if ea.base == nil {   // an element only scripts animate, not restyled since
+			ea.base = base_style_of(s, ea.node)
+			tl.base_gens += 1
+			ea.base_gen = tl.base_gens
+		}
 		ov := overlay_for(tl, s, ea.node)
 		ctx := Interp_Ctx{alloc = virtual.arena_allocator(&ov.arena), space = tl.engine.settings.anim_color_space}
 		animated: Prop_Set
@@ -926,6 +952,13 @@ apply_overlays :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled) -> (layout
 			if !st.effect { continue }
 			ensure_frames(tl, doc, s, ea, r)
 			animated = ps_union(animated, apply_run(r, st, &ov.c, scratch, &ctx))
+		}
+		// Web Animations, above the CSS animations (composite order: CSS animations first)
+		for sr in ea.scripts {
+			es := script_state_of(sr, tl.now)
+			if !es.has_active { continue }
+			ensure_frames(tl, doc, s, ea, &sr.run)
+			animated = ps_union(animated, apply_run(&sr.run, Run_State{effect = true, directed = es.progress, before = es.before_flag}, &ov.c, scratch, &ctx))
 		}
 		for tr in ea.transitions {   // transitions override animations (CSS Cascade 5: the transition origin)
 			transition_value(tr, tl.now, &ov.c, &ctx)

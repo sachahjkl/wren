@@ -61,6 +61,7 @@ layout_updates :: proc(p: ^Page) -> u64 { return p.jsdom != nil ? p.jsdom.layout
 @(private)
 styles_clean :: proc(p: ^Page) -> bool {
 	if p.styled == nil || p.style_stale || p.engine == nil || p.engine.dirty || p.engine.restyle_needed || p.engine.gates_pending || p.engine.shadow.dirty { return false }
+	if style.timeline_dirty(p.anim.timeline) { return false }   // a script's animation changed (web_animations.odin)
 	return p.styled.mutations == p.doc.mutations && style.state_equal(effective_state(p), p.styled.state)
 }
 

@@ -103,7 +103,7 @@
 	Perspective does not apply to DOM normal-flow grandchildren: FAIL
 /css/css-transforms/animation/backface-visibility-no-interpolation.html: ERROR
 /css/css-transforms/animation/composited-transform.html: OK
-	An additive transform animation on-top of a replace transform animation should composite correctly: FAIL
+	An additive transform animation on-top of a replace transform animation should composite correctly: PASS
 /css/css-transforms/animation/list-interpolation.html: ERROR
 /css/css-transforms/animation/matrix-interpolation.html: ERROR
 /css/css-transforms/animation/perspective-composition.html: ERROR
@@ -250,7 +250,7 @@
 	Interpolation between translateZ(-50px) and translateZ(50px) gives the correct computed value halfway according to commitStyles.: FAIL
 	Interpolation between translateZ(50px) and translateX(50px) gives the correct computed value halfway according to commitStyles.: FAIL
 /css/css-transforms/animation/transform-interpolation-rotate3d-180deg-near-x-axis.html: OK
-	decompose4() recovers the correct quaternion y component near a 180deg rotation about the X axis: FAIL
+	decompose4() recovers the correct quaternion y component near a 180deg rotation about the X axis: PASS
 /css/css-transforms/animation/transform-interpolation-verify-reftests.html: ERROR
 /css/css-transforms/animation/transform-matrix-composition.html: ERROR
 /css/css-transforms/animation/transform-non-invertible-no-transition.html: OK
