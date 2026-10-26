@@ -8,7 +8,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $file = Join-Path $root 'native\media\rust-crates.txt'
 $ErrorActionPreference = 'Continue'   # cargo reports progress on stderr ("Updating crates.io index")
-$json = & cargo metadata --manifest-path (Join-Path $root 'native\media\Cargo.toml') --format-version 1 --locked 2>$null
+$json = & cargo metadata --manifest-path (Join-Path $root 'native\media\Cargo.toml') --format-version 1 --locked --all-features 2>$null   # (all features: the toolkit's text backend, gt_text, is the optional `text` feature that the release builds with: its crates (ICU4X, Fontations...) are linked into wren.exe)
 $ok = $LASTEXITCODE -eq 0
 $ErrorActionPreference = 'Stop'
 if (-not $ok -or -not $json) { throw 'cargo metadata failed' }

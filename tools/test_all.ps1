@@ -244,6 +244,10 @@ Step 'origin private file system and File System Access end to end (tools\fs_e2e
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\fs_e2e.ps1
 } -Weight 10
+Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a page refused for its unload handler and its reason counted, a miss; wren ctl stats: bfcache)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
+} -Weight 5
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
@@ -403,9 +407,9 @@ if ($CI -or -not $Quick) {
     Step 'remote control on the check build: a driven session (navigate, script, input, capture, events, a client that vanishes, quit) leaves nothing allocated (tools\remote_e2e.ps1 -Check)' {
         powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1 -Check
     } -Weight 30
-    Step 'service workers, workers and file systems on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1 -Check)' {
+    Step 'service workers, workers, file systems and the back/forward cache on the check build: each end-to-end session leaves nothing allocated (tools\sw_e2e.ps1, workers_e2e.ps1, fs_e2e.ps1, bfcache_e2e.ps1 -Check)' {
         $bad = 0
-        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
+        foreach ($s in 'sw_e2e', 'workers_e2e', 'fs_e2e', 'bfcache_e2e') { powershell -NoProfile -ExecutionPolicy Bypass -File "tools\$s.ps1" -Check; if ($LASTEXITCODE -ne 0) { $bad++ } }
         "$bad of them failed"
         $global:LASTEXITCODE = [int]($bad -gt 0)
     } -Weight 30
@@ -571,6 +575,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps
 } -UiOnly
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
+} -UiOnly
+Step 'the system menu of the Wren icon (tools\system_menu_e2e.ps1: a click on the icon opens it, Escape closes it, tabs on top and in a sidebar; its loop paints the window meanwhile, and the process must live: the menu was opened during the build and its frames were built inside it, the crash of the 2026-10-26 experimental build)' {
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\system_menu_e2e.ps1
 } -UiOnly
 }
 # AddressSanitizer on the unit tests of every package (tools\asan.ps1, three packages at a time): -CI and full runs, unless -NoAsan (the CI runs

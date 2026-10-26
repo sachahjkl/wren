@@ -208,6 +208,12 @@ JSValue web_type_error(JSContext *ctx, const char *message)
     return take_thrown(ctx);
 }
 
+JSValue web_range_error(JSContext *ctx, const char *message)
+{
+    JS_ThrowRangeError(ctx, "%s", message);
+    return take_thrown(ctx);
+}
+
 static const char *strip_error_prefix(const char *msg, size_t *len)
 {
     /* "TypeError: x", "AbortError: x" -> "x" */

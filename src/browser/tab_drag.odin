@@ -12,6 +12,7 @@ package browser
 // Nothing here loads a page again: tab_move only moves the pointer to the tab.
 
 import "core:math"
+import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -69,6 +70,27 @@ client_origin :: proc(w: ^Browser_Window) -> draw.Vec2 {
 	return {f32(o[0]), f32(o[1])}
 }
 
+// Where the pointer is on the screen, read from the system. (A position of an event plus the origin of the window read NOW is
+// wrong while the window that took the press is the one that moves, a tab alone in its window: the origin has moved since the
+// event was made, and each move added its error to the next: the window ran away off the screen, and stayed in the task bar.)
+@(private = "file")
+pointer_screen :: proc(fallback: draw.Vec2) -> draw.Vec2 {
+	pt: win.POINT
+	if win.GetCursorPos(&pt) { return {f32(pt.x), f32(pt.y)} }
+	return fallback
+}
+
+// A window position that keeps part of the window on some monitor: a title bar's width and height of it, at least.
+@(private = "file")
+keep_on_screen :: proc(x, y: int, w: ^Browser_Window) -> (int, int) {
+	vx, vy := int(win.GetSystemMetrics(win.SM_XVIRTUALSCREEN)), int(win.GetSystemMetrics(win.SM_YVIRTUALSCREEN))
+	vw, vh := int(win.GetSystemMetrics(win.SM_CXVIRTUALSCREEN)), int(win.GetSystemMetrics(win.SM_CYVIRTUALSCREEN))
+	if vw <= 0 || vh <= 0 { return x, y }
+	r := platform.outer_rect(w.win)
+	margin := int(80 * max(w.win.dpi_scale, 0.5))
+	return clamp(x, vx + margin - r[2], vx + vw - margin), clamp(y, vy, vy + vh - margin)
+}
+
 // The tab `t` of the active window is dragged out of its bar with the pointer at `pos` (client pixels of the active window). Called
 // from the build of the bar: the tab list changes under it, so the caller stops its build. false: nothing was done.
 tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
@@ -97,9 +119,12 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 	for ev in events {
 		#partial switch ev.kind {
 		case .Mouse_Move, .Mouse_Release:
-			screen := client_origin(app.active) + ev.pos
-			if carried.win != nil { platform.move_window(carried.win, int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y) }
-			dest, at := tab_drop_target(app, carried, client_origin(app.active) + ev.pos)
+			screen := pointer_screen(client_origin(app.active) + ev.pos)
+			if carried.win != nil {
+				x, y := keep_on_screen(int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y, carried)
+				platform.move_window(carried.win, x, y)
+			}
+			dest, at := tab_drop_target(app, carried, screen)
 			for w in app.windows { w.drop_hint = 0 }
 			if dest != nil && ev.kind == .Mouse_Move {
 				dest.drop_hint = at + 1

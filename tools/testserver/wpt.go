@@ -12,7 +12,8 @@
 //   - /resources/WebIDLParser.js is resources/webidl2/lib/webidl2.js, as wptserve routes it.
 //   - /resources/testharnessreport.js is Wren's (wpt/testharnessreport.js of the repository): it hands the results to
 //     the runner.
-//   - Python handlers (*.py) do not run: 501. The tests that need them fail, and are counted as failing.
+//   - Python handlers (*.py) do not run: 501, but for a few ported to Go (wpt_httpcache.go, wpt_handlers.go). The tests
+//     that need the others fail, and are counted as failing.
 //
 // Cross-origin tests: the "www" domains are localhost (the same listener under another host name, so another origin);
 // https: 127.0.0.1:8769 (the next port) with a self-signed certificate. With -wpt-port N the ports are N and N+1; with -wpt-only the
@@ -313,8 +314,10 @@ func substitute(text string, r *http.Request) string {
 	})
 }
 
-// The headers of x.headers and of the folder's __dir__.headers ("Name: value" lines).
+// The headers of x.headers and of the folder's __dir__.headers ("Name: value" lines). As wptserve does, a header they
+// name replaces the server's own (Content-Type by extension); several lines of one name all go.
 func sidecarHeaders(w http.ResponseWriter, full string) {
+	seen := map[string]bool{}
 	for _, f := range []string{filepath.Join(filepath.Dir(full), "__dir__.headers"), full + ".headers"} {
 		data, err := os.ReadFile(f)
 		if err != nil {
@@ -322,7 +325,12 @@ func sidecarHeaders(w http.ResponseWriter, full string) {
 		}
 		for _, line := range strings.Split(string(data), "\n") {
 			if i := strings.IndexByte(line, ':'); i > 0 {
-				w.Header().Add(strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+1:]))
+				name := http.CanonicalHeaderKey(strings.TrimSpace(line[:i]))
+				if !seen[name] {
+					w.Header().Del(name)
+					seen[name] = true
+				}
+				w.Header().Add(name, strings.TrimSpace(line[i+1:]))
 			}
 		}
 	}
@@ -450,6 +458,10 @@ func serveWPT(w http.ResponseWriter, r *http.Request) {
 	}
 	if rel == "/fetch/http-cache/resources/http-cache.py" {
 		wptHTTPCacheHandler(w, r) // ported to Go (wpt_httpcache.go)
+		return
+	}
+	if h, ok := wptPyHandlers[rel]; ok {
+		h(w, r) // ported to Go (wpt_handlers.go)
 		return
 	}
 	if strings.HasSuffix(rel, ".py") {

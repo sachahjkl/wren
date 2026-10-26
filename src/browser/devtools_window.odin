@@ -119,6 +119,8 @@ devtools_window_tick :: proc(app: ^App) {
 // goes on as well, so the page, its timers and its loads do not stop while the panel's window is dragged. Not from a chrome frame:
 // nothing of the page may run there (shell_frames.odin).
 devtools_window_loop_frame :: proc(app: ^App) {
+	// (not inside a frame's page phase, build or drawing: windows.odin, Frame_Stage)
+	if frame_stage == .Busy || ui.building() { if dev_win != nil { dev_win.win.paint_requested = true }; return }
 	devtools_window_frame(app)
 	if chrome_frames.nested || platform.is_closed(app.win) { return }
 	app.pass_first = true

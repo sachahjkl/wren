@@ -18,6 +18,7 @@ foreign import _m_fetch "fetch"
 foreign _m_fetch {
 	@(link_name = "Fetch_promise") _Fetch_promise :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Promise) -> Error ---
 	@(link_name = "Fetch_startWithSignal") _Fetch_startWithSignal :: proc(url: [^]u8, url_len: u32, callback: FetchCallback, user: i32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, body_buffer: Buffer, signal: AbortSignal, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, _ret: ^Fetch) -> Error ---
+	@(link_name = "Fetch_sync") _Fetch_sync :: proc(url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32, options_mode: FetchMode, options_credentials: Credentials, options_redirect: RedirectMode, options_referrer_policy: ReferrerPolicy, options_no_referrer: i32, options_cache: RequestCache, timeout_ms: u32, _ret: ^Fetch) -> Error ---
 	@(link_name = "Response_text") _Response_text :: proc(response: Response) -> Promise ---
 	@(link_name = "Response_arrayBuffer") _Response_arrayBuffer :: proc(response: Response) -> Promise ---
 	@(link_name = "Response_bytes") _Response_bytes :: proc(response: Response) -> Promise ---
@@ -44,6 +45,17 @@ Fetch_startWithSignal :: proc "contextless" (url: string, callback: FetchCallbac
 	_body_n := max(u32)
 	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
 	err = _Fetch_startWithSignal(raw_data(url), u32(len(url)), callback, user, raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, body_buffer, signal, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, &result)
+	return
+}
+
+// A synchronous XMLHttpRequest of a worker: the request Fetch_startWithSignal would make, waited for on the worker's
+// thread; the finished record (read it with Fetch_status, Fetch_headers, Fetch_readBody..., then release it).
+// Not_Supported in a document (its thread is the page's), Timeout past `timeout_ms` (0: none), Network on a failure.
+Fetch_sync :: proc "contextless" (url: string, method: string = "GET", headers: string = "", body: Maybe([]u8) = nil, options: FetchOptions = {}, timeout_ms: u32 = 0) -> (result: Fetch, err: Error) {
+	_body_p: [^]u8
+	_body_n := max(u32)
+	if v, ok := body.?; ok { _body_p, _body_n = raw_data(v), u32(len(v)) }
+	err = _Fetch_sync(raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(headers), u32(len(headers)), _body_p, _body_n, options.mode, options.credentials, options.redirect, options.referrer_policy, i32(1 if options.no_referrer else 0), options.cache, timeout_ms, &result)
 	return
 }
 

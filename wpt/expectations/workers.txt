@@ -42,7 +42,7 @@
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
 /workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
-	Tests that creation of a "new Worker()" will occur in parallel: FAIL|TIMEOUT
+	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT|PASS
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
 /workers/Worker-formdata.any.worker.html: OK
@@ -117,7 +117,7 @@
 /workers/WorkerGlobalScope_importScripts_NosniffErr.htm: OK
 	importScripts throws on 'nosniff' violation: PASS
 /workers/WorkerGlobalScope_requestAnimationFrame.worker.html: OK
-	WorkerGlobalScope_requestAnimationFrame: FAIL
+	WorkerGlobalScope_requestAnimationFrame: PASS
 /workers/WorkerGlobalScope_setInterval.htm: OK
 	 WorkerGlobalScope API: setInterval() : PASS
 /workers/WorkerGlobalScope_setTimeout.htm: OK
@@ -200,9 +200,9 @@
 	 ErrorEvent and Worker.dispatchEvent() : PASS
 	ErrorEvent constructor called as normal function: PASS
 	initErrorEvent: PASS
-/workers/Worker_script_mimetype.htm: TIMEOUT
-	HTTP(S) URLs which respond with text/plain MIME type must not work: FAIL
-	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: TIMEOUT
+/workers/Worker_script_mimetype.htm: OK
+	HTTP(S) URLs which respond with text/plain MIME type must not work: PASS
+	HTTP(S) URLs which respond with text/plain MIME type must not work on SharedWorkers: PASS
 	blob: URLs should load, despite no MIME type for the backing Blob: PASS
 	blob: URLs should load, despite the wrong MIME type for the backing Blob: PASS
 	data: URLs should load, despite the wrong MIME type: PASS
@@ -212,15 +212,19 @@
 	DedicatedWorker should correctly handle abrupt completion: PASS
 	SharedWorker should correctly handle abrupt completion: PASS
 /workers/baseurl/alpha/import-in-moduleworker.html: OK
-	Base URL in module dedicated workers: import: FAIL
-/workers/baseurl/alpha/importScripts-in-sharedworker.html: TIMEOUT
-/workers/baseurl/alpha/importScripts-in-worker.html: TIMEOUT
+	Base URL in module dedicated workers: import: PASS
+/workers/baseurl/alpha/importScripts-in-sharedworker.html: OK
+	importScripts: PASS
+/workers/baseurl/alpha/importScripts-in-worker.html: OK
+	importScripts: PASS
 /workers/baseurl/alpha/worker-in-worker.html: OK
 	Base URL in workers: new Worker(): FAIL
 /workers/baseurl/alpha/xhr-in-moduleworker.html: OK
-	Base URL in module dedicated workers: XHR: FAIL
-/workers/baseurl/alpha/xhr-in-sharedworker.html: TIMEOUT
-/workers/baseurl/alpha/xhr-in-worker.html: TIMEOUT
+	Base URL in module dedicated workers: XHR: PASS
+/workers/baseurl/alpha/xhr-in-sharedworker.html: OK
+	xhr-worker: PASS
+/workers/baseurl/alpha/xhr-in-worker.html: OK
+	xhr-worker: PASS
 /workers/constructors/SharedWorker/Infinity-arguments.html: OK
 	Test constructing a shared worker with Infinity: PASS
 /workers/constructors/SharedWorker/NaN-arguments.html: OK
@@ -282,8 +286,8 @@
 	Test unexpected properties are not in global scope: PASS
 /workers/constructors/SharedWorker/unresolvable-url.html: OK
 	resolving broken url: PASS
-/workers/constructors/Worker/AbstractWorker.onerror.html: TIMEOUT
-	AbstractWorker.onerror: TIMEOUT
+/workers/constructors/Worker/AbstractWorker.onerror.html: OK
+	AbstractWorker.onerror: FAIL
 /workers/constructors/Worker/Blob-url.html: OK
 	Worker supports Blob url: PASS
 /workers/constructors/Worker/DedicatedWorkerGlobalScope-members.worker.html: OK
@@ -451,7 +455,7 @@
 	importScripts() requires scripty MIME types: TeXt/HtMl is blocked.: PASS
 	importScripts() requires scripty MIME types: Text/html is blocked.: PASS
 	importScripts() requires scripty MIME types: aaa/aaa is blocked.: PASS
-	importScripts() requires scripty MIME types: application/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: application/javascript is allowed.: PASS
 	importScripts() requires scripty MIME types: application/octet-stream is blocked.: PASS
 	importScripts() requires scripty MIME types: application/xml is blocked.: PASS
 	importScripts() requires scripty MIME types: image/png is blocked.: PASS
@@ -461,9 +465,9 @@
 	importScripts() requires scripty MIME types: text/csv; charset=utf-8 is blocked.: PASS
 	importScripts() requires scripty MIME types: text/csv;bla;bla is blocked.: PASS
 	importScripts() requires scripty MIME types: text/csv;charset=utf-8 is blocked.: PASS
-	importScripts() requires scripty MIME types: text/ecmascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/ecmascript is allowed.: PASS
 	importScripts() requires scripty MIME types: text/html is blocked.: PASS
-	importScripts() requires scripty MIME types: text/javascript is allowed.: FAIL
+	importScripts() requires scripty MIME types: text/javascript is allowed.: PASS
 	importScripts() requires scripty MIME types: text/javascript; charset=utf-8 is allowed.: FAIL
 	importScripts() requires scripty MIME types: text/javascript;bla;bla is allowed.: FAIL
 	importScripts() requires scripty MIME types: text/javascript;charset=utf-8 is allowed.: FAIL
@@ -564,12 +568,12 @@
 	structured clone of message: PASS
 	true: PASS
 	undefined: PASS
-/workers/interfaces/SharedWorkerGlobalScope/name/getting.html: OK
-	getting name: PASS
-	getting name 1: PASS
-	getting name 2: PASS
-/workers/interfaces/SharedWorkerGlobalScope/name/setting.html: OK
-	setting name: PASS
+/workers/interfaces/SharedWorkerGlobalScope/name/getting.html: OK|TIMEOUT
+	getting name: PASS|TIMEOUT
+	getting name 1: PASS|TIMEOUT
+	getting name 2: PASS|TIMEOUT
+/workers/interfaces/SharedWorkerGlobalScope/name/setting.html: OK|TIMEOUT
+	setting name: PASS|TIMEOUT
 /workers/interfaces/WorkerGlobalScope/close/incoming-message.html: OK
 	close() and incoming message: PASS
 /workers/interfaces/WorkerGlobalScope/close/sending-messages.html: OK
@@ -580,11 +584,12 @@
 	close() and setTimeout: PASS
 /workers/interfaces/WorkerGlobalScope/location/members.html: OK
 	members of WorkerLocation: PASS
-/workers/interfaces/WorkerGlobalScope/location/redirect-module.html: TIMEOUT
-	WorkerLocation with redirects: module dedicated workers: TIMEOUT
-/workers/interfaces/WorkerGlobalScope/location/redirect-sharedworker.html: TIMEOUT
-/workers/interfaces/WorkerGlobalScope/location/redirect.html: TIMEOUT
-	WorkerLocation with redirects: classic dedicated workers: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/location/redirect-module.html: OK
+	WorkerLocation with redirects: module dedicated workers: PASS
+/workers/interfaces/WorkerGlobalScope/location/redirect-sharedworker.html: OK
+	redirect: PASS
+/workers/interfaces/WorkerGlobalScope/location/redirect.html: OK
+	WorkerLocation with redirects: classic dedicated workers: PASS
 /workers/interfaces/WorkerGlobalScope/location/returns-same-object.any.worker.html: OK
 	location === location: PASS
 /workers/interfaces/WorkerGlobalScope/location/setting-members.html: OK
@@ -657,8 +662,8 @@
 /workers/interfaces/WorkerGlobalScope/onerror/not-handled.html: OK
 	Not handled evaluation error => Worker error listener: PASS
 	Not handled evaluation error => Worker.onerror handler: PASS
-/workers/interfaces/WorkerGlobalScope/onerror/propagate-to-window-onerror.html: TIMEOUT
-	onerror, "not handled" with only window.onerror defined: TIMEOUT
+/workers/interfaces/WorkerGlobalScope/onerror/propagate-to-window-onerror.html: OK
+	onerror, "not handled" with only window.onerror defined: PASS
 /workers/interfaces/WorkerGlobalScope/self.any.worker.html: OK
 	'self' in self: PASS
 	self = 1: PASS
@@ -761,7 +766,7 @@
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
 	Static import (cross-origin).: FAIL
-	Static import (redirect).: FAIL
+	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: FAIL
@@ -845,7 +850,7 @@
 	Nested dynamic import.: PASS
 	Nested static import.: PASS
 	Static import (cross-origin).: FAIL
-	Static import (redirect).: FAIL
+	Static import (redirect).: PASS
 	Static import and then dynamic import.: PASS
 	Static import.: PASS
 	eval(import()).: FAIL
@@ -859,40 +864,40 @@
 	Static import and then dynamic import.: FAIL
 	Static import.: FAIL
 	eval(import()).: FAIL
-/workers/modules/dedicated-worker-options-credentials.html: TIMEOUT
+/workers/modules/dedicated-worker-options-credentials.html: OK
 	Test initialization: setting up cross-origin cookie: FAIL
-	new Worker() with type-module credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new Worker() with type-module credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
-	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
-	new Worker() with type=classic should always send the credentials regardless of the credentials option (default).: NOTRUN
-	new Worker() with type=classic should always send the credentials regardless of the credentials option (include).: NOTRUN
-	new Worker() with type=classic should always send the credentials regardless of the credentials option (omit).: NOTRUN
-	new Worker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: NOTRUN
-	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
-	new Worker() with type=module and credentials=include should send the credentials: NOTRUN
-	new Worker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
-	new Worker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
-	new Worker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
-	new Worker() with type=module and credentials=include should send the credentials for same-origin static imports: NOTRUN
-	new Worker() with type=module and credentials=omit should not send the credentials: NOTRUN
-	new Worker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
-	new Worker() with type=module and credentials=omit should not send the credentials for same-origin static imports: NOTRUN
-	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
-	new Worker() with type=module and credentials=same-origin should send the credentials: NOTRUN
-	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
-	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: NOTRUN
-	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
-	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: NOTRUN
-	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: TIMEOUT
-	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
-	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: NOTRUN
+	new Worker() with type-module credentials=omit should not send the credentials for cross-origin dynamic imports: PASS
+	new Worker() with type-module credentials=omit should not send the credentials for cross-origin static imports: PASS
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: PASS
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: PASS
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new Worker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: PASS
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (default).: PASS
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (include).: PASS
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (omit).: PASS
+	new Worker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: PASS
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: PASS
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: PASS
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new Worker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: PASS
+	new Worker() with type=module and credentials=include should send the credentials: PASS
+	new Worker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: FAIL
+	new Worker() with type=module and credentials=include should send the credentials for cross-origin static imports: FAIL
+	new Worker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: PASS
+	new Worker() with type=module and credentials=include should send the credentials for same-origin static imports: PASS
+	new Worker() with type=module and credentials=omit should not send the credentials: FAIL
+	new Worker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: FAIL
+	new Worker() with type=module and credentials=omit should not send the credentials for same-origin static imports: FAIL
+	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: PASS
+	new Worker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: PASS
+	new Worker() with type=module and credentials=same-origin should send the credentials: PASS
+	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: PASS
+	new Worker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: PASS
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: PASS
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: PASS
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: PASS
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: PASS
+	new Worker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: PASS
 /workers/modules/dedicated-worker-options-type.html: OK
 	Test worker construction with an empty worker type.: PASS
 	Test worker construction with an unknown worker type.: PASS
@@ -902,16 +907,16 @@
 /workers/modules/dedicated-worker-parse-error-failure.html: OK
 	Module worker construction for script with syntax error should dispatch an event named error.: FAIL
 	Static import on module worker for script with syntax error should dispatch an event named error.: FAIL
-/workers/modules/shared-worker-import-blob-url.window.html: TIMEOUT
-	Dynamic import and then static import.: NOTRUN
-	Dynamic import.: NOTRUN
-	Nested dynamic import.: NOTRUN
-	Nested static import.: NOTRUN
-	Static import (cross-origin).: TIMEOUT
-	Static import (redirect).: NOTRUN
-	Static import and then dynamic import.: NOTRUN
+/workers/modules/shared-worker-import-blob-url.window.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: PASS
+	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: NOTRUN
+	eval(import()).: FAIL
 /workers/modules/shared-worker-import-csp.html: TIMEOUT
 	script-src 'self' directive should disallow cross origin dynamic import.: NOTRUN
 	script-src 'self' directive should disallow cross origin static import.: NOTRUN
@@ -922,26 +927,26 @@
 	worker-src 'self' directive should override script-src * directive and disallow cross origin static import.: NOTRUN
 	worker-src * directive should allow cross origin static import.: NOTRUN
 	worker-src * directive should override script-src 'self' directive and allow cross origin static import.: NOTRUN
-/workers/modules/shared-worker-import-data-url-cross-origin.html: TIMEOUT
-	dynamic import data url from data: URL should be allowed.: NOTRUN
-	dynamic import script from data: URL should be blocked.: NOTRUN
+/workers/modules/shared-worker-import-data-url-cross-origin.html: OK
+	dynamic import data url from data: URL should be allowed.: PASS
+	dynamic import script from data: URL should be blocked.: PASS
 	static import data url from data: URL should be allowed.: PASS
-	static import script from data: URL should be allowed.: TIMEOUT
-/workers/modules/shared-worker-import-data-url.window.html: TIMEOUT
-	Dynamic import and then static import.: NOTRUN
-	Dynamic import.: NOTRUN
-	Nested dynamic import.: NOTRUN
-	Nested static import.: NOTRUN
-	Static import (cross-origin).: TIMEOUT
-	Static import (redirect).: NOTRUN
-	Static import and then dynamic import.: NOTRUN
+	static import script from data: URL should be allowed.: FAIL
+/workers/modules/shared-worker-import-data-url.window.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: FAIL
+	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: NOTRUN
-/workers/modules/shared-worker-import-failure.html: TIMEOUT
-	Dynamic import for non-existent script should throw an exception.: NOTRUN
+	eval(import()).: FAIL
+/workers/modules/shared-worker-import-failure.html: OK
+	Dynamic import for non-existent script should throw an exception.: PASS
 	SharedWorker construction for a file URL should throw an exception.: FAIL
 	SharedWorker construction for an invalid URL should throw an exception.: PASS
-	Static import for non-existent script should dispatch an ErrorEvent.: TIMEOUT
+	Static import for non-existent script should dispatch an ErrorEvent.: PASS
 	Worker construction for non-existent script should dispatch an ErrorEvent.: PASS
 	importScripts() on module worker should throw an exception.: PASS
 /workers/modules/shared-worker-import-meta.html: OK
@@ -988,26 +993,26 @@
 	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
 	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
 	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials: PASS
 	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
 	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
 	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin static imports: PASS
+	new SharedWorker() with type=module and credentials=omit should not send the credentials: FAIL
 	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
 	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
 	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin static imports: FAIL
 	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
 	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=same-origin should send the credentials: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials: PASS
 	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: TIMEOUT
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: TIMEOUT
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: PASS
 /workers/modules/shared-worker-options-type.html: OK
 	Test worker construction with an empty worker type.: PASS
 	Test worker construction with an unknown worker type.: PASS
@@ -1086,20 +1091,20 @@
 	encoding, dedicated worker: PASS
 /workers/semantics/encodings/002.html: OK
 	encoding, shared worker: PASS
-/workers/semantics/encodings/003.html: TIMEOUT
-	URL encoding, dedicated worker: TIMEOUT
-/workers/semantics/encodings/004.html: TIMEOUT
-	URL encoding, shared worker: TIMEOUT
+/workers/semantics/encodings/003.html: OK
+	URL encoding, dedicated worker: FAIL
+/workers/semantics/encodings/004.html: OK
+	URL encoding, shared worker: FAIL
 /workers/semantics/encodings/004.worker.html: TIMEOUT
 /workers/semantics/interface-objects/001.worker.html: OK
 	The ArrayBuffer interface object should be exposed.: PASS
 	The Blob interface object should be exposed.: PASS
 	The BroadcastChannel interface object should be exposed.: PASS
-	The ByteLengthQueuingStrategy interface object should be exposed.: FAIL
+	The ByteLengthQueuingStrategy interface object should be exposed.: PASS
 	The CanvasGradient interface object should be exposed.: PASS
 	The CanvasPattern interface object should be exposed.: PASS
 	The CloseEvent interface object should be exposed.: PASS
-	The CountQueuingStrategy interface object should be exposed.: FAIL
+	The CountQueuingStrategy interface object should be exposed.: PASS
 	The CustomEvent interface object should be exposed.: PASS
 	The DOMException interface object should be exposed.: PASS
 	The DataView interface object should be exposed.: PASS
@@ -1222,20 +1227,324 @@
 /workers/semantics/run-a-worker/003.html: OK
 	shared: PASS
 	worker: PASS
-/workers/semantics/structured-clone/dedicated.html: ERROR
-/workers/semantics/structured-clone/shared.html: ERROR
+/workers/semantics/structured-clone/dedicated.html: OK
+	A detached ArrayBuffer cannot be transferred: PASS
+	A detached platform object cannot be transferred: PASS
+	A subclass instance will be received as its closest transferable superclass: PRECONDITION_FAILED
+	A subclass instance will deserialize as its closest serializable superclass: PASS
+	An object whose interface is deleted from the global must still deserialize: PASS
+	An object whose interface is deleted from the global object must still be received: PASS
+	Array Blob object, Blob NUL: PASS
+	Array Blob object, Blob basic: PASS
+	Array Blob object, Blob empty: PASS
+	Array Blob object, Blob paired surrogates (invalid utf-8): PASS
+	Array Blob object, Blob unpaired high surrogate (invalid utf-8): PASS
+	Array Blob object, Blob unpaired low surrogate (invalid utf-8): PASS
+	Array Blob object, two Blobs: PASS
+	Array Boolean objects: PASS
+	Array Date objects: PASS
+	Array FileList object, FileList empty: FAIL
+	Array ImageBitmap object, ImageBitmap 1x1 transparent black: FAIL
+	Array ImageBitmap object, ImageBitmap 1x1 transparent non-black: FAIL
+	Array ImageData object, ImageData 1x1 non-transparent non-black: PASS
+	Array ImageData object, ImageData 1x1 transparent black: PASS
+	Array Number objects: PASS
+	Array RegExp object, RegExp empty: PASS
+	Array RegExp object, RegExp flags and lastIndex: PASS
+	Array RegExp object, RegExp new line: PASS
+	Array RegExp object, RegExp slash: PASS
+	Array RegExp object, RegExp sticky flag: PASS
+	Array RegExp object, RegExp unicode flag: PASS
+	Array String objects: PASS
+	Array primitives: PASS
+	Array sparse: PASS
+	Array with circular reference: PASS
+	Array with identical property values: PASS
+	Array with non-index property: PASS
+	ArrayBuffer: PASS
+	BigInt -9007199254740994n: PASS
+	Blob NUL: PASS
+	Blob basic: PASS
+	Blob empty: PASS
+	Blob paired surrogates (invalid utf-8): PASS
+	Blob unpaired high surrogate (invalid utf-8): PASS
+	Blob unpaired low surrogate (invalid utf-8): PASS
+	Boolean false: PASS
+	Boolean true: PASS
+	Date -0: PASS
+	Date -8.64e15: PASS
+	Date 0: PASS
+	Date 8.64e15: PASS
+	Empty Error object: PASS
+	Error object: PASS
+	EvalError object: PASS
+	File basic: PASS
+	FileList empty: FAIL
+	Growable SharedArrayBuffer: FAIL
+	ImageBitmap: FAIL
+	ImageBitmap 1x1 non-transparent non-black: FAIL
+	ImageBitmap 1x1 transparent black: FAIL
+	ImageData 1x1 non-transparent non-black: PASS
+	ImageData 1x1 transparent black: PASS
+	Length-tracking DataView: PASS
+	Length-tracking DataView is transferable: FAIL
+	Length-tracking TypedArray: PASS
+	Length-tracking TypedArray is transferable: FAIL
+	MessagePort: PASS
+	Number -0: PASS
+	Number -9007199254740992: PASS
+	Number -9007199254740994: PASS
+	Number -Infinity: PASS
+	Number 0: PASS
+	Number 0.2: PASS
+	Number 9007199254740992: PASS
+	Number 9007199254740994: PASS
+	Number Infinity: PASS
+	Number NaN: PASS
+	Object Blob object, Blob NUL: PASS
+	Object Blob object, Blob basic: PASS
+	Object Blob object, Blob empty: PASS
+	Object Blob object, Blob paired surrogates (invalid utf-8): PASS
+	Object Blob object, Blob unpaired high surrogate (invalid utf-8): PASS
+	Object Blob object, Blob unpaired low surrogate (invalid utf-8): PASS
+	Object Boolean objects: PASS
+	Object Date objects: PASS
+	Object FileList object, FileList empty: FAIL
+	Object ImageBitmap object, ImageBitmap 1x1 transparent black: FAIL
+	Object ImageBitmap object, ImageBitmap 1x1 transparent non-black: FAIL
+	Object ImageData object, ImageData 1x1 non-transparent non-black: PASS
+	Object ImageData object, ImageData 1x1 transparent black: PASS
+	Object Number objects: PASS
+	Object RegExp object, RegExp empty: PASS
+	Object RegExp object, RegExp flags and lastIndex: PASS
+	Object RegExp object, RegExp new line: PASS
+	Object RegExp object, RegExp slash: PASS
+	Object RegExp object, RegExp sticky flag: PASS
+	Object RegExp object, RegExp unicode flag: PASS
+	Object String objects: PASS
+	Object primitives: PASS
+	Object with a getter that throws: PASS
+	Object with circular reference: PASS
+	Object with identical property values: PASS
+	Object with index property and length: PASS
+	Object with non-configurable property: PASS
+	Object with non-enumerable property: PASS
+	Object with non-writable property: PASS
+	Object with property on prototype: PASS
+	ObjectPrototype must lose its exotic-ness when cloned: PASS
+	OffscreenCanvas: FAIL
+	RangeError object: PASS
+	ReferenceError object: PASS
+	RegExp empty: PASS
+	RegExp flags and lastIndex: PASS
+	RegExp new line: PASS
+	RegExp slash: PASS
+	RegExp sticky flag: PASS
+	RegExp unicode flag: PASS
+	Resizable ArrayBuffer: FAIL
+	Resizable ArrayBuffer is transferable: FAIL
+	Serializing OOB DataView throws: FAIL
+	Serializing OOB TypedArray throws: FAIL
+	Serializing a non-serializable platform object fails: PASS
+	String NUL: PASS
+	String astral character: PASS
+	String empty string: PASS
+	String lone high surrogate: PASS
+	String lone low surrogate: PASS
+	SyntaxError object: PASS
+	Transferring OOB DataView throws: FAIL
+	Transferring OOB TypedArray throws: FAIL
+	Transferring a non-transferable platform object fails: PASS
+	TypeError object: PASS
+	URIError object: PASS
+	primitive BigInt, -0n: PASS
+	primitive BigInt, -9007199254740994000900719925474099400090071992547409940009007199254740994000n: PASS
+	primitive BigInt, -9007199254740994000n: PASS
+	primitive BigInt, 0n: PASS
+	primitive false: PASS
+	primitive null: PASS
+	primitive number, -0: PASS
+	primitive number, -9007199254740992: PASS
+	primitive number, -9007199254740994: PASS
+	primitive number, -Infinity: PASS
+	primitive number, 0: PASS
+	primitive number, 0.2: PASS
+	primitive number, 9007199254740992: PASS
+	primitive number, 9007199254740994: PASS
+	primitive number, Infinity: PASS
+	primitive number, NaN: PASS
+	primitive string, NUL: PASS
+	primitive string, astral character: PASS
+	primitive string, empty string: PASS
+	primitive string, lone high surrogate: PASS
+	primitive string, lone low surrogate: PASS
+	primitive true: PASS
+	primitive undefined: PASS
+/workers/semantics/structured-clone/shared.html: OK
+	A detached ArrayBuffer cannot be transferred: PASS
+	A detached platform object cannot be transferred: PASS
+	A subclass instance will be received as its closest transferable superclass: PRECONDITION_FAILED
+	A subclass instance will deserialize as its closest serializable superclass: PASS
+	An object whose interface is deleted from the global must still deserialize: PASS
+	An object whose interface is deleted from the global object must still be received: PASS
+	Array Blob object, Blob NUL: PASS
+	Array Blob object, Blob basic: PASS
+	Array Blob object, Blob empty: PASS
+	Array Blob object, Blob paired surrogates (invalid utf-8): PASS
+	Array Blob object, Blob unpaired high surrogate (invalid utf-8): PASS
+	Array Blob object, Blob unpaired low surrogate (invalid utf-8): PASS
+	Array Blob object, two Blobs: PASS
+	Array Boolean objects: PASS
+	Array Date objects: PASS
+	Array FileList object, FileList empty: FAIL
+	Array ImageBitmap object, ImageBitmap 1x1 transparent black: FAIL
+	Array ImageBitmap object, ImageBitmap 1x1 transparent non-black: FAIL
+	Array ImageData object, ImageData 1x1 non-transparent non-black: PASS
+	Array ImageData object, ImageData 1x1 transparent black: PASS
+	Array Number objects: PASS
+	Array RegExp object, RegExp empty: PASS
+	Array RegExp object, RegExp flags and lastIndex: PASS
+	Array RegExp object, RegExp new line: PASS
+	Array RegExp object, RegExp slash: PASS
+	Array RegExp object, RegExp sticky flag: PASS
+	Array RegExp object, RegExp unicode flag: PASS
+	Array String objects: PASS
+	Array primitives: PASS
+	Array sparse: PASS
+	Array with circular reference: PASS
+	Array with identical property values: PASS
+	Array with non-index property: PASS
+	ArrayBuffer: PASS
+	BigInt -9007199254740994n: PASS
+	Blob NUL: PASS
+	Blob basic: PASS
+	Blob empty: PASS
+	Blob paired surrogates (invalid utf-8): PASS
+	Blob unpaired high surrogate (invalid utf-8): PASS
+	Blob unpaired low surrogate (invalid utf-8): PASS
+	Boolean false: PASS
+	Boolean true: PASS
+	Date -0: PASS
+	Date -8.64e15: PASS
+	Date 0: PASS
+	Date 8.64e15: PASS
+	Empty Error object: PASS
+	Error object: PASS
+	EvalError object: PASS
+	File basic: PASS
+	FileList empty: FAIL
+	Growable SharedArrayBuffer: FAIL
+	ImageBitmap: FAIL
+	ImageBitmap 1x1 non-transparent non-black: FAIL
+	ImageBitmap 1x1 transparent black: FAIL
+	ImageData 1x1 non-transparent non-black: PASS
+	ImageData 1x1 transparent black: PASS
+	Length-tracking DataView: PASS
+	Length-tracking DataView is transferable: FAIL
+	Length-tracking TypedArray: PASS
+	Length-tracking TypedArray is transferable: FAIL
+	MessagePort: PASS
+	Number -0: PASS
+	Number -9007199254740992: PASS
+	Number -9007199254740994: PASS
+	Number -Infinity: PASS
+	Number 0: PASS
+	Number 0.2: PASS
+	Number 9007199254740992: PASS
+	Number 9007199254740994: PASS
+	Number Infinity: PASS
+	Number NaN: PASS
+	Object Blob object, Blob NUL: PASS
+	Object Blob object, Blob basic: PASS
+	Object Blob object, Blob empty: PASS
+	Object Blob object, Blob paired surrogates (invalid utf-8): PASS
+	Object Blob object, Blob unpaired high surrogate (invalid utf-8): PASS
+	Object Blob object, Blob unpaired low surrogate (invalid utf-8): PASS
+	Object Boolean objects: PASS
+	Object Date objects: PASS
+	Object FileList object, FileList empty: FAIL
+	Object ImageBitmap object, ImageBitmap 1x1 transparent black: FAIL
+	Object ImageBitmap object, ImageBitmap 1x1 transparent non-black: FAIL
+	Object ImageData object, ImageData 1x1 non-transparent non-black: PASS
+	Object ImageData object, ImageData 1x1 transparent black: PASS
+	Object Number objects: PASS
+	Object RegExp object, RegExp empty: PASS
+	Object RegExp object, RegExp flags and lastIndex: PASS
+	Object RegExp object, RegExp new line: PASS
+	Object RegExp object, RegExp slash: PASS
+	Object RegExp object, RegExp sticky flag: PASS
+	Object RegExp object, RegExp unicode flag: PASS
+	Object String objects: PASS
+	Object primitives: PASS
+	Object with a getter that throws: PASS
+	Object with circular reference: PASS
+	Object with identical property values: PASS
+	Object with index property and length: PASS
+	Object with non-configurable property: PASS
+	Object with non-enumerable property: PASS
+	Object with non-writable property: PASS
+	Object with property on prototype: PASS
+	ObjectPrototype must lose its exotic-ness when cloned: PASS
+	OffscreenCanvas: FAIL
+	RangeError object: PASS
+	ReferenceError object: PASS
+	RegExp empty: PASS
+	RegExp flags and lastIndex: PASS
+	RegExp new line: PASS
+	RegExp slash: PASS
+	RegExp sticky flag: PASS
+	RegExp unicode flag: PASS
+	Resizable ArrayBuffer: FAIL
+	Resizable ArrayBuffer is transferable: FAIL
+	Serializing OOB DataView throws: FAIL
+	Serializing OOB TypedArray throws: FAIL
+	Serializing a non-serializable platform object fails: PASS
+	String NUL: PASS
+	String astral character: PASS
+	String empty string: PASS
+	String lone high surrogate: PASS
+	String lone low surrogate: PASS
+	SyntaxError object: PASS
+	Transferring OOB DataView throws: FAIL
+	Transferring OOB TypedArray throws: FAIL
+	Transferring a non-transferable platform object fails: PASS
+	TypeError object: PASS
+	URIError object: PASS
+	primitive BigInt, -0n: PASS
+	primitive BigInt, -9007199254740994000900719925474099400090071992547409940009007199254740994000n: PASS
+	primitive BigInt, -9007199254740994000n: PASS
+	primitive BigInt, 0n: PASS
+	primitive false: PASS
+	primitive null: PASS
+	primitive number, -0: PASS
+	primitive number, -9007199254740992: PASS
+	primitive number, -9007199254740994: PASS
+	primitive number, -Infinity: PASS
+	primitive number, 0: PASS
+	primitive number, 0.2: PASS
+	primitive number, 9007199254740992: PASS
+	primitive number, 9007199254740994: PASS
+	primitive number, Infinity: PASS
+	primitive number, NaN: PASS
+	primitive string, NUL: PASS
+	primitive string, astral character: PASS
+	primitive string, empty string: PASS
+	primitive string, lone high surrogate: PASS
+	primitive string, lone low surrogate: PASS
+	primitive true: PASS
+	primitive undefined: PASS
 /workers/semantics/xhr/001.html: OK
 	async XMLHttpRequest in dedicated worker: PASS
-/workers/semantics/xhr/002.html: TIMEOUT
-	sync XMLHttpRequest in dedicated worker: TIMEOUT
+/workers/semantics/xhr/002.html: OK
+	sync XMLHttpRequest in dedicated worker: PASS
 /workers/semantics/xhr/003.html: OK
 	async XMLHttpRequest in shared worker: PASS
-/workers/semantics/xhr/004.html: TIMEOUT
-	sync XMLHttpRequest in shared worker: TIMEOUT
-/workers/semantics/xhr/005.html: TIMEOUT
-	base url, dedicated worker: TIMEOUT
-/workers/semantics/xhr/006.html: TIMEOUT
-	base url, shared worker: TIMEOUT
+/workers/semantics/xhr/004.html: OK
+	sync XMLHttpRequest in shared worker: PASS
+/workers/semantics/xhr/005.html: OK
+	base url, dedicated worker: PASS
+/workers/semantics/xhr/006.html: OK
+	base url, shared worker: PASS
 /workers/shared-worker-from-blob-url.window.html: OK
 	Blob URLs should not resolve relative to document base URL.: PASS
 	Connecting to a shared worker on a revoked blob URL works.: PASS
@@ -1302,10 +1611,10 @@
 	There are no navigation type performance entries in workers: PASS
 	performance.clearResourceTimings in workers: PASS
 	performance.navigation is not available in workers: PASS
-	performance.setResourceTimingBufferSize in workers: FAIL
+	performance.setResourceTimingBufferSize in workers: PASS
 	performance.timing is not available in workers: PASS
 	performance.toJSON is available in workers: PASS
-/workers/worker-request-animation-frame.html: TIMEOUT
-	requestAnimationTime reports frame time relative to worker load: TIMEOUT
+/workers/worker-request-animation-frame.html: OK
+	requestAnimationTime reports frame time relative to worker load: PASS
 /workers/worker-url-encoding.html: OK
 	Worker URL is parsed using document encoding: FAIL

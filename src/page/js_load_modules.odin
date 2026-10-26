@@ -239,7 +239,7 @@ worker_root_settled :: proc(p: ^Page, g: ^Module_Graph) {
 		if g.state == .Ready && p.worker != nil { sw_script_ran(p) }
 		return
 	}
-	if p.worker != nil && !realm_halted(p) { worker_send_error(p.worker, g.error) }
+	if p.worker != nil && !realm_halted(p) { worker_send_error(p.worker, g.error, code = 1) }
 }
 
 // Hands a fetched module to the engine: compiled (not run), its imports requested.
