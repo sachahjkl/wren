@@ -55,6 +55,10 @@ try {
   Expect ($modsh -eq 'connected') 'a module shared worker starts (no error)' $modsh
   $blob = Wren-Ctl eval 'new Promise((ok) => { const u = URL.createObjectURL(new Blob(["postMessage(\"dedicated \" + self.location.protocol)"], {type: "text/javascript"})); const w = new Worker(u); URL.revokeObjectURL(u); w.onmessage = (e) => { const su = URL.createObjectURL(new Blob(["onconnect = (e) => e.ports[0].postMessage(\"shared\")"])); const s = new SharedWorker(su); s.port.onmessage = (m) => ok(e.data + " " + m.data); }; w.onerror = () => ok("error"); setTimeout(() => ok("timeout"), 5000); })' --await
   Expect ($blob -eq 'dedicated blob: shared') 'workers from blob: URLs (dedicated, revoked right after; shared)' $blob
+  $sx = Wren-Ctl eval 'new Promise((ok) => { const src = "const x = new XMLHttpRequest(); x.open(\"GET\", location.origin + \"/site/workers/index.html\", false); x.send(); postMessage(x.status + \" \" + (x.responseText.length > 0) + \" \" + x.readyState);"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout"), 5000); })' --await
+  Expect ($sx -eq '200 true 4') 'a synchronous XMLHttpRequest in a dedicated worker' $sx
+  $pipe = Wren-Ctl eval 'new Promise((ok) => { const got = []; new ReadableStream({ start(c) { c.enqueue("a"); c.enqueue("b"); c.close(); } }).pipeTo(new WritableStream({ write(x) { got.push(x); } })).then(() => ok(got.join("")), (e) => ok("error " + e)); })' --await
+  Expect ($pipe -eq 'ab') 'ReadableStream.pipeTo a WritableStream' $pipe
   $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 5000); })' --await
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
 } finally {

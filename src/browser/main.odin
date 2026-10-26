@@ -908,7 +908,10 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	have_move := false
 	defer if have_move && t.page != nil {
 		hovered := base.NIL_HANDLE
-		if draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
+		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
+		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(last_move.pos)
+		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
 		st.hover = hovered
@@ -1072,6 +1075,13 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 }
 
 frame :: proc(app: ^App, idled := false) {
+	// (windows.odin: Frame_Stage. A frame made by a loop of the system inside another frame's poll puts back that one's stage.)
+	outer_stage := frame_stage
+	frame_stage = .Poll
+	defer {
+		frame_stage = outer_stage
+		window_chrome_after_frame(app)   // the system menu, outside the frame (its loop paints the window)
+	}
 	prof_frame_begin()
 	prof_begin(.Wait)
 	pacer_update(app)
@@ -1079,6 +1089,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
+	frame_stage = .Busy
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events {
 		if e.kind == .Activate { desktop_note_activate() }

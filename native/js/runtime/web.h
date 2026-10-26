@@ -94,6 +94,8 @@ JSValue web_error_value(JSContext *ctx, int32_t code, const char *msg, size_t le
 JSValue web_dom_exception(JSContext *ctx, const char *name, const char *message);
 /* A TypeError value. */
 JSValue web_type_error(JSContext *ctx, const char *message);
+/* A RangeError value. */
+JSValue web_range_error(JSContext *ctx, const char *message);
 
 /* ---- promises ---- */
 

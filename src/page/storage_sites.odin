@@ -24,6 +24,7 @@ Site_Data :: struct {
 	session_keys: int,
 	idb_bytes:    i64,
 	idb_dbs:      int,      // -1: not loaded (only its file's size is known)
+	opfs_bytes:   i64,      // its origin private file system (counted in idb_bytes too: "Clear site data" removes both)
 }
 
 // The key a file name stands for (the inverse of the escaping of area_path and idb.origin_key_path: _XX for each byte outside
@@ -84,7 +85,7 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 			for d in dirs {
 				if d.type != .Directory { continue }
 				if k, ok := key_of_file(d.name, ""); ok {
-					if bytes := fs_dir_bytes(strings.concatenate({opfs_root, "/", d.name}, context.temp_allocator)); bytes > 0 { s := get(&out, k); s.idb_bytes += bytes }
+					if bytes := fs_dir_bytes(strings.concatenate({opfs_root, "/", d.name}, context.temp_allocator)); bytes > 0 { s := get(&out, k); s.opfs_bytes = bytes }
 				}
 			}
 		}
@@ -117,9 +118,10 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 	}
 	list := make([dynamic]Site_Data, 0, len(out), allocator)
 	for _, s in out {
+		s.idb_bytes += s.opfs_bytes
 		// (an area that was cleared leaves an empty file: nothing to list)
 		if s.local_bytes <= 8 && s.local_keys <= 0 { s.local_bytes = 0 }
-		if s.local_bytes == 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes <= 8 && s.idb_dbs <= 0 { continue }
+		if s.local_bytes == 0 && s.session_bytes == 0 && s.session_keys == 0 && s.idb_bytes - s.opfs_bytes <= 8 && s.idb_dbs <= 0 && s.opfs_bytes == 0 { continue }
 		append(&list, s^)
 	}
 	slice.sort_by(list[:], proc(a, b: Site_Data) -> bool { return a.key < b.key })

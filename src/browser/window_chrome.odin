@@ -80,6 +80,8 @@ Window_Chrome :: struct {
 	icon:         render.Texture,
 	icon_px:      int,           // size of `icon` (0: none made yet)
 	icon_failed:  int,           // a size the exe's icon could not be loaded at
+	menu_win:     ^platform.Window,   // the system menu the icon asked for, opened once that window's frame is over (window_chrome_after_frame)
+	menu_at:      [2]f32,
 }
 
 wchrome: Window_Chrome
@@ -150,7 +152,21 @@ app_icon :: proc(app: ^App, size: f32) {
 	b.cursor = .Arrow
 	sig := ui.signal(b)
 	if hud.title_text != "" { tip(sig, hud.title_text) }
-	if sig.clicked || sig.right_clicked { platform.show_system_menu(app.win, {b.rect.min.x, b.rect.max.y}) }
+	if sig.clicked || sig.right_clicked { wchrome.menu_win, wchrome.menu_at = app.win, {b.rect.min.x, b.rect.max.y} }
+}
+
+// At the end of a frame: the system menu the icon asked for. Not from the build: the menu's loop paints the window
+// (window_on_frame), and a frame made inside the build broke the one being built (windows.odin: Frame_Stage).
+window_chrome_after_frame :: proc(app: ^App) {
+	w := wchrome.menu_win
+	if w == nil || w != app.win { return }
+	wchrome.menu_win = nil
+	if !platform.is_closed(w) { platform.show_system_menu(w, wchrome.menu_at) }
+}
+
+// A window that closes: a menu it asked for is not opened.
+window_chrome_forget :: proc(w: ^platform.Window) {
+	if wchrome.menu_win == w { wchrome.menu_win = nil }
 }
 
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.

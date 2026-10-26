@@ -294,6 +294,17 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Worker_createScriptBytes :: proc(c: ^Call, url: string, name: string, type: Api_WorkerType, script: []u8) -> (u64, Api_Error)`
 
+### `Worker_pendingError`
+
+```
+string Worker_pendingError()
+```
+
+While wj_worker_error_to_global runs: the worker's uncaught error that its Worker object's error event did not
+cancel, "message TAB filename" (HTML: it is reported in the owner's global, window.onerror).
+
+Host: `Worker_pendingError :: proc(c: ^Call) -> string`
+
 ### `SharedWorker_connectBytes`
 
 ```

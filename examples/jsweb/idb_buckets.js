@@ -69,3 +69,20 @@ test("buckets: open, isolation, estimate, keys, delete", async () => {
 });
 
 __run();
+
+test("a bucket's own origin private file system", async () => {
+  const b = await navigator.storageBuckets.open("files");
+  const d = await b.getDirectory();
+  eq(d.kind, "directory", "a directory handle");
+  const f = await d.getFileHandle("in-bucket.txt", { create: true });
+  const w = await f.createWritable(); await w.write("bucket"); await w.close();
+  const root = await navigator.storage.getDirectory();
+  const names = []; for await (const [n] of root) names.push(n);
+  ok(!names.includes("in-bucket.txt"), "the default bucket does not see it");
+  eq(await (await (await d.getFileHandle("in-bucket.txt")).getFile()).text(), "bucket", "the bucket keeps it");
+  ok((await b.estimate()).usage >= 6, "the bucket's estimate counts it");
+  await navigator.storageBuckets.delete("files");
+  let code = "";
+  try { await b.getDirectory(); } catch (x) { code = x.name; }
+  eq(code, "InvalidStateError", "a deleted bucket has no file system");
+});
