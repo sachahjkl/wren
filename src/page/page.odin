@@ -82,6 +82,8 @@ Page :: struct {
 	head:      base.Handle,
 	doc_el:    base.Handle,
 	objects:      Objects,              // promises, buffers and every other non-DOM object (objects.odin)
+	pointer:      ^Pointer_Page,        // pointer capture and the pointers held (pointer_input.odin); freed when the page closes
+	drag:         ^Drag_Session,        // the drag in progress (dnd_session.odin); freed when the page closes
 	host_reactions: [dynamic]Host_Reaction,
 	// styling (styles.odin)
 	engine:       ^style.Engine,

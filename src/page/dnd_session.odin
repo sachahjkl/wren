@@ -68,15 +68,13 @@ Drop_Result :: struct {
 	handled: bool,   // the page cancelled drop, or was a drop zone (cancelled dragover): no default action
 }
 
-@(private) drag_sessions: map[^Page]^Drag_Session
-
-drag_session :: proc(p: ^Page) -> ^Drag_Session { return drag_sessions[p] if p != nil else nil }
+drag_session :: proc(p: ^Page) -> ^Drag_Session { return p.drag if p != nil else nil }
 
 @(private)
 drag_session_free :: proc(p: ^Page) {
-	s := drag_sessions[p]
+	s := p.drag
 	if s == nil { return }
-	delete_key(&drag_sessions, p)
+	p.drag = nil
 	if !p.closed { object_release(p, s.store) }
 	free(s)
 }
@@ -87,10 +85,10 @@ drag_session_new :: proc(p: ^Page, source: base.Handle, kind: Drag_Source_Kind, 
 	s := new(Drag_Session)
 	s.source, s.kind = source, kind
 	s.store = store_new(p, 0, mode)
-	drag_sessions[p] = s
+	p.drag = s
 	base.on_close(p.scope, proc(data: rawptr) {
 		pg := (^Page)(data)
-		if s := drag_sessions[pg]; s != nil { delete_key(&drag_sessions, pg); free(s) }   // (the store goes with the page's objects)
+		if s := pg.drag; s != nil { pg.drag = nil; free(s) }   // (the store goes with the page's objects)
 	}, p)
 	return s
 }
