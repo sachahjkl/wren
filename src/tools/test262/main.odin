@@ -459,7 +459,15 @@ engine_jit_poll :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _
 	return nil
 }
 
+// the shell is a secure context, as jsengine's is (every realm asks at its start: worker_scope.c)
+secure_context :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	a[0] = {}
+	a[0].i32 = 1
+	return nil
+}
+
 IMPORTS := [?]wasm.Import{
+	{module = "document", name = "Window_isSecureContext", fn = secure_context, params = {}, results = {.I32}},
 	{module = "js", name = "Engine_jitPoll", fn = engine_jit_poll, params = {.I32}, results = {.I32}},
 	{module = "js", name = "Engine_jitCompile", fn = engine_jit, params = {.I32, .I32}, results = {.I32}},
 	{module = "js", name = "Engine_console", fn = engine_console, params = {.I32, .I32, .I32}},

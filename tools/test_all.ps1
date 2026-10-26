@@ -227,10 +227,6 @@ Step 'developer tools docked: the page area follows the size of the panel, at th
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
 }
-Step 'tab sidebar resized by its handle: the edge where the pointer is in every frame, the page at its area''s width, the width written on release (tools\sidebar_resize_e2e.ps1: no window shown, nothing timed)' {
-    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
-    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
-}
 Step 'an open menu over the top resize band is the browser''s (tools\menu_edge_e2e.ps1: the system''s hit test sent to a window shown fully transparent and click-through, no real mouse)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\menu_edge_e2e.ps1
@@ -588,6 +584,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools\crash_e2e.ps1
 } -UiOnly
 Step 'developer tools resized (tools\devtools_resize_e2e.ps1: the docked panel has the size the preference gives it; neither the browser window nor the window of the panel is shown stretched while it is resized, read from the screen after each step; the real mouse drags the corner of each window, panel detached)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1
+} -UiOnly
+Step 'tab sidebar resized by its handle: the edge where the pointer is in every frame, the page at its area''s width, the width written on release (tools\sidebar_resize_e2e.ps1: the pointer posted to the window as WM_MOUSEMOVE, frame by frame; it failed on the CI runner, where frames come late: the lag it measures depends on the machine)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
 } -UiOnly
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
