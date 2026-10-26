@@ -30,7 +30,12 @@ param(
     [string]$GhostAt = '40,40',   # where the ghost window's corner goes (screen pixels: another monitor than the primary one: e.g. '-2000,560')
     [switch]$Single,
     [int]$Dump = 0, [int]$DumpShown = 0, [int]$Timeline = 0,
-    [string]$Size = '1280x800'
+    [string]$Size = '1280x800',
+    # the width handle of the tab sidebar instead of a tab: the sidebar on the left with -Url in the current tab; -FromX is
+    # where the handle is pressed (the sidebar's edge: 238 at 96 dpi and the default width), the report adds the frames
+    # whose page was painted at another width than its area's
+    [switch]$Sidebar,
+    [string]$Url = ''
 )
 Set-Location (Split-Path $PSScriptRoot -Parent)
 . tools\wrenctl.ps1
@@ -125,6 +130,8 @@ try {
     Wren-Ctl pref set browser.frame.drag_probe true | Out-Null
     $have = [int](Wren-Ctl stats --json | ConvertFrom-Json).tabs
     for ($i = $have; $i -lt $Tabs; $i++) { Wren-Ctl tab new about:blank | Out-Null }
+    if ($Sidebar) { Wren-Ctl pref set browser.tabs.position left | Out-Null }
+    if ($Url) { Wren-Nav $Url -Wait idle | Out-Null }
     Start-Sleep -Milliseconds 1500
     $st0 = Wren-Ctl stats --json --reset-frames | ConvertFrom-Json
     $hwnd = [DragPoster]::FindWindow([uint32]$st0.pid)
@@ -146,7 +153,7 @@ try {
     $t0us = [double]$t0 * 1e6 / $freq             # Odin's ticks are QPC in ns; the samples are in us
     $speed = ($ToX - $FromX) / ($DurationMs * 1000.0)   # px per us
     $period = 1e6 / $st.hz                        # us
-    $rows = @($st.dragSamples | ForEach-Object { [pscustomobject]@{ read = $_[0]; shown = $_[1]; mouse = $_[2]; finger = $_[3]; dt = $_[4]; moves = $_[5]; done = $_[6]; waited = $_[7] } })
+    $rows = @($st.dragSamples | ForEach-Object { [pscustomobject]@{ read = $_[0]; shown = $_[1]; mouse = $_[2]; finger = $_[3]; dt = $_[4]; moves = $_[5]; done = $_[6]; waited = $_[7]; page = $_[8]; area = $_[9] } })
     $line = { param($t) $a = [Math]::Min([Math]::Max(($t - $t0us) / ($DurationMs * 1000.0), 0), 1); $FromX + ($ToX - $FromX) * $a }
     if ($Timeline) { $rows | Select-Object -Skip $Timeline -First 45 | ForEach-Object { '{0,9:N2} ms read +{1,5:N2} ms to Present returned, shown {2}' -f (($_.read - $t0us) / 1000), (($_.done - $_.read) / 1000), $(if ($_.shown) { '{0,9:N2}' -f (($_.shown - $t0us) / 1000) } else { '        -' }) } }
     if ($DumpShown) { $rows | Where-Object { $_.shown -gt 0 } | Select-Object -Skip 5 -First $DumpShown | ForEach-Object { '{0,9:N2} ms read, shown {1,9:N2} (+{2,6:N2} ms), tab {3,8:N1}, dt {4,6:N2} ms' -f (($_.read - $t0us) / 1000), (($_.shown - $t0us) / 1000), (($_.shown - $_.read) / 1000), $_.finger, ($_.dt * 1000) } }
@@ -178,6 +185,12 @@ try {
     $still = 0
     for ($i = 1; $i -lt $rows.Count; $i++) { if ($rows[$i].finger -eq $rows[$i - 1].finger -and $rows[$i].mouse -ne $rows[$i - 1].mouse) { $still++ } }
     "frames where the pointer moved and the tab did not: $still"
+    if ($Sidebar) {
+        $other = @($rows | Where-Object { $_.page -gt 0 -and [Math]::Abs($_.page - $_.area) -ge 1 }).Count
+        $edgeLag = @($rows | ForEach-Object { $_.mouse - $_.finger })
+        "frames whose page was painted at another width than its area: $other of $($rows.Count); pointer - edge drawn px p50/max: {0} {1}" -f (Fmt (Pct $edgeLag 0.5)), (Fmt (($edgeLag | Measure-Object -Maximum).Maximum))
+        "frames presented per second during the drag: {0:N0}" -f (@($rows | Where-Object { $_.done -gt 0 }).Count * 1000.0 / $DurationMs)
+    }
     if ($st.latency) { "swap chain queue (presented, not yet on screen) mean/max: {0:N2} / {1}; refreshes from input to screen p50/p95: {2:N2} / {3:N2}" -f $st.latency.queueMean, $st.latency.queueMax, $st.latency.totalRefreshes.p50, $st.latency.totalRefreshes.p95 }
     $busy = @($rows | Where-Object { $_.done -gt 0 } | ForEach-Object { ($_.done - $_.read) / 1000 })
     "read -> Present returned ms p50/p95/max: {0} {1} {2}" -f (Fmt (Pct $busy 0.5)), (Fmt (Pct $busy 0.95)), (Fmt (($busy | Measure-Object -Maximum).Maximum))

@@ -3,6 +3,7 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "core:time"
+import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:render"
 
@@ -21,6 +22,8 @@ Drag_Sample :: struct {
 	moves:    i32,   // pointer moves the frame consumed
 	done:     i64,   // tick Present returned
 	waited:   f32,   // ms the frame waited for the screen's slot (pacer_wait)
+	page_w:   f32,   // width the page was laid out and painted at in this frame (px; 0: no page)
+	area_w:   f32,   // width of the page's area in this frame (px): page_w differs while a frame shows another width
 }
 
 Drag_Probe :: struct {
@@ -50,7 +53,12 @@ drag_probe_note :: proc(mouse_x, finger_x: f32) {
 drag_probe_presented :: proc() {
 	if !pacer.cfg.drag_probe || drag_probe.n == 0 { return }
 	s := &drag_probe.ring[(drag_probe.n - 1) % DRAG_PROBE_CAP]
-	if s.read == pacer.read_tick { s.done = time.tick_now()._nsec }
+	if s.read != pacer.read_tick { return }
+	s.done = time.tick_now()._nsec
+	if app := the_app; app != nil {
+		s.area_w = draw.rect_size(app.page_rect).x
+		if t := current_tab(app); t != nil && page_prep.tab == t && page_prep.frame == chrome_frames.frame_no { s.page_w = page_prep.size.x }
+	}
 }
 
 // A frame reached the screen: the sample made for it learns when.
@@ -64,14 +72,15 @@ drag_probe_displayed :: proc(d: render.Displayed_Frame) {
 
 drag_probe_reset :: proc() { drag_probe.n = 0 }
 
-// The samples as a JSON array of [read, shown, mouse_x, finger_x, dt, moves, done, waited ms] (ticks in microseconds).
+// The samples as a JSON array of [read, shown, mouse_x, finger_x, dt, moves, done, waited ms, page_w, area_w] (ticks in
+// microseconds).
 drag_probe_json :: proc(b: ^strings.Builder) {
 	strings.write_byte(b, '[')
 	kept := min(drag_probe.n, DRAG_PROBE_CAP)
 	for i in drag_probe.n - kept ..< drag_probe.n {
 		s := drag_probe.ring[i % DRAG_PROBE_CAP]
 		if i > drag_probe.n - kept { strings.write_byte(b, ',') }
-		fmt.sbprintf(b, "[%d,%d,%.2f,%.2f,%.5f,%d,%d,%.3f]", s.read / 1000, s.shown / 1000, s.mouse_x, s.finger_x, s.dt, s.moves, s.done / 1000, s.waited)
+		fmt.sbprintf(b, "[%d,%d,%.2f,%.2f,%.5f,%d,%d,%.3f,%.1f,%.1f]", s.read / 1000, s.shown / 1000, s.mouse_x, s.finger_x, s.dt, s.moves, s.done / 1000, s.waited, s.page_w, s.area_w)
 	}
 	strings.write_byte(b, ']')
 }
