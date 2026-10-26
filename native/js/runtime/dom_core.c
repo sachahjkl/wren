@@ -712,6 +712,29 @@ JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int
     return r;
 }
 
+/* ---- XMLSerializer ---- */
+
+JSValue wjr_XMLSerializer_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Constructor XMLSerializer requires 'new'"); }
+    extern wj_val wj_new_object_for(wj_ctx *ctx, int iface, JSValueConst new_target, void *impl, void (*impl_free)(void *));
+    return wj_new_object_for(ctx, WJ_IFACE_XMLSerializer, new_target, NULL, NULL);
+}
+
+/* serializeToString(node): the browser's XML serialization (src/page/js_xml.odin) */
+JSValue wjr_XMLSerializer_serializeToString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_XMLSerializer)) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "XMLSerializer.serializeToString", 1, argc); }
+    wj_obj *o = wj_unwrap(argv[0], WJ_IFACE_Node);
+    if (!o) { return JS_ThrowTypeError(ctx, "Failed to execute 'serializeToString' on 'XMLSerializer': parameter 1 is not of type 'Node'."); }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_XMLSerializer_serialize(o->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "XMLSerializer.serializeToString"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
 JSValue wjr_DOMImplementation_hasFeature(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
