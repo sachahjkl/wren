@@ -969,7 +969,7 @@
 	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
 	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
 	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
-/workers/modules/shared-worker-import.window.html: TIMEOUT
+/workers/modules/shared-worker-import.window.html: OK|TIMEOUT
 	Dynamic import and then static import.: NOTRUN
 	Dynamic import.: NOTRUN
 	Nested dynamic import.: NOTRUN
@@ -979,7 +979,7 @@
 	Static import and then dynamic import.: NOTRUN
 	Static import.: PASS
 	eval(import()).: NOTRUN
-/workers/modules/shared-worker-options-credentials.html: TIMEOUT
+/workers/modules/shared-worker-options-credentials.html: OK|TIMEOUT
 	Test initialization: setting up cross-origin cookie: FAIL
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
