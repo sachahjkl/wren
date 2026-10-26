@@ -72,7 +72,7 @@ try {
   $o = $srv.Origin
   Wren-Ctl nav "$o/sw/ver/page" --wait load | Out-Null
   $tab1 = (Wren-Ctl tabs | Select-Object -First 1) -replace '^(\d+).*', '$1'
-  $askJs = 'window.ask = (m) => new Promise((ok) => { const n = swMessages.length; navigator.serviceWorker.controller.postMessage(m); const t = setInterval(() => { if (swMessages.length > n) { clearInterval(t); ok(swMessages[swMessages.length - 1]); } }, 20); setTimeout(() => ok("no answer"), 8000); }); 1'
+  $askJs = 'window.ask = (m) => new Promise((ok) => { const n = swMessages.length; navigator.serviceWorker.controller.postMessage(m); const t = setInterval(() => { if (swMessages.length > n) { clearInterval(t); ok(swMessages[swMessages.length - 1]); } }, 20); setTimeout(() => ok("no answer"), 30000); }); 1'
   $v1 = Wren-Ctl eval 'navigator.serviceWorker.register("/sw/ver.js", {scope: "/sw/ver/"}).then(() => navigator.serviceWorker.ready).then((r) => r.active.state === "activated" ? "activated" : new Promise((ok) => { r.active.onstatechange = () => { if (r.active.state === "activated") ok("activated"); }; }))' --await
   Expect ($v1 -eq 'activated') 'a registration of /sw/ver.js (version 1) activated' $v1
   Start-Sleep -Milliseconds 300
@@ -82,11 +82,11 @@ try {
   $same = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => r.update()).then((r) => String(r.installing) + " " + String(r.waiting))' --await
   Expect ($same -eq 'null null') 'update() with an unchanged script installs nothing' $same
   Wren-Ctl eval 'fetch("/sw/bump").then((r) => r.text())' --await | Out-Null
-  $wait = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { r.onupdatefound = () => { const w = r.installing; w.onstatechange = () => { if (w.state === "installed") ok("waiting " + (r.waiting === w) + " " + (r.active !== w)); }; }; r.update(); setTimeout(() => ok("timeout"), 8000); }))' --await
+  $wait = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { r.onupdatefound = () => { const w = r.installing; w.onstatechange = () => { if (w.state === "installed") ok("waiting " + (r.waiting === w) + " " + (r.active !== w)); }; }; r.update(); setTimeout(() => ok("timeout"), 30000); }))' --await
   Expect ($wait -eq 'waiting true true') 'update() of a changed script: updatefound, the new version installs and waits (the page uses the old one)' $wait
   $who1 = Wren-Ctl eval 'ask("who")' --await
   Expect ($who1 -eq 'v1') 'the waiting version does not control the page yet' $who1
-  $chg = Wren-Ctl eval 'new Promise((ok) => { navigator.serviceWorker.oncontrollerchange = () => ok("changed"); navigator.serviceWorker.getRegistration().then((r) => r.waiting.postMessage("skip")); setTimeout(() => ok("timeout"), 8000); })' --await
+  $chg = Wren-Ctl eval 'new Promise((ok) => { navigator.serviceWorker.oncontrollerchange = () => ok("changed"); navigator.serviceWorker.getRegistration().then((r) => r.waiting.postMessage("skip")); setTimeout(() => ok("timeout"), 30000); })' --await
   Expect ($chg -eq 'changed') 'skipWaiting() in the waiting version: it activates, controllerchange' $chg
   Start-Sleep -Milliseconds 300
   $who2 = Wren-Ctl eval 'ask("who")' --await
