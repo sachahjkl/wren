@@ -232,6 +232,10 @@ Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren wi
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\remote_e2e.ps1
 } -Weight 60
+Step 'accessibility end to end (tools\a11y_e2e.ps1: a Wren with no window shown read and driven through UI Automation as a screen reader does: the chrome''s roles, names and states, invoke, set value, select, expand)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\a11y_e2e.ps1
+}
 Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone and elsewhere, a drag between elements, pointer events and coordinates in a scrolled page; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1

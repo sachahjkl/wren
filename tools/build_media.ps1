@@ -25,6 +25,9 @@ if ($text) {
     $textCrate = Join-Path $root 'ext\gui_toolkit\native\text'
     $inputs += @(Get-ChildItem (Join-Path $textCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $textCrate 'Cargo.toml'))
 }
+# the toolkit's accessibility adapter (ext\gui_toolkit\native\a11y: AccessKit), built in the same way (feature `a11y`)
+$a11yCrate = Join-Path $root 'ext\gui_toolkit\native\a11y'
+$inputs += @(Get-ChildItem (Join-Path $a11yCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $a11yCrate 'Cargo.toml'))
 $sha = [Security.Cryptography.SHA256]::Create()
 $all = New-Object IO.MemoryStream
 if ($text) { $all.Write([byte[]](116, 101, 120, 116), 0, 4) }   # "text": the two builds have different stamps
@@ -71,7 +74,7 @@ if (-not $env:VCINSTALLDIR) {
 
 $target = Join-Path $out 'target'
 $t0 = Get-Date
-$features = @(if ($text) { '--features', 'text' })
+$features = @('--features', $(if ($text) { 'text,a11y' } else { 'a11y' }))
 & cargo build --release --locked --manifest-path (Join-Path $crate 'Cargo.toml') --target-dir $target @features
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed ($LASTEXITCODE)" }
 New-Item -ItemType Directory -Force $out | Out-Null

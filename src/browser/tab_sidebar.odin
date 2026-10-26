@@ -338,6 +338,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
 		}
 		sig := ui.signal(tb)
 		tip(sig, collapsed ? i18n.tr("Show the tab titles (Ctrl+Shift+Comma)") : i18n.tr("Show only the tab icons (Ctrl+Shift+Comma)"))
+		ui.a11y_set(tb, {name = i18n.tr("Tab titles"), expanded = !collapsed})   // (the sidebar's titles, shown or not)
 		if sig.clicked { set_pref_bool(app, "browser.tabs.sidebar_collapsed", !collapsed) }
 	}
 	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
@@ -383,6 +384,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	area_flags := ui.Box_Flags{.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y}
 	if cc != nil && pos == .Left { area_flags += {.Scrollbar_Left} }   // (classic: the inner edge is the current tab's)
 	area := ui.build_box(area_flags, "###tabs_area")
+	tab_list_a11y(area, true)
 	_ = ui.signal(area)   // the wheel
 	strip.area_key = area.key
 	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
@@ -504,6 +506,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 	}
 	ui.pop_tags()
 	b.cursor = .Arrow
+	tab_a11y(b, t, i, n, on)
 
 	if ui.parent(b) {
 		isz := f32(tab_icon_px(app))
@@ -520,6 +523,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 			title := t.title
 			if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
 			if on || inside {
 				cs := math.round(em * 1.45)
@@ -607,6 +611,8 @@ sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi:
 	defer ui.pop_parent()
 	ui.next({fixed_x = pos == .Left ? extent - grab : 0, fixed_y = 0, width = ui.px(grab), height = ui.pct(1), cursor = .Resize_H})
 	hb := ui.build_box({.Clickable}, "###side_handle")
+	ui.a11y_set(hb, {role = .Splitter, name = i18n.tr("Sidebar width"), orientation = .Y,
+		numeric = f64(sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w), min = f64(SIDEBAR_MIN_CSS), max = f64(SIDEBAR_MAX_CSS)})
 	sig := ui.signal(hb)
 	if sig.pressed {
 		sidebar.resizing = true

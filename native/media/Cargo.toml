@@ -31,9 +31,14 @@ brotli-decompressor = { version = "=6.1.0", default-features = false, features =
 # WREN_TEXT=native: a program links one Rust static library at most (each carries Rust's standard library). Its gt_*
 # functions stay exported; the toolkit is then built with -define:FONT_NATIVE_LINK=false.
 gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
+# The toolkit's accessibility adapter (AccessKit and its UI Automation adapter: screen readers read the chrome and the
+# pages), built in for the same reason; the toolkit is then built with -define:A11Y_ACCESSKIT=true
+# -define:A11Y_NATIVE_LINK=false.
+gt_a11y = { path = "../../ext/gui_toolkit/native/a11y", optional = true }
 
 [features]
 text = ["dep:gt_text"]
+a11y = ["dep:gt_a11y"]
 
 [dev-dependencies]
 # tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
