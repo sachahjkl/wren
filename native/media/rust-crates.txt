@@ -2,6 +2,9 @@ Rust crates of native/media (wren_media.lib, linked into wren.exe), from Cargo.l
 build-time and test-only crates (they are not in wren.exe).
 Each crate's license text is in its source package (crates.io) or repository.
 
+accesskit 0.25.2  [MIT OR Apache-2.0]  https://github.com/AccessKit/accesskit
+accesskit_consumer 0.39.2  [MIT OR Apache-2.0]  https://github.com/AccessKit/accesskit
+accesskit_windows 0.35.2  [MIT OR Apache-2.0]  https://github.com/AccessKit/accesskit
 adler2 2.0.1  [0BSD OR MIT OR Apache-2.0]  https://github.com/oyvindln/adler2
 alloc-no-stdlib 3.0.0  [BSD-3-Clause]  https://github.com/dropbox/rust-alloc-no-stdlib
 alloc-stdlib 0.3.0  [BSD-3-Clause]  https://github.com/dropbox/rust-alloc-no-stdlib
@@ -40,9 +43,11 @@ fontdb 0.24.0  [MIT]  https://github.com/RazrFalcon/fontdb
 font-types 0.12.7  [MIT OR Apache-2.0]  https://github.com/googlefonts/fontations
 getrandom 0.4.3  [MIT OR Apache-2.0]  https://github.com/rust-random/getrandom
 gif 0.14.2  [MIT OR Apache-2.0]  https://github.com/image-rs/image-gif
+gt_a11y 0.1.0  [MIT]  https://crates.io/crates/gt_a11y
 gt_text 0.1.0  [MIT]  https://crates.io/crates/gt_text
 harfrust 0.12.0  [MIT]  https://github.com/harfbuzz/harfrust
 harfrust 0.15.0  [MIT]  https://github.com/harfbuzz/harfrust
+hashbrown 0.17.1  [MIT OR Apache-2.0]  https://github.com/rust-lang/hashbrown
 heck 0.5.0  [MIT OR Apache-2.0]  https://github.com/withoutboats/heck
 icu_collections 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 icu_locale_core 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
@@ -104,6 +109,7 @@ skrifa 0.44.0  [MIT OR Apache-2.0]  https://github.com/googlefonts/fontations
 slotmap 1.1.1  [Zlib]  https://github.com/orlp/slotmap
 smallvec 1.16.3  [MIT OR Apache-2.0]  https://github.com/servo/rust-smallvec
 stable_deref_trait 1.2.1  [MIT OR Apache-2.0]  https://github.com/storyyeller/stable_deref_trait
+static_assertions 1.1.0  [MIT OR Apache-2.0]  https://github.com/nvzqz/static-assertions-rs
 strict-num 0.1.1  [MIT]  https://github.com/RazrFalcon/strict-num
 strum 0.26.3  [MIT]  https://github.com/Peternator7/strum
 strum_macros 0.26.4  [MIT]  https://github.com/Peternator7/strum
@@ -122,10 +128,21 @@ unicode-script 0.5.8  [MIT OR Apache-2.0]  https://github.com/unicode-rs/unicode
 unicode-vo 0.1.0  [MIT/Apache-2.0]  https://github.com/RazrFalcon/unicode-vo
 usvg 0.48.1  [Apache-2.0 OR MIT]  https://github.com/linebender/resvg
 utf8_iter 1.0.4  [Apache-2.0 OR MIT]  https://github.com/hsivonen/utf8_iter
+uuid 1.29.0  [Apache-2.0 OR MIT]  https://github.com/uuid-rs/uuid
 version_check 0.9.5  [MIT/Apache-2.0]  https://github.com/SergioBenitez/version_check
 weezl 0.1.12  [MIT OR Apache-2.0]  https://github.com/image-rs/weezl
 whereat 0.1.5  [MIT OR Apache-2.0]  https://github.com/lilith/whereat
+windows 0.62.2  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-collections 0.3.2  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-core 0.62.2  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-future 0.3.2  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-implement 0.60.2  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-interface 0.59.3  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
 windows-link 0.2.1  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-numerics 0.3.1  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-result 0.4.1  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-strings 0.5.1  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
+windows-threading 0.2.1  [MIT OR Apache-2.0]  https://github.com/microsoft/windows-rs
 writeable 0.6.4  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 xmlwriter 0.1.0  [MIT]  https://github.com/RazrFalcon/xmlwriter
 yoke 0.8.4  [Unicode-3.0]  https://github.com/unicode-org/icu4x
