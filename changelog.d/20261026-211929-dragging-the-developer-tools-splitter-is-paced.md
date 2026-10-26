@@ -1,0 +1,3 @@
+type: Fixed
+
+**Dragging the developer tools' splitter is paced like resizing the window** (`pacing.odin` `resize_step`, `devtools_dragging`; `browser.frame.resize_immediate`): a frame of the window's edge being dragged is drawn and shown at once, without waiting for the frame timer nor for the swap chain's slot, while a frame of the splitter being dragged only was when a mouse message happened to be waiting in the queue as it started; otherwise it waited for the next refresh, which felt less smooth than the window's edge on a 180 Hz screen. The floating panel's move and corner drag count too. Not checked on a faster screen than 60 Hz; the unit test covers the decision only.

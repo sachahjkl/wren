@@ -1,0 +1,3 @@
+type: Fixed
+
+**A monitor with a dynamic or variable refresh rate (G-Sync, Windows 11's dynamic refresh rate) is no longer planned at the 60 Hz it rests at** (`pacing.odin`, toolkit 0.36.2): the mode and the display path report 60 Hz all the time on such a screen, so the frame budget, the pages' frame period and the animation clock were all at 60 Hz while the screen showed frames at 180. Now `Display_Info.max_hz` (the highest mode at the current size) is the target when it is above the reported rate (`browser.frame.variable_refresh`: `auto` / `on` / `off`; `browser.frame.target_hz` and `max_hz` still win), the frames are timed by the browser at that rate and the animation clock follows their slots instead of a grid of vblanks that does not exist there.

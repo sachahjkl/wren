@@ -1,0 +1,3 @@
+type: Added
+
+A same-origin frame's window (`iframe.contentWindow`) gives what pages take from it to have a pristine copy: the ECMAScript built-ins, the interface objects and constructors of the platform (`contentWindow.Node`, `.XMLHttpRequest`), `fetch`, timers, `console`, and `history` (an object with `History.prototype` and no brand: `contentWindow.history.pushState.call(history, ...)`, which is how YouTube's SPF script changes the address, works, calling it on the frame's own history raises a TypeError). A cross-origin window still gives nothing of it, and nothing of the frame's own state (`document`, `location`, `navigator`, its globals) is reachable from a same-origin one.

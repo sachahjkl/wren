@@ -1,0 +1,3 @@
+type: Changed
+
+**Wren's own code is under the PolyForm Strict License 1.0.0, no longer MIT** (`LICENSE`, README, `THIRD_PARTY.md`, the site's pages): the source stays public; the program may be used for noncommercial purposes (personal use, research, charities, schools, public bodies); it may not be redistributed or sold, and no change or new work may be made from it; commercial use needs the author's agreement. Versions up to 0.3.0 were published under the MIT license and stay under it for whoever received them. The `gui_toolkit` is another project and stays MIT, as do the libraries Wren links (their licenses are in `about:licenses`, unchanged).

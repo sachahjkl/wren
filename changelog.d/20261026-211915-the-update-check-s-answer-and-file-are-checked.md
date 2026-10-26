@@ -1,0 +1,3 @@
+type: Fixed
+
+**The update check's answer and file are checked** (`update_version_ok`, `update_page_ok`, security review of 2026-10-25, finding 10): the release's `tag_name` was kept as it came and written a line at a time to `update.txt`; a tag with a line break (`99\nurl=file://...`) wrote a `url=` line of its own that the next start read back, and the "vX is available" button of Setup opened it as an address. A version must now be letters, digits, `.`, `+` and `-` (64 at most), a release page an `https://` address on one line with no space or control character, both when the answer arrives and when `update.txt` is read; anything else is dropped. Test: `update_check_test.odin`.
