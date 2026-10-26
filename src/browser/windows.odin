@@ -303,37 +303,41 @@ window_adopt_primary :: proc(app: ^App, w: ^platform.Window) -> ^Browser_Window 
 	return bw
 }
 
-// Where the thread is in a frame (full or chrome only), for the frames a window asks for from its window procedure
-// (window_on_frame: WM_PAINT inside a loop of the system). Such a loop is entered from a frame's poll (a press on the
-// window's border, Alt+Space): a frame made there comes before anything of the frame that polls. A loop entered later,
-// during the build or the drawing (TrackPopupMenu, a modal dialog: they pump the thread's messages), would build the
-// interface inside the one being built: ui.begin_build empties the parent stack, frees the frame arena and selects another
-// window's state under it, and the outer build goes on with that (the crash of 2026-10-26: ui.spacer after app_icon,
-// the system menu opened from the build). Those frames are not made: the window repaints at the next pass.
-Frame_Stage :: enum u8 {
-	None,   // between frames
-	Poll,   // the frame's wait and poll: a loop of the system may run its frames here
-	Busy,   // the page phase, the build, the drawing: no other frame may begin
+// Every frame of the thread goes through the toolkit's frame gate (platform/frame_gate.odin: one state machine, Idle ->
+// Polling -> Work -> Building -> Drawing -> Presenting). The browser's frames and their stages:
+//   * a full frame (main.odin frame, kind Full): Polling is its wait and poll, Work its page phase (loop tasks, page input,
+//     animation frames, styles and layout: shell_page_phase_end closes it), then the build, the drawing and the present;
+//   * a chrome frame (shell_frames.odin, kind Light): the chrome alone while a page holds the thread, made in a full
+//     frame's page phase (preemption) or in a chrome frame's poll; no Work;
+//   * a frame of the developer tools' window (devtools_window.odin, kind Light: none of the page's work).
+// A frame asked for from the window procedure (window_on_frame: WM_PAINT inside a loop of the system) is made only where
+// the gate admits it. A loop entered from a frame's poll (a press on the window's border, Alt+Space) makes its frames
+// there: they come before anything of the frame that polls. A loop entered during the build or the drawing
+// (TrackPopupMenu, a modal dialog: they pump the thread's messages) would build the interface inside the one being built
+// (the crash of 2026-10-26: ui.spacer after app_icon, the system menu opened from the build): those frames are deferred,
+// the window repaints at the next pass. A move the machine does not have panics in the builds with -debug
+// (frame_gate_init), and is counted otherwise (wren ctl stats: frameGate).
+frame_gate_init :: proc() {
+	platform.frame_gate().strict = ODIN_DEBUG
 }
 
-frame_stage: Frame_Stage
+// The kind of frame window_frame makes for a window's WM_PAINT now: inside a chrome frame, a chrome frame.
+window_frame_kind :: proc() -> platform.Frame_Kind { return chrome_frames.nested ? .Light : .Full }
 
-// A frame from the window procedure can be made now (frame_stage).
+// A frame from the window procedure can be made now (the frame gate).
 window_frame_allowed :: proc(app: ^App, bw: ^Browser_Window) -> bool {
 	if ui.building() { return false }   // (a build of any window: the developer tools' own too)
-	switch frame_stage {
-	case .None: return true
-	case .Poll: return !chrome_frames.nested || app.active == bw   // (a chrome frame is the current window's: shell_frames.odin)
-	case .Busy: return false
-	}
-	return false
+	g := platform.frame_gate()
+	kind := window_frame_kind()
+	if !platform.frame_admits(g.stage, g.kind, kind) { return false }
+	return kind == .Full || app.active == bw   // (a chrome frame is the current window's: shell_frames.odin)
 }
 
 window_on_frame :: proc(user: rawptr) {
 	bw := (^Browser_Window)(user)
 	app := the_app
 	if app == nil || bw.win == nil { return }
-	if !window_frame_allowed(app, bw) { bw.win.paint_requested = true; return }
+	if !window_frame_allowed(app, bw) { platform.frame_gate_defer(platform.frame_gate()); bw.win.paint_requested = true; return }
 	// the window whose frame polled (or the pass's) is the App's again afterwards: its frame goes on with its own tabs
 	prev := app.active
 	window_activate(app, bw)
