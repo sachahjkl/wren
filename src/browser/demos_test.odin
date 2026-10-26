@@ -31,6 +31,7 @@ demos_cover_every_page :: proc(t: ^testing.T) {
 	testing.expect(t, len(pages) >= 20, "the pages of examples/site are found")
 	for p in pages {
 		if p == "index.html" { continue }   // the index of them all, made from the table (demos_index.odin)
+		if strings.has_prefix(p, "partition/") { continue }   // the fixtures of tools\partition_e2e.ps1 (a page that embeds the third party given in the query): not demos
 		testing.expectf(t, listed[p], "examples/site/%s is missing from about:demos (demos.odin, DEMOS)", p)
 	}
 }
