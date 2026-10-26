@@ -23,7 +23,7 @@ domparsing
 xhr
 webstorage
 streams only=.,readable-streams,writable-streams
-workers only=.
+workers
 shadow-dom
 css/css-shadow
 custom-elements

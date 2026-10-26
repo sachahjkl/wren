@@ -1570,6 +1570,7 @@ JSValue wjr_WorkerGlobalScope_get_navigator(JSContext *ctx, JSValueConst this_va
 JSValue wjr_WorkerGlobalScope_get_self(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WorkerGlobalScope_importScripts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WorkerNavigator_get_permissions(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_WorkerNavigator_get_serviceWorker(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -17642,7 +17643,7 @@ static const wj_member wj_m_WorkerLocation[] = {
 };
 static const wj_member wj_m_WorkerNavigator[] = {
     { "permissions", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 271, NULL, wjr_WorkerNavigator_get_permissions, NULL, 0 },
-    { "serviceWorker", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 272, NULL, NULL, NULL, 0 },
+    { "serviceWorker", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT | WJ_F_SECURE, 272, NULL, wjr_WorkerNavigator_get_serviceWorker, NULL, 0 },
     { "setAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "clearAppBadge", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "deviceMemory", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
