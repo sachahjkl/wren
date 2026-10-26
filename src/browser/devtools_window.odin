@@ -55,14 +55,17 @@ devtools_window_make :: proc(app: ^App) {
 		win.GetClientRect(w.hwnd, &cr)
 		w.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
 	}
-	surf, ok := render.surface_create(&app.r, w.hwnd, w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w.hwnd))   // (window_chrome.odin)
+	// straight into the record, not through a local (see window_open: a local render.Surface is a compile-time trap)
+	dw := new(Dev_Window)
+	ok: bool
+	dw.surf, ok = render.surface_create(&app.r, w.hwnd, w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w.hwnd))   // (window_chrome.odin)
 	if !ok {
+		free(dw)
 		platform.destroy_window(w)
 		ui.toast(.Warn, "The window could not be drawn (this needs the Direct3D 11 renderer)")
 		return
 	}
-	dw := new(Dev_Window)
-	dw.win, dw.surf, dw.latency, dw.size_seen = w, surf, 1, w.size
+	dw.win, dw.latency, dw.size_seen = w, 1, w.size
 	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)
 	platform.set_dark_title(w, pal_ok ? pal.dark : true)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
