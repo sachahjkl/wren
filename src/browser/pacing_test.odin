@@ -41,12 +41,29 @@ pacing_target_rate :: proc(t: ^testing.T) {
 }
 
 @(test)
-a_resize_step_is_a_new_window_size_or_a_panel_dragged :: proc(t: ^testing.T) {
-	testing.expect(t, resize_step(true, false, true, true), "the window changed size")
-	testing.expect(t, resize_step(false, true, true, true), "a panel is being dragged: shown at once as a resize is")
-	testing.expect(t, !resize_step(false, false, true, true), "nothing moves the size: paced as any frame")
-	testing.expect(t, !resize_step(true, true, false, true), "never before the first frame is on screen")
-	testing.expect(t, !resize_step(true, true, true, false), "browser.frame.resize_immediate off: neither")
+a_resize_step_is_a_new_window_size :: proc(t: ^testing.T) {
+	testing.expect(t, resize_step(true, true, true), "the window changed size")
+	testing.expect(t, !resize_step(false, true, true), "nothing moves the window's size (a panel dragged inside it): paced as any frame")
+	testing.expect(t, !resize_step(true, false, true), "never before the first frame is on screen")
+	testing.expect(t, !resize_step(true, true, false), "browser.frame.resize_immediate off")
+}
+
+// A panel dragged inside the window at a 1 kHz pointer makes one frame per slot, as a tab dragged does: the slot grid is
+// what paces a variable refresh screen, and a resize step would skip it (a frame a millisecond).
+@(test)
+a_panel_dragged_at_1khz_makes_one_frame_per_slot :: proc(t: ^testing.T) {
+	ms :: 1_000_000
+	slots := platform.Frame_Slots{period_ns = 5_555_555, strict = true}   // 180 Hz, variable refresh
+	frames := 0
+	// a pointer move every millisecond for 100 ms: each wakes a frame, which waits for its slot, then takes 0.5 ms
+	for now := i64(0); now < 100 * ms; {
+		immediate := resize_step(false, true, true)   // the window keeps its size
+		wait, _ := platform.frame_slot_wait(&slots, now, frames == 0, immediate || frames == 0)
+		frames += 1
+		now += wait + ms / 2
+		now = (now + ms - 1) / ms * ms   // the next move
+	}
+	testing.expectf(t, frames >= 17 && frames <= 19, "100 ms at 180 Hz: 18 frames, not 100 (%d)", frames)
 }
 
 @(test)
