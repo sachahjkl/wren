@@ -24140,6 +24140,126 @@ _t_performance_Performance_timingOf :: proc "c" (env: rawptr, caller: wasm.Calle
 	return nil
 }
 
+// Popover_show :: proc(c: ^Call, element: Api_Element, source: Api_Element) -> Api_Error
+@(private = "file")
+_t_popover_Popover_show :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_show: argument element is not a live Element")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_show: argument source is not a live Element")
+	}
+	_err := Popover_show(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Popover_hide :: proc(c: ^Call, element: Api_Element) -> Api_Error
+@(private = "file")
+_t_popover_Popover_hide :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_hide: argument element is not a live Element")
+	}
+	_err := Popover_hide(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Popover_toggle :: proc(c: ^Call, element: Api_Element, force: i32, source: Api_Element) -> (bool, Api_Error)
+@(private = "file")
+_t_popover_Popover_toggle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[3]), 1)
+	if !_rk { return wasm.trap_bounds(&f, "popover.Popover_toggle", "result pointer") }
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_toggle: argument element is not a live Element")
+	}
+	_p1 := a[1].i32
+	_p2 := Api_Element{handle = u64(a[2].i64)}
+	if _p2.handle != 0 { _p2.data = lookup_Element(&c, _p2.handle) }
+	if _p2.handle != 0 && _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "popover.Popover_toggle: argument source is not a live Element")
+	}
+	_r, _err := Popover_toggle(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u8)(_rs), u8(1 if _r else 0))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Popover_state :: proc(c: ^Call, element: Api_Element) -> i32
+@(private = "file")
+_t_popover_Popover_state :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "popover.Popover_state: argument element is not a live Element") }
+		return wasm.trap_new("popover.Popover_state: argument element is not a live Element")
+	}
+	_r := Popover_state(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// Popover_targetOf :: proc(c: ^Call, invoker: Api_Element) -> u64
+@(private = "file")
+_t_popover_Popover_targetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Element{handle = u64(a[0].i64)}
+	_p0.data = lookup_Element(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "popover.Popover_targetOf: argument invoker is not a live Element") }
+		return wasm.trap_new("popover.Popover_targetOf: argument invoker is not a live Element")
+	}
+	_r := Popover_targetOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // Port_entangle :: proc(c: ^Call) -> u64
 @(private = "file")
 _t_ports_Port_entangle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -27356,6 +27476,11 @@ api_imports := [?]wasm.Import{
 	{module = "performance", name = "Performance_setResourceTimingBufferSize", fn = _t_performance_Performance_setResourceTimingBufferSize, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_clearResourceTimings", fn = _t_performance_Performance_clearResourceTimings, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_timingOf", fn = _t_performance_Performance_timingOf, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "popover", name = "Popover_show", fn = _t_popover_Popover_show, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "popover", name = "Popover_hide", fn = _t_popover_Popover_hide, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "popover", name = "Popover_toggle", fn = _t_popover_Popover_toggle, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "popover", name = "Popover_state", fn = _t_popover_Popover_state, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "popover", name = "Popover_targetOf", fn = _t_popover_Popover_targetOf, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Port_entangle", fn = _t_ports_Port_entangle, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Port_bind", fn = _t_ports_Port_bind, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "Port_ship", fn = _t_ports_Port_ship, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},

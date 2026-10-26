@@ -38,6 +38,7 @@ Page_Forms :: struct {
 	picker:    base.Handle,         // input waiting for its picker
 	picker_color: bool,
 	picker_timer: base.Handle,
+	popover:   Popover_State,      // the showing popovers (popover.odin)
 }
 
 page_forms :: proc(p: ^Page) -> ^forms.Forms {
@@ -75,6 +76,9 @@ forms_attach :: proc(p: ^Page) {
 		},
 		pick_files = proc(user: rawptr, input: base.Handle) { forms_plan_picker((^Page)(user), input, false) },
 		pick_color = proc(user: rawptr, input: base.Handle) { forms_plan_picker((^Page)(user), input, true) },
+		popover_invoke = proc(user: rawptr, invoker: base.Handle) { popover_invoke((^Page)(user), invoker) },
+		popover_dismiss = proc(user: rawptr, target: base.Handle) { popover_light_dismiss((^Page)(user), target) },
+		close_request = proc(user: rawptr) -> bool { return popover_close_request((^Page)(user)) },
 	})
 	p.style_state.controls = style.Control_Provider{query = forms_style_query, user = p}
 }
@@ -85,6 +89,7 @@ forms_detach :: proc(p: ^Page) {
 	if pf == nil { return }
 	forms.submission_destroy(pf.pending)
 	forms.forms_destroy(pf.model)
+	popover_state_destroy(p, &pf.popover)
 	free(pf)
 	p.formctl = nil
 }
@@ -140,9 +145,11 @@ forms_style_query :: proc(user: rawptr, el: base.Handle, q: style.Control_Query)
 	f := p.formctl.model
 	n := dom.get(p.doc, el)
 	if n == nil || n.kind != .Element { return false, false }
+	if q == .Popover_Open { return popover_showing(p, el), true }   // (popover.odin)
 	k := forms.kind_of(n)
 	if k == .None && n.name != "progress" { return false, false }
 	switch q {
+	case .Popover_Open: return false, false
 	case .Checked: return forms.matches_checked(f, el), true
 	case .Indeterminate: return forms.matches_indeterminate(f, el), true
 	case .Default: return forms.matches_default(f, el), true

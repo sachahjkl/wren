@@ -143,6 +143,11 @@ Host :: struct {
 	// A trusted click on a file / color input: show the platform's picker, then call set_files / set_value.
 	pick_files:    proc(user: rawptr, input: base.Handle),
 	pick_color:    proc(user: rawptr, input: base.Handle),
+	// Popovers (optional; the page's popover state): the activation of a button with `popovertarget`, a trusted click
+	// that may light-dismiss showing popovers, and Escape as a close request (true when it hid one).
+	popover_invoke:  proc(user: rawptr, invoker: base.Handle),
+	popover_dismiss: proc(user: rawptr, target: base.Handle),
+	close_request:   proc(user: rawptr) -> bool,
 }
 
 Report :: struct {

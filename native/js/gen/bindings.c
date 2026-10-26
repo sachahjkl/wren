@@ -659,7 +659,12 @@ JSValue wjr_HTMLDataListElement_get_options(JSContext *ctx, JSValueConst this_va
 JSValue wjr_HTMLElement_attachInternals(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLElement_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLElement_get_hidden(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLElement_get_popover(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLElement_hidePopover(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLElement_set_hidden(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLElement_set_popover(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLElement_showPopover(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLElement_togglePopover(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLFieldSetElement_get_elements(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFieldSetElement_get_validity(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLFormControlsCollection_namedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1197,6 +1202,10 @@ JSValue wjr_PointerEvent_get_width(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PopStateEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_PopStateEvent_get_hasUAVisualTransition(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_PopStateEvent_get_state(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PopoverTargetAttributes_get_popoverTargetAction(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PopoverTargetAttributes_get_popoverTargetElement(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_PopoverTargetAttributes_set_popoverTargetAction(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_PopoverTargetAttributes_set_popoverTargetElement(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_ProgressEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ProgressEvent_get_lengthComputable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ProgressEvent_get_loaded(JSContext *ctx, JSValueConst this_val);
@@ -1410,6 +1419,10 @@ JSValue wjr_Text_constructor(JSContext *ctx, JSValueConst this_val, int argc, JS
 JSValue wjr_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TimeRanges_start(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ToggleEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ToggleEvent_get_newState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ToggleEvent_get_oldState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ToggleEvent_get_source(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_TouchEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TouchEvent_getModifierState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TouchEvent_get_altKey(JSContext *ctx, JSValueConst this_val);
@@ -13232,9 +13245,9 @@ static const wj_member wj_m_TaskPriorityChangeEvent[] = {
     { "previousPriority", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ToggleEvent[] = {
-    { "oldState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "newState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "oldState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ToggleEvent_get_oldState, NULL, 0 },
+    { "newState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ToggleEvent_get_newState, NULL, 0 },
+    { "source", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ToggleEvent_get_source, NULL, 0 },
 };
 static const wj_member wj_m_TrackEvent[] = {
     { "track", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -14375,10 +14388,10 @@ static const wj_member wj_m_HTMLElement[] = {
     { "innerText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_innerText, wjg_HTMLElement_set_innerText, 0 },
     { "outerText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_outerText, wjg_HTMLElement_set_outerText, 0 },
     { "attachInternals", WJ_M_METHOD, 0, 0, wjr_HTMLElement_attachInternals, NULL, NULL, 0 },
-    { "showPopover", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "hidePopover", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "togglePopover", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "popover", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "showPopover", WJ_M_METHOD, 0, 0, wjr_HTMLElement_showPopover, NULL, NULL, 0 },
+    { "hidePopover", WJ_M_METHOD, 0, 0, wjr_HTMLElement_hidePopover, NULL, NULL, 0 },
+    { "togglePopover", WJ_M_METHOD, 0, 0, wjr_HTMLElement_togglePopover, NULL, NULL, 0 },
+    { "popover", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLElement_get_popover, wjr_HTMLElement_set_popover, 0 },
     { "headingOffset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_headingOffset, wjg_HTMLElement_set_headingOffset, 0 },
     { "headingReset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLElement_get_headingReset, wjg_HTMLElement_set_headingReset, 0 },
     { "attributeStyleMap", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 66, NULL, NULL, NULL, 0 },
@@ -14604,8 +14617,8 @@ static const wj_member wj_m_HTMLButtonElement[] = {
     { "reportValidity", WJ_M_METHOD, 0, 0, wjg_HTMLButtonElement_reportValidity, NULL, NULL, 0 },
     { "setCustomValidity", WJ_M_METHOD, 0, 1, wjg_HTMLButtonElement_setCustomValidity, NULL, NULL, 0 },
     { "labels", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLButtonElement_get_labels, NULL, 0 },
-    { "popoverTargetElement", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "popoverTargetAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "popoverTargetElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopoverTargetAttributes_get_popoverTargetElement, wjr_PopoverTargetAttributes_set_popoverTargetElement, 0 },
+    { "popoverTargetAction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopoverTargetAttributes_get_popoverTargetAction, wjr_PopoverTargetAttributes_set_popoverTargetAction, 0 },
 };
 static const wj_member wj_m_HTMLCanvasElement[] = {
     { "width", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLCanvasElement_get_width, wjg_HTMLCanvasElement_set_width, 0 },
@@ -14853,8 +14866,8 @@ static const wj_member wj_m_HTMLInputElement[] = {
     { "showPicker", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_align, wjg_HTMLInputElement_set_align, 0 },
     { "useMap", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLInputElement_get_useMap, wjg_HTMLInputElement_set_useMap, 0 },
-    { "popoverTargetElement", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "popoverTargetAction", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "popoverTargetElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopoverTargetAttributes_get_popoverTargetElement, wjr_PopoverTargetAttributes_set_popoverTargetElement, 0 },
+    { "popoverTargetAction", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_PopoverTargetAttributes_get_popoverTargetAction, wjr_PopoverTargetAttributes_set_popoverTargetAction, 0 },
 };
 static const wj_member wj_m_HTMLLIElement[] = {
     { "value", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLIElement_get_value, wjg_HTMLLIElement_set_value, 0 },
@@ -18673,7 +18686,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_TaskPriorityChangeEvent, .n_members = 1, .subtree_end = 166,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ToggleEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ToggleEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ToggleEvent_constructor,
       .members = wj_m_ToggleEvent, .n_members = 3, .subtree_end = 167,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
