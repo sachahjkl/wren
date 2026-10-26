@@ -25,10 +25,8 @@ Tab_Strip :: struct {
 	offset:       f32,    // scroll of the tabs when they do not fit (physical pixels)
 	follow_id:    u64,    // the current tab the offset was last brought to (a new current tab is scrolled into view)
 	follow_n:     int,
-	drag_id:      u64,    // the tab under a drag (0: none)
-	drag_active:  bool,   // ... and it moved past the threshold
-	drag_grab:    f32,    // pointer x minus the dragged tab's left edge
-	area_key:     ui.Key, // the box holding the tabs (their keys derive from it)
+	drag:         ui.Reorder,   // a tab dragged along the strip or the sidebar (toolkit: ui/reorder.odin)
+	area_key:     ui.Key,       // the box holding the tabs (their keys derive from it)
 }
 
 // The tab that has the keyboard, -1 when none (by key: works before the strip is built).
@@ -44,46 +42,13 @@ focused_tab_index :: proc(app: ^App) -> int {
 strip: Tab_Strip
 
 ////////////////////////////////
-// Geometry (pure: tab_strip_test.odin)
+// Geometry: the toolkit's list of items reordered by dragging (ui/reorder.odin), under the names the shell and its
+// tests use (tab_strip_test.odin)
 
-// Width of each tab: an equal share of `avail`, between `min_w` and `max_w`.
-tab_width :: proc(avail: f32, n: int, min_w, max_w: f32) -> f32 {
-	if n <= 0 { return max_w }
-	return clamp(avail / f32(n), min(min_w, max_w), max_w)
-}
-
-// Offset that keeps the scroll in range and, when `follow` (the current tab changed), shows tab `current` whole.
-strip_offset :: proc(offset: f32, n: int, w, avail: f32, current: int, follow: bool) -> f32 {
-	limit := max(f32(n) * w - avail, 0)
-	o := offset
-	if follow && current >= 0 && current < n {
-		left := f32(current) * w
-		if left < o { o = left }
-		if left + w > o + avail { o = left + w - avail }
-	}
-	return clamp(o, 0, limit)
-}
-
-// Slot a dragged tab whose left edge is at `left` (strip coordinates, scroll included) belongs in: the one its
-// middle is over.
-drag_slot :: proc(left, w: f32, n: int) -> int {
-	if n <= 0 || w <= 0 { return 0 }
-	return clamp(int(math.floor((left + w * 0.5) / w)), 0, n - 1)
-}
-
-// Moves the element at `from` to `to`, shifting those between; returns where the element at `current` went.
-list_move :: proc(list: []$T, from, to, current: int) -> int {
-	if from == to || from < 0 || to < 0 || from >= len(list) || to >= len(list) { return current }
-	v := list[from]
-	if from < to { copy(list[from:to], list[from + 1:to + 1]) } else { copy(list[to + 1:from + 1], list[to:from]) }
-	list[to] = v
-	switch {
-	case current == from: return to
-	case from < current && current <= to: return current - 1
-	case to <= current && current < from: return current + 1
-	}
-	return current
-}
+tab_width :: ui.reorder_item_size   // each tab's width: an equal share between the minimum and the maximum
+strip_offset :: ui.reorder_offset   // the scroll, in range, following the current tab when it changes
+drag_slot :: ui.reorder_slot        // the slot a dragged tab's middle is over
+list_move :: ui.list_move
 
 ////////////////////////////////
 // Loading state
@@ -117,7 +82,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 	dpi := ui_scale_of(app)
 	h := ui.dense(em * 2.6)
 	if integrated { h = max(h, math.round(32 * dpi)) }   // never lower than the system's title bar
-	if ui.active_key() == 0 { strip.drag_id, strip.drag_active = 0, false }   // the button went up (wherever)
+	ui.reorder_frame(&strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
 	classic := classic_on()
@@ -191,7 +156,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			// is the one in front of the others, and the clicks go to what is drawn on top)
 			dragged := -1
 			for t, i in app.tabs {
-				if strip.drag_active && t.id == strip.drag_id { dragged = i; break }
+				if ui.reorder_dragging(&strip.drag, t.id) { dragged = i; break }
 			}
 			if classic {
 				order := make([dynamic]int, 0, n, context.temp_allocator)
@@ -261,15 +226,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	on := i == app.current
 	id := fmt.tprintf("###tab_%d", t.id)
 	slot := f32(i) * w - strip.offset
-	x: f32
-	dragging := strip.drag_active && strip.drag_id == t.id
-	if dragging {
-		x = clamp(ui.mouse_pos().x - area.rect.min.x - strip.drag_grab, -strip.offset, f32(n - 1) * w - strip.offset)
-		_ = ui.anim(ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), x, 30, x)   // the release slides from here
-		drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + strip.drag_grab)
-	} else {
-		x = math.round(ui.anim(ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), slot, 30, slot))
-	}
+	// (the release slides from where the pointer left it)
+	x, dragging := ui.reorder_item_pos(&strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
+		ui.mouse_pos().x - area.rect.min.x, -strip.offset, f32(n - 1) * w - strip.offset)
+	if dragging { drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + strip.drag.grab) }
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -370,21 +330,18 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
-	if !(classic && strip.drag_active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
-	// drag to reorder
+	if !(classic && strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
+	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		if !strip.drag_active && max(abs(sig.drag_delta.x), favs.cfg.drag_detach ? abs(sig.drag_delta.y) : 0) > favs.cfg.drag_threshold * dpi {   // (straight down starts a drag too: it may leave the bar)
-			strip.drag_active, strip.drag_id = true, t.id
-			press_x := ui.mouse_pos().x - sig.drag_delta.x
-			strip.drag_grab = press_x - area.rect.min.x - slot   // where the pointer holds the tab
-		}
-		if strip.drag_active && strip.drag_id == t.id {
+		ui.reorder_begin(&strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
+			ui.mouse_pos().x - sig.drag_delta.x - area.rect.min.x, slot)
+		if ui.reorder_dragging(&strip.drag, t.id) {
 			to := drag_slot(x + strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
 			app.frames_requested = max(app.frames_requested, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, favs.cfg.detach_distance_em * em) {
-				strip.drag_active = false
+				strip.drag.active = false
 				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return .Closed }
 			}
 		}
