@@ -19,5 +19,6 @@ process_shutdown :: proc() {
 	js_shutdown()
 	frames_shutdown()
 	cache_store_shutdown()   // cache_store.odin
+	fs_store_shutdown()   // fs_store.odin
 	wasm.runtime_destroy()
 }

@@ -92,6 +92,16 @@ getParent(): the folder above (an entry is its own parent at the top of what was
 
 Host: `FsEntry_parent :: proc(c: ^Call, entry: Api_FsEntry) -> u64`
 
+### `FsEntry_root`
+
+```
+FsEntry FsEntry_root(FsEntry entry)
+```
+
+entry.filesystem.root: the entry of what was dropped (the top of the entry's tree).
+
+Host: `FsEntry_root :: proc(c: ^Call, entry: Api_FsEntry) -> u64`
+
 ### `FsEntry_file`
 
 ```

@@ -1,0 +1,49 @@
+/// File handles (WHATWG File System, WICG File System Access; src/page/fs_store.odin, fs_api.odin;
+/// native/js/runtime/web_fs.c). A handle is a root (the origin private file system of the realm's storage key, or a
+/// folder of the user's disk given by a picker or a drop) and a "/"-joined path of names below it ("" is the root).
+/// Errors carry their DOMException's name first in the message ("TypeMismatchError: ...").
+[Exposed=(Window,Worker)]
+module fs {
+  /// navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
+  /// context, for an opaque origin or a profile without a folder.
+  u64 Fs_opfsRoot() raises;
+  /// getFileHandle / getDirectoryHandle(name, {create}) on the directory at `path`: the child's path. Not_Found,
+  /// Type (an invalid name), Not_Allowed (no permission), Invalid_State ("TypeMismatchError": the other kind).
+  string Fs_getEntry(u64 root, string path, string name, bool directory, bool create) raises;
+  /// removeEntry(name, {recursive}): Invalid_Modification for a directory that is not empty, No_Modification_Allowed
+  /// for an entry in use.
+  void Fs_removeEntry(u64 root, string path, string name, bool recursive) raises;
+  /// The directory's entries: "f" or "d", a tab, the name, one per line.
+  string Fs_list(u64 root, string path) raises;
+  /// resolve(): the names from the first entry down to the second, "/"-joined (Not_Found: not below it).
+  string Fs_resolve(u64 root, string path, u64 root2, string path2) raises;
+  /// isSameEntry
+  bool Fs_same(u64 root, string path, u64 root2, string path2);
+  /// getFile(): a File object (a LocalFile of module dnd: read on demand).
+  u64 Fs_getFile(u64 root, string path) raises;
+  /// createWritable({keepExistingData}) (a temporary file) or createSyncAccessHandle() (`sync`: the file itself,
+  /// exclusive): an open entry's id. No_Modification_Allowed while it is locked.
+  u64 Fs_open(u64 root, string path, bool keep, bool sync) raises;
+  /// Writes at `at` (-1: the cursor): the bytes written. Quota past opfs.max_bytes_per_origin.
+  i64 Fs_write(u64 id, i64 at, bytes data) raises;
+  /// Reads into `into` from `at` (-1: the cursor): the bytes read.
+  i64 Fs_read(u64 id, i64 at, out bytes into) raises;
+  void Fs_seek(u64 id, i64 position) raises;
+  void Fs_truncate(u64 id, i64 size) raises;
+  i64 Fs_size(u64 id) raises;
+  void Fs_flush(u64 id) raises;
+  /// close(): a writable's temporary file replaces the entry (`commit` false: abort); a sync handle's lock goes.
+  void Fs_close(u64 id, bool commit) raises;
+  /// queryPermission: 0 granted, 1 prompt, 2 denied.
+  i32 Fs_permission(u64 root, bool write);
+  /// requestPermission({mode}): a promise of the state after (the user may be asked).
+  Promise Fs_requestPermission(u64 root, bool write) raises;
+  /// showOpenFilePicker (kind 0), showSaveFilePicker (1), showDirectoryPicker (2): a promise of the number of
+  /// handles, its text one line per handle: root TAB path TAB "f" or "d" TAB name. Abort when cancelled, Security
+  /// without a user gesture, Not_Supported when disabled. `types`: a line per type, description TAB patterns...
+  Promise Fs_showPicker(i32 kind, string types, bool multiple, bool exclude_all, string suggested, string start_in, u64 start_root, string start_path, string id, bool readwrite) raises;
+  /// A root as structuredClone keeps it ("" when unknown).
+  string Fs_describe(u64 root);
+  /// The root a kept description stands for in this realm. Data_Clone for another origin's.
+  u64 Fs_restore(string description) raises;
+}

@@ -400,184 +400,189 @@
 #define WJ_IFACE_FileSystemEntry 392
 #define WJ_IFACE_FileSystemDirectoryEntry 393
 #define WJ_IFACE_FileSystemFileEntry 394
-#define WJ_IFACE_FontFace 395
-#define WJ_IFACE_FontFaceFeatures 396
-#define WJ_IFACE_FontFacePalette 397
-#define WJ_IFACE_FontFacePalettes 398
-#define WJ_IFACE_FontFaceVariationAxis 399
-#define WJ_IFACE_FontFaceVariations 400
-#define WJ_IFACE_FormData 401
-#define WJ_IFACE_FragmentDirective 402
-#define WJ_IFACE_Gamepad 403
-#define WJ_IFACE_GamepadButton 404
-#define WJ_IFACE_GamepadHapticActuator 405
-#define WJ_IFACE_HTMLAllCollection 406
-#define WJ_IFACE_HTMLCollection 407
-#define WJ_IFACE_HTMLFormControlsCollection 408
-#define WJ_IFACE_HTMLOptionsCollection 409
-#define WJ_IFACE_Headers 410
-#define WJ_IFACE_Highlight 411
-#define WJ_IFACE_HighlightRegistry 412
-#define WJ_IFACE_History 413
-#define WJ_IFACE_IDBCursor 414
-#define WJ_IFACE_IDBCursorWithValue 415
-#define WJ_IFACE_IDBFactory 416
-#define WJ_IFACE_IDBIndex 417
-#define WJ_IFACE_IDBKeyRange 418
-#define WJ_IFACE_IDBObjectStore 419
-#define WJ_IFACE_IDBRecord 420
-#define WJ_IFACE_IdleDeadline 421
-#define WJ_IFACE_ImageBitmap 422
-#define WJ_IFACE_ImageBitmapRenderingContext 423
-#define WJ_IFACE_ImageData 424
-#define WJ_IFACE_IntersectionObserver 425
-#define WJ_IFACE_IntersectionObserverEntry 426
-#define WJ_IFACE_Location 427
-#define WJ_IFACE_Lock 428
-#define WJ_IFACE_LockManager 429
-#define WJ_IFACE_MediaDeviceInfo 430
-#define WJ_IFACE_InputDeviceInfo 431
-#define WJ_IFACE_MediaError 432
-#define WJ_IFACE_MediaList 433
-#define WJ_IFACE_MediaMetadata 434
-#define WJ_IFACE_MediaSession 435
-#define WJ_IFACE_MediaSourceHandle 436
-#define WJ_IFACE_MessageChannel 437
-#define WJ_IFACE_MimeType 438
-#define WJ_IFACE_MimeTypeArray 439
-#define WJ_IFACE_MutationObserver 440
-#define WJ_IFACE_MutationRecord 441
-#define WJ_IFACE_NamedNodeMap 442
-#define WJ_IFACE_NavigationActivation 443
-#define WJ_IFACE_NavigationDestination 444
-#define WJ_IFACE_NavigationPrecommitController 445
-#define WJ_IFACE_NavigationPreloadManager 446
-#define WJ_IFACE_NavigationTransition 447
-#define WJ_IFACE_Navigator 448
-#define WJ_IFACE_NavigatorUAData 449
-#define WJ_IFACE_NodeFilter 450
-#define WJ_IFACE_NodeIterator 451
-#define WJ_IFACE_NodeList 452
-#define WJ_IFACE_RadioNodeList 453
-#define WJ_IFACE_NotRestoredReasonDetails 454
-#define WJ_IFACE_NotRestoredReasons 455
-#define WJ_IFACE_OffscreenCanvasRenderingContext2D 456
-#define WJ_IFACE_Origin 457
-#define WJ_IFACE_Path2D 458
-#define WJ_IFACE_PerformanceEntry 459
-#define WJ_IFACE_LargestContentfulPaint 460
-#define WJ_IFACE_PerformanceEventTiming 461
-#define WJ_IFACE_PerformanceLongTaskTiming 462
-#define WJ_IFACE_PerformanceMark 463
-#define WJ_IFACE_PerformanceMeasure 464
-#define WJ_IFACE_PerformancePaintTiming 465
-#define WJ_IFACE_PerformanceResourceTiming 466
-#define WJ_IFACE_PerformanceNavigationTiming 467
-#define WJ_IFACE_TaskAttributionTiming 468
-#define WJ_IFACE_VisibilityStateEntry 469
-#define WJ_IFACE_PerformanceNavigation 470
-#define WJ_IFACE_PerformanceObserver 471
-#define WJ_IFACE_PerformanceObserverEntryList 472
-#define WJ_IFACE_PerformanceTiming 473
-#define WJ_IFACE_PerformanceTimingConfidence 474
-#define WJ_IFACE_PeriodicWave 475
-#define WJ_IFACE_Permissions 476
-#define WJ_IFACE_Plugin 477
-#define WJ_IFACE_PluginArray 478
-#define WJ_IFACE_ReadableByteStreamController 479
-#define WJ_IFACE_ReadableStream 480
-#define WJ_IFACE_ReadableStreamBYOBReader 481
-#define WJ_IFACE_ReadableStreamBYOBRequest 482
-#define WJ_IFACE_ReadableStreamDefaultController 483
-#define WJ_IFACE_ReadableStreamDefaultReader 484
-#define WJ_IFACE_Request 485
-#define WJ_IFACE_ResizeObserver 486
-#define WJ_IFACE_ResizeObserverEntry 487
-#define WJ_IFACE_ResizeObserverSize 488
-#define WJ_IFACE_Response 489
-#define WJ_IFACE_SVGAngle 490
-#define WJ_IFACE_SVGAnimatedAngle 491
-#define WJ_IFACE_SVGAnimatedBoolean 492
-#define WJ_IFACE_SVGAnimatedEnumeration 493
-#define WJ_IFACE_SVGAnimatedInteger 494
-#define WJ_IFACE_SVGAnimatedLength 495
-#define WJ_IFACE_SVGAnimatedLengthList 496
-#define WJ_IFACE_SVGAnimatedNumber 497
-#define WJ_IFACE_SVGAnimatedNumberList 498
-#define WJ_IFACE_SVGAnimatedPreserveAspectRatio 499
-#define WJ_IFACE_SVGAnimatedRect 500
-#define WJ_IFACE_SVGAnimatedString 501
-#define WJ_IFACE_SVGAnimatedTransformList 502
-#define WJ_IFACE_SVGLength 503
-#define WJ_IFACE_SVGLengthList 504
-#define WJ_IFACE_SVGNumber 505
-#define WJ_IFACE_SVGNumberList 506
-#define WJ_IFACE_SVGPointList 507
-#define WJ_IFACE_SVGPreserveAspectRatio 508
-#define WJ_IFACE_SVGStringList 509
-#define WJ_IFACE_SVGTransform 510
-#define WJ_IFACE_SVGTransformList 511
-#define WJ_IFACE_SVGUnitTypes 512
-#define WJ_IFACE_Sanitizer 513
-#define WJ_IFACE_Scheduler 514
-#define WJ_IFACE_Scheduling 515
-#define WJ_IFACE_Screen 516
-#define WJ_IFACE_Selection 517
-#define WJ_IFACE_SpeechGrammar 518
-#define WJ_IFACE_SpeechGrammarList 519
-#define WJ_IFACE_SpeechRecognitionAlternative 520
-#define WJ_IFACE_SpeechRecognitionPhrase 521
-#define WJ_IFACE_SpeechRecognitionResult 522
-#define WJ_IFACE_SpeechRecognitionResultList 523
-#define WJ_IFACE_SpeechSynthesisVoice 524
-#define WJ_IFACE_Storage 525
-#define WJ_IFACE_StorageManager 526
-#define WJ_IFACE_StylePropertyMapReadOnly 527
-#define WJ_IFACE_StylePropertyMap 528
-#define WJ_IFACE_StyleSheet 529
-#define WJ_IFACE_CSSStyleSheet 530
-#define WJ_IFACE_StyleSheetList 531
-#define WJ_IFACE_SubtleCrypto 532
-#define WJ_IFACE_TextDecoder 533
-#define WJ_IFACE_TextDecoderStream 534
-#define WJ_IFACE_TextEncoder 535
-#define WJ_IFACE_TextEncoderStream 536
-#define WJ_IFACE_TextMetrics 537
-#define WJ_IFACE_TextTrackCueList 538
-#define WJ_IFACE_TimeRanges 539
-#define WJ_IFACE_Touch 540
-#define WJ_IFACE_TouchList 541
-#define WJ_IFACE_TransformStream 542
-#define WJ_IFACE_TransformStreamDefaultController 543
-#define WJ_IFACE_TreeWalker 544
-#define WJ_IFACE_TrustedHTML 545
-#define WJ_IFACE_TrustedHTMLParserOptions 546
-#define WJ_IFACE_TrustedScript 547
-#define WJ_IFACE_TrustedScriptURL 548
-#define WJ_IFACE_TrustedTypePolicy 549
-#define WJ_IFACE_TrustedTypePolicyFactory 550
-#define WJ_IFACE_URL 551
-#define WJ_IFACE_URLSearchParams 552
-#define WJ_IFACE_UserActivation 553
-#define WJ_IFACE_ValidityState 554
-#define WJ_IFACE_VideoPlaybackQuality 555
-#define WJ_IFACE_VideoTrack 556
-#define WJ_IFACE_ViewTransition 557
-#define WJ_IFACE_ViewTransitionTypeSet 558
-#define WJ_IFACE_WorkerLocation 559
-#define WJ_IFACE_WorkerNavigator 560
-#define WJ_IFACE_Worklet 561
-#define WJ_IFACE_AudioWorklet 562
-#define WJ_IFACE_WritableStream 563
-#define WJ_IFACE_WritableStreamDefaultController 564
-#define WJ_IFACE_WritableStreamDefaultWriter 565
-#define WJ_IFACE_XMLSerializer 566
-#define WJ_IFACE_XPathEvaluator 567
-#define WJ_IFACE_XPathExpression 568
-#define WJ_IFACE_XPathResult 569
-#define WJ_IFACE_XSLTProcessor 570
-#define WJ_IFACE_console 571
-#define WJ_IFACE_COUNT 572
+#define WJ_IFACE_FileSystemHandle 395
+#define WJ_IFACE_FileSystemDirectoryHandle 396
+#define WJ_IFACE_FileSystemFileHandle 397
+#define WJ_IFACE_FileSystemSyncAccessHandle 398
+#define WJ_IFACE_FontFace 399
+#define WJ_IFACE_FontFaceFeatures 400
+#define WJ_IFACE_FontFacePalette 401
+#define WJ_IFACE_FontFacePalettes 402
+#define WJ_IFACE_FontFaceVariationAxis 403
+#define WJ_IFACE_FontFaceVariations 404
+#define WJ_IFACE_FormData 405
+#define WJ_IFACE_FragmentDirective 406
+#define WJ_IFACE_Gamepad 407
+#define WJ_IFACE_GamepadButton 408
+#define WJ_IFACE_GamepadHapticActuator 409
+#define WJ_IFACE_HTMLAllCollection 410
+#define WJ_IFACE_HTMLCollection 411
+#define WJ_IFACE_HTMLFormControlsCollection 412
+#define WJ_IFACE_HTMLOptionsCollection 413
+#define WJ_IFACE_Headers 414
+#define WJ_IFACE_Highlight 415
+#define WJ_IFACE_HighlightRegistry 416
+#define WJ_IFACE_History 417
+#define WJ_IFACE_IDBCursor 418
+#define WJ_IFACE_IDBCursorWithValue 419
+#define WJ_IFACE_IDBFactory 420
+#define WJ_IFACE_IDBIndex 421
+#define WJ_IFACE_IDBKeyRange 422
+#define WJ_IFACE_IDBObjectStore 423
+#define WJ_IFACE_IDBRecord 424
+#define WJ_IFACE_IdleDeadline 425
+#define WJ_IFACE_ImageBitmap 426
+#define WJ_IFACE_ImageBitmapRenderingContext 427
+#define WJ_IFACE_ImageData 428
+#define WJ_IFACE_IntersectionObserver 429
+#define WJ_IFACE_IntersectionObserverEntry 430
+#define WJ_IFACE_Location 431
+#define WJ_IFACE_Lock 432
+#define WJ_IFACE_LockManager 433
+#define WJ_IFACE_MediaDeviceInfo 434
+#define WJ_IFACE_InputDeviceInfo 435
+#define WJ_IFACE_MediaError 436
+#define WJ_IFACE_MediaList 437
+#define WJ_IFACE_MediaMetadata 438
+#define WJ_IFACE_MediaSession 439
+#define WJ_IFACE_MediaSourceHandle 440
+#define WJ_IFACE_MessageChannel 441
+#define WJ_IFACE_MimeType 442
+#define WJ_IFACE_MimeTypeArray 443
+#define WJ_IFACE_MutationObserver 444
+#define WJ_IFACE_MutationRecord 445
+#define WJ_IFACE_NamedNodeMap 446
+#define WJ_IFACE_NavigationActivation 447
+#define WJ_IFACE_NavigationDestination 448
+#define WJ_IFACE_NavigationPrecommitController 449
+#define WJ_IFACE_NavigationPreloadManager 450
+#define WJ_IFACE_NavigationTransition 451
+#define WJ_IFACE_Navigator 452
+#define WJ_IFACE_NavigatorUAData 453
+#define WJ_IFACE_NodeFilter 454
+#define WJ_IFACE_NodeIterator 455
+#define WJ_IFACE_NodeList 456
+#define WJ_IFACE_RadioNodeList 457
+#define WJ_IFACE_NotRestoredReasonDetails 458
+#define WJ_IFACE_NotRestoredReasons 459
+#define WJ_IFACE_OffscreenCanvasRenderingContext2D 460
+#define WJ_IFACE_Origin 461
+#define WJ_IFACE_Path2D 462
+#define WJ_IFACE_PerformanceEntry 463
+#define WJ_IFACE_LargestContentfulPaint 464
+#define WJ_IFACE_PerformanceEventTiming 465
+#define WJ_IFACE_PerformanceLongTaskTiming 466
+#define WJ_IFACE_PerformanceMark 467
+#define WJ_IFACE_PerformanceMeasure 468
+#define WJ_IFACE_PerformancePaintTiming 469
+#define WJ_IFACE_PerformanceResourceTiming 470
+#define WJ_IFACE_PerformanceNavigationTiming 471
+#define WJ_IFACE_TaskAttributionTiming 472
+#define WJ_IFACE_VisibilityStateEntry 473
+#define WJ_IFACE_PerformanceNavigation 474
+#define WJ_IFACE_PerformanceObserver 475
+#define WJ_IFACE_PerformanceObserverEntryList 476
+#define WJ_IFACE_PerformanceTiming 477
+#define WJ_IFACE_PerformanceTimingConfidence 478
+#define WJ_IFACE_PeriodicWave 479
+#define WJ_IFACE_Permissions 480
+#define WJ_IFACE_Plugin 481
+#define WJ_IFACE_PluginArray 482
+#define WJ_IFACE_ReadableByteStreamController 483
+#define WJ_IFACE_ReadableStream 484
+#define WJ_IFACE_ReadableStreamBYOBReader 485
+#define WJ_IFACE_ReadableStreamBYOBRequest 486
+#define WJ_IFACE_ReadableStreamDefaultController 487
+#define WJ_IFACE_ReadableStreamDefaultReader 488
+#define WJ_IFACE_Request 489
+#define WJ_IFACE_ResizeObserver 490
+#define WJ_IFACE_ResizeObserverEntry 491
+#define WJ_IFACE_ResizeObserverSize 492
+#define WJ_IFACE_Response 493
+#define WJ_IFACE_SVGAngle 494
+#define WJ_IFACE_SVGAnimatedAngle 495
+#define WJ_IFACE_SVGAnimatedBoolean 496
+#define WJ_IFACE_SVGAnimatedEnumeration 497
+#define WJ_IFACE_SVGAnimatedInteger 498
+#define WJ_IFACE_SVGAnimatedLength 499
+#define WJ_IFACE_SVGAnimatedLengthList 500
+#define WJ_IFACE_SVGAnimatedNumber 501
+#define WJ_IFACE_SVGAnimatedNumberList 502
+#define WJ_IFACE_SVGAnimatedPreserveAspectRatio 503
+#define WJ_IFACE_SVGAnimatedRect 504
+#define WJ_IFACE_SVGAnimatedString 505
+#define WJ_IFACE_SVGAnimatedTransformList 506
+#define WJ_IFACE_SVGLength 507
+#define WJ_IFACE_SVGLengthList 508
+#define WJ_IFACE_SVGNumber 509
+#define WJ_IFACE_SVGNumberList 510
+#define WJ_IFACE_SVGPointList 511
+#define WJ_IFACE_SVGPreserveAspectRatio 512
+#define WJ_IFACE_SVGStringList 513
+#define WJ_IFACE_SVGTransform 514
+#define WJ_IFACE_SVGTransformList 515
+#define WJ_IFACE_SVGUnitTypes 516
+#define WJ_IFACE_Sanitizer 517
+#define WJ_IFACE_Scheduler 518
+#define WJ_IFACE_Scheduling 519
+#define WJ_IFACE_Screen 520
+#define WJ_IFACE_Selection 521
+#define WJ_IFACE_SpeechGrammar 522
+#define WJ_IFACE_SpeechGrammarList 523
+#define WJ_IFACE_SpeechRecognitionAlternative 524
+#define WJ_IFACE_SpeechRecognitionPhrase 525
+#define WJ_IFACE_SpeechRecognitionResult 526
+#define WJ_IFACE_SpeechRecognitionResultList 527
+#define WJ_IFACE_SpeechSynthesisVoice 528
+#define WJ_IFACE_Storage 529
+#define WJ_IFACE_StorageManager 530
+#define WJ_IFACE_StylePropertyMapReadOnly 531
+#define WJ_IFACE_StylePropertyMap 532
+#define WJ_IFACE_StyleSheet 533
+#define WJ_IFACE_CSSStyleSheet 534
+#define WJ_IFACE_StyleSheetList 535
+#define WJ_IFACE_SubtleCrypto 536
+#define WJ_IFACE_TextDecoder 537
+#define WJ_IFACE_TextDecoderStream 538
+#define WJ_IFACE_TextEncoder 539
+#define WJ_IFACE_TextEncoderStream 540
+#define WJ_IFACE_TextMetrics 541
+#define WJ_IFACE_TextTrackCueList 542
+#define WJ_IFACE_TimeRanges 543
+#define WJ_IFACE_Touch 544
+#define WJ_IFACE_TouchList 545
+#define WJ_IFACE_TransformStream 546
+#define WJ_IFACE_TransformStreamDefaultController 547
+#define WJ_IFACE_TreeWalker 548
+#define WJ_IFACE_TrustedHTML 549
+#define WJ_IFACE_TrustedHTMLParserOptions 550
+#define WJ_IFACE_TrustedScript 551
+#define WJ_IFACE_TrustedScriptURL 552
+#define WJ_IFACE_TrustedTypePolicy 553
+#define WJ_IFACE_TrustedTypePolicyFactory 554
+#define WJ_IFACE_URL 555
+#define WJ_IFACE_URLSearchParams 556
+#define WJ_IFACE_UserActivation 557
+#define WJ_IFACE_ValidityState 558
+#define WJ_IFACE_VideoPlaybackQuality 559
+#define WJ_IFACE_VideoTrack 560
+#define WJ_IFACE_ViewTransition 561
+#define WJ_IFACE_ViewTransitionTypeSet 562
+#define WJ_IFACE_WorkerLocation 563
+#define WJ_IFACE_WorkerNavigator 564
+#define WJ_IFACE_Worklet 565
+#define WJ_IFACE_AudioWorklet 566
+#define WJ_IFACE_WritableStream 567
+#define WJ_IFACE_FileSystemWritableFileStream 568
+#define WJ_IFACE_WritableStreamDefaultController 569
+#define WJ_IFACE_WritableStreamDefaultWriter 570
+#define WJ_IFACE_XMLSerializer 571
+#define WJ_IFACE_XPathEvaluator 572
+#define WJ_IFACE_XPathExpression 573
+#define WJ_IFACE_XPathResult 574
+#define WJ_IFACE_XSLTProcessor 575
+#define WJ_IFACE_console 576
+#define WJ_IFACE_COUNT 577
 
 extern const int wj_same_object_count;
 
@@ -2268,6 +2273,39 @@ typedef struct wjd_DeferredRequestInit {
 } wjd_DeferredRequestInit;
 bool wjd_DeferredRequestInit_from(JSContext *ctx, JSValueConst v, wjd_DeferredRequestInit *out);
 void wjd_DeferredRequestInit_free(JSContext *ctx, wjd_DeferredRequestInit *d);
+typedef struct wjd_FilePickerOptions {
+    bool excludeAcceptAllOption;
+    wj_str id;
+    bool has_id;
+    JSValue startIn;   /* StartInDirectory */
+    bool has_startIn;
+    JSValue types;   /* sequence<FilePickerAcceptType> */
+    bool has_types;
+} wjd_FilePickerOptions;
+bool wjd_FilePickerOptions_from(JSContext *ctx, JSValueConst v, wjd_FilePickerOptions *out);
+void wjd_FilePickerOptions_free(JSContext *ctx, wjd_FilePickerOptions *d);
+typedef struct wjd_OpenFilePickerOptions {
+    struct wjd_FilePickerOptions base;
+    bool multiple;
+} wjd_OpenFilePickerOptions;
+bool wjd_OpenFilePickerOptions_from(JSContext *ctx, JSValueConst v, wjd_OpenFilePickerOptions *out);
+void wjd_OpenFilePickerOptions_free(JSContext *ctx, wjd_OpenFilePickerOptions *d);
+typedef struct wjd_SaveFilePickerOptions {
+    struct wjd_FilePickerOptions base;
+    wj_str suggestedName;
+    bool has_suggestedName;
+} wjd_SaveFilePickerOptions;
+bool wjd_SaveFilePickerOptions_from(JSContext *ctx, JSValueConst v, wjd_SaveFilePickerOptions *out);
+void wjd_SaveFilePickerOptions_free(JSContext *ctx, wjd_SaveFilePickerOptions *d);
+typedef struct wjd_DirectoryPickerOptions {
+    wj_str id;
+    bool has_id;
+    wj_str mode;
+    JSValue startIn;   /* StartInDirectory */
+    bool has_startIn;
+} wjd_DirectoryPickerOptions;
+bool wjd_DirectoryPickerOptions_from(JSContext *ctx, JSValueConst v, wjd_DirectoryPickerOptions *out);
+void wjd_DirectoryPickerOptions_free(JSContext *ctx, wjd_DirectoryPickerOptions *d);
 typedef struct wjd_WindowPostMessageOptions {
     struct wjd_StructuredSerializeOptions base;
     wj_str targetOrigin;
@@ -2298,6 +2336,37 @@ typedef struct wjd_FileSystemFlags {
 } wjd_FileSystemFlags;
 bool wjd_FileSystemFlags_from(JSContext *ctx, JSValueConst v, wjd_FileSystemFlags *out);
 void wjd_FileSystemFlags_free(JSContext *ctx, wjd_FileSystemFlags *d);
+typedef struct wjd_FileSystemHandlePermissionDescriptor {
+    wj_str mode;
+} wjd_FileSystemHandlePermissionDescriptor;
+bool wjd_FileSystemHandlePermissionDescriptor_from(JSContext *ctx, JSValueConst v, wjd_FileSystemHandlePermissionDescriptor *out);
+void wjd_FileSystemHandlePermissionDescriptor_free(JSContext *ctx, wjd_FileSystemHandlePermissionDescriptor *d);
+typedef struct wjd_FileSystemGetFileOptions {
+    bool create;
+} wjd_FileSystemGetFileOptions;
+bool wjd_FileSystemGetFileOptions_from(JSContext *ctx, JSValueConst v, wjd_FileSystemGetFileOptions *out);
+void wjd_FileSystemGetFileOptions_free(JSContext *ctx, wjd_FileSystemGetFileOptions *d);
+typedef struct wjd_FileSystemGetDirectoryOptions {
+    bool create;
+} wjd_FileSystemGetDirectoryOptions;
+bool wjd_FileSystemGetDirectoryOptions_from(JSContext *ctx, JSValueConst v, wjd_FileSystemGetDirectoryOptions *out);
+void wjd_FileSystemGetDirectoryOptions_free(JSContext *ctx, wjd_FileSystemGetDirectoryOptions *d);
+typedef struct wjd_FileSystemRemoveOptions {
+    bool recursive;
+} wjd_FileSystemRemoveOptions;
+bool wjd_FileSystemRemoveOptions_from(JSContext *ctx, JSValueConst v, wjd_FileSystemRemoveOptions *out);
+void wjd_FileSystemRemoveOptions_free(JSContext *ctx, wjd_FileSystemRemoveOptions *d);
+typedef struct wjd_FileSystemCreateWritableOptions {
+    bool keepExistingData;
+} wjd_FileSystemCreateWritableOptions;
+bool wjd_FileSystemCreateWritableOptions_from(JSContext *ctx, JSValueConst v, wjd_FileSystemCreateWritableOptions *out);
+void wjd_FileSystemCreateWritableOptions_free(JSContext *ctx, wjd_FileSystemCreateWritableOptions *d);
+typedef struct wjd_FileSystemReadWriteOptions {
+    uint64_t at;
+    bool has_at;
+} wjd_FileSystemReadWriteOptions;
+bool wjd_FileSystemReadWriteOptions_from(JSContext *ctx, JSValueConst v, wjd_FileSystemReadWriteOptions *out);
+void wjd_FileSystemReadWriteOptions_free(JSContext *ctx, wjd_FileSystemReadWriteOptions *d);
 typedef struct wjd_FontFaceDescriptors {
     wj_str ascentOverride;
     wj_str descentOverride;
@@ -2670,5 +2739,17 @@ typedef struct wjd_WorkletOptions {
 } wjd_WorkletOptions;
 bool wjd_WorkletOptions_from(JSContext *ctx, JSValueConst v, wjd_WorkletOptions *out);
 void wjd_WorkletOptions_free(JSContext *ctx, wjd_WorkletOptions *d);
+typedef struct wjd_WriteParams {
+    JSValue data;   /* (BufferSource or Blob or USVString)? */
+    bool has_data;
+    uint64_t position;
+    bool has_position;
+    uint64_t size;
+    bool has_size;
+    wj_str type;
+    bool has_type;
+} wjd_WriteParams;
+bool wjd_WriteParams_from(JSContext *ctx, JSValueConst v, wjd_WriteParams *out);
+void wjd_WriteParams_free(JSContext *ctx, wjd_WriteParams *d);
 
 #endif

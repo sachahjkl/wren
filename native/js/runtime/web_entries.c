@@ -60,7 +60,7 @@ JSValue wjr_FileSystemEntry_get_fullPath(JSContext *ctx, JSValueConst this_val)
 
 /* ---- FileSystem: its name (one per drop) ---- */
 
-typedef struct fs_impl { char *name; } fs_impl;
+typedef struct fs_impl { char *name; uint64_t entry; } fs_impl;   /* entry: one of its entries (for its root) */
 static void fs_impl_free(void *p) { fs_impl *f = p; free(f->name); free(f); }
 
 JSValue wjr_FileSystemEntry_get_filesystem(JSContext *ctx, JSValueConst this_val)
@@ -73,7 +73,19 @@ JSValue wjr_FileSystemEntry_get_filesystem(JSContext *ctx, JSValueConst this_val
     if (!f) { return JS_ThrowOutOfMemory(ctx); }
     f->name = web_strndup((const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
     JSValue obj = wj_new_object(ctx, WJ_IFACE_FileSystem, f, fs_impl_free);
+    if (!JS_IsException(obj)) {
+        /* [SameObject] root: the folder (or file) that was dropped, made now while the entry is alive */
+        JSValue root = web_entry_wrap(ctx, wr_FsEntry_root(o->handle));
+        web_extra_set(ctx, obj, "root", root);
+    }
     return obj;
+}
+
+JSValue wjr_FileSystem_get_root(JSContext *ctx, JSValueConst this_val)
+{
+    if (!web_this_impl(ctx, this_val, WJ_IFACE_FileSystem)) { return JS_EXCEPTION; }
+    JSValue r = web_extra_get(ctx, this_val, "root");
+    return JS_IsUndefined(r) ? JS_NULL : r;
 }
 
 JSValue wjr_FileSystem_get_name(JSContext *ctx, JSValueConst this_val)

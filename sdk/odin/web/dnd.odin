@@ -58,6 +58,7 @@ foreign _m_dnd {
 	@(link_name = "LocalFile_type") _LocalFile_type :: proc(file: LocalFile, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "LocalFile_info") _LocalFile_info :: proc(file: LocalFile, _ret: ^LocalFileInfo) ---
 	@(link_name = "LocalFile_read") _LocalFile_read :: proc(file: LocalFile, offset: i64, into: [^]u8, into_len: u32, _ret: ^i64) -> Error ---
+	@(link_name = "DataTransfer_itemFsHandle") _DataTransfer_itemFsHandle :: proc(dt: DataTransfer, index: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DragEvent_dataTransfer") _DragEvent_dataTransfer :: proc(event: Event) -> DataTransfer ---
 	@(link_name = "InputFiles_count") _InputFiles_count :: proc(input: u64) -> i32 ---
 	@(link_name = "InputFiles_item") _InputFiles_item :: proc(input: u64, index: i32, _ret: ^LocalFile) -> Error ---
@@ -398,6 +399,36 @@ LocalFile_info :: proc "contextless" (file: LocalFile) -> (result: LocalFileInfo
 LocalFile_read :: proc "contextless" (file: LocalFile, offset: i64, into: []u8) -> (result: i64, err: Error) {
 	err = _LocalFile_read(file, offset, raw_data(into), u32(len(into)), &result)
 	return
+}
+
+// DataTransferItem.getAsFileSystemHandle(): the dropped file's or folder's handle (as Fs_showPicker describes one:
+// root TAB path TAB kind TAB name), "" for a string item or outside read-only and read/write mode.
+DataTransfer_itemFsHandle :: proc "contextless" (dt: DataTransfer, index: i32, buf: []u8) -> (string, Error) {
+	n := _DataTransfer_itemFsHandle(dt, index, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of DataTransfer_itemFsHandle's result.
+DataTransfer_itemFsHandle_len :: proc "contextless" (dt: DataTransfer, index: i32) -> (int, Error) {
+	n := _DataTransfer_itemFsHandle(dt, index, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// DataTransfer_itemFsHandle's result in a buffer allocated to fit.
+DataTransfer_itemFsHandle_alloc :: proc(dt: DataTransfer, index: i32, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _DataTransfer_itemFsHandle(dt, index, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // DragEvent.dataTransfer of an event the browser dispatches (0 for another event).

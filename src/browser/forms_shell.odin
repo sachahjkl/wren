@@ -1733,17 +1733,8 @@ accept_filter :: proc(accept: string) -> string {
 		case t == "image/jpeg": append(&patterns, "*.jpg;*.jpeg")
 		}
 	}
-	sb := strings.builder_make()
-	if len(patterns) > 0 {
-		joined := strings.join(patterns[:], ";", context.temp_allocator)
-		strings.write_string(&sb, "Accepted files (")
-		strings.write_string(&sb, joined)
-		strings.write_string(&sb, ")\x00")
-		strings.write_string(&sb, joined)
-		strings.write_byte(&sb, 0)
-	}
-	strings.write_string(&sb, "All files (*.*)\x00*.*\x00\x00")
-	return strings.to_string(sb)
+	// the patterns ";"-joined ("" : any file); the toolkit's dialog adds "All files"
+	return strings.join(patterns[:], ";")
 }
 
 // MIME type of a file from the system's registry (HKCR\.ext "Content Type"), else the browser's table.
@@ -1775,30 +1766,17 @@ picker_work :: proc(data: rawptr) {
 		if win.ChooseColorW(&cc) { job.ok = true; job.result = u32(cc.rgbResult) }
 		return
 	}
-	BUF :: 1 << 16
-	buf := make([]u16, BUF)
-	defer delete(buf)
-	filter := win.utf8_to_wstring(job.filter, context.temp_allocator)
-	flags := u32(win.OFN_PATHMUSTEXIST | win.OFN_FILEMUSTEXIST | win.OFN_EXPLORER | win.OFN_NOCHANGEDIR | win.OFN_HIDEREADONLY)
-	if job.multiple { flags |= win.OFN_ALLOWMULTISELECT }
-	ofn := win.OPENFILENAMEW{lStructSize = size_of(win.OPENFILENAMEW), hwndOwner = job.owner, lpstrFilter = filter, lpstrFile = &buf[0], nMaxFile = BUF, Flags = flags}
-	if !win.GetOpenFileNameW(&ofn) { return }
+	// the toolkit's Open dialog (the one File System Access pickers use too)
+	d := platform.File_Dialog{owner = job.app.win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
+	filters: [1]platform.File_Filter
+	if job.filter != "" {
+		filters[0] = {name = "Accepted files", patterns = strings.split(job.filter, ";", context.temp_allocator)}
+		d.filters = filters[:]
+	}
+	res := platform.open_file_dialog(d, context.temp_allocator)
+	if res.status != .Chosen { free_all(context.temp_allocator); return }
 	job.ok = true
-	// "dir\0name\0name\0\0" (several) or "full path\0" (one)
-	parts := make([dynamic]string, context.temp_allocator)
-	start := 0
-	for i in 0 ..< BUF {
-		if buf[i] != 0 { continue }
-		if i == start { break }
-		s, _ := win.utf16_to_utf8(buf[start:i], context.temp_allocator)
-		append(&parts, s)
-		start = i + 1
-	}
-	paths := make([dynamic]string, context.temp_allocator)
-	if len(parts) == 1 { append(&paths, parts[0]) } else if len(parts) > 1 {
-		for name in parts[1:] { append(&paths, strings.concatenate({parts[0], "\\", name}, context.temp_allocator)) }
-	}
-	for path in paths {
+	for path in res.paths {
 		if len(job.files) >= job.max_files { break }
 		info, err := os.stat(path, context.temp_allocator)
 		if err != nil { continue }

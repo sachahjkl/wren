@@ -78,6 +78,16 @@ storage_sites :: proc(m: ^Storage_Manager, allocator := context.temp_allocator) 
 				if k, ok := key_of_file(f.name, ".widb"); ok { s := get(&out, k); s.idb_bytes = f.size }
 			}
 		}
+		// the origin private file systems (counted with IndexedDB: "Clear site data" removes both)
+		opfs_root := strings.concatenate({m.dir, "/opfs"}, context.temp_allocator)
+		if dirs, err := os.read_all_directory_by_path(opfs_root, context.temp_allocator); err == nil {
+			for d in dirs {
+				if d.type != .Directory { continue }
+				if k, ok := key_of_file(d.name, ""); ok {
+					if bytes := fs_dir_bytes(strings.concatenate({opfs_root, "/", d.name}, context.temp_allocator)); bytes > 0 { s := get(&out, k); s.idb_bytes += bytes }
+				}
+			}
+		}
 	}
 	for _, a in m.areas {
 		if a.state != .Loaded { continue }
@@ -131,7 +141,10 @@ storage_clear_site :: proc(m: ^Storage_Manager, key: string, kinds: Site_Kinds) 
 	if .Session in kinds {
 		for _, a in m.areas { if a.kind == .Session && a.origin == key { area_clear(a) } }
 	}
-	if .Indexed_Db in kinds { idb_clear_origin(m, key) }
+	if .Indexed_Db in kinds {
+		idb_clear_origin(m, key)
+		opfs_clear(m.dir, key)   // the origin private file system goes with it (fs_store.odin)
+	}
 }
 
 // The host of a storage key (an origin, possibly followed by "^top-level site"): "https://a.example:8443^https://b.example" -> a.example.

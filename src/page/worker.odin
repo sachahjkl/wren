@@ -350,6 +350,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.js_web.platform = strings.clone(p.settings.js_web.platform)
 	g.settings.js_web.vendor = strings.clone(p.settings.js_web.vendor)
 	g.settings.forms.password_mask = ""
+	g.settings.sw.fs_permission = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
 	g.module, g.shared = h.module, h.shared != nil
 	if h.sw != nil { sw_global_init(&g.sw, h.sw) }   // service_worker.odin: a service worker's instance

@@ -13,6 +13,9 @@ Sw_Settings :: struct {
 	opfs_max_bytes:   i64,
 	shared_enabled:   bool,
 	shared_linger_ms: int,      // extendedLifetime: how long a shared worker outlives its last document
+	fs_pickers:       bool,     // showOpenFilePicker & co.
+	fs_activation_ms: int,      // how recent a user gesture must be for a picker or a permission prompt
+	fs_permission:    string,   // "ask", "allow", "deny": what requestPermission does for a folder of the user's disk
 }
 
 SW_PREFS := [?]config.Def{
@@ -28,6 +31,12 @@ SW_PREFS := [?]config.Def{
 		description = "Let pages start shared workers (new SharedWorker): one worker that every document of the same origin naming it shares. Off: the constructor is refused."},
 	{name = "shared_workers.extended_lifetime_ms", kind = .Int, default = {i = 5_000}, bounded = true, min = 0, max = 600_000, unit = "ms",
 		description = "How long a shared worker created with {extendedLifetime: true} keeps running after the last document using it closed (a navigation to a page that connects again finds it). Without the option it stops at once."},
+	{name = "file_system.pickers", kind = .Bool, default = {b = true},
+		description = "Let pages ask for files and folders of your disk with the system's dialogs (showOpenFilePicker, showSaveFilePicker, showDirectoryPicker). Off: they are refused (NotSupportedError); <input type=file> still works."},
+	{name = "file_system.user_activation_ms", kind = .Int, default = {i = 5000}, bounded = true, min = 100, max = 600_000, unit = "ms",
+		description = "How recent a click or key press in the page must be for it to show a file picker or ask for a permission (transient activation). Without one, the picker is refused and the permission stays as it is."},
+	{name = "file_system.write_permission", kind = .String, default = {s = "ask"}, choices = {"ask", "allow", "deny"},
+		description = "What happens when a page asks to write a file or folder of your disk it was given read access to: ask you (ask), grant it without asking (allow), refuse it (deny)."},
 	{name = "caches.max_bytes_per_origin", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, bytes = true, unit = "bytes",
 		description = "Most bytes the Cache API (caches.open, cache.put) keeps for one origin. A put that would go past it is refused with a QuotaExceededError."},
 	{name = "opfs.max_bytes_per_origin", kind = .Int, default = {i = 1 << 30}, bounded = true, min = 1 << 20, max = 1 << 40, bytes = true, unit = "bytes",
@@ -42,6 +51,9 @@ sw_settings_from_prefs :: proc(p: ^config.Prefs) -> Sw_Settings {
 		update_hours = int(config.int_of(p, "service_workers.update_check_hours")),
 		shared_enabled = config.bool_of(p, "shared_workers.enabled"),
 		shared_linger_ms = int(config.int_of(p, "shared_workers.extended_lifetime_ms")),
+		fs_pickers = config.bool_of(p, "file_system.pickers"),
+		fs_activation_ms = int(config.int_of(p, "file_system.user_activation_ms")),
+		fs_permission = config.string_of(p, "file_system.write_permission"),
 		cache_max_bytes = config.int_of(p, "caches.max_bytes_per_origin"),
 		opfs_max_bytes = config.int_of(p, "opfs.max_bytes_per_origin"),
 	}

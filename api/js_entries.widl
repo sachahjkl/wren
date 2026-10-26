@@ -25,6 +25,8 @@ module entries {
   string FsEntry_filesystemName(FsEntry entry);
   /// getParent(): the folder above (an entry is its own parent at the top of what was dropped).
   FsEntry FsEntry_parent(FsEntry entry);
+  /// entry.filesystem.root: the entry of what was dropped (the top of the entry's tree).
+  FsEntry FsEntry_root(FsEntry entry);
   /// fileEntry.file(): a promise of the File (NotFoundError when it went away, TypeMismatchError for a folder).
   Promise FsEntry_file(FsEntry entry);
   /// dirEntry.getFile(path) / getDirectory(path): a promise of the entry (NotFoundError, TypeMismatchError when it is
