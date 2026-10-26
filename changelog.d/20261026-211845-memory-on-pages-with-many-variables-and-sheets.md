@@ -1,0 +1,3 @@
+type: Fixed
+
+**Memory on pages with many variables and sheets** (DuckDuckGo's results page, measured): custom properties are layers over the parent's (`style.custom_properties.max_layers`; an element that sets a few no longer copies the hundreds it inherits), the CSS parser keeps its tokens, code points and values in scratch memory dropped after the parse (126 to 45 bytes kept per byte of CSS), validating declarations no longer leaves two computed styles per compiled rule (6.4 to 1.1 KiB), and the mutation journal no longer copies its names to a new arena at every `setAttribute` (it was 80 % of that page's time).

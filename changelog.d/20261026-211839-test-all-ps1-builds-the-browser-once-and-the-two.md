@@ -1,0 +1,3 @@
+type: Changed
+
+**`test_all.ps1` builds the browser once, and the two steps of the check build start with the long steps instead of alone at the end** (`Ensure-WrenBuild` in `tools\test_env.ps1`: the dev or check build is made unless it is newer than its sources, and never two `build.bat` of a tree at once; `memcheck_e2e.ps1` and `remote_e2e.ps1 -Check` both ran `build.bat check` at the same time on the CI and refused each other's files (`FAIL building the check build`), and a stale build was rebuilt by every e2e step that saw it; `Step -Weight` seeds the longest-first order of a run that has no `build\test_all_times.txt`).

@@ -1,0 +1,3 @@
+type: Fixed
+
+**Resizing with AltSnap (Alt + right button) no longer makes Wren paint nested frames** (toolkit 0.33.0, `platform/size_move.odin`): AltSnap resizes a window with `SetWindowPos` from its own process and posts it `WM_ENTERSIZEMOVE` / `WM_EXITSIZEMOVE`; Wren took them for the system's resize loop and painted from the window procedure, inside its own poll, every 16 ms (two presents per turn). Those messages now count only inside the system's own loop; the resize arrives as `WM_SIZE` and is drawn like a drag of the corner. Measured with `tools\altdrag_sim.ps1` (no mouse, no AltSnap; a transparent click-through window): 200 to 230 frames made from the window procedure per 3 s of drag before, 0 after.
