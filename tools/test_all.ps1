@@ -231,6 +231,10 @@ Step 'tab sidebar resized by its handle: the edge where the pointer is in every 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
 }
+Step 'an open menu over the top resize band is the browser''s (tools\menu_edge_e2e.ps1: the system''s hit test sent to a window shown fully transparent and click-through, no real mouse)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\menu_edge_e2e.ps1
+}
 Step 'remote control end to end (tools\remote_e2e.ps1: wren ctl drives a Wren with no window shown: navigate, evaluate, click, type, capture from the render target and compare pixels, window off the screen, vanishing and oversized clients, quit; off and idle at no cost when not asked for)' {
     # (the browser is built unless it is newer than its sources: build.bat takes 40 s even with nothing to do, and the CI built it a step ago)
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
