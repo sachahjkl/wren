@@ -118,6 +118,7 @@ Session_History :: page.Session_History   // (a field named `page` hides the pac
 
 // The browser has several windows (windows.odin). The fields marked [window] are the active window's: window_activate
 // exchanges them with the ones a window keeps, so the code that reads `app.tabs` or `app.win` stays the one of a single window.
+// What is no longer exchanged is read in the window itself: active_window(app).presented, window_own(app).
 App :: struct {
 	win:      ^platform.Window,   // [window]
 	r:        render.Renderer,
@@ -147,18 +148,16 @@ App :: struct {
 	current:  int,            // [window]
 	address:  ui.Text_Field,  // [window]
 	measure:  Measure,        // text measurement cache of the layout
-	focus_address: bool,      // [window] Ctrl+L: focus the address field in the next build
 	show_console:  bool,
 
 	page_rect: draw.Rect,   // [window] where the page was painted last frame (physical pixels)
 	frames_requested: int,  // [window]
 	last_tick:        time.Tick,
-	presented:        bool,   // [window] a frame went to the swap chain: from then on each frame waits for it to take the next
 
 	windows:  [dynamic]^Browser_Window,   // windows.odin
 	active:   ^Browser_Window,            // the one whose [window] fields the app holds now
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
-	bare_own: Window_Own,             // window_own of an App with no window (the tests')
+	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	headless:   bool,                     // the windows are never shown (`--headless`)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
@@ -189,7 +188,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 // to type in, as in Chromium.
 tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
-	app.focus_address = true
+	active_window(app).focus_address = true
 	return t
 }
 
@@ -1224,7 +1223,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
-	app.presented = true
+	active_window(app).presented = true
 	prof_end(.Present)
 	frame_log_presented()
 	pacer_end_frame(app)

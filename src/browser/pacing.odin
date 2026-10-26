@@ -351,6 +351,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	t0 := time.tick_now()
 	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
 	pacer.continuous = !idled
+	presented := active_window(app).presented
 	// The window changed size since the last frame: this frame is a resize step. It is drawn and shown at once, without
 	// the timer nor the wait for the swap chain's slot (below): the desktop composer would otherwise show the previous
 	// frame, drawn for the old size, stretched over the new one until this frame reaches the screen
@@ -361,9 +362,9 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// keeps its size (nothing is stretched by the composer), and its frames are those of any drag, one per slot (a step of
 	// a resize skips the slot: at the pointer's 1 kHz that was a frame a millisecond, hundreds a second the screen never
 	// showed, and the ones it did advanced unevenly). Each of them lays the panel and the page out at the pointer it read.
-	pacer.resizing = resize_step(resized, app.presented, pacer.cfg.resize_immediate)
+	pacer.resizing = resize_step(resized, presented, pacer.cfg.resize_immediate)
 	tick := time.tick_now()._nsec
-	pacer.resize_held = !pacer.resizing && app.presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
+	pacer.resize_held = !pacer.resizing && presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
 	if resized { pacer.resize_ns = tick }
 	input := shell_user_input_pending()
 	// Only the frame that starts an answer to input is shown at once: while frames follow one another (a drag, the wheel,
@@ -371,7 +372,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// Shown at once, each of the hundreds of frames a second was presented over the one before and the swap chain's
 	// three buffers filled with frames a millisecond apart that the screen then showed one per refresh: the picture
 	// advanced a millisecond for three refreshes, then jumped (see tools\drag_fluidity.ps1).
-	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
+	pacer.input_frame = input && presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
 	pacer_latency(app, &pacer.latency, pacer_at_once())
@@ -394,7 +395,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
 	// the timeout (100 ms of input latency after any wake of no consequence).
-	if app.presented && !pacer.slot_held && !pacer.input_frame {
+	if active_window(app).presented && !pacer.slot_held && !pacer.input_frame {   // (the timer's wait above takes messages)
 		ok := platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), app.frames_requested) }

@@ -34,15 +34,16 @@ import "wb:config"
 import "wb:host"
 import "wb:page"
 
-// What the App holds for the active window and a window keeps aside while another is active.
+// A window's tabs, address field, page area and frames. The fields marked [copied] are still held by the App for the active
+// window (app.tabs...) and kept here while another window is active; the others are only here (w.presented).
 Window_Ctx :: struct {
-	tabs:             [dynamic]^Tab,
-	current:          int,
-	address:          ui.Text_Field,
-	focus_address:    bool,
-	page_rect:        draw.Rect,
-	frames_requested: int,
-	presented:        bool,
+	tabs:             [dynamic]^Tab,  // [copied]
+	current:          int,            // [copied]
+	address:          ui.Text_Field,  // [copied]
+	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
+	page_rect:        draw.Rect,      // [copied]
+	frames_requested: int,            // [copied]
+	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
 
 Browser_Window :: struct {
@@ -51,7 +52,7 @@ Browser_Window :: struct {
 	surf:    render.Surface,      // the window's swap chain, when it is not the primary one
 	primary: bool,                // its swap chain is the renderer's own (render.init)
 	ui:      ^ui.State,
-	ctx:     Window_Ctx,          // valid while the window is not active
+	using ctx: Window_Ctx,        // (its [copied] fields are valid while the window is not active)
 	pacer:   Pacer,               // ... and its pacing (the preferences and the timer stay the process's)
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
@@ -93,10 +94,13 @@ Window_Own :: struct {
 	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
 }
 
-// The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
-window_own :: proc(app: ^App) -> ^Window_Own {
-	return app.active != nil ? &app.active.own : &app.bare_own
+// The window being framed (the active one); an App with no window (a test's) has one of its own, never shown.
+active_window :: proc(app: ^App) -> ^Browser_Window {
+	return app.active != nil ? app.active : &app.bare
 }
+
+// The chrome's state of the active window.
+window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 
 // What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
 window_own_destroy :: proc(own: ^Window_Own) {
@@ -113,14 +117,16 @@ window_own_destroy :: proc(own: ^Window_Own) {
 
 @(private = "file")
 ctx_store :: proc(app: ^App, c: ^Window_Ctx) {
-	c.tabs, c.current, c.address, c.focus_address = app.tabs, app.current, app.address, app.focus_address
-	c.page_rect, c.frames_requested, c.presented = app.page_rect, app.frames_requested, app.presented
+	c.tabs, c.current, c.address = app.tabs, app.current, app.address
+	c.page_rect, c.frames_requested = app.page_rect, app.frames_requested
 }
 
 @(private = "file")
 ctx_load :: proc(app: ^App, c: ^Window_Ctx) {
-	app.tabs, app.current, app.address, app.focus_address = c.tabs, c.current, c.address, c.focus_address
-	app.page_rect, app.frames_requested, app.presented = c.page_rect, c.frames_requested, c.presented
+	app.tabs, app.current, app.address = c.tabs, c.current, c.address
+	app.page_rect, app.frames_requested = c.page_rect, c.frames_requested
+	c.tabs, c.current, c.address = {}, 0, {}
+	c.page_rect, c.frames_requested = {}, 0
 }
 
 // Pacing is the window's (its monitor's rate, its swap chain's queue, its resize steps); the preferences and the timer are not.
@@ -138,7 +144,6 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if app.active != nil { window_deactivate(app) }
 	if w == nil { return }
 	ctx_load(app, &w.ctx)
-	w.ctx = {}
 	pacer_adopt(w)
 	app.win, app.ui_state = w.win, w.ui
 	app.active = w

@@ -1174,7 +1174,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		// or back from the page area
 		forms.blur(f)
 		fv.page_focus = false
-		if shift { page_focus_leave_backward = true } else { app.focus_address = true }
+		if shift { page_focus_leave_backward = true } else { active_window(app).focus_address = true }
 		return true
 	}
 	if !forms.is_text_field(f, h) && selection_key(app, t, p, ev) { return true }

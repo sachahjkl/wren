@@ -252,7 +252,7 @@ shell_presented :: proc() { chrome_frames.last_present = time.tick_now() }
 
 // Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does.
 shell_before_draw :: proc(app: ^App) {
-	if app.presented && !pacer.slot_held {
+	if active_window(app).presented && !pacer.slot_held {
 		if platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
 	}
 }
@@ -264,7 +264,7 @@ shell_before_draw :: proc(app: ^App) {
 // pass waits for its threads: host.set_parallel_wait_hook) and the page thread's (a layout pass runs there).
 shell_preempt :: proc(user: rawptr) {
 	app := (^App)(user)
-	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !app.presented || platform.is_closed(app.win) { return }
+	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !active_window(app).presented || platform.is_closed(app.win) { return }
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(chrome_frames.phase_start, now)) < chrome_frames.cfg.after_ms { return }
 	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
@@ -330,7 +330,7 @@ window_frame :: proc(app: ^App) {
 	}
 	resized := app.win.size != pacer.size
 	pacer.size = app.win.size
-	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	pacer.resizing = resized && active_window(app).presented && pacer.cfg.resize_immediate
 	pacer.resize_held = false
 	shell_chrome_frame(app)
 }
