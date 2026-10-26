@@ -90,7 +90,8 @@ submodules, `native/media/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIF
 
 3. [.github/workflows/release.yml](.github/workflows/release.yml) checks that the tag matches `APP_VERSION` and that
    the CHANGELOG was assembled for it (`changelog.ps1 -Check -Release`), builds (`build.bat release`),
-   runs the tests, packages `wren-X.Y.Z-windows-x64.zip` (`tools/package.ps1`) with `SHA256SUMS.txt`, and publishes
+   runs the tests, keeps the build's map as an artifact (`wren-X.Y.Z-symbols`: it names the frames of the release's crash
+   reports, [docs/crash-reports.md](docs/crash-reports.md)), packages `wren-X.Y.Z-windows-x64.zip` (`tools/package.ps1`) with `SHA256SUMS.txt`, and publishes
    the GitHub release.
 
 To try the package locally: `build.bat release` then `powershell -File tools\package.ps1 -AllowUnreleased` (output in

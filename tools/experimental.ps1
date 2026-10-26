@@ -8,7 +8,7 @@
 #   -Label experimental-2026-10-25   the label after the version (default: experimental-<today>)
 #   -NoEmbed                         do not put the licence in the exe: the build is not pre-registered, the licence is a file to open
 #   -Notes file.md                   known limits to put in the notes, instead of the default ones
-#   -Vault dir                       keep the notes and the link (a few lines of text, never the zip or the exe) in that folder; by default nothing is kept:
+#   -Vault dir                       keep the notes, the link and the build's symbols zipped (never the zip or the exe) in that folder; by default nothing is kept:
 #                                    an experimental build is thrown away, it is in build\experimental (not tracked by git) and at its link
 #
 # The build is pre-registered: the demonstration licence is inside the exe (build.bat: WREN_EMBEDDED_LICENSE) and is the profile's licence the first
@@ -75,6 +75,12 @@ if (-not (Test-Path $exeSrc)) { throw "$exeSrc is not there (a build with anothe
 $pv = (Get-Item $exeSrc).VersionInfo.ProductVersion
 if ($pv -notlike "*$Label*") { throw "the exe says ProductVersion '$pv', not '$Label'" }
 $sha = (Get-FileHash $exeSrc -Algorithm SHA256).Hash.ToLower()
+# the build's symbols (package.ps1: build\dist\symbols), kept beside the zip, never in it: a crash report of this build is named with them
+$fp = & (Join-Path $PSScriptRoot 'symbols.ps1') -Fingerprint $exeSrc
+$symSrc = Join-Path $root "build\dist\symbols\$base-$fp.map"
+if (-not (Test-Path $symSrc)) { throw "the symbols of $base ($symSrc) are not there" }
+$symbols = Join-Path $out "$base-$fp.map"
+Copy-Item $symSrc $symbols -Force
 Say ("{0}  {1:N1} MB  sha256 {2}" -f (Split-Path $exeSrc -Leaf), ((Get-Item $exeSrc).Length / 1MB), $sha.Substring(0, 12))
 
 # ---- 2. the stage: the exe and the licence as a file, to register it again after removing it
@@ -213,7 +219,9 @@ if ($Vault -ne '') {
     $dest = Join-Path $Vault (Get-Date -Format 'yyyy-MM-dd HHmm')
     New-Item -ItemType Directory -Force $dest | Out-Null
     Copy-Item "$stage\README.txt" "$dest\NOTES.txt"
-    $info = "$base`r`nzip sha256: $zipSha`r`nexe sha256: $sha`r`ncommit: $commit`r`nlink: $link`r`n"
+    # the symbols too (a few MB once zipped): the crash reports of this build come back long after build\ is gone
+    Compress-Archive -Path $symbols -DestinationPath "$dest\symbols-$fp.zip" -CompressionLevel Optimal -Force
+    $info = "$base`r`nbuild (fingerprint): $fp`r`nzip sha256: $zipSha`r`nexe sha256: $sha`r`ncommit: $commit`r`nlink: $link`r`n"
     [IO.File]::WriteAllText("$dest\LIEN.txt", $info, (New-Object Text.UTF8Encoding $false))
     Say "copy in $dest"
 }
@@ -221,4 +229,5 @@ if ($Vault -ne '') {
 ''
 "zip   : $zip"
 "sha256: $zipSha"
+"symbols: $symbols (build ${fp}: tools\crash_symbolize.ps1 <crash report> -Symbols <this file>)"
 if ($link) { "link  : $link" } else { 'link  : (not uploaded)' }
