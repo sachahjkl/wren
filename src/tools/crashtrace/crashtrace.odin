@@ -34,6 +34,41 @@ foreign kernel32 {
 @(private = "file", default_calling_convention = "system")
 foreign kernel32 {
 	GetLocalTime :: proc(lpSystemTime: ^win.SYSTEMTIME) ---
+	GetModuleHandleExW :: proc(dwFlags: win.DWORD, lpModuleName: rawptr, phModule: ^win.HMODULE) -> win.BOOL ---
+}
+
+// The fingerprint of a build: the link time stamp and the image size of its PE header, "%08X%X" (what a symbol server keys
+// an executable with). Every link writes a new time stamp, so it names one build; build.bat names the build's symbol file
+// (the linker's map, "<exe>-<fingerprint>.map") with it, and a crash report gives it with the module's base, so that
+// tools\crash_symbolize.ps1 finds the right symbols and turns the frames' addresses into functions.
+build_fingerprint :: proc(buf: []u8, base: uintptr = 0) -> string {
+	stamp, size, ok := pe_stamp_and_size(base != 0 ? base : uintptr(win.GetModuleHandleW(nil)))
+	if !ok { return "" }
+	return fmt.bprintf(buf, "%08X%X", stamp, size)
+}
+
+// The header of a PE image mapped at `base`: TimeDateStamp of the file header, SizeOfImage of the optional header.
+@(private)
+pe_stamp_and_size :: proc "contextless" (base: uintptr) -> (stamp, size: u32, ok: bool) {
+	if base == 0 || (^u16)(base)^ != 0x5A4D { return }   // "MZ"
+	nt := base + uintptr((^i32)(base + 0x3C)^)
+	if (^u32)(nt)^ != 0x00004550 { return }   // "PE\0\0"
+	return (^u32)(nt + 8)^, (^u32)(nt + 24 + 56)^, true
+}
+
+// The module that holds `pc`: its file name (without the folder) and where it is loaded.
+@(private = "file")
+module_of :: proc(pc: u64, name_buf: []u8) -> (name: string, base: u64, ok: bool) {
+	h: win.HMODULE
+	// GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+	if !GetModuleHandleExW(0x4 | 0x2, rawptr(uintptr(pc)), &h) || h == nil { return }
+	path: [520]u16
+	n := int(win.GetModuleFileNameW(h, &path[0], len(path)))
+	start := 0
+	for i in 0 ..< n { if path[i] == '\\' || path[i] == '/' { start = i + 1 } }
+	k := 0
+	for i in start ..< n { if k < len(name_buf) { name_buf[k] = path[i] < 128 ? u8(path[i]) : '?'; k += 1 } }
+	return string(name_buf[:k]), u64(uintptr(h)), true
 }
 
 @(private = "file")
@@ -205,6 +240,7 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 		b = fmt.bprintf(buf[:], "%s, %s address 0x%X", b, kind == 0 ? "reading" : (kind == 1 ? "writing" : "executing"), uintptr(rec.ExceptionInformation[1]))
 	}
 	emit(b)
+	emit(build_line(buf[:]))
 
 	for i in 0 ..< MAX_FRAMES {
 		pc := ctx.Rip
@@ -227,6 +263,21 @@ write_report :: proc(info: ^win.EXCEPTION_POINTERS, tid: win.DWORD) {
 	if report_file != nil { win.CloseHandle(report_file); report_file = nil }
 }
 
+// "build <exe> <fingerprint>, base 0x..., size 0x...": which build crashed and where it was loaded. A release has no PDB:
+// its frames are named offline from the build's map (tools\crash_symbolize.ps1), with the module offsets below.
+@(private = "file")
+build_line :: proc(buf: []u8) -> string {
+	base := uintptr(win.GetModuleHandleW(nil))
+	stamp, size, ok := pe_stamp_and_size(base)
+	name_buf: [128]u8
+	name, _, _ := module_of(u64(base), name_buf[:])
+	if !ok { return fmt.bprintf(buf, "  build %s (no PE header found), base 0x%X", name, base) }
+	return fmt.bprintf(buf, "  build %s %08X%X, base 0x%X, size 0x%X", name, stamp, size, base, size)
+}
+
+// "#NN 0x<address> <symbol>+0x<offset>  [<module>+0x<offset in the module>]  <file>:<line>". The symbol is what DbgHelp
+// finds in the process: the PDB's when there is one, else only the nearest export (a release's frames then say "?" or
+// name a wrong export); the module offset is what the offline symbolizer reads.
 @(private = "file")
 frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 	SYM_NAME :: 256
@@ -254,8 +305,12 @@ frame_line :: proc(buf: []u8, process: win.HANDLE, i: int, pc: u64) -> string {
 		for n < len(file_buf) - 1 && w[n] != 0 { file_buf[n] = w[n] < 128 ? u8(w[n]) : '?'; n += 1 }
 		file = string(file_buf[:n])
 	}
-	if file != "" { return fmt.bprintf(buf, "  #%02d 0x%X %s+0x%X  %s:%d", i, pc, name, disp, file, line.LineNumber) }
-	return fmt.bprintf(buf, "  #%02d 0x%X %s+0x%X", i, pc, name, disp)
+	mod_buf: [128]u8
+	in_buf: [160]u8
+	in_module := ""
+	if mod, mod_base, ok := module_of(pc, mod_buf[:]); ok { in_module = fmt.bprintf(in_buf[:], "  [%s+0x%X]", mod, pc - mod_base) }
+	if file != "" { return fmt.bprintf(buf, "  #%02d 0x%X %s+0x%X%s  %s:%d", i, pc, name, disp, in_module, file, line.LineNumber) }
+	return fmt.bprintf(buf, "  #%02d 0x%X %s+0x%X%s", i, pc, name, disp, in_module)
 }
 
 // A tool that seems stuck: the call stack of another thread of the process (suspended meanwhile), printed like a
