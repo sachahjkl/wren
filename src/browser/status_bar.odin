@@ -83,7 +83,9 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 		avail := max(f32)
 		if b := ui.prev_box("###sb_left"); b != nil && b.size.x > 0 {
 			avail = b.size.x
-			if b.size.x != left_width_seen { left_width_seen = b.size.x; app.frames_requested = max(app.frames_requested, 2) }
+			// (the window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
+			ws := window_own(app)
+			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; app.frames_requested = max(app.frames_requested, 2) }
 		}
 		if ui.status_fill("###sb_left") {
 			link := hud.cfg.link_preview ? hovered_link(t) : ""
@@ -155,10 +157,6 @@ status_left_fit :: proc(items: []Status_Left_Item, avail, sep_w: f32, measure: p
 	}
 }
 
-@(private = "file") left_width_seen: f32   // the left part's width in the frame before (to draw again when it changes)
-
-// (a window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
-status_bar_window_local :: proc() { window_local(&left_width_seen) }
 
 @(private = "file")
 status_left :: proc(app: ^App, t: ^Tab, avail: f32) {

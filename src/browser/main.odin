@@ -158,6 +158,7 @@ App :: struct {
 	windows:  [dynamic]^Browser_Window,   // windows.odin
 	active:   ^Browser_Window,            // the one whose [window] fields the app holds now
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
+	bare_own: Window_Own,             // window_own of an App with no window (the tests')
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	headless:   bool,                     // the windows are never shown (`--headless`)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
@@ -857,7 +858,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					toolbar_row(app, t)   // chrome_style.odin
 				}
 			}
-			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
+			elem_fs := fullscreen_shell_active(app.active)   // a page's element in full screen: the page has the whole window
 			if side {
 				pos := favs.cfg.position
 				ui.next({width = ui.fill(), height = ui.fill()})
@@ -1155,7 +1156,7 @@ frame :: proc(app: ^App, idled := false) {
 	events = shell_after_input(app, events)   // (what is left is the chrome's: chrome frames from here on build with it)
 	prof_end(.Input)
 
-	fullscreen_shell_settle(app)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
+	fullscreen_shell_settle(app, app.active)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
 	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
@@ -1171,7 +1172,7 @@ frame :: proc(app: ^App, idled := false) {
 		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
 		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
 	}
-	fullscreen_shell_frame(app)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
+	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
 	page_snapshot_wanted = ran > 0

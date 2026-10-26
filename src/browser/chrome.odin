@@ -173,7 +173,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
 	h := ui.dense(em * 2)
 	inset := max(math.round(ui.scale()), 1)   // the field's border: the chip is the bar's left segment, inside it
-	chip_w := security_of(t).label != "" ? security_chip_width : 0
+	chip_w := security_of(t).label != "" ? window_own(app).security_chip_width : 0
 	res: ui.Edit_Result
 	ui.next({width = ui.fill(), height = ui.px(h)})
 	if ui.row(.Center, {}, "###address_bar") {
@@ -290,12 +290,8 @@ tab_move_current :: proc(app: ^App, delta: int) {
 ////////////////////////////////
 // Security chip and page information
 
-// Width of the security chip at the last layout (the address field leaves it that much room).
-@(private = "file")
-security_chip_width: f32
-
-chrome_window_local :: proc() { window_local(&security_chip_width) }   // (a window's own: windows.odin)
-
+// (The width of the security chip at the last layout, which the address field leaves it, is the window's:
+// Window_Own.security_chip_width.)
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
 Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
@@ -349,7 +345,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 				chip_segment.under = ui.srgb_step(cc.field_top, cc.field, 0.5)
 			}
 		}
-		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(security_chip_width), height = ui.px(height)})
+		ui.next({fixed_x = inset, fixed_y = inset, width = ui.px(window_own(app).security_chip_width), height = ui.px(height)})
 		ui.custom("###sec_segment", chip_segment_draw, &chip_segment)
 	} else if sec.tone != .Weak {
 		// tints tuned for linear light: ui.tuned keeps their look in an sRGB frame (render.blend_space)
@@ -360,7 +356,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	b: ^ui.Box
 	if ui.row(.Center, flags, "###sec_chip") {
 		b = ui.parent_box()
-		security_chip_width = b.rect.max.x - b.rect.min.x
+		window_own(app).security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
 		// under the pointer / pressed: the theme's step over the segment's tint, as on the chrome's other buttons (the
 		// segment is drawn after the build: this frame's state)
