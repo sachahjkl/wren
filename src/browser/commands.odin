@@ -247,10 +247,10 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "nav.home", title = "Home", category = "Navigation", glyph = GLYPH_HOME, keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
 	add(r, {name = "nav.focus_address", title = "Focus the address bar", category = "Navigation", keywords = "location url edit", keys = keys(&r.arena, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { app.focus_address = true }})
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { active_window(app).focus_address = true }})
 	add(r, {name = "nav.focus_toggle", title = "Address bar or page", category = "Navigation", keywords = "focus switch keyboard", keys = keys(&r.arena, {key = .F6}, {key = .F6, mods = shift}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
+			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { active_window(app).focus_address = true }
 		}})
 
 	// --- page

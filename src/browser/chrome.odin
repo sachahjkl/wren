@@ -202,8 +202,8 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
 		security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
 	}
-	if app.focus_address {
-		app.focus_address = false
+	if bw := active_window(app); bw.focus_address {
+		bw.focus_address = false
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			ui.set_focus(b.key)
 			ui.field_select_all(&app.address)

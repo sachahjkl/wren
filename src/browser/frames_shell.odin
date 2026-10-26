@@ -104,7 +104,7 @@ frame_view_closed :: proc(data: rawptr) {
 	}
 	if the_app != nil {
 		for w in the_app.windows { forget(&w.own.frames, p) }
-		forget(&the_app.bare_own.frames, p)
+		forget(&the_app.bare.own.frames, p)
 	}
 	page_fonts_drop(&page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
