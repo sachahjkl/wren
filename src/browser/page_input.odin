@@ -70,14 +70,11 @@ page_pointer_target :: proc(t: ^Tab, hit: base.Handle) -> base.Handle {
 	return page.pointer_target(t.page, page.MOUSE_POINTER_ID, hit)
 }
 
-@(private = "file")
+// A window's fingers and pens over its page (Window_Own.devices).
 Device_Input :: struct {
 	over:          map[u32]base.Handle,   // what each finger / pen is over (for out / leave)
 	drop_emulated: bool,                  // a cancelled touchstart: the system's mouse emulation of it is dropped
 }
-
-@(private = "file")
-din: Device_Input
 
 // The page's pointer id of a finger or a pen (the mouse is 1).
 @(private = "file")
@@ -94,8 +91,9 @@ device_details :: proc(ev: platform.Event, scale: f32) -> dom.Pointer_Details {
 }
 
 // A mouse event of the system's emulation that must not reach the page (its touchstart was cancelled).
-page_drop_emulated :: proc(ev: platform.Event) -> bool {
+page_drop_emulated :: proc(app: ^App, ev: platform.Event) -> bool {
 	if touch_drop_emulated(ev) { return true }   // touch_shell.odin: a finger pans; its tap is clicked by the shell
+	din := &window_own(app).devices
 	if !ev.emulated || !din.drop_emulated { return false }
 	if ev.kind == .Mouse_Release && ev.buttons == {} { din.drop_emulated = false }
 	return ev.kind == .Mouse_Press || ev.kind == .Mouse_Release || ev.kind == .Mouse_Move
@@ -109,6 +107,7 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	}
 	p := t.page
 	if p == nil || !t.layout.valid { return true }
+	din := &window_own(app).devices
 	scale := page_scale(app)
 	inside := draw.rect_contains(app.page_rect, ev.pos)
 	hit := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
@@ -184,4 +183,6 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	return true
 }
 
-page_input_destroy :: proc() { delete(din.over); din = {} }
+device_input_destroy :: proc(din: ^Device_Input) { delete(din.over); din^ = {} }
+
+page_input_destroy :: proc(app: ^App) { device_input_destroy(&window_own(app).devices) }

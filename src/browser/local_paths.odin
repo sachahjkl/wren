@@ -121,7 +121,7 @@ drop_files_apply :: proc(app: ^App) {
 
 drop_files_destroy :: proc(app: ^App) {
 	dnd_destroy(app)
-	page_input_destroy()
+	page_input_destroy(app)
 	if drop_hwnd == nil { return }
 	win.DragAcceptFiles(drop_hwnd, false)
 	RemoveWindowSubclass(drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)

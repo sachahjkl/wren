@@ -525,13 +525,10 @@ shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	return nil
 }
 
-// Whether the page's pixels are worth keeping this frame: scripts ran, a layout is behind the document, or animations
-// are on (set by the frame); a scroll alone changes no pixel.
-page_snapshot_wanted: bool
-
-// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames.
+// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames, when the frame found them
+// worth keeping (Window_Own.page_snapshot_wanted).
 shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, canvas: draw.Color) {
-	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt || !page_snapshot_wanted { return }
+	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt || !window_own(app).page_snapshot_wanted { return }
 	bd := draw.backdrop_capture(dc, rect, nil)
 	if bd.image.tex == 0 { return }
 	if !render.keep_target(dc.renderer, bd.image.tex) { render.release_target(dc.renderer, bd.image.tex); return }
