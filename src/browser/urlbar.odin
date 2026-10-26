@@ -29,6 +29,7 @@ import "toolkit:render"
 import "toolkit:ui"
 import "wb:config"
 import "wb:host"
+import "wb:i18n"
 
 URLBAR_PREFS := [?]config.Def{
 	{name = "browser.urlbar.enabled", kind = .Bool, default = {b = true},
@@ -587,6 +588,10 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 	terms := strings.fields(strings.to_lower(q, context.temp_allocator), context.temp_allocator)
 	open_at, open_new, remove_at := -1, false, -1
 	if ui.popover(URLBAR_POPUP, field.rect, w, .Below, align_right = false) {
+		// to a screen reader: a list of suggestions the field controls, its chosen row read as the field's focus
+		list := ui.parent_box()
+		ui.a11y_set(list, {role = .List_Box, name = i18n.tr("Suggestions")})
+		ui.a11y_set(field, {popup = .Listbox, expanded = true, controls = list.key})
 		ui.spacer(ui.px(pad))
 		for r, i in ub.rows {
 			chosen := i == ub.sel
@@ -600,6 +605,8 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 				row := ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects, .Hot_Within}, fmt.tprintf("###ubr_%d", i))
 				ui.pop_tags()
 				if chosen { ui.pop_tags() }
+				ui.a11y_set(row, {role = .List_Box_Option, selected = chosen, position = i + 1, set_size = len(ub.rows)})
+				if chosen { ui.a11y_set(field, {active_descendant = row.key}) }
 				sig := ui.signal(row)
 				hot := ui.hot_within(row.key)
 				if ui.parent(row) {

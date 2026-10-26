@@ -1368,6 +1368,7 @@ main :: proc() {
 	prof_mark(.UI_Fonts)
 	draw.init(&app.dc, &app.r, &app.fonts)
 	ui.init(app.ui_state, &app.fonts, &app.theme)
+	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
 	app.ui_state.icon_font = app.icons
 	page_render_init(app)
 	first_paint_init(app)

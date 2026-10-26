@@ -305,6 +305,11 @@ dt_btn :: proc(id: string, icon: Dt_Icon, label := "", tooltip := "", shortcut :
 		d.col = tone.a > 0 ? tone : (sig.hovering ? dtc.text : dtc.weak)
 		d.on_col = tone.a > 0 ? tone : dtc.accent
 		b.custom, b.custom_user = btn_draw, d
+		// a toggle says whether it is on; one with a chevron opens a menu
+		info := ui.A11y_Info{role = .Button, name = label != "" ? dt_frame_str(label) : "", shortcut = dt_frame_str(shortcut)}
+		if on { info.toggled = .True }
+		if caret { info.popup = .Menu }
+		ui.a11y_set(b, info)
 	}
 	if tooltip != "" { dt_tip(sig, tooltip, shortcut) }
 	return sig
@@ -337,12 +342,14 @@ dt_chip :: proc(id, label: string, on: bool, tooltip := "", count := "") -> ui.S
 	d := ui.frame_new(Dt_Chip_Draw)
 	d.label, d.on, d.hot, d.down, d.count = dt_frame_str(label), on, sig.hovering, sig.dragging && sig.hovering, dt_frame_str(count)
 	b.custom, b.custom_user = chip_draw, d
+	ui.a11y_set(b, {role = .Button, name = d.label, toggled = on ? .True : .False})
 	if tooltip != "" { dt_tip(sig, tooltip) }
 	return sig
 }
 
 // A compact tooltip: the name, and the shortcut in a weaker color.
 dt_tip :: proc(sig: ui.Signal, text: string, shortcut := "") {
+	chrome_tip_a11y(sig.box, text)   // (the name a screen reader reads: a11y_chrome.odin)
 	if ui.hovered_for(sig, 0.4) {
 		if ui.tooltip() {
 			w := dt_w(dtm.ui_font, dtm.fs, text) + dt_px(14) + (shortcut != "" ? dt_w(dtm.ui_font, dtm.fs, shortcut) + dt_px(12) : 0)

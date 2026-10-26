@@ -20,6 +20,7 @@ import "toolkit:font"
 import "toolkit:render"
 import "toolkit:ui"
 import "wb:base"
+import "wb:i18n"
 
 Tab_Strip :: struct {
 	offset:       f32,    // scroll of the tabs when they do not fit (physical pixels)
@@ -134,6 +135,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		// (classic: the area also holds the new-tab button, which reaches back under the last tab)
 		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
+		tab_list_a11y(area, false)
 		add: ui.Signal
 		strip.area_key = area.key
 		if app.active != nil { app.active.zone = {rect = area.rect, offset = strip.offset, pitch = w, n = n, valid = true} }
@@ -194,7 +196,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			ui.next({width = ui.px(new_w), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
 			add = ui.icon_button("###newtab", GLYPH_ADD)
 		}
-		tip(add, "New tab (Ctrl+T)")
+		tip(add, i18n.tr("New tab (Ctrl+T)"))
 		if add.clicked { tab_open_new(app) }
 		ui.spacer(ui.fill())   // drags the window
 		if integrated { _, _ = ui.window_buttons() }
@@ -271,6 +273,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		b.custom, b.custom_user = tab_look_draw, look
 	}
 	b.cursor = .Arrow
+	tab_a11y(b, t, i, n, on)
 	closed := false
 	if ui.parent(b) {
 		// classic: the content stays clear of the sloped sides (half the lean is at the middle of the tab's height)
@@ -295,6 +298,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			tb := ui.build_box({.Clip}, "###titlebox")
 			if ui.parent(tb) {
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+				ui.a11y({ignore = true})   // (the tab's name)
 				lb := ui.build_box({.Draw_Text, .No_Text_Trunc}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
 				fade := ui.frame_new(Title_Fade)
 				fade^ = {tab = paint, width = em * 1.7}
@@ -302,6 +306,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			}
 		} else {
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
 		}
 		show_close := on || inside || w >= favs.cfg.close_min_em * em
@@ -318,7 +323,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 					cb.custom, cb.custom_user = close_cross_draw, cross
 				}
 				c := ui.signal(cb)
-				tip(c, "Close tab (Ctrl+W)")
+				tip(c, i18n.tr("Close tab (Ctrl+W)"))
 				if c.clicked { closed = true }
 			}
 		}
