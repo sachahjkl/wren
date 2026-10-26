@@ -212,7 +212,6 @@ render.odin page_render process
 render_settings.odin RENDER_PREFS process  # a table
 render_settings.odin render_settings process  # preferences read once and on change
 render_settings.odin render_watch process  # preferences read once and on change
-selection_shell.odin sshell window  # window_local: the selection of the page shown
 selection_shell.odin ix process
 selection_shell.odin ix_watch process  # preferences read once and on change
 selection_shell.odin spaint page  # the painted selection of a page
@@ -247,7 +246,7 @@ touch_shell.odin TOUCH_PREFS process  # a table
 touch_shell.odin tsh process
 update_check.odin upd process
 urlbar.odin URLBAR_PREFS process  # a table
-urlbar.odin ub window  # ub.view is window_local (the suggestions shown); the rest is the process's (history index)
+urlbar.odin ub process  # the history index, its build, the preferences (a window's suggestions: Window_Own.urlbar)
 urlbar_test.odin globals_lock test
 video_shell.odin vshell page  # the pages' video players
 web_font_faces.odin WEB_FACE_PREFS process  # a table
