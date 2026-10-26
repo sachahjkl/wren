@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 577 |
 | exposed by default | 296 |
 | members | 5102 |
-| members implemented | 3363 (65.9 %) |
+| members implemented | 3364 (65.9 %) |
 
 ## By specification
 
@@ -48,7 +48,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (116) | 1451 / 1827 |
+| `html.idl` | 161 (116) | 1452 / 1827 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -5250,10 +5250,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerNavigator
 
-14 / 24 members.
+15 / 24 members.
 
 - `readonly permissions`: C `wjr_WorkerNavigator_get_permissions`
-- `readonly serviceWorker`: not supported
+- `readonly serviceWorker`: C `wjr_WorkerNavigator_get_serviceWorker`
 - `setAppBadge()` (NavigatorBadge): not supported
 - `clearAppBadge()` (NavigatorBadge): not supported
 - `readonly deviceMemory` (NavigatorDeviceMemory): not supported

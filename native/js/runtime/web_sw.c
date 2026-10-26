@@ -387,6 +387,13 @@ JSValue wjr_Navigator_get_serviceWorker(JSContext *ctx, JSValueConst this_val)
     return web_singleton(ctx, WEB_SINGLE_SERVICE_WORKER, make_container);
 }
 
+/* a worker's: it sees its document's controller (src/page/service_worker.odin sw_client_init) */
+JSValue wjr_WorkerNavigator_get_serviceWorker(JSContext *ctx, JSValueConst this_val)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_WorkerNavigator)) { return JS_EXCEPTION; }
+    return web_singleton(ctx, WEB_SINGLE_SERVICE_WORKER, make_container);
+}
+
 JSValue wjr_ServiceWorkerContainer_register(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
 {
     if (!wj_this(ctx, t, WJ_IFACE_ServiceWorkerContainer)) { return web_promise_reject_pending(ctx); }
@@ -1060,7 +1067,9 @@ static void fire_message(JSContext *ctx, wr_SwEventInfo *info)
     WJ_FETCH_STRING(n, wr_SwEvent_text(0, wj_scratch.data, wj_scratch.cap));
     /* the source: the window client that posted (its URL came with the message) */
     char line[2200];
-    int ll = snprintf(line, sizeof line, "%llu\t%.*s\twindow\ttop-level\tvisible\t1", (unsigned long long)info->client, n > 0 && n < 2048 ? (int)n : 0, (const char *)wj_scratch.data);
+    /* (a worker client's id is 1 << 40 and above: src/page/service_worker.odin SW_WORKER_CLIENT_BASE) */
+    bool worker = info->client >= ((uint64_t)1 << 40);
+    int ll = snprintf(line, sizeof line, worker ? "%llu\t%.*s\tworker\tnone\thidden\t0" : "%llu\t%.*s\twindow\ttop-level\tvisible\t1", (unsigned long long)info->client, n > 0 && n < 2048 ? (int)n : 0, (const char *)wj_scratch.data);
     WJ_FETCH_STRING(n, wr_SwEvent_body(wj_scratch.data, wj_scratch.cap));
     JSValue value = n >= 0 ? web_clone_deserialize(ctx, wj_scratch.data, (size_t)n) : JS_UNDEFINED;
     bool bad = JS_IsException(value);
