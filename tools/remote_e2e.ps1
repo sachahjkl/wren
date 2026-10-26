@@ -191,6 +191,29 @@ function Test-IdleTimers($server) {
     Remove-Item $png -ErrorAction SilentlyContinue
 }
 
+# ---- web APIs in the real browser: what needs the shell's frames, timers and paint ---------------------------------------------------
+# examples/site/web-animations.html: element.animate() drawn by the shell (a paused effect seen in a capture: the probe bar is half
+# its 200 px), a short animation whose `finished` resolves on the real event loop, and the demo's own animations listed.
+function Test-WebApis($server) {
+    Section '7 web APIs in the browser: Web Animations'
+    $null = Wren-Ctl pref set browser.ui.scale 1
+    $null = Wren-Ctl window --size 900x700
+    $null = Wren-Ctl nav "$($server.Origin)/site/web-animations.html" --wait idle
+    Check 'the demo runs its animations' ((Wren-Eval 'window.demo.count()') -eq '4') "count $(Wren-Eval 'window.demo.count()') $global:WrenErr"
+    $null = Wren-Eval 'window.probe = document.getElementById("probe").animate({ width: ["0px", "200px"] }, 1000); window.probe.pause(); window.probe.currentTime = 500; 1'
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'wa-probe.png'
+    $null = Wren-Shot $png -Selector '#probe-track'
+    if (Test-Path $png) {
+        $left = Pixel $png 50 10; $right = Pixel $png 150 10
+        Check "a paused effect is painted: blue up to half the bar ($($left -join ',') then $($right -join ','))" ((Near $left @(0, 0, 255) 24) -and (Near $right @(255, 255, 255) 24))
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the probe was captured' $false $global:WrenErr }
+    $null = Wren-Eval 'window.short = "running"; document.getElementById("probe").animate({ opacity: [1, 0] }, 120).finished.then((a) => { window.short = a.playState; }); 1'
+    $null = Wren-Ctl wait function 'window.short === "finished"' --timeout 10000
+    Check 'finished resolves on the event loop' ((Wren-Eval 'window.short') -eq 'finished') "short = $(Wren-Eval 'window.short')"
+}
+
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------
 # A state is made in every place a reset reaches (two tabs, a zoomed page, cookies, local and session storage, a changed preference
 # and a scale, a resized window, developer tools, a console line, a visit in the history, a wait nobody is going to end), then
@@ -430,6 +453,8 @@ if ($Check) {
         $null = Wren-Ctl reset
         Test-VideoLayers $server 6
         Test-LayoutSized $server
+        $null = Wren-Ctl reset
+        Test-WebApis $server
         $null = Wren-Ctl reset
         Section 'check: quit and the leak report'
         $q = Wren-Ctl quit
@@ -698,6 +723,7 @@ public static class PipeStorm {
     Scenario '4 video layers' { Test-VideoLayers $server }
     Scenario '5 layout read by a script after a navigation' { Test-LayoutSized $server }
     Scenario '6 idle timer: ticks that change nothing draw no frame' { Test-IdleTimers $server }
+    Scenario '7 web APIs in the browser' { Test-WebApis $server }
 
     # closing with a client connected, and the exit code
     Section '2j quit with a client connected'

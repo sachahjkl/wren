@@ -30,6 +30,25 @@ Api_AbortSignal :: struct {
 	data:   ^Abort_Signal,
 }
 
+// A live Animation: its handle and what lookup_Animation found.
+Api_Animation :: struct {
+	handle: u64,
+	data:   ^Web_Animation,
+}
+
+Api_AnimationPlayState :: enum i32 {
+	Idle = 0,
+	Running = 1,
+	Paused = 2,
+	Finished = 3,
+}
+
+Api_AnimationReplaceState :: enum i32 {
+	Active = 0,
+	Removed = 1,
+	Persisted = 2,
+}
+
 // Any host object (not a node). Released with Object_release; freed with the page in any case.
 // A live Object: its handle and what lookup_Object found.
 Api_Object :: struct {
@@ -687,6 +706,12 @@ Api_WebSocketState :: enum i32 {
 }
 
 @(private = "file")
+_valid_AnimationPlayState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
+
+@(private = "file")
+_valid_AnimationReplaceState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
 _valid_PromiseState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
 
 @(private = "file")
@@ -1096,6 +1121,598 @@ _t_abort_AbortSignal_any :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wa
 	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// Animation_create :: proc(c: ^Call, notify: u32, user: i32) -> u64
+@(private = "file")
+_t_animations_Animation_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_r := Animation_create(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Animation_setEffect :: proc(c: ^Call, animation: Api_Animation, target: Api_Element, keyframes: string, duration: f64, delay: f64, end_delay: f64, iterations: f64, iteration_start: f64, direction: i32, fill: i32, easing: string, composite: i32) -> Api_Error
+@(private = "file")
+_t_animations_Animation_setEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "animations.Animation_setEffect", "keyframes") }
+	_n10 := wasm.addr(&f, a[12])
+	_s10, _k10 := wasm.span(&f, wasm.addr(&f, a[11]), _n10)
+	if !_k10 { return wasm.trap_bounds(&f, "animations.Animation_setEffect", "easing") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "animations.Animation_setEffect: argument keyframes is not valid UTF-8")
+	}
+	_p10 := string(_s10[:_n10])
+	if !wasm.valid_utf8(_p10) {
+		return _fail_status(&c, a, .Type, "animations.Animation_setEffect: argument easing is not valid UTF-8")
+	}
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_setEffect: argument animation is not a live Animation")
+	}
+	_p1 := Api_Element{handle = u64(a[1].i64)}
+	if _p1.handle != 0 { _p1.data = lookup_Element(&c, _p1.handle) }
+	if _p1.handle != 0 && _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_setEffect: argument target is not a live Element")
+	}
+	_p3 := a[4].f64
+	_p4 := a[5].f64
+	_p5 := a[6].f64
+	_p6 := a[7].f64
+	_p7 := a[8].f64
+	_p8 := a[9].i32
+	_p9 := a[10].i32
+	_p11 := a[13].i32
+	_err := Animation_setEffect(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_clearEffect :: proc(c: ^Call, animation: Api_Animation)
+@(private = "file")
+_t_animations_Animation_clearEffect :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_clearEffect: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_clearEffect: argument animation is not a live Animation")
+	}
+	Animation_clearEffect(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_setTimeline :: proc(c: ^Call, animation: Api_Animation, document_timeline: bool)
+@(private = "file")
+_t_animations_Animation_setTimeline :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_setTimeline: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_setTimeline: argument animation is not a live Animation")
+	}
+	_p1 := a[1].i32 != 0
+	Animation_setTimeline(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_play :: proc(c: ^Call, animation: Api_Animation) -> Api_Error
+@(private = "file")
+_t_animations_Animation_play :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_play: argument animation is not a live Animation")
+	}
+	_err := Animation_play(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_pause :: proc(c: ^Call, animation: Api_Animation) -> Api_Error
+@(private = "file")
+_t_animations_Animation_pause :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_pause: argument animation is not a live Animation")
+	}
+	_err := Animation_pause(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_finish :: proc(c: ^Call, animation: Api_Animation) -> Api_Error
+@(private = "file")
+_t_animations_Animation_finish :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_finish: argument animation is not a live Animation")
+	}
+	_err := Animation_finish(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_cancel :: proc(c: ^Call, animation: Api_Animation)
+@(private = "file")
+_t_animations_Animation_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_cancel: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_cancel: argument animation is not a live Animation")
+	}
+	Animation_cancel(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_reverse :: proc(c: ^Call, animation: Api_Animation) -> Api_Error
+@(private = "file")
+_t_animations_Animation_reverse :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_reverse: argument animation is not a live Animation")
+	}
+	_err := Animation_reverse(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_persist :: proc(c: ^Call, animation: Api_Animation)
+@(private = "file")
+_t_animations_Animation_persist :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_persist: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_persist: argument animation is not a live Animation")
+	}
+	Animation_persist(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_commitStyles :: proc(c: ^Call, animation: Api_Animation) -> Api_Error
+@(private = "file")
+_t_animations_Animation_commitStyles :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_commitStyles: argument animation is not a live Animation")
+	}
+	_err := Animation_commitStyles(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_updatePlaybackRate :: proc(c: ^Call, animation: Api_Animation, rate: f64)
+@(private = "file")
+_t_animations_Animation_updatePlaybackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_updatePlaybackRate: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_updatePlaybackRate: argument animation is not a live Animation")
+	}
+	_p1 := a[1].f64
+	Animation_updatePlaybackRate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_playbackRate :: proc(c: ^Call, animation: Api_Animation) -> f64
+@(private = "file")
+_t_animations_Animation_playbackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_playbackRate: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_playbackRate: argument animation is not a live Animation")
+	}
+	_r := Animation_playbackRate(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_set_playbackRate :: proc(c: ^Call, animation: Api_Animation, rate: f64)
+@(private = "file")
+_t_animations_Animation_set_playbackRate :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_set_playbackRate: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_set_playbackRate: argument animation is not a live Animation")
+	}
+	_p1 := a[1].f64
+	Animation_set_playbackRate(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_currentTime :: proc(c: ^Call, animation: Api_Animation) -> f64
+@(private = "file")
+_t_animations_Animation_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_currentTime: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_currentTime: argument animation is not a live Animation")
+	}
+	_r := Animation_currentTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_set_currentTime :: proc(c: ^Call, animation: Api_Animation, time: f64) -> Api_Error
+@(private = "file")
+_t_animations_Animation_set_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "animations.Animation_set_currentTime: argument animation is not a live Animation")
+	}
+	_p1 := a[1].f64
+	_err := Animation_set_currentTime(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Animation_startTime :: proc(c: ^Call, animation: Api_Animation) -> f64
+@(private = "file")
+_t_animations_Animation_startTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_startTime: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_startTime: argument animation is not a live Animation")
+	}
+	_r := Animation_startTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_set_startTime :: proc(c: ^Call, animation: Api_Animation, time: f64)
+@(private = "file")
+_t_animations_Animation_set_startTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_set_startTime: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_set_startTime: argument animation is not a live Animation")
+	}
+	_p1 := a[1].f64
+	Animation_set_startTime(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// Animation_playState :: proc(c: ^Call, animation: Api_Animation) -> Api_AnimationPlayState
+@(private = "file")
+_t_animations_Animation_playState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_playState: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_playState: argument animation is not a live Animation")
+	}
+	_r := Animation_playState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Animation_replaceState :: proc(c: ^Call, animation: Api_Animation) -> Api_AnimationReplaceState
+@(private = "file")
+_t_animations_Animation_replaceState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_replaceState: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_replaceState: argument animation is not a live Animation")
+	}
+	_r := Animation_replaceState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// Animation_pending :: proc(c: ^Call, animation: Api_Animation) -> bool
+@(private = "file")
+_t_animations_Animation_pending :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_pending: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_pending: argument animation is not a live Animation")
+	}
+	_r := Animation_pending(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// Animation_takeOps :: proc(c: ^Call, animation: Api_Animation) -> string
+@(private = "file")
+_t_animations_Animation_takeOps :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_takeOps", "result buffer") }
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_takeOps: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_takeOps: argument animation is not a live Animation")
+	}
+	_r := Animation_takeOps(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// Animation_dropOps :: proc(c: ^Call, animation: Api_Animation, count: i32)
+@(private = "file")
+_t_animations_Animation_dropOps :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_dropOps: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_dropOps: argument animation is not a live Animation")
+	}
+	_p1 := a[1].i32
+	Animation_dropOps(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// AnimationPlaybackEvent_time :: proc(c: ^Call, event: Api_Event, which: i32) -> f64
+@(private = "file")
+_t_animations_AnimationPlaybackEvent_time :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Event{handle = u64(a[0].i64)}
+	_p0.data = lookup_Event(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.AnimationPlaybackEvent_time: argument event is not a live Event") }
+		return wasm.trap_new("animations.AnimationPlaybackEvent_time: argument event is not a live Event")
+	}
+	_p1 := a[1].i32
+	_r := AnimationPlaybackEvent_time(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_computedTiming :: proc(c: ^Call, animation: Api_Animation, which: i32) -> f64
+@(private = "file")
+_t_animations_Animation_computedTiming :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Animation{handle = u64(a[0].i64)}
+	_p0.data = lookup_Animation(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_computedTiming: argument animation is not a live Animation") }
+		return wasm.trap_new("animations.Animation_computedTiming: argument animation is not a live Animation")
+	}
+	_p1 := a[1].i32
+	_r := Animation_computedTiming(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_relevant :: proc(c: ^Call, root: Api_Node, subtree: bool) -> []u8
+@(private = "file")
+_t_animations_Animation_relevant :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "animations.Animation_relevant", "result buffer") }
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	if _p0.handle != 0 { _p0.data = lookup_Node(&c, _p0.handle) }
+	if _p0.handle != 0 && _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "animations.Animation_relevant: argument root is not a live Node") }
+		return wasm.trap_new("animations.Animation_relevant: argument root is not a live Node")
+	}
+	_p1 := a[1].i32 != 0
+	_r := Animation_relevant(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// DocumentTimeline_currentTime :: proc(c: ^Call) -> f64
+@(private = "file")
+_t_animations_DocumentTimeline_currentTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_r := DocumentTimeline_currentTime(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// Animation_validEasing :: proc(c: ^Call, easing: string) -> bool
+@(private = "file")
+_t_animations_Animation_validEasing :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "animations.Animation_validEasing", "easing") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "animations.Animation_validEasing: argument easing is not valid UTF-8") }
+		return wasm.trap_new("animations.Animation_validEasing: argument easing is not valid UTF-8")
+	}
+	_r := Animation_validEasing(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
 	return nil
 }
 
@@ -25647,6 +26264,34 @@ api_imports := [?]wasm.Import{
 	{module = "abort", name = "AbortSignal_abort", fn = _t_abort_AbortSignal_abort, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "abort", name = "AbortSignal_timeout", fn = _t_abort_AbortSignal_timeout, realms = 1, params = []wasm.Val_Kind{.F64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.F64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "abort", name = "AbortSignal_any", fn = _t_abort_AbortSignal_any, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_create", fn = _t_animations_Animation_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "animations", name = "Animation_setEffect", fn = _t_animations_Animation_setEffect, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .F64, .F64, .F64, .F64, .F64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .F64, .F64, .F64, .F64, .F64, .I32, .I32, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_clearEffect", fn = _t_animations_Animation_clearEffect, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_setTimeline", fn = _t_animations_Animation_setTimeline, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_play", fn = _t_animations_Animation_play, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_pause", fn = _t_animations_Animation_pause, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_finish", fn = _t_animations_Animation_finish, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_cancel", fn = _t_animations_Animation_cancel, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_reverse", fn = _t_animations_Animation_reverse, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_persist", fn = _t_animations_Animation_persist, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_commitStyles", fn = _t_animations_Animation_commitStyles, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_updatePlaybackRate", fn = _t_animations_Animation_updatePlaybackRate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_playbackRate", fn = _t_animations_Animation_playbackRate, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_set_playbackRate", fn = _t_animations_Animation_set_playbackRate, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_currentTime", fn = _t_animations_Animation_currentTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_set_currentTime", fn = _t_animations_Animation_set_currentTime, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_startTime", fn = _t_animations_Animation_startTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_set_startTime", fn = _t_animations_Animation_set_startTime, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "Animation_playState", fn = _t_animations_Animation_playState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_replaceState", fn = _t_animations_Animation_replaceState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_pending", fn = _t_animations_Animation_pending, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "animations", name = "Animation_takeOps", fn = _t_animations_Animation_takeOps, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "animations", name = "Animation_dropOps", fn = _t_animations_Animation_dropOps, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "animations", name = "AnimationPlaybackEvent_time", fn = _t_animations_AnimationPlaybackEvent_time, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_computedTiming", fn = _t_animations_Animation_computedTiming, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_relevant", fn = _t_animations_Animation_relevant, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "animations", name = "DocumentTimeline_currentTime", fn = _t_animations_DocumentTimeline_currentTime, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.F64}},
+	{module = "animations", name = "Animation_validEasing", fn = _t_animations_Animation_validEasing, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "async", name = "queueMicrotask", fn = _t_async_queueMicrotask, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
 	{module = "async", name = "Promise_create", fn = _t_async_Promise_create, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "async", name = "Promise_resolve", fn = _t_async_Promise_resolve, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

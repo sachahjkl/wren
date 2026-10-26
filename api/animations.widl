@@ -1,0 +1,81 @@
+/// Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The
+/// browser keeps each animation's state (start time, hold time, playback rate, pending play or pause, play state,
+/// replace state) and plays its keyframe effect on the style timeline (src/style/script_anim.odin) like a CSS
+/// animation; the engine keeps the JavaScript objects (the KeyframeEffect, the promises) and mirrors what the browser
+/// tells it (Animation_takeOps). Times are milliseconds on the document timeline; NaN stands for null (unresolved).
+/// "finish", "cancel" and "remove" are fired at the animation (AnimationPlaybackEvent: Event x = currentTime, y =
+/// timelineTime, NaN for null).
+[Exposed=Window]
+module animations {
+  handle Animation : Object = Web_Animation via lookup_Animation;
+
+  enum AnimationPlayState : i32 { Idle, Running, Paused, Finished }
+  enum AnimationReplaceState : i32 { Active, Removed, Persisted }
+
+  /// new Animation(): no effect, on the document timeline. `notify(user)` runs as a microtask when there is something
+  /// to take (Animation_takeOps).
+  Animation Animation_create(MicrotaskCallback notify, i32 user);
+  /// Sets the animation's keyframe effect: its target (0: none), its keyframes packed by the engine (offsets computed:
+  /// keyframes separated by U+001E, fields by U+001F: offset, easing, then property / value pairs), its timing
+  /// (duration NaN: "auto"; direction and fill as the style engine's enums, fill "auto" as none) and composite
+  /// operation (0 replace, 1 add, 2 accumulate). Type when an easing does not parse.
+  void Animation_setEffect(Animation animation, optional Element target, string keyframes, f64 duration, f64 delay, f64 end_delay, f64 iterations, f64 iteration_start, i32 direction, i32 fill, string easing, i32 composite) raises;
+  /// animation.effect = null
+  void Animation_clearEffect(Animation animation);
+  /// animation.timeline = document.timeline (true) or null (false).
+  void Animation_setTimeline(Animation animation, bool document_timeline);
+  /// play(): Invalid_State to play backwards an effect that never ends.
+  void Animation_play(Animation animation) raises;
+  /// pause(): Invalid_State to pause before the start of an effect that never ends, backwards.
+  void Animation_pause(Animation animation) raises;
+  /// finish(): Invalid_State at a playback rate of 0, or forwards with an effect that never ends.
+  void Animation_finish(Animation animation) raises;
+  /// cancel()
+  void Animation_cancel(Animation animation);
+  /// reverse(): Invalid_State without a timeline, or as play().
+  void Animation_reverse(Animation animation) raises;
+  /// persist()
+  void Animation_persist(Animation animation);
+  /// commitStyles(): the effect's animated values written into the target's style attribute. No_Modification_Allowed
+  /// without a target element, Invalid_State when it is not rendered.
+  void Animation_commitStyles(Animation animation) raises;
+  /// updatePlaybackRate(rate)
+  void Animation_updatePlaybackRate(Animation animation, f64 rate);
+  /// animation.playbackRate
+  f64 Animation_playbackRate(Animation animation);
+  /// animation.playbackRate = rate (the current time is kept)
+  void Animation_set_playbackRate(Animation animation, f64 rate);
+  /// animation.currentTime (NaN: null)
+  f64 Animation_currentTime(Animation animation);
+  /// animation.currentTime = t: Type for null when the current time is resolved.
+  void Animation_set_currentTime(Animation animation, f64 time) raises;
+  /// animation.startTime (NaN: null)
+  f64 Animation_startTime(Animation animation);
+  /// animation.startTime = t (NaN: null)
+  void Animation_set_startTime(Animation animation, f64 time);
+  /// animation.playState
+  AnimationPlayState Animation_playState(Animation animation);
+  /// animation.replaceState
+  AnimationReplaceState Animation_replaceState(Animation animation);
+  /// animation.pending
+  bool Animation_pending(Animation animation);
+  /// What changed for the engine since the last call, one letter each, in order: r the ready promise is resolved, R it
+  /// is rejected (AbortError) and replaced by a resolved one, n a new pending ready promise; f the finished promise is
+  /// resolved, F it is rejected (AbortError) and replaced by a pending one, m a new pending finished promise; k / u the
+  /// wrapper must be kept alive (the animation may still fire events or show its effect) / may go.
+  /// Nothing is taken away: Animation_dropOps does once the engine applied them.
+  string Animation_takeOps(Animation animation);
+  /// The first `count` letters of Animation_takeOps were applied.
+  void Animation_dropOps(Animation animation, i32 count);
+  /// AnimationPlaybackEvent of the browser: which 0 currentTime, 1 timelineTime (NaN: null).
+  f64 AnimationPlaybackEvent_time(Event event, i32 which);
+  /// effect.getComputedTiming() of the animation's effect: which 0 localTime, 1 progress, 2 currentIteration; NaN: null.
+  f64 Animation_computedTiming(Animation animation, i32 which);
+  /// The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of it and its descendants), or of the
+  /// whole document when `root` is 0, in composite order: 8 bytes per handle.
+  bytes Animation_relevant(optional Node root, bool subtree);
+  /// document.timeline.currentTime (NaN: null)
+  f64 DocumentTimeline_currentTime();
+  /// Whether `easing` is an easing function (CSS Easing 2).
+  bool Animation_validEasing(string easing);
+}

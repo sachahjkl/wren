@@ -12,6 +12,20 @@
 typedef uint64_t wr_AbortController;
 typedef uint64_t wr_AbortSignal;
 
+/* module animations: types */
+typedef uint64_t wr_Animation;
+enum wr_AnimationPlayState {
+    wr_AnimationPlayState_Idle = 0,
+    wr_AnimationPlayState_Running = 1,
+    wr_AnimationPlayState_Paused = 2,
+    wr_AnimationPlayState_Finished = 3,
+};
+enum wr_AnimationReplaceState {
+    wr_AnimationReplaceState_Active = 0,
+    wr_AnimationReplaceState_Removed = 1,
+    wr_AnimationReplaceState_Persisted = 2,
+};
+
 /* module async: types */
 // Any host object (not a node). Released with Object_release; freed with the page in any case.
 typedef uint64_t wr_Object;
@@ -640,6 +654,74 @@ WR_IMPORT("abort", "AbortSignal_abort") uint64_t wr_AbortSignal_abort(int64_t co
 WR_IMPORT("abort", "AbortSignal_timeout") int32_t wr_AbortSignal_timeout(double ms, uint64_t *_ret);
 // AbortSignal.any(signals). Invalid_Handle when one is not a signal, Range past abort.max_signal_sources.
 WR_IMPORT("abort", "AbortSignal_any") int32_t wr_AbortSignal_any(const uint64_t *signals, uint32_t signals_len, uint64_t *_ret);
+
+/* module animations */
+// new Animation(): no effect, on the document timeline. `notify(user)` runs as a microtask when there is something
+// to take (Animation_takeOps).
+WR_IMPORT("animations", "Animation_create") uint64_t wr_Animation_create(uint32_t notify, int32_t user);
+// Sets the animation's keyframe effect: its target (0: none), its keyframes packed by the engine (offsets computed:
+// keyframes separated by U+001E, fields by U+001F: offset, easing, then property / value pairs), its timing
+// (duration NaN: "auto"; direction and fill as the style engine's enums, fill "auto" as none) and composite
+// operation (0 replace, 1 add, 2 accumulate). Type when an easing does not parse.
+WR_IMPORT("animations", "Animation_setEffect") int32_t wr_Animation_setEffect(uint64_t animation, uint64_t target, const uint8_t *keyframes, uint32_t keyframes_len, double duration, double delay, double end_delay, double iterations, double iteration_start, int32_t direction, int32_t fill, const uint8_t *easing, uint32_t easing_len, int32_t composite);
+// animation.effect = null
+WR_IMPORT("animations", "Animation_clearEffect") void wr_Animation_clearEffect(uint64_t animation);
+// animation.timeline = document.timeline (true) or null (false).
+WR_IMPORT("animations", "Animation_setTimeline") void wr_Animation_setTimeline(uint64_t animation, int32_t document_timeline);
+// play(): Invalid_State to play backwards an effect that never ends.
+WR_IMPORT("animations", "Animation_play") int32_t wr_Animation_play(uint64_t animation);
+// pause(): Invalid_State to pause before the start of an effect that never ends, backwards.
+WR_IMPORT("animations", "Animation_pause") int32_t wr_Animation_pause(uint64_t animation);
+// finish(): Invalid_State at a playback rate of 0, or forwards with an effect that never ends.
+WR_IMPORT("animations", "Animation_finish") int32_t wr_Animation_finish(uint64_t animation);
+// cancel()
+WR_IMPORT("animations", "Animation_cancel") void wr_Animation_cancel(uint64_t animation);
+// reverse(): Invalid_State without a timeline, or as play().
+WR_IMPORT("animations", "Animation_reverse") int32_t wr_Animation_reverse(uint64_t animation);
+// persist()
+WR_IMPORT("animations", "Animation_persist") void wr_Animation_persist(uint64_t animation);
+// commitStyles(): the effect's animated values written into the target's style attribute. No_Modification_Allowed
+// without a target element, Invalid_State when it is not rendered.
+WR_IMPORT("animations", "Animation_commitStyles") int32_t wr_Animation_commitStyles(uint64_t animation);
+// updatePlaybackRate(rate)
+WR_IMPORT("animations", "Animation_updatePlaybackRate") void wr_Animation_updatePlaybackRate(uint64_t animation, double rate);
+// animation.playbackRate
+WR_IMPORT("animations", "Animation_playbackRate") double wr_Animation_playbackRate(uint64_t animation);
+// animation.playbackRate = rate (the current time is kept)
+WR_IMPORT("animations", "Animation_set_playbackRate") void wr_Animation_set_playbackRate(uint64_t animation, double rate);
+// animation.currentTime (NaN: null)
+WR_IMPORT("animations", "Animation_currentTime") double wr_Animation_currentTime(uint64_t animation);
+// animation.currentTime = t: Type for null when the current time is resolved.
+WR_IMPORT("animations", "Animation_set_currentTime") int32_t wr_Animation_set_currentTime(uint64_t animation, double time);
+// animation.startTime (NaN: null)
+WR_IMPORT("animations", "Animation_startTime") double wr_Animation_startTime(uint64_t animation);
+// animation.startTime = t (NaN: null)
+WR_IMPORT("animations", "Animation_set_startTime") void wr_Animation_set_startTime(uint64_t animation, double time);
+// animation.playState
+WR_IMPORT("animations", "Animation_playState") int32_t wr_Animation_playState(uint64_t animation);
+// animation.replaceState
+WR_IMPORT("animations", "Animation_replaceState") int32_t wr_Animation_replaceState(uint64_t animation);
+// animation.pending
+WR_IMPORT("animations", "Animation_pending") int32_t wr_Animation_pending(uint64_t animation);
+// What changed for the engine since the last call, one letter each, in order: r the ready promise is resolved, R it
+// is rejected (AbortError) and replaced by a resolved one, n a new pending ready promise; f the finished promise is
+// resolved, F it is rejected (AbortError) and replaced by a pending one, m a new pending finished promise; k / u the
+// wrapper must be kept alive (the animation may still fire events or show its effect) / may go.
+// Nothing is taken away: Animation_dropOps does once the engine applied them.
+WR_IMPORT("animations", "Animation_takeOps") int32_t wr_Animation_takeOps(uint64_t animation, uint8_t *_buf, uint32_t _cap);
+// The first `count` letters of Animation_takeOps were applied.
+WR_IMPORT("animations", "Animation_dropOps") void wr_Animation_dropOps(uint64_t animation, int32_t count);
+// AnimationPlaybackEvent of the browser: which 0 currentTime, 1 timelineTime (NaN: null).
+WR_IMPORT("animations", "AnimationPlaybackEvent_time") double wr_AnimationPlaybackEvent_time(uint64_t event, int32_t which);
+// effect.getComputedTiming() of the animation's effect: which 0 localTime, 1 progress, 2 currentIteration; NaN: null.
+WR_IMPORT("animations", "Animation_computedTiming") double wr_Animation_computedTiming(uint64_t animation, int32_t which);
+// The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of it and its descendants), or of the
+// whole document when `root` is 0, in composite order: 8 bytes per handle.
+WR_IMPORT("animations", "Animation_relevant") int32_t wr_Animation_relevant(uint64_t root, int32_t subtree, uint8_t *_buf, uint32_t _cap);
+// document.timeline.currentTime (NaN: null)
+WR_IMPORT("animations", "DocumentTimeline_currentTime") double wr_DocumentTimeline_currentTime(void);
+// Whether `easing` is an easing function (CSS Easing 2).
+WR_IMPORT("animations", "Animation_validEasing") int32_t wr_Animation_validEasing(const uint8_t *easing, uint32_t easing_len);
 
 /* module async */
 // queueMicrotask(callback)
