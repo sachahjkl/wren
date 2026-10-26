@@ -181,6 +181,8 @@
         out += rows.map((r) => '{"i":' + str(r.i) + ',"v":' + (r.value !== undefined || "value" in r ? node(r.value, MAXDEPTH, [], { n: 50 }) : "null") + ',"c":[' + use.map((k) => (k in r.cells ? node(r.cells[k], MAXDEPTH, [], { n: 50 }) : "null")).join(",") + "]}").join(",") + "]}";
         return out;
       };
+      // the wrappers keep the descriptor of a namespace operation (Web IDL: writable, enumerable, configurable) and its length 0
+      const op = (name, value) => Object.defineProperty(c, name, { value, writable: true, configurable: true, enumerable: true });
       for (const m of ["log", "info", "warn", "error", "debug", "dir", "dirxml"]) {
         const f = orig[m];
         const wrapper = {
@@ -194,20 +196,22 @@
             return f.apply(this === undefined ? c : this, args);
           },
         }[m];
-        hidden(c, m, wrapper);
+        op(m, wrapper);
       }
       {
         const f = orig.table;
-        hidden(c, "table", { table(data, cols) {
+        op("table", { table(...a) {
+          const [data, cols] = a;
           if (state.on) { try { const t = table(data, cols); if (t) send("dt", '{"l":"log","r":' + keep([data]) + ',"w":' + str(where()) + ',"tbl":' + t + "}"); } catch (e) {} }
-          return f.apply(this === undefined ? c : this, arguments);
+          return f.apply(this === undefined ? c : this, a);
         } }.table);
       }
       {
         const f = orig.assert;
-        hidden(c, "assert", { assert(cond, ...args) {
+        op("assert", { assert(...a) {
+          const cond = a[0], args = a.slice(1);
           if (state.on && !cond) { try { send("dt", '{"l":"error","r":' + keep(args) + ',"w":' + str(where()) + ',"a":[' + ['Assertion failed'].concat(args).map((a) => node(a, 0, [], { n: 200 })).join(",") + "]}"); } catch (e) {} }
-          return f.apply(this === undefined ? c : this, arguments);
+          return f.apply(this === undefined ? c : this, a);
         } }.assert);
       }
       // a value shown like a console message: its description for the tree, then its text

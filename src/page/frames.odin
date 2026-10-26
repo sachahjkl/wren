@@ -510,7 +510,7 @@ frame_navigate :: proc(n: ^Navigable, href: string, replace := false, method := 
 	headers: []fetch.Header_Pair
 	if content_type != "" { headers = {{"Content-Type", content_type}} }
 	l.task = fetch.start(p.loader, {
-		request = {url = target.href, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = .Iframe,
+		request = {url = target.href, mode = .Navigate, credentials = .Include, redirect = .Follow, destination = n.kind == .Frame ? .Frame : .Iframe,
 			initiator = &p.env, referrer_policy = rp, method = method, body = body, headers = headers},
 		on_event = frame_fetch_event, user = l, scope = p.scope, collect = true,
 	})

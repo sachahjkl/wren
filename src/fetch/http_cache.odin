@@ -119,7 +119,7 @@ cache_key :: proc(t: ^Task, c: ^httpcache.Cache) -> string {
 			from := site_text(t.initiator.site)
 			if from != site { nav = "n" }   // a cross-site navigation does not see what same-site ones stored
 		}
-	} else if t.destination == .Iframe {
+	} else if is_frame_destination(t.destination) {
 		// a nested document: the top level's site, and the frame's own (the document it will be)
 		top = site_text(t.initiator.top_level_site)
 		frame = site_text(url.site_of(url.origin_of(t.target, context.temp_allocator), context.temp_allocator))

@@ -475,7 +475,7 @@ net_type_of :: proc(e: ^Net_Entry) -> Net_Type {
 	if e.is_ws { return .WS }
 	m := net_mime_base(e.mime)
 	switch e.dest {
-	case .Document, .Iframe: return .Doc
+	case .Document, .Iframe, .Frame: return .Doc
 	case .Script, .Worker:   return m == "application/wasm" ? .Wasm : .JS
 	case .Style:             return .CSS
 	case .Image:             return .Img

@@ -6,6 +6,9 @@ What each version of Wren brings. The release notes on GitHub add the list of ev
 
 ## Unreleased
 
+- Service workers intercept the navigations of `<iframe>` and `<frame>` elements in their scope: `request.destination` is `iframe` / `frame` (also `Sec-Fetch-Dest`), `request.mode` is `navigate`; `Request.destination` is no longer always empty; a scope given to `register()` is resolved against the document (not the script) and keeps its query.
+- `console.log` and the other console operations are enumerable again (Web IDL namespace operations) while the developer tools watch them.
+- Custom elements: an element already defined gets its `connectedCallback` / `disconnectedCallback` in another document (a template's contents document, `createHTMLDocument`), where nothing is upgraded; `Range.cloneContents()` / `extractContents()` upgrade their clones.
 - Toolkit 0.41.0: Copy writes the clipboard through the toolkit (`platform.clipboard_set`): text, HTML with the page's address, and a copied image as PNG, a bitmap with alpha and a bitmap over white (programs that read the alpha bitmap now get the image's transparency); the CF_HTML and PNG code of the shell is gone. The bar between the page and the docked developer tools is the toolkit's `ui.splitter` (same limits and look; the resize cursor now stays while the pointer runs ahead of the bar), and the tab strip and the tab sidebar drag their tabs with the toolkit's `ui/reorder.odin` (the geometry moved there unchanged).
 - Toolkit 0.40.0: rich text paragraphs (`ui.rich_paragraph`: mixed faces, code, links, one wrapping paragraph) and text selection outside fields (`.Selectable` labels and paragraphs, across boxes, Ctrl+C) for the shell's own panels; bold runs take the family's real bold face.
 

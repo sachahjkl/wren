@@ -423,7 +423,7 @@ cookies_allowed :: proc(t: ^Task) -> bool {
 	include := t.credentials == .Include || (t.credentials == .Same_Origin && t.taint == .Basic)
 	if !include { return false }
 	// a nested document's navigation is a third-party request like a subresource's (only top-level navigations are not)
-	if (t.mode != .Navigate || t.destination == .Iframe) && t.initiator != nil && t.loader.profile.settings.third_party_cookies == .Block {
+	if (t.mode != .Navigate || is_frame_destination(t.destination)) && t.initiator != nil && t.loader.profile.settings.third_party_cookies == .Block {
 		o := url.origin_of(t.target, context.temp_allocator)
 		if !url.same_site(url.site_of(o, context.temp_allocator), t.initiator.top_level_site) { return false }
 	}
@@ -435,7 +435,7 @@ site_context :: proc(t: ^Task) -> cookies.Site_Context {
 	if t.initiator == nil { return .Same_Site }   // typed in the address bar
 	if !t.cross_site_seen { return .Same_Site }
 	// (SameSite=Lax cookies go with top-level navigations only, not with a cross-site <iframe>'s)
-	if t.mode == .Navigate && t.destination != .Iframe && http.is_safe_method(t.method) { return .Cross_Site_Top_Level_Safe }
+	if t.mode == .Navigate && !is_frame_destination(t.destination) && http.is_safe_method(t.method) { return .Cross_Site_Top_Level_Safe }
 	return .Cross_Site
 }
 
@@ -457,6 +457,7 @@ dest_name :: proc(d: Destination) -> string {
 	case .Report: return "report"
 	case .Worker: return "worker"
 	case .Iframe: return "iframe"
+	case .Frame: return "frame"
 	}
 	return "empty"
 }
@@ -475,7 +476,7 @@ mode_name :: proc(m: Mode) -> string {
 @(private)
 default_accept :: proc(d: Destination) -> string {
 	switch d {
-	case .Document, .Iframe: return "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+	case .Document, .Iframe, .Frame: return "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 	case .Script, .Worker: return "application/wasm,*/*;q=0.8"
 	case .Style:    return "text/css,*/*;q=0.1"
 	// the formats package images decodes whatever the system has installed (built-in AVIF, WebP and SVG decoders)
@@ -663,7 +664,7 @@ send_main :: proc(t: ^Task) {
 	t.net_req = net.fetch(l.net, {
 		url = url_no_fragment(t.target), method = t.method, headers = join_headers(h), body = t.body,
 		on_event = main_event, user = k, collect = false, max_body = t.max_body, link = link_of(l, t.scope),
-		priority = t.destination == .Document || t.destination == .Iframe || t.destination == .Script || t.destination == .Style ? .High : .Normal,
+		priority = t.destination == .Document || is_frame_destination(t.destination) || t.destination == .Script || t.destination == .Style ? .High : .Normal,
 	})
 }
 
@@ -934,7 +935,7 @@ synthetic :: proc(t: ^Task, status: int, mime: string, body: []byte) {
 @(private)
 data_hop :: proc(t: ^Task) {
 	// top-level only: a data: document in a frame is allowed (its origin is opaque: the page package makes it so)
-	if t.mode == .Navigate && t.destination != .Iframe { fail(t, .Unsupported, "navigation to data: URLs is blocked"); return }
+	if t.mode == .Navigate && !is_frame_destination(t.destination) { fail(t, .Unsupported, "navigation to data: URLs is blocked"); return }
 	d, ok := process_data_url(t.target)
 	if !ok { fail(t, .Bad_Data_URL, "malformed data: URL"); return }
 	defer data_url_destroy(&d)
@@ -984,7 +985,7 @@ file_hop :: proc(t: ^Task) {
 	path, ok := file_path_from_url(t.target)
 	if !ok { fail(t, .Bad_URL, "invalid file URL"); return }
 	defer delete(path)
-	document := t.mode == .Navigate && (t.destination == .Document || t.destination == .Iframe)
+	document := t.mode == .Navigate && (t.destination == .Document || is_frame_destination(t.destination))
 	policy := l.profile.settings.file_access
 	navigation := document && file_navigation_allowed(t.initiator, policy, t.target.host)
 	if !navigation && !file_access_allowed(t.initiator, path, policy) {
@@ -1105,7 +1106,7 @@ csp_kind :: proc(d: Destination) -> (csp.Directive_Kind, bool) {
 	case .Font:           return .Font_Src, true
 	case .Audio, .Video:  return .Media_Src, true
 	case .Manifest:       return .Manifest_Src, true
-	case .Iframe:         return .Frame_Src, true    // frame-src, then child-src, default-src
+	case .Iframe, .Frame: return .Frame_Src, true    // frame-src, then child-src, default-src
 	case .Document:       return {}, false   // navigations are not governed by the initiator's policy here
 	}
 	return {}, false

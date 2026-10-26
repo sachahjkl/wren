@@ -47,8 +47,12 @@ Destination :: enum u8 {
 	Manifest,
 	Report,
 	Worker,        // a dedicated worker's Wasm module: application/wasm, CSP worker-src
-	Iframe,        // a nested document (<iframe>, <frame>): mode Navigate, CSP frame-src, not a top-level site
+	Iframe,        // a nested document (<iframe>): mode Navigate, CSP frame-src, not a top-level site
+	Frame,         // the same for a <frame> (Request.destination "frame", Sec-Fetch-Dest: frame)
 }
+
+// A nested document's navigation (<iframe> or <frame>): what the policies treat alike.
+is_frame_destination :: #force_inline proc(d: Destination) -> bool { return d == .Iframe || d == .Frame }
 
 Referrer_Policy :: enum u8 {
 	Default,       // "not set": use the document's policy, then the profile default
