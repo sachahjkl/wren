@@ -411,7 +411,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			press := dnd.cand_pos
 			dnd_clear_candidate()
 			forms_drop_selection_press()   // (the release is the drag's, not a click in the field's selection)
-			sshell.down = false   // the selection gesture, if any, is over
+			window_own(app).selection.down = false   // the selection gesture, if any, is over
 			if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
 			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }
 			if host != base.NIL_HANDLE { page.drag_set_source_range(p, host, hrange[0], hrange[1]) }

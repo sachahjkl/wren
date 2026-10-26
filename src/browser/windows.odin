@@ -74,6 +74,8 @@ Window_Own :: struct {
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
 	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
 	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows
+	urlbar:              Urlbar_View,         // urlbar.odin: the address bar's suggestions
+	selection:           Selection_Shell,     // selection_shell.odin: the text selection gesture in the page shown
 }
 
 // The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
@@ -84,6 +86,7 @@ window_own :: proc(app: ^App) -> ^Window_Own {
 // What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
 window_own_destroy :: proc(own: ^Window_Own) {
 	page_cursor_view_destroy(&own.cursor)
+	urlbar_view_destroy(&own.urlbar)
 }
 
 ////////////////////////////////
@@ -115,8 +118,6 @@ windows_register_locals :: proc() {
 	window_local(&sidebar)
 	window_local(&find, find_destroy)
 	window_local(&fview, forms_shell_destroy)
-	window_local(&sshell)
-	window_local(&ub.view, urlbar_view_destroy)
 }
 
 windows_locals_destroy :: proc() {

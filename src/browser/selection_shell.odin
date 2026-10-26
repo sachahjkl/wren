@@ -34,6 +34,7 @@ import "wb:style"
 
 Sel_Unit :: enum u8 { Char, Word, Paragraph }
 
+// A window's text selection gesture (Window_Own.selection).
 Selection_Shell :: struct {
 	page:        ^page.Page,          // the page the current gesture belongs to
 	down:        bool,                // the left button is held since a press that selects
@@ -54,7 +55,6 @@ Selection_Shell :: struct {
 	last_tick:   time.Tick,
 }
 
-sshell: Selection_Shell
 ix: Interaction_Settings
 @(private = "file") ix_watch: int
 
@@ -138,98 +138,103 @@ fire_selectstart :: proc(t: ^Tab, at: lay.Text_Pos) -> bool {
 // A left press in the page that no form control took (after mousedown, which `allowed` says was not cancelled).
 selection_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, allowed: bool) {
 	if t.page == nil || ev.button != .Left { return }
+	ss := &window_own(app).selection
 	p := t.page
 	now := time.tick_now()
 	scale := page_scale(app)
-	if time.duration_milliseconds(time.tick_diff(sshell.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - sshell.last_click_pos.x) < 4 * scale && abs(ev.pos.y - sshell.last_click_pos.y) < 4 * scale {
-		sshell.clicks = sshell.clicks % 3 + 1
+	if time.duration_milliseconds(time.tick_diff(ss.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - ss.last_click_pos.x) < 4 * scale && abs(ev.pos.y - ss.last_click_pos.y) < 4 * scale {
+		ss.clicks = ss.clicks % 3 + 1
 	} else {
-		sshell.clicks = 1
+		ss.clicks = 1
 	}
-	sshell.last_click, sshell.last_click_pos = now, ev.pos
-	sshell.down, sshell.moved, sshell.selected_by_drag = false, false, false
+	ss.last_click, ss.last_click_pos = now, ev.pos
+	ss.down, ss.moved, ss.selected_by_drag = false, false, false
 	if !allowed { return }
 	if target != base.NIL_HANDLE && in_control(t, target) { page.selection_clear(p); return }
-	if !layout_fresh(t) { sshell.pending, sshell.pending_ev = true, ev; return }
+	if !layout_fresh(t) { ss.pending, ss.pending_ev = true, ev; return }
 	start_gesture(app, t, ev)
 }
 
 @(private = "file")
 start_gesture :: proc(app: ^App, t: ^Tab, ev: platform.Event) {
+	ss := &window_own(app).selection
 	p := t.page
-	sshell.page = p
-	sshell.press_pos, sshell.mouse = ev.pos, ev.pos
-	sshell.cancelled, sshell.started = false, false
+	ss.page = p
+	ss.press_pos, ss.mouse = ev.pos, ev.pos
+	ss.cancelled, ss.started = false, false
 	pos, ok := position_of(app, t, ev.pos)
 	when DEBUG_INPUT {
 		n := dom.get(p.doc, pos.node)
 		debug_log(fmt.tprintf("press %v page_rect %v scroll %v -> %v %q", ev.pos, app.page_rect, t.scroll, pos, n != nil ? n.text : ""))
 	}
 	if !ok { page.selection_clear(p); return }
-	sshell.down = true
-	sshell.scroller = scroller_of(t, pos.node)
-	sshell.unit = .Char
-	if sshell.clicks == 2 { sshell.unit = .Word } else if sshell.clicks >= 3 { sshell.unit = .Paragraph }
+	ss.down = true
+	ss.scroller = scroller_of(t, pos.node)
+	ss.unit = .Char
+	if ss.clicks == 2 { ss.unit = .Word } else if ss.clicks >= 3 { ss.unit = .Paragraph }
 	if .Shift in ev.mods && p.selection.has {
 		// extend from the anchor, by the unit of the gesture
 		page.selection_extend(p, pos)
-		sshell.origin = {p.selection.anchor, p.selection.anchor}
-		sshell.started = true
+		ss.origin = {p.selection.anchor, p.selection.anchor}
+		ss.started = true
 		return
 	}
-	a, b, uok := unit_at(t, pos, sshell.unit)
+	a, b, uok := unit_at(t, pos, ss.unit)
 	if !uok { a, b = pos, pos }
-	sshell.origin = {a, b}
+	ss.origin = {a, b}
 	if a == b {
 		page.selection_collapse(p, a)   // nothing selected; the next drag starts here
 		return
 	}
-	if !fire_selectstart(t, a) { sshell.cancelled = true; page.selection_clear(p); return }
+	if !fire_selectstart(t, a) { ss.cancelled = true; page.selection_clear(p); return }
 	if t.page != p { return }
-	sshell.started = true
+	ss.started = true
 	page.selection_set(p, a, b)
 }
 
 // Pointer moves while the button is held: the focus follows the pointer (by words / paragraphs after a double / triple click).
 selection_pointer_move :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
-	sshell.mouse = pos
-	if !sshell.down || t.page == nil || t.page != sshell.page || sshell.cancelled { return }
-	if !sshell.moved {
-		d := pos - sshell.press_pos
+	ss := &window_own(app).selection
+	ss.mouse = pos
+	if !ss.down || t.page == nil || t.page != ss.page || ss.cancelled { return }
+	if !ss.moved {
+		d := pos - ss.press_pos
 		if d.x * d.x + d.y * d.y < ix.drag_threshold_px * ix.drag_threshold_px * page_scale(app) * page_scale(app) { return }
-		sshell.moved = true
+		ss.moved = true
 	}
 	extend_to(app, t, pos)
 }
 
 @(private = "file")
 extend_to :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
+	ss := &window_own(app).selection
 	p := t.page
 	if !layout_fresh(t) { return }
 	tp, ok := position_of(app, t, pos)
 	if !ok { return }
-	a, b, uok := unit_at(t, tp, sshell.unit)
+	a, b, uok := unit_at(t, tp, ss.unit)
 	if !uok { a, b = tp, tp }
-	o := sshell.origin
+	o := ss.origin
 	anchor, focus: lay.Text_Pos
 	if lay.pos_compare(p.doc, a, o[0]) < 0 { anchor, focus = o[1], a } else { anchor, focus = o[0], b }
-	if anchor != focus && !sshell.started {
-		if !fire_selectstart(t, anchor) { sshell.cancelled = true; page.selection_clear(p); return }
+	if anchor != focus && !ss.started {
+		if !fire_selectstart(t, anchor) { ss.cancelled = true; page.selection_clear(p); return }
 		if t.page != p { return }
-		sshell.started = true
+		ss.started = true
 	}
 	page.selection_set(p, anchor, focus)
-	if anchor != focus { sshell.selected_by_drag = true }
+	if anchor != focus { ss.selected_by_drag = true }
 }
 
 // The release ends the gesture. True when the gesture selected text by dragging: the release is not a click then.
 selection_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	if ev.button != .Left { return false }
-	was := sshell.down && sshell.moved && sshell.selected_by_drag
+	ss := &window_own(app).selection
+	was := ss.down && ss.moved && ss.selected_by_drag
 	// a press that was waiting for a fresh layout (selection_shell_frame) is over with its release: started later it would open a gesture
 	// with the button already up, and the next moves would select text
-	sshell.pending = false
-	sshell.down = false
+	ss.pending = false
+	ss.down = false
 	return was
 }
 
@@ -248,35 +253,36 @@ scroller_of :: proc(t: ^Tab, node: base.Handle) -> base.Handle {
 
 // Each frame: selectionchange, a press that waited for a fresh layout, automatic scrolling while dragging past an edge.
 selection_shell_frame :: proc(app: ^App) {
+	ss := &window_own(app).selection
 	now := time.tick_now()
-	dt := f32(clamp(time.duration_seconds(time.tick_diff(sshell.last_tick, now)), 0, 0.1))
-	sshell.last_tick = now
+	dt := f32(clamp(time.duration_seconds(time.tick_diff(ss.last_tick, now)), 0, 0.1))
+	ss.last_tick = now
 	t := current_tab(app)
 	for tab in tabs_all(app) { if tab.page != nil { page.selection_flush(tab.page) } }
-	if t == nil || t.page == nil || t.kind != .Web { sshell.down = false; return }
-	if sshell.pending && layout_fresh(t) {
-		sshell.pending = false
-		start_gesture(app, t, sshell.pending_ev)
+	if t == nil || t.page == nil || t.kind != .Web { ss.down = false; return }
+	if ss.pending && layout_fresh(t) {
+		ss.pending = false
+		start_gesture(app, t, ss.pending_ev)
 	}
-	if !sshell.down || t.page != sshell.page || !sshell.moved || sshell.cancelled || ix.autoscroll_speed <= 0 { return }
+	if !ss.down || t.page != ss.page || !ss.moved || ss.cancelled || ix.autoscroll_speed <= 0 { return }
 	port := app.page_rect
-	if sshell.scroller != base.NIL_HANDLE {
-		if r, ok := lay.box_of(&t.layout, sshell.scroller, page_viewport(app), t.scroll); ok {
+	if ss.scroller != base.NIL_HANDLE {
+		if r, ok := lay.box_of(&t.layout, ss.scroller, page_viewport(app), t.scroll); ok {
 			off := app.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
 			port = {{max(port.min.x, app.page_rect.min.x), max(port.min.y, app.page_rect.min.y)}, {min(port.max.x, app.page_rect.max.x), min(port.max.y, app.page_rect.max.y)}}
 		}
 	}
 	past :: proc(v, lo, hi: f32) -> f32 { return v < lo ? v - lo : (v > hi ? v - hi : 0) }
-	m := sshell.mouse
+	m := ss.mouse
 	d := [2]f32{past(m.x, port.min.x, port.max.x), past(m.y, port.min.y, port.max.y)}
 	if d == {} { return }
 	speed := [2]f32{clamp(d.x * ix.autoscroll_speed, -ix.autoscroll_max, ix.autoscroll_max), clamp(d.y * ix.autoscroll_speed, -ix.autoscroll_max, ix.autoscroll_max)} * page_scale(app)
 	step := speed * dt
 	moved := false
-	if sshell.scroller != base.NIL_HANDLE {
-		if cur, ok := lay.scroll_of(&t.layout, sshell.scroller); ok {
-			got, _ := lay.set_scroll(&t.layout, sshell.scroller, cur + step)
+	if ss.scroller != base.NIL_HANDLE {
+		if cur, ok := lay.scroll_of(&t.layout, ss.scroller); ok {
+			got, _ := lay.set_scroll(&t.layout, ss.scroller, cur + step)
 			moved = got != cur
 		}
 	}

@@ -925,7 +925,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		inside := draw.rect_contains(app.page_rect, ev.pos)
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(ev) { if t.page == nil { return }; continue }
-		if ev.kind == .Mouse_Release && ev.button == .Left { sshell.pending = false }   // whichever handler below takes the release (selection_pointer_up)
+		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
