@@ -119,15 +119,17 @@ Forms_View :: struct {
 	sel_press_at: int,
 }
 
-fview: Forms_View
 // (the timers are the process's: their callbacks do not say which window they were set for)
 fview_blink_timer, fview_report_timer: base.Handle
 
-forms_shell_destroy :: proc() {
-	delete(fview.painted)
-	delete(fview.scroll)
-	delete(fview.consumed)
-	fview = {}
+// The form controls' view of the window being framed (each window has its own: Window_Own.forms).
+forms_view :: proc(app: ^App) -> ^Forms_View { return &window_own(app).forms }
+
+forms_shell_destroy :: proc(fv: ^Forms_View) {
+	delete(fv.painted)
+	delete(fv.scroll)
+	delete(fv.consumed)
+	fv^ = {}
 }
 
 @(private = "file")
@@ -141,7 +143,7 @@ current_page :: proc(app: ^App) -> (^Tab, ^page.Page, ^forms.Forms) {
 request_frames :: proc(app: ^App, n := 2) { app.frames_requested = max(app.frames_requested, n) }
 
 @(private = "file")
-caret_reset :: proc() { fview.caret_epoch = time.tick_now() }
+caret_reset :: proc(fv: ^Forms_View) { fv.caret_epoch = time.tick_now() }
 
 @(private = "file")
 blink_ms :: proc(app: ^App) -> int {
@@ -163,7 +165,8 @@ double_click_ms :: proc(app: ^App) -> f64 {
 // Called once per frame after input routing: attaches the shell to new pages, autofocus, caret blinking, repaints when
 // the forms model changed, the lifetime of the validation bubble.
 forms_shell_frame :: proc(app: ^App) {
-	fview.frame += 1
+	fv := forms_view(app)
+	fv.frame += 1
 	for tab in tabs_all(app) {
 		if tab.page == nil || tab.page.formctl == nil || tab.page.formctl.embedder.navigate != nil { continue }
 		page.set_forms_embedder(tab.page, page.Forms_Embedder{
@@ -172,45 +175,45 @@ forms_shell_frame :: proc(app: ^App) {
 		})
 	}
 	t, p, f := current_page(app)
-	if f == nil { fview.popup.open = false; return }
-	if fview.page_id != f.id {
-		clear(&fview.painted)
-		clear(&fview.scroll)
-		fview.page_id = f.id
-		fview.popup.open = false
-		fview.drag = .None
-		fview.page_focus = true
+	if f == nil { fv.popup.open = false; return }
+	if fv.page_id != f.id {
+		clear(&fv.painted)
+		clear(&fv.scroll)
+		fv.page_id = f.id
+		fv.popup.open = false
+		fv.drag = .None
+		fv.page_focus = true
 	}
 	// autofocus once the document's scripts had their turn
-	if fview.autofocus_page != f.id && (t.load == nil || t.load.next_run >= len(t.load.slots)) {
-		fview.autofocus_page = f.id
-		if forms.run_autofocus(f) { caret_reset(); scroll_into_view(app, t, f.focus) }
+	if fv.autofocus_page != f.id && (t.load == nil || t.load.next_run >= len(t.load.slots)) {
+		fv.autofocus_page = f.id
+		if forms.run_autofocus(f) { caret_reset(fv); scroll_into_view(app, t, f.focus) }
 	}
-	if f.serial != fview.last_serial { fview.last_serial = f.serial; caret_reset(); request_frames(app) }
+	if f.serial != fv.last_serial { fv.last_serial = f.serial; caret_reset(fv); request_frames(app) }
 	// :focus-visible: a focus that came from the keyboard, or a text field's (the heuristic of browsers)
-	if fv := f.focus != base.NIL_HANDLE && (f.focus_by_key || forms.is_text_field(f, f.focus)); p.style_state.focus_visible != fv {
+	if vis := f.focus != base.NIL_HANDLE && (f.focus_by_key || forms.is_text_field(f, f.focus)); p.style_state.focus_visible != vis {
 		st := p.style_state
-		st.focus_visible = fv
+		st.focus_visible = vis
 		page.set_style_state(p, st)
 		request_frames(app)
 	}
-	if fview.popup.open && (fview.popup.page_id != f.id || dom.get(p.doc, fview.popup.sel) == nil || forms.is_disabled(f, fview.popup.sel)) { fview.popup.open = false }
+	if fv.popup.open && (fv.popup.page_id != f.id || dom.get(p.doc, fv.popup.sel) == nil || forms.is_disabled(f, fv.popup.sel)) { fv.popup.open = false }
 
 	// caret blinking: wake the loop at the next toggle while a text field has the focus
-	if fview.page_focus && forms.is_text_field(f, f.focus) {
+	if fv.page_focus && forms.is_text_field(f, f.focus) {
 		period := blink_ms(app)
 		if period > 0 {
-			elapsed := time.duration_milliseconds(time.tick_since(fview.caret_epoch))
-			fview.blink_on = int(elapsed / f64(period)) % 2 == 0
+			elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
+			fv.blink_on = int(elapsed / f64(period)) % 2 == 0
 			if fview_blink_timer == base.NIL_HANDLE {
 				next := f64(period) - math.mod(elapsed, f64(period))
 				fview_blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) { fview_blink_timer = base.NIL_HANDLE }, nil)
 			}
 		} else {
-			fview.blink_on = true
+			fv.blink_on = true
 		}
 	} else {
-		fview.blink_on = false
+		fv.blink_on = false
 	}
 	if _, _, shown := forms.current_report(f); shown && fview_report_timer == base.NIL_HANDLE {
 		fview_report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) { fview_report_timer = base.NIL_HANDLE }, nil)
@@ -218,17 +221,19 @@ forms_shell_frame :: proc(app: ^App) {
 }
 
 // The events the page did not consume (the chrome's UI gets these).
-forms_unconsumed_events :: proc(events: []platform.Event) -> []platform.Event {
-	if len(fview.consumed) == 0 { return events }
+forms_unconsumed_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
+	fv := forms_view(app)
+	if len(fv.consumed) == 0 { return events }
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
-	for e, i in events { if i >= len(fview.consumed) || !fview.consumed[i] { append(&out, e) } }
-	clear(&fview.consumed)
+	for e, i in events { if i >= len(fv.consumed) || !fv.consumed[i] { append(&out, e) } }
+	clear(&fv.consumed)
 	return out[:]
 }
 
-consume :: proc(index: int) {
-	for len(fview.consumed) <= index { append(&fview.consumed, false) }
-	fview.consumed[index] = true
+consume :: proc(app: ^App, index: int) {
+	fv := forms_view(app)
+	for len(fv.consumed) <= index { append(&fv.consumed, false) }
+	fv.consumed[index] = true
 }
 
 ////////////////////////////////
@@ -402,7 +407,7 @@ layout_field :: proc(app: ^App, f: ^forms.Forms, h: base.Handle, pt: Painted) ->
 	multiline := forms.kind(f, h) == .Textarea
 	w := pt.content.max.x - pt.content.min.x
 	ft = field_text(f, h, forms.edit_text(f, h), w, pt.size, pt.font, &app.fonts, mask_of(app, f, h), multiline)
-	sc := fview.scroll[h]
+	sc := forms_view(app).scroll[h]
 	if multiline {
 		origin = {pt.content.min.x - sc.x, pt.content.min.y - sc.y}
 	} else {
@@ -587,6 +592,7 @@ parse_hex_color :: proc(s: string) -> draw.Color {
 paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, node: base.Handle, content, border: draw.Rect, cs: ^style.Computed, p: ^page.Page, now: time.Tick) {
 	if p == nil || p.formctl == nil || cs == nil { return }
 	app := the_app
+	fv := forms_view(app)
 	f := page.page_forms(p)
 	n := dom.get(p.doc, node)
 	if n == nil { return }
@@ -602,12 +608,12 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 	case .Number: lh = size * cs.line_height.v
 	case .Length: lh = cs.line_height.v * scale
 	}
-	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fview.frame}
+	pt := Painted{content = content, xform = xf, inv = inv, size = size, font = fid, line_h = lh, frame = fv.frame}
 	pt.proj, pt.proj_inv, pt.proj_ok = painted_projection(dc, xf)
-	if fview.page_id != f.id { clear(&fview.painted); clear(&fview.scroll); fview.page_id = f.id }
+	if fv.page_id != f.id { clear(&fv.painted); clear(&fv.scroll); fv.page_id = f.id }
 	// (a picture of the page painted off the screen, a drag image: not where the pointer finds the control)
-	if !draw.offscreen_active(dc) { fview.painted[node] = pt }
-	focused := f.focus == node && fview.page_focus
+	if !draw.offscreen_active(dc) { fv.painted[node] = pt }
+	focused := f.focus == node && fv.page_focus
 	disabled := forms.is_disabled(f, node)
 	if disabled { draw.push_alpha(dc, 0.55) }
 	defer if disabled { draw.pop_alpha(dc) }
@@ -681,7 +687,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 					icon := draw.Rect{{content.max.x - room, (content.min.y + content.max.y - room) * 0.5}, {content.max.x, (content.min.y + content.max.y + room) * 0.5}}
 					picker_indicator(dc, icon, fg, t == .Time, scale)
 					pt.content.max.x = max(pt.content.min.x, pt.content.max.x - room - 4 * scale)
-					if !draw.offscreen_active(dc) { fview.painted[node] = pt }
+					if !draw.offscreen_active(dc) { fv.painted[node] = pt }
 				}
 				if !focused {
 					if shown := date_field_display(t, forms.value(f, node)); shown != "" {
@@ -726,6 +732,7 @@ paint_control :: proc(dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, 
 
 @(private = "file")
 paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: font.Font_Id, f: ^forms.Forms, node: base.Handle, n: ^dom.Node, pt: Painted, fg: draw.Color, focused: bool, pal: ^Control_Palette) {
+	fv := forms_view(app)
 	content := pt.content
 	size := pt.size
 	multiline := forms.kind_of(n) == .Textarea
@@ -735,7 +742,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	a, b, _ := forms.selection(f, node)
 	cpos := forms.caret(f, node)
 	cxy := caret_xy(ft, cpos, size, fid, fonts)
-	sc := fview.scroll[node]
+	sc := fv.scroll[node]
 	w, h := content.max.x - content.min.x, content.max.y - content.min.y
 	if focused {
 		if cxy.x - sc.x > w - 2 { sc.x = cxy.x - w + 2 }
@@ -752,7 +759,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 	sc.x = max(sc.x, 0)
 	sc.y = max(sc.y, 0)
 	if multiline { sc.x = 0 }
-	fview.scroll[node] = sc
+	fv.scroll[node] = sc
 	origin = multiline ? {content.min.x, content.min.y - sc.y} : {content.min.x - sc.x, origin.y}
 
 	draw.push_clip(dc, content)
@@ -790,7 +797,7 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 		if y > content.max.y || y + ft.line_h < content.min.y { continue }
 		draw.text(dc, fid, size, {origin.x, y + (ft.line_h - (m.ascent + m.descent)) * 0.5 + m.ascent}, fg, ft.display[l.start:l.end])
 	}
-	if focused && fview.blink_on && a == b && forms.is_mutable(f, node) {
+	if focused && fv.blink_on && a == b && forms.is_mutable(f, node) {
 		x := math.round(origin.x + cxy.x)
 		y := origin.y + cxy.y
 		cw := max(page_scale(the_app), 1)
@@ -808,8 +815,8 @@ paint_text_field :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: 
 
 // A press kept a field's selection for a drag (forms_pointer_down): the field, its selection and text. The drag took
 // it: the release is no longer a click in the selection.
-forms_take_selection_press :: proc(p: ^page.Page) -> (field: base.Handle, a, b: int, text: string, ok: bool) {
-	h := fview.sel_press
+forms_take_selection_press :: proc(app: ^App, p: ^page.Page) -> (field: base.Handle, a, b: int, text: string, ok: bool) {
+	h := forms_view(app).sel_press
 	if h == base.NIL_HANDLE || p == nil || p.formctl == nil || dom.get(p.doc, h) == nil { return }
 	f := page.page_forms(p)
 	a, b, _ = forms.selection(f, h)
@@ -817,12 +824,12 @@ forms_take_selection_press :: proc(p: ^page.Page) -> (field: base.Handle, a, b: 
 	return h, a, b, forms.copy_text(f, h), true
 }
 
-forms_drop_selection_press :: proc() { fview.sel_press = base.NIL_HANDLE }
+forms_drop_selection_press :: proc(app: ^App) { forms_view(app).sel_press = base.NIL_HANDLE }
 
 // The offset (bytes of its edit text) of text field `h` under `pos` (window px), as a press would put the caret: where
 // text dragged over it would be dropped.
 forms_field_offset_at :: proc(app: ^App, f: ^forms.Forms, h: base.Handle, pos: [2]f32) -> (int, bool) {
-	pt, ok := fview.painted[h]
+	pt, ok := forms_view(app).painted[h]
 	if !ok { return 0, false }
 	ftext, origin := layout_field(app, f, h, pt)
 	return hit_text(ftext, painted_local(pt, pos) - origin, pt.size, pt.font, &app.fonts), true
@@ -886,7 +893,7 @@ paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: fo
 	rows := select_rows(f, node)
 	m := font.metrics(fonts, fid, pt.size)
 	row_h := math.ceil((m.ascent + m.descent) * 1.25)
-	sc := fview.scroll[node]
+	sc := forms_view(app).scroll[node]
 	first := clamp(int(sc.y), 0, max(len(rows) - 1, 0))
 	paint_rows(dc, fonts, fid, f, rows, first, pt.content, row_h, pt.size, fg, -1, focused, pal)
 }
@@ -897,11 +904,12 @@ paint_list_box :: proc(app: ^App, dc: ^draw.Context, fonts: ^font.State, fid: fo
 forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect) {
 	_, p, f := current_page(app)
 	if f == nil { return }
+	fv := forms_view(app)
 	scale := page_scale(the_app)
 	fid := app.ui_font
-	if fview.popup.open {
-		pp := &fview.popup
-		pt, ok := fview.painted[pp.sel]
+	if fv.popup.open {
+		pp := &fv.popup
+		pt, ok := fv.painted[pp.sel]
 		if ok {
 			rows := select_rows(f, pp.sel)
 			size := pt.size
@@ -936,7 +944,7 @@ forms_paint_overlays :: proc(app: ^App, dc: ^draw.Context, page_rect: draw.Rect)
 		}
 	}
 	if node, msg, shown := forms.current_report(f); shown {
-		pt, ok := fview.painted[node]
+		pt, ok := fv.painted[node]
 		if ok && msg != "" {
 			size := 13 * scale
 			m := font.metrics(&app.fonts, fid, size)
@@ -1053,33 +1061,34 @@ forms_key_of :: proc(k: platform.Key) -> forms.Key {
 // Keyboard and text events go to the page while it has the keyboard focus (the last click was in the page and no
 // chrome widget took the focus since). Returns true when the event was used.
 forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) -> bool {
+	fv := forms_view(app)
 	if t == nil || t.page == nil || t.kind != .Web || t.page.formctl == nil { return false }
 	p := t.page
 	f := page.page_forms(p)
 	#partial switch ev.kind {
 	case .Mouse_Press:
 		inside := draw.rect_contains(app.page_rect, ev.pos)
-		fview.page_focus = inside
-		if fview.popup.open {
-			if draw.rect_contains(fview.popup.rect, ev.pos) {
+		fv.page_focus = inside
+		if fv.popup.open {
+			if draw.rect_contains(fv.popup.rect, ev.pos) {
 				popup_pick(app, f, ev.pos, .Ctrl in ev.mods)
 			}
-			fview.popup.open = false
+			fv.popup.open = false
 			request_frames(app)
 			return true   // a press that closes the list does nothing else
 		}
 		return false
 	case .Mouse_Move:
-		if fview.popup.open && draw.rect_contains(fview.popup.rect, ev.pos) {
-			idx := fview.popup.first + int((ev.pos.y - fview.popup.rect.min.y) / max(fview.popup.row_h, 1))
-			if idx != fview.popup.hover { fview.popup.hover = idx; request_frames(app) }
+		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
+			idx := fv.popup.first + int((ev.pos.y - fv.popup.rect.min.y) / max(fv.popup.row_h, 1))
+			if idx != fv.popup.hover { fv.popup.hover = idx; request_frames(app) }
 		}
-		if fview.drag != .None && fview.press_down { pointer_drag(app, t, f, ev.pos); request_frames(app) }
+		if fv.drag != .None && fv.press_down { pointer_drag(app, t, f, ev.pos); request_frames(app) }
 		return false
 	case .Scroll:
-		if fview.popup.open && draw.rect_contains(fview.popup.rect, ev.pos) {
-			rows := len(select_rows(f, fview.popup.sel))
-			fview.popup.first = clamp(fview.popup.first + int(ev.delta.y * 3), 0, max(rows - app.page_settings.forms.select_rows, 0))
+		if fv.popup.open && draw.rect_contains(fv.popup.rect, ev.pos) {
+			rows := len(select_rows(f, fv.popup.sel))
+			fv.popup.first = clamp(fv.popup.first + int(ev.delta.y * 3), 0, max(rows - app.page_settings.forms.select_rows, 0))
 			request_frames(app)
 			return true
 		}
@@ -1087,7 +1096,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	case .Key_Press:
 		if !keyboard_to_page(app) { return false }
 		used := route_key(app, t, p, f, ev)
-		if used { consume(index); caret_reset(); request_frames(app) }
+		if used { consume(app, index); caret_reset(fv); request_frames(app) }
 		return used
 	case .Key_Release:
 		if !keyboard_to_page(app) { return false }
@@ -1097,23 +1106,23 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 		return false
 	case .Text:
 		if !keyboard_to_page(app) { return false }
-		if fview.popup.open { consume(index); return true }
+		if fv.popup.open { consume(app, index); return true }
 		if ev.text < 32 || .Ctrl in ev.mods && .Alt not_in ev.mods { return false }
 		buf, n := utf8.encode_rune(ev.text)
 		if forms.type_text(f, string(buf[:n])) {
-			consume(index)
-			caret_reset()
+			consume(app, index)
+			caret_reset(fv)
 			request_frames(app)
 			return true
 		}
-		if forms.is_text_field(f, f.focus) { consume(index); return true }   // read-only field: still the page's text
+		if forms.is_text_field(f, f.focus) { consume(app, index); return true }   // read-only field: still the page's text
 		return false
 	}
 	return false
 }
 
 @(private = "file")
-keyboard_to_page :: proc(app: ^App) -> bool { return fview.page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures() }
+keyboard_to_page :: proc(app: ^App) -> bool { return forms_view(app).page_focus && ui.focus_key() == 0 && !ui.ctx_menu_any_open() && !setup_captures() }
 
 // Set when Shift+Tab leaves the page before its first element: the chrome takes the focus back from the page area.
 page_focus_leave_backward: bool
@@ -1124,7 +1133,8 @@ page_has_keyboard :: proc(app: ^App) -> bool { return keyboard_to_page(app) }
 // The chrome's Tab order reached the page area: the page takes the keyboard, its first (Tab) or last (Shift+Tab)
 // element the focus (none: the page itself, keyboard scrolling works).
 forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
-	fview.page_focus = true
+	fv := forms_view(app)
+	fv.page_focus = true
 	if t == nil || t.page == nil || t.page.formctl == nil { return }
 	p := t.page
 	f := page.page_forms(p)
@@ -1135,13 +1145,14 @@ forms_focus_from_chrome :: proc(app: ^App, t: ^Tab, dir: int) {
 }
 
 // The page gives up the keyboard (a chrome widget took it).
-forms_page_blur :: proc() { fview.page_focus = false }
+forms_page_blur :: proc(app: ^App) { forms_view(app).page_focus = false }
 
 @(private = "file")
 route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platform.Event) -> bool {
+	fv := forms_view(app)
 	ctrl, shift, alt := .Ctrl in ev.mods, .Shift in ev.mods, .Alt in ev.mods
 	// the open list owns the keyboard
-	if fview.popup.open { popup_key(app, f, ev); return true }
+	if fv.popup.open { popup_key(app, f, ev); return true }
 	code, name := dom_key(ev.key, shift)
 	target := f.focus != base.NIL_HANDLE ? f.focus : p.body
 	if !page.dispatch_event(p, target, dom.Event{type = "keydown", bubbles = true, cancelable = true, key = code, text = name, mods = dom_mods(ev.mods)}) {
@@ -1162,7 +1173,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		// past the last (or before the first) element: the chrome's Tab order continues, from the address bar onwards
 		// or back from the page area
 		forms.blur(f)
-		fview.page_focus = false
+		fv.page_focus = false
 		if shift { page_focus_leave_backward = true } else { app.focus_address = true }
 		return true
 	}
@@ -1210,7 +1221,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 	}
 	// textarea Up/Down follow the visual (wrapped) lines
 	if forms.kind(f, h) == .Textarea && !ctrl && !alt && (ev.key == .Up || ev.key == .Down) {
-		if pt, ok := fview.painted[h]; ok {
+		if pt, ok := fv.painted[h]; ok {
 			ft, _ := layout_field(app, f, h, pt)
 			cur := caret_xy(ft, forms.caret(f, h), pt.size, pt.font, &app.fonts)
 			ny := cur.y + (ev.key == .Up ? -ft.line_h : ft.line_h) + ft.line_h * 0.5
@@ -1233,7 +1244,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 	}
 	k := forms_key_of(ev.key)
 	if k != .None && forms.key_down(f, k, mods_of(ev.mods)) {
-		if t.page == p && f.focus != base.NIL_HANDLE { ensure_list_scroll(f, f.focus) }
+		if t.page == p && f.focus != base.NIL_HANDLE { ensure_list_scroll(fv, f, f.focus) }
 		return true
 	}
 	// default action: keyboard scrolling, never while typing in a text field
@@ -1250,18 +1261,18 @@ move_to :: proc(f: ^forms.Forms, h: base.Handle, pos: int, extend: bool) {
 }
 
 @(private = "file")
-ensure_list_scroll :: proc(f: ^forms.Forms, h: base.Handle) {
+ensure_list_scroll :: proc(fv: ^Forms_View, f: ^forms.Forms, h: base.Handle) {
 	if forms.kind(f, h) != .Select || forms.is_dropdown(f, h) { return }
 	rows := select_rows(f, h)
 	sel := -1
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { sel = i } }
 	if sel < 0 { return }
 	visible := forms.display_size(f, h)
-	sc := fview.scroll[h]
+	sc := fv.scroll[h]
 	first := int(sc.y)
 	if sel < first { first = sel } else if sel >= first + visible { first = sel - visible + 1 }
 	sc.y = f32(first)
-	fview.scroll[h] = sc
+	fv.scroll[h] = sc
 }
 
 ////////////////////////////////
@@ -1269,19 +1280,21 @@ ensure_list_scroll :: proc(f: ^forms.Forms, h: base.Handle) {
 
 @(private = "file")
 open_popup :: proc(app: ^App, f: ^forms.Forms, sel: base.Handle) {
-	pt, ok := fview.painted[sel]
+	fv := forms_view(app)
+	pt, ok := fv.painted[sel]
 	if !ok { return }
 	rows := select_rows(f, sel)
 	hover := -1
 	for r, i in rows { if r.option != base.NIL_HANDLE && forms.option_selected(f, r.option) { hover = i } }
-	fview.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(the_app))}
-	fview.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
+	fv.popup = Popup{open = true, sel = sel, page_id = f.id, hover = hover, anchor = draw.rect_pad(painted_bounds(pt), 3 * page_scale(the_app))}
+	fv.popup.first = max(hover - app.page_settings.forms.select_rows / 2, 0)
 	request_frames(app)
 }
 
 @(private = "file")
 popup_pick :: proc(app: ^App, f: ^forms.Forms, pos: [2]f32, toggle: bool) {
-	pp := &fview.popup
+	fv := forms_view(app)
+	pp := &fv.popup
 	rows := select_rows(f, pp.sel)
 	idx := pp.first + int((pos.y - pp.rect.min.y) / max(pp.row_h, 1))
 	if idx < 0 || idx >= len(rows) || rows[idx].option == base.NIL_HANDLE { return }
@@ -1290,7 +1303,8 @@ popup_pick :: proc(app: ^App, f: ^forms.Forms, pos: [2]f32, toggle: bool) {
 
 @(private = "file")
 popup_key :: proc(app: ^App, f: ^forms.Forms, ev: platform.Event) {
-	pp := &fview.popup
+	fv := forms_view(app)
+	pp := &fv.popup
 	rows := select_rows(f, pp.sel)
 	move :: proc(rows: []Row, from, dir: int, f: ^forms.Forms) -> int {
 		i := from
@@ -1334,11 +1348,12 @@ focus_target :: proc(f: ^forms.Forms, target: base.Handle) -> base.Handle {
 // A press in the page: mousedown, then (unless cancelled) focus, caret placement or selection start, slider, list box,
 // drop-down. Returns false when mousedown was cancelled (no default action: no text selection either).
 forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32) -> bool {
+	fv := forms_view(app)
 	p := t.page
 	if p == nil || p.formctl == nil { return true }
 	f := page.page_forms(p)
 	scale := page_scale(the_app)
-	fview.press_target, fview.press_down = target, ev.button == .Left
+	fv.press_target, fv.press_down = target, ev.button == .Left
 	if target == base.NIL_HANDLE {
 		if ev.button == .Left { forms.blur(f) }
 		return true
@@ -1354,55 +1369,55 @@ forms_pointer_down :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.
 	if t.page != p || ev.button != .Left { return true }
 	// click counting (double click selects a word, triple the whole field)
 	now := time.tick_now()
-	if time.duration_milliseconds(time.tick_diff(fview.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fview.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fview.last_click_pos.y) < 4 * scale {
-		fview.click_count += 1
+	if time.duration_milliseconds(time.tick_diff(fv.last_click, now)) <= double_click_ms(app) && abs(ev.pos.x - fv.last_click_pos.x) < 4 * scale && abs(ev.pos.y - fv.last_click_pos.y) < 4 * scale {
+		fv.click_count += 1
 	} else {
-		fview.click_count = 1
+		fv.click_count = 1
 	}
-	fview.last_click, fview.last_click_pos = now, ev.pos
+	fv.last_click, fv.last_click_pos = now, ev.pos
 
 	ft := focus_target(f, target)
 	if ft == base.NIL_HANDLE { forms.blur(f); return true }
 	if forms.kind(f, ft) != .Label { forms.focus(f, ft) }
-	caret_reset()
+	caret_reset(fv)
 	request_frames(app)
-	pt, painted := fview.painted[ft]
+	pt, painted := fv.painted[ft]
 	if !painted { return true }
 	switch {
 	case forms.is_text_field(f, ft):
 		ftext, origin := layout_field(app, f, ft, pt)
 		pos := hit_text(ftext, painted_local(pt, ev.pos) - origin, pt.size, pt.font, &app.fonts)
 		src := forms.edit_text(f, ft)
-		fview.sel_press = base.NIL_HANDLE
+		fv.sel_press = base.NIL_HANDLE
 		sa, sb, _ := forms.selection(f, ft)
 		draggable_text := sa != sb && pos >= sa && pos <= sb && forms.copy_text(f, ft) != "" && dnd_page_events(app)
 		switch {
-		case fview.click_count == 1 && draggable_text && .Shift not_in ev.mods:
+		case fv.click_count == 1 && draggable_text && .Shift not_in ev.mods:
 			// inside the selection: kept for a drag of the text; a release without one collapses it here
-			fview.sel_press, fview.sel_press_at = ft, pos
+			fv.sel_press, fv.sel_press_at = ft, pos
 			return true
-		case fview.click_count == 2:
+		case fv.click_count == 2:
 			a, b := forms.word_at(src, pos)
 			forms.set_selection(f, ft, a, b, .Forward)
-		case fview.click_count >= 3:
+		case fv.click_count >= 3:
 			forms.select_all(f, ft)
 		case .Shift in ev.mods:
 			move_to(f, ft, pos, true)
 		case:
 			forms.set_selection(f, ft, pos, pos)
 		}
-		fview.drag, fview.drag_node = .Text, ft
+		fv.drag, fv.drag_node = .Text, ft
 	case forms.kind(f, ft) == .Input && forms.input_type(f, ft) == .Range && forms.is_mutable(f, ft):
-		fview.drag, fview.drag_node = .Range, ft
+		fv.drag, fv.drag_node = .Range, ft
 		set_range_from_x(p, f, ft, pt, painted_local(pt, ev.pos).x)
 	case forms.kind(f, ft) == .Select && !forms.is_disabled(f, ft):
 		if forms.is_dropdown(f, ft) {
-			if fview.popup.open && fview.popup.sel == ft { fview.popup.open = false } else { open_popup(app, f, ft) }
+			if fv.popup.open && fv.popup.sel == ft { fv.popup.open = false } else { open_popup(app, f, ft) }
 		} else {
 			rows := select_rows(f, ft)
 			m := font.metrics(&app.fonts, pt.font, pt.size)
 			row_h := math.ceil((m.ascent + m.descent) * 1.25)
-			idx := int(fview.scroll[ft].y) + int((painted_local(pt, ev.pos).y - pt.content.min.y) / row_h)
+			idx := int(fv.scroll[ft].y) + int((painted_local(pt, ev.pos).y - pt.content.min.y) / row_h)
 			if idx >= 0 && idx < len(rows) && rows[idx].option != base.NIL_HANDLE {
 				forms.choose_option(f, ft, rows[idx].option, extend = .Shift in ev.mods, toggle = .Ctrl in ev.mods)
 			}
@@ -1428,12 +1443,13 @@ set_range_from_x :: proc(p: ^page.Page, f: ^forms.Forms, h: base.Handle, pt: Pai
 
 @(private = "file")
 pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
-	h := fview.drag_node
-	pt, ok := fview.painted[h]
-	if !ok || dom.get(f.doc, h) == nil { fview.drag = .None; return }
-	switch fview.drag {
+	fv := forms_view(app)
+	h := fv.drag_node
+	pt, ok := fv.painted[h]
+	if !ok || dom.get(f.doc, h) == nil { fv.drag = .None; return }
+	switch fv.drag {
 	case .Text:
-		if f.focus != h { fview.drag = .None; return }
+		if f.focus != h { fv.drag = .None; return }
 		ftext, origin := layout_field(app, f, h, pt)
 		local := painted_local(pt, pos) - origin
 		pos2 := hit_text(ftext, local, pt.size, pt.font, &app.fonts)
@@ -1446,24 +1462,25 @@ pointer_drag :: proc(app: ^App, t: ^Tab, f: ^forms.Forms, pos: [2]f32) {
 
 // A release: mouseup, the end of a drag; returns the click target (the common ancestor of the press and release targets).
 forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Handle, local: [2]f32) -> (click_target: base.Handle, ok: bool) {
+	fv := forms_view(app)
 	p := t.page
 	if p == nil { return }
 	scale := page_scale(the_app)
-	was_down := fview.press_down
-	fview.press_down = false
-	if fview.drag == .Range && p.formctl != nil {
+	was_down := fv.press_down
+	fv.press_down = false
+	if fv.drag == .Range && p.formctl != nil {
 		f := page.page_forms(p)
-		if dom.get(p.doc, fview.drag_node) != nil {
-			if c := forms.control_peek(f, fview.drag_node); c != nil { c.user_validity = true }
-			page.dispatch_event(p, fview.drag_node, dom.Event{type = "change", bubbles = true})
+		if dom.get(p.doc, fv.drag_node) != nil {
+			if c := forms.control_peek(f, fv.drag_node); c != nil { c.user_validity = true }
+			page.dispatch_event(p, fv.drag_node, dom.Event{type = "change", bubbles = true})
 		}
 	}
-	fview.drag = .None
-	if fview.sel_press != base.NIL_HANDLE && p.formctl != nil {
+	fv.drag = .None
+	if fv.sel_press != base.NIL_HANDLE && p.formctl != nil {
 		// a click inside a field's selection (no drag came of it): the caret goes there
 		f := page.page_forms(p)
-		if dom.get(p.doc, fview.sel_press) != nil { forms.set_selection(f, fview.sel_press, fview.sel_press_at, fview.sel_press_at); caret_reset() }
-		fview.sel_press = base.NIL_HANDLE
+		if dom.get(p.doc, fv.sel_press) != nil { forms.set_selection(f, fv.sel_press, fv.sel_press_at, fv.sel_press_at); caret_reset(fv) }
+		fv.sel_press = base.NIL_HANDLE
 	}
 	cx, cy := page_client_xy(t, local, scale)
 	up_target := page_pointer_target(t, target)   // a captured pointer's release goes to the capturing element
@@ -1473,9 +1490,9 @@ forms_pointer_up :: proc(app: ^App, t: ^Tab, ev: platform.Event, target: base.Ha
 		}
 	}
 	if t.page != p { return }
-	if t.page != p || !was_down || target == base.NIL_HANDLE || fview.press_target == base.NIL_HANDLE { return }
+	if t.page != p || !was_down || target == base.NIL_HANDLE || fv.press_target == base.NIL_HANDLE { return }
 	// common ancestor of where the button went down and where it came up
-	for a := fview.press_target; a != base.NIL_HANDLE; {
+	for a := fv.press_target; a != base.NIL_HANDLE; {
 		if dom.is_ancestor_or_self(p.doc, a, target) { return a, true }
 		n := dom.get(p.doc, a)
 		if n == nil { break }

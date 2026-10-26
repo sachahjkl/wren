@@ -111,7 +111,6 @@ effects_cache.odin fx_settings process  # preferences read once and on change
 effects_cache.odin FX_CACHE_PREFS process  # a table
 favicon.odin TAB_PREFS process  # a table
 favicon.odin favs process
-find_bar.odin find window  # window_local: the find bar
 first_paint.odin FIRST_PAINT_PREFS process  # a table
 first_paint.odin scheme_ui process
 first_paint.odin first_paint_watch process  # preferences read once and on change
@@ -123,7 +122,6 @@ font_settings.odin text_watch process  # preferences read once and on change
 fonts.odin ALIASES process  # a table
 fonts.odin text_ctx process
 forms_plane.odin ctl_plane process
-forms_shell.odin fview window  # window_local: the form controls' view (focus, caret)
 forms_shell.odin fview_blink_timer process
 forms_shell.odin fview_report_timer process
 forms_shell.odin page_focus_leave_backward page

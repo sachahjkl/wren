@@ -265,7 +265,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "page.find", title = "Find in page…", category = "Page", keywords = "search text", keys = keys(&r.arena, {key = .F, mods = ctrl}, {key = .F3}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config || t.kind == .History) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if find.open { find.focus = true } else { find_open(app) }
+			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if fs := find_state(app); fs.open { fs.focus = true } else { find_open(app) }
 		}})
 	add(r, {name = "page.save", title = "Save page as…", category = "Page", keywords = "download file", keys = keys(&r.arena, {key = .S, mods = ctrl}),
 		enabled = web_page, run = proc(app: ^App, t: ^Tab, c: ^Command) { save_page(app, t) }})
