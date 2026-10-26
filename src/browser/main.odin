@@ -845,14 +845,16 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 		if ui.parent(root) {
 			// tab strip (the window's title bar when integrated: window_chrome.odin), navigation, security chip,
 			// address, menu; in full screen they come over the page on demand (fullscreen_bars)
-			// the tabs in a sidebar (tab_sidebar.odin): the title bar keeps its place, the address row too, and the sidebar
-			// and the page share what is below them
+			// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
+			// the system's), and the sidebar and the page share what is below it
 			side := tabs_in_sidebar(app)
 			if !platform.is_fullscreen(app.win) {
-				if side {
-					sidebar_title_row(app, platform.is_integrated_title(app.win))
-				} else if tab_strip(app, platform.is_integrated_title(app.win)) { return }
-				toolbar_row(app, t)   // chrome_style.odin
+				if side && platform.is_integrated_title(app.win) {
+					sidebar_titlebar(app, t)
+				} else {
+					if !side && tab_strip(app, platform.is_integrated_title(app.win)) { return }
+					toolbar_row(app, t)   // chrome_style.odin
+				}
 			}
 			elem_fs := fullscreen_shell_active()   // a page's element in full screen: the page has the whole window
 			if side {

@@ -33,6 +33,8 @@ FONT_PREFS := [?]config.Def{
 		description = "Shaped words kept by the text cache (the layout measures the same words over and over, from several threads). 0: shape every word every time."},
 	{name = "text.renderer", kind = .String, default = {s = "slug"}, choices = {"atlas", "slug"},
 		description = "How glyphs reach the screen. atlas: bitmaps rasterized by DirectWrite (hinted, cached per size and subpixel position). slug: the Slug algorithm (Eric Lengyel) draws each glyph from its outline curves on the GPU, with no bitmaps: sharp at any page zoom, rotation or transform, and exact subpixel positions. Color glyphs (emoji) always use the atlas."},
+	{name = "text.backend", kind = .String, default = {s = "default"}, choices = {"default", "dwrite", "native"}, restart = true,
+		description = "Who shapes text, finds line breaks and bidi levels and reads the fonts. dwrite: DirectWrite (Windows). native: Fontations, HarfRust and ICU4X (the same code on every platform), only in a build made with -define:FONT_BACKEND=native (else DirectWrite). default: what the build chose. The system's fonts and their fallback always come from Windows."},
 	{name = "text.slug.pages", kind = .Int, default = {i = 128}, bounded = true, min = 1, max = 2048,
 		description = "Glyph pages of the Slug renderer kept before the least recently used one is reused (a page a frame still draws from is never reused: one more is made). A page holds about a hundred Latin glyphs; each takes 48 KB of video memory (as much of main memory), up to 6 MB at the default."},
 	{name = "text.slug.tolerance", kind = .Float, default = {f = 0.25}, bounded = true, min = 0.015, max = 16, unit = "1/1000 em",
@@ -80,6 +82,10 @@ font_settings_from_prefs :: proc(p: ^config.Prefs) -> font.Settings {
 	s.color_engine = config.string_of(p, "text.emoji") == "builtin" ? .Builtin : .System
 	s.colr_samples = int(config.int_of(p, "text.emoji.raster_samples"))
 	s.colr_cache_kb = int(config.int_of(p, "text.emoji.outline_cache"))
+	switch config.string_of(p, "text.backend") {
+	case "dwrite": s.backend = .Dwrite
+	case "native": s.backend = .Native   // init falls back to the build's backend when it is not linked
+	}
 	return s
 }
 

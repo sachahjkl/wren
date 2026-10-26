@@ -32,8 +32,10 @@ Change it in about:config, with `wren ctl pref set browser.ui.chrome_style class
 `browser.tabs.position = left | right` ([tab-sidebar.md](tab-sidebar.md)): the same family turned on its side.
 
 - **The sidebar is the tab bar**: its gradient runs from the outer edge (lighter) toward the page (darker), and the dark
-  line of the tab bar's edge runs along its inner edge. With an integrated title bar, the title row carries the tab bar's
-  gradient; the toolbar and the address field are the classic ones, their top line whole.
+  line of the tab bar's edge runs along its inner edge. With an integrated title bar, the toolbar is the title bar
+  ([tab-sidebar.md](tab-sidebar.md), "The toolbar in the title bar"): the toolbar's gradient and its bottom line, no line
+  along its top (the window's edge), the classic address field. With the system's title bar, the toolbar is the classic
+  one under it, its top line whole.
 - **The current tab** is a classic tab with upright sides (slope 0) lying across its row: rounded shoulders on the outer
   side, concave feet that flare into the inner edge's line above and below the row and interrupt it, the body flowing on
   into the page's side, as the top's current tab flows into the toolbar. Lit from above, like the toolbar (the current
@@ -41,8 +43,8 @@ Change it in about:config, with `wren ctl pref set browser.ui.chrome_style class
 - **The other tabs** lie flat on the bar, engraved apart (a dark and a light hairline, clear of both ends; none next to
   the current tab or to the one under the pointer). Under the pointer: a rounded panel of a classic inactive tab's colors
   (lighter than the bar, darker than the current tab), clear of the inner edge: it is not attached to the page.
-- Icons only (`browser.tabs.sidebar_collapsed`): the same shapes, narrower. The new-tab button is the top's small
-  trapezoid, the same size. The scroll bar is on the outer side (gui_toolkit's `Box_Flag.Scrollbar_Left` for a left sidebar):
+- Icons only (`browser.tabs.sidebar_collapsed`): the same shapes, narrower. The new-tab button is the "+" glyph alone,
+  lit under the pointer like the toolbar's buttons (as in the modern style; no trapezoid). The scroll bar is on the outer side (gui_toolkit's `Box_Flag.Scrollbar_Left` for a left sidebar):
   the inner edge belongs to the current tab.
 - The shape is the top's (`tab_shape_get`, the same cache), moved to the screen by `side_point` (the tab's axes are the
   row's: along the tab is down, its top to its foot is the outer side to the inner edge). The current row is built after
