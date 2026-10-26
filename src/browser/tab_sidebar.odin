@@ -4,9 +4,12 @@ package browser
 // and Vivaldi. Only a way to lay the tabs out: the tabs, their order, the current one, the menus and the shortcuts are the
 // row of tabs' (tab_strip.odin); changing the position takes effect at once and `top` gives the row of tabs back as it was.
 //
-//   * Under the title bar (the integrated one keeps its drag area and its window buttons: sidebar_title_row) and the address
-//     row, a column of the sidebar and the page (build_ui); the window's own resize bands are the system's frame, outside
-//     the client area, so the sidebar never covers them. Full screen shows the row of tabs over the page as ever.
+//   * The toolbar is the title bar (integrated): one row of the Wren icon, the navigation buttons, the address bar, the
+//     shield, the menu and the window buttons, whose empty parts drag the window (sidebar_titlebar; a narrow window gives
+//     the address bar its room by hiding the shield, then forward, then reload: titlebar_layout). With the system's title
+//     bar, the toolbar is its own row under it. Below, a column of the sidebar and the page (build_ui); the window's own
+//     resize bands are the system's frame, outside the client area, so the sidebar never covers them. Full screen shows
+//     the row of tabs over the page as ever.
 //   * Each tab is one row: icon (or the loading indicator), title cut with an ellipsis, a close button on the current tab and
 //     under the pointer; the current tab is lit with an accent bar. A press selects, a middle click closes, right click: the
 //     tab's menu, hover: a tip beside the row with the title and the address, a drag along Y reorders (the other rows slide
@@ -17,7 +20,8 @@ package browser
 //     inner edge is a handle that resizes the sidebar (browser.tabs.sidebar_width, written when the button goes up).
 //   * Classic style (classic_on): the sidebar is the tab bar turned on its side, the current tab a classic tab with
 //     upright sides that flows into the page's side, the others flat and engraved apart (chrome_style.odin, "The classic
-//     sidebar"); the scroll bar is on the outer side, the new-tab button the top's small trapezoid.
+//     sidebar"); the scroll bar is on the outer side.
+//   * The new-tab button is the "+" glyph alone, lit under the pointer as the toolbar's buttons are, in either style.
 // Nothing animates at rest: the rows slide only while tabs move and the loading indicator turns only while a tab loads.
 
 import "core:fmt"
@@ -43,6 +47,8 @@ SIDEBAR_PREFS := [?]config.Def{
 		description = i18n.tr("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
 	{name = "browser.tabs.sidebar_row_em", kind = .Float, default = {f = 2.4}, bounded = true, min = 1.6, max = 5, unit = "em",
 		description = i18n.tr("Height of a tab in the sidebar.")},
+	{name = "browser.tabs.sidebar_address_min_em", kind = .Float, default = {f = 10}, bounded = true, min = 4, max = 40, unit = "em",
+		description = i18n.tr("With the tabs in a sidebar and the integrated title bar, the address bar is in the title bar: its narrowest width there. Below it, in a narrow window, the shield, then the forward button, then the reload button make room.")},
 }
 
 Tabs_Position :: enum u8 { Top, Left, Right }
@@ -114,22 +120,149 @@ side_visible_rows :: proc(off, target, view_h, rh: f32, n: int, overscan: f32) -
 ////////////////////////////////
 // Building
 
-// The title bar's row when the tabs are in a sidebar and the title bar is the window's own (integrated): the Wren icon,
-// the free space that drags the window and the window buttons. Nothing otherwise (the system's title bar is above).
-sidebar_title_row :: proc(app: ^App, integrated: bool) {
-	if !integrated { return }
-	em := ui.font_size()
-	dpi := ui_scale_of(app)
-	h := max(ui.dense(em * 2.6), math.round(32 * dpi))
+////////////////////////////////
+// The toolbar in the title bar
+//
+// With the tabs in a sidebar and an integrated title bar, the title bar would hold only the icon and the window buttons:
+// the toolbar takes its place. One row, as high as the row of tabs is (the system's title bar at the least), of parts
+// side by side; the parts' empty space (around the icon and the address bar, the strip before the window buttons) drags
+// the window, what is clickable in them stays the browser's (ui: .Window_Caption, holes), and the window buttons are the
+// system's for its hit tests (Snap Layouts).
+
+Titlebar_Part :: enum u8 { Lead, Back, Forward, Reload, Gap_Before, Field, Chips, Gap_After, Shield, Menu, Drag, Buttons }
+
+// Hidden in this order when the address bar would be narrower than its minimum.
+TITLEBAR_HIDE_ORDER :: [?]Titlebar_Part{.Shield, .Forward, .Reload}
+
+TITLEBAR_SLOT_IDS := [Titlebar_Part]string{
+	.Lead = "###tb_lead", .Back = "###tb_back", .Forward = "###tb_forward", .Reload = "###tb_reload",
+	.Gap_Before = "###tb_gap_before", .Field = "###tb_field", .Chips = "###tb_chips", .Gap_After = "###tb_gap_after",
+	.Shield = "###tb_shield", .Menu = "###tb_menu", .Drag = "###tb_drag", .Buttons = "###tb_buttons",
+}
+
+Titlebar_Layout :: struct {
+	shown: bit_set[Titlebar_Part],
+	x, w:  [Titlebar_Part]f32,   // a hidden part: 0 wide, at the next one's place
+}
+
+// The row's parts in a window `win_w` wide (pure: tab_sidebar_test.odin). `want`: each part's width, the field's its
+// minimum, the drag strip's the one it would like. The field takes what is left; when that is under its minimum, the
+// drag strip gives up to `drag_min`, then the parts of TITLEBAR_HIDE_ORDER go one by one, then the field is narrower.
+// The parts touch, in order, from 0 to `win_w` (while the window is wider than the parts that never go).
+titlebar_layout :: proc(win_w: f32, want: [Titlebar_Part]f32, drag_min: f32) -> (l: Titlebar_Layout) {
+	l.shown = ~bit_set[Titlebar_Part]{}
+	l.w = want
+	field_min := want[.Field]
+	room := win_w
+	for p in Titlebar_Part { if p != .Field { room -= want[p] } }
+	if room < field_min && want[.Drag] > drag_min {
+		give := min(field_min - room, want[.Drag] - drag_min)
+		l.w[.Drag] -= give
+		room += give
+	}
+	for p in TITLEBAR_HIDE_ORDER {
+		if room >= field_min { break }
+		if want[p] <= 0 { continue }
+		l.shown -= {p}
+		room += l.w[p]
+		l.w[p] = 0
+	}
+	if room > field_min && l.w[.Drag] < want[.Drag] {   // (what a hidden part freed beyond the field's minimum)
+		back := min(room - field_min, want[.Drag] - l.w[.Drag])
+		l.w[.Drag] += back
+		room -= back
+	}
+	l.w[.Field] = max(room, 0)
+	x: f32
+	for p in Titlebar_Part {
+		l.x[p] = x
+		x += l.w[p]
+	}
+	return
+}
+
+// The row: a caption `h` high, one box per shown part (`part` builds what is in it), each as wide as `l` says; the field
+// fills what the others leave and the chips (zoom, passkey) are as wide as they are (`l` had last frame's width).
+titlebar_row_build :: proc(l: Titlebar_Layout, h: f32, part: proc(p: Titlebar_Part, user: rawptr), user: rawptr) -> ^ui.Box {
 	ui.next({width = ui.fill(), height = ui.px(h), axis = .X, cross = .Center})
 	bar := ui.build_box({.Window_Caption}, "###tabstrip")
-	if classic_on() { bar.custom, bar.custom_user = strip_bar_draw, classic_colors_frame(app) }   // the tab bar's gradient
 	if ui.parent(bar) {
-		ui.spacer(ui.px(math.round(10 * dpi)))
-		app_icon(app, math.round(16 * dpi))
-		ui.spacer(ui.fill())
-		_, _ = ui.window_buttons()
+		for p in Titlebar_Part {
+			if p not_in l.shown { continue }
+			w := ui.px(l.w[p])
+			#partial switch p {
+			case .Field: w = ui.fill()
+			case .Chips: w = ui.children_sum()
+			}
+			ui.next({width = w, height = ui.pct(1), axis = .X, cross = .Center})
+			if ui.parent(ui.build_box({}, TITLEBAR_SLOT_IDS[p])) { part(p, user) }
+		}
 	}
+	return bar
+}
+
+// The width of the parts of the row (physical px), and what the drag strip may shrink to.
+titlebar_wants :: proc(app: ^App, chips_w: f32) -> (want: [Titlebar_Part]f32, drag_min: f32) {
+	em := ui.font_size()
+	dpi := ui_scale_of(app)
+	nav := em * 2.1   // (nav_button)
+	want = {
+		.Lead = math.round(10 * dpi) + math.round(16 * dpi) + math.round(6 * dpi),   // (as in the row of tabs)
+		.Back = nav, .Forward = nav, .Reload = nav,
+		.Gap_Before = em * 0.4,
+		.Field = favs.cfg.side_address_min_em * em,
+		.Chips = chips_w,
+		.Gap_After = em * 0.4,
+		.Shield = bl.started ? em * 2.3 + em * 0.2 : 0,   // (blocker_button, and the gap before the menu)
+		.Menu = em * 2.3,
+		.Drag = max(wchrome.cfg.min_drag_em * em, em * 0.5),
+		.Buttons = 3 * math.round(ui.CAPTION_BUTTON_WIDTH * dpi),
+	}
+	return want, em * 0.5
+}
+
+@(private = "file")
+Titlebar_Build :: struct { app: ^App, t: ^Tab }
+
+// The title bar of a window whose tabs are in a sidebar (integrated title bar): the icon and the toolbar.
+sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
+	em := ui.font_size()
+	dpi := ui_scale_of(app)
+	h := max(ui.dense(em * 2.6), math.round(32 * dpi))   // (tab_strip's)
+	// the chips' width is last frame's (they appear with a zoom or a passkey dialog; the field absorbs the difference)
+	chips_w: f32
+	if bar := ui.prev_box("###tabstrip"); bar != nil {
+		if c := ui.box_from_key(ui.key_from_string(bar.key, TITLEBAR_SLOT_IDS[.Chips])); c != nil { chips_w = c.rect.max.x - c.rect.min.x }
+	}
+	want, drag_min := titlebar_wants(app, chips_w)
+	l := titlebar_layout(f32(app.win.size.x), want, drag_min)
+	tb := ui.frame_new(Titlebar_Build)
+	tb^ = {app, t}
+	bar := titlebar_row_build(l, h, proc(p: Titlebar_Part, user: rawptr) {
+		d := (^Titlebar_Build)(user)
+		app, t := d.app, d.t
+		dpi := ui_scale_of(app)
+		switch p {
+		case .Lead:
+			ui.spacer(ui.px(math.round(10 * dpi)))
+			app_icon(app, math.round(16 * dpi))
+			ui.spacer(ui.px(math.round(6 * dpi)))
+		case .Back: nav_back_button(app, t)
+		case .Forward: nav_forward_button(app, t)
+		case .Reload: nav_reload_button(app, t)
+		case .Field: address_bar(app, t)
+		case .Chips: address_chips(app, t)
+		case .Shield:
+			if bl.started {
+				blocker_button(app, t)
+				ui.spacer(ui.px(ui.font_size() * 0.2))
+			}
+		case .Menu: main_menu_button(app, t)
+		case .Buttons: _, _ = ui.window_buttons()
+		case .Gap_Before, .Gap_After, .Drag:   // (the window's)
+		}
+	}, tb)
+	if classic_on() { bar.custom, bar.custom_user = titlebar_toolbar_draw, classic_colors_frame(app) }
 }
 
 // The sidebar: header, list of tabs and, over its inner edge, the width handle. Returns true when a tab closed (the build
@@ -157,7 +290,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 		bar.custom, bar.custom_user = classic_side_panel_draw, panel
 	}
 	if ui.parent(bar) {
-		sidebar_header(app, pos, collapsed, cc)
+		sidebar_header(app, pos, collapsed)
 		if sidebar_list(app, pos, collapsed, extent, cc) { return true }
 	}
 	if !collapsed { sidebar_handle(app, pos, bar, extent, dpi) }
@@ -189,17 +322,11 @@ side_toggle_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 }
 
 @(private = "file")
-sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, cc: ^Classic_Colors) {
+sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
 	em := ui.font_size()
 	bw := math.round(em * 2.4)
 	bh := ui.dense(em * 2.2)
 	inset := math.round(em * 0.35)
-	add_classic := proc(app: ^App, cc: ^Classic_Colors) {
-		sig := classic_side_new_tab(app, cc)
-		tip(sig, i18n.tr("New tab (Ctrl+T)"))
-		if sig.clicked { tab_open_new(app) }
-	}
-
 	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32) {
 		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		tb: ^ui.Box
@@ -213,8 +340,9 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, cc: ^Clas
 		tip(sig, collapsed ? i18n.tr("Show the tab titles (Ctrl+Shift+Comma)") : i18n.tr("Show only the tab icons (Ctrl+Shift+Comma)"))
 		if sig.clicked { set_pref_bool(app, "browser.tabs.sidebar_collapsed", !collapsed) }
 	}
-	add := proc(app: ^App, bw, em: f32) {
-		ui.next({width = ui.px(bw), height = ui.px(ui.dense(em * 2.2)), radius = em * CHROME_BUTTON_RADIUS})
+	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
+	add := proc(app: ^App, bw, bh, em: f32) {
+		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		sig := ui.icon_button("###newtab", GLYPH_ADD)
 		tip(sig, i18n.tr("New tab (Ctrl+T)"))
 		if sig.clicked { tab_open_new(app) }
@@ -227,7 +355,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, cc: ^Clas
 			ui.spacer(ui.px(inset))
 			toggle(app, pos, collapsed, bw, bh, em)
 			ui.spacer(ui.px(inset))
-			if cc != nil { add_classic(app, cc) } else { add(app, bw, em) }
+			add(app, bw, bh, em)
 			ui.spacer(ui.px(inset))
 		}
 		return
@@ -238,7 +366,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, cc: ^Clas
 		ui.spacer(ui.px(inset * 2))
 		toggle(app, pos, collapsed, bw, bh, em)
 		ui.spacer(ui.fill())
-		if cc != nil { add_classic(app, cc) } else { add(app, bw, em) }
+		add(app, bw, bh, em)
 		ui.spacer(ui.px(inset * 2))
 	}
 }

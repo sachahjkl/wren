@@ -21,7 +21,7 @@ WINDOW_PREFS := [?]config.Def{
 	{name = "browser.window.integrated_titlebar", kind = .Bool, default = {b = true},
 		description = "The row of tabs is the window's title bar, as in Edge and Chrome: the browser draws the minimize, maximize and close buttons and the free space next to the tabs drags the window. Off: the title bar of Windows above the tabs. Applies at once."},
 	{name = "browser.window.min_drag_em", kind = .Float, default = {f = 3}, bounded = true, min = 0, max = 40, unit = "em",
-		description = "Free space kept in the title bar between the tabs and the window buttons, to drag the window when there are many tabs (the tabs are cut off before it)."},
+		description = "Free space kept in the title bar between the tabs and the window buttons, to drag the window when there are many tabs (the tabs are cut off before it). With the tabs in a sidebar, the strip between the menu and the window buttons (it narrows in a narrow window before anything is hidden)."},
 	{name = "browser.window.fullscreen_reveal", kind = .Bool, default = {b = true},
 		description = "In full screen (F11), the tabs and the address bar slide down over the page while the pointer is at the top edge of the screen."},
 	{name = "browser.window.fullscreen_reveal_px", kind = .Int, default = {i = 3}, bounded = true, min = 1, max = 200, unit = "px",
