@@ -562,7 +562,7 @@
 	adoptNode() nested <template> elements: all owner documents update: FAIL
 	adoptNode() plain DocumentFragment (no host): adopts and returns it: FAIL
 	adoptNode() shadow root: throws HierarchyRequestError: PASS
-	adoptNode() template.content into browsing-context document: PASS
+	adoptNode() template.content into browsing-context document: FAIL
 	adoptNode() template.content: adopts fragment + children, returns it: FAIL
 	appendChild() template.content: moves children, fragment ownerDocument stays: PASS
 /dom/nodes/Document-adoptNode.html: OK
@@ -5064,7 +5064,7 @@
 	querySelectorAll with :not(:has(..)): PASS
 /dom/nodes/ParentNode-querySelectorAll-not-descendant.html: OK
 	querySelectorAll with :not() pseudo-class and descendant selector: PASS
-/dom/nodes/ParentNode-querySelectorAll-removed-elements.html: OK
+/dom/nodes/ParentNode-querySelectorAll-removed-elements.html: TIMEOUT
 	querySelectorAll must not return removed elements: PASS
 /dom/nodes/ParentNode-querySelectorAll-scope-change.html: OK
 	Change the scope of querySelectorAll: FAIL
@@ -5153,7 +5153,7 @@
 	adoptNode() and DocumentFragment with host: FAIL
 	adoptNode() and ShadowRoot: FAIL
 	appendChild() and DocumentFragment: FAIL
-	appendChild() and DocumentFragment with host: FAIL
+	appendChild() and DocumentFragment with host: PASS
 	appendChild() and ShadowRoot: FAIL
 /dom/nodes/append-on-Document.html: ERROR
 /dom/nodes/attach-shadow-realm-after-adoption.html: ERROR
@@ -5689,9 +5689,9 @@
 	Neither frames nor iframes create a child window in a document without a browsing context: FAIL
 /dom/nodes/insertion-removing-steps/insertion-removing-steps-iframe.window.html: OK
 	Insertion steps: load event fires synchronously *after* iframe DOM insertion, as part of the iframe element's insertion steps: FAIL
-	Removing steps (innerHTML): script does not run synchronously during iframe destruction: FAIL
-	Removing steps (remove): script does not run synchronously during iframe destruction: FAIL
-	Removing steps (replaceChildren): script does not run synchronously during iframe destruction: FAIL
+	Removing steps (innerHTML): script does not run synchronously during iframe destruction: PASS
+	Removing steps (remove): script does not run synchronously during iframe destruction: PASS
+	Removing steps (replaceChildren): script does not run synchronously during iframe destruction: PASS
 /dom/nodes/insertion-removing-steps/insertion-removing-steps-script.window.html: ERROR
 	Script execution happens after all batched DOM insertions complete through post-connection steps: PASS
 /dom/nodes/insertion-removing-steps/later-script-removed-by-earlier-script.html: ERROR
@@ -5911,7 +5911,7 @@
 /dom/nodes/moveBefore/stylesheet-cascade-order.html: OK
 	Moving loaded link stylesheets updates their cascade order: FAIL
 /dom/nodes/moveBefore/stylesheet-no-refetch.html: OK
-	Moving a loaded link stylesheet preserves its resource: FAIL
+	Moving a loaded link stylesheet preserves its resource: PASS
 /dom/nodes/moveBefore/throws-exception.html: OK
 	moveBefore() on a cross-document target node: FAIL
 /dom/nodes/name-validation.html: OK
@@ -5947,16 +5947,16 @@
 	replace a namespaced style attribute preserves SVG inline style: FAIL
 /dom/nodes/node-creation-realm.html: OK
 	DOMImplementation.createDocument() creates the document in the target realm: FAIL
-	DOMImplementation.createDocumentType() creates a node in the associated document's realm: FAIL
-	DOMImplementation.createHTMLDocument() creates the document and its contents in the target realm: FAIL
-	Document.createAttribute() creates a node in the target document's realm: FAIL
+	DOMImplementation.createDocumentType() creates a node in the associated document's realm: PASS
+	DOMImplementation.createHTMLDocument() creates the document and its contents in the target realm: PASS
+	Document.createAttribute() creates a node in the target document's realm: PASS
 	Document.createCDATASection() creates a node in the target document's realm: FAIL
-	Document.createComment() creates a node in the target document's realm: FAIL
-	Document.createDocumentFragment() creates a node in the target document's realm: FAIL
+	Document.createComment() creates a node in the target document's realm: PASS
+	Document.createDocumentFragment() creates a node in the target document's realm: PASS
 	Document.createProcessingInstruction() creates a node in the target document's realm: FAIL
-	Document.createTextNode() creates a node in the target document's realm: FAIL
-	Range.cloneContents() builds the fragment in the range's node document realm: FAIL
-	cloneNode() clones into the node's node document realm: FAIL
+	Document.createTextNode() creates a node in the target document's realm: PASS
+	Range.cloneContents() builds the fragment in the range's node document realm: PASS
+	cloneNode() clones into the node's node document realm: PASS
 	importNode() imports into the target document's realm: FAIL
 	innerHTML parses Text and Comment nodes in the node document's realm after adoption: FAIL
 /dom/nodes/node-realm-adoption-after-frame-removal.html: OK

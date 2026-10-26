@@ -642,7 +642,11 @@ sw_job_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 }
 
 @(private)
-sw_script_dir :: proc(script: string) -> string { return script[:strings.last_index_byte(script, '/') + 1] }
+sw_script_dir :: proc(script: string) -> string {
+	s := script
+	if q := strings.index_byte(s, '?'); q >= 0 { s = s[:q] }   // (a slash of the query is not the script's directory)
+	return s[:strings.last_index_byte(s, '/') + 1]
+}
 
 @(private)
 sw_has_allowed :: proc(list: []http.Header) -> bool {
@@ -1143,7 +1147,7 @@ sw_intercept :: proc(t: ^fetch.Task) -> bool {
 	if client != nil && (client.closed || sw_is_host(client) || !client.settings.sw.enabled) { return false }
 	if client != nil { sw_note_page(client) }
 	r: ^Sw_Registration
-	navigation := t.mode == .Navigate && (t.destination == .Document || t.destination == .Iframe)
+	navigation := t.mode == .Navigate && (t.destination == .Document || fetch.is_frame_destination(t.destination))
 	if navigation {
 		r = sw_match(t.target.href, true)
 	} else {
@@ -1210,7 +1214,7 @@ sw_fetch_timeout :: proc(data: rawptr) {
 // Module "serviceworker", page side (api/serviceworker.widl)
 
 @(private)
-sw_scope_of :: proc(c: ^Call, script, scope: string) -> (script_url, scope_url: string, err: Api_Error) {
+sw_scope_of :: proc(c: ^Call, script: string, scope: Maybe(string)) -> (script_url, scope_url: string, err: Api_Error) {
 	p := c.page
 	if !p.env.secure_context { return "", "", fail(c, .Security, "SecurityError: service workers need a secure context") }
 	if !p.settings.sw.enabled { return "", "", fail(c, .Security, "SecurityError: service workers are disabled (service_workers.enabled)") }
@@ -1218,12 +1222,13 @@ sw_scope_of :: proc(c: ^Call, script, scope: string) -> (script_url, scope_url: 
 	su, ok := url.parse(script, &base_u, context.temp_allocator)
 	if !ok || (su.scheme != "http" && su.scheme != "https") { return "", "", fail(c, .Type, "TypeError: invalid script URL") }
 	if !url.same_origin(url.origin_of(su, context.temp_allocator), p.env.origin) { return "", "", fail(c, .Security, "SecurityError: the script's origin is not the document's") }
-	sc := scope
-	if sc == "" { sc = "./" }
-	scu, ok2 := url.parse(sc, &su, context.temp_allocator)
+	// (Service Workers "register": a given scope is parsed against the document's URL, the default "./" against the
+	// script's; the query stays part of the scope, only the fragment goes)
+	scu: url.URL
+	ok2: bool
+	if s, given := scope.?; given { scu, ok2 = url.parse(s, &base_u, context.temp_allocator) } else { scu, ok2 = url.parse("./", &su, context.temp_allocator) }
 	if !ok2 || !url.same_origin(url.origin_of(scu, context.temp_allocator), p.env.origin) { return "", "", fail(c, .Security, "SecurityError: the scope's origin is not the document's") }
 	scope_str := url.without_fragment(scu)
-	if q := strings.index_byte(scope_str, '?'); q >= 0 { scope_str = scope_str[:q] }
 	// (a scope above the script's directory needs the script's Service-Worker-Allowed header: checked by the job)
 	return url.without_fragment(su), scope_str, .None
 }
@@ -1236,7 +1241,7 @@ sw_off_thread :: #force_inline proc(c: ^Call) -> bool { return c.page.worker != 
 ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), via_cache: string, module: bool) -> (u64, Api_Error) {
 	p := c.page
 	if sw_off_thread(c) { return 0, fail(c, .Not_Supported, "NotSupportedError: service workers are registered from documents") }
-	su, sc, err := sw_scope_of(c, script, scope.? or_else "")
+	su, sc, err := sw_scope_of(c, script, scope)
 	if err != .None { return 0, err }
 	sw_note_page(p)
 	pr := promise_create(p, c.owner)

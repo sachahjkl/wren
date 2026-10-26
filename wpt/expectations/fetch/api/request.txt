@@ -1,27 +1,27 @@
 # web-platform-tests expectations of Wren for fetch/api/request, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/fetch/api/request/destination/fetch-destination-frame.https.html: TIMEOUT
+/fetch/api/request/destination/fetch-destination-frame.https.html: ERROR
 	Initialize global state: PASS
-	frame fetches with a "frame" Request.destination: TIMEOUT
-/fetch/api/request/destination/fetch-destination-iframe.https.html: TIMEOUT
+	frame fetches with a "frame" Request.destination: PASS
+/fetch/api/request/destination/fetch-destination-iframe.https.html: ERROR
 	Initialize global state: PASS
-	iframe fetches with a "iframe" Request.destination: TIMEOUT
+	iframe fetches with a "iframe" Request.destination: PASS
 /fetch/api/request/destination/fetch-destination-no-load-event.https.html: OK
 	@import fetches with a "style" Request.destination: FAIL
 	Background image fetches with an "image" Request.destination: FAIL
 	CSS font fetches with an "font" Request.destination: FAIL
 	Cache.add() fetches with an empty string Request.destination: FAIL
 	Font loading API fetches with an "font" Request.destination: FAIL
-	Initialize global state: FAIL
+	Initialize global state: PASS
 	SVG use element fetches with an "image" Request.destination: FAIL
 	importScripts() fetches with a "script" Request.destination: FAIL
 	sendBeacon() fetches with an empty string Request.destination: FAIL
 /fetch/api/request/destination/fetch-destination-prefetch.https.html: OK
 	HTMLLinkElement with rel=prefetch fetches with an empty string Request.destination: FAIL
-	Initialize global state: FAIL
+	Initialize global state: PASS
 /fetch/api/request/destination/fetch-destination-worker.https.html: OK
 	DedicatedWorker fetches with a "worker" Request.destination: FAIL
-	Initialize global state: FAIL
+	Initialize global state: PASS
 	SharedWorker fetches with a "sharedworker" Request.destination: FAIL
 /fetch/api/request/destination/fetch-destination.https.html: OK
 	AudioWorklet module fetches with a "audioworklet" Request.destination: FAIL
@@ -50,7 +50,7 @@
 	Import declaration with `type: "css"` fetches with a "style" Request.destination: FAIL
 	Import declaration with `type: "json"` fetches with a "json" Request.destination: FAIL
 	Import declaration with `type: "text"` fetches with a "text" Request.destination: FAIL
-	Initialize global state: FAIL
+	Initialize global state: PASS
 	SVGImageElement fetches with an "image" Request.destination: FAIL
 	XMLHttpRequest() fetches with an empty string Request.destination: FAIL
 	fetch() fetches with an empty string Request.destination: FAIL
@@ -69,7 +69,7 @@
 	Request() with a forbidden method trace must throw.: PASS
 	Request() with a forbidden method track must throw.: PASS
 /fetch/api/request/multi-globals/construct-in-detached-frame.window.html: OK
-	creating a request from another request in a detached realm should work: FAIL
+	creating a request from another request in a detached realm should work: PASS
 /fetch/api/request/multi-globals/url-parsing.html: OK
 	should parse the URL relative to the current settings object: FAIL
 /fetch/api/request/request-bad-port.any.html: OK
@@ -488,7 +488,21 @@
 	Consume request's body as formData without correct type (error case): PASS
 	Consume request's body as json (error case): PASS
 	Consume request's body as text: PASS
-/fetch/api/request/request-consume-empty.any.worker.html: CRASH
+/fetch/api/request/request-consume-empty.any.worker.html: OK
+	Consume empty ArrayBuffer request body as text: PASS
+	Consume empty FormData request body as text: FAIL
+	Consume empty URLSearchParams request body as text: PASS
+	Consume empty blob request body as arrayBuffer: PASS
+	Consume empty blob request body as text: PASS
+	Consume empty text request body as arrayBuffer: PASS
+	Consume empty text request body as text: PASS
+	Consume request's body as arrayBuffer: PASS
+	Consume request's body as blob: PASS
+	Consume request's body as formData with correct multipart type (error case): PASS
+	Consume request's body as formData with correct urlencoded type: PASS
+	Consume request's body as formData without correct type (error case): PASS
+	Consume request's body as json (error case): PASS
+	Consume request's body as text: PASS
 /fetch/api/request/request-consume.any.html: OK
 	Consume ArrayBuffer request's body as JSON: PASS
 	Consume ArrayBuffer request's body as arrayBuffer: PASS
@@ -535,7 +549,52 @@
 	Trying to consume bad JSON text as JSON: 'a': PASS
 	Trying to consume bad JSON text as JSON: 'undefined': PASS
 	Trying to consume bad JSON text as JSON: '{': PASS
-/fetch/api/request/request-consume.any.worker.html: CRASH
+/fetch/api/request/request-consume.any.worker.html: OK
+	Consume ArrayBuffer request's body as JSON: PASS
+	Consume ArrayBuffer request's body as arrayBuffer: PASS
+	Consume ArrayBuffer request's body as blob: PASS
+	Consume ArrayBuffer request's body as bytes: PASS
+	Consume ArrayBuffer request's body as text: PASS
+	Consume DataView request's body as JSON: PASS
+	Consume DataView request's body as arrayBuffer: PASS
+	Consume DataView request's body as blob: PASS
+	Consume DataView request's body as bytes: PASS
+	Consume DataView request's body as text: PASS
+	Consume Float32Array request's body as JSON: PASS
+	Consume Float32Array request's body as arrayBuffer: PASS
+	Consume Float32Array request's body as blob: PASS
+	Consume Float32Array request's body as bytes: PASS
+	Consume Float32Array request's body as text: PASS
+	Consume FormData request's body as FormData: PASS
+	Consume Int8Array request's body as JSON: PASS
+	Consume Int8Array request's body as arrayBuffer: PASS
+	Consume Int8Array request's body as blob: PASS
+	Consume Int8Array request's body as bytes: PASS
+	Consume Int8Array request's body as text: PASS
+	Consume JSON from text: '"1"': PASS
+	Consume JSON from text: '"\\"string\\""': PASS
+	Consume JSON from text: '"null"': PASS
+	Consume JSON from text: '"true"': PASS
+	Consume String request's body as JSON: PASS
+	Consume String request's body as arrayBuffer: PASS
+	Consume String request's body as blob: PASS
+	Consume String request's body as bytes: PASS
+	Consume String request's body as text: PASS
+	Consume Uint8Array request's body as JSON: PASS
+	Consume Uint8Array request's body as arrayBuffer: PASS
+	Consume Uint8Array request's body as blob: PASS
+	Consume Uint8Array request's body as bytes: PASS
+	Consume Uint8Array request's body as text: PASS
+	Consume blob response's body as arrayBuffer: PASS
+	Consume blob response's body as blob: PASS
+	Consume blob response's body as blob (empty blob as input): PASS
+	Consume blob response's body as bytes: PASS
+	Consume blob response's body as json: PASS
+	Consume blob response's body as text: PASS
+	Trying to consume bad JSON text as JSON: '[': PASS
+	Trying to consume bad JSON text as JSON: 'a': PASS
+	Trying to consume bad JSON text as JSON: 'undefined': PASS
+	Trying to consume bad JSON text as JSON: '{': PASS
 /fetch/api/request/request-disturbed.any.html: OK
 	Check cloning a disturbed request: PASS
 	Check consuming a disturbed request: PASS
@@ -727,11 +786,6 @@
 	Testing empty Request Content-Type header: PASS
 	Testing request header creations with various objects: PASS
 /fetch/api/request/request-init-001.sub.html: OK
-	Check cache init value of default and associated getter: PASS
-	Check cache init value of force-cache and associated getter: PASS
-	Check cache init value of no-cache and associated getter: PASS
-	Check cache init value of no-store and associated getter: PASS
-	Check cache init value of reload and associated getter: PASS
 	Check credentials init value of include and associated getter: PASS
 	Check credentials init value of omit and associated getter: PASS
 	Check credentials init value of same-origin and associated getter: PASS
@@ -789,7 +843,15 @@
 	Initialize Request's body with "name=value", application/x-www-form-urlencoded;charset=UTF-8: PASS
 	Initialize Request's body with "null", null: PASS
 	Initialize Request's body with "undefined", undefined: PASS
-/fetch/api/request/request-init-002.any.worker.html: CRASH
+/fetch/api/request/request-init-002.any.worker.html: OK
+	Initialize Request with headers values: PASS
+	Initialize Request's body with "This is a USVString", text/plain;charset=UTF-8: PASS
+	Initialize Request's body with "[object Blob]", application/octet-binary: PASS
+	Initialize Request's body with "[object FormData]", multipart/form-data: PASS
+	Initialize Request's body with "hi!", text/plain;charset=UTF-8: PASS
+	Initialize Request's body with "name=value", application/x-www-form-urlencoded;charset=UTF-8: PASS
+	Initialize Request's body with "null", null: PASS
+	Initialize Request's body with "undefined", undefined: PASS
 /fetch/api/request/request-init-003.sub.html: OK
 	Check request values when initialized from Request: PASS
 	Check request values when initialized from Request and init values: PASS
@@ -814,7 +876,25 @@
 	Default Content-Type for Request with buffer source body: PASS
 	Default Content-Type for Request with empty body: PASS
 	Default Content-Type for Request with string body: PASS
-/fetch/api/request/request-init-contenttype.any.worker.html: CRASH
+/fetch/api/request/request-init-contenttype.any.worker.html: OK
+	Can override Content-Type for Request with Blob body (empty type): PASS
+	Can override Content-Type for Request with Blob body (no type set): PASS
+	Can override Content-Type for Request with Blob body (set type): PASS
+	Can override Content-Type for Request with FormData body: PASS
+	Can override Content-Type for Request with ReadableStream body: PASS
+	Can override Content-Type for Request with URLSearchParams body: PASS
+	Can override Content-Type for Request with buffer source body: PASS
+	Can override Content-Type for Request with empty body: PASS
+	Can override Content-Type for Request with string body: PASS
+	Default Content-Type for Request with Blob body (empty type): PASS
+	Default Content-Type for Request with Blob body (no type set): PASS
+	Default Content-Type for Request with Blob body (set type): PASS
+	Default Content-Type for Request with FormData body: PASS
+	Default Content-Type for Request with ReadableStream body: PASS
+	Default Content-Type for Request with URLSearchParams body: PASS
+	Default Content-Type for Request with buffer source body: PASS
+	Default Content-Type for Request with empty body: PASS
+	Default Content-Type for Request with string body: PASS
 /fetch/api/request/request-init-priority.any.html: OK
 	fetch() with a 'auto' priority completes successfully: PASS
 	fetch() with a 'high' priority completes successfully: PASS

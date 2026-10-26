@@ -711,6 +711,7 @@ typedef struct web_request {
     JSValue  url, method, headers, signal, referrer, integrity;
     web_body body;
     uint8_t  mode, credentials, cache, redirect, referrer_policy;
+    uint8_t  destination;   /* index in destination_names: "" for what script makes, set for a FetchEvent's request */
     bool     keepalive;
 } web_request;
 
@@ -733,6 +734,10 @@ static const char *credentials_names[] = { "same-origin", "omit", "include" };
 static const char *cache_names[] = { "default", "no-store", "reload", "no-cache", "force-cache", "only-if-cached" };
 enum { REDIRECT_FOLLOW, REDIRECT_ERROR, REDIRECT_MANUAL };
 static const char *redirect_names[] = { "follow", "error", "manual" };
+/* Fetch RequestDestination */
+static const char *destination_names[] = { "", "audio", "audioworklet", "document", "embed", "font", "frame", "iframe", "image",
+                                           "json", "manifest", "object", "paintworklet", "report", "script", "serviceworker",
+                                           "sharedworker", "style", "text", "track", "video", "worker", "xslt" };
 /* "" then the browser's ReferrerPolicy order (wr_ReferrerPolicy_*) */
 static const char *policy_names[] = { "", "no-referrer", "no-referrer-when-downgrade", "same-origin", "origin", "strict-origin",
                                       "origin-when-cross-origin", "strict-origin-when-cross-origin", "unsafe-url" };
@@ -1108,6 +1113,7 @@ static bool request_build(JSContext *ctx, web_request *r, JSValueConst input, JS
     body_init(&r->body);
     r->mode = MODE_CORS;
     r->credentials = CRED_SAME_ORIGIN;
+    r->destination = 0;
     web_request *src = request_of(input);
     if (!web_dict_check(ctx, init, "Request")) { return false; }
     JSValue hinit = JS_UNDEFINED;
@@ -1117,7 +1123,7 @@ static bool request_build(JSContext *ctx, web_request *r, JSValueConst input, JS
         r->referrer = JS_DupValue(ctx, src->referrer);
         r->integrity = JS_DupValue(ctx, src->integrity);
         r->mode = src->mode; r->credentials = src->credentials; r->cache = src->cache; r->redirect = src->redirect;
-        r->referrer_policy = src->referrer_policy; r->keepalive = src->keepalive;
+        r->referrer_policy = src->referrer_policy; r->keepalive = src->keepalive; r->destination = src->destination;
         if (r->mode == MODE_NAVIGATE) { r->mode = MODE_SAME_ORIGIN; }
     } else {
         wj_str s;
@@ -1311,7 +1317,7 @@ JSValue wjr_Request_get_referrer(JSContext *ctx, JSValueConst this_val)
     return r ? JS_DupValue(ctx, r->referrer) : JS_EXCEPTION;
 }
 
-JSValue wjr_Request_get_destination(JSContext *ctx, JSValueConst this_val) { return request_this(ctx, this_val) ? JS_NewString(ctx, "") : JS_EXCEPTION; }
+JSValue wjr_Request_get_destination(JSContext *ctx, JSValueConst this_val) { web_request *r = request_this(ctx, this_val); return r ? JS_NewString(ctx, destination_names[r->destination]) : JS_EXCEPTION; }
 JSValue wjr_Request_get_referrerPolicy(JSContext *ctx, JSValueConst this_val) { web_request *r = request_this(ctx, this_val); return r ? JS_NewString(ctx, policy_names[r->referrer_policy]) : JS_EXCEPTION; }
 JSValue wjr_Request_get_mode(JSContext *ctx, JSValueConst this_val) { web_request *r = request_this(ctx, this_val); return r ? JS_NewString(ctx, modes[r->mode]) : JS_EXCEPTION; }
 JSValue wjr_Request_get_credentials(JSContext *ctx, JSValueConst this_val) { web_request *r = request_this(ctx, this_val); return r ? JS_NewString(ctx, credentials_names[r->credentials]) : JS_EXCEPTION; }
@@ -1504,6 +1510,15 @@ void web_request_set_mode(JSValueConst req, int mode)
     wj_obj *o = wj_unwrap(req, WJ_IFACE_Request);
     web_request *r = o ? o->impl : NULL;
     if (r && mode >= MODE_CORS && mode <= MODE_NAVIGATE) { r->mode = (uint8_t)mode; }
+}
+
+/* ... and its destination (a RequestDestination value; an unknown one leaves ""). */
+void web_request_set_destination(JSValueConst req, const char *name)
+{
+    wj_obj *o = wj_unwrap(req, WJ_IFACE_Request);
+    web_request *r = o ? o->impl : NULL;
+    if (!r || !name) { return; }
+    for (uint8_t i = 0; i < WEB_COUNT(destination_names); i++) { if (!strcmp(destination_names[i], name)) { r->destination = i; return; } }
 }
 
 /* A response made by the engine for one that came from elsewhere (the Cache API's entries): its URL, as the stored

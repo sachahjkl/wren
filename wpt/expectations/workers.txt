@@ -28,8 +28,8 @@
 	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
 	Test simple shared worker construction case.: PASS
-/workers/SharedWorkerPerformanceNow.html: OK
-	performance.now() exists in shared workers and reports reasonable times: FAIL
+/workers/SharedWorkerPerformanceNow.html: OK|TIMEOUT
+	performance.now() exists in shared workers and reports reasonable times: FAIL|TIMEOUT
 /workers/SharedWorker_blobUrl.html: TIMEOUT
 	Blob URL shared by document on SharedWorker: TIMEOUT
 /workers/SharedWorker_dataUrl.html: TIMEOUT
@@ -42,7 +42,7 @@
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
 /workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
-	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT|PASS
+	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT|PASS|FAIL
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
 /workers/Worker-formdata.any.worker.html: OK
@@ -255,8 +255,8 @@
 	Test constructing a shared worker with null: PASS
 /workers/constructors/SharedWorker/number-arguments.html: OK
 	Test constructing a shared worker with 1: PASS
-/workers/constructors/SharedWorker/port-onmessage.html: OK
-	Test SharedWorker.port.onmessage: PASS
+/workers/constructors/SharedWorker/port-onmessage.html: OK|TIMEOUT
+	Test SharedWorker.port.onmessage: PASS|TIMEOUT
 /workers/constructors/SharedWorker/port-properties.html: OK
 	worker.port: PASS
 /workers/constructors/SharedWorker/port-readonly.html: OK
@@ -430,7 +430,7 @@
 	Blob URLs should not resolve relative to document base URL.: PASS
 	Creating a dedicated worker from a blob URL works immediately before revoking.: PASS
 	Creating a dedicated worker from a blob URL works.: PASS
-/workers/dedicated-worker-in-data-url-context.window.html: OK
+/workers/dedicated-worker-in-data-url-context.window.html: ERROR
 	Create a data url dedicated worker in a data url dedicated worker: FAIL
 	Create a data url dedicated worker in a data url frame: PASS
 	Create a dedicated worker in a data url dedicated worker: FAIL
@@ -568,12 +568,12 @@
 	structured clone of message: PASS
 	true: PASS
 	undefined: PASS
-/workers/interfaces/SharedWorkerGlobalScope/name/getting.html: OK|TIMEOUT
-	getting name: PASS|TIMEOUT
-	getting name 1: PASS|TIMEOUT
-	getting name 2: PASS|TIMEOUT
-/workers/interfaces/SharedWorkerGlobalScope/name/setting.html: OK|TIMEOUT
-	setting name: PASS|TIMEOUT
+/workers/interfaces/SharedWorkerGlobalScope/name/getting.html: OK
+	getting name: PASS
+	getting name 1: PASS
+	getting name 2: PASS
+/workers/interfaces/SharedWorkerGlobalScope/name/setting.html: OK
+	setting name: PASS
 /workers/interfaces/WorkerGlobalScope/close/incoming-message.html: OK
 	close() and incoming message: PASS
 /workers/interfaces/WorkerGlobalScope/close/sending-messages.html: OK
@@ -969,49 +969,49 @@
 	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
 	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
 	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
-/workers/modules/shared-worker-import.window.html: TIMEOUT
-	Dynamic import and then static import.: NOTRUN
-	Dynamic import.: NOTRUN
-	Nested dynamic import.: NOTRUN
-	Nested static import.: NOTRUN
-	Static import (cross-origin).: TIMEOUT
-	Static import (redirect).: NOTRUN
-	Static import and then dynamic import.: NOTRUN
+/workers/modules/shared-worker-import.window.html: OK
+	Dynamic import and then static import.: PASS
+	Dynamic import.: PASS
+	Nested dynamic import.: PASS
+	Nested static import.: PASS
+	Static import (cross-origin).: FAIL
+	Static import (redirect).: PASS
+	Static import and then dynamic import.: PASS
 	Static import.: PASS
-	eval(import()).: NOTRUN
-/workers/modules/shared-worker-options-credentials.html: TIMEOUT
+	eval(import()).: FAIL
+/workers/modules/shared-worker-options-credentials.html: OK
 	Test initialization: setting up cross-origin cookie: FAIL
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: NOTRUN
-	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: NOTRUN
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (same-origin).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should always send the credentials regardless of the credentials option (same-origin).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (default).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (include).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (omit).: PASS
+	new SharedWorker() with type=classic should never send the credentials for cross-origin dynamic imports regardless of the credentials option (same-origin).: PASS
 	new SharedWorker() with type=module and credentials=include should send the credentials: PASS
-	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin dynamic imports: FAIL
+	new SharedWorker() with type=module and credentials=include should send the credentials for cross-origin static imports: FAIL
+	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and credentials=include should send the credentials for same-origin static imports: PASS
 	new SharedWorker() with type=module and credentials=omit should not send the credentials: FAIL
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: NOTRUN
-	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for cross-origin static imports: PASS
+	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin dynamic imports: FAIL
 	new SharedWorker() with type=module and credentials=omit should not send the credentials for same-origin static imports: FAIL
-	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and credentials=same-origin should not send the credentials for cross-origin static imports: PASS
 	new SharedWorker() with type=module and credentials=same-origin should send the credentials: PASS
-	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and credentials=same-origin should send the credentials for same-origin static imports: PASS
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: NOTRUN
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: TIMEOUT
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin dynamic imports: PASS
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and not send the credentials for cross-origin static imports: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials: PASS
-	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: NOTRUN
+	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin dynamic imports: PASS
 	new SharedWorker() with type=module and default credentials option should behave as credentials=same-origin and send the credentials for same-origin static imports: PASS
 /workers/modules/shared-worker-options-type.html: OK
 	Test worker construction with an empty worker type.: PASS

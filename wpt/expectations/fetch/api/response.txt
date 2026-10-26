@@ -13,7 +13,7 @@
 /fetch/api/response/response-blob-realm.any.html: OK
 	realm of the Uint8Array from Response bytes(): FAIL
 /fetch/api/response/response-body-read-task-handling.html: OK
-	piping from a body stream to a JS-written WritableStream should occur in a microtask scope: FAIL
+	piping from a body stream to a JS-written WritableStream should occur in a microtask scope: PASS
 	reading from a body stream should occur in a microtask scope: PASS
 /fetch/api/response/response-body-stashed-chunk.html: OK
 	Response body: chunks stashed while the source is not pulling are delivered on the next pull: FAIL
@@ -94,7 +94,21 @@
 	Consume response's body as formData without correct type (error case): PASS
 	Consume response's body as json (error case): PASS
 	Consume response's body as text: PASS
-/fetch/api/response/response-consume-empty.any.worker.html: CRASH
+/fetch/api/response/response-consume-empty.any.worker.html: OK
+	Consume empty ArrayBuffer response body as text: PASS
+	Consume empty FormData response body as text: FAIL
+	Consume empty URLSearchParams response body as text: PASS
+	Consume empty blob response body as arrayBuffer: PASS
+	Consume empty blob response body as text: PASS
+	Consume empty text response body as arrayBuffer: PASS
+	Consume empty text response body as text: PASS
+	Consume response's body as arrayBuffer: PASS
+	Consume response's body as blob: PASS
+	Consume response's body as formData with correct multipart type (error case): PASS
+	Consume response's body as formData with correct urlencoded type: PASS
+	Consume response's body as formData without correct type (error case): PASS
+	Consume response's body as json (error case): PASS
+	Consume response's body as text: PASS
 /fetch/api/response/response-consume-stream.any.html: OK
 	Getting a redirect Response stream: PASS
 	Getting an error Response stream: PASS
@@ -111,7 +125,22 @@
 	Read text response's body as readableStream with mode=byob: FAIL
 	Read text response's body as readableStream with mode=undefined: PASS
 	Reading with offset from Response stream: FAIL
-/fetch/api/response/response-consume-stream.any.worker.html: CRASH
+/fetch/api/response/response-consume-stream.any.worker.html: OK
+	Getting a redirect Response stream: PASS
+	Getting an error Response stream: PASS
+	Read URLSearchParams response's body as readableStream with mode=byob: FAIL
+	Read URLSearchParams response's body as readableStream with mode=undefined: PASS
+	Read array buffer response's body as readableStream with mode=byob: FAIL
+	Read array buffer response's body as readableStream with mode=undefined: PASS
+	Read blob response's body as readableStream with mode=byob: FAIL
+	Read blob response's body as readableStream with mode=undefined: PASS
+	Read empty blob response's body as readableStream: PASS
+	Read empty text response's body as readableStream: PASS
+	Read form data response's body as readableStream with mode=byob: FAIL
+	Read form data response's body as readableStream with mode=undefined: PASS
+	Read text response's body as readableStream with mode=byob: FAIL
+	Read text response's body as readableStream with mode=undefined: PASS
+	Reading with offset from Response stream: FAIL
 /fetch/api/response/response-consume.html: OK
 	Consume response's body: from FormData to arrayBuffer: PASS
 	Consume response's body: from FormData to blob: PASS
@@ -261,7 +290,15 @@
 	Read Response's body as readableStream: PASS
 	Testing empty Response Content-Type header: PASS
 	Testing null Response body: PASS
-/fetch/api/response/response-init-002.any.worker.html: CRASH
+/fetch/api/response/response-init-002.any.worker.html: OK
+	Initialize Response with headers values: PASS
+	Initialize Response's body with application/octet-binary: PASS
+	Initialize Response's body with application/x-www-form-urlencoded;charset=UTF-8: PASS
+	Initialize Response's body with multipart/form-data: PASS
+	Initialize Response's body with text/plain;charset=UTF-8: PASS
+	Read Response's body as readableStream: PASS
+	Testing empty Response Content-Type header: PASS
+	Testing null Response body: PASS
 /fetch/api/response/response-init-contenttype.any.html: OK
 	Can override Content-Type for Response with Blob body (empty type): PASS
 	Can override Content-Type for Response with Blob body (no type set): PASS
@@ -281,7 +318,25 @@
 	Default Content-Type for Response with buffer source body: PASS
 	Default Content-Type for Response with empty body: PASS
 	Default Content-Type for Response with string body: PASS
-/fetch/api/response/response-init-contenttype.any.worker.html: CRASH
+/fetch/api/response/response-init-contenttype.any.worker.html: OK
+	Can override Content-Type for Response with Blob body (empty type): PASS
+	Can override Content-Type for Response with Blob body (no type set): PASS
+	Can override Content-Type for Response with Blob body (set type): PASS
+	Can override Content-Type for Response with FormData body: PASS
+	Can override Content-Type for Response with ReadableStream body: PASS
+	Can override Content-Type for Response with URLSearchParams body: PASS
+	Can override Content-Type for Response with buffer source body: PASS
+	Can override Content-Type for Response with empty body: PASS
+	Can override Content-Type for Response with string body: PASS
+	Default Content-Type for Response with Blob body (empty type): PASS
+	Default Content-Type for Response with Blob body (no type set): PASS
+	Default Content-Type for Response with Blob body (set type): PASS
+	Default Content-Type for Response with FormData body: PASS
+	Default Content-Type for Response with ReadableStream body: PASS
+	Default Content-Type for Response with URLSearchParams body: PASS
+	Default Content-Type for Response with buffer source body: PASS
+	Default Content-Type for Response with empty body: PASS
+	Default Content-Type for Response with string body: PASS
 /fetch/api/response/response-static-error.any.html: OK
 	Check response returned by static method error(): PASS
 	the 'guard' of the Headers instance should be immutable: PASS
