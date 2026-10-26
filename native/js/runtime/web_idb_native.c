@@ -1018,6 +1018,14 @@ static JSValue host_exec_cursor(JSContext *ctx, JSValueConst this_val, int argc,
 }
 /* ---- the host object ---- */
 
+/* navigator.storage.getDirectory(): the origin private file system's root (runtime/web_fs.c) */
+extern JSValue web_fs_get_directory(JSContext *ctx);
+static JSValue host_get_directory(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv);
+    return web_fs_get_directory(ctx);
+}
+
 void web_idb_native_install(JSContext *ctx, JSValueConst host)
 {
     static const struct { const char *name; JSCFunction *fn; int length; } fns[] = {
@@ -1027,6 +1035,7 @@ void web_idb_native_install(JSContext *ctx, JSValueConst host)
         {"setFailure", host_set_failure, 1}, {"execGet", host_exec_get, 5}, {"execCount", host_exec_count, 4},
         {"execGetAll", host_exec_get_all, 7}, {"execPut", host_exec_put, 6}, {"execDelete", host_exec_delete, 3},
         {"execClear", host_exec_clear, 2}, {"execCursor", host_exec_cursor, 11},
+        {"getDirectory", host_get_directory, 0},
     };
     for (size_t i = 0; i < sizeof fns / sizeof fns[0]; i++) {
         JS_SetPropertyStr(ctx, host, fns[i].name, JS_NewCFunction(ctx, fns[i].fn, fns[i].name, fns[i].length));

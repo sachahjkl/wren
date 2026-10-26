@@ -130,6 +130,13 @@ FsEntry_parent :: proc(c: ^Call, entry: Api_FsEntry) -> u64 {
 	return fs_entry_new(c.page, c.owner, e.root, rel, e.fs, true)
 }
 
+FsEntry_root :: proc(c: ^Call, entry: Api_FsEntry) -> u64 {
+	e := entry.data
+	is_dir := true
+	if info, err := os.stat(e.root, context.temp_allocator); err == nil { is_dir = info.type == .Directory }
+	return fs_entry_new(c.page, c.owner, e.root, "", e.fs, is_dir)
+}
+
 // A path below `base` (entries-api "resolve a relative path"): ".", "" parts dropped, ".." refused (it would leave
 // what was dropped), "/" at the start counts from the dropped item. ok = false: refused.
 fs_resolve :: proc(base, path: string, allocator := context.temp_allocator) -> (string, bool) {

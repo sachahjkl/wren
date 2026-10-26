@@ -877,6 +877,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	context_menus_build(app)
 	palette_build(app)   // palette.odin: the command palette, over everything else
 	setup_build(app)   // setup_ui.odin: the Setup dialog (nothing while it is closed)
+	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	// notices go over the page, not over the title bar's window buttons
 	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
 	ui.toasts_build()
@@ -1379,6 +1380,7 @@ main :: proc() {
 	webauthn_shell_init(app)   // webauthn_shell.odin
 	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
 	sw_shell_init(app)   // sw_shell.odin: clients.openWindow, WindowClient.focus
+	fs_shell_init(app)   // fs_shell.odin: file pickers and file permission prompts
 	clipboard_js_init(app)   // clipboard_win.odin: navigator.clipboard
 	drop_files_init(app)   // local_paths.odin
 	app_commands_init(app)   // app_commands.odin: the mouse's back / forward buttons
@@ -1416,6 +1418,7 @@ main :: proc() {
 	shell_frames_destroy(app)   // (no chrome frame from here on: the pages' last scripts run unpreempted)
 	fullscreen_shell_destroy(app)   // (the pages closing below do not restore a window that is going away)
 	sw_shell_destroy(app)
+	fs_shell_destroy(app)
 	host.shutdown_step("session capture")
 	for t in tabs_all(app) { entry_capture_current(app, t); cache_prof_leave(t) }   // the session keeps where each tab was
 	host.shutdown_step("profile_save")
