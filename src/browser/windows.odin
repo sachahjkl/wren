@@ -62,6 +62,21 @@ Browser_Window :: struct {
 	drop_hint: int,               // a tab is carried over its tab bar: the place it would take, plus one (0: none)
 	title:   string,              // what its title was set to last (owned)
 	opened:  time.Tick,
+	own:     Window_Own,          // the chrome's state of this window, always here (not exchanged by window_activate)
+}
+
+// What the chrome keeps of one window from frame to frame. It lives in the window: the procedures that read it are given
+// the window (or read window_own(app), the active window's, at the frame's entry points). It replaces the globals that
+// window_activate exchanged (window_local, below), one group at a time: tools\globals_allowed.txt lists those left.
+Window_Own :: struct {
+	security_chip_width: f32,                 // chrome.odin: the security chip's width at the last layout
+	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
+	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
+}
+
+// The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
+window_own :: proc(app: ^App) -> ^Window_Own {
+	return app.active != nil ? &app.active.own : &app.bare_own
 }
 
 ////////////////////////////////
@@ -97,9 +112,6 @@ windows_register_locals :: proc() {
 	window_local(&ub.view, urlbar_view_destroy)
 	window_local(&wchrome.full)
 	page_cursor_window_local()
-	fullscreen_shell_window_locals()
-	status_bar_window_local()
-	chrome_window_local()
 }
 
 windows_locals_destroy :: proc() {
