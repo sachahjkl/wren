@@ -127,7 +127,9 @@ if defined WREN_TOOLKIT set "FLAGS=-collection:toolkit=%WREN_TOOLKIT% -collectio
 :: 32 MiB of stack for the window thread: Wasm calls run on it (wasm.wasmtime.max_stack_bytes + host_stack_reserve_bytes)
 :: and the Visual C++ runtime (vcruntime) linked in, not loaded from vcruntime140.dll: the Windows 10/11 C runtime (ucrt) is part of
 :: the system, so wren.exe then needs no file beside it and no Visual C++ redistributable installed
-set FLAGS=%FLAGS% -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib"
+:: and /MAP: the linker's map (every function's address) next to the exe, the symbols of a release, which has no PDB (it changes
+:: nothing in the exe). tools\symbols.ps1 names it by the build's fingerprint after the link (:symbols below).
+set FLAGS=%FLAGS% -extra-linker-flags:"/STACK:33554432 /NODEFAULTLIB:vcruntime.lib /DEFAULTLIB:libvcruntime.lib /MAP"
 
 :: every thread's temporary allocator commits its first block at once: 1 MiB instead of Odin's 4 MiB (with the three
 :: dozen threads of the pools, 4 MiB each was over 100 MB of private bytes, mostly never touched)
@@ -203,6 +205,7 @@ goto done_browser
 :build_profile
 :: one module, as the release; a PDB for the profiler; no Direct3D debug layer (GPU and present times as shipped)
 odin build src/browser -out:build/wren_prof%WREN_SUFFIX%.exe %FLAGS% -o:speed -debug -define:PROFILE=true -define:D3D_DEBUG=false || exit /b 1
+call :symbols build\wren_prof%WREN_SUFFIX%.exe || exit /b 1
 echo built build\wren_prof%WREN_SUFFIX%.exe
 exit /b 0
 
@@ -212,10 +215,15 @@ exit /b 0
 :: go to <profile>\memtrack.txt (or WREN_MEMTRACK_REPORT); WREN_MEMTRACK_FAIL=1 makes them exit code 3,
 :: WREN_MEMTRACK_STACK=1 records each block's call stack. Never shipped: the tracker serializes every allocation.
 odin build src/browser -out:build/wren_check%WREN_SUFFIX%.exe %FLAGS% -debug -define:WREN_TRACK_MEMORY=true %FAST% || exit /b 1
+call :symbols build\wren_check%WREN_SUFFIX%.exe || exit /b 1
 echo built build\wren_check%WREN_SUFFIX%.exe
 exit /b 0
 
 :done_browser
+:: a release's map is also kept in build\symbols (the builds that are handed out: a later crash report names them)
+set "WREN_SYMSTORE="
+if "%VARIANT%"=="release" set "WREN_SYMSTORE=-Store"
+call :symbols build\wren%WREN_SUFFIX%.exe %WREN_SYMSTORE% || exit /b 1
 >build\wren.channel echo %WREN_CHANNEL%
 echo built build\wren%WREN_SUFFIX%.exe (%VARIANT%, %WREN_CHANNEL% channel)
 exit /b 0
@@ -251,4 +259,13 @@ exit /b 0
 :step
 powershell -NoProfile -ExecutionPolicy Bypass -File %2 >nul && exit /b 0
 echo %~1 failed: run  powershell -File %2
+exit /b 1
+
+:: ------------------------------------------------------------------------------------------------------------
+::  :symbols exe [-Store] : the linker's map becomes <exe>-<fingerprint>.map beside the exe, and with -Store a copy goes to
+::  build\symbols (tools\symbols.ps1 -Publish; tools\crash_symbolize.ps1 reads them)
+:: ------------------------------------------------------------------------------------------------------------
+:symbols
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\symbols.ps1 -Publish %1 %2 && exit /b 0
+echo naming the symbols of %1 failed: run  powershell -File tools\symbols.ps1 -Publish %1
 exit /b 1
