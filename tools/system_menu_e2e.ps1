@@ -1,7 +1,7 @@
 # The system menu of the Wren icon (integrated title bar, window_chrome.odin): a click opens it, Escape closes it, and the process
 # must live. It used to be opened during the build: its loop (TrackPopupMenu) painted the window from WM_PAINT, that frame was
 # built inside the one being built, and the outer build went on with an empty parent stack (the crash of the 2026-10-26
-# experimental build: a bounds check in ui.spacer, after app_icon). Now the menu opens after the frame (windows.odin: Frame_Stage).
+# experimental build: a bounds check in ui.spacer, after app_icon). Now the menu opens after the frame (windows.odin: the frame gate).
 # Needs the desktop (a visible window, a real popup menu: desktop.lock); the click itself is injected (Wren.click in window pixels).
 #   powershell -NoProfile -File tools\system_menu_e2e.ps1 [-Exe build\wren.exe] [-Rounds 3] [-HoldMs 600] [-Positions top,left]
 # For each position of the tabs (browser.tabs.position: the icon is in the row of tabs, or in the sidebar's title bar), one Wren;
@@ -109,7 +109,14 @@ try {
             $fail++
             break
         }
-        if ($alive -and $crashes.Count -eq 0) { "PASS  $pos, round ${round}: the menu was open $HoldMs ms and closed, and the process lives ($loops loop(s) of the system, $drawn frames drawn meanwhile)" }
+        # (the frame gate, windows.odin: the menu's frames came through it, none where no frame may begin)
+        $violations = if ($after) { $after.frameGate.violations } else { 0 }
+        if ($alive -and $crashes.Count -eq 0 -and $violations -ne 0) {
+            "FAIL  $pos, round ${round}: the frame gate counted $violations violation(s): $($after.frameGate.lastViolation)"
+            $fail++
+            break
+        }
+        if ($alive -and $crashes.Count -eq 0) { "PASS  $pos, round ${round}: the menu was open $HoldMs ms and closed, and the process lives ($loops loop(s) of the system, $drawn frames drawn meanwhile, no violation of the frame gate)" }
         else {
             "FAIL  $pos, round ${round}: the process ended or does not answer (exit code $(if ($p.HasExited) { $p.ExitCode } else { 'still running' }), ctl exit $global:WrenExit); $($crashes.Count) crash report(s)"
             foreach ($c in $crashes) { Get-Content $c.FullName | Select-Object -First 16 }
