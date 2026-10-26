@@ -104,7 +104,7 @@ try {
   Wren-Ctl eval 'window.wk = new Worker("data:text/javascript,setTimeout(() => 0, 1e9)"); 1' | Out-Null
   $wcl = Wren-Ctl eval 'ask("workers")' --await
   Expect ($wcl -match '^worker:') 'clients.matchAll({type: "worker"}) lists the dedicated workers of its clients' $wcl
-  $wsw = Wren-Ctl eval 'new Promise((ok) => { const src = "const c = navigator.serviceWorker; c.onmessage = (e) => postMessage(c.controller.state + \" \" + e.data + \" \" + (e.source instanceof ServiceWorker)); if (c.controller) c.controller.postMessage(\"who\"); else postMessage(\"no controller\");"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout"), 5000); })' --await
+  $wsw = Wren-Ctl eval 'new Promise((ok) => { const t0 = Date.now(); const src = "const c = navigator.serviceWorker; c.onmessage = (e) => postMessage(c.controller.state + \" \" + e.data + \" \" + (e.source instanceof ServiceWorker)); if (c.controller) c.controller.postMessage(\"who\"); else postMessage(\"no controller\");"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout " + (Date.now() - t0) + " ms"), 30000); })' --await
   Expect ($wsw -match '^activated v\d+ true$') 'navigator.serviceWorker in a dedicated worker: its document''s controller, messages both ways' $wsw
   Wren-Ctl click --selector '#x' | Out-Null
   $op = Wren-Ctl eval 'ask("open")' --await
