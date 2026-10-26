@@ -55,10 +55,9 @@ devtools_window_make :: proc(app: ^App) {
 		win.GetClientRect(w.hwnd, &cr)
 		w.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
 	}
-	// straight into the record, not through a local (see window_open: a local render.Surface is a compile-time trap)
+	// made where it lives, not returned by value (see render.surface_create: a Surface in a local is a compile-time trap)
 	dw := new(Dev_Window)
-	ok: bool
-	dw.surf, ok = render.surface_create(&app.r, w.hwnd, w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w.hwnd))   // (window_chrome.odin)
+	ok := render.surface_init(&app.r, &dw.surf, w.hwnd, w.size, transparent = fixed, fixed_size = fixed_surface_size(app, w.hwnd))   // (window_chrome.odin)
 	if !ok {
 		free(dw)
 		platform.destroy_window(w)
