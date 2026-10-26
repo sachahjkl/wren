@@ -40,6 +40,13 @@ if (-not $Force -and (Test-Path $lib) -and (Test-Path $stampFile) -and ((Get-Con
 
 if (-not (Get-Command cargo -ErrorAction SilentlyContinue)) { throw 'cargo not found: install Rust with rustup (stable, x86_64-pc-windows-msvc)' }
 
+# (not Get-FileHash: under the CI's build step, run from cmd after the MSVC environment was set, Windows PowerShell does not find the cmdlet: "not recognized"; the hash the .NET way works everywhere)
+function Sha256Of($path) {
+    $h = [Security.Cryptography.SHA256]::Create()
+    $s = [IO.File]::OpenRead($path)
+    try { return ([BitConverter]::ToString($h.ComputeHash($s)) -replace '-', '').ToUpper() } finally { $s.Dispose(); $h.Dispose() }
+}
+
 # NASM, pinned
 $tools = Join-Path $root 'build\tools'
 $nasmDir = Join-Path $tools "nasm-$NasmVersion"
@@ -47,13 +54,13 @@ $nasm = Join-Path $nasmDir 'nasm.exe'
 if (-not (Test-Path $nasm)) {
     New-Item -ItemType Directory -Force $tools | Out-Null
     $zip = Join-Path $tools "nasm-$NasmVersion-win64.zip"
-    if (-not (Test-Path $zip) -or (Get-FileHash $zip -Algorithm SHA256).Hash -ne $NasmSha256.ToUpper()) {
+    if (-not (Test-Path $zip) -or (Sha256Of $zip) -ne $NasmSha256.ToUpper()) {
         $url = "https://www.nasm.us/pub/nasm/releasebuilds/$NasmVersion/win64/nasm-$NasmVersion-win64.zip"
         "downloading $url"
         $ProgressPreference = 'SilentlyContinue'
         Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
     }
-    $got = (Get-FileHash $zip -Algorithm SHA256).Hash
+    $got = Sha256Of $zip
     if ($got -ne $NasmSha256.ToUpper()) { Remove-Item $zip -Force; throw "SHA-256 mismatch for NASM: expected $NasmSha256, got $got" }
     Expand-Archive -Path $zip -DestinationPath $tools -Force
     if (-not (Test-Path $nasm)) { throw "nasm.exe not found in $nasmDir" }

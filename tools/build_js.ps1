@@ -25,13 +25,20 @@ $raw = Join-Path $out 'wren_js_raw.wasm'
 $final = Join-Path $out 'wren_js.wasm'
 $stampFile = Join-Path $out 'STAMP'
 
+# (not Get-FileHash: the CI's build step runs this from cmd after the MSVC environment was set, and Windows PowerShell did not find the cmdlet there)
+function Sha256Of([string]$path) {
+    $h = [Security.Cryptography.SHA256]::Create()
+    $s = [IO.File]::OpenRead($path)
+    try { return ([BitConverter]::ToString($h.ComputeHash($s)) -replace '-', '').ToUpper() } finally { $s.Dispose(); $h.Dispose() }
+}
+
 function Get-Pinned([string]$url, [string]$file, [string]$sha) {
-    if ((Test-Path $file) -and (Get-FileHash $file -Algorithm SHA256).Hash -eq $sha.ToUpper()) { return }
+    if ((Test-Path $file) -and (Sha256Of $file) -eq $sha.ToUpper()) { return }
     New-Item -ItemType Directory -Force (Split-Path $file) | Out-Null
     "downloading $url"
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
-    $got = (Get-FileHash $file -Algorithm SHA256).Hash
+    $got = Sha256Of $file
     if ($got -ne $sha.ToUpper()) { Remove-Item $file -Force; throw "SHA-256 mismatch for $url`: expected $sha, got $got" }
 }
 
