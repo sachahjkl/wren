@@ -83,8 +83,8 @@ Window_Cursor :: struct {
 @(private = "file")
 Cursor_Cache_Entry :: struct { key: u64, cc: platform.Custom_Cursor, used: u64 }
 
-@(private = "file")
-Page_Cursor_View :: struct {   // a window's own: its custom cursors are made for it (window_local)
+// A window's own (Window_Own.cursor): its custom cursors are made for it.
+Page_Cursor_View :: struct {
 	cache:    [dynamic]Cursor_Cache_Entry,
 	clock:    u64,
 	dragging: bool,            // a press on the page is held: `frozen` shows until it is released
@@ -96,7 +96,6 @@ Page_Cursor_View :: struct {   // a window's own: its custom cursors are made fo
 @(private = "file")
 Page_Cursor_State :: struct {
 	watch:    int,
-	using view: Page_Cursor_View,
 	log_path: string,
 }
 
@@ -111,15 +110,18 @@ page_cursor_init :: proc(app: ^App) {
 	pcs.log_path = strings.clone(os.get_env("WREN_CURSOR_LOG", context.temp_allocator))
 }
 
-page_cursor_window_local :: proc() {
-	window_local(&pcs.view, proc() { delete(pcs.cache); pcs.view = {} })
+// A window's view goes with it (its cursors go with the native window).
+page_cursor_view_destroy :: proc(v: ^Page_Cursor_View) {
+	delete(v.cache)
+	v^ = {}
 }
 
 page_cursor_shutdown :: proc(app: ^App) {
 	config.unwatch(&app.prefs, pcs.watch)
 	platform.set_cursor(app.win, .Arrow)
-	for e in pcs.cache { platform.custom_cursor_release(app.win, e.cc) }
-	delete(pcs.cache)
+	v := &window_own(app).cursor
+	for e in v.cache { platform.custom_cursor_release(app.win, e.cc) }
+	page_cursor_view_destroy(v)
 	delete(pcs.log_path)
 	pcs = {}
 }
@@ -270,26 +272,26 @@ page_cursor_at :: proc(l: ^Layout, d: ^dom.Document, st: ^style.Styled, p, viewp
 // Images as cursors
 
 @(private = "file")
-cache_find :: proc(key: u64) -> platform.Custom_Cursor {
-	for &e in pcs.cache {
-		if e.key == key { pcs.clock += 1; e.used = pcs.clock; return e.cc }
+cache_find :: proc(v: ^Page_Cursor_View, key: u64) -> platform.Custom_Cursor {
+	for &e in v.cache {
+		if e.key == key { v.clock += 1; e.used = v.clock; return e.cc }
 	}
 	return 0
 }
 
 @(private = "file")
-cache_add :: proc(app: ^App, key: u64, cc: platform.Custom_Cursor) {
-	pcs.clock += 1
-	append(&pcs.cache, Cursor_Cache_Entry{key = key, cc = cc, used = pcs.clock})
-	for len(pcs.cache) > max(ccfg.cache_entries, 1) {
+cache_add :: proc(app: ^App, v: ^Page_Cursor_View, key: u64, cc: platform.Custom_Cursor) {
+	v.clock += 1
+	append(&v.cache, Cursor_Cache_Entry{key = key, cc = cc, used = v.clock})
+	for len(v.cache) > max(ccfg.cache_entries, 1) {
 		oldest := -1
-		for e, i in pcs.cache {
-			if e.cc == pcs.shown.custom || e.cc == pcs.frozen.custom { continue }
-			if oldest < 0 || e.used < pcs.cache[oldest].used { oldest = i }
+		for e, i in v.cache {
+			if e.cc == v.shown.custom || e.cc == v.frozen.custom { continue }
+			if oldest < 0 || e.used < v.cache[oldest].used { oldest = i }
 		}
 		if oldest < 0 { break }
-		platform.custom_cursor_release(app.win, pcs.cache[oldest].cc)
-		unordered_remove(&pcs.cache, oldest)
+		platform.custom_cursor_release(app.win, v.cache[oldest].cc)
+		unordered_remove(&v.cache, oldest)
 	}
 }
 
@@ -321,7 +323,8 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 		density := f32(fp.width) / css.x   // image pixels per CSS pixel of what was decoded (an SVG's raster, a reduced decode)
 		kb: [5]u64 = {fp.texture, fp.generation, u64(transmute(u32)hot.x) << 32 | u64(transmute(u32)hot.y), u64(transmute(u32)css.x) << 32 | u64(transmute(u32)css.y), u64(fp.width) << 32 | u64(fp.height)}
 		key := hash.fnv64a(transmute([]u8)kb[:]) | 1
-		if cc := cache_find(key); cc != 0 && platform.custom_cursor_valid(app.win, cc) { return cc }
+		pv := &window_own(app).cursor
+		if cc := cache_find(pv, key); cc != 0 && platform.custom_cursor_valid(app.win, cc) { return cc }
 		pixels := fp.pixels
 		if fp.stride != fp.width * 4 {
 			pixels = make([]u8, fp.width * fp.height * 4, context.temp_allocator)
@@ -329,7 +332,7 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 		}
 		cc, err := platform.custom_cursor_create(app.win, pixels, {fp.width, fp.height}, hot * density, density, key, ccfg.image_max_css)
 		if err != .None { continue }
-		cache_add(app, key, cc)
+		cache_add(app, pv, key, cc)
 		return cc
 	}
 	return 0
@@ -362,16 +365,17 @@ page_tab :: proc(app: ^App) -> ^Tab {
 // The frame's events, before anything takes them (main.odin): a left press on the page freezes its cursor until the
 // release (the chrome's widgets and overlays over the page, as the previous frame laid them out, keep theirs).
 page_cursor_events :: proc(app: ^App, events: []platform.Event) {
+	v := &window_own(app).cursor
 	for ev in events {
 		#partial switch ev.kind {
 		case .Mouse_Press:
-			if ev.button != .Left || pcs.dragging { continue }
+			if ev.button != .Left || v.dragging { continue }
 			t := page_tab(app)
-			if t == nil || !draw.rect_contains(app.page_rect, ev.pos) || hud_captures(ev.pos) || ui.ctx_menu_any_open() || ui.hot_key() != 0 { continue }
-			pcs.frozen = page_window_cursor(app, t, ev.pos)
-			pcs.dragging = true
+			if t == nil || !draw.rect_contains(app.page_rect, ev.pos) || hud_captures(app, ev.pos) || ui.ctx_menu_any_open() || ui.hot_key() != 0 { continue }
+			v.frozen = page_window_cursor(app, t, ev.pos)
+			v.dragging = true
 		case .Mouse_Release:
-			if ev.button == .Left { pcs.dragging = false }
+			if ev.button == .Left { v.dragging = false }
 		}
 	}
 }
@@ -379,15 +383,16 @@ page_cursor_events :: proc(app: ^App, events: []platform.Event) {
 // The window's cursor for this frame (after the chrome's build): the page's over the page area, else the chrome's.
 window_cursor_apply :: proc(app: ^App) {
 	st := app.ui_state
+	v := &window_own(app).cursor
 	wc := Window_Cursor{keyword = ui.cursor(st)}
 	pos := ui.mouse_pos()
-	if pcs.dragging && page_tab(app) != nil {
-		wc = pcs.frozen
+	if v.dragging && page_tab(app) != nil {
+		wc = v.frozen
 	} else if t := page_tab(app); t != nil && st.mouse_valid && wc.keyword == .Arrow && draw.rect_contains(app.page_rect, pos) &&
-	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(pos) {
+	          ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
 		wc = page_window_cursor(app, t, pos)
 	} else if ct := current_tab(app); ct != nil && ct.kind == .Web && ccfg.progress_loading && tab_loading(ct) && st.mouse_valid && wc.keyword == .Arrow &&
-	          draw.rect_contains(app.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(pos) {
+	          draw.rect_contains(app.page_rect, pos) && ui.hot_key() == 0 && ui.active_key() == 0 && !ui.ctx_menu_any_open() && !hud_captures(app, pos) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
 	if c, dragging := dnd_cursor(); dragging { wc = Window_Cursor{keyword = c} }   // dnd_shell.odin: the drag's operation
@@ -397,10 +402,10 @@ window_cursor_apply :: proc(app: ^App) {
 	} else {
 		platform.set_cursor(app.win, wc.keyword)
 	}
-	if !pcs.shown_ok || wc.keyword != pcs.shown.keyword || wc.custom != pcs.shown.custom || wc.node != pcs.shown.node {
+	if !v.shown_ok || wc.keyword != v.shown.keyword || wc.custom != v.shown.custom || wc.node != v.shown.node {
 		if pcs.log_path != "" { cursor_log(app, wc) }
 	}
-	pcs.shown, pcs.shown_ok = wc, true
+	v.shown, v.shown_ok = wc, true
 }
 
 // A line per change: cursor=<css name> custom=<true|false> node=<tag>#<id> at=<x>,<y> (the page's point in CSS

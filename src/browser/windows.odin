@@ -72,11 +72,18 @@ Window_Own :: struct {
 	security_chip_width: f32,                 // chrome.odin: the security chip's width at the last layout
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
+	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen
+	cursor:              Page_Cursor_View,    // page_cursor.odin: the window's cursors made from page images, what it shows
 }
 
 // The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
 window_own :: proc(app: ^App) -> ^Window_Own {
 	return app.active != nil ? &app.active.own : &app.bare_own
+}
+
+// What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
+window_own_destroy :: proc(own: ^Window_Own) {
+	page_cursor_view_destroy(&own.cursor)
 }
 
 ////////////////////////////////
@@ -110,8 +117,6 @@ windows_register_locals :: proc() {
 	window_local(&fview, forms_shell_destroy)
 	window_local(&sshell)
 	window_local(&ub.view, urlbar_view_destroy)
-	window_local(&wchrome.full)
-	page_cursor_window_local()
 }
 
 windows_locals_destroy :: proc() {
@@ -421,6 +426,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 		if l.destroy != nil { l.destroy() }
 		_ = i
 	}
+	window_own_destroy(&w.own)
 	window_deactivate(app)
 	for b in w.locals { delete(b) }
 	delete(w.locals)
@@ -650,6 +656,7 @@ windows_shutdown_begin :: proc(app: ^App) {
 		if w == front { continue }
 		window_activate(app, w)
 		for l in window_locals { if l.destroy != nil { l.destroy() } }
+		window_own_destroy(&w.own)
 	}
 	window_activate(app, front)
 	sync.atomic_store(&wake_target, 0)

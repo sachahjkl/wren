@@ -913,7 +913,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		hovered := base.NIL_HANDLE
 		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
-		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(last_move.pos)
+		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
 		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
@@ -929,14 +929,14 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
-		if !hud_captures(ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
+		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
-		if !hud_captures(ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
+		if !hud_captures(app, ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
 		if frames_route_keys(app, ev, index) { continue }
 		// form controls first: keyboard for the focused field, the open drop-down list (forms_shell.odin)
 		if forms_route_event(app, t, ev, index) { continue }
 		if t.page == nil { return }
-		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(ev.pos) { continue }   // the frame statistics panel
+		if (ev.kind == .Mouse_Press || ev.kind == .Scroll) && hud_captures(app, ev.pos) { continue }   // the frame statistics panel
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
