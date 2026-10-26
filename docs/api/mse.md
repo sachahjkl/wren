@@ -5,9 +5,11 @@
 Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds
 the coded frames a container parser made of what scripts appended (src/media), which a media element plays; the objects
 are EventTargets: sourceopen / sourceended / sourceclose, updatestart / update / updateend / error / abort,
-addsourcebuffer / removesourcebuffer are events of the host objects.
+addsourcebuffer / removesourcebuffer are events of the host objects. In a dedicated worker the same functions drive
+a MediaSource whose media element is in the page (src/page/mse_worker.odin): its MediaSourceHandle is transferred to
+the page and set as the element's srcObject.
 
-Exposed to: Window. Source: `api/media_source.widl`.
+Exposed to: Window, Worker. Source: `api/media_source.widl`.
 
 ## Types
 
@@ -23,6 +25,10 @@ Checked by the browser on every call (`lookup_SourceBuffer`).
 
 Checked by the browser on every call (`lookup_SourceBufferList`).
 
+### handle `MediaSourceHandle` : `Object`
+
+Checked by the browser on every call (`lookup_MediaSourceHandle`).
+
 ## Functions
 
 ### `MediaSource_create`
@@ -31,7 +37,7 @@ Checked by the browser on every call (`lookup_SourceBufferList`).
 MediaSource MediaSource_create() raises
 ```
 
-new MediaSource(): closed until an element attaches it.
+new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
 
 Raises: returns an `Error` (see [web](web.md)).
 
@@ -40,13 +46,52 @@ Host: `MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)`
 ### `MediaSource_registerObjectURL`
 
 ```
-void MediaSource_registerObjectURL(MediaSource source, string url)
+void MediaSource_registerObjectURL(MediaSource source, string url) raises
 ```
 
 URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
-that URL plays this source. Called by the engine with the URL it made.
+that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
 
-Host: `MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string)`
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string) -> Api_Error`
+
+### `MediaSource_handle`
+
+```
+MediaSourceHandle MediaSource_handle(MediaSource source) raises
+```
+
+mediaSource.handle: the same MediaSourceHandle each time (a dedicated worker's MediaSource; NotSupported else).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `MediaSource_handle :: proc(c: ^Call, source: Api_MediaSource) -> (u64, Api_Error)`
+
+### `MediaSourceHandle_take`
+
+```
+u64 MediaSourceHandle_take(MediaSourceHandle h) raises
+```
+
+A MediaSourceHandle in the transfer list of a message: the token the receiving realm adopts (DataClone when it
+was transferred before or its MediaSource is attached already).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `MediaSourceHandle_take :: proc(c: ^Call, h: Api_MediaSourceHandle) -> (u64, Api_Error)`
+
+### `MediaSourceHandle_adopt`
+
+```
+MediaSourceHandle MediaSourceHandle_adopt(u64 token) raises
+```
+
+The receiving realm's MediaSourceHandle for a token.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `MediaSourceHandle_adopt :: proc(c: ^Call, token: u64) -> (u64, Api_Error)`
 
 ### `MediaSource_revokeObjectURL`
 

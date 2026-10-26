@@ -113,6 +113,7 @@ Media_Element :: struct {
 	blob_ms:       u64,        // the Media Source the src attribute named when it was set (0: none) ...
 	blob_href:     string,     // ... and the URL it did so by (owned)
 	timer_tok:     ^Media_Notice,   // the data of `timer` until it fires (freed with the element when it never does)
+	src_channel:   ^Mse_Channel,    // srcObject: a worker's MediaSource (its handle's channel, a reference; mse_worker.odin)
 }
 
 Page_Media :: struct {
@@ -229,6 +230,7 @@ media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	delete(el.current_src)
 	delete(el.blob_href)
 	delete(el.err_message)
+	if el.src_channel != nil { mse_channel_release(el.src_channel) }
 	if el.timer != base.NIL_HANDLE { host.clear_timer(p.loop, el.timer); free(el.timer_tok) }   // (a timer cleared before it fires does not free its data)
 	free(el)
 }
@@ -387,6 +389,13 @@ media_load :: proc(el: ^Media_Element, scheduled := false) {
 	el.network_state = NETWORK_NO_SOURCE
 	if !st.enabled {
 		media_error(el, MEDIA_ERR_SRC_NOT_SUPPORTED, "media is disabled (media.enabled)")
+		return
+	}
+	// srcObject (a worker's MediaSourceHandle) comes before the src attribute (HTML resource selection: "object")
+	if el.src_channel != nil {
+		el.network_state = NETWORK_LOADING
+		media_fire(el, "loadstart")
+		mse_attach_channel(el)   // mse_worker.odin
 		return
 	}
 	// neither a src attribute nor a <source> child: nothing to select (HTML resource selection step: NETWORK_EMPTY, no error)

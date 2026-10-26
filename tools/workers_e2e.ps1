@@ -81,6 +81,10 @@ try {
   $deep = Wren-Ctl eval ($ask -replace 'MSG', '{op: "chain", depth: 3}') --await
   Expect ($deep -eq 'error at level2 < level3') 'workers.max_depth: the worker one level too deep is refused with an error event' $deep
   Wren-Ctl pref set workers.max_depth 16 | Out-Null
+
+  # --- Media Source Extensions in a dedicated worker (mse_worker.js): the handle transferred, the page's video plays
+  $mse = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("mse_worker.js"); const v = document.createElement("video"); v.muted = true; document.body.appendChild(v); let first = ""; w.onmessage = (e) => { const d = e.data; if (d.handle) { first = [d.can, d.url, d.same, d.handle instanceof MediaSourceHandle].join(" "); v.srcObject = d.handle; let again; try { structuredClone(d.handle, {transfer: [d.handle]}); again = "cloned"; } catch (x) { again = x.name; } first += " " + (v.srcObject === d.handle) + " " + again; } else if (d.done) { const end = () => ok(first + " | " + d.done + " | " + v.readyState + " " + v.duration.toFixed(1)); v.readyState >= 1 ? end() : v.addEventListener("loadedmetadata", end); } }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout " + first), 15000); })' --await
+  Expect ($mse -match '^true blob: true true true DataCloneError \| sourceopen open \| buffers 1 \| updating true \| updated false 1 4\.\d \| ended ended \| sourceended \| [1-4] 4\.\d$') 'MediaSource in a dedicated worker: canConstructInDedicatedWorker, an object URL that names nothing, its handle transferred once and set as a video''s srcObject, appends and endOfStream in the worker, the page''s video gets the metadata' $mse
 } finally {
   if ($name -and $Check) { $leaks = Stop-WrenChecked; Expect (Test-WrenCheckClean $leaks) 'the check build exits with nothing left allocated' $leaks } elseif ($name) { Stop-Wren $name }
   Stop-WrenTestServer $srv

@@ -481,6 +481,12 @@ Api_SourceBufferList :: struct {
 	data:   ^Source_Buffer_List_Object,
 }
 
+// A live MediaSourceHandle: its handle and what lookup_MediaSourceHandle found.
+Api_MediaSourceHandle :: struct {
+	handle: u64,
+	data:   ^Mse_Handle_Object,
+}
+
 // A request and, once it arrived, its response.
 // A live Fetch: its handle and what lookup_Fetch found.
 Api_Fetch :: struct {
@@ -21798,6 +21804,29 @@ _t_htmlmedia_HTMLMediaElement_ranges :: proc "c" (env: rawptr, caller: wasm.Call
 	return nil
 }
 
+// HTMLMediaElement_setSourceHandle :: proc(c: ^Call, element: Api_HTMLMediaElement, handle: u64) -> Api_Error
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_setSourceHandle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_setSourceHandle: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := u64(a[1].i64)
+	_err := HTMLMediaElement_setSourceHandle(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // HTMLMediaElement_errorCode :: proc(c: ^Call, element: Api_HTMLMediaElement) -> i32
 @(private = "file")
 _t_htmlmedia_HTMLMediaElement_errorCode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -22011,7 +22040,7 @@ _t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	return nil
 }
 
-// MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string)
+// MediaSource_registerObjectURL :: proc(c: ^Call, source: Api_MediaSource, url: string) -> Api_Error
 @(private = "file")
 _t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -22022,18 +22051,92 @@ _t_mse_MediaSource_registerObjectURL :: proc "c" (env: rawptr, caller: wasm.Call
 	if !_k1 { return wasm.trap_bounds(&f, "mse.MediaSource_registerObjectURL", "url") }
 	_p1 := string(_s1[:_n1])
 	if !wasm.valid_utf8(_p1) {
-		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mse.MediaSource_registerObjectURL: argument url is not valid UTF-8") }
-		return wasm.trap_new("mse.MediaSource_registerObjectURL: argument url is not valid UTF-8")
+		return _fail_status(&c, a, .Type, "mse.MediaSource_registerObjectURL: argument url is not valid UTF-8")
 	}
 	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
 	_p0.data = lookup_MediaSource(&c, _p0.handle)
 	if _p0.data == nil {
-		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.MediaSource_registerObjectURL: argument source is not a live MediaSource") }
-		return wasm.trap_new("mse.MediaSource_registerObjectURL: argument source is not a live MediaSource")
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_registerObjectURL: argument source is not a live MediaSource")
 	}
-	MediaSource_registerObjectURL(&c, _p0, _p1)
+	_err := MediaSource_registerObjectURL(&c, _p0, _p1)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSource_handle :: proc(c: ^Call, source: Api_MediaSource) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_MediaSource_handle :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSource_handle", "result pointer") }
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSource_handle: argument source is not a live MediaSource")
+	}
+	_r, _err := MediaSource_handle(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSourceHandle_take :: proc(c: ^Call, h: Api_MediaSourceHandle) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_MediaSourceHandle_take :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSourceHandle_take", "result pointer") }
+	_p0 := Api_MediaSourceHandle{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSourceHandle(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mse.MediaSourceHandle_take: argument h is not a live MediaSourceHandle")
+	}
+	_r, _err := MediaSourceHandle_take(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// MediaSourceHandle_adopt :: proc(c: ^Call, token: u64) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_MediaSourceHandle_adopt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[1]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.MediaSourceHandle_adopt", "result pointer") }
+	_p0 := u64(a[0].i64)
+	_r, _err := MediaSourceHandle_adopt(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
 	return nil
 }
 
@@ -26534,6 +26637,7 @@ api_imports := [?]wasm.Import{
 	{module = "htmlmedia", name = "HTMLMediaElement_muted", fn = _t_htmlmedia_HTMLMediaElement_muted, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLMediaElement_set_muted", fn = _t_htmlmedia_HTMLMediaElement_set_muted, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
 	{module = "htmlmedia", name = "HTMLMediaElement_ranges", fn = _t_htmlmedia_HTMLMediaElement_ranges, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_setSourceHandle", fn = _t_htmlmedia_HTMLMediaElement_setSourceHandle, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLMediaElement_errorCode", fn = _t_htmlmedia_HTMLMediaElement_errorCode, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLMediaElement_errorMessage", fn = _t_htmlmedia_HTMLMediaElement_errorMessage, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "htmlmedia", name = "HTMLMediaElement_play", fn = _t_htmlmedia_HTMLMediaElement_play, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
@@ -26543,36 +26647,39 @@ api_imports := [?]wasm.Import{
 	{module = "htmlmedia", name = "HTMLVideoElement_videoWidth", fn = _t_htmlmedia_HTMLVideoElement_videoWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLVideoElement_videoHeight", fn = _t_htmlmedia_HTMLVideoElement_videoHeight, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLVideoElement_playbackQuality", fn = _t_htmlmedia_HTMLVideoElement_playbackQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "MediaSource_create", fn = _t_mse_MediaSource_create, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_registerObjectURL", fn = _t_mse_MediaSource_registerObjectURL, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "mse", name = "MediaSource_revokeObjectURL", fn = _t_mse_MediaSource_revokeObjectURL, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
-	{module = "mse", name = "MediaSource_isTypeSupported", fn = _t_mse_MediaSource_isTypeSupported, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_sourceBuffers", fn = _t_mse_MediaSource_sourceBuffers, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "MediaSource_activeSourceBuffers", fn = _t_mse_MediaSource_activeSourceBuffers, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "MediaSource_readyState", fn = _t_mse_MediaSource_readyState, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "MediaSource_duration", fn = _t_mse_MediaSource_duration, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "mse", name = "MediaSource_set_duration", fn = _t_mse_MediaSource_set_duration, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_addSourceBuffer", fn = _t_mse_MediaSource_addSourceBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_removeSourceBuffer", fn = _t_mse_MediaSource_removeSourceBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_endOfStream", fn = _t_mse_MediaSource_endOfStream, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_setLiveSeekableRange", fn = _t_mse_MediaSource_setLiveSeekableRange, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "MediaSource_clearLiveSeekableRange", fn = _t_mse_MediaSource_clearLiveSeekableRange, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBufferList_length", fn = _t_mse_SourceBufferList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBufferList_item", fn = _t_mse_SourceBufferList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_mode", fn = _t_mse_SourceBuffer_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "SourceBuffer_set_mode", fn = _t_mse_SourceBuffer_set_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_updating", fn = _t_mse_SourceBuffer_updating, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_ranges", fn = _t_mse_SourceBuffer_ranges, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
-	{module = "mse", name = "SourceBuffer_timestampOffset", fn = _t_mse_SourceBuffer_timestampOffset, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "mse", name = "SourceBuffer_set_timestampOffset", fn = _t_mse_SourceBuffer_set_timestampOffset, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_appendWindowStart", fn = _t_mse_SourceBuffer_appendWindowStart, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "mse", name = "SourceBuffer_set_appendWindowStart", fn = _t_mse_SourceBuffer_set_appendWindowStart, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_appendWindowEnd", fn = _t_mse_SourceBuffer_appendWindowEnd, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
-	{module = "mse", name = "SourceBuffer_set_appendWindowEnd", fn = _t_mse_SourceBuffer_set_appendWindowEnd, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_appendBuffer", fn = _t_mse_SourceBuffer_appendBuffer, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_abort", fn = _t_mse_SourceBuffer_abort, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_changeType", fn = _t_mse_SourceBuffer_changeType, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "mse", name = "SourceBuffer_remove", fn = _t_mse_SourceBuffer_remove, realms = 1, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_create", fn = _t_mse_MediaSource_create, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_registerObjectURL", fn = _t_mse_MediaSource_registerObjectURL, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_handle", fn = _t_mse_MediaSource_handle, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSourceHandle_take", fn = _t_mse_MediaSourceHandle_take, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSourceHandle_adopt", fn = _t_mse_MediaSourceHandle_adopt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_revokeObjectURL", fn = _t_mse_MediaSource_revokeObjectURL, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mse", name = "MediaSource_isTypeSupported", fn = _t_mse_MediaSource_isTypeSupported, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_sourceBuffers", fn = _t_mse_MediaSource_sourceBuffers, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_activeSourceBuffers", fn = _t_mse_MediaSource_activeSourceBuffers, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_readyState", fn = _t_mse_MediaSource_readyState, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "MediaSource_duration", fn = _t_mse_MediaSource_duration, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "MediaSource_set_duration", fn = _t_mse_MediaSource_set_duration, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_addSourceBuffer", fn = _t_mse_MediaSource_addSourceBuffer, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_removeSourceBuffer", fn = _t_mse_MediaSource_removeSourceBuffer, realms = 3, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_endOfStream", fn = _t_mse_MediaSource_endOfStream, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_setLiveSeekableRange", fn = _t_mse_MediaSource_setLiveSeekableRange, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "MediaSource_clearLiveSeekableRange", fn = _t_mse_MediaSource_clearLiveSeekableRange, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBufferList_length", fn = _t_mse_SourceBufferList_length, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBufferList_item", fn = _t_mse_SourceBufferList_item, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_mode", fn = _t_mse_SourceBuffer_mode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "SourceBuffer_set_mode", fn = _t_mse_SourceBuffer_set_mode, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_updating", fn = _t_mse_SourceBuffer_updating, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_ranges", fn = _t_mse_SourceBuffer_ranges, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mse", name = "SourceBuffer_timestampOffset", fn = _t_mse_SourceBuffer_timestampOffset, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_timestampOffset", fn = _t_mse_SourceBuffer_set_timestampOffset, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendWindowStart", fn = _t_mse_SourceBuffer_appendWindowStart, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_appendWindowStart", fn = _t_mse_SourceBuffer_set_appendWindowStart, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendWindowEnd", fn = _t_mse_SourceBuffer_appendWindowEnd, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mse", name = "SourceBuffer_set_appendWindowEnd", fn = _t_mse_SourceBuffer_set_appendWindowEnd, realms = 3, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_appendBuffer", fn = _t_mse_SourceBuffer_appendBuffer, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_abort", fn = _t_mse_SourceBuffer_abort, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_changeType", fn = _t_mse_SourceBuffer_changeType, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "SourceBuffer_remove", fn = _t_mse_SourceBuffer_remove, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

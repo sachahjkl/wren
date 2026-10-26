@@ -29,11 +29,14 @@ enum {
     T_BLOB,   /* a Blob or File: is a file, its type, its bytes, and for a File its name and lastModified */
     T_GEOM,   /* DOMPoint, DOMRect, DOMMatrix (and their ReadOnly forms), ImageData: a kind, then their attributes */
     T_FS_HANDLE,   /* a FileSystemHandle: its description (runtime/web_fs.c), restored in the receiving realm */
+    T_MSE_HANDLE,  /* a MediaSourceHandle of the transfer list: the browser's token (src/page/mse_worker.odin) */
 };
 
 /* runtime/web_fs.c (weak: a build without it clones no handle) */
 __attribute__((weak)) char *web_fs_handle_describe(JSContext *ctx, JSValueConst v);
 __attribute__((weak)) JSValue web_fs_handle_restore(JSContext *ctx, const char *desc, size_t len);
+
+extern wj_val wj_wrap_owned(wj_ctx *ctx, uint64_t handle, int iface, JSValueConst new_target);
 
 /* runtime/web_blob.c */
 extern bool web_blob_bytes(JSValueConst v, const uint8_t **ptr, size_t *len);
@@ -377,6 +380,18 @@ static bool serialize_object(ser *s, JSValueConst v)
         }
         return clone_error(ctx, "A MessagePort could not be cloned because it was not transferred.");
     }
+    if (wj_unwrap(v, WJ_IFACE_MediaSourceHandle)) {
+        /* transferable only: the browser hands out a token the receiving realm adopts (the sender's handle is detached) */
+        bool listed = false;
+        for (uint32_t i = 0; i < s->n_transfer; i++) { if (JS_VALUE_GET_PTR(s->transfer[i]) == JS_VALUE_GET_PTR(v)) { listed = true; break; } }
+        if (!listed) { return clone_error(ctx, "A MediaSourceHandle could not be cloned because it was not transferred."); }
+        uint64_t token = 0;
+        if (wr_MediaSourceHandle_take(wj_obj_of(v)->handle, &token) < 0) { return clone_error(ctx, "A MediaSourceHandle could not be transferred (it was transferred before, or is in use)."); }
+        if (!remember(s, v)) { return false; }
+        put_u8(&s->out, T_MSE_HANDLE);
+        put_u64(&s->out, token);
+        return true;
+    }
     const uint8_t *blob_bytes;
     size_t blob_len;
     if (web_blob_bytes(v, &blob_bytes, &blob_len)) {
@@ -625,9 +640,10 @@ static bool transfer_list(JSContext *ctx, JSValueConst list, JSValue **out, uint
         items[i] = JS_GetPropertyInt64(ctx, list, i);
         if (JS_IsException(items[i])) { items[i] = JS_UNDEFINED; ok = false; break; }
         bool port = wj_unwrap(items[i], WJ_IFACE_MessagePort) != NULL;
-        if (!port && !JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer and MessagePort are)."); break; }
+        bool msh = wj_unwrap(items[i], WJ_IFACE_MediaSourceHandle) != NULL;
+        if (!port && !msh && !JS_IsArrayBuffer(items[i])) { ok = clone_error(ctx, "Value at index in the transfer list is not transferable (only ArrayBuffer, MessagePort and MediaSourceHandle are)."); break; }
         size_t len = 0;
-        if (!port && !JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
+        if (!port && !msh && !JS_GetArrayBuffer(ctx, &len, items[i]) && JS_HasException(ctx)) {
             JS_FreeValue(ctx, JS_GetException(ctx));
             ok = clone_error(ctx, "An ArrayBuffer is detached and could not be transferred.");
             break;
@@ -687,6 +703,7 @@ uint8_t *wj_clone_serialize_ports(JSContext *ctx, JSValueConst value, JSValueCon
         uint32_t k = 0;
         for (uint32_t i = 0; i < n; i++) {
             if (wj_unwrap(items[i], WJ_IFACE_MessagePort)) { JS_SetPropertyUint32(ctx, list, k++, JS_DupValue(ctx, items[i])); }
+            else if (wj_unwrap(items[i], WJ_IFACE_MediaSourceHandle)) { /* (detached by the browser when it was taken) */ }
             else { JS_DetachArrayBuffer(ctx, items[i]); }
         }
         *ports = list;
@@ -1037,6 +1054,14 @@ static JSValue deserialize(deser *d)
         if (!get_u32(d, &i) || !JS_IsArray(d->ports)) { r = malformed(ctx); break; }
         r = JS_GetPropertyUint32(ctx, d->ports, i);
         if (JS_IsUndefined(r)) { r = malformed(ctx); }
+        break;
+    }
+    case T_MSE_HANDLE: {
+        uint64_t token, h = 0;
+        if (!get_u64(d, &token)) { r = malformed(ctx); break; }
+        if (wr_MediaSourceHandle_adopt(token, &h) < 0 || !h) { r = malformed(ctx); break; }
+        r = wj_wrap_owned(ctx, h, WJ_IFACE_MediaSourceHandle, JS_UNDEFINED);
+        if (!JS_IsException(r) && !add_ref(d, r)) { JS_FreeValue(ctx, r); r = JS_EXCEPTION; }
         break;
     }
     case T_FS_HANDLE: {

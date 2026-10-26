@@ -55,6 +55,8 @@ Worker_Msg_Kind :: enum u8 {
 	Child_Create,   // worker -> page: new Worker() in the worker (nested_workers.odin): id = the child's link (a reference)
 	Child_Event,    // page -> worker: what its child sent (id = the child's link; code 0 message, 1 error, 2 gone)
 	Child_Terminate,// worker -> page: terminate() of a child (id = its link; code 1: its Worker object is gone too)
+	Mse_Command,    // worker -> page: a call on a worker's MediaSource (mse_worker.odin; id = its channel, a reference)
+	Mse_Event,      // page -> worker: an event of its page's side, with the state (id = the channel, a reference)
 }
 
 Worker_Msg :: struct {
@@ -74,6 +76,7 @@ Worker_Msg :: struct {
 @(private)
 msg_free :: proc(m: ^Worker_Msg) {
 	if m.kind == .Child_Create && m.id != 0 { link_release((^Worker_Link)(uintptr(m.id))) }   // never delivered
+	if (m.kind == .Mse_Command || m.kind == .Mse_Event) && m.id != 0 { mse_channel_release((^Mse_Channel)(uintptr(m.id))) }   // its reference
 	delete(m.text); delete(m.text2); delete(m.text3); delete(m.bytes)
 	for b in m.buffers { delete(b) }
 	delete(m.buffers)
@@ -543,7 +546,9 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		nested_host_create(h, m)   // nested_workers.odin
 	case .Child_Terminate:
 		nested_terminate_child(h, m.id, m.code == 1)
-	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect, .Sw_Client, .Child_Event:
+	case .Mse_Command:
+		mse_ui_command(m)   // mse_worker.odin
+	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect, .Sw_Client, .Child_Event, .Mse_Event:
 	}
 }
 
@@ -883,7 +888,8 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 			case .Connect:     shared_connect_event(p, m)   // shared_worker.odin (takes the port end)
 			case .Sw_Client:   sw_client_message(p, m)   // service_worker.odin
 			case .Child_Event: nested_event(p, m)   // nested_workers.odin
-			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply, .Sw_Post, .Child_Create, .Child_Terminate:
+			case .Mse_Event:   mse_worker_event(p, m)   // mse_worker.odin
+			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply, .Sw_Post, .Child_Create, .Child_Terminate, .Mse_Command:
 			}
 		}
 		msg_free(m)

@@ -75,8 +75,8 @@ function not exposed to workers is not instantiated.
 | [`storageaccess`](storageaccess.md) | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
 | [`navigator`](navigator.md) | 8 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
-| [`htmlmedia`](htmlmedia.md) | 29 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
-| [`mse`](mse.md) | 30 | Window | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
+| [`htmlmedia`](htmlmedia.md) | 30 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
+| [`mse`](mse.md) | 33 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | 19 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`ports`](ports.md) | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
@@ -88,4 +88,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1163 imports in 1064 functions.
+1167 imports in 1068 functions.
