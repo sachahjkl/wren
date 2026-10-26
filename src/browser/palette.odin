@@ -959,7 +959,7 @@ palette_build :: proc(app: ^App) {
 	x := math.round((win_w - w) * 0.5)
 	// over the address row, as VS Code's over its title bar
 	y := em * 0.5
-	if b := ui.box_from_key(address_key); b != nil && !platform.is_fullscreen(app.win) { y = b.rect.min.y - em * 0.15 }
+	if b := ui.box_from_key(address_key(app)); b != nil && !platform.is_fullscreen(app.win) { y = b.rect.min.y - em * 0.15 }
 	y = math.round(y - (1 - ease) * em * 0.6)
 	rh := ui.dense(em * 2.1)
 	pad := math.round(em * 0.4)

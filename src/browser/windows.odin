@@ -78,6 +78,13 @@ Window_Own :: struct {
 	sidebar:             Tab_Sidebar,         // tab_sidebar.odin: the sidebar's width handle, whether it was shown
 	find:                Find_State,          // find_bar.odin: the find bar, its text and its matches
 	forms:               Forms_View,          // forms_shell.odin: the form controls as painted, the keyboard in the page, the drop-down
+	address_key:         ui.Key,              // chrome.odin: the address field's key, set when it is built
+	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
+	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
+	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
+	page_info_request:     bool,              // chrome.odin: the security chip's page information
+	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
+	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
 }
 
 // The state of the window being framed (the active one); an App with no window (a test's) has one of its own.

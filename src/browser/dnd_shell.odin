@@ -158,15 +158,15 @@ dropped_address :: proc(d: ^platform.Drag_Data) -> (string, bool) {
 
 // Over the address field (the current tab loads it) or elsewhere in the browser's interface (a new tab).
 @(private = "file")
-over_address :: proc(pos: [2]f32) -> bool {
-	b := ui.box_from_key(address_key)
+over_address :: proc(app: ^App, pos: [2]f32) -> bool {
+	b := ui.box_from_key(address_key(app))
 	return b != nil && draw.rect_contains(b.rect, pos)
 }
 
 @(private = "file")
 chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 	if address == "" { return }
-	if over_address(pos) && current_tab(app) != nil {
+	if over_address(app, pos) && current_tab(app) != nil {
 		navigate(app, current_tab(app), address, origin = .User)
 		ui.field_set(&app.address, current_tab(app).url)
 	} else {
