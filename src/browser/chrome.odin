@@ -13,6 +13,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:cookies"
 import "wb:fetch"
+import "wb:i18n"
 import "wb:url"
 
 // Icon-font glyphs used by the chrome (the toolkit's icon font maps them to ASCII letters).
@@ -89,6 +90,7 @@ security_of :: proc(t: ^Tab) -> Security {
 
 // Tooltip after the pointer rested on `sig` for a moment.
 tip :: proc(sig: ui.Signal, text: string) {
+	chrome_tip_a11y(sig.box, text)   // (a glyph button's name for screen readers: a11y_chrome.odin)
 	if ui.hovered_for(sig, 0.45) {
 		if ui.tooltip() {
 			em := ui.font_size()
@@ -153,15 +155,15 @@ address_row :: proc(app: ^App, t: ^Tab) {
 
 // (a right click or a long press lists the entries that way: history_ui.odin)
 nav_back_button :: proc(app: ^App, t: ^Tab) {
-	nav_history_button(app, t, "###nav_back", GLYPH_BACK, "Back (Alt+Left); right click: history", t != nil && t.hist > 0, -1)
+	nav_history_button(app, t, "###nav_back", GLYPH_BACK, i18n.tr("Back (Alt+Left); right click: history"), t != nil && t.hist > 0, -1)
 }
 
 nav_forward_button :: proc(app: ^App, t: ^Tab) {
-	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, "Forward (Alt+Right); right click: history", t != nil && t.hist + 1 < len(t.history), +1)
+	nav_history_button(app, t, "###nav_forward", GLYPH_FORWARD, i18n.tr("Forward (Alt+Right); right click: history"), t != nil && t.hist + 1 < len(t.history), +1)
 }
 
 nav_reload_button :: proc(app: ^App, t: ^Tab) {
-	if nav_button("###nav_reload", GLYPH_RELOAD, "Reload (F5)", t != nil && t.url != "") { reload(app, t) }
+	if nav_button("###nav_reload", GLYPH_RELOAD, i18n.tr("Reload (F5)"), t != nil && t.url != "") { reload(app, t) }
 }
 
 // The address bar: it fills what its row leaves it.
@@ -195,7 +197,8 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 			app.address.cursor, app.address.mark, app.address.scroll_x = 0, 0, 0
 		}
 		ui.next(field)
-		res = ui.line_edit("###address", &app.address, "Search or enter an address")
+		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
+		res = ui.line_edit("###address", &app.address, i18n.tr("Search or enter an address"))
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
 		security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
 	}
@@ -566,7 +569,8 @@ main_menu_button :: proc(app: ^App, t: ^Tab) {
 			ui.ctx_menu_open_rect(key, b.rect, b.key)
 		}
 	}
-	tip(sig, "Menu")
+	tip(sig, i18n.tr("Menu"))
+	ui.a11y_set(b, {popup = .Menu, expanded = ui.ctx_menu_is_open(key), shortcut = "Alt+F"})
 
 	if ui.ctx_menu(key) {
 		// the items are commands of the registry (commands.odin): same titles, shortcuts and conditions as elsewhere
