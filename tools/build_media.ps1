@@ -18,8 +18,16 @@ $stampFile = Join-Path $out 'STAMP'
 
 # what the library is made of: change any of it and it is built again
 $inputs = @(Get-ChildItem (Join-Path $crate 'src') -Recurse -File) + @(Get-Item (Join-Path $crate 'Cargo.toml'), (Join-Path $crate 'Cargo.lock'), $PSCommandPath)
+# WREN_TEXT=native: the toolkit's text backend (ext\gui_toolkit\native\text) is built into the library (feature `text`):
+# one Rust static library per program
+$text = $env:WREN_TEXT -eq 'native'
+if ($text) {
+    $textCrate = Join-Path $root 'ext\gui_toolkit\native\text'
+    $inputs += @(Get-ChildItem (Join-Path $textCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $textCrate 'Cargo.toml'))
+}
 $sha = [Security.Cryptography.SHA256]::Create()
 $all = New-Object IO.MemoryStream
+if ($text) { $all.Write([byte[]](116, 101, 120, 116), 0, 4) }   # "text": the two builds have different stamps
 foreach ($f in ($inputs | Sort-Object FullName)) { $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length) }
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $lib) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
@@ -63,7 +71,8 @@ if (-not $env:VCINSTALLDIR) {
 
 $target = Join-Path $out 'target'
 $t0 = Get-Date
-& cargo build --release --locked --manifest-path (Join-Path $crate 'Cargo.toml') --target-dir $target
+$features = @(if ($text) { '--features', 'text' })
+& cargo build --release --locked --manifest-path (Join-Path $crate 'Cargo.toml') --target-dir $target @features
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed ($LASTEXITCODE)" }
 New-Item -ItemType Directory -Force $out | Out-Null
 Copy-Item (Join-Path $target 'release\wren_media.lib') $lib -Force

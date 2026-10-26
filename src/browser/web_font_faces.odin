@@ -59,7 +59,7 @@ shared_face_acquire :: proc(pf: ^Page_Fonts, data: []byte, family: string, weigh
 	}
 	copied := make([]byte, len(data))
 	copy(copied, data)
-	id, ok := font.load_memory(pf.state, copied, true, 0, 0, family, weight, style)
+	id, ok := font.load_memory(pf.state, copied, true, 0, {}, family, weight, style)
 	if !ok { return 0, false }
 	sh.loads += 1
 	sf := new(Shared_Face)
