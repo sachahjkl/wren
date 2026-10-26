@@ -157,6 +157,11 @@ if "%WREN_RENDER%"=="wgpu" set "FLAGS=%FLAGS% -define:TOOLKIT_RENDER=wgpu -defin
 :: more Odin flags and an output suffix for experiments (WREN_ODIN_EXTRA="-define:TOOLKIT_WGPU_BACKEND=vulkan" WREN_TAG=_vk)
 if defined WREN_ODIN_EXTRA set "FLAGS=%FLAGS% %WREN_ODIN_EXTRA%"
 if defined WREN_TAG set "WREN_SUFFIX=%WREN_SUFFIX%%WREN_TAG%"
+:: the toolkit's native text backend (WREN_TEXT=native: Fontations, HarfRust and ICU4X instead of DirectWrite's shaper and
+:: analyzers, from ext\gui_toolkit\native\text): build\wren_native.exe etc.
+:: (built into the image decoders' library, tools\build_media.ps1 above: a program links one Rust static library at most)
+if "%WREN_TEXT%"=="native" set "FLAGS=%FLAGS% -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false"
+if "%WREN_TEXT%"=="native" set "WREN_SUFFIX=%WREN_SUFFIX%_native"
 if "%WREN_RENDER%"=="wgpu" powershell -NoProfile -ExecutionPolicy Bypass -File ext\gui_toolkit\tools\fetch_wgpu.ps1 -Dest build >nul || (echo fetching the wgpu dependencies failed & exit /b 1)
 
 set "FAST=-use-separate-modules"
