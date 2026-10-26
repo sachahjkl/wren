@@ -1,0 +1,3 @@
+type: Added
+
+**Input -> screen latency, measured stage by stage** (toolkit 0.32.0, `render/latency.odin`; `src/browser/pacing.odin`): `WREN_LATENCY=1` (or `browser.frame.latency_probe`) records, for each frame built from input, the wait for the frame, build + draw, `Present` and scan-out; `wren ctl stats` then has a `latency` field (p50 / p95 / max / mean per stage, the total in refreshes of the monitor, `framesShown`, `queueMean`, `tearingSupported`), and `stats --reset-latency` starts a new measure. `wren ctl hover x,y [--window]` moves the pointer by one synthetic event. `tools\hover_latency_bench.ps1` sweeps the main menu or the toolbar (headless, synthetic input) and prints the stages. Off by default: nothing recorded.

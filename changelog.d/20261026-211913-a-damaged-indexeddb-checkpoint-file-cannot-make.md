@@ -1,0 +1,3 @@
+type: Fixed
+
+**A damaged IndexedDB checkpoint file cannot make the journal be cut at a negative offset** (`idb.ck_read_directory`, security review of 2026-10-25, finding 8): the sizes read from the `.widx` file are 64-bit numbers that were turned into signed ones before they were compared (a journal length with the top bit set passed `> journal_size`; a section's offset and length could add up past the file). Every number is now compared as unsigned against the file (a section must lie in it, hold at least as many bytes as it has records, and the counts of entries cannot exceed the directory). Needs a write access to the profile to matter. Test: `checkpoint_hostile_test.odin` (fails on the code before).

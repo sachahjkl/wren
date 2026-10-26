@@ -1,0 +1,3 @@
+type: Fixed
+
+**Classic look: the icon of a tab is no longer hidden by the current tab, and the new-tab button sits next to the last tab** (`tab_strip.odin`, `chrome_style.odin`): the current tab is drawn over the left foot and slope of the tab on its right, which started its icon too close to its edge; the content now starts clear of the overlap (as the end of the title already stopped before the next tab's slope). The new-tab button was placed after a fixed gap, a whole foot and slope away from the tabs; it now reaches back under the last tab as a tab does under the one before it, built before the tabs so that they draw over it, with the tabs clipped to their own part of the strip.
