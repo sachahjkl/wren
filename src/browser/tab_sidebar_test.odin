@@ -15,6 +15,16 @@ tabs_position_names :: proc(t: ^testing.T) {
 	testing.expect_value(t, tabs_position_of("bottom"), Tabs_Position.Top)   // not a position: the row of tabs
 }
 
+// The held handle's width follows the pointer of the frame (no frame behind it), toward the page on either side, bounded.
+@(test)
+sidebar_handle_width_follows_the_pointer :: proc(t: ^testing.T) {
+	testing.expect_value(t, sidebar_drag_width(240, 238, 338, 1, .Left), 340)
+	testing.expect_value(t, sidebar_drag_width(240, 238, 338, 2, .Left), 290)      // 100 px at 200 %: 50 CSS px
+	testing.expect_value(t, sidebar_drag_width(240, 1000, 900, 1, .Right), 340)    // on the right, it grows leftward
+	testing.expect_value(t, sidebar_drag_width(240, 238, -500, 1, .Left), SIDEBAR_MIN_CSS)
+	testing.expect_value(t, sidebar_drag_width(240, 238, 5000, 1, .Left), SIDEBAR_MAX_CSS)
+}
+
 // The preference takes the three positions and nothing else, at once; the widths are bounded.
 @(test)
 tabs_position_preferences :: proc(t: ^testing.T) {
