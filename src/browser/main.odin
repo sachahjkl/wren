@@ -928,7 +928,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
-		if fullscreen_shell_escape(app, ev) { consume(index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
+		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
 		if !hud_captures(app, ev.pos) && frames_route_pointer(app, t, ev, index) { continue }
@@ -1148,7 +1148,7 @@ frame :: proc(app: ^App, idled := false) {
 	page_cursor_events(app, events)   // page_cursor.odin: a press on the page keeps its cursor
 	dnd_events(app, events)           // dnd_shell.odin: drags of other applications over the window
 	route_page_input(app, events)
-	events = forms_unconsumed_events(events)   // keys the page used do not reach the chrome
+	events = forms_unconsumed_events(app, events)   // keys the page used do not reach the chrome
 	events = history_tree_events(app, events)   // the wheel and zoom keys of about:history's tree (history_tree.odin)
 	events = devtools_events(app, events)       // Ctrl+wheel and Ctrl +, -, 0 over the developer tools: their text size (devtools.odin)
 	forms_shell_frame(app)
@@ -1545,7 +1545,7 @@ main :: proc() {
 	host.shutdown_step("measure_destroy")
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
-	forms_shell_destroy()
+	forms_shell_destroy(forms_view(app))
 	a11y_page_destroy()
 	host.shutdown_step("page_render_destroy")
 	page_render_destroy()

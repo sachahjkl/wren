@@ -78,6 +78,8 @@ Window_Own :: struct {
 	selection:           Selection_Shell,     // selection_shell.odin: the text selection gesture in the page shown
 	strip:               Tab_Strip,           // tab_strip.odin: the tabs' scroll, the tab dragged, the tabs' box
 	sidebar:             Tab_Sidebar,         // tab_sidebar.odin: the sidebar's width handle, whether it was shown
+	find:                Find_State,          // find_bar.odin: the find bar, its text and its matches
+	forms:               Forms_View,          // forms_shell.odin: the form controls as painted, the keyboard in the page, the drop-down
 }
 
 // The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
@@ -89,6 +91,8 @@ window_own :: proc(app: ^App) -> ^Window_Own {
 window_own_destroy :: proc(own: ^Window_Own) {
 	page_cursor_view_destroy(&own.cursor)
 	urlbar_view_destroy(&own.urlbar)
+	find_destroy(&own.find)
+	forms_shell_destroy(&own.forms)
 }
 
 ////////////////////////////////
@@ -116,8 +120,6 @@ window_local :: proc(p: ^$T, destroy: proc() = nil) {
 
 // The globals of the chrome that are one window's (called once the shell is set up: a new window starts with their values then).
 windows_register_locals :: proc() {
-	window_local(&find, find_destroy)
-	window_local(&fview, forms_shell_destroy)
 }
 
 windows_locals_destroy :: proc() {

@@ -207,10 +207,10 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		if b := res.box; b != nil {   // the field's own box: it sits in the address bar's container
 			ui.set_focus(b.key)
 			ui.field_select_all(&app.address)
-			forms_page_blur()
+			forms_page_blur(app)
 		}
 	}
-	if res.focused { forms_page_blur() }
+	if res.focused { forms_page_blur(app) }
 	if urlbar_edited(app, t, res) {
 		res.committed = false   // Enter opened the chosen suggestion
 	}

@@ -203,7 +203,7 @@ dnd_press :: proc(app: ^App, t: ^Tab, ev: platform.Event, pressed: base.Handle) 
 	text := ""
 	// selected text of a field (the press kept the selection: forms_shell.odin)
 	if kind == .None {
-		if field, a, b, ftext, ok := forms_take_selection_press(p); ok && field == pressed {
+		if field, a, b, ftext, ok := forms_take_selection_press(app, p); ok && field == pressed {
 			kind, text, source = .Selection, ftext, field
 			dnd.cand_field, dnd.cand_a, dnd.cand_b = field, a, b
 		}
@@ -410,7 +410,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			host, hrange := dnd.cand_host, dnd.cand_range
 			press := dnd.cand_pos
 			dnd_clear_candidate()
-			forms_drop_selection_press()   // (the release is the drag's, not a click in the field's selection)
+			forms_drop_selection_press(app)   // (the release is the drag's, not a click in the field's selection)
 			window_own(app).selection.down = false   // the selection gesture, if any, is over
 			if !page.drag_start(p, source, kind, cx, cy, dom_mods(ev.mods), text) || t.page != p { return true }
 			if field != base.NIL_HANDLE { page.drag_set_source_field(p, field, fa, fb) }

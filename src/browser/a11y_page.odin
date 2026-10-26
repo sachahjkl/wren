@@ -57,7 +57,7 @@ page_a11y_graft :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 	if t == nil || t.page == nil || t.kind != .Web || !ui.a11y_wanted() { return }
 	ui.a11y_set(pb, {graft = page_tree_id(t.id)})
 	pa.grafted = t.id
-	if fview.page_focus && ui.focus_key() == 0 { ui.a11y_focus_on(pb.key) }
+	if forms_view(app).page_focus && ui.focus_key() == 0 { ui.a11y_focus_on(pb.key) }
 }
 
 // After the chrome's build (its tree sent): the page's requests, then its tree when it changed.
@@ -92,7 +92,7 @@ page_a11y_frame :: proc(app: ^App) {
 	v := a11y.View{
 		src = {doc = p.doc, styled = p.styled, forms = f},
 		layout = &t.layout, viewport = size, doc_scroll = t.scroll, origin = app.page_rect.min,
-		focus = fview.page_focus ? f.focus : base.NIL_HANDLE, title = t.title, url = t.url,
+		focus = forms_view(app).page_focus ? f.focus : base.NIL_HANDLE, title = t.title, url = t.url,
 		max_nodes = 50_000,
 	}
 	a11y.build(&v, &st.full)
@@ -133,7 +133,7 @@ page_a11y_signature :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, 
 	}
 	s := Sig{
 		mutations = p.doc.mutations, tree_v = p.doc.tree_version, attr_v = p.doc.attr_version, forms_serial = f.serial,
-		layout_mut = u64(t.layout.mutations), focus = f.focus, page_focus = fview.page_focus, scroll = t.scroll,
+		layout_mut = u64(t.layout.mutations), focus = f.focus, page_focus = forms_view(app).page_focus, scroll = t.scroll,
 		rect = app.page_rect, title_hash = hash.fnv64a(transmute([]u8)t.title), url_hash = hash.fnv64a(transmute([]u8)t.url),
 	}
 	_ = size
@@ -152,7 +152,7 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, r:
 		page.click_element(p, h)
 	case .Focus:
 		if forms.focus(f, h, by_keyboard = true) {
-			fview.page_focus = true
+			forms_view(app).page_focus = true
 			ui.set_focus(0)
 			scroll_into_view(app, t, h)
 		}

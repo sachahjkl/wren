@@ -71,7 +71,7 @@ interaction_init :: proc(app: ^App) {
 interaction_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, ix_watch)
 	interaction_settings_destroy(&ix)
-	find_destroy()
+	find_destroy(find_state(app))
 	closed_tabs_destroy()
 	context_menu_destroy()
 }
@@ -412,7 +412,7 @@ selection_paint_begin :: proc(app: ^App, t: ^Tab) {
 	p := t.page
 	spaint.doc, spaint.styled = p.doc, p.styled
 	spaint.api = text_api(app)
-	spaint.find = find_paint_state(t)
+	spaint.find = find_paint_state(app, t)
 	if c, ok := page.drag_caret(p); ok && !c.field {
 		spaint.drop, spaint.has_drop = c.pos, true
 		if cs := style.style_of(p.styled, c.node); cs != nil { spaint.drop_color = to_draw(cs.color) } else { spaint.drop_color = draw.srgb(0, 0, 0, 1) }
@@ -472,7 +472,7 @@ selection_paint_under :: proc(l: ^Layout, dc: ^draw.Context, it: ^lay.Display_It
 		}
 	}
 	if !spaint.on && spaint.find == nil { return }
-	if spaint.find != nil { find_paint_item(l, dc, it, idx, r) }
+	if spaint.find != nil { find_paint_item(spaint.find, l, dc, it, idx, r) }
 	if !spaint.on { return }
 	a, b, ok := lay.item_range(l, spaint.doc, idx, spaint.start, spaint.end)
 	if !ok || !lay.is_selectable(spaint.doc, spaint.styled, it.node) { return }
