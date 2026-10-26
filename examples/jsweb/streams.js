@@ -118,3 +118,75 @@ test("pipeThrough and backpressure", async () => {
   ok(ready, "ready resolves once the write is done");
   eq(got.join(), "x", "piped through");
 });
+
+test("TransformStream: identity, a transformer, flush, terminate", async () => {
+  const id = new TransformStream();
+  ok(id.readable instanceof ReadableStream && id.writable instanceof WritableStream, "its two sides");
+  const w = id.writable.getWriter();
+  w.write("a"); w.write("b"); w.close();
+  const got = [];
+  for await (const c of id.readable) got.push(c);
+  eq(got.join(), "a,b", "the identity transform passes chunks through");
+
+  const up = new TransformStream({
+    transform(chunk, c) { c.enqueue(chunk.toUpperCase()); c.enqueue("|"); },
+    flush(c) { c.enqueue("end"); },
+  });
+  const src = new ReadableStream({ start(c) { c.enqueue("x"); c.enqueue("y"); c.close(); } });
+  const out = [];
+  for await (const c of src.pipeThrough(up)) out.push(c);
+  eq(out.join(""), "X|Y|end", "pipeThrough a transformer, then flush");
+
+  const term = new TransformStream({ transform(chunk, c) { c.enqueue(chunk); c.terminate(); } });
+  const tw = term.writable.getWriter();
+  tw.write(1).catch(() => {});
+  const tr = term.readable.getReader();
+  eq((await tr.read()).value, 1, "the chunk before terminate");
+  eq((await tr.read()).done, true, "terminate closes the readable side");
+  await rejects(tw.write(2), "TypeError", "and errors the writable side");
+
+  const bad = new TransformStream({ transform() { throw new RangeError("no"); } });
+  const bw = bad.writable.getWriter();
+  const pending = bad.readable.getReader().read();   // (the readable side asks: writes wait for that, its highWaterMark is 0)
+  await rejects(bw.write("z"), "RangeError", "a transform that throws rejects the write");
+  await rejects(pending, "RangeError", "and errors the readable side");
+  throws(() => new TransformStream({ readableType: "bytes" }), "RangeError", "readableType");
+
+  const started = [];
+  const s2 = new TransformStream({ start(c) { started.push(typeof c.enqueue, c.desiredSize); } }, undefined, { highWaterMark: 2 });
+  eq(started.join(), "function,2", "start gets the controller; desiredSize is the readable side's");
+  ok(s2.writable.getWriter().desiredSize === 1, "the writable side's highWaterMark defaults to 1");
+
+  const cancelled = [];
+  const c3 = new TransformStream({ cancel(r) { cancelled.push(r); } });
+  await c3.readable.cancel("why");
+  eq(cancelled.join(), "why", "cancelling the readable side runs cancel()");
+  eq(await c3.writable.getWriter().write("q").catch((r) => r), "why", "... and errors the writable side with the reason");
+});
+
+test("TextDecoderStream and TextEncoderStream", async () => {
+  const d = new TextDecoderStream("utf-8", { fatal: false });
+  eq(d.encoding + ":" + d.fatal + ":" + d.ignoreBOM, "utf-8:false:false", "attributes");
+  const src = new ReadableStream({ start(c) { c.enqueue(new Uint8Array([0x61, 0xE2, 0x82])); c.enqueue(new Uint8Array([0xAC, 0x62])); c.close(); } });
+  let text = "";
+  for await (const s of src.pipeThrough(d)) text += s;
+  eq(text, "a\u20acb", "a character cut between two chunks");
+  const d2 = new TextDecoderStream();
+  const w2 = d2.writable.getWriter();
+  w2.write("not bytes").catch(() => {});
+  await rejects(d2.readable.getReader().read(), "TypeError", "a chunk that is not bytes errors the stream");
+  const t = new TextDecoderStream("windows-1252");
+  eq(t.encoding, "windows-1252", "another encoding");
+
+  const e = new TextEncoderStream();
+  eq(e.encoding, "utf-8", "TextEncoderStream.encoding");
+  const ew = e.writable.getWriter();
+  ew.write("a\uD83D"); ew.write("\uDE00"); ew.write("\uD800"); ew.close();
+  const bytes = [];
+  for await (const b of e.readable) bytes.push(...b);
+  eq(bytes.join(), [0x61, 0xF0, 0x9F, 0x98, 0x80, 0xEF, 0xBF, 0xBD].join(), "a surrogate pair cut between chunks, and a lone one at the end");
+  const round = new ReadableStream({ start(c) { c.enqueue("h\u00e9llo"); c.close(); } }).pipeThrough(new TextEncoderStream()).pipeThrough(new TextDecoderStream());
+  let back = "";
+  for await (const s of round) back += s;
+  eq(back, "h\u00e9llo", "encoded then decoded");
+});

@@ -207,6 +207,10 @@ JSValue web_stream_read_all(JSContext *ctx, JSValueConst stream);
 JSValue web_stream_tee(JSContext *ctx, JSValueConst stream, bool clone_second);
 /* cancel(reason) (promise) */
 JSValue web_stream_cancel(JSContext *ctx, JSValueConst stream, JSValueConst reason);
+/* 0 readable, 1 closed, 2 errored (-1: not a ReadableStream); `error` (may be NULL) gets the stored error, counted */
+int web_stream_state(JSContext *ctx, JSValueConst v, JSValue *error);
+/* WritableStream (web_writable.c): 0 writable, 1 erroring, 2 errored, 3 closed (-1: not one); `error` as above */
+int web_writable_state(JSContext *ctx, JSValueConst v, JSValue *error);
 
 /* Runs fn(data) from a task of its own (a zero-delay timer of the browser): what the specifications "queue a task"
  * for (FileReader events, MessagePort messages). `data` is kept until then. */
