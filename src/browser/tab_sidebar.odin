@@ -68,6 +68,7 @@ tabs_in_sidebar :: proc(app: ^App) -> bool {
 	return favs.cfg.position != .Top && !platform.is_fullscreen(app.win)
 }
 
+// A window's tab sidebar from frame to frame (Window_Own.sidebar).
 Tab_Sidebar :: struct {
 	live_w:    f32,    // CSS px while the width handle is held (0: the preference's)
 	grab_w:    f32,    // the width when the handle was pressed
@@ -76,8 +77,6 @@ Tab_Sidebar :: struct {
 	resizing:  bool,
 	shown:     bool,   // built last frame (else the current tab is scrolled into view when it appears)
 }
-
-sidebar: Tab_Sidebar
 
 ////////////////////////////////
 // Geometry (pure: tab_sidebar_test.odin)
@@ -278,16 +277,17 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 // The sidebar: header, list of tabs and, over its inner edge, the width handle. Returns true when a tab closed (the build
 // stops: the tab list changed under it).
 tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
+	own := window_own(app)
 	dpi := ui_scale_of(app)
 	collapsed := favs.cfg.side_collapsed
 	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
 	// the width the pointer asks for now, not at the one of the frame before (the handle's signal comes after them)
-	if sidebar.resizing && sidebar.handle != 0 && ui.active_key() == sidebar.handle {
-		sidebar.live_w = sidebar_drag_width(sidebar.grab_w, sidebar.press_x, ui.mouse_pos().x, dpi, pos)
+	if own.sidebar.resizing && own.sidebar.handle != 0 && ui.active_key() == own.sidebar.handle {
+		own.sidebar.live_w = sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
 	}
-	width_css := sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w
+	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
 	extent := sidebar_extent(f32(app.win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
-	ui.reorder_frame(&strip.drag)   // the button went up (wherever): no drag
+	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
 	// classic (chrome_style.odin): the panel is the tab bar, its current tab flows into the page; the toolbar's line along
@@ -391,6 +391,7 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
 // when a tab closed.
 @(private = "file")
 sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
+	own := window_own(app)
 	em := ui.font_size()
 	n := len(app.tabs)
 	rh := ui.dense(math.round(em * favs.cfg.side_row_em))
@@ -401,17 +402,17 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	area := ui.build_box(area_flags, "###tabs_area")
 	tab_list_a11y(area, true)
 	_ = ui.signal(area)   // the wheel
-	strip.area_key = area.key
+	own.strip.area_key = area.key
 	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
 	view_h := area.size.y > 0 ? area.size.y : f32(app.win.size.y)
 	limit := max(f32(n) * rh - view_h, 0)
 
 	// a new current tab is scrolled into view (not while one is dragged: the list follows the pointer then)
 	cur_id := app.tabs[app.current].id
-	if cur_id != strip.follow_id || n != strip.follow_n || !sidebar.shown {
+	if cur_id != own.strip.follow_id || n != own.strip.follow_n || !own.sidebar.shown {
 		area.view_target.y = strip_offset(area.view_target.y, n, rh, view_h, app.current, true)
 	}
-	strip.follow_id, strip.follow_n, sidebar.shown = cur_id, n, true
+	own.strip.follow_id, own.strip.follow_n, own.sidebar.shown = cur_id, n, true
 	area.view_target.y = clamp(area.view_target.y, 0, limit)
 
 	inset := math.round(em * 0.35)
@@ -427,7 +428,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	first, last := side_visible_rows(area.view_off.y, area.view_target.y, view_h, rh, n, rh * 2)
 	dragged := -1
 	for t, i in app.tabs {
-		if ui.reorder_dragging(&strip.drag, t.id) { dragged = i; break }
+		if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
 	}
 	focused := focused_tab_index(app)
 	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
@@ -454,7 +455,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	}
 	if move_from >= 0 {
 		app.current = list_move(app.tabs[:], move_from, move_to, app.current)
-		strip.follow_id = app.tabs[app.current].id   // no jump of the scroll while dragging
+		own.strip.follow_id = app.tabs[app.current].id   // no jump of the scroll while dragging
 		app.frames_requested = max(app.frames_requested, 2)
 		recovery_touch(app)
 	}
@@ -479,6 +480,7 @@ Side_Look :: struct {
 // One tab's row. Its place is its slot's, animated when tabs move; a dragged row follows the pointer.
 @(private = "file")
 sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: bool, area: ^ui.Box, limit: f32, cc: ^Classic_Colors, move_from, move_to: ^int) -> (closed: bool) {
+	own := window_own(app)
 	t := app.tabs[i]
 	n := len(app.tabs)
 	em := ui.font_size()
@@ -488,7 +490,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 	slot := f32(i) * rh
 	akey := ui.key_from_string(area.key, fmt.tprintf("y%d", t.id))
 	// (list coordinates: the scroll box places the rows; the release slides from where the pointer left it)
-	y, dragging := ui.reorder_item_pos(&strip.drag, akey, t.id, slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, f32(n - 1) * rh)
+	y, dragging := ui.reorder_item_pos(&own.strip.drag, akey, t.id, slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, f32(n - 1) * rh)
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -564,13 +566,13 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return true }
-	if !strip.drag.active { sidebar_tip(sig, t) }
+	if !own.strip.drag.active { sidebar_tip(sig, t) }
 
 	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		ui.reorder_begin(&strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .Y, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
+		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .Y, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
 			ui.mouse_pos().y - sig.drag_delta.y - area.rect.min.y + area.view_off.y, slot)
-		if ui.reorder_dragging(&strip.drag, t.id) {
+		if ui.reorder_dragging(&own.strip.drag, t.id) {
 			to := drag_slot(y, rh, n)
 			if to != i { move_from^, move_to^ = i, to }
 			// the list follows the pointer to its ends: a row held past the edge scrolls it
@@ -578,7 +580,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 			app.frames_requested = max(app.frames_requested, 2)
 			// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, favs.cfg.detach_distance_em * em) {
-				strip.drag.active = false
+				own.strip.drag.active = false
 				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return true }
 			}
 		}
@@ -621,38 +623,39 @@ side_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // held and written to the preference when it goes up.
 @(private = "file")
 sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi: f32) {
+	own := window_own(app)
 	grab := math.round(5 * dpi)
 	ui.push_parent(bar)
 	defer ui.pop_parent()
 	ui.next({fixed_x = pos == .Left ? extent - grab : 0, fixed_y = 0, width = ui.px(grab), height = ui.pct(1), cursor = .Resize_H})
 	hb := ui.build_box({.Clickable}, "###side_handle")
 	ui.a11y_set(hb, {role = .Splitter, name = i18n.tr("Sidebar width"), orientation = .Y,
-		numeric = f64(sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w), min = f64(SIDEBAR_MIN_CSS), max = f64(SIDEBAR_MAX_CSS)})
-	sidebar.handle = hb.key
+		numeric = f64(own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w), min = f64(SIDEBAR_MIN_CSS), max = f64(SIDEBAR_MAX_CSS)})
+	own.sidebar.handle = hb.key
 	sig := ui.signal(hb)
 	if sig.pressed {
-		sidebar.resizing = true
-		sidebar.grab_w = sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w
-		sidebar.press_x = ui.mouse_pos().x - sig.drag_delta.x
+		own.sidebar.resizing = true
+		own.sidebar.grab_w = own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
+		own.sidebar.press_x = ui.mouse_pos().x - sig.drag_delta.x
 	}
-	if sig.dragging && sidebar.resizing {
-		w := sidebar_drag_width(sidebar.grab_w, sidebar.press_x, ui.mouse_pos().x, dpi, pos)
-		if w != sidebar.live_w {
+	if sig.dragging && own.sidebar.resizing {
+		w := sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
+		if w != own.sidebar.live_w {
 			// (the press frame: the pointer moved since it was built)
-			sidebar.live_w = w
+			own.sidebar.live_w = w
 			app.frames_requested = max(app.frames_requested, 1)
 		}
 		// the edge this frame draws, against the pointer it was built from (browser.frame.drag_probe)
 		drag_probe_note(ui.mouse_pos().x, pos == .Left ? bar.rect.min.x + extent : bar.rect.max.x - extent)
 	}
-	if !sig.dragging && sidebar.resizing {
-		sidebar.resizing = false
-		if sidebar.live_w > 0 {
-			set_pref_string(app, "browser.tabs.sidebar_width", fmt.tprintf("%d", int(sidebar.live_w)))
-			sidebar.live_w = 0
+	if !sig.dragging && own.sidebar.resizing {
+		own.sidebar.resizing = false
+		if own.sidebar.live_w > 0 {
+			set_pref_string(app, "browser.tabs.sidebar_width", fmt.tprintf("%d", int(own.sidebar.live_w)))
+			own.sidebar.live_w = 0
 		}
 	}
-	if sig.hovering || sidebar.resizing {
+	if sig.hovering || own.sidebar.resizing {
 		col := ui.frame_new(draw.Color)
 		col^ = ui.color("accent")
 		hb.custom, hb.custom_user = side_handle_draw, col

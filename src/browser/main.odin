@@ -869,7 +869,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 					if pos == .Right { if tab_sidebar(app, pos) { return } }
 				}
 			} else {
-				sidebar.shown = false
+				window_own(app).sidebar.shown = false
 				page_column(app, t, elem_fs)
 			}
 			// status bar (status_bar.odin)
