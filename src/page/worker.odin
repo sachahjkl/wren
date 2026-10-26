@@ -52,6 +52,9 @@ Worker_Msg_Kind :: enum u8 {
 	Connect,        // page -> shared worker: a new connection, ports[0] is its port's end (shared_worker.odin)
 	Sw_Client,      // page -> worker: a message of a service worker to it as a client (id = the version, bytes)
 	Sw_Post,        // worker -> page: serviceWorker.postMessage from a worker client (id = the version, bytes)
+	Child_Create,   // worker -> page: new Worker() in the worker (nested_workers.odin): id = the child's link (a reference)
+	Child_Event,    // page -> worker: what its child sent (id = the child's link; code 0 message, 1 error, 2 gone)
+	Child_Terminate,// worker -> page: terminate() of a child (id = its link; code 1: its Worker object is gone too)
 }
 
 Worker_Msg :: struct {
@@ -70,6 +73,7 @@ Worker_Msg :: struct {
 
 @(private)
 msg_free :: proc(m: ^Worker_Msg) {
+	if m.kind == .Child_Create && m.id != 0 { link_release((^Worker_Link)(uintptr(m.id))) }   // never delivered
 	delete(m.text); delete(m.text2); delete(m.text3); delete(m.bytes)
 	for b in m.buffers { delete(b) }
 	delete(m.buffers)
@@ -188,6 +192,10 @@ Worker_Host :: struct {
 	module:     bool,                   // its script is a module ({type: "module"}): js_workers.odin
 	storage_key: string,                // owned: the storage key of its realm when not its page's (a shared worker's)
 	client_id:  u64,                    // its id as a service worker's client (service_worker.odin)
+	parent:     ^Worker_Host,           // a nested worker's: the worker that made it (nested_workers.odin), nil else
+	ref_held:   bool,                   // a nested worker's Worker object still exists in its parent's realm
+	ref_id:     u64,                    // a nested worker's name in its parent's realm (its link's address)
+	depth:      int,                    // 1 for a document's worker, its parent's + 1 for a nested one
 }
 
 Relay :: struct {
@@ -244,14 +252,10 @@ page_worker_count :: proc(p: ^Page) -> int {
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
 // `image`: the script the browser already has (a service worker's stored version): it starts at once, nothing is fetched.
 worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil, shared: ^Shared_Worker = nil) -> u64 {
+	// in a worker: a nested worker, started by the interface thread for this realm (nested_workers.odin)
+	if p.worker != nil { return nested_worker_request(p, src, name, owner, javascript, module, image) }
 	ws := &p.settings.workers
-	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
-	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
-	if !ws.enabled { log(p, .Error, "Worker: workers are disabled (workers.enabled)"); return 0 }
-	if javascript && !p.settings.js.workers { log(p, .Error, "Worker: JavaScript workers are disabled (javascript.workers.enabled)"); return 0 }
-	if page_worker_count(p) >= ws.max_per_page {
-		log(p, .Error, fmt.tprintf("Worker: this page already runs %d workers (workers.max_per_page)", ws.max_per_page)); return 0
-	}
+	if why := worker_refused(p, javascript); why != "" { log(p, .Error, why); return 0 }
 	u, ok := url.parse(src, &p.env.location, context.temp_allocator)
 	if !ok { log(p, .Error, fmt.tprintf("Worker: invalid URL %q", src)); return 0 }
 	if u.scheme != "data" {
@@ -260,41 +264,74 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 			log(p, .Error, fmt.tprintf("Worker: %s is not same-origin with the document (SecurityError)", u.href)); return 0
 		}
 	}
-	if int(sync.atomic_add(&worker_total, 1)) >= ws.max_total {
-		sync.atomic_sub(&worker_total, 1)
+	if !worker_take_slot(ws) {
 		log(p, .Error, fmt.tprintf("Worker: the browser already runs %d workers (workers.max_total)", ws.max_total)); return 0
 	}
-
-	h := new(Worker_Host)
-	h.page, h.owner, h.counted, h.javascript, h.module, h.sw, h.shared = p, owner, true, javascript, javascript && module, sw, shared
-	h.url, h.name = strings.clone(u.href), strings.clone(name)
+	h := worker_host_new(p, u, name, javascript, module, link_make(p.loop, ws.max_pending_bytes), &p.env)
+	h.owner, h.sw, h.shared = owner, sw, shared
 	if shared != nil { h.storage_key = strings.clone(shared.key) }   // (a shared worker's realm: its documents' storage key)
+	h.self = object_create(p, &worker_vt, h, owner)
+	worker_host_load(h, image, &p.env)
+	return h.self
+}
+
+// Why page `p` may not start one more worker ("" when it may).
+@(private)
+worker_refused :: proc(p: ^Page, javascript: bool) -> string {
+	ws := &p.settings.workers
+	if p.loader == nil { return "Worker: this page cannot load anything" }
+	if !ws.enabled { return "Worker: workers are disabled (workers.enabled)" }
+	if javascript && !p.settings.js.workers { return "Worker: JavaScript workers are disabled (javascript.workers.enabled)" }
+	if page_worker_count(p) >= ws.max_per_page { return fmt.tprintf("Worker: this page already runs %d workers (workers.max_per_page)", ws.max_per_page) }
+	return ""
+}
+
+// A slot of workers.max_total (false: none left).
+@(private)
+worker_take_slot :: proc(ws: ^Worker_Settings) -> bool {
+	if int(sync.atomic_add(&worker_total, 1)) >= ws.max_total { sync.atomic_sub(&worker_total, 1); return false }
+	return true
+}
+
+// A host for a worker of page `p` running `u` over `link` (the host takes that reference), listed in the page.
+// `creator`: the environment of whoever made it (a data: worker inherits its policies).
+@(private)
+worker_host_new :: proc(p: ^Page, u: url.URL, name: string, javascript, module: bool, link: ^Worker_Link, creator: ^fetch.Environment) -> ^Worker_Host {
+	h := new(Worker_Host)
+	h.page, h.counted, h.javascript, h.module, h.depth = p, true, javascript, javascript && module, 1
+	h.url, h.name = strings.clone(u.href), strings.clone(name)
 	worker_client_next += 1
 	h.client_id = SW_WORKER_CLIENT_BASE + worker_client_next
-	h.link = link_make(p.loop, ws.max_pending_bytes)
+	h.link = link
 	h.link.host = h
-	h.env = fetch.environment_make(u, p.env.referrer_policy)
+	h.env = fetch.environment_make(u, creator.referrer_policy)
 	h.env.on_violation = worker_csp_violation
 	h.env.violation_user = h
 	if u.scheme == "data" {
 		// a data: worker has an opaque origin and inherits the policies of its creator
-		for pol in p.env.policies.policies { append(&h.env.policies.policies, csp.parse_policy(pol.raw, pol.disposition)) }
+		for pol in creator.policies.policies { append(&h.env.policies.policies, csp.parse_policy(pol.raw, pol.disposition)) }
 	}
 	h.relays = make(map[u64]^Relay)
 	append(&p.workers.hosts, h)
-	h.self = object_create(p, &worker_vt, h, owner)
+	return h
+}
+
+// Starts the worker of `h`: at once with `image` (the script the browser already has), else once its script is
+// fetched for `initiator`.
+@(private)
+worker_host_load :: proc(h: ^Worker_Host, image: []byte, initiator: ^fetch.Environment) {
+	p := h.page
 	if image != nil {
 		h.status = 200
 		worker_spawn(h, image)
-		return h.self
+		return
 	}
 	// (a module worker's script must have a JavaScript MIME type: HTML "fetch a module worker script graph")
 	h.script = fetch.start(p.loader, {
-		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env,
-			script = h.module ? .Module : (javascript ? .Classic : .Wasm)},
+		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = initiator,
+			script = h.module ? .Module : (h.javascript ? .Classic : .Wasm)},
 		on_event = worker_script_event, user = h, scope = p.scope, collect = true,
 	})
-	return h.self
 }
 
 @(private)
@@ -335,6 +372,7 @@ worker_failed :: proc(h: ^Worker_Host, message: string) {
 	worker_uncount(h)
 	if h.sw != nil { sw_instance_error(h, message); return }   // service_worker.odin
 	if h.shared != nil { shared_failed(h, message); return }   // shared_worker.odin
+	if h.parent != nil || h.ref_id != 0 { nested_failed(h, message); return }   // nested_workers.odin
 	worker_fire_error(h, message, h.url)
 }
 
@@ -362,7 +400,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.forms.password_mask = ""
 	g.settings.sw.fs_permission = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
-	g.module, g.shared = h.module, h.shared != nil
+	g.module, g.shared, g.depth = h.module, h.shared != nil, h.depth
 	// service_worker.odin: a service worker's instance, or another worker's view as a client of its document's controller
 	if h.sw != nil { sw_global_init(&g.sw, h.sw) } else { sw_client_init(g, p) }
 	g.image = make([]byte, len(image))
@@ -383,6 +421,7 @@ worker_terminate :: proc(h: ^Worker_Host) {
 	if h.terminated { return }
 	h.terminated = true
 	link_halt(h.link)
+	nested_terminate_children(h)   // nested_workers.odin
 	if h.script != base.NIL_HANDLE { fetch.cancel(h.page.loader, h.script); h.script = base.NIL_HANDLE }
 	relays_cancel(h)
 	if h.thread == nil && h.state != .Running { h.state = .Exited; worker_uncount(h) }
@@ -400,7 +439,7 @@ relays_cancel :: proc(h: ^Worker_Host) {
 // Frees the host once nothing refers to it: the guest released the object and the thread (if any) was joined.
 @(private)
 worker_maybe_free :: proc(h: ^Worker_Host) {
-	if h.self != 0 || h.thread != nil || h.state == .Running || h.pins > 0 { return }
+	if h.self != 0 || h.ref_held || h.thread != nil || h.state == .Running || h.pins > 0 { return }
 	worker_free(h)
 }
 
@@ -408,6 +447,7 @@ worker_maybe_free :: proc(h: ^Worker_Host) {
 worker_free :: proc(h: ^Worker_Host) {
 	p := h.page
 	for x, i in p.workers.hosts { if x == h { ordered_remove(&p.workers.hosts, i); break } }
+	nested_orphan(h)   // its children lose their parent (nested_workers.odin)
 	if h.script != base.NIL_HANDLE { fetch.cancel(p.loader, h.script) }
 	relays_cancel(h)
 	delete(h.relays)
@@ -459,10 +499,13 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	p := h.page
 	switch m.kind {
 	case .Message:
-		if h.terminated || h.self == 0 { return }
+		if h.terminated { return }
+		if h.ref_id != 0 { nested_forward(h, m, NESTED_MESSAGE); return }   // to its parent worker
+		if h.self == 0 { return }
 		deliver_message(p, h.self, m, h.owner)
 	case .Error:
 		if h.terminated { return }
+		if h.ref_id != 0 { nested_forward(h, m, NESTED_ERROR); return }
 		if h.sw != nil { sw_instance_error(h, m.text); return }   // service_worker.odin
 		if h.shared != nil && m.code == 1 { shared_failed(h, m.text); return }   // its script does not parse
 		if h.shared != nil { log(p, .Error, fmt.tprintf("uncaught error: %s", m.text)); return }   // its clients' consoles
@@ -477,8 +520,10 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		h.state = .Exited
 		if h.shared != nil { shared_gone(h) }
 		if h.javascript && h.self != 0 { js_worker_gone(p, h.self) }   // its Worker object may be collected now
+		if h.ref_id != 0 { nested_forward(h, m, NESTED_GONE) }   // the same in its parent worker
 		relays_cancel(h)
 		worker_uncount(h)
+		nested_orphan(h)   // HTML: a worker that ends ends its own workers
 		worker_maybe_free(h)
 	case .Fetch_Start:
 		if h.terminated || h.state != .Running { return }
@@ -493,7 +538,11 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		if !h.terminated { sw_page_reply(h, m) }   // service_worker.odin
 	case .Sw_Post:
 		if !h.terminated { sw_client_post(h, m) }   // service_worker.odin
-	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect, .Sw_Client:
+	case .Child_Create:
+		nested_host_create(h, m)   // nested_workers.odin
+	case .Child_Terminate:
+		nested_terminate_child(h, m.id, m.code == 1)
+	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect, .Sw_Client, .Child_Event:
 	}
 }
 
@@ -669,15 +718,20 @@ message_delivery :: proc(p: ^Page, ev: u64) -> ^Delivery {
 }
 
 // From the page: Worker.postMessage. Silently ignored once the worker is terminated or closed, as in browsers.
-worker_post :: proc(p: ^Page, w: u64, text: string, transfer: []u64) -> dom.Error {
+worker_post :: proc(p: ^Page, w: u64, text: string, transfer: []u64, ports: []u64 = nil) -> dom.Error {
+	if n := nested_of(p, w); n != nil {   // a worker's own Worker object (nested_workers.odin)
+		if n.terminated || n.gone { return .None }
+		return post_message(p, n.link, true, text, transfer, ports)
+	}
 	h := (^Worker_Host)(object_data(p, w, &worker_vt))
 	if h == nil { return .Invalid_Handle }
 	if h.terminated || h.state == .Closed || h.state == .Exited { return .None }
-	return post_message(p, h.link, true, text, transfer)
+	return post_message(p, h.link, true, text, transfer, ports)
 }
 
 // From the page: Worker.terminate.
 worker_terminate_object :: proc(p: ^Page, w: u64) -> dom.Error {
+	if n := nested_of(p, w); n != nil { nested_terminate(p, n, false); return .None }
 	h := (^Worker_Host)(object_data(p, w, &worker_vt))
 	if h == nil { return .Invalid_Handle }
 	worker_terminate(h)
@@ -710,6 +764,8 @@ Worker_Global :: struct {
 	client_sw_reg: u64,         // a worker client's controller's registration (0: none)
 	client_sw: string,          // a worker client's view of its controller's registration (ServiceWorkerRegistration_info), "" when none
 	client_inbox: [dynamic][]byte,   // service workers' messages to it: the version's id (8 bytes) then the data
+	children: [dynamic]^Nested_Worker,   // the Worker objects of its realm (nested_workers.odin)
+	depth:    int,                       // how deep it is nested (1: a document's worker)
 }
 
 @(private)
@@ -724,6 +780,7 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	delete(g.client_sw)
 	for m in g.client_inbox { delete(m) }
 	delete(g.client_inbox)
+	delete(g.children)   // (their objects went with the realm)
 	for e in g.connects { port_close_end(e) }
 	delete(g.connects)
 	for m in g.inbox { msg_free(m) }
@@ -824,7 +881,8 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 			case .Sw_Event:    sw_worker_event(p, m); continue   // service_worker.odin (keeps the message)
 			case .Connect:     shared_connect_event(p, m)   // shared_worker.odin (takes the port end)
 			case .Sw_Client:   sw_client_message(p, m)   // service_worker.odin
-			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply, .Sw_Post:
+			case .Child_Event: nested_event(p, m)   // nested_workers.odin
+			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply, .Sw_Post, .Child_Create, .Child_Terminate:
 			}
 		}
 		msg_free(m)

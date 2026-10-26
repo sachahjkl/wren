@@ -14,9 +14,7 @@ Worker_create :: proc(c: ^Call, src: string, name: string) -> (u64, Api_Error) {
 }
 
 Worker_postMessage :: proc(c: ^Call, worker: Api_Object, message: string, transfer: []u64) -> Api_Error {
-	p := c.page
-	if p.worker != nil { return fail(c, .Invalid_Argument, "Worker_postMessage is for pages: a worker posts with DedicatedWorkerGlobalScope_postMessage") }
-	return dom_error(worker_post(p, worker.handle, message, transfer))
+	return dom_error(worker_post(c.page, worker.handle, message, transfer))
 }
 
 Worker_terminate :: proc(c: ^Call, worker: Api_Object) -> Api_Error { return dom_error(worker_terminate_object(c.page, worker.handle)) }
