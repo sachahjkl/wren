@@ -338,6 +338,11 @@ window_frame :: proc(app: ^App) {
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
+	// a Light frame of the gate (windows.odin): in a full frame's page phase, or in a chrome frame's poll
+	gate := platform.frame_gate()
+	gate_token, admitted := platform.frame_gate_begin(gate, .Light)
+	if !admitted { return }
+	defer platform.frame_gate_end(gate, gate_token)
 	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
 	// resize step skips it: its frame is presented at once, whatever the screen is doing
 	if !pacer.slot_held && !pacer.resizing {
@@ -359,12 +364,9 @@ shell_chrome_frame :: proc(app: ^App) {
 	saved_probe := latency_probe_save()
 	defer latency_probe_restore(saved_probe)
 
-	// (windows.odin: Frame_Stage. The poll may begin a loop of the system, whose frames are chrome frames: window_frame.)
-	outer_stage := frame_stage
-	frame_stage = .Poll
+	// (the gate's Polling: the poll may begin a loop of the system, whose frames are chrome frames: window_frame)
 	polled := platform.poll_events(app.win, false)   // (nil inside the system's resize loop: nothing new to read)
-	frame_stage = .Busy
-	defer frame_stage = outer_stage
+	platform.frame_gate_stage(gate, .Building)
 	chrome := shell_split_input(app, polled)
 	pacer_begin_frame(app, chrome)
 	render.resize(&app.r, app.win.size)
@@ -384,10 +386,12 @@ shell_chrome_frame :: proc(app: ^App) {
 	if !draw.rect_contains(app.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
 		platform.set_cursor(app.win, ui.cursor(app.ui_state))
 	}
+	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	ui.draw_tree(app.ui_state, &app.dc)
 	draw.end_frame(&app.dc)
+	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
 	pacer_end_frame(app)

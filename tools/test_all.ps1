@@ -245,6 +245,10 @@ Step 'drag and drop end to end (tools\dnd_e2e.ps1: a file dropped on a drop zone
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\dnd_e2e.ps1
 } -Weight 20
+Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\frame_gate_e2e.ps1
+} -Weight 15
 Step 'service workers, Cache API, BroadcastChannel, OffscreenCanvas in a worker end to end (tools\sw_e2e.ps1: register, install / activate, claim, fetch intercepted and answered from the cache, a navigation answered by the worker, messages, versions and update, clients, idle stop, navigation preload, Vary; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sw_e2e.ps1

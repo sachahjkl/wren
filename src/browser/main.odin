@@ -1077,11 +1077,13 @@ chrome_frame_style :: proc(app: ^App) -> ui.Style {
 }
 
 frame :: proc(app: ^App, idled := false) {
-	// (windows.odin: Frame_Stage. A frame made by a loop of the system inside another frame's poll puts back that one's stage.)
-	outer_stage := frame_stage
-	frame_stage = .Poll
+	// (windows.odin: the frame gate. A frame made by a loop of the system inside another frame's poll puts back that one's
+	// stage. The callers ask the gate first: a refusal here would be a frame asked for where none may begin.)
+	gate := platform.frame_gate()
+	gate_token, admitted := platform.frame_gate_begin(gate, .Full)
+	if !admitted { app.win.paint_requested = true; return }
 	defer {
-		frame_stage = outer_stage
+		platform.frame_gate_end(gate, gate_token)
 		window_chrome_after_frame(app)   // the system menu, outside the frame (its loop paints the window)
 	}
 	prof_frame_begin()
@@ -1091,7 +1093,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(app.win, false)
-	frame_stage = .Busy
+	platform.frame_gate_stage(gate, .Work)   // the page phase (chrome frames may be made in it: shell_frames.odin)
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events {
 		if e.kind == .Activate { desktop_note_activate() }
@@ -1179,6 +1181,7 @@ frame :: proc(app: ^App, idled := false) {
 		}
 	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
+	platform.frame_gate_stage(gate, .Building)
 	shell_snapshots_frame(app)
 
 	render.resize(&app.r, app.win.size)
@@ -1206,6 +1209,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
 
 	shell_before_draw(app)   // (a chrome frame used the screen's slot)
+	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
@@ -1216,6 +1220,7 @@ frame :: proc(app: ^App, idled := false) {
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
 	prof_end(.Submit)
 	prof_begin(.Present)
+	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
 	app.presented = true
 	prof_end(.Present)
@@ -1251,6 +1256,7 @@ main :: proc() {
 	prof_mark(.Main)
 	app := new(App)
 	the_app = app
+	frame_gate_init()   // windows.odin: the frames of this thread, one state machine
 	platform.dragdrop_thread_init()   // OLE on this thread before any decoder joins it to the multithreaded apartment (dnd_shell.odin)
 
 	// --- configuration: defaults < profile file < command line < policy file ---

@@ -156,7 +156,7 @@ app_icon :: proc(app: ^App, size: f32) {
 }
 
 // At the end of a frame: the system menu the icon asked for. Not from the build: the menu's loop paints the window
-// (window_on_frame), and a frame made inside the build broke the one being built (windows.odin: Frame_Stage).
+// (window_on_frame), and a frame made inside the build broke the one being built (windows.odin: the frame gate).
 window_chrome_after_frame :: proc(app: ^App) {
 	w := wchrome.menu_win
 	if w == nil || w != app.win { return }
