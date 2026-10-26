@@ -367,14 +367,17 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 		win.GetClientRect(nw.hwnd, &cr)
 		nw.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
 	}
-	surf, ok := render.surface_create(&app.r, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))
+	// straight into the window's record, never through a local: a render.Surface is kilobytes (its present ring), and a local of
+	// it is split by LLVM into thousands of scalars whose debug fragments kept `build.bat` (-o:speed -debug) codegen going for an hour
+	bw := new(Browser_Window)
+	ok := render.surface_init(&app.r, &bw.surf, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))   // (in place: see render.surface_create)
 	if !ok {
+		free(bw)
 		platform.destroy_window(nw)
 		return nil
 	}
-	bw := new(Browser_Window)
 	window_ids += 1
-	bw.id, bw.win, bw.surf, bw.ui = window_ids, nw, surf, new(ui.State)
+	bw.id, bw.win, bw.ui = window_ids, nw, new(ui.State)
 	bw.opened = time.tick_now()
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)

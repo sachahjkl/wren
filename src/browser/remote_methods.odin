@@ -1279,6 +1279,14 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	cpu, cpu_user, cpu_kernel := process_cpu_ms()
 	pc := process_counters()
 	j_int(&b, "pid", i64(win.GetCurrentProcessId())); j_num(&b, "uptimeMs", process_uptime_ms())
+	// accessibility (a11y_chrome.odin): updates sent to the screen readers' adapter, refused by it, nodes of the last one
+	if app.ui_state != nil {
+		au, ar, an := ui.a11y_stats(app.ui_state)
+		j_int(&b, "a11yUpdates", i64(au)); j_int(&b, "a11yRefused", i64(ar)); j_int(&b, "a11yLastNodes", i64(an))
+		j_int(&b, "a11yNodes", i64(len(ui.a11y_tree(app.ui_state).nodes)))
+		pb, ps, pr, pn := page_a11y_stats()
+		j_int(&b, "a11yPageBuilds", i64(pb)); j_int(&b, "a11yPageSends", i64(ps)); j_int(&b, "a11yPageRefused", i64(pr)); j_int(&b, "a11yPageNodes", i64(pn))
+	}
 	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
 	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))

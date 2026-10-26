@@ -23,12 +23,18 @@ if (-not $Force -and (Test-Path (Join-Path $out 'lib\wasmtime.lib')) -and (Test-
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "wren-wasmtime-$Version"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 $zip = Join-Path $tmp "$Name.zip"
-if (-not (Test-Path $zip) -or (Get-FileHash $zip -Algorithm SHA256).Hash -ne $Sha256.ToUpper()) {
+# (not Get-FileHash: the CI's build step runs this from cmd after the MSVC environment was set, and Windows PowerShell did not find the cmdlet there)
+function Sha256Of([string]$path) {
+    $h = [Security.Cryptography.SHA256]::Create()
+    $s = [IO.File]::OpenRead($path)
+    try { return ([BitConverter]::ToString($h.ComputeHash($s)) -replace '-', '').ToUpper() } finally { $s.Dispose(); $h.Dispose() }
+}
+if (-not (Test-Path $zip) -or (Sha256Of $zip) -ne $Sha256.ToUpper()) {
     "downloading $Url"
     $ProgressPreference = 'SilentlyContinue'
     Invoke-WebRequest -Uri $Url -OutFile $zip -UseBasicParsing
 }
-$got = (Get-FileHash $zip -Algorithm SHA256).Hash
+$got = Sha256Of $zip
 if ($got -ne $Sha256.ToUpper()) {
     Remove-Item $zip -Force
     throw "SHA-256 mismatch for $Name.zip: expected $Sha256, got $got"
