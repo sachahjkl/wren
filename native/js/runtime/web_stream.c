@@ -4,8 +4,8 @@
  * A stream has a queue of chunks, pending read requests and a source: a script's underlying source ({start, pull,
  * cancel} with a ReadableStreamDefaultController), a browser body stream (module fetch: one Stream_read at a time,
  * Uint8Array chunks), or a branch of tee(). getReader() locks it; reader.read() takes the next chunk or waits for one;
- * async iteration (for await) reads through a reader. Not implemented: byte streams' BYOB readers (type: "bytes"
- * gives a default controller), pipeTo / pipeThrough (no WritableStream), queuing strategies' size() (each chunk counts
+ * async iteration (for await) reads through a reader; pipeTo / pipeThrough are web_pipe.c. Not implemented: byte streams' BYOB readers (type: "bytes"
+ * gives a default controller), queuing strategies' size() (each chunk counts
  * 1 against highWaterMark). */
 #include <math.h>
 #include <stdlib.h>

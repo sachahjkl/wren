@@ -149,6 +149,7 @@ bucket_delete :: proc(m: ^Storage_Manager, origin, name: string) {
 		ordered_remove(&buckets_state.list, i)
 	}
 	idb_clear_origin(m, bucket_key(origin, name))
+	opfs_clear(m.dir, bucket_key(origin, name))   // its origin private file system (fs_store.odin)
 	if k, _ := delete_key(&buckets_state.persisted, bucket_key(origin, name)); k != "" { delete(k) }
 	buckets_save(m)
 }

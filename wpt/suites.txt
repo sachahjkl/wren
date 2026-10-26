@@ -22,7 +22,7 @@ hr-time
 domparsing
 xhr
 webstorage
-streams only=.,readable-streams,writable-streams
+streams only=.,readable-streams,writable-streams,piping
 workers
 shadow-dom
 css/css-shadow

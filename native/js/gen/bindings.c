@@ -61,6 +61,9 @@ JSValue wjr_BroadcastChannel_close(JSContext *ctx, JSValueConst this_val, int ar
 JSValue wjr_BroadcastChannel_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_BroadcastChannel_get_name(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_BroadcastChannel_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ByteLengthQueuingStrategy_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ByteLengthQueuingStrategy_get_highWaterMark(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ByteLengthQueuingStrategy_get_size(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CSSStyleDeclaration_getPropertyPriority(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSSStyleDeclaration_getPropertyValue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSSStyleDeclaration_get_cssText(JSContext *ctx, JSValueConst this_val);
@@ -141,6 +144,9 @@ JSValue wjr_CloseEvent_get_wasClean(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Comment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CompositionEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CompositionEvent_get_data(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CountQueuingStrategy_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_CountQueuingStrategy_get_highWaterMark(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CountQueuingStrategy_get_size(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Credential_get_id(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Credential_get_type(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Credential_static_isConditionalMediationAvailable(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1204,6 +1210,8 @@ JSValue wjr_ReadableStream_cancel(JSContext *ctx, JSValueConst this_val, int arg
 JSValue wjr_ReadableStream_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ReadableStream_getReader(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ReadableStream_get_locked(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_ReadableStream_pipeThrough(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ReadableStream_pipeTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ReadableStream_tee(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ReadableStream_values(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Request_clone(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1575,6 +1583,7 @@ JSValue wjr_Worker_constructor(JSContext *ctx, JSValueConst this_val, int argc, 
 JSValue wjr_Worker_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Worker_terminate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WritableStreamDefaultController_error(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_WritableStreamDefaultController_get_signal(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_WritableStreamDefaultWriter_abort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WritableStreamDefaultWriter_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_WritableStreamDefaultWriter_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -11939,8 +11948,8 @@ static const wj_member wj_m_File[] = {
     { "webkitRelativePath", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_File_get_webkitRelativePath, NULL, 0 },
 };
 static const wj_member wj_m_ByteLengthQueuingStrategy[] = {
-    { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ByteLengthQueuingStrategy_get_highWaterMark, NULL, 0 },
+    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ByteLengthQueuingStrategy_get_size, NULL, 0 },
 };
 static const wj_member wj_m_CSS[] = {
     { "supports", WJ_M_METHOD, 0, 1, wjr_CSS_supports, NULL, NULL, 0 },
@@ -12422,8 +12431,8 @@ static const wj_member wj_m_CookieStoreManager[] = {
     { "unsubscribe", WJ_M_METHOD, WJ_F_SECURE, 1, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CountQueuingStrategy[] = {
-    { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "highWaterMark", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CountQueuingStrategy_get_highWaterMark, NULL, 0 },
+    { "size", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CountQueuingStrategy_get_size, NULL, 0 },
 };
 static const wj_member wj_m_Credential[] = {
     { "id", WJ_M_ATTRIBUTE, WJ_F_SECURE, 0, NULL, wjr_Credential_get_id, NULL, 0 },
@@ -16997,8 +17006,8 @@ static const wj_member wj_m_ReadableStream[] = {
     { "locked", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ReadableStream_get_locked, NULL, 0 },
     { "cancel", WJ_M_METHOD, 0, 0, wjr_ReadableStream_cancel, NULL, NULL, 0 },
     { "getReader", WJ_M_METHOD, 0, 0, wjr_ReadableStream_getReader, NULL, NULL, 0 },
-    { "pipeThrough", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "pipeTo", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "pipeThrough", WJ_M_METHOD, 0, 1, wjr_ReadableStream_pipeThrough, NULL, NULL, 0 },
+    { "pipeTo", WJ_M_METHOD, 0, 1, wjr_ReadableStream_pipeTo, NULL, NULL, 0 },
     { "tee", WJ_M_METHOD, 0, 0, wjr_ReadableStream_tee, NULL, NULL, 0 },
     { "values", WJ_M_METHOD, 0, 0, wjr_ReadableStream_values, NULL, NULL, 0 },
 };
@@ -17685,7 +17694,7 @@ static const wj_member wj_m_FileSystemWritableFileStream[] = {
     { "truncate", WJ_M_METHOD, WJ_F_SECURE, 1, wjr_FileSystemWritableFileStream_truncate, NULL, NULL, 0 },
 };
 static const wj_member wj_m_WritableStreamDefaultController[] = {
-    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_WritableStreamDefaultController_get_signal, NULL, 0 },
     { "error", WJ_M_METHOD, 0, 0, wjr_WritableStreamDefaultController_error, NULL, NULL, 0 },
 };
 static const wj_member wj_m_WritableStreamDefaultWriter[] = {
@@ -17853,7 +17862,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_File, .n_members = 3, .subtree_end = 22,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ByteLengthQueuingStrategy", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "ByteLengthQueuingStrategy", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ByteLengthQueuingStrategy_constructor,
       .members = wj_m_ByteLengthQueuingStrategy, .n_members = 2, .subtree_end = 23,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18125,7 +18134,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CookieStoreManager, .n_members = 3, .subtree_end = 90,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CountQueuingStrategy", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "CountQueuingStrategy", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_CountQueuingStrategy_constructor,
       .members = wj_m_CountQueuingStrategy, .n_members = 2, .subtree_end = 91,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },

@@ -559,10 +559,13 @@ JSValue wjr_FileSystemSyncAccessHandle_close(JSContext *ctx, JSValueConst t, int
 
 /* ---- getDirectory, pickers, drops ---- */
 
-JSValue web_fs_get_directory(JSContext *ctx)
+JSValue web_fs_get_directory(JSContext *ctx, JSValueConst bucket)
 {
+    wj_str b = { "", 0, false };
+    if (JS_IsString(bucket) && !web_to_usv(ctx, bucket, &b)) { return web_promise_reject_pending(ctx); }
     uint64_t root = 0;
-    int32_t st = wr_Fs_opfsRoot(&root);
+    int32_t st = wr_Fs_opfsRoot((const uint8_t *)b.ptr, (uint32_t)b.len, &root);
+    wj_str_free(ctx, &b);
     if (st < 0) { return fs_reject(ctx, st, "getDirectory"); }
     JSValue h = web_fs_handle_new(ctx, root, "", 0, true, "", 0);
     return JS_IsException(h) ? web_promise_reject_pending(ctx) : web_promise_take(ctx, h);

@@ -47,6 +47,8 @@ try {
   Expect ($wk -eq 'NoModificationAllowedError 11 world 5 NoModificationAllowedError removed Ne') 'sync access handle in a worker (read, write, truncate, getSize, flush, its exclusive lock), a handle posted to it' $wk
   $idb = Wren-Ctl eval 'new Promise((ok, ko) => { const rq = indexedDB.open("fs-e2e", 1); rq.onupgradeneeded = () => rq.result.createObjectStore("h"); rq.onsuccess = async () => { const db = rq.result; const h = await R.getFileHandle("Notes.txt"); const tx = db.transaction("h", "readwrite"); tx.objectStore("h").put(h, "k"); tx.oncomplete = () => { const g = db.transaction("h").objectStore("h").get("k"); g.onsuccess = async () => ok((g.result instanceof FileSystemFileHandle) + " " + await text(g.result) + " " + await g.result.isSameEntry(h)); }; }; rq.onerror = () => ko(rq.error); })' --await
   Expect ($idb -eq 'true Ne true') 'a handle kept in IndexedDB (structured clone) comes back usable' $idb
+  $bk = Wren-Ctl eval 'navigator.storageBuckets.open("e2e").then(async (b) => { const d = await b.getDirectory(); await put(await d.getFileHandle("b.txt", {create: true}), "in bucket"); const seen = (await names(R)).includes("b.txt"); const t = await text(await d.getFileHandle("b.txt")); await navigator.storageBuckets.delete("e2e"); return seen + " " + t + " " + await err(b.getDirectory()); })' --await
+  Expect ($bk -eq 'false in bucket InvalidStateError') 'StorageBucket.getDirectory(): a file system of its own, gone with the bucket' $bk
   Wren-Ctl pref set opfs.max_bytes_per_origin 1048576 | Out-Null
   $quota = Wren-Ctl eval 'R.getFileHandle("huge", {create: true}).then((h) => err(put(h, new Uint8Array(2 << 20))))' --await
   Expect ($quota -eq 'QuotaExceededError') 'opfs.max_bytes_per_origin: QuotaExceededError' $quota

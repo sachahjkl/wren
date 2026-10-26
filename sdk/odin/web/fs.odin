@@ -11,7 +11,7 @@ foreign import _m_fs "fs"
 
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_fs {
-	@(link_name = "Fs_opfsRoot") _Fs_opfsRoot :: proc(_ret: ^u64) -> Error ---
+	@(link_name = "Fs_opfsRoot") _Fs_opfsRoot :: proc(bucket: [^]u8, bucket_len: u32, _ret: ^u64) -> Error ---
 	@(link_name = "Fs_getEntry") _Fs_getEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, directory: i32, create: i32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Fs_removeEntry") _Fs_removeEntry :: proc(root: u64, path: [^]u8, path_len: u32, name: [^]u8, name_len: u32, recursive: i32) -> Error ---
 	@(link_name = "Fs_list") _Fs_list :: proc(root: u64, path: [^]u8, path_len: u32, _buf: [^]u8, _cap: u32) -> i32 ---
@@ -34,9 +34,10 @@ foreign _m_fs {
 }
 
 // navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-// context, for an opaque origin or a profile without a folder.
-Fs_opfsRoot :: proc "contextless" () -> (result: u64, err: Error) {
-	err = _Fs_opfsRoot(&result)
+// context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
+// "" for the default one; Invalid_State once the bucket was deleted.
+Fs_opfsRoot :: proc "contextless" (bucket: string) -> (result: u64, err: Error) {
+	err = _Fs_opfsRoot(raw_data(bucket), u32(len(bucket)), &result)
 	return
 }
 

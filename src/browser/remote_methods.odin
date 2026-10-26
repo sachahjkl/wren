@@ -1239,6 +1239,17 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
 	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
+	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
+	// pages out of it, by reason
+	j_key(&b, "bfcache"); j_begin(&b)
+	j_int(&b, "cached", i64(len(bf.entries))); j_int(&b, "stores", i64(bf.stores)); j_int(&b, "restores", i64(bf.restores))
+	j_int(&b, "evictions", i64(bf.evictions)); j_int(&b, "refusals", i64(bf.refusals))
+	j_int(&b, "traversals", i64(bf.traversals)); j_int(&b, "misses", i64(bf.misses))
+	j_num(&b, "hitRate", bf.traversals > 0 ? f64(bf.traversals - bf.misses) / f64(bf.traversals) : 0)
+	j_key(&b, "reasons"); j_begin(&b)
+	for k, v in bf.reasons { j_int(&b, k, i64(v)) }
+	j_end(&b)
+	j_end(&b)
 	j_int(&b, "inputEvents", i64(the_remote.inputs)); j_num(&b, "hz", f64(pacer.hz))
 	// the screen: what the system reports (hzReported), its top mode (hzMax), the highest rate the compositor reported during the current
 	// or last run of frames (hzNow; primary monitor only), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)

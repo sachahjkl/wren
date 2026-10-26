@@ -208,6 +208,47 @@ bool wj_fire_error_event(wj_ctx *ctx, wj_val exc)
     return not_canceled == 0;
 }
 
+/* The browser: a worker's uncaught error its Worker object did not cancel (Worker_pendingError: "message TAB file") is
+ * reported in this global (HTML "run a worker": "report an exception"); the console shows it when nobody cancels. */
+WJ_EXPORT("wj_worker_error_to_global") void wj_worker_error_to_global(void)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    wj_stack_enter(ctx);
+    if (in_error_event || !wj_the_realm.started) { return; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Worker_pendingError(wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return; }
+    const char *s = (const char *)wj_scratch.data;
+    const char *tab = memchr(s, '\t', (size_t)n);
+    size_t ml = tab ? (size_t)(tab - s) : (size_t)n;
+    JSValue message = JS_NewStringLen(ctx, s, ml);
+    JSValue filename = tab ? JS_NewStringLen(ctx, tab + 1, (size_t)n - ml - 1) : JS_NewString(ctx, "");
+    JSValue type = JS_NewString(ctx, "error");
+    JSValue ev = new_error_event(ctx, type, message, filename, 0, 0, JS_NULL, true);
+    JS_FreeValue(ctx, type);
+    int not_canceled = 1;
+    if (!JS_IsException(ev)) {
+        in_error_event = true;
+        not_canceled = wj_dispatch_own_event(ctx, wj_the_realm.global, ev);
+        in_error_event = false;
+        JS_FreeValue(ctx, ev);
+        if (not_canceled < 0) { JS_FreeValue(ctx, JS_GetException(ctx)); not_canceled = 1; }
+    } else {
+        JS_FreeValue(ctx, JS_GetException(ctx));
+    }
+    if (not_canceled) {
+        size_t l;
+        const char *m = JS_ToCStringLen(ctx, &l, message);
+        if (m) {
+            char *line = malloc(l + 32);
+            if (line) { int k = snprintf(line, l + 32, "[worker] uncaught error: %s", m); wj_console_text(wr_ConsoleLevel_Error, line, (size_t)k); free(line); }
+            JS_FreeCString(ctx, m);
+        }
+    }
+    JS_FreeValue(ctx, message);
+    JS_FreeValue(ctx, filename);
+}
+
 JSValue wjr_WindowOrWorkerGlobalScope_reportError(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(this_val);

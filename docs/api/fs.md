@@ -14,15 +14,16 @@ Exposed to: Window, Worker. Source: `api/fs.widl`.
 ### `Fs_opfsRoot`
 
 ```
-u64 Fs_opfsRoot() raises
+u64 Fs_opfsRoot(usvstring bucket) raises
 ```
 
 navigator.storage.getDirectory(): the root of the realm's origin private file system. Security outside a secure
-context, for an opaque origin or a profile without a folder.
+context, for an opaque origin or a profile without a folder. `bucket`: a storage bucket's (StorageBucket.getDirectory),
+"" for the default one; Invalid_State once the bucket was deleted.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Fs_opfsRoot :: proc(c: ^Call) -> (u64, Api_Error)`
+Host: `Fs_opfsRoot :: proc(c: ^Call, bucket: string) -> (u64, Api_Error)`
 
 ### `Fs_getEntry`
 

@@ -31,13 +31,18 @@ fs_fail :: proc(c: ^Call, e: Fs_Error, what: string) -> Api_Error {
 @(private)
 fs_max_bytes :: proc(c: ^Call) -> i64 { return c.page.settings.sw.opfs_max_bytes }
 
-Fs_opfsRoot :: proc(c: ^Call) -> (u64, Api_Error) {
+Fs_opfsRoot :: proc(c: ^Call, bucket: string) -> (u64, Api_Error) {
 	p := c.page
 	if !p.env.secure_context { return 0, fail(c, .Security, "SecurityError: the file system needs a secure context") }
 	if p.env.origin.opaque { return 0, fail(c, .Security, "SecurityError: an opaque origin has no file system") }
 	sm := p.web.embedder.storage
 	dir := sm != nil && sm.ready ? sm.dir : ""
 	key := p.worker != nil ? p.worker.storage_key : storage_origin_key(p)
+	if bucket != "" {
+		// a bucket's own file system (storage_buckets.odin: its key, estimated and deleted with it)
+		if sm == nil || !bucket_exists(sm, key, bucket) { return 0, fail(c, .Invalid_State, "InvalidStateError: the bucket was deleted") }
+		key = bucket_key(key, bucket)
+	}
 	id, e := fs_opfs_root(dir, key)
 	if e == .Security { return 0, fail(c, .Security, "SecurityError: this profile keeps no files (no profile folder)") }
 	if e != .None { return 0, fs_fail(c, e, "getDirectory") }
@@ -122,18 +127,23 @@ Fs_permission :: proc(c: ^Call, root: u64, write: bool) -> i32 {
 	return i32(write ? r.write : r.read)
 }
 
-// A root as structuredClone keeps it: "o" (the realm's origin private file system) or "l", the origin, the folder.
+// A root as structuredClone keeps it: "o" (the realm's origin private file system; "o TAB bucket" a bucket's) or "l", the origin, the folder.
 Fs_describe :: proc(c: ^Call, root: u64) -> string {
 	r, ok := fs_root(root)
 	if !ok { return "" }
-	if r.kind == .Opfs { return "o" }
+	if r.kind == .Opfs {
+		// (a storage bucket's: its name follows; storage_buckets.odin bucket_key)
+		if i := strings.index(r.key, "\x00bucket="); i >= 0 { return fmt.tprintf("o\t%s", r.key[i + 8:]) }
+		return "o"
+	}
 	return fmt.tprintf("l\t%s\t%s", r.key, r.dir)
 }
 
 // The root a description stands for in this realm: the realm's own origin private file system, or a folder of the
 // user's disk given to this origin (its grants of this session, else "prompt").
 Fs_restore :: proc(c: ^Call, desc: string) -> (u64, Api_Error) {
-	if desc == "o" { return Fs_opfsRoot(c) }
+	if desc == "o" { return Fs_opfsRoot(c, "") }
+	if strings.has_prefix(desc, "o\t") { return Fs_opfsRoot(c, desc[2:]) }
 	f := strings.split(desc, "\t", context.temp_allocator)
 	if len(f) != 3 || f[0] != "l" { return 0, fail(c, .Data_Clone, "DataCloneError: not a file handle") }
 	origin := url.origin_serialize(c.page.env.origin, context.temp_allocator)

@@ -53,6 +53,7 @@ foreign _m_scripts {
 	@(link_name = "WorkerGlobalScope_isModule") _WorkerGlobalScope_isModule :: proc() -> i32 ---
 	@(link_name = "SharedWorker_connect") _SharedWorker_connect :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, extended_lifetime: i32, _ret: ^u64) -> Error ---
 	@(link_name = "Worker_createScriptBytes") _Worker_createScriptBytes :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, script: [^]u8, script_len: u32, _ret: ^u64) -> Error ---
+	@(link_name = "Worker_pendingError") _Worker_pendingError :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "SharedWorker_connectBytes") _SharedWorker_connectBytes :: proc(url: [^]u8, url_len: u32, name: [^]u8, name_len: u32, type: WorkerType, extended_lifetime: i32, script: [^]u8, script_len: u32, _ret: ^u64) -> Error ---
 	@(link_name = "SharedWorker_portEnd") _SharedWorker_portEnd :: proc(worker: u64) -> u64 ---
 	@(link_name = "SharedWorkerGlobalScope_takeConnection") _SharedWorkerGlobalScope_takeConnection :: proc() -> u64 ---
@@ -275,6 +276,36 @@ SharedWorker_connect :: proc "contextless" (url: string, name: string, type: Wor
 Worker_createScriptBytes :: proc "contextless" (url: string, name: string, type: WorkerType, script: []u8) -> (result: u64, err: Error) {
 	err = _Worker_createScriptBytes(raw_data(url), u32(len(url)), raw_data(name), u32(len(name)), type, raw_data(script), u32(len(script)), &result)
 	return
+}
+
+// While wj_worker_error_to_global runs: the worker's uncaught error that its Worker object's error event did not
+// cancel, "message TAB filename" (HTML: it is reported in the owner's global, window.onerror).
+Worker_pendingError :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Worker_pendingError(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Worker_pendingError's result.
+Worker_pendingError_len :: proc "contextless" () -> (int, Error) {
+	n := _Worker_pendingError(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Worker_pendingError's result in a buffer allocated to fit.
+Worker_pendingError_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Worker_pendingError(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 SharedWorker_connectBytes :: proc "contextless" (url: string, name: string, type: WorkerType, extended_lifetime: bool, script: []u8) -> (result: u64, err: Error) {

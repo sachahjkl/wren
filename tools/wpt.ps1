@@ -28,7 +28,7 @@ $Shared = @('/resources/', '/common/', '/interfaces/', '/images/', '/fonts/', '/
             '/html/resources/', '/fetch/api/resources/', '/fetch/resources/', '/xhr/resources/', '/encoding/resources/',
             '/service-workers/service-worker/resources/', '/workers/support/', '/webidl/resources/', '/dom/constants.js',
             '/trusted-types/support/', '/storage/buckets/resources/', '/loading/resources/', '/webrtc/RTCPeerConnection-helper.js',
-            '/css/support/parsing-testcommon.js', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/')
+            '/css/support/parsing-testcommon.js', '/html/webappapis/structured-clone/', '/css/support/computed-testcommon.js', '/css/support/shadow-helper.js', '/media/')
 
 $root = Split-Path $PSScriptRoot -Parent
 $out = Join-Path $root 'build\wpt'
