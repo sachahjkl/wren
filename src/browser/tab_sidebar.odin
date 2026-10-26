@@ -71,6 +71,8 @@ tabs_in_sidebar :: proc(app: ^App) -> bool {
 Tab_Sidebar :: struct {
 	live_w:    f32,    // CSS px while the width handle is held (0: the preference's)
 	grab_w:    f32,    // the width when the handle was pressed
+	press_x:   f32,    // the pointer's x when it was pressed (window px)
+	handle:    ui.Key, // the width handle's box
 	resizing:  bool,
 	shown:     bool,   // built last frame (else the current tab is scrolled into view when it appears)
 }
@@ -79,6 +81,14 @@ sidebar: Tab_Sidebar
 
 ////////////////////////////////
 // Geometry (pure: tab_sidebar_test.odin)
+
+// The width (CSS px) the held handle gives: the width at the press, moved by the pointer since (`pos`: the sidebar's side;
+// a sidebar on the right grows toward the left).
+sidebar_drag_width :: proc(grab_w, press_x, mouse_x, scale: f32, pos: Tabs_Position) -> f32 {
+	dx := mouse_x - press_x
+	if pos == .Right { dx = -dx }
+	return clamp(math.round(grab_w + dx / max(scale, 0.01)), SIDEBAR_MIN_CSS, SIDEBAR_MAX_CSS)
+}
 
 // Physical width of the sidebar: icons only, or the width asked for, never below SIDEBAR_MIN_CSS nor above half of the window.
 sidebar_extent :: proc(win_w, width_css, scale: f32, collapsed: bool, collapsed_css: f32) -> f32 {
@@ -270,6 +280,11 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	dpi := ui_scale_of(app)
 	collapsed := favs.cfg.side_collapsed
+	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
+	// the width the pointer asks for now, not at the one of the frame before (the handle's signal comes after them)
+	if sidebar.resizing && sidebar.handle != 0 && ui.active_key() == sidebar.handle {
+		sidebar.live_w = sidebar_drag_width(sidebar.grab_w, sidebar.press_x, ui.mouse_pos().x, dpi, pos)
+	}
 	width_css := sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w
 	extent := sidebar_extent(f32(app.win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
 	if ui.active_key() == 0 { strip.drag_id, strip.drag_active = 0, false }   // the button went up (wherever)
@@ -621,15 +636,22 @@ sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi:
 	defer ui.pop_parent()
 	ui.next({fixed_x = pos == .Left ? extent - grab : 0, fixed_y = 0, width = ui.px(grab), height = ui.pct(1), cursor = .Resize_H})
 	hb := ui.build_box({.Clickable}, "###side_handle")
+	sidebar.handle = hb.key
 	sig := ui.signal(hb)
 	if sig.pressed {
 		sidebar.resizing = true
 		sidebar.grab_w = sidebar.live_w > 0 ? sidebar.live_w : favs.cfg.side_w
+		sidebar.press_x = ui.mouse_pos().x - sig.drag_delta.x
 	}
 	if sig.dragging && sidebar.resizing {
-		dx := pos == .Left ? sig.drag_delta.x : -sig.drag_delta.x
-		sidebar.live_w = clamp(math.round(sidebar.grab_w + dx / dpi), SIDEBAR_MIN_CSS, SIDEBAR_MAX_CSS)
-		app.frames_requested = max(app.frames_requested, 2)
+		w := sidebar_drag_width(sidebar.grab_w, sidebar.press_x, ui.mouse_pos().x, dpi, pos)
+		if w != sidebar.live_w {
+			// (the press frame: the pointer moved since it was built)
+			sidebar.live_w = w
+			app.frames_requested = max(app.frames_requested, 1)
+		}
+		// the edge this frame draws, against the pointer it was built from (browser.frame.drag_probe)
+		drag_probe_note(ui.mouse_pos().x, pos == .Left ? bar.rect.min.x + extent : bar.rect.max.x - extent)
 	}
 	if !sig.dragging && sidebar.resizing {
 		sidebar.resizing = false
