@@ -370,8 +370,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	// straight into the window's record, never through a local: a render.Surface is kilobytes (its present ring), and a local of
 	// it is split by LLVM into thousands of scalars whose debug fragments kept `build.bat` (-o:speed -debug) codegen going for an hour
 	bw := new(Browser_Window)
-	ok: bool
-	bw.surf, ok = render.surface_create(&app.r, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))
+	ok := render.surface_init(&app.r, &bw.surf, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))   // (in place: see render.surface_create)
 	if !ok {
 		free(bw)
 		platform.destroy_window(nw)
