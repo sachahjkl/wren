@@ -172,7 +172,7 @@ window_chrome_forget :: proc(w: ^platform.Window) {
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.
 fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 	if !platform.is_fullscreen(app.win) { wchrome.revealed = false; return }
-	if !wchrome.cfg.reveal || fullscreen_shell_active() { wchrome.revealed = false; return }   // (a page's own full screen keeps the whole window)
+	if !wchrome.cfg.reveal || fullscreen_shell_active(app.active) { wchrome.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
 	if !wchrome.revealed {
 		wchrome.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(app.win.size.x)
