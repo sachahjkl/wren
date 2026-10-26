@@ -1,6 +1,6 @@
 package page
 
-import "core:os"
+import "wb:base"
 import "core:strings"
 import "core:testing"
 
@@ -53,7 +53,7 @@ cache_matching_and_quota :: proc(t: ^testing.T) {
 	testing.expect(t, cache_entry_matches(&star, "https://a.example/v", "GET", {ignore_vary = true}))
 
 	dir := "build/tmp/cache_store_test"
-	_ = os.remove_all(dir)
+	_ = base.remove_tree(dir)
 	origin := "https://q.example"
 	cache_open(dir, origin, "c")
 	testing.expect_value(t, cache_put(dir, origin, "c", Cached_Response{url = "https://q.example/a", status = 200}, transmute([]byte)string("hello"), 100), Cache_Put_Error.None)
@@ -80,5 +80,5 @@ cache_matching_and_quota :: proc(t: ^testing.T) {
 	testing.expect(t, cache_delete_named(dir, origin, "c"))
 	testing.expect(t, !cache_has(dir, origin, "c"))
 	cache_store_shutdown()
-	_ = os.remove_all(dir)
+	_ = base.remove_tree(dir)
 }
