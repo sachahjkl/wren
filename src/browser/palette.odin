@@ -689,7 +689,7 @@ mix :: proc(h, v: u64) -> u64 { return (h ~ v) * 0x100000001b3 }
 results_key :: proc(app: ^App) -> u64 {
 	h: u64 = 0xcbf29ce484222325
 	h = mix(h, app.prefs.version)
-	h = mix(h, u64(app.current))
+	h = mix(h, u64(active_window(app).current))
 	h = mix(h, cpal.usage.version)
 	h = mix(h, u64(len(closed_tabs)))
 	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }

@@ -171,21 +171,22 @@ drop_open :: proc(data: rawptr) {
 
 // Files and folders dropped on the window: the first in the current tab, the others in new tabs (in the background).
 open_dropped_paths :: proc(app: ^App, paths: []string) {
+	wnd := active_window(app)
 	first := -1
 	for p, i in paths {
 		address := fetch.file_url_from_path(p, false, context.temp_allocator)   // a folder is redirected to its URL with '/'
 		if i == 0 && current_tab(app) != nil {
-			first = app.current
+			first = wnd.current
 			navigate(app, current_tab(app), address, origin = .User)
 		} else {
 			tab_open(app, address, origin = .User)
-			if first < 0 { first = app.current }
+			if first < 0 { first = wnd.current }
 		}
 	}
 	// the first one is shown (the others wait in their tabs, as when links open in the background)
-	if first >= 0 && first < len(app.tabs) {
-		app.current = first
-		if t := current_tab(app); t != nil { ui.field_set(&app.address, t.url) }
+	if first >= 0 && first < len(wnd.tabs) {
+		wnd.current = first
+		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
 	app.frames_requested = max(app.frames_requested, 3)
 }

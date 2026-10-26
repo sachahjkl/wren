@@ -159,7 +159,7 @@ font_prefs_changed :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 	emoji_changed := emoji_source_apply(a) || s.color_engine != old.color_engine
 	if s.system_fallback != old.system_fallback || emoji_changed {
 		font.clear_word_cache(&a.fonts)
-		for t in a.tabs { t.layout.valid = false }
+		for t in active_window(a).tabs { t.layout.valid = false }
 	}
 	font_generics_apply(a)
 	a.frames_requested = max(a.frames_requested, 2)

@@ -162,6 +162,7 @@ window_capture :: proc(app: ^App) -> Window_State {
 }
 
 checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> ^Checkpoint {
+	wnd := active_window(app)
 	c := new(Checkpoint)
 	c.name = strings.clone(name)
 	c.prefs = config.snapshot(&app.prefs)
@@ -169,9 +170,9 @@ checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> 
 	if with_tabs {
 		c.has_tabs = true
 		list := make([dynamic]Checkpoint_Tab)
-		for t, i in app.tabs {
+		for t, i in wnd.tabs {
 			if t.frame != nil { continue }
-			if i == app.current { c.current = len(list) }
+			if i == wnd.current { c.current = len(list) }
 			append(&list, Checkpoint_Tab{url = strings.clone(t.url), zoom = t.zoom > 0 ? t.zoom : 1})
 		}
 		c.tabs = list[:]
@@ -243,15 +244,16 @@ chrome_reset :: proc(app: ^App) {
 
 // One blank tab (or one at `address`) and no other: returns it. The tabs that stand in for a frame are not tabs.
 tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
+	wnd := active_window(app)
 	fresh := tab_open(app, address == "" ? "about:blank" : address, origin = .User)
-	for i := len(app.tabs) - 1; i >= 0; i -= 1 {
-		t := app.tabs[i]
+	for i := len(wnd.tabs) - 1; i >= 0; i -= 1 {
+		t := wnd.tabs[i]
 		if t == fresh || t.frame != nil { continue }
 		tab_close(app, i)
 		closed^ += 1
 	}
-	for t, i in app.tabs { if t == fresh { app.current = i } }
-	ui.field_set(&app.address, fresh.url)
+	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
+	ui.field_set(&wnd.address, fresh.url)
 	closed_tabs_destroy()
 	app.frames_requested = max(app.frames_requested, 3)
 	return fresh
@@ -380,6 +382,7 @@ sort_strings :: proc(list: []string) {
 
 @(private = "file")
 checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
+	wnd := active_window(app)
 	sum: Reset_Summary
 	sum.ops = remote_cancel_ops("cancelled by a restore")
 	chrome_reset(app)
@@ -393,15 +396,15 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	remote_reload_settings(app)
 	sum.window = window_restore(app, cp.window)
 	// the tabs again, then the blank one that held the place goes
-	blank := app.tabs[app.current]
+	blank := wnd.tabs[wnd.current]
 	for t in cp.tabs {
 		nt := tab_open(app, t.url, origin = .Replay)
 		zoom_set(app, nt, t.zoom)
 	}
-	for t, i in app.tabs { if t == blank { tab_close(app, i); break } }
-	app.current = clamp(cp.current, 0, len(app.tabs) - 1)
+	for t, i in wnd.tabs { if t == blank { tab_close(app, i); break } }
+	wnd.current = clamp(cp.current, 0, len(wnd.tabs) - 1)
 	cur := current_tab(app)
-	if cur != nil { ui.field_set(&app.address, cur.url) }
+	if cur != nil { ui.field_set(&wnd.address, cur.url) }
 	r := &the_remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }

@@ -197,24 +197,24 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_tabs) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
 	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, app.current) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, active_window(app).current) }})
 	add(r, {name = "tab.close_others", title = "Close other tabs", category = "Tabs",
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, app.current) }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, active_window(app).current) }})
 	add(r, {name = "tab.duplicate", title = "Duplicate tab", category = "Tabs", keywords = "copy clone",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_in_new_tab(app, t.url, origin = .Replay) }})
 	add(r, {name = "tab.next", title = "Next tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = ctrl}, {key = .Page_Down, mods = ctrl}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(app.tabs); if n > 0 { tab_select(app, (app.current + 1) % n) } }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + 1) % n) } }})
 	add(r, {name = "tab.previous", title = "Previous tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = cs}, {key = .Page_Up, mods = ctrl}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(app.tabs); if n > 0 { tab_select(app, (app.current + n - 1) % n) } }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + n - 1) % n) } }})
 	add(r, {name = "tab.move_right", title = "Move tab right", category = "Tabs", keys = keys(&r.arena, {key = .Page_Down, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current + 1 < len(app.tabs) },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current + 1 < len(active_window(app).tabs) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, +1) }})
 	add(r, {name = "tab.move_left", title = "Move tab left", category = "Tabs", keys = keys(&r.arena, {key = .Page_Up, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current > 0 },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, -1) }})
 	add(r, {name = "tab.move_to_new_window", title = "Move tab to a new window", category = "Tabs", keywords = "detach pop out separate window",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {

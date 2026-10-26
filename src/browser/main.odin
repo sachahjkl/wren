@@ -117,8 +117,9 @@ Tab :: struct {
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
 
 // The browser has several windows (windows.odin). The fields marked [window] are the active window's: window_activate
-// exchanges them with the ones a window keeps, so the code that reads `app.tabs` or `app.win` stays the one of a single window.
-// What is no longer exchanged is read in the window itself: active_window(app).presented, window_own(app).
+// exchanges them with the ones a window keeps, so the code that reads `app.win` stays the one of a single window.
+// What is no longer exchanged is read in the window itself: active_window(app).tabs, .current, .address, .presented,
+// window_own(app).
 App :: struct {
 	win:      ^platform.Window,   // [window]
 	r:        render.Renderer,
@@ -144,9 +145,6 @@ App :: struct {
 	portable: bool,           // wren.portable beside the executable: the profile is <executable folder>\data (setup.odin)
 	process:  ^base.Scope,
 
-	tabs:     [dynamic]^Tab,  // [window]
-	current:  int,            // [window]
-	address:  ui.Text_Field,  // [window]
 	measure:  Measure,        // text measurement cache of the layout
 	show_console:  bool,
 
@@ -168,7 +166,10 @@ the_app: ^App
 clip_get :: proc() -> string { return platform.get_clipboard(the_app.win, context.temp_allocator) }
 clip_set :: proc(text: string) { platform.set_clipboard(the_app.win, text) }
 
-current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app.current] : nil }
+current_tab :: proc(app: ^App) -> ^Tab {
+	w := active_window(app)
+	return len(w.tabs) > 0 ? w.tabs[w.current] : nil
+}
 
 ////////////////////////////////
 // Tabs
@@ -176,9 +177,10 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 @(private = "file") tab_ids: u64
 
 tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav_Origin.Page) -> ^Tab {
+	wnd := active_window(app)
 	t := tab_new(app)
-	app.current = len(app.tabs) - 1
-	ui.field_set(&app.address, address)
+	wnd.current = len(wnd.tabs) - 1
+	ui.field_set(&wnd.address, address)
 	// an empty address opens the homepage; one that is refused (nav_trust.odin) leaves the homepage too, not an empty tab
 	if !navigate(app, t, address, from, origin = origin) { navigate(app, t, "") }
 	return t
@@ -201,7 +203,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
-	append(&app.tabs, t)
+	append(&active_window(app).tabs, t)
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
 	recovery_touch(app)   // crash_recovery.odin
@@ -717,7 +719,7 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		return
 	}
-	for other in app.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
+	for other in active_window(app).tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
@@ -1082,6 +1084,7 @@ frame :: proc(app: ^App, idled := false) {
 	gate := platform.frame_gate()
 	gate_token, admitted := platform.frame_gate_begin(gate, .Full)
 	if !admitted { app.win.paint_requested = true; return }
+	wnd := active_window(app)   // (the window the frame is for, all along: a loop of the system's frame puts it back)
 	defer {
 		platform.frame_gate_end(gate, gate_token)
 		window_chrome_after_frame(app)   // the system menu, outside the frame (its loop paints the window)
@@ -1123,7 +1126,7 @@ frame :: proc(app: ^App, idled := false) {
 	}
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
 	// a window whose last tab just left (a move: the window closes at the end of the pass) has nothing to build
-	if len(app.tabs) == 0 && len(app.windows) > 1 {
+	if len(wnd.tabs) == 0 && len(app.windows) > 1 {
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1158,7 +1161,7 @@ frame :: proc(app: ^App, idled := false) {
 	fullscreen_shell_settle(app, app.active)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
 	shown := app.win.size.x > 0 && app.win.size.y > 0
-	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	for tab, i in wnd.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == wnd.current && tab.kind == .Web) } }
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
 	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
@@ -1174,7 +1177,7 @@ frame :: proc(app: ^App, idled := false) {
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
-	own := window_own(app)
+	own := &wnd.own
 	own.page_snapshot_wanted = ran > 0
 	if t := current_tab(app); t != nil && t.page != nil {
 		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
@@ -1223,7 +1226,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
-	active_window(app).presented = true
+	wnd.presented = true
 	prof_end(.Present)
 	frame_log_presented()
 	pacer_end_frame(app)
@@ -1355,7 +1358,8 @@ main :: proc() {
 		if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
 		if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
 			for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
-			app.current = len(app.tabs) - len(rest)
+			wnd := active_window(app)
+			wnd.current = len(wnd.tabs) - len(rest)
 		}
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
@@ -1553,7 +1557,7 @@ main :: proc() {
 	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
 	host.shutdown_step("ui.field_destroy")
-	ui.field_destroy(&app.address)
+	ui.field_destroy(&app.bare.address)   // (the windows' with their toolkit states: windows_destroy_ui)
 	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()
 	host.shutdown_step("session_destroy")
@@ -1580,7 +1584,7 @@ main :: proc() {
 	config.prefs_destroy(&app.prefs)
 	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
 	delete(app.profile_dir)
-	delete(app.tabs)
+	delete(app.bare.tabs)
 	free(app)
 	the_app = nil
 	host.shutdown_step("instance_release")

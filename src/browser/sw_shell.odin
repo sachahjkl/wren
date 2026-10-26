@@ -22,7 +22,7 @@ sw_shell_open :: proc(user: rawptr, url: string) -> bool {
 @(private = "file")
 sw_shell_focus :: proc(user: rawptr, p: ^page.Page) -> bool {
 	app := (^App)(user)
-	for t, i in app.tabs {
+	for t, i in active_window(app).tabs {
 		if t.page != page.page_top(p) { continue }
 		tab_select(app, i)
 		return true
