@@ -259,7 +259,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			if res.hovered >= 0 { graph_tooltip(res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
 			ui.spacer(ui.px(em * 0.3))
 		case .Fps:
-			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz (frames aim for %s Hz).", hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), fmt_hz(pacer.hz, c)))
+			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
 		case .Cpu:
 			text := n.frames > 0 ? fmt.tprintf("CPU %s ms###sb_cpu", fmt_ms(n.cpu_mean, c)) : "CPU -- ms###sb_cpu"
 			tone := "weak"
@@ -298,11 +298,17 @@ graph_tooltip :: proc(index: int, colors: [Hud_Series]draw.Color) {
 		bad, warn := hud_bad(), hud_warn()
 		tone := bad > 0 && total > bad ? "bad" : warn > 0 && total > warn ? "warn" : ""
 		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), w, tone = tone)
+		// the three rows are always there ("--" when the frame had none): a row that came and went as the pointer crossed the bars of a
+		// graph where some frames restyle and others do not made the tooltip jump in height under it
+		restyle, lay_pass, wasm := "--", "--", "--"
 		if d := &hud.details[s.tag % u64(len(hud.details))]; d.serial == s.tag {
-			if d.restyle != .None { ui.stat_row("tt_rs", "Restyle", restyle_text(d), w, mono = false) }
-			if d.lay_pass != .None { ui.stat_row("tt_lp", "Layout pass", pass_name(d.lay_pass), w, mono = false) }
-			if d.wasm_calls > 0 { ui.stat_row("tt_wasm", "WebAssembly", fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls), w) }
+			if d.restyle != .None { restyle = restyle_text(d) }
+			if d.lay_pass != .None { lay_pass = pass_name(d.lay_pass) }
+			if d.wasm_calls > 0 { wasm = fmt.tprintf("%s ms, %d calls", fmt_ms(d.wasm_ms, c), d.wasm_calls) }
 		}
+		ui.stat_row("tt_rs", "Restyle", restyle, w, mono = false)
+		ui.stat_row("tt_lp", "Layout pass", lay_pass, w, mono = false)
+		ui.stat_row("tt_wasm", "WebAssembly", wasm, w)
 		ui.spacer(ui.px(em * 0.3))
 	}
 }
@@ -419,6 +425,8 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 		case .Default:        src = "assumed"
 		}
 		ui.stat_row("d_hz", "Monitor", fmt.tprintf("%s Hz (%s)", fmt_hz(d.hz, c), src), w)
+		ui.stat_row("d_max", "Top mode", fmt.tprintf("%s Hz%s", fmt_hz(d.max_hz, c), pacer.variable ? ", variable" : ""), w, mono = false)
+		if pacer.live_hz > 0 { ui.stat_row("d_live", "Compositor now", fmt.tprintf("%s Hz", fmt_hz(pacer.live_hz, c)), w) }
 		measured := render.measured_refresh_hz(&app.r)
 		ui.stat_row("d_meas", "Measured vblanks", measured > 0 ? fmt.tprintf("%s Hz", fmt_hz(measured, c)) : "--", w)
 		how := pacer.timed ? "timed" : pacer.interval > 1 ? fmt.tprintf("every %d refreshes", pacer.interval) : "every refresh"

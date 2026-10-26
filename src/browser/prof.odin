@@ -571,7 +571,7 @@ report_pacing :: proc(sb: ^strings.Builder) {
 	d := pacer.display
 	budget := f64(frame_budget_ms())
 	how := pacer.timed ? "timed" : fmt.tprintf("sync interval %d", pacer.interval)
-	fmt.sbprintf(sb, "pacing: display %.3f Hz (%v), target %.3f Hz (%s, %s), budget %.3f ms\n", d.hz, d.source, pacer.hz, how, pacer.tearing ? "tearing" : "vsync", budget)
+	fmt.sbprintf(sb, "pacing: display %.3f Hz (top mode %.0f Hz%s, %v), target %.3f Hz (%s, %s), budget %.3f ms\n", d.hz, d.max_hz, pacer.variable ? ", variable" : "", d.source, pacer.hz, how, pacer.tearing ? "tearing" : "vsync", budget)
 	cpu := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
 	gpu := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
 	pres := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)

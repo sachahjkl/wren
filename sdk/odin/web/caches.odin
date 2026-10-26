@@ -16,11 +16,12 @@ foreign _m_caches {
 	@(link_name = "CacheStorage_hasName") _CacheStorage_hasName :: proc(name: [^]u8, name_len: u32, _ret: ^bool) -> Error ---
 	@(link_name = "CacheStorage_deleteName") _CacheStorage_deleteName :: proc(name: [^]u8, name_len: u32, _ret: ^bool) -> Error ---
 	@(link_name = "CacheStorage_names") _CacheStorage_names :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
-	@(link_name = "Cache_matchIds") _Cache_matchIds :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, ignore_search: i32, ignore_method: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Cache_matchIds") _Cache_matchIds :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Cache_entryRequestHeaders") _Cache_entryRequestHeaders :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Cache_entryHead") _Cache_entryHead :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Cache_entryBody") _Cache_entryBody :: proc(cache: [^]u8, cache_len: u32, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
-	@(link_name = "Cache_putEntry") _Cache_putEntry :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, status: i32, status_text: [^]u8, status_text_len: u32, response_url: [^]u8, response_url_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32) -> Error ---
-	@(link_name = "Cache_deleteEntries") _Cache_deleteEntries :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, ignore_search: i32, ignore_method: i32, _ret: ^bool) -> Error ---
+	@(link_name = "Cache_putEntry") _Cache_putEntry :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, request_headers: [^]u8, request_headers_len: u32, status: i32, status_text: [^]u8, status_text_len: u32, response_url: [^]u8, response_url_len: u32, headers: [^]u8, headers_len: u32, body: [^]u8, body_len: u32) -> Error ---
+	@(link_name = "Cache_deleteEntries") _Cache_deleteEntries :: proc(cache: [^]u8, cache_len: u32, url: [^]u8, url_len: u32, method: [^]u8, method_len: u32, request_headers: [^]u8, request_headers_len: u32, ignore_search: i32, ignore_method: i32, ignore_vary: i32, _ret: ^bool) -> Error ---
 }
 
 // Whether the calling realm may use caches.
@@ -74,27 +75,58 @@ CacheStorage_names_alloc :: proc(allocator: runtime.Allocator) -> (string, Error
 	return {}, .Truncated
 }
 
-// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
-Cache_matchIds :: proc "contextless" (cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool, buf: []u8) -> (string, Error) {
-	n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), raw_data(buf), u32(len(buf)))
+// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
+// ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
+// in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
+Cache_matchIds :: proc "contextless" (cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool, buf: []u8) -> (string, Error) {
+	n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(request_headers), u32(len(request_headers)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), i32(1 if ignore_vary else 0), raw_data(buf), u32(len(buf)))
 	if n < 0 { return {}, Error(n) }
 	if int(n) > len(buf) { return string(buf), .Truncated }
 	return string(buf[:n]), .None
 }
 
 // The full length of Cache_matchIds's result.
-Cache_matchIds_len :: proc "contextless" (cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (int, Error) {
-	n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), nil, 0)
+Cache_matchIds_len :: proc "contextless" (cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (int, Error) {
+	n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(request_headers), u32(len(request_headers)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), i32(1 if ignore_vary else 0), nil, 0)
 	if n < 0 { return 0, Error(n) }
 	return int(n), .None
 }
 
 // Cache_matchIds's result in a buffer allocated to fit.
-Cache_matchIds_alloc :: proc(cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool, allocator: runtime.Allocator) -> (string, Error) {
+Cache_matchIds_alloc :: proc(cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool, allocator: runtime.Allocator) -> (string, Error) {
 	cap := 64
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
-		n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), raw_data(buf), u32(len(buf)))
+		n := _Cache_matchIds(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(request_headers), u32(len(request_headers)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), i32(1 if ignore_vary else 0), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// The header lines of an entry's request (Not_Found when it is gone).
+Cache_entryRequestHeaders :: proc "contextless" (cache: string, id: u64, buf: []u8) -> (string, Error) {
+	n := _Cache_entryRequestHeaders(raw_data(cache), u32(len(cache)), id, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Cache_entryRequestHeaders's result.
+Cache_entryRequestHeaders_len :: proc "contextless" (cache: string, id: u64) -> (int, Error) {
+	n := _Cache_entryRequestHeaders(raw_data(cache), u32(len(cache)), id, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Cache_entryRequestHeaders's result in a buffer allocated to fit.
+Cache_entryRequestHeaders_alloc :: proc(cache: string, id: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Cache_entryRequestHeaders(raw_data(cache), u32(len(cache)), id, raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)
@@ -162,15 +194,15 @@ Cache_entryBody_alloc :: proc(cache: string, id: u64, allocator: runtime.Allocat
 	return {}, .Truncated
 }
 
-// cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
-// caches.max_bytes_per_origin.
-Cache_putEntry :: proc "contextless" (cache: string, url: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Error {
-	return _Cache_putEntry(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), status, raw_data(status_text), u32(len(status_text)), raw_data(response_url), u32(len(response_url)), raw_data(headers), u32(len(headers)), raw_data(body), u32(len(body)))
+// cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
+// considered). Quota past caches.max_bytes_per_origin.
+Cache_putEntry :: proc "contextless" (cache: string, url: string, request_headers: string, status: i32, status_text: string, response_url: string, headers: string, body: []u8) -> Error {
+	return _Cache_putEntry(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(request_headers), u32(len(request_headers)), status, raw_data(status_text), u32(len(status_text)), raw_data(response_url), u32(len(response_url)), raw_data(headers), u32(len(headers)), raw_data(body), u32(len(body)))
 }
 
 // cache.delete(request, options)
-Cache_deleteEntries :: proc "contextless" (cache: string, url: string, method: string, ignore_search: bool, ignore_method: bool) -> (result: bool, err: Error) {
-	err = _Cache_deleteEntries(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), &result)
+Cache_deleteEntries :: proc "contextless" (cache: string, url: string, method: string, request_headers: string, ignore_search: bool, ignore_method: bool, ignore_vary: bool) -> (result: bool, err: Error) {
+	err = _Cache_deleteEntries(raw_data(cache), u32(len(cache)), raw_data(url), u32(len(url)), raw_data(method), u32(len(method)), raw_data(request_headers), u32(len(request_headers)), i32(1 if ignore_search else 0), i32(1 if ignore_method else 0), i32(1 if ignore_vary else 0), &result)
 	return
 }
 

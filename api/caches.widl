@@ -14,16 +14,20 @@ module caches {
   bool CacheStorage_deleteName(string name) raises;
   /// caches.keys(): the names in creation order, "\n"-separated.
   string CacheStorage_names() raises;
-  /// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated.
-  string Cache_matchIds(string cache, string url, string method, bool ignore_search, bool ignore_method) raises;
+  /// The ids of the entries of `cache` matching the request (url "" = every entry), decimal, "\n"-separated. Unless
+  /// ignore_vary, an entry whose response has a Vary header matches only when the named request headers are the same
+  /// in `request_headers` ("Name: value" lines) as in its stored request (Vary: * never matches).
+  string Cache_matchIds(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
+  /// The header lines of an entry's request (Not_Found when it is gone).
+  string Cache_entryRequestHeaders(string cache, u64 id) raises;
   /// An entry's head: status, statusText, the response's URL, the request's method, the request's URL, then the
   /// response's header lines, "\n"-separated (Not_Found when it is gone).
   string Cache_entryHead(string cache, u64 id) raises;
   /// An entry's body (Not_Found when it is gone).
   bytes Cache_entryBody(string cache, u64 id) raises;
-  /// cache.put(request, response) with the response's body read: replaces the entries of the same URL. Quota past
-  /// caches.max_bytes_per_origin.
-  void Cache_putEntry(string cache, string url, i32 status, string status_text, string response_url, string headers, bytes body) raises;
+  /// cache.put(request, response) with the response's body read: replaces the entries the request matches (Vary
+  /// considered). Quota past caches.max_bytes_per_origin.
+  void Cache_putEntry(string cache, string url, string request_headers, i32 status, string status_text, string response_url, string headers, bytes body) raises;
   /// cache.delete(request, options)
-  bool Cache_deleteEntries(string cache, string url, string method, bool ignore_search, bool ignore_method) raises;
+  bool Cache_deleteEntries(string cache, string url, string method, string request_headers, bool ignore_search, bool ignore_method, bool ignore_vary) raises;
 }

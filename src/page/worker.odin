@@ -49,6 +49,7 @@ Worker_Msg_Kind :: enum u8 {
 	Port_Wake,      // router -> worker: a message waits for the port end id (ports.odin)
 	Sw_Event,       // page -> service worker: an event to fire (service_worker.odin)
 	Sw_Reply,       // service worker -> page: what it did (service_worker.odin)
+	Connect,        // page -> shared worker: a new connection, ports[0] is its port's end (shared_worker.odin)
 }
 
 Worker_Msg :: struct {
@@ -180,7 +181,10 @@ Worker_Host :: struct {
 	counted:    bool,                   // holds a slot of the process-wide count
 	javascript: bool,                   // its script is JavaScript (js_workers.odin), not a Wasm module
 	pins:       int,                    // being worked on (a message, an error event): not freed before it is unpinned
-	sw:         ^Sw_Registration,       // the registration whose instance this is (service_worker.odin), nil for a Worker
+	sw:         ^Sw_Version,            // the service worker version this runs (service_worker.odin), nil for a Worker
+	shared:     ^Shared_Worker,         // the shared worker this runs (shared_worker.odin), nil for a Worker
+	module:     bool,                   // its script is a module ({type: "module"}): js_workers.odin
+	storage_key: string,                // owned: the storage key of its realm when not its page's (a shared worker's)
 }
 
 Relay :: struct {
@@ -231,7 +235,8 @@ page_worker_count :: proc(p: ^Page) -> int {
 
 // Starts a dedicated worker running the module at `src` (resolved against the document). Returns the Worker object,
 // or 0 when the browser refuses (workers disabled, too many, invalid or cross-origin URL); the reason is logged.
-worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false) -> u64 {
+// `image`: the script the browser already has (a service worker's stored version): it starts at once, nothing is fetched.
+worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascript := false, module := false, image: []byte = nil, sw: ^Sw_Version = nil) -> u64 {
 	ws := &p.settings.workers
 	if p.worker != nil { log(p, .Error, "Worker: nested workers are not supported"); return 0 }
 	if p.loader == nil { log(p, .Error, "Worker: this page cannot load anything"); return 0 }
@@ -254,7 +259,7 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	}
 
 	h := new(Worker_Host)
-	h.page, h.owner, h.counted, h.javascript = p, owner, true, javascript
+	h.page, h.owner, h.counted, h.javascript, h.module, h.sw = p, owner, true, javascript, javascript && module, sw
 	h.url, h.name = strings.clone(u.href), strings.clone(name)
 	h.link = link_make(p.loop, ws.max_pending_bytes)
 	h.link.host = h
@@ -268,9 +273,15 @@ worker_create :: proc(p: ^Page, src: string, name: string, owner: u32, javascrip
 	h.relays = make(map[u64]^Relay)
 	append(&p.workers.hosts, h)
 	h.self = object_create(p, &worker_vt, h, owner)
+	if image != nil {
+		h.status = 200
+		worker_spawn(h, image)
+		return h.self
+	}
+	// (a module worker's script must have a JavaScript MIME type: HTML "fetch a module worker script graph")
 	h.script = fetch.start(p.loader, {
 		request = {url = h.url, mode = .Same_Origin, credentials = .Same_Origin, destination = .Worker, initiator = &p.env,
-			script = javascript ? .Classic : .Wasm},
+			script = h.module ? .Module : (javascript ? .Classic : .Wasm)},
 		on_event = worker_script_event, user = h, scope = p.scope, collect = true,
 	})
 	return h.self
@@ -313,6 +324,7 @@ worker_failed :: proc(h: ^Worker_Host, message: string) {
 	h.state = .Exited
 	worker_uncount(h)
 	if h.sw != nil { sw_instance_error(h, message); return }   // service_worker.odin
+	if h.shared != nil { shared_failed(h, message); return }   // shared_worker.odin
 	worker_fire_error(h, message, h.url)
 }
 
@@ -331,7 +343,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.wasm = p.settings.workers.wasm
 	g.javascript = h.javascript
 	g.storage = p.web.embedder.storage
-	g.storage_key = strings.clone(storage_origin_key(p))
+	g.storage_key = strings.clone(h.storage_key != "" ? h.storage_key : storage_origin_key(p))
 	// the JavaScript settings' lists are the shell's, changed under the worker's feet: a copy of its own
 	if g.javascript { g.settings.js = js.settings_clone(p.settings.js) } else { g.settings.js = {} }
 	// the other strings the shell owns (freed when its preferences change): copies, or nothing a worker reads
@@ -339,6 +351,7 @@ worker_spawn :: proc(h: ^Worker_Host, image: []byte) {
 	g.settings.js_web.vendor = strings.clone(p.settings.js_web.vendor)
 	g.settings.forms.password_mask = ""
 	g.url, g.name = strings.clone(h.url), strings.clone(h.name)
+	g.module, g.shared = h.module, h.shared != nil
 	if h.sw != nil { sw_global_init(&g.sw, h.sw) }   // service_worker.odin: a service worker's instance
 	g.image = make([]byte, len(image))
 	copy(g.image, image)
@@ -390,6 +403,7 @@ worker_free :: proc(h: ^Worker_Host) {
 	fetch.environment_destroy(&h.env)
 	delete(h.url)
 	delete(h.name)
+	delete(h.storage_key)
 	h.link.host = nil
 	link_release(h.link)
 	free(h)
@@ -438,14 +452,18 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 	case .Error:
 		if h.terminated { return }
 		if h.sw != nil { sw_instance_error(h, m.text); return }   // service_worker.odin
+		if h.shared != nil && m.code == 1 { shared_failed(h, m.text); return }   // its script does not parse
+		if h.shared != nil { log(p, .Error, fmt.tprintf("uncaught error: %s", m.text)); return }   // its clients' consoles
 		worker_fire_error(h, m.text, m.text2)
 	case .Console:
 		log(p, Log_Level(m.code), fmt.tprintf("[worker %s] %s", worker_label(h), m.text))
 	case .Closed:
 		h.state = .Closed
+		if h.shared != nil { shared_gone(h) }   // shared_worker.odin: a new SharedWorker() starts another one
 	case .Exited:
 		if h.thread != nil { host.thread_join(h.thread); h.thread = nil }
 		h.state = .Exited
+		if h.shared != nil { shared_gone(h) }
 		if h.javascript && h.self != 0 { js_worker_gone(p, h.self) }   // its Worker object may be collected now
 		relays_cancel(h)
 		worker_uncount(h)
@@ -461,7 +479,7 @@ page_receive :: proc(h: ^Worker_Host, m: ^Worker_Msg) {
 		}
 	case .Sw_Reply:
 		if !h.terminated { sw_page_reply(h, m) }   // service_worker.odin
-	case .Fetch_Event, .Port_Wake, .Sw_Event:
+	case .Fetch_Event, .Port_Wake, .Sw_Event, .Connect:
 	}
 }
 
@@ -657,6 +675,11 @@ Worker_Global :: struct {
 	storage_key: string,         // the creator's storage key (origin, and the top-level site of a partitioned frame)
 	idb_wake: b32,              // atomic: the IndexedDB manager has an event for this realm (any thread sets it)
 	sw:       Sw_Global,        // a service worker's realm: what it is and the events it has to fire (service_worker.odin)
+	shared:   bool,             // a shared worker's realm (SharedWorkerGlobalScope)
+	module:   bool,             // `image` is the root of a module graph
+	connects: [dynamic]u64,     // a shared worker's connections waiting for their connect event: their port ends
+	waiting:  bool,             // a module graph is still loading: the page's messages wait (held) until it ran
+	held:     [dynamic]^Worker_Msg,
 }
 
 @(private)
@@ -668,8 +691,12 @@ worker_global_free :: proc(g: ^Worker_Global) {
 	js_web_settings_destroy(&g.settings.js_web)
 	delete(g.url); delete(g.name); delete(g.image); delete(g.storage_key)
 	sw_global_free(&g.sw)
+	for e in g.connects { port_close_end(e) }
+	delete(g.connects)
 	for m in g.inbox { msg_free(m) }
 	delete(g.inbox)
+	for m in g.held { msg_free(m) }
+	delete(g.held)
 	free(g)
 }
 
@@ -750,12 +777,19 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 	p := g.page
 	link_take(l, true, &g.inbox)
 	for m, i in g.inbox {
+		if g.waiting && (m.kind == .Message || m.kind == .Connect) {
+			// HTML: a module worker's port message queue is enabled once its graph ran
+			append(&g.held, m)
+			g.inbox[i] = nil
+			continue
+		}
 		if !link_stopping(l) {
 			switch m.kind {
 			case .Message:     deliver_message(p, g.self, m, 0)
 			case .Fetch_Event: worker_fetch_event(p, m)
 			case .Port_Wake:   ports_wake_worker(p, m.id)   // ports.odin
 			case .Sw_Event:    sw_worker_event(p, m); continue   // service_worker.odin (keeps the message)
+			case .Connect:     shared_connect_event(p, m)   // shared_worker.odin (takes the port end)
 			case .Error, .Console, .Closed, .Exited, .Fetch_Start, .Fetch_Cancel, .Sw_Reply:
 			}
 		}
@@ -764,6 +798,23 @@ worker_run_inbox :: proc(g: ^Worker_Global) {
 		free_all(context.temp_allocator)
 	}
 	clear(&g.inbox)
+}
+
+// A module worker's graph ran (or failed): the messages held meanwhile are delivered, in order, from a task.
+worker_release_held :: proc(p: ^Page) {
+	g := p.worker
+	if g == nil || !g.waiting { return }
+	g.waiting = false
+	if len(g.held) == 0 { return }
+	sync.mutex_lock(&g.link.mu)
+	rest := make([dynamic]^Worker_Msg, 0, len(g.held) + len(g.link.to_worker))
+	append(&rest, ..g.held[:])
+	append(&rest, ..g.link.to_worker[:])
+	delete(g.link.to_worker)
+	g.link.to_worker = rest
+	sync.mutex_unlock(&g.link.mu)
+	clear(&g.held)
+	host.signal(&g.link.loop)
 }
 
 @(private)
@@ -840,4 +891,5 @@ worker_fetch_event :: proc(p: ^Page, m: ^Worker_Msg) {
 	}
 	if f.ext != nil { fetch_ext_event(f, u); return }   // promise / stream / abort signal, as on the page's thread
 	fetch_update(f, u)
+	if f.module != nil && f.state >= 2 { module_worker_fetched(p, f) }   // a module of the realm's graph (js_load_modules.odin)
 }

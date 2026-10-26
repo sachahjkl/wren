@@ -7,7 +7,8 @@ package page
 // (<id>.body) written once. A profile without a directory keeps everything in memory.
 //
 // Matching (Cache "query cache"): the URLs without their fragments are equal (without their queries with
-// ignoreSearch), the method is GET unless ignoreMethod. Vary is not consulted (as with ignoreVary).
+// ignoreSearch), the method is GET unless ignoreMethod, and unless ignoreVary every header the stored response's Vary
+// names has the same value in the request as in the stored request (Vary: * matches nothing).
 
 import "core:fmt"
 import "core:os"
@@ -22,6 +23,7 @@ Cached_Response :: struct {
 	status_text:  string,
 	response_url: string,
 	headers:      string,   // "Name: value\r\n" lines
+	req_headers:  string,   // the request's header lines (Vary)
 	size:         i64,
 	body:         []byte,   // in memory when the profile has no directory (else read from <id>.body)
 }
@@ -42,6 +44,7 @@ Origin_Caches :: struct {
 Cache_Query :: struct {
 	ignore_search: bool,
 	ignore_method: bool,
+	ignore_vary:   bool,
 }
 
 @(private)
@@ -54,7 +57,7 @@ Cache_Store :: struct {
 
 @(private)
 cached_free :: proc(e: ^Cached_Response) {
-	delete(e.url); delete(e.method); delete(e.status_text); delete(e.response_url); delete(e.headers); delete(e.body)
+	delete(e.url); delete(e.method); delete(e.status_text); delete(e.response_url); delete(e.headers); delete(e.req_headers); delete(e.body)
 }
 
 @(private)
@@ -93,7 +96,8 @@ cache_origin_dir :: proc(profile_dir, origin: string) -> string {
 	return strings.to_string(b)
 }
 
-CACHE_MAGIC :: "WCS1"
+CACHE_MAGIC :: "WCS2"       // (WCS1: entries without their request's headers, still read)
+CACHE_MAGIC_1 :: "WCS1"
 
 @(private)
 wcs_put_str :: proc(b: ^[dynamic]byte, s: string) {
@@ -141,6 +145,7 @@ cache_index_serialize :: proc(oc: ^Origin_Caches, allocator := context.allocator
 			wcs_put_u64(&b, e.id)
 			wcs_put_str(&b, e.url); wcs_put_str(&b, e.method); wcs_put_u64(&b, u64(e.status)); wcs_put_str(&b, e.status_text)
 			wcs_put_str(&b, e.response_url); wcs_put_str(&b, e.headers); wcs_put_u64(&b, u64(e.size))
+			wcs_put_str(&b, e.req_headers)
 		}
 	}
 	return b[:]
@@ -148,7 +153,8 @@ cache_index_serialize :: proc(oc: ^Origin_Caches, allocator := context.allocator
 
 // Reads an index into `oc` (empty); false (and nothing kept) when it is not one.
 cache_index_parse :: proc(oc: ^Origin_Caches, data: []byte) -> bool {
-	if len(data) < 4 || string(data[:4]) != CACHE_MAGIC { return false }
+	if len(data) < 4 || (string(data[:4]) != CACHE_MAGIC && string(data[:4]) != CACHE_MAGIC_1) { return false }
+	v2 := string(data[:4]) == CACHE_MAGIC
 	r := Wcs_Reader{data = data, at = 4}
 	oc.next = wcs_get_u64(&r)
 	n := wcs_get_u64(&r)
@@ -160,6 +166,7 @@ cache_index_parse :: proc(oc: ^Origin_Caches, data: []byte) -> bool {
 			e := Cached_Response{id = wcs_get_u64(&r)}
 			e.url = wcs_get_str(&r); e.method = wcs_get_str(&r); e.status = int(wcs_get_u64(&r)); e.status_text = wcs_get_str(&r)
 			e.response_url = wcs_get_str(&r); e.headers = wcs_get_str(&r); e.size = i64(wcs_get_u64(&r))
+			if v2 { e.req_headers = wcs_get_str(&r) }
 			append(&c.entries, e)
 			oc.bytes += e.size
 		}
@@ -221,9 +228,42 @@ cache_url_key :: proc(u: string, ignore_search: bool) -> string {
 	return s
 }
 
-cache_entry_matches :: proc(e: ^Cached_Response, url, method: string, q: Cache_Query) -> bool {
+cache_entry_matches :: proc(e: ^Cached_Response, url, method: string, q: Cache_Query, req_headers := "") -> bool {
 	if !q.ignore_method && method != "GET" && method != "" { return false }
-	return cache_url_key(e.url, q.ignore_search) == cache_url_key(url, q.ignore_search)
+	if cache_url_key(e.url, q.ignore_search) != cache_url_key(url, q.ignore_search) { return false }
+	if q.ignore_vary { return true }
+	return cache_vary_matches(e.headers, e.req_headers, req_headers)
+}
+
+// Cache "request matches cached item": every field the response's Vary names has the same value (combined, absent
+// alike) in both requests; Vary: * never matches.
+cache_vary_matches :: proc(response_headers, stored_request, request: string) -> bool {
+	vary := header_combined(response_headers, "vary", context.temp_allocator)
+	rest := vary
+	for field in strings.split_iterator(&rest, ",") {
+		name := strings.trim_space(field)
+		if name == "" { continue }
+		if name == "*" { return false }
+		if header_combined(stored_request, name, context.temp_allocator) != header_combined(request, name, context.temp_allocator) { return false }
+	}
+	return true
+}
+
+// Every value of header `name` in "Name: value" lines, joined with ", " ("" when absent).
+@(private)
+header_combined :: proc(lines: string, name: string, allocator := context.allocator) -> string {
+	b := strings.builder_make(allocator)
+	text := lines
+	n := 0
+	for line in strings.split_lines_iterator(&text) {
+		l := strings.trim_right(line, "\r")
+		colon := strings.index_byte(l, ':')
+		if colon <= 0 || !strings.equal_fold(strings.trim_space(l[:colon]), name) { continue }
+		if n > 0 { strings.write_string(&b, ", ") }
+		strings.write_string(&b, strings.trim_space(l[colon + 1:]))
+		n += 1
+	}
+	return strings.to_string(b)
 }
 
 ////////////////////////////////
@@ -274,14 +314,24 @@ cache_names :: proc(dir, origin: string) -> string {
 }
 
 // The ids of the entries of cache `name` matching (all of them with url = ""), in insertion order (temporary).
-cache_match_ids :: proc(dir, origin, name, url, method: string, q: Cache_Query) -> []u64 {
+cache_match_ids :: proc(dir, origin, name, url, method: string, q: Cache_Query, req_headers := "") -> []u64 {
 	sync.mutex_lock(&cache_store.mu)
 	defer sync.mutex_unlock(&cache_store.mu)
 	out := make([dynamic]u64, context.temp_allocator)
 	c, _ := find_cache(origin_caches(dir, origin), name)
 	if c == nil { return nil }
-	for &e in c.entries { if url == "" || cache_entry_matches(&e, url, method, q) { append(&out, e.id) } }
+	for &e in c.entries { if url == "" || cache_entry_matches(&e, url, method, q, req_headers) { append(&out, e.id) } }
 	return out[:]
+}
+
+// The header lines of an entry's request (temporary); ok = false when it is gone.
+cache_entry_request_headers :: proc(dir, origin, name: string, id: u64) -> (string, bool) {
+	sync.mutex_lock(&cache_store.mu)
+	defer sync.mutex_unlock(&cache_store.mu)
+	c, _ := find_cache(origin_caches(dir, origin), name)
+	if c == nil { return "", false }
+	for x in c.entries { if x.id == id { return strings.clone(x.req_headers, context.temp_allocator), true } }
+	return "", false
 }
 
 // An entry's request and response head (copies in the temporary allocator); ok = false when it is gone.
@@ -333,11 +383,11 @@ cache_put :: proc(dir, origin, name: string, e: Cached_Response, body: []byte, m
 		append(&oc.caches, c)
 	}
 	freed: i64
-	for &x in c.entries { if cache_entry_matches(&x, e.url, "GET", {}) { freed += x.size } }
+	for &x in c.entries { if cache_entry_matches(&x, e.url, "GET", {}, e.req_headers) { freed += x.size } }
 	if oc.bytes - freed + i64(len(body)) > max_bytes { return .Quota }
 	k := 0
 	for &x in c.entries {
-		if cache_entry_matches(&x, e.url, "GET", {}) {
+		if cache_entry_matches(&x, e.url, "GET", {}, e.req_headers) {
 			oc.bytes -= x.size
 			if oc.dir != "" { _ = os.remove(body_path(oc, x.id)) }
 			cached_free(&x)
@@ -351,6 +401,7 @@ cache_put :: proc(dir, origin, name: string, e: Cached_Response, body: []byte, m
 	ne := Cached_Response{
 		id = oc.next, url = strings.clone(cache_url_key(e.url, false)), method = strings.clone("GET"), status = e.status,
 		status_text = strings.clone(e.status_text), response_url = strings.clone(e.response_url), headers = strings.clone(e.headers), size = i64(len(body)),
+		req_headers = strings.clone(e.req_headers),
 	}
 	if oc.dir == "" {
 		ne.body = make([]byte, len(body))
@@ -366,7 +417,7 @@ cache_put :: proc(dir, origin, name: string, e: Cached_Response, body: []byte, m
 }
 
 // Removes the entries matching; true when there were some.
-cache_delete_entries :: proc(dir, origin, name, url, method: string, q: Cache_Query) -> bool {
+cache_delete_entries :: proc(dir, origin, name, url, method: string, q: Cache_Query, req_headers := "") -> bool {
 	sync.mutex_lock(&cache_store.mu)
 	defer sync.mutex_unlock(&cache_store.mu)
 	oc := origin_caches(dir, origin)
@@ -374,7 +425,7 @@ cache_delete_entries :: proc(dir, origin, name, url, method: string, q: Cache_Qu
 	if c == nil { return false }
 	k, removed := 0, false
 	for &x in c.entries {
-		if cache_entry_matches(&x, url, method, q) {
+		if cache_entry_matches(&x, url, method, q, req_headers) {
 			oc.bytes -= x.size
 			if oc.dir != "" { _ = os.remove(body_path(oc, x.id)) }
 			cached_free(&x)
