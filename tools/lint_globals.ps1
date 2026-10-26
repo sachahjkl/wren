@@ -4,8 +4,8 @@
 # global of a window or a tab is to go there, not beside the others. One the list names that is gone fails too (the list follows
 # the code). Classes:
 #   process   the process's (the profile, the network, the fonts, the renderer, the loop, a table built once, statistics)
-#   window    one window's, still exchanged by window_activate (window_local) or read as the active window's: to move into
-#             Browser_Window
+#   window    one window's, read as the active window's: to move into
+#             Browser_Window.own (Window_Own)
 #   page      one page's or tab's: to move into Page / Tab
 #   test      a test's own
 #   powershell -NoProfile -File tools\lint_globals.ps1 [-List]     (-List: print every global with its class)

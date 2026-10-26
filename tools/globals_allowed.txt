@@ -249,7 +249,6 @@ web_font_faces.odin WEB_FACE_PREFS process  # a table
 web_font_faces.odin GENERIC_FAMILIES process  # a table
 window_chrome.odin WINDOW_PREFS process  # a table
 window_chrome.odin wchrome process  # the preferences, the exe's icon, the system menu asked for (full screen's bars: Window_Own.full)
-windows.odin window_locals process
 windows.odin wake_target process
 windows.odin window_ids process
 windows.odin pass_order process
