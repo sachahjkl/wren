@@ -13,6 +13,8 @@
 # repository: the demo pages (demos\), the script loading and web API demos (examples\), the test server (testserver.exe, a
 # Go program: tools\testserver) and demo.bat, at the root of the archive, to extract into the folder of the program (named
 # wren.exe there). The release does not publish it: those files belong to the repository (examples\site, tools\testserver).
+# symbols\<name>-<fingerprint>.map: the build's map (tools\symbols.ps1), kept beside the package and never published (CI
+# uploads it as an artifact): tools\crash_symbolize.ps1 reads it to name the frames of a crash report of this build.
 # Signing: when SIGN_PFX or SIGN_SERVICE is set (see tools\sign.ps1), every executable is signed before it is published;
 # otherwise the files are left as they are.
 # A release package (no -Dev, no WREN_VERSION_LABEL) is a published version: its CHANGELOG.md section must be there, assembled
@@ -57,6 +59,14 @@ $dist = Join-Path $root 'build\dist'
 New-Item -ItemType Directory -Force $dist | Out-Null
 $exe = Join-Path $dist "$name.exe"
 Copy-Item build\wren.exe $exe -Force
+# the build's symbols (build.bat: build\wren-<fingerprint>.map) go beside the package, in build\dist\symbols, never in what is
+# published: CI keeps them as an artifact, and tools\crash_symbolize.ps1 names the frames of this build's crash reports with them
+$fp = & (Join-Path $PSScriptRoot 'symbols.ps1') -Fingerprint build\wren.exe
+$map = Join-Path $root "build\wren-$fp.map"
+if (-not (Test-Path $map)) { throw "build\wren-$fp.map is missing: the symbols of build\wren.exe (build.bat writes them; tools\symbols.ps1 -Publish build\wren.exe after a link of its own)" }
+New-Item -ItemType Directory -Force (Join-Path $dist 'symbols') | Out-Null
+$symbols = Join-Path $dist "symbols\$name-$fp.map"
+Copy-Item $map $symbols -Force
 $files = @($exe)
 $toSign = @($exe)
 
@@ -129,3 +139,4 @@ if ($Extras) {
 $sums = foreach ($z in $files) { "$((Get-FileHash $z -Algorithm SHA256).Hash.ToLower())  $(Split-Path $z -Leaf)" }
 [IO.File]::WriteAllText((Join-Path $dist 'SHA256SUMS.txt'), (($sums -join "`n") + "`n"))
 foreach ($z in $files) { "packaged $z ($([math]::Round((Get-Item $z).Length / 1MB, 1)) MB)" }
+"symbols  $symbols (build $fp; not published)"
