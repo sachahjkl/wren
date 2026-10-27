@@ -216,6 +216,9 @@ storage_access_shell.odin sa_queue page  # the pages' storage access prompts
 tab_drag.odin tab_drag process
 tab_sidebar.odin SIDEBAR_PREFS process  # a table
 tab_sidebar.odin TABS_POSITION_NAMES process  # a table
+tab_groups.odin TAB_GROUP_PREFS process  # a table
+tab_groups.odin GROUP_COLOR_NAMES process  # a table
+tab_groups.odin GROUP_COLOR_HEX process  # a table
 tab_sidebar.odin TITLEBAR_SLOT_IDS process  # a table
 test_globals_test.odin page_render_test_mutex test
 third_party.odin LICENSE_TEXTS process  # a table
