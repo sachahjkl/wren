@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>XMLSerializer</title>
+<body>
+<div id="host"></div>
+<script>
+const s = new XMLSerializer();
+const host = document.getElementById("host");
+section("XMLSerializer", () => {
+  eq("the interface", typeof s.serializeToString, "function");
+  const div = document.createElement("div");
+  div.id = "a";
+  div.textContent = "x & y < z";
+  eq("an HTML element gets its namespace, text is escaped", s.serializeToString(div), '<div xmlns="http://www.w3.org/1999/xhtml" id="a">x &amp; y &lt; z</div>');
+  eq("a void element", s.serializeToString(document.createElement("br")), '<br xmlns="http://www.w3.org/1999/xhtml" />');
+  eq("an empty element that is not void", s.serializeToString(document.createElement("span")), '<span xmlns="http://www.w3.org/1999/xhtml"></span>');
+  host.innerHTML = '<svg viewBox="0 0 10 10"><linearGradient id="g"/><rect width="1" title="a&quot;b"/><use xlink:href="#g"/></svg>';
+  eq("SVG: its namespace, mixed-case names, xlink declared, empty elements closed",
+     s.serializeToString(host.firstChild),
+     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><linearGradient id="g"/><rect width="1" title="a&quot;b"/><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#g"/></svg>');
+  host.innerHTML = '<p>a<b>b</b><!--c--></p>';
+  eq("children inherit the namespace in scope", s.serializeToString(host.firstChild), '<p xmlns="http://www.w3.org/1999/xhtml">a<b>b</b><!--c--></p>');
+  const x = document.createElementNS("urn:x", "p:item");
+  x.appendChild(document.createElementNS("urn:x", "p:sub"));
+  eq("prefixed names declare their prefix once", s.serializeToString(x), '<p:item xmlns:p="urn:x"><p:sub/></p:item>');
+  const none = document.createElementNS(null, "plain");
+  eq("no namespace", s.serializeToString(none), "<plain/>");
+  ok = s.serializeToString(document).startsWith("<!DOCTYPE html><html xmlns=\"http://www.w3.org/1999/xhtml\">");
+  t("the document: its doctype, then the html element", ok, s.serializeToString(document).slice(0, 80));
+  eq("a text node", s.serializeToString(document.createTextNode("a>b")), "a&gt;b");
+  throws("not a node", () => s.serializeToString({}), "TypeError");
+});
+var ok;
+done();
+</script>

@@ -1,9 +1,9 @@
 # web-platform-tests expectations of Wren for webmessaging, written by tools\wpt.ps1 -Update
 # <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
-/webmessaging/Channel_postMessage_Blob.any.html: ERROR
-	Test Description: Messages can contain Blobs.: NOTRUN
-/webmessaging/Channel_postMessage_Blob.any.worker.html: ERROR
-	Test Description: Messages can contain Blobs.: NOTRUN
+/webmessaging/Channel_postMessage_Blob.any.html: OK
+	Test Description: Messages can contain Blobs.: PASS
+/webmessaging/Channel_postMessage_Blob.any.worker.html: OK
+	Test Description: Messages can contain Blobs.: PASS
 /webmessaging/Channel_postMessage_DataCloneErr.any.html: OK
 	Throw a DataCloneError when a host object (e.g. a DOM node) is used with postMessage.: PASS
 /webmessaging/Channel_postMessage_DataCloneErr.any.worker.html: OK
@@ -43,10 +43,10 @@
 /webmessaging/Channel_postMessage_with_transfer_outgoing_messages.any.worker.html: OK
 	When transferring a port,\n    outgoing messages sent at each transfer step are received in order by the entangled port.: FAIL
 /webmessaging/MessageEvent-trusted.any.html: OK
-	With a BroadcastChannel: FAIL
+	With a BroadcastChannel: PASS
 	With a MessageChannel and its MessagePorts: PASS
 /webmessaging/MessageEvent-trusted.any.worker.html: OK
-	With a BroadcastChannel: FAIL
+	With a BroadcastChannel: PASS
 	With a MessageChannel and its MessagePorts: PASS
 /webmessaging/MessageEvent-trusted.window.html: OK
 	With window: PASS
@@ -145,14 +145,14 @@
 	user activation messagechannel test: FAIL
 /webmessaging/message-channels/user-activation.tentative.any.worker.html: OK
 	user-activation: FAIL
-/webmessaging/message-channels/worker-post-after-close.any.html: TIMEOUT
-	MessageChannel/MessagePort should not work after a worker self.close(): TIMEOUT
+/webmessaging/message-channels/worker-post-after-close.any.html: OK
+	MessageChannel/MessagePort should not work after a worker self.close(): PASS
 /webmessaging/message-channels/worker-post-after-close.any.worker.html: OK
-	MessageChannel/MessagePort should not work after a worker self.close(): FAIL
-/webmessaging/message-channels/worker.any.html: TIMEOUT
-	MessageChannel/MessagePort created and used after a worker self.close(): TIMEOUT
+	MessageChannel/MessagePort should not work after a worker self.close(): PASS
+/webmessaging/message-channels/worker.any.html: OK
+	MessageChannel/MessagePort created and used after a worker self.close(): PASS
 /webmessaging/message-channels/worker.any.worker.html: OK
-	MessageChannel/MessagePort created and used after a worker self.close(): FAIL
+	MessageChannel/MessagePort created and used after a worker self.close(): PASS
 /webmessaging/messageerror.html: OK
 	The default value of onmessageerror is null: PASS
 	The onmessageerror content attribute must be compiled into the onmessageerror property: PASS
@@ -167,9 +167,9 @@
 /webmessaging/postMessage_Date.sub.htm: OK
 	Test Description: Messages can contain JavaScript values (e.g., Dates).: PASS
 /webmessaging/postMessage_Document.htm: OK
-	Test Description: postMessage with Document object: Throw a DataCloneError if message could not be cloned.: FAIL
+	Test Description: postMessage with Document object: Throw a DataCloneError if message could not be cloned.: PASS
 /webmessaging/postMessage_Function.htm: OK
-	Test Description: postMessage with Function object: Throw a DataCloneError if message could not be cloned.: FAIL
+	Test Description: postMessage with Function object: Throw a DataCloneError if message could not be cloned.: PASS
 /webmessaging/postMessage_MessagePorts_sorigin.htm: OK
 	MessageChannel is supported.: PASS
 	Test Description: postMessage to same-origin iframe with MessagePort array containing 100 ports.: PASS
@@ -182,13 +182,15 @@
 	Test Description: Messages can be structured objects, e.g., arrays.: PASS
 /webmessaging/postMessage_asterisk_xorigin.sub.htm: OK
 	Test Description: To send the message to the target regardless of origin, set the target origin to '*'.: PASS
-/webmessaging/postMessage_cross_domain_image_transfer_2d.sub.htm: ERROR
+/webmessaging/postMessage_cross_domain_image_transfer_2d.sub.htm: TIMEOUT
+	sending 2D canvas ImageBitmap to http://127.0.0.1:8778: FAIL
+	sending 2D canvas ImageBitmap to http://www1.127.0.0.1:8778: TIMEOUT
 /webmessaging/postMessage_crosssite.sub.htm: OK
 	cross-site windows can send transferred ArrayBuffer: PASS
 /webmessaging/postMessage_dup_transfer_objects.htm: OK
-	Test Description: postMessage with duplicate transfer objects raises DataCloneError exception.: FAIL
+	Test Description: postMessage with duplicate transfer objects raises DataCloneError exception.: PASS
 /webmessaging/postMessage_invalid_targetOrigin.htm: OK
-	Test Description: If the value of the targetOrigin argument is neither a single U+002A ASTERISK character (*), a single U+002F SOLIDUS character (/), nor an absolute URL, then throw a SyntaxError exception and abort the overall set of steps.: FAIL
+	Test Description: If the value of the targetOrigin argument is neither a single U+002A ASTERISK character (*), a single U+002F SOLIDUS character (/), nor an absolute URL, then throw a SyntaxError exception and abort the overall set of steps.: PASS
 /webmessaging/postMessage_objects.sub.htm: OK
 	Test Description: Messages can be structured objects, e.g., nested objects.: PASS
 /webmessaging/postMessage_origin_mismatch.sub.htm: OK
@@ -230,7 +232,7 @@
 	undefined: FAIL
 	unreached: PASS
 /webmessaging/with-ports/011.html: OK
-	posting an imagedata (from a cloned canvas) in an array: FAIL
+	posting an imagedata (from a cloned canvas) in an array: PASS
 /webmessaging/with-ports/012.html: OK
 	loop in array in structured clone: PASS
 /webmessaging/with-ports/013.html: OK
@@ -295,7 +297,7 @@
 	undefined: FAIL
 	unreached: PASS
 /webmessaging/without-ports/011.html: OK
-	posting an imagedata (from a cloned canvas) in an array: FAIL
+	posting an imagedata (from a cloned canvas) in an array: PASS
 /webmessaging/without-ports/012.html: OK
 	loop in array in structured clone: PASS
 /webmessaging/without-ports/013.html: OK
@@ -329,7 +331,7 @@
 /webmessaging/without-ports/027.html: OK
 	Cloning objects, preserving sharing: PASS
 /webmessaging/without-ports/028.html: OK
-	Cloning objects, preserving sharing #2: FAIL
+	Cloning objects, preserving sharing #2: PASS
 /webmessaging/without-ports/029.html: OK
 	Check that getters don't linger after deletion wrt cloning: PASS
 /webmessaging/worker_postMessage_user_activation.tentative.html: OK

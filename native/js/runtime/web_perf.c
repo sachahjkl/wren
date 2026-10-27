@@ -62,9 +62,9 @@ JSValue wjr_WindowOrWorkerGlobalScope_get_performance(JSContext *ctx, JSValueCon
 typedef struct perf_entry { JSValue name, detail, data; int type; double start, duration; } perf_entry;
 
 /* the values of PerformanceEntryType (api/performance.widl) */
-enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_END };
-#define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT))
-static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input" };
+enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_LONG_TASK, KIND_END };
+#define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT) | (1u << KIND_LONG_TASK))
+static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input", "longtask" };
 
 static void entry_free(void *p)
 {
@@ -147,7 +147,7 @@ JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int a
 static JSValue timeline_entry_new(JSContext *ctx, int kind, JSValue data)
 {
     static const int ifaces[KIND_END] = { 0, 0, 0, WJ_IFACE_PerformanceNavigationTiming, WJ_IFACE_PerformanceResourceTiming,
-        WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming };
+        WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceLongTaskTiming };
     perf_entry *e = malloc(sizeof *e);
     if (!e) { JS_FreeValue(ctx, data); return JS_ThrowOutOfMemory(ctx); }
     JSValue nm = JS_GetPropertyStr(ctx, data, "name");
@@ -296,6 +296,56 @@ JSValue wjr_PerformanceEventTiming_get_processingEnd(JSContext *ctx, JSValueCons
 JSValue wjr_PerformanceEventTiming_get_cancelable(JSContext *ctx, JSValueConst this_val) { return tl_bool(ctx, this_val, "cancelable"); }
 JSValue wjr_PerformanceEventTiming_get_target(JSContext *ctx, JSValueConst this_val) { return entry_this(ctx, this_val) ? JS_NULL : JS_EXCEPTION; }
 JSValue wjr_PerformanceEventTiming_get_interactionId(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "interactionId"); }
+/* PerformanceLongTaskTiming (Long Tasks): a task of the page that took 50 ms or more; its attribution is one
+ * TaskAttributionTiming that says only "the window" (the browser does not tell which frame's script it was), kept as the
+ * entry's FrozenArray in its unused `detail`. */
+JSValue wjr_PerformanceLongTaskTiming_get_startTime(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_startTime(ctx, this_val); }
+JSValue wjr_PerformanceLongTaskTiming_get_duration(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_duration(ctx, this_val); }
+JSValue wjr_PerformanceLongTaskTiming_get_name(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_name(ctx, this_val); }
+JSValue wjr_PerformanceLongTaskTiming_get_entryType(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_entryType(ctx, this_val); }
+JSValue wjr_PerformanceLongTaskTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformanceLongTaskTiming_get_attribution(JSContext *ctx, JSValueConst this_val)
+{
+    perf_entry *e = web_this_impl(ctx, this_val, WJ_IFACE_PerformanceLongTaskTiming);
+    if (!e) { return JS_EXCEPTION; }
+    if (JS_IsArray(e->detail)) { return JS_DupValue(ctx, e->detail); }
+    JSValue arr = JS_NewArray(ctx);
+    JSValue a = wj_new_object(ctx, WJ_IFACE_TaskAttributionTiming, NULL, NULL);
+    if (JS_IsException(arr) || JS_IsException(a)) { JS_FreeValue(ctx, arr); return a; }
+    wj_array_set(ctx, arr, 0, a);
+    if (!web_freeze(ctx, arr)) { JS_FreeValue(ctx, arr); return JS_EXCEPTION; }
+    JS_FreeValue(ctx, e->detail);
+    e->detail = JS_DupValue(ctx, arr);
+    return arr;
+}
+
+static bool attribution_this(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_TaskAttributionTiming) != NULL; }
+JSValue wjr_TaskAttributionTiming_get_startTime(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewFloat64(ctx, 0) : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_duration(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewFloat64(ctx, 0) : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_name(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "unknown") : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_entryType(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "taskattribution") : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_containerType(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "window") : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_containerSrc(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "") : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_containerId(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "") : JS_EXCEPTION; }
+JSValue wjr_TaskAttributionTiming_get_containerName(JSContext *ctx, JSValueConst this_val) { return attribution_this(ctx, this_val) ? JS_NewString(ctx, "") : JS_EXCEPTION; }
+
+JSValue wjr_TaskAttributionTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (!attribution_this(ctx, this_val)) { return JS_EXCEPTION; }
+    JSValue o = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, o, "name", JS_NewString(ctx, "unknown"));
+    JS_SetPropertyStr(ctx, o, "entryType", JS_NewString(ctx, "taskattribution"));
+    JS_SetPropertyStr(ctx, o, "startTime", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "duration", JS_NewFloat64(ctx, 0));
+    JS_SetPropertyStr(ctx, o, "containerType", JS_NewString(ctx, "window"));
+    JS_SetPropertyStr(ctx, o, "containerSrc", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, o, "containerId", JS_NewString(ctx, ""));
+    JS_SetPropertyStr(ctx, o, "containerName", JS_NewString(ctx, ""));
+    return o;
+}
+
 JSValue wjr_PerformanceEventTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
 
 JSValue wjr_PerformancePaintTiming_get_paintTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "startTime"); }
@@ -603,7 +653,7 @@ static void sort_by_start(JSContext *ctx, JSValue arr)
  * entries from its timeline; slow-event entries are only for observers (as in Chromium) */
 static JSValue buffered_entries(JSContext *ctx, int type)
 {
-    if (type == KIND_EVENT || type == KIND_FIRST_INPUT) { return JS_NewArray(ctx); }
+    if (type == KIND_EVENT || type == KIND_FIRST_INPUT || type == KIND_LONG_TASK) { return JS_NewArray(ctx); }
     if (type >= KIND_NAVIGATION) { return timeline_entries(ctx, type, 0, NULL); }
     return entries(ctx, "", 0, type);
 }
@@ -1129,7 +1179,7 @@ JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, J
 {
     WJ_UNUSED(this_val);
     if (!supported_made) {
-        static const char src[] = "Object.freeze(['event', 'first-input', 'mark', 'measure', 'navigation', 'paint', 'resource'])";
+        static const char src[] = "Object.freeze(['event', 'first-input', 'longtask', 'mark', 'measure', 'navigation', 'paint', 'resource'])";
         JSValue v = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
         if (JS_IsException(v)) { return v; }
         supported_types = v;

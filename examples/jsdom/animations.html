@@ -1,0 +1,161 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Web Animations</title>
+<style>
+  #a, #b, #c, #d, #e { width: 100px; height: 20px; opacity: 0.25; }
+</style>
+<body>
+<div id="a"></div><div id="b"></div><div id="c"></div><div id="d"></div><div id="e"><span id="inner"></span></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const op = (el) => Number(getComputedStyle(el).opacity);
+const near = (x, y, eps) => Math.abs(x - y) <= (eps || 0.02);
+const rejectionOf = async (p) => { try { await p; return null; } catch (e) { return e; } };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+section("interfaces", () => {
+  eq("Element.prototype.animate", typeof Element.prototype.animate, "function");
+  eq("Element.prototype.getAnimations", typeof Element.prototype.getAnimations, "function");
+  eq("document.getAnimations", typeof document.getAnimations, "function");
+  t("document.timeline is a DocumentTimeline", document.timeline instanceof DocumentTimeline && document.timeline instanceof AnimationTimeline);
+  eq("document.timeline is the same object", document.timeline, document.timeline);
+  t("document.timeline.currentTime is near performance.now()", near(document.timeline.currentTime, performance.now(), 50), document.timeline.currentTime + " vs " + performance.now());
+  eq("Animation is constructible", typeof new Animation(), "object");
+  eq("KeyframeEffect", typeof KeyframeEffect, "function");
+  eq("AnimationPlaybackEvent", new AnimationPlaybackEvent("finish", { currentTime: 5 }).currentTime, 5);
+  eq("AnimationPlaybackEvent timelineTime defaults to null", new AnimationPlaybackEvent("x").timelineTime, null);
+  eq("AnimationEvent init", new AnimationEvent("animationend", { animationName: "spin", elapsedTime: 1.5 }).animationName + ":" + new AnimationEvent("x", { elapsedTime: 1.5 }).elapsedTime, "spin:1.5");
+  eq("TransitionEvent init", new TransitionEvent("transitionend", { propertyName: "opacity" }).propertyName, "opacity");
+});
+
+section("animate() and seeking", () => {
+  const a = $("a").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1000, id: "fade" });
+  t("animate returns an Animation", a instanceof Animation);
+  eq("id", a.id, "fade");
+  eq("running", a.playState, "running");
+  eq("pending until ready", a.pending, true);
+  eq("effect target", a.effect.target, $("a"));
+  eq("timing duration", a.effect.getTiming().duration, 1000);
+  eq("timing fill", a.effect.getTiming().fill, "auto");
+  eq("computed fill", a.effect.getComputedTiming().fill, "none");
+  eq("computed endTime", a.effect.getComputedTiming().endTime, 1000);
+  const kf = a.effect.getKeyframes();
+  eq("two keyframes", kf.length, 2);
+  eq("computed offsets", kf[0].computedOffset + "," + kf[1].computedOffset, "0,1");
+  eq("offset stays null", kf[0].offset, null);
+  eq("keyframe value", kf[1].opacity, "1");
+  a.pause();
+  a.currentTime = 500;
+  eq("paused", a.playState, "paused");
+  eq("currentTime", a.currentTime, 500);
+  t("the value halfway", near(op($("a")), 0.5), "opacity " + op($("a")));
+  eq("computed progress", a.effect.getComputedTiming().progress, 0.5);
+  a.currentTime = 250;
+  t("seeking moves the value", near(op($("a")), 0.25), "opacity " + op($("a")));
+  eq("getAnimations of the element", $("a").getAnimations()[0], a);
+  t("document.getAnimations has it", document.getAnimations().includes(a));
+  a.cancel();
+  eq("cancel: idle", a.playState, "idle");
+  eq("cancel: no current time", a.currentTime, null);
+  t("cancel: the cascaded value again", near(op($("a")), 0.25), "opacity " + op($("a")));
+  eq("cancel: not relevant", $("a").getAnimations().length, 0);
+});
+
+section("keyframes forms and checks", () => {
+  const e = new KeyframeEffect($("b"), { opacity: [0, 0.5, 1], marginLeft: ["0px", "10px"] }, 100);
+  const kf = e.getKeyframes();
+  eq("property-indexed: merged frames", kf.length, 3);
+  eq("property-indexed offsets", kf.map((k) => k.computedOffset).join(), "0,0.5,1");
+  eq("camelCase member", kf[2].marginLeft, "10px");
+  eq("number duration", e.getTiming().duration, 100);
+  throws("offsets out of order", () => $("b").animate([{ opacity: 0, offset: 0.8 }, { opacity: 1, offset: 0.2 }]), "TypeError");
+  throws("offset out of range", () => $("b").animate([{ opacity: 0, offset: 2 }]), "TypeError");
+  throws("invalid easing", () => $("b").animate({ opacity: [0, 1] }, { duration: 100, easing: "bogus" }), "TypeError");
+  throws("invalid keyframe easing", () => $("b").animate([{ opacity: 0, easing: "nope(" }, { opacity: 1 }]), "TypeError");
+  throws("negative duration", () => $("b").animate({ opacity: [0, 1] }, -5), "TypeError");
+  throws("negative iterations", () => $("b").animate({ opacity: [0, 1] }, { iterations: -1 }), "TypeError");
+  const s = [{ opacity: 0 }, { opacity: 0.4 }, { opacity: 1 }];
+  const e2 = new KeyframeEffect(null, s, { duration: 10, easing: "ease-in", fill: "both", iterations: 2, direction: "alternate" });
+  eq("spread offsets", e2.getKeyframes().map((k) => k.computedOffset).join(), "0,0.5,1");
+  const tm = e2.getTiming();
+  eq("timing read back", [tm.easing, tm.fill, tm.iterations, tm.direction].join(), "ease-in,both,2,alternate");
+  e2.updateTiming({ duration: 20, endDelay: 5 });
+  eq("updateTiming", e2.getComputedTiming().endTime, 45);
+  const copy = new KeyframeEffect(e2);
+  eq("copy constructor", copy.getTiming().duration + ":" + copy.getKeyframes().length, "20:3");
+});
+
+section("playback rate, reverse, finish, fill", () => {
+  const a = $("c").animate({ opacity: [0, 1] }, { duration: 1000, fill: "forwards" });
+  a.pause();
+  a.currentTime = 200;
+  a.playbackRate = 2;
+  eq("playbackRate keeps the current time", a.currentTime, 200);
+  a.reverse();
+  eq("reverse: pending until ready", a.pending, true);
+  a.finish();
+  eq("reverse: negative rate", a.playbackRate, -2);
+  eq("finish backwards: at 0", a.currentTime, 0);
+  eq("finished", a.playState, "finished");
+  a.playbackRate = 1;
+  a.finish();
+  eq("finish: at the end", a.currentTime, 1000);
+  t("fill forwards keeps the end value", near(op($("c")), 1), "opacity " + op($("c")));
+  a.commitStyles();
+  t("commitStyles writes the value", /opacity:\s*1/.test($("c").getAttribute("style") || ""), $("c").getAttribute("style"));
+  a.cancel();
+  t("after cancel the committed value stays", near(op($("c")), 1), "opacity " + op($("c")));
+  throws("finish with an infinite effect", () => $("c").animate({ opacity: [0, 1] }, { duration: 10, iterations: Infinity }).finish(), "InvalidStateError");
+  const n = new Animation(new KeyframeEffect($("d"), { opacity: [1, 0] }, 1000));
+  eq("new Animation: idle", n.playState, "idle");
+  n.currentTime = 500;
+  eq("new Animation: paused once seeked", n.playState, "paused");
+  t("new Animation's effect shows when seeked", near(op($("d")), 0.5), "opacity " + op($("d")));
+  n.effect = null;
+  t("effect = null: the value goes", near(op($("d")), 0.25), "opacity " + op($("d")));
+});
+
+(async () => {
+  // promises and events of a short animation that runs in real time
+  const a = $("e").animate({ opacity: [0, 1] }, 40);
+  const ready = await a.ready;
+  eq("ready resolves with the animation", ready, a);
+  eq("not pending once ready", a.pending, false);
+  t("startTime resolved once ready", typeof a.startTime === "number");
+  const finishEvent = new Promise((r) => { a.onfinish = r; });
+  const fin = await a.finished;
+  eq("finished resolves with the animation", fin, a);
+  const ev = await finishEvent;
+  t("finish event: an AnimationPlaybackEvent", ev instanceof AnimationPlaybackEvent, String(ev));
+  eq("finish event currentTime", ev.currentTime, 40);
+  t("finish event timelineTime", typeof ev.timelineTime === "number");
+  eq("finished state", a.playState, "finished");
+
+  // cancel rejects the finished promise
+  const b = $("e").animate({ opacity: [0, 1] }, 10000);
+  const cancelled = new Promise((r) => b.addEventListener("cancel", r));
+  const fp = b.finished;
+  b.cancel();
+  const err = await rejectionOf(fp);
+  eq("cancel rejects finished with AbortError", err && err.name, "AbortError");
+  t("a new finished promise", b.finished !== fp);
+  const cev = await cancelled;
+  eq("cancel event has no currentTime", cev.currentTime, null);
+
+  // replaced animations are removed
+  const r1 = $("e").animate({ opacity: [0, 0.6] }, { duration: 10, fill: "forwards" });
+  const r2 = $("e").animate({ opacity: [0, 0.8] }, { duration: 20, fill: "forwards" });
+  const removed = new Promise((r) => { r1.onremove = r; });
+  await r2.finished;
+  await removed;
+  eq("the replaced animation is removed", r1.replaceState, "removed");
+  eq("the later one stays", r2.replaceState, "active");
+  t("its value shows", near(op($("e")), 0.8), "opacity " + op($("e")));
+  t("removed animations are not listed", !$("e").getAnimations().includes(r1) && $("e").getAnimations().includes(r2));
+  r2.persist();
+  eq("persist", r2.replaceState, "persisted");
+  eq("subtree getAnimations from the body", document.body.getAnimations({ subtree: true }).includes(r2), true);
+  r2.cancel();
+  done();
+})().catch((e) => { t("async section", false, e && e.name + ": " + e.message + "\n" + e.stack); done(); });
+</script>

@@ -5878,7 +5878,7 @@
 /dom/nodes/moveBefore/pointer-events.html: OK
 	Pointer capture should not be released when moving: FAIL
 /dom/nodes/moveBefore/popover-preserve.html: OK
-	when reparenting an open popover, it shouldn't be closed automatically: FAIL
+	when reparenting an open popover, it shouldn't be closed automatically: PASS
 /dom/nodes/moveBefore/preserve-render-blocking-script.html: OK
 	A moved script should keep its render-blocking state: PASS
 /dom/nodes/moveBefore/preserve-render-blocking-style.html: OK

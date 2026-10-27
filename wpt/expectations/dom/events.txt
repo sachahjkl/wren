@@ -518,11 +518,11 @@
 /dom/events/EventListener-addEventListener.sub.window.html: OK
 	EventListener.addEventListener doesn't throw when a cross origin object is passed in.: PASS
 /dom/events/EventListener-handleEvent-cross-realm.html: OK
-	EventListener is cross-realm callable revoked Proxy: FAIL
-	EventListener is cross-realm non-callable revoked Proxy: FAIL
-	EventListener is cross-realm plain object with non-callable 'handleEvent' property: FAIL
-	EventListener is cross-realm plain object with revoked Proxy as 'handleEvent' property: FAIL
-	EventListener is cross-realm plain object without 'handleEvent' property: FAIL
+	EventListener is cross-realm callable revoked Proxy: PASS
+	EventListener is cross-realm non-callable revoked Proxy: PASS
+	EventListener is cross-realm plain object with non-callable 'handleEvent' property: PASS
+	EventListener is cross-realm plain object with revoked Proxy as 'handleEvent' property: PASS
+	EventListener is cross-realm plain object without 'handleEvent' property: PASS
 /dom/events/EventListener-handleEvent.html: OK
 	calls `handleEvent` method of `EventListener`: PASS
 	doesn't call `handleEvent` method on callable `EventListener`: PASS

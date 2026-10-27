@@ -27,7 +27,7 @@ test("the navigation entry", () => {
 });
 
 test("supportedEntryTypes", () => {
-  eq(PerformanceObserver.supportedEntryTypes.join(), "event,first-input,mark,measure,navigation,paint,resource", "the supported types");
+  eq(PerformanceObserver.supportedEntryTypes.join(), "event,first-input,longtask,mark,measure,navigation,paint,resource", "the supported types");
 });
 
 test("resource entries", async () => {
@@ -105,9 +105,25 @@ test("PerformanceObserver: resource, buffered, navigation, paint", async () => {
   const warn = [];
   const o4 = new PerformanceObserver(() => {});
   o4.observe({ type: "layout-shift" });
-  o4.observe({ type: "longtask" });
   o4.disconnect();
   ok(true, "unsupported types are ignored");
+});
+
+test("long tasks", async () => {
+  const seen = [];
+  const o = new PerformanceObserver(list => { for (const e of list.getEntries()) seen.push(e); });
+  o.observe({ type: "longtask" });
+  await new Promise(r => setTimeout(() => { const t = performance.now(); while (performance.now() - t < 60) {} r(); }, 0));
+  await sleep(50);
+  ok(seen.length >= 1, "a task of 60 ms is a long task: " + seen.length);
+  const e = seen[0];
+  ok(e instanceof PerformanceLongTaskTiming && e instanceof PerformanceEntry, "a PerformanceLongTaskTiming");
+  eq(e.entryType + ":" + e.name, "longtask:self", "entryType and name");
+  ok(e.duration >= 50 && e.startTime > 0, "its times: " + e.startTime + " + " + e.duration);
+  eq(e.attribution.length, 1, "one attribution");
+  ok(e.attribution[0] instanceof TaskAttributionTiming && e.attribution[0].containerType === "window", "attributed to the window");
+  eq(performance.getEntriesByType("longtask").length, 0, "not in the timeline's buffer");
+  o.disconnect();
 });
 
 test("first paint entries need a painted document", () => {

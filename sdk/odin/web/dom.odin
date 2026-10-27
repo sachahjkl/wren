@@ -399,6 +399,7 @@ foreign _m_dom {
 	@(link_name = "CSSStyleSheet_setMediaText") _CSSStyleSheet_setMediaText :: proc(sheet: u64, media: [^]u8, media_len: u32) ---
 	@(link_name = "CSSStyleSheet_isConstructed") _CSSStyleSheet_isConstructed :: proc(sheet: u64) -> i32 ---
 	@(link_name = "DocumentOrShadowRoot_adopt") _DocumentOrShadowRoot_adopt :: proc(root: u64, sheets: [^]u64, sheets_len: u32) -> Error ---
+	@(link_name = "XMLSerializer_serialize") _XMLSerializer_serialize :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // document.documentElement (null in a worker).
@@ -4543,5 +4544,35 @@ CSSStyleSheet_isConstructed :: proc "contextless" (sheet: u64) -> bool {
 // Not_Allowed for a sheet that was not constructed.
 DocumentOrShadowRoot_adopt :: proc "contextless" (root: $T_root, sheets: []u64) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
 	return _DocumentOrShadowRoot_adopt(u64(root), raw_data(sheets), u32(len(sheets)))
+}
+
+// new XMLSerializer().serializeToString(node): the node and its subtree as XML (DOM Parsing §3.2, not
+// well-formed-checked). Range past page.max_fetch_bytes.
+XMLSerializer_serialize :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _XMLSerializer_serialize(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of XMLSerializer_serialize's result.
+XMLSerializer_serialize_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _XMLSerializer_serialize(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// XMLSerializer_serialize's result in a buffer allocated to fit.
+XMLSerializer_serialize_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _XMLSerializer_serialize(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 

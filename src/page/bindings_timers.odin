@@ -184,6 +184,8 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 	if p == nil || p.closed || p.web.frozen { return 0 }
 	run_scroll_steps(p)   // the step before: scroll events of what scrolled since the last frame (scroll_events.odin)
 	if p.closed { return 0 }
+	web_animations_update(p)   // update animations and send events (web_animations.odin)
+	if p.closed { return 0 }
 	defer {   // the steps after the callbacks: resize observations, then intersection observations (HTML update the rendering)
 		resize_observers_update(p)
 		intersection_observers_update(p)

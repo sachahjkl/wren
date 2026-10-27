@@ -104,7 +104,7 @@
 /css/css-shadow/keyframes-004.html: OK
 	@keyframes in shadow tree applies to the slotted element: FAIL
 /css/css-shadow/keyframes-005.html: OK
-	@keyframes should not leak out of the shadow tree.: FAIL
+	@keyframes should not leak out of the shadow tree.: PASS
 /css/css-shadow/keyframes-006.html: OK
 	@keyframes applies to the shadow host: FAIL
 /css/css-shadow/part/all-hosts.html: OK

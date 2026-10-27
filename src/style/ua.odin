@@ -120,4 +120,9 @@ bdo, bdo[dir] { unicode-bidi: isolate-override; }
 /* Fullscreen API §5: the element covers the viewport above everything. There is no top layer, so the highest z-index stands for it; ::backdrop is not generated, so the black behind a transparent element is the element's own background (author rules replace it). */
 :fullscreen:not(:root) { position: fixed !important; top: 0 !important; right: 0 !important; bottom: 0 !important; left: 0 !important; margin: 0 !important; box-sizing: border-box !important; min-width: 0 !important; max-width: none !important; min-height: 0 !important; max-height: none !important; width: 100% !important; height: 100% !important; transform: none !important; z-index: 2147483647 !important; background-color: black; object-fit: contain; }
 iframe:fullscreen { border: none !important; padding: 0 !important; }
+/* HTML §15.3.x popovers. There is no top layer: a showing popover is fixed to the viewport and above the page's z-indices (under a fullscreen element), which escapes neither an ancestor's stacking context nor its clip. */
+[popover]:not(:popover-open):not(dialog[open]) { display: none; }
+dialog:popover-open { display: block; }
+[popover] { position: fixed; inset: 0; width: fit-content; height: fit-content; margin: auto; border: solid; padding: 0.25em; overflow: auto; color: CanvasText; background-color: Canvas; }
+:popover-open { z-index: 2147483646 !important; }
 `
