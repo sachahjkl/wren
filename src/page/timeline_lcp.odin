@@ -58,14 +58,18 @@ timeline_present :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	want_lcp := s.lcp_entries > 0 && !t.lcp_stopped
 	want_et := s.element_entries > 0
 	if !want_lcp && !want_et { return }
+	// nothing new to find when the document and the viewport are as they were at the last scan (the scan walks every box)
+	if t.lcp_scanned && t.lcp_scan_mutations == p.doc.mutations && t.lcp_scan_w == vp.width && t.lcp_scan_h == vp.height && t.lcp_scan_scroll == vp.scroll_y { return }
+	t.lcp_scanned = true
+	t.lcp_scan_mutations = p.doc.mutations
+	t.lcp_scan_w, t.lcp_scan_h, t.lcp_scan_scroll = vp.width, vp.height, vp.scroll_y
 	now_ms := page_now_ms(p)
 	scale := f32(vp.scale)
 	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
 	vp_area := vp.width * vp.height
 
 	best: Lcp_Candidate
-	for &b, bi in l.boxes {
-		_ = bi
+	for &b in l.boxes {
 		node := b.node
 		if node == base.NIL_HANDLE || .Anonymous in b.flags || .Dead in b.flags { continue }
 		cand, ok := lcp_candidate_of(p, l, &view, vp, &b, vp_area)
@@ -179,7 +183,7 @@ lcp_add_entry :: proc(p: ^Page, t: ^Page_Timeline, c: Lcp_Candidate, now_ms: f64
 		start = now_ms,
 		render_time = now_ms,
 		load_time = c.is_image ? c.load_ms : 0,
-		size = c.area,
+		size = f64(i64(c.area + 0.5)),
 		id = clone_str(id_attr),
 		url = clone_str(c.url),
 		natural_w = c.natural_w,
@@ -205,7 +209,7 @@ element_timing_consider :: proc(p: ^Page, t: ^Page_Timeline, node: base.Handle, 
 		start = now_ms,   // Element Timing startTime is renderTime
 		render_time = now_ms,
 		load_time = c.is_image ? c.load_ms : 0,
-		size = c.area,
+		size = f64(i64(c.area + 0.5)),
 		id = clone_str(id_attr),
 		identifier = clone_str(identifier),
 		url = clone_str(c.url),
@@ -242,7 +246,8 @@ timeline_layout_shift_input :: proc(p: ^Page) {
 // One box's position between frames, kept to find what moved. The map lives on the timeline.
 @(private)
 Ls_Prev :: struct {
-	rect: [4]f64,   // the box's border rect, viewport coordinates, CSS px
+	doc:  [4]f64,   // the box's border rect in document coordinates (scroll-independent: a scroll is not a shift)
+	view: [4]f64,   // ... and in viewport coordinates (what LayoutShiftAttribution reports)
 }
 
 // After a frame is laid out, compare where visible non-fixed boxes are to where they were, and record a layout-shift entry
@@ -254,6 +259,11 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 	if s.layout_shift_entries == 0 { return }
 	t := tl_of(p)
 	if t == nil { return }
+	// a layout shift needs the layout to have changed; a pure scroll or an unchanged frame moves nothing unexpectedly
+	if t.ls_scanned && t.ls_scan_mutations == p.doc.mutations && t.ls_scan_w == vp.width && t.ls_scan_h == vp.height { return }
+	t.ls_scanned = true
+	t.ls_scan_mutations = p.doc.mutations
+	t.ls_scan_w, t.ls_scan_h = vp.width, vp.height
 	now_ms := page_now_ms(p)
 	scale := f32(vp.scale)
 	view := lay.view_make(l, {f32(vp.width) * scale, f32(vp.height) * scale}, f32(vp.scroll_y) * scale, cull = false)
@@ -280,27 +290,27 @@ timeline_layout_shift_check :: proc(p: ^Page, l: ^lay.Layout, vp: Viewport) {
 		if !rok || !r.visible || r.transformed { continue }   // a transform move is not a layout shift
 		g := geometry_of_rects(l, vp, node, r, rok)
 		if !g.ok { continue }
-		rect := [4]f64{g.client.x, g.client.y, g.client.width, g.client.height}
-		// only boxes with content on screen: at least partly in the viewport
-		if rect[0] >= vp.width || rect[1] >= vp.height || rect[0] + rect[2] <= 0 || rect[1] + rect[3] <= 0 {
-			cur[node] = Ls_Prev{rect}
-			continue
-		}
-		cur[node] = Ls_Prev{rect}
+		view_rect := [4]f64{g.client.x, g.client.y, g.client.width, g.client.height}
+		doc_rect := [4]f64{f64(g.border.min.x), f64(g.border.min.y), f64(g.border.max.x - g.border.min.x), f64(g.border.max.y - g.border.min.y)}
+		here := Ls_Prev{doc = doc_rect, view = view_rect}
+		cur[node] = here
+		// only boxes with content on screen now or before: at least partly in the viewport
+		if view_rect[0] >= vp.width || view_rect[1] >= vp.height || view_rect[0] + view_rect[2] <= 0 || view_rect[1] + view_rect[3] <= 0 { continue }
 		was, had := prev[node]
 		if !had { continue }
-		dx := rect[0] - was.rect[0]
-		dy := rect[1] - was.rect[1]
+		// movement in document coordinates: a scroll changes viewport coordinates but not these, so it is not a shift
+		dx := doc_rect[0] - was.doc[0]
+		dy := doc_rect[1] - was.doc[1]
 		if abs(dx) < 0.5 && abs(dy) < 0.5 { continue }   // not moved (sub-pixel jitter ignored)
-		// the move region is the union of the old and new positions (Layout Instability §: impact region)
-		old_clamped := clamp_rect_to_viewport(was.rect, vp)
-		new_clamped := clamp_rect_to_viewport(rect, vp)
+		// the move region is the union of the old and new viewport positions (Layout Instability §: impact region)
+		old_clamped := clamp_rect_to_viewport(was.view, vp)
+		new_clamped := clamp_rect_to_viewport(view_rect, vp)
 		region := rect_union4(old_clamped, new_clamped)
 		if region[2] * region[3] <= 0 { continue }
 		if !have_impact { impact_union = region; have_impact = true } else { impact_union = rect_union4(impact_union, region) }
 		move := max(abs(dx), abs(dy))
 		if move > max_move { max_move = move }
-		append(&sources, Tl_Source{node = node, prev = was.rect, cur = rect})
+		append(&sources, Tl_Source{node = node, prev = was.view, cur = view_rect})
 	}
 
 	delete(t.ls_prev)
