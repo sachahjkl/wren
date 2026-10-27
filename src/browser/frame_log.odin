@@ -11,14 +11,16 @@ Frame_Log :: struct {
 	at:        [FRAME_LOG_CAP]i64,   // tick of each present (ns)
 	n:         int,                  // presents since the last reset
 	presented: int,                  // presents since the last reset, however many the ring kept
+	at_once:   int,                  // of them, presented without waiting for a refresh (framesAtOnce)
 }
 
 frame_log: Frame_Log
 
-frame_log_presented :: proc() {
+frame_log_presented :: proc(at_once: bool) {
 	frame_log.at[frame_log.n % FRAME_LOG_CAP] = time.tick_now()._nsec
 	frame_log.n += 1
 	frame_log.presented += 1
+	if at_once { frame_log.at_once += 1 }
 }
 
 frame_log_reset :: proc() { frame_log = {} }
