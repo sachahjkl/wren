@@ -86,6 +86,9 @@ version_long :: proc() -> string {
 
 HOME_URL :: "about:home"
 
+// about:home, with or without the art query (about:home?art=next). A built-in page like the others.
+is_home_address :: proc(a: string) -> bool { return a == HOME_URL || strings.has_prefix(a, HOME_URL + "?") }
+
 @(private)
 HOME_TEMPLATE :: `<!doctype html>
 <html lang="en">
@@ -178,8 +181,10 @@ dev_badge_html :: proc(with_commit := true) -> string {
 	return fmt.tprintf("<p class=\"dev\"><b>DEV</b>Development build &middot; commit %s%s</p>", app_commit(), date)
 }
 
-// The start page is an ordinary document, styled by the same engine as every other page.
-show_home :: proc(app: ^App, t: ^Tab) {
+// The start page is an ordinary document, styled by the same engine as every other page. When the artistic new tab is
+// on (browser.newtab.art.*), it shows a painting instead (newtab_art_page.odin); `want_next` asks for a different one.
+show_home :: proc(app: ^App, t: ^Tab, want_next := false) {
+	if art_newtab_maybe(app, t, want_next) { return }
 	base.scope_close(t.nav)
 	t.nav = base.scope_make("navigation", t.scope)
 	t.load, t.kind = nil, .Web
