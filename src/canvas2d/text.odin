@@ -196,11 +196,14 @@ draw_color_glyphs :: proc(c: ^Context, lo: ^Laid_Out, ox, oy, k: f64) {
 // The maxWidth squeeze `applies only to x`, as it does to the outline run.
 @(private)
 draw_color_glyph :: proc(c: ^Context, cg: ^Color_Glyph, pen_x, pen_y: f64) {
-	tmp, tok := bitmap_create(cg.w, cg.h, max(int), context.temp_allocator)
-	if !tok { return }
-	bitmap_write_straight(&tmp, cg.px, cg.w, 0, 0, cg.w, cg.h, 0, 0)
+	// (the bitmap's own storage, not this frame's stack slot: a drawing recorded for the GPU may name it until it is flushed)
+	tmp := new(Bitmap, context.temp_allocator)
+	ok: bool
+	tmp^, ok = bitmap_create(cg.w, cg.h, max(int), context.temp_allocator)
+	if !ok { return }
+	bitmap_write_straight(tmp, cg.px, cg.w, 0, 0, cg.w, cg.h, 0, 0)
 	dx, dy := pen_x + f64(cg.ox), pen_y + f64(cg.oy)
-	ctx_draw_image(c, &tmp, 0, 0, f64(cg.w), f64(cg.h), dx, dy, f64(cg.w), f64(cg.h))
+	ctx_draw_image(c, tmp, 0, 0, f64(cg.w), f64(cg.h), dx, dy, f64(cg.w), f64(cg.h))
 }
 
 // measureText. Positions are relative to the alignment point and baseline, positive to the right and upwards (the
