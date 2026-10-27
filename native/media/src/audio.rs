@@ -15,7 +15,7 @@ use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::codecs::{CodecParameters, Decoder as SymDecoder, DecoderOptions, CODEC_TYPE_AAC, CODEC_TYPE_FLAC, CODEC_TYPE_MP3, CODEC_TYPE_PCM_S16LE, CODEC_TYPE_VORBIS};
 use symphonia::core::formats::Packet;
 
-use crate::{ERR_CORRUPT, ERR_TOO_MUCH_MEMORY, ERR_UNSUPPORTED};
+use crate::{ERR_CORRUPT, ERR_UNSUPPORTED};
 
 pub const AGAIN: i32 = 1;
 
@@ -279,6 +279,3 @@ pub unsafe fn close(handle: *mut c_void) {
 pub fn supported(codec: u32) -> bool {
     codec == CODEC_OPUS || codec_type(codec).is_some()
 }
-
-// unused import guard: ERR_TOO_MUCH_MEMORY is reserved for future allocation checks.
-const _: i32 = ERR_TOO_MUCH_MEMORY;
