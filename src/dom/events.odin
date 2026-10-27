@@ -140,6 +140,28 @@ remove_listener :: proc(d: ^Document, target: base.Handle, id: Listener_Id) -> E
 	return .Not_Found
 }
 
+// HTML "erase all event listeners and handlers" on every shadow-including inclusive descendant of `root` (what
+// document.open() does to its document). Tombstones, as remove_listener leaves: a dispatch in progress skips them.
+erase_listeners :: proc(d: ^Document, root: base.Handle) {
+	stack := make([dynamic]base.Handle, context.temp_allocator)
+	append(&stack, root)
+	for len(stack) > 0 {
+		h := pop(&stack)
+		n := get(d, h)
+		if n == nil { continue }
+		for &l in n.listeners {
+			if l.removed { continue }
+			delete(l.type)
+			l.type = ""
+			l.removed = true
+			d.listener_changes += 1
+		}
+		compact_listeners(n)
+		if n.kind == .Element && n.shadow != base.NIL_HANDLE { append(&stack, n.shadow) }
+		for ch := n.first_child; ch != base.NIL_HANDLE; ch = get(d, ch).next { append(&stack, ch) }
+	}
+}
+
 @(private)
 compact_listeners :: proc(n: ^Node) {
 	w := 0

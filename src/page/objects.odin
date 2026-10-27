@@ -118,6 +118,15 @@ object_remove_listener :: proc(p: ^Page, h: u64, id: dom.Listener_Id) -> dom.Err
 	return .Not_Found
 }
 
+// Every listener of the object goes (tombstones: a dispatch in progress skips them).
+object_erase_listeners :: proc(p: ^Page, h: u64) {
+	o := object_get(p, h)
+	if o == nil { return }
+	for &l in o.listeners {
+		if !l.removed { delete(l.type); l.type = ""; l.removed = true }
+	}
+}
+
 // True when someone listens for `type` (lets a source skip work nobody would see).
 object_has_listener :: proc(p: ^Page, h: u64, type: string) -> bool {
 	o := object_get(p, h)

@@ -96,6 +96,13 @@ static void listener_unlink(JSContext *ctx, wj_obj *o, wj_listener *l)
     free(l);
 }
 
+/* The browser erased every listener and handler of `o` (document.open()): the wrapper's records go too, with no
+ * call back to it. */
+void wj_listeners_forget(JSContext *ctx, wj_obj *o)
+{
+    while (o->listeners) { listener_unlink(ctx, o, o->listeners); }
+}
+
 static bool same_string(JSContext *ctx, JSValueConst a, JSValueConst b) { return JS_IsStrictEqual(ctx, a, b); }
 
 /* Registers `l` (owned by `o`) with the browser. False with an exception pending when it refused. */

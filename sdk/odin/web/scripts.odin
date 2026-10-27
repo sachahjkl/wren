@@ -67,7 +67,8 @@ Document_writeMarkup :: proc "contextless" (markup: string) -> Error {
 }
 
 // document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
-// script). Invalid_State when the document cannot be opened.
+// script; the listeners and handlers of its tree and of its Window are erased, the engine's records first through
+// its export wj_document_opening). Invalid_State when the document cannot be opened.
 Document_openStream :: proc "contextless" () -> Error {
 	return _Document_openStream()
 }

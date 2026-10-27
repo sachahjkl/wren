@@ -133,6 +133,27 @@ JSValue wjr_Document_open(JSContext *ctx, JSValueConst this_val, int argc, JSVal
     return JS_DupValue(ctx, this_val);
 }
 
+/* The browser opens the document (document.open(), a javascript: URL's result) and is about to erase every listener
+ * and handler of its tree and of the Window (HTML "erase all event listeners and handlers"): the wrappers' records of
+ * them go first, while the nodes are still connected; the browser's own go right after, so nothing is called back. */
+WJ_EXPORT("wj_document_opening")
+void wj_document_opening(void)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    if (!ctx) { return; }
+    extern wj_val *wj_connected_listening_nodes(wj_ctx *ctx, uint32_t *count);
+    extern void wj_listeners_forget(JSContext *ctx, wj_obj *o);
+    uint32_t n = 0;
+    wj_val *nodes = wj_connected_listening_nodes(ctx, &n);
+    for (uint32_t i = 0; i < n; i++) {
+        wj_obj *o = wj_obj_of(nodes[i]);
+        if (o) { wj_listeners_forget(ctx, o); }
+        JS_FreeValue(ctx, nodes[i]);
+    }
+    free(nodes);
+    wj_listeners_forget(ctx, &wj_the_realm.global_obj);
+}
+
 JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);

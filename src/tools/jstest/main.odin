@@ -449,6 +449,33 @@ console.log("cleared", p.childNodes.length);
 		usable(p, "document.open")
 		page.page_close(p)
 
+		// HTML document.open: every listener and handler of the document's tree and of the Window is erased; the old
+		// DOMContentLoaded listener opening the document again used to see the new document's and loop forever
+		p, ms = timed(process, `<!doctype html><body><p id=t>t</p><script>
+var runs = 0, winRuns = 0;
+function onWin() { winRuns++; }
+window.addEventListener("ping", onWin);
+document.addEventListener("DOMContentLoaded", () => {
+  runs++;
+  if (runs > 3) { return; }
+  history.replaceState(undefined, "", "");
+  document.open();
+  document.write("<!doctype html><body>done</body>");
+  document.close();
+  window.dispatchEvent(new Event("ping"));
+  console.log("dcl ran", runs, document.body.textContent, window.onload, winRuns);
+  window.addEventListener("ping", onWin);
+  window.dispatchEvent(new Event("ping"));
+  console.log("listener added again", winRuns);
+});
+window.onload = () => console.log("old onload ran");
+</script></body>`)
+		check(logged("dcl ran 1 done null 0"), "document.open in DOMContentLoaded: the listener runs once, the Window's listeners and handlers are erased")
+		check(logged("listener added again 1"), "a listener erased by document.open can be added again")
+		check(!logged("old onload ran"), "the old document's onload does not run for the new document")
+		usable(p, "document.open in DOMContentLoaded")
+		page.page_close(p)
+
 		p, ms = timed(process, `<!doctype html><body><script>
 for (let i = 0; i < 20000; i++) {
   const d = document.createElement("div");
