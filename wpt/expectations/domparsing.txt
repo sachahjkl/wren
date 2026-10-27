@@ -281,9 +281,9 @@
 	image/svg+xml is preserved in the error document: PASS
 	text/xml is preserved in the error document: PASS
 /domparsing/DOMParser-parseFromString-xml-scripting-support-disabled.html: OK
-	parseFromString as HTML, append importNode result: FAIL
+	parseFromString as HTML, append importNode result: PASS
 	parseFromString as HTML, appendChild: PASS
-	parseFromString as HTML, svg script, append importNode result: FAIL
+	parseFromString as HTML, svg script, append importNode result: PASS
 	parseFromString as HTML, svg script, appendChild: PASS
 	parseFromString as XHTML, script, append adoptNode result: FAIL
 	parseFromString as XHTML, script, append cloneNode result: FAIL
@@ -363,7 +363,7 @@
 	<html> and <body> must work the same, 1: PASS
 	<html> and <body> must work the same, 2: PASS
 	<html> in a different namespace shouldn't be special: PASS
-	<script>s should be run when appended to the document (but not before): FAIL
+	<script>s should be run when appended to the document (but not before): PASS
 	Don't auto-create <body> when applied to <html>: PASS
 	Implicit <body> creation: PASS
 	Must not throw INVALID_STATE_ERR for a detached node.: PASS
@@ -2180,9 +2180,9 @@
 	streamPrependHTMLUnsafe on <xmp> initializes tokenizer in RAWTEXT state: FAIL
 /domparsing/tentative/unclosed-script-already-started.html: OK
 	Control: closed <script> from setHTMLUnsafe({runScripts: true}) runs: FAIL
-	Unclosed <script> from createContextualFragment() never runs: FAIL
-	Unclosed <script> from innerHTML never runs once connected: FAIL
-	Unclosed <script> from setHTMLUnsafe({runScripts: true}) never runs: FAIL
+	Unclosed <script> from createContextualFragment() never runs: PASS
+	Unclosed <script> from innerHTML never runs once connected: PASS
+	Unclosed <script> from setHTMLUnsafe({runScripts: true}) never runs: PASS
 /domparsing/xml-parse-serialize-roundtrip.html: OK
 	DOMParser and XMLSerializer should round trip with CDATA sections: large CDATA: PASS
 	DOMParser and XMLSerializer should round trip with CDATA sections: multiple CDATAs: PASS

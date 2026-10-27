@@ -240,6 +240,7 @@ Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "cloneNode: this browser has one document per page; the document cannot be cloned") }
 	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be cloned.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
+	scripts_cloned(c.page, H(node.handle), h)   // (js_load_fragment.odin)
 	// a clone of a node of the document is in the document's realm: its custom elements are upgraded (HTML "create an
 	// element": cloning enqueues an upgrade reaction); one of a template's contents stays inert
 	if rn := dom.get(c.page.doc, dom.shadow_including_root(c.page.doc, H(node.handle))); rn == nil || !(rn.kind == .Fragment && rn.held) {
@@ -252,6 +253,7 @@ Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, A
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "importNode: this browser has one document per page; the document cannot be imported") }
 	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be imported.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
+	scripts_cloned(c.page, H(node.handle), h)
 	custom_elements_cloned(c.page, h)
 	return u64(h), .None
 }

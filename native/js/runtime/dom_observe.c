@@ -932,7 +932,8 @@ JSValue wjr_Range_getClientRects(JSContext *ctx, JSValueConst t, int argc, JSVal
     return dom_rect_list(ctx, wj_scratch.data, n > 0 ? (uint32_t)n / 32 : 0);
 }
 
-/* createContextualFragment(markup): parsed in the context of the start node's element (a <body> otherwise) */
+/* createContextualFragment(markup): the browser parses it in the context of the start node's element (a <body>
+ * otherwise) and leaves its scripts runnable once inserted */
 JSValue wjr_Range_createContextualFragment(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
 {
     dom_impl *d = range_of(ctx, t);
@@ -940,17 +941,9 @@ JSValue wjr_Range_createContextualFragment(JSContext *ctx, JSValueConst t, int a
     if (argc < 1) { return wj_throw_arity(ctx, "Range.createContextualFragment", 1, argc); }
     wj_str s;
     if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
-    uint64_t holder = 0, frag = 0;
-    int32_t st = wr_Document_createElementChecked((const uint8_t *)"body", 4, &holder);
-    if (st >= 0) { st = wr_Element_set_innerHTML(holder, (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len); }
+    uint64_t frag = 0;
+    int32_t st = wr_Range_createContextualFragment(RS(d), (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, &frag);
     wj_str_free(ctx, &s);
-    if (st >= 0) { st = wr_Document_createDocumentFragment(&frag); }
-    while (st >= 0) {
-        uint64_t c = wr_Node_firstChild(holder);
-        if (!c) { break; }
-        st = wr_Node_preInsert(frag, c, 0);
-    }
-    if (holder) { wr_Node_release(holder); }
     if (st < 0) { return wj_throw_status(ctx, st, "Range.createContextualFragment"); }
     return wj_wrap_node(ctx, frag);
 }

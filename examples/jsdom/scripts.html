@@ -1,0 +1,70 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Script elements from fragments and clones</title>
+<body>
+<div id="host"></div>
+<script>
+const host = document.getElementById("host");
+window.ran = [];
+section("Range.createContextualFragment", () => {
+  const r = document.createRange();
+  r.selectNodeContents(host);
+  const f = r.createContextualFragment("<p>a</p><script>ran.push('ccf')</s" + "cript>");
+  eq("not run while in the fragment", ran.join(), "");
+  host.appendChild(f);
+  eq("run once inserted", ran.join(), "ccf");
+  const again = host.querySelector("script");
+  host.appendChild(again);
+  eq("not run a second time when moved", ran.join(), "ccf");
+  ran.length = 0;
+  host.replaceChildren();
+  const open = r.createContextualFragment("<script id=u>ran.push('unclosed')");
+  host.appendChild(open);
+  const u = host.querySelector("#u");
+  eq("an unclosed script keeps its text", u.textContent, "ran.push('unclosed')");
+  eq("an unclosed script never runs", ran.join(), "");
+  u.appendChild(document.createTextNode(";ran.push('text')"));
+  eq("nor when its text changes", ran.join(), "");
+  host.replaceChildren();
+  host.appendChild(r.createContextualFragment("<script>ran.push('crlf')\r\n"));
+  eq("nor with CR LF in its text", ran.join(), "");
+  host.replaceChildren();
+  host.appendChild(r.createContextualFragment("<script></s" + "cript><script>ran.push('two')</s" + "cript>"));
+  eq("a closed script after an empty one runs", ran.join(), "two");
+  ran.length = 0;
+  host.replaceChildren();
+  const tr = document.createRange();
+  tr.selectNodeContents(document.documentElement);
+  const span = tr.createContextualFragment("<span>x</span>");
+  eq("context <html>: parsed as in <body>", span.firstChild.localName, "span");
+  const table = document.createElement("table");
+  host.appendChild(table);
+  const tb = document.createRange();
+  tb.selectNodeContents(table);
+  const rows = tb.createContextualFragment("<tr><td>1</td></tr>");
+  eq("context <table>: rows are kept", rows.firstChild.localName, "tbody");
+  const text = document.createTextNode("t");
+  host.appendChild(text);
+  const tx = document.createRange();
+  tx.setStart(text, 0);
+  eq("a Text start node: its parent element is the context", tx.createContextualFragment("<td>c</td>").firstChild.nodeType, Node.TEXT_NODE);
+  host.replaceChildren();
+});
+section("already started and cloning", () => {
+  ran.length = 0;
+  const div = document.createElement("div");
+  div.innerHTML = "<script>ran.push('inner')</s" + "cript>";
+  host.appendChild(div);
+  eq("innerHTML: never runs", ran.join(), "");
+  host.appendChild(div.firstChild.cloneNode(true));
+  eq("a clone of an already started script does not run", ran.join(), "");
+  host.appendChild(div.cloneNode(true));
+  eq("nor one inside a deep clone", ran.join(), "");
+  const fresh = document.createElement("script");
+  fresh.textContent = "ran.push('fresh')";
+  host.appendChild(fresh.cloneNode(true));
+  eq("a clone of a script that never started runs", ran.join(), "fresh");
+  host.replaceChildren();
+});
+done();
+</script>
