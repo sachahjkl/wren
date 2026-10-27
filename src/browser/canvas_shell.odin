@@ -72,6 +72,15 @@ canvas_shell_init :: proc(app: ^App) {
 			m := font.metrics(page_render.fonts.state, font.Font_Id(face), size)
 			return canvas2d.Font_Metrics{ascent = m.ascent, descent = m.descent, x_height = m.x_height, em_ascent = m.ascent, em_descent = m.descent}
 		},
+		// Color glyphs (emoji, COLR / sbix / CBDT / SVG) drawn by the toolkit's color-glyph rasterizer (the same code
+		// the chrome uses), as a straight-RGBA bitmap the canvas composites as an image. The text color is the fill
+		// color: a glyph with foreground / text-color layers takes it.
+		color_glyph = proc(user: rawptr, face: u64, gid: u16, size: f32, fg: [4]f32) -> (canvas2d.Color_Glyph, bool) {
+			srgb := [3]u8{u8(clamp(fg[0], 0, 1) * 255 + 0.5), u8(clamp(fg[1], 0, 1) * 255 + 0.5), u8(clamp(fg[2], 0, 1) * 255 + 0.5)}
+			cg, ok := font.color_glyph_rgba(page_render.fonts.state, font.Font_Id(face), gid, size, srgb)
+			if !ok { return {}, false }
+			return canvas2d.Color_Glyph{px = cg.px, w = cg.w, h = cg.h, ox = cg.ox, oy = cg.oy}, true
+		},
 	}
 }
 
