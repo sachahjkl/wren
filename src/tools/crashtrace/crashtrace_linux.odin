@@ -155,7 +155,7 @@ signal_name :: proc(s: posix.Signal) -> string {
 @(private = "file")
 on_signal :: proc "c" (sig: posix.Signal, info: ^posix.siginfo_t, uctx: rawptr) {
 	if intrinsics.atomic_exchange(&reported, 1) == 0 {
-		context = runtime.default_context()
+		context = runtime.default_context()   // memcheck: a signal handler runs on the faulting thread, outside the tracker
 		write_report(sig, info, uctx)
 	}
 	// SA_RESETHAND put the default action back: a fault returns to the instruction, which faults again and ends the

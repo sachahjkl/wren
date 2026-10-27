@@ -121,7 +121,12 @@ query_prefixes :: proc(t: ^testing.T) {
 	first_off := len(cpal.rows)
 	for r, i in cpal.rows { if r.disabled { first_off = min(first_off, i) } }
 	testing.expect_value(t, first_named("nav.reload"), first_off)
-	for r in cpal.rows { testing.expectf(t, !strings.has_prefix(r.title, "Theme"), "%q matches rel", r.title) }
+	for r in cpal.rows {   // a theme shows only when its title holds r, e, l in this order, never through its keywords
+		if !strings.has_prefix(r.title, "Theme") { continue }
+		want, hit := "rel", 0
+		for ch in strings.to_lower(r.title, context.temp_allocator) { if hit < len(want) && ch == rune(want[hit]) { hit += 1 } }
+		testing.expectf(t, hit == len(want), "%q matches rel", r.title)
+	}
 	palette_collect(app, ">refresh")   // a keyword of Reload
 	testing.expect(t, len(cpal.rows) >= 1 && first_named("nav.reload") >= 0)
 
