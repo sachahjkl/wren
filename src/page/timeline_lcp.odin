@@ -9,8 +9,8 @@ package page
 //     larger than every candidate reported so far, an entry is added. A candidate is an image (<img>, <input type=image>,
 //     <video> poster, a CSS background image) or a block of text (an element whose box starts an inline formatting context
 //     with text). The reported size is the element's visible area, clamped to the viewport, in CSS px. The algorithm stops
-//     at the first user interaction (timeline_user_interaction) or when the document is torn down, as the specification
-//     says. Excluded: elements with opacity 0 or visibility other than visible, a background image that covers the whole
+//     at the first user interaction (timeline_layout_shift_input sets lcp_stopped) or when the document is torn down, as
+//     the specification says. Excluded: elements with opacity 0 or visibility other than visible, a background image that covers the whole
 //     viewport, and images whose bits-per-pixel is below performance.largest_contentful_paint_min_bpp (low-entropy
 //     placeholders and spacers).
 //   * Element Timing (element, PerformanceElementTiming): an element carrying an `elementtiming` attribute (an image or a
