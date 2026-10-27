@@ -1296,26 +1296,32 @@ Host: `ImageBitmap_close :: proc(c: ^Call, bitmap: Api_ImageBitmap)`
 ### `Canvas_createBitmap`
 
 ```
-ImageBitmap Canvas_createBitmap(u64 source, i32 form, f64 sx, f64 sy, f64 sw, f64 sh, bool flip_y) raises
+ImageBitmap Canvas_createBitmap(u64 source, i32 form, f64 sx, f64 sy, f64 sw, f64 sh, i32 orient, i32 premul, i32 colorspace, i32 resize_w, i32 resize_h, i32 resize_q) raises
 ```
 
-createImageBitmap(image, sx, sy, sw, sh): `source` as for drawImage, `form` 0 (whole image) or 4 (a rectangle); the
-bitmap is a copy of the pixels now. `flip_y` and `premultiply` follow ImageBitmapOptions. Not_Found: no pixels yet
-(the image is not available); Invalid_State: broken or empty image; Index_Size: an empty rectangle.
+createImageBitmap(image, sx, sy, sw, sh, options): `source` as for drawImage, `form` 0 (whole image) or 4 (a
+rectangle). The bitmap is a copy of the pixels now, with the full ImageBitmapOptions applied natively: `orient`
+(0 from-image, 1 flipY), `premul` (0 default, 1 premultiply, 2 none — the result stored premultiplied either way;
+`none` only affects a source whose alpha is not premultiplied, which never happens for our premultiplied bitmaps,
+so it is a no-op here and kept for completeness), `colorspace` (0 default, 1 none — we keep the source sRGB bytes
+so both behave the same), `resize_w` / `resize_h` the wanted output size (0 means keep that axis) and `resize_q`
+(0 pixelated, 1 low, 2 medium, 3 high). Not_Found: no pixels yet (the image is not available); Invalid_State:
+broken or empty image; Index_Size: an empty rectangle or an out-of-range resize.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: bool) -> (u64, Api_Error)`
+Host: `Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)`
 
 ### `Canvas_bitmapFromPixels`
 
 ```
-ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, bool flip_y) raises
+ImageBitmap Canvas_bitmapFromPixels(bytes data, i32 width, i32 height, i32 orient, i32 premul, i32 colorspace, i32 resize_w, i32 resize_h, i32 resize_q) raises
 ```
 
-An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob).
+An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). `orient`, `premul`,
+`colorspace`, `resize_*` and `resize_q` as Canvas_createBitmap.
 
 Raises: returns an `Error` (see [web](web.md)).
 
-Host: `Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, flip_y: bool) -> (u64, Api_Error)`
+Host: `Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)`
 
