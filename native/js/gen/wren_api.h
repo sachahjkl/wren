@@ -429,6 +429,13 @@ typedef uint64_t wr_SourceBufferList;
 typedef uint64_t wr_MediaSourceHandle;
 
 /* module navigation: types */
+// What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+// submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+typedef struct wr_NavigationSource {
+    uint64_t source;
+    uint64_t form;
+    uint64_t submitter;
+} wr_NavigationSource;
 
 /* module net: types */
 // A request and, once it arrived, its response.
@@ -2767,6 +2774,11 @@ WR_IMPORT("navigation", "Navigation_traverseTo") int32_t wr_Navigation_traverseT
 WR_IMPORT("navigation", "Navigation_pending") int32_t wr_Navigation_pending(uint8_t *_buf, uint32_t _cap);
 // destination.getState() of that navigation: Not_Found when it has none.
 WR_IMPORT("navigation", "Navigation_pendingState") int32_t wr_Navigation_pendingState(uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("navigation", "Navigation_pendingSource") void wr_Navigation_pendingSource(wr_NavigationSource *_ret);
+// navigation.activation: "<type> <from key>" (type as Navigation_pending's; from key 0: null, the entry of the
+// document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
+// navigation the browser measured (activation null).
+WR_IMPORT("navigation", "Navigation_activation") int32_t wr_Navigation_activation(uint8_t *_buf, uint32_t _cap);
 
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A

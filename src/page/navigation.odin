@@ -26,6 +26,7 @@ import "core:fmt"
 import "core:strings"
 import "wb:base"
 import "wb:dom"
+import "wb:forms"
 import "wb:url"
 import "wb:wasm"
 
@@ -50,6 +51,77 @@ Nav_Pending :: struct {
 	cancelable:     bool,
 	state:          string,           // the destination's Navigation API state (getState())
 	has_state:      bool,
+	source:         base.Handle,      // event.sourceElement: the link or the submitter (the form without one); NIL: null
+	form:           base.Handle,      // a POST form submission's form: event.formData is made of it and `submitter`
+	submitter:      base.Handle,
+}
+
+// A form submission about to navigate this document (forms_plan_navigation): `navigate` with its sourceElement and,
+// for a POST, its formData. False when the event canceled or intercepted it (an intercepted one is a same-document
+// navigation to the action URL).
+navigation_form :: proc(p: ^Page, s: ^forms.Submission, before_loaded: bool) -> bool {
+	if p == nil || p.closed || p.web == nil || s.method == .Dialog || s.mailto { return true }
+	if s.target != "" && !strings.equal_fold(s.target, "_self") { return true }
+	target, ok := url.parse(s.url, nil, context.temp_allocator)
+	if !ok { return true }
+	// HTML: a submission planned before the document completely loaded, or towards its own URL, replaces the entry
+	pend := Nav_Pending{type = before_loaded || target.href == p.env.location.href ? .Replace : .Push, url = target.href, can_intercept = can_rewrite_url(p.env.location, target), cancelable = true}
+	pend.source = s.submitter != base.NIL_HANDLE ? s.submitter : s.form
+	if s.method == .Post { pend.form, pend.submitter = s.form, s.submitter }
+	switch navigation_fire(p, &pend) {
+	case .Proceed: return true
+	case .Canceled: return false
+	case .Intercepted:
+		navigation_commit_url(p, target.href, pend.type == .Replace, {})
+		navigation_committed(p, pend.type, true)
+	}
+	return false
+}
+
+// The browser's reload button on this document: `navigate` (user initiated, cancelable as HTML says for a reload).
+// True when the document took it (canceled, or intercepted: the document stays); the shell reloads otherwise.
+navigation_user_reload :: proc(p: ^Page) -> bool {
+	if p == nil || p.closed || p.web == nil { return false }
+	cur := session_current(p.web.session) if p.web.session != nil else nil
+	pend := Nav_Pending{type = .Reload, url = p.env.location.href, user_initiated = true, can_intercept = true, cancelable = true}
+	if cur != nil { pend.state, pend.has_state = strings.clone(cur.nav_state, context.temp_allocator), cur.has_nav_state }
+	switch navigation_fire(p, &pend) {
+	case .Proceed: return false
+	case .Canceled: return true
+	case .Intercepted:
+		navigation_committed(p, .Reload, true)
+	}
+	return true
+}
+
+// navigation.activation: how the browser reached this document (the navigation timing the shell gave: a reload, a
+// traversal, else a push) and the entry it came from (a push: the entry before the current one, when it was another
+// document's; a reload: the current one; a traversal: unknown, null).
+Navigation_activation :: proc(c: ^Call) -> string {
+	p := c.page
+	t := p.timeline
+	if t == nil || !t.nav_known || p.web == nil { return "" }
+	list, cur := nav_entries(p)
+	if cur < 0 { return "" }
+	type := Nav_Type.Push
+	if t.nav.reload { type = .Reload }
+	if t.nav.back_forward { type = .Traverse }
+	from: u64
+	switch type {
+	case .Push, .Replace:
+		if cur > 0 && list[cur - 1].doc != p.web.id { from = list[cur - 1].id }
+	case .Reload:
+		from = list[cur].id
+	case .Traverse:
+	}
+	return fmt.tprintf("%d %d", int(type), from)
+}
+
+// event.sourceElement and the form of event.formData of the navigation being fired.
+Navigation_pendingSource :: proc(c: ^Call) -> Api_NavigationSource {
+	n := c.page.web.nav_pending
+	if n == nil { return {} }
+	return {source = u64(n.source), form = u64(n.form), submitter = u64(n.submitter)}
 }
 
 // The realm of the document, if it has one now (the API is never what starts one).

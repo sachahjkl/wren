@@ -16,6 +16,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:config"
 import "wb:i18n"
+import "wb:page"
 
 Shortcut :: struct {
 	key:  platform.Key,
@@ -236,11 +237,17 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.hist + 1 < len(t.history) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { go_history(app, t, +1) }})
 	add(r, {name = "nav.reload", title = "Reload", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "refresh", keys = keys(&r.arena, {key = .F5}, {key = .R, mods = ctrl}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { reload(app, t) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			if t.page != nil && page.navigation_user_reload(t.page) { return }   // the page's navigate listener took it
+			reload(app, t)
+		}})
 	// the document and everything it loads from the network (cache mode reload); F5 only revalidates the document
 	add(r, {name = "nav.reload_bypass_cache", title = "Reload without the cache", category = "Navigation", glyph = GLYPH_RELOAD, keywords = "hard refresh force",
 		keys = keys(&r.arena, {key = .F5, mods = ctrl}, {key = .R, mods = cs}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { reload(app, t, bypass_cache = true) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			if t.page != nil && page.navigation_user_reload(t.page) { return }
+			reload(app, t, bypass_cache = true)
+		}})
 	add(r, {name = "nav.stop", title = "Stop loading", category = "Navigation", keywords = "cancel abort",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.load != nil && t.load.task != base.NIL_HANDLE },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { stop_loading(app, t) }})

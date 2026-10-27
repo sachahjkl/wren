@@ -286,6 +286,17 @@ function Test-WebApis($server) {
     $null = Wren-Ctl wait function 'location.search === "" && window.lastNav === "traverse:true"' --timeout 10000
     $second = Wren-Eval ('[window.lastNav, navigation.currentEntry.index, String(window.marker) === "' + $marker + '"].join()')
     Check "a second Back: a same-document traversal the page intercepts ($second)" ($second -eq "traverse:true,$base,true")
+    # another document reached by a push: navigation.activation; the browser's reload button fires navigate, which the page
+    # intercepts (the document stays)
+    $null = Wren-Eval 'navigation.navigate("remote/fixture.htm?act"); 1'
+    $null = Wren-Ctl wait function 'location.search === "?act" && document.readyState === "complete"' --timeout 10000
+    $act = Wren-Eval '[navigation.activation.navigationType, navigation.activation.entry === navigation.currentEntry, navigation.activation.from && navigation.activation.from.url.includes("navigation.html")].join()'
+    Check "navigation.activation of a pushed document ($act)" ($act -eq 'push,true,true')
+    $null = Wren-Eval 'window.keep = "kept"; navigation.addEventListener("navigate", (e) => { if (e.navigationType === "reload") { window.sawReload = e.userInitiated; e.intercept(); } }); 1'
+    $null = Wren-Ctl cmd nav.reload
+    $null = Wren-Ctl wait function 'window.sawReload === true' --timeout 10000
+    $rl = Wren-Eval '[window.sawReload, window.keep].join()'
+    Check "the reload button fires navigate (user initiated), intercepted: the document stays ($rl)" ($rl -eq 'true,kept')
 
     # examples/site/remote/xhtml.xhtml, served as application/xhtml+xml: parsed as XML (a self-closed <div/> is empty, names
     # keep their case), its CDATA script runs, its style applies (the box painted blue)

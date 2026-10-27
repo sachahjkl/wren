@@ -6,6 +6,14 @@ package web
 
 import "base:runtime"
 
+// What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+// submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+NavigationSource :: struct {
+	source: u64,
+	form: u64,
+	submitter: u64,
+}
+
 foreign import _m_navigation "navigation"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -19,6 +27,8 @@ foreign _m_navigation {
 	@(link_name = "Navigation_traverseTo") _Navigation_traverseTo :: proc(key: i64) -> Error ---
 	@(link_name = "Navigation_pending") _Navigation_pending :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Navigation_pendingState") _Navigation_pendingState :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Navigation_pendingSource") _Navigation_pendingSource :: proc(_ret: ^NavigationSource) ---
+	@(link_name = "Navigation_activation") _Navigation_activation :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
 }
 
 // navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin
@@ -164,6 +174,42 @@ Navigation_pendingState_alloc :: proc(allocator: runtime.Allocator) -> (string, 
 	for _ in 0 ..< 4 {
 		buf := make([]u8, cap, allocator)
 		n := _Navigation_pendingState(raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+Navigation_pendingSource :: proc "contextless" () -> (result: NavigationSource) {
+	_Navigation_pendingSource(&result)
+	return
+}
+
+// navigation.activation: "<type> <from key>" (type as Navigation_pending's; from key 0: null, the entry of the
+// document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
+// navigation the browser measured (activation null).
+Navigation_activation :: proc "contextless" (buf: []u8) -> (string, Error) {
+	n := _Navigation_activation(raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Navigation_activation's result.
+Navigation_activation_len :: proc "contextless" () -> (int, Error) {
+	n := _Navigation_activation(nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Navigation_activation's result in a buffer allocated to fit.
+Navigation_activation_alloc :: proc(allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Navigation_activation(raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)

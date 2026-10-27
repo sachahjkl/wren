@@ -34,6 +34,7 @@ Page_Forms :: struct {
 	model:     ^forms.Forms,
 	embedder:  Forms_Embedder,
 	pending:   ^forms.Submission,   // the planned navigation (a newer submission replaces it)
+	pending_replace: bool,          // planned before the document completely loaded: it replaces the entry (HTML)
 	timer:     base.Handle,
 	picker:    base.Handle,         // input waiting for its picker
 	picker_color: bool,
@@ -103,6 +104,7 @@ forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 	pf := p.formctl
 	forms.submission_destroy(pf.pending)
 	pf.pending = s
+	pf.pending_replace = p.scripts != nil && p.scripts.timing.load_end_ms == 0
 	if pf.timer != base.NIL_HANDLE { host.clear_timer(p.loop, pf.timer) }
 	pf.timer = host.set_timer(p.loop, 0, 0, proc(data: rawptr) {
 		p := (^Page)(data)
@@ -111,6 +113,9 @@ forms_plan_navigation :: proc(user: rawptr, s: ^forms.Submission) {
 		s := pf.pending
 		pf.pending = nil
 		if s == nil { return }
+		if !navigation_form(p, s, pf.pending_replace) { forms.submission_destroy(s); return }   // the navigate event took it (navigation.odin)
+		if p.closed || p.formctl == nil { forms.submission_destroy(s); return }
+		pf = p.formctl
 		if pf.embedder.navigate != nil { pf.embedder.navigate(pf.embedder.user, p, s) } else {
 			log(p, .Warn, "form submission ignored: no navigator")
 			forms.submission_destroy(s)
