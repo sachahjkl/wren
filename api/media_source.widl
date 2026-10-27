@@ -13,6 +13,10 @@ module mse {
 
   /// new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
   MediaSource MediaSource_create() raises;
+  /// new ManagedMediaSource(): a MediaSource whose user agent says when to stream (startstreaming / endstreaming).
+  MediaSource ManagedMediaSource_create() raises;
+  /// managedMediaSource.streaming: whether the user agent currently wants the page to append data.
+  bool ManagedMediaSource_streaming(MediaSource source);
   /// URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
   /// that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
   void MediaSource_registerObjectURL(MediaSource source, string url) raises;

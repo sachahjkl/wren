@@ -50,6 +50,9 @@ Media_Source_Object :: struct {
 	handle_obj: u64,               // the worker's: its MediaSourceHandle (0: not asked yet)
 	next_rid:  u32,                // the worker's: the next source buffer's id
 	seq:       u32,                // the worker's: commands sent; the page's: commands done
+	// ManagedMediaSource (media_managed.odin): the user agent says when to stream
+	managed:   bool,
+	streaming: bool,               // the current streaming flag (startstreaming / endstreaming when it flips)
 }
 
 // What an element holds of its Media Source.
@@ -92,6 +95,9 @@ Source_Buffer_Object :: struct {
 	init_duration: f64,
 	rid:       u32,                 // a worker's MediaSource: the id both sides know the buffer by
 	ranges:    [dynamic][2]f64,     // the worker's mirror of what the page's buffer holds (buffered)
+	// ManagedSourceBuffer (media_managed.odin): the ranges last reported, to diff for bufferedchange
+	managed:   bool,
+	last_ranges: [dynamic][2]f64,
 }
 
 media_source_vt := Object_VTable{
@@ -117,6 +123,7 @@ source_buffer_vt := Object_VTable{
 		delete(sb.op_data)
 		delete(sb.mime)
 		delete(sb.ranges)
+		delete(sb.last_ranges)
 		free(sb)
 	},
 }
@@ -189,13 +196,20 @@ mse_fire :: proc(p: ^Page, handle: u64, type: string) {
 ////////////////////////////////
 // MediaSource
 
-MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error) {
+MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error) { return media_source_make(c, false) }
+
+// new ManagedMediaSource(): a MediaSource the user agent streams when it needs data (media_managed.odin).
+ManagedMediaSource_create :: proc(c: ^Call) -> (u64, Api_Error) { return media_source_make(c, true) }
+
+@(private)
+media_source_make :: proc(c: ^Call, managed: bool) -> (u64, Api_Error) {
 	p := c.page
 	if !p.settings.media.enabled || !p.settings.media.mse_enabled { return 0, fail(c, .Not_Supported, "Media Source Extensions are disabled (media.mse.enabled)") }
 	if p.worker != nil && (p.worker.shared || p.worker.sw.version != 0) { return 0, fail(c, .Not_Supported, "MediaSource is available in windows and dedicated workers only") }
 	ms := new(Media_Source_Object)
 	ms.page, ms.owner = p, c.owner
 	ms.duration = math.nan_f64()
+	ms.managed = managed
 	if p.worker != nil { mse_bind_worker(p, ms) }   // mse_worker.odin: its element will be in the page
 	h := object_create(p, &media_source_vt, ms, c.owner)
 	ms.self = h
@@ -335,6 +349,7 @@ MediaSource_addSourceBuffer :: proc(c: ^Call, source: Api_MediaSource, type: str
 	sb := new(Source_Buffer_Object)
 	sb.page, sb.ms = p, ms
 	sb.mime = strings.clone(type)
+	sb.managed = ms.managed
 	sb.win_end = math.inf_f64(1)
 	sb.vtrack, sb.atrack = -1, -1
 	sb.is_webm = pt.container == .WebM
@@ -541,6 +556,7 @@ media_source_detach :: proc(el: ^Media_Element) {
 	free(link)
 	if ms == nil { return }
 	ms.el_node = base.NIL_HANDLE
+	if ms.managed { ms_managed_closed(ms) }
 	if ms.state != .Closed {
 		ms.state = .Closed
 		ms.duration = math.nan_f64()
@@ -916,6 +932,8 @@ sb_run :: proc(sb: ^Source_Buffer_Object) {
 		mse_fire(p, sb.self, "updateend")
 		if sb.ms != nil && sb.ms.state == .Open { ms_end_of_stream(sb.ms, "decode") }
 	}
+	// a ManagedSourceBuffer whose ranges changed fires bufferedchange with what was added / removed (media_managed.odin)
+	if sb.managed { sb_fire_buffered_change(sb) }
 	if sb.ms != nil {
 		if el := ms_element(sb.ms); el != nil {
 			if el.player != nil { media.player_wake(el.player) }

@@ -438,8 +438,8 @@ replace one. Known limits:
 - **Windows only** (Win32, Direct3D 11, DirectWrite, WinHTTP, WIC). The layers above the platform are portable Odin.
 - No HTTP cache yet (every load goes to the network); no HTTP authentication, no SRI, CSP violations are reported to
   the console only; no cookie partitioning.
-- No IME composition, no vertical writing modes, no multi-column layout; no text tracks, `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
-  `<audio>`, and no `getVideoPlaybackQuality()` in JavaScript.
+- No IME composition, no vertical writing modes, no multi-column layout; no `captureStream`, Encrypted Media Extensions (DRM), Ogg, MP3 or WAV files in
+  `<audio>`.
 - Wasm threads and shared memory are off (each worker has its own memory); the Wasm GC proposal is off by default.
 - Response bodies are bounded (`max_body` and a per-page ceiling).
 

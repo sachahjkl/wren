@@ -168,6 +168,111 @@ JSValue wjr_VideoPlaybackQuality_get_totalVideoFrames(JSContext *ctx, JSValueCon
 JSValue wjr_VideoPlaybackQuality_get_corruptedVideoFrames(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 3, true); }
 JSValue wjr_VideoPlaybackQuality_get_totalFrameDelay(JSContext *ctx, JSValueConst this_val) { return quality_at(ctx, this_val, 4, false); }
 
+/* ---- requestVideoFrameCallback (src/page/media_rvfc.odin) ----
+ * The browser keeps the callback itself (one list per <video>, fired at real presentation) and calls back through the
+ * function table: wj_cb_video_frame(user, now), where `user` is the realm's record slot. The record holds the JS
+ * callback and the video's handle; when it fires, the browser's VideoFrameCallbackMetadata is read back (keyed by the
+ * callback id the browser returned) and built into the dictionary the spec passes as the second argument. */
+
+enum { VFC_SLOTS_MIN = 8 };
+typedef struct vfc_rec { uint8_t used; uint32_t gen; uint64_t id; uint64_t handle; JSValue fn; } vfc_rec;
+static vfc_rec *vfc_recs;
+static uint32_t vfc_cap, vfc_count;
+
+static uint32_t vfc_alloc(void)
+{
+    for (uint32_t i = 0; i < vfc_count; i++) { if (!vfc_recs[i].used) { return i; } }
+    if (vfc_count == vfc_cap) {
+        uint32_t cap = vfc_cap ? vfc_cap * 2 : VFC_SLOTS_MIN;
+        vfc_rec *n = realloc(vfc_recs, cap * sizeof *n);
+        if (!n) { return UINT32_MAX; }
+        memset(n + vfc_cap, 0, (cap - vfc_cap) * sizeof *n);
+        vfc_recs = n; vfc_cap = cap;
+    }
+    return vfc_count++;
+}
+
+/* A VideoFrameCallbackMetadata of the eight f64 the browser snapshots (src/page/media_rvfc.odin). */
+static JSValue vfc_metadata(JSContext *ctx, uint64_t handle, uint64_t id)
+{
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_HTMLVideoElement_videoFrameMetadata(handle, id, wj_scratch.data, wj_scratch.cap));
+    JSValue o = JS_NewObject(ctx);
+    if (n < (int32_t)(8 * sizeof(double))) { return o; }   /* unknown id: an empty-ish object (should not happen) */
+    double v[8];
+    memcpy(v, wj_scratch.data, sizeof v);
+    JS_SetPropertyStr(ctx, o, "presentationTime", JS_NewFloat64(ctx, v[0]));
+    JS_SetPropertyStr(ctx, o, "expectedDisplayTime", JS_NewFloat64(ctx, v[1]));
+    JS_SetPropertyStr(ctx, o, "width", JS_NewUint32(ctx, (uint32_t)v[2]));
+    JS_SetPropertyStr(ctx, o, "height", JS_NewUint32(ctx, (uint32_t)v[3]));
+    JS_SetPropertyStr(ctx, o, "mediaTime", JS_NewFloat64(ctx, v[4]));
+    JS_SetPropertyStr(ctx, o, "presentedFrames", JS_NewUint32(ctx, (uint32_t)v[5]));
+    JS_SetPropertyStr(ctx, o, "processingDuration", JS_NewFloat64(ctx, v[6]));
+    /* captureTime / receiveTime / rtpTimestamp are never present (v[7] mask == 0): omit them */
+    return o;
+}
+
+void wj_cb_video_frame(int32_t user, double now);
+static uint32_t video_frame_callback_index(void) { return (uint32_t)(uintptr_t)&wj_cb_video_frame; }
+
+/* The browser presented a new picture: run this callback, once, with the frame's metadata. */
+WJ_EXPORT("wj_cb_video_frame") void wj_cb_video_frame(int32_t user, double now)
+{
+    JSContext *ctx = wj_the_realm.ctx;
+    wj_stack_enter(ctx);
+    uint32_t slot = (uint32_t)user;
+    if (slot >= vfc_count || !vfc_recs[slot].used) { return; }
+    JSValue fn = JS_DupValue(ctx, vfc_recs[slot].fn);
+    uint64_t handle = vfc_recs[slot].handle, id = vfc_recs[slot].id;
+    JS_FreeValue(ctx, vfc_recs[slot].fn);
+    vfc_recs[slot].fn = JS_UNDEFINED;
+    vfc_recs[slot].used = 0;
+    vfc_recs[slot].gen++;
+    JSValue args[2] = { JS_NewFloat64(ctx, now), vfc_metadata(ctx, handle, id) };
+    JSValue r = JS_Call(ctx, fn, wj_the_realm.global, 2, (JSValueConst *)args);
+    if (JS_IsException(r)) { wj_report_pending(ctx); } else { JS_FreeValue(ctx, r); }
+    JS_FreeValue(ctx, args[0]); JS_FreeValue(ctx, args[1]); JS_FreeValue(ctx, fn);
+}
+
+JSValue wjr_HTMLVideoElement_requestVideoFrameCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, WJ_IFACE_HTMLVideoElement);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "requestVideoFrameCallback", 1, argc); }
+    if (!JS_IsFunction(ctx, argv[0])) {
+        return JS_ThrowTypeError(ctx, "Failed to execute 'requestVideoFrameCallback' on 'HTMLVideoElement': The callback provided as parameter 1 is not a function.");
+    }
+    uint32_t slot = vfc_alloc();
+    if (slot == UINT32_MAX) { return JS_ThrowOutOfMemory(ctx); }
+    uint64_t id = wr_HTMLVideoElement_requestVideoFrameCallback(self->handle, video_frame_callback_index(), (int32_t)slot);
+    if (!id) { return wj_throw_dom(ctx, "QuotaExceededError", "too many video frame callbacks (media.video_frame_callbacks.max)"); }
+    vfc_recs[slot].used = 1;
+    vfc_recs[slot].id = id;
+    vfc_recs[slot].handle = self->handle;
+    vfc_recs[slot].fn = JS_DupValue(ctx, argv[0]);
+    return JS_NewUint32(ctx, (uint32_t)id);
+}
+
+JSValue wjr_HTMLVideoElement_cancelVideoFrameCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    wj_obj *self = wj_this(ctx, this_val, WJ_IFACE_HTMLVideoElement);
+    if (!self) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "cancelVideoFrameCallback", 1, argc); }
+    uint32_t id = 0;
+    if (!wj_to_uint32(ctx, argv[0], &id, 32, 0)) { return JS_EXCEPTION; }
+    wr_HTMLVideoElement_cancelVideoFrameCallback(self->handle, id);
+    for (uint32_t i = 0; i < vfc_count; i++) {
+        if (vfc_recs[i].used && vfc_recs[i].id == id) {
+            JS_FreeValue(ctx, vfc_recs[i].fn);
+            vfc_recs[i].fn = JS_UNDEFINED;
+            vfc_recs[i].used = 0;
+            vfc_recs[i].gen++;
+            break;
+        }
+    }
+    return JS_UNDEFINED;
+}
+
 /* ---- Media Source Extensions ---- */
 
 JSValue wjr_MediaSource_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
@@ -242,7 +347,9 @@ JSValue wjr_MediaSource_addSourceBuffer(JSContext *ctx, JSValueConst this_val, i
     int32_t st = wr_MediaSource_addSourceBuffer(self->handle, (const uint8_t *)t.ptr, (uint32_t)t.len, &h);
     wj_str_free(ctx, &t);
     if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.addSourceBuffer"); }
-    JSValue sb = wj_wrap_host(ctx, h, WJ_IFACE_SourceBuffer);
+    /* a ManagedMediaSource hands out ManagedSourceBuffers (bufferedchange, the managed prototype) */
+    int sb_iface = wj_unwrap(this_val, WJ_IFACE_ManagedMediaSource) ? WJ_IFACE_ManagedSourceBuffer : WJ_IFACE_SourceBuffer;
+    JSValue sb = wj_wrap_host(ctx, h, sb_iface);
     if (!JS_IsObject(sb)) { return sb; }
     JSValue arr = web_extra_get(ctx, this_val, "buffers");
     if (!JS_IsObject(arr)) {
@@ -313,4 +420,61 @@ JSValue wjr_SourceBufferList_index_get(JSContext *ctx, JSValueConst obj, uint32_
     if (!o || wr_SourceBufferList_item(o->handle, index, &h) < 0 || !h) { *found = false; return JS_UNDEFINED; }
     *found = true;
     return wj_wrap_host(ctx, h, WJ_IFACE_SourceBuffer);
+}
+
+/* ---- Managed Media Source Extensions (src/page/media_managed.odin) ---- */
+
+JSValue wjr_ManagedMediaSource_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(argc); WJ_UNUSED(argv);
+    if (JS_IsUndefined(new_target)) { return JS_ThrowTypeError(ctx, "Failed to construct 'ManagedMediaSource': Please use the 'new' operator."); }
+    uint64_t h = 0;
+    int32_t st = wr_ManagedMediaSource_create(&h);
+    if (st < 0) { return wj_throw_status(ctx, st, "ManagedMediaSource"); }
+    return wj_wrap_owned(ctx, h, WJ_IFACE_ManagedMediaSource, new_target);
+}
+
+JSValue wjr_ManagedMediaSource_get_streaming(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, WJ_IFACE_ManagedMediaSource);
+    if (!self) { return JS_EXCEPTION; }
+    return JS_NewBool(ctx, wr_ManagedMediaSource_streaming(self->handle) != 0);
+}
+
+/* BufferedChangeEvent.addedRanges / removedRanges: a browser-dispatched event carries them as byte blobs in the event
+ * payload (Event_data = added, Event_text = removed); a script-constructed one takes them from its init dictionary. */
+static JSValue buffered_ranges(JSContext *ctx, JSValueConst this_val, bool added)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_BufferedChangeEvent)) { return JS_EXCEPTION; }
+    const char *key = added ? "addedRanges" : "removedRanges";
+    JSValue cached = web_extra_get(ctx, this_val, key);
+    if (JS_IsObject(cached)) { return cached; }
+    JS_FreeValue(ctx, cached);
+    uint64_t h = web_event_host(this_val);
+    JSValue r;
+    if (h) {
+        int32_t n;
+        if (added) { WJ_FETCH_STRING(n, wr_Event_data(h, wj_scratch.data, wj_scratch.cap)); }
+        else       { WJ_FETCH_STRING(n, wr_Event_text(h, wj_scratch.data, wj_scratch.cap)); }
+        r = ranges_make(ctx, wj_scratch.data, n > 0 ? (size_t)n : 0);
+    } else {
+        r = ranges_make(ctx, NULL, 0);   /* a constructor-made event with no init: an empty TimeRanges */
+    }
+    if (JS_IsObject(r)) { web_extra_set(ctx, this_val, key, JS_DupValue(ctx, r)); }
+    return r;
+}
+
+JSValue wjr_BufferedChangeEvent_get_addedRanges(JSContext *ctx, JSValueConst this_val)   { return buffered_ranges(ctx, this_val, true); }
+JSValue wjr_BufferedChangeEvent_get_removedRanges(JSContext *ctx, JSValueConst this_val) { return buffered_ranges(ctx, this_val, false); }
+
+JSValue wjr_BufferedChangeEvent_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv)
+{
+    JSValue ev = wj_event_construct(ctx, new_target, argc, argv, WJ_IFACE_BufferedChangeEvent, "BufferedChangeEvent");
+    if (JS_IsException(ev)) { return ev; }
+    JSValueConst init = wj_arg(argc, (JSValue *)argv, 1);
+    /* the init dictionary may carry TimeRanges objects; keep them as the event's (SameObject) ranges */
+    JSValue added, removed;
+    if (web_dict_get(ctx, init, "addedRanges", &added) && JS_IsObject(added)) { web_extra_set(ctx, ev, "addedRanges", added); } else { JS_FreeValue(ctx, added); }
+    if (web_dict_get(ctx, init, "removedRanges", &removed) && JS_IsObject(removed)) { web_extra_set(ctx, ev, "removedRanges", removed); } else { JS_FreeValue(ctx, removed); }
+    return ev;
 }
