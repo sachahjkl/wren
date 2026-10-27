@@ -60,9 +60,10 @@ retired_frame_preferences_are_ignored :: proc(t: ^testing.T) {
 }
 
 // What pacer_wait decided before the cadence model, with the retired preferences at their defaults (resize_immediate on,
-// resize_hold_ms 120, input_immediate on, input_idle_periods 1.5): the reference the model must match.
+// resize_hold_ms 120, input_immediate on, input_idle_periods 1.5): the reference the model must match. One change since,
+// on purpose: a drag's frame on a variable refresh screen is shown at once (`variable`; platform/pacing.odin Drag).
 @(private = "file")
-Legacy :: struct { resize_ns, present_ns: i64, slots: platform.Frame_Slots }
+Legacy :: struct { resize_ns, present_ns: i64, slots: platform.Frame_Slots, variable: bool }
 
 @(private = "file")
 legacy_decide :: proc(l: ^Legacy, in_: platform.Cadence_Inputs) -> (at_once, wait_swap_chain: bool, latency: int, wait: i64) {
@@ -72,7 +73,8 @@ legacy_decide :: proc(l: ^Legacy, in_: platform.Cadence_Inputs) -> (at_once, wai
 	// (the model measures the rest in whole nanoseconds of its slots' period: the browser's float period differs by less than
 	// a nanosecond, which only a wake on that nanosecond could tell)
 	input_frame := in_.input && in_.presented && (in_.idled || f64(in_.now_ns - l.present_ns) > f64(l.slots.period_ns) * 1.5)
-	at_once = resizing || held || input_frame
+	drag := !resizing && !held && !input_frame && !in_.idled && in_.dragging
+	at_once = resizing || held || input_frame || (drag && l.variable)
 	latency = at_once ? 2 : 1
 	wait, _ = platform.frame_slot_wait(&l.slots, in_.now_ns, in_.idled, resizing || input_frame)
 	if resizing { return at_once, false, latency, 0 }
@@ -85,8 +87,9 @@ the_cadence_model_decides_as_the_browser_did :: proc(t: ^testing.T) {
 	r := rand.create(7)
 	context.random_generator = rand.default_random_generator(&r)
 	for plan in ([?]platform.Cadence_Plan{platform.cadence_plan({hz = 60.001, max_hz = 180}, {}), platform.cadence_plan({hz = 60, max_hz = 60}, {}), platform.cadence_plan({hz = 180, max_hz = 180}, {tearing = true})}) {
-		c := platform.Cadence{slots = plan.slots}
-		l := Legacy{slots = plan.slots}
+		c: platform.Cadence
+		platform.cadence_adopt(&c, plan)
+		l := Legacy{slots = plan.slots, variable = plan.variable}
 		now := i64(1_000_000_000)
 		presented := false
 		seen: [platform.Cadence_State]bool
