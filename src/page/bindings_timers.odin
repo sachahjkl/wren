@@ -92,6 +92,7 @@ timer_fire :: proc(data: rawptr) {
 	p.web.timer_nesting = nesting
 	before := page_activity(p)
 	if inst := instance_by_index(p, idx); inst != nil {
+		loaf_set_invoker(p, .User_Callback, repeat ? "TimerHandler:setInterval" : "TimerHandler:setTimeout")   // Long Animation Frames
 		if wide {
 			argv := [2]u32{u32(user64), u32(user64 >> 32)}
 			call_guest(p, inst, cb, argv[:])
@@ -204,6 +205,7 @@ run_animation_frames :: proc(p: ^Page, now_ms: f64) -> int {
 		if inst == nil { continue }
 		bits := transmute(u64)ts
 		argv := [3]u32{f.user, u32(bits), u32(bits >> 32)}   // (user: i32, timestamp: f64)
+		loaf_set_invoker(p, .User_Callback, "requestAnimationFrame")   // Long Animation Frames
 		call_guest(p, inst, f.callback, argv[:])
 		ran += 1
 		if p.closed { break }
@@ -305,6 +307,7 @@ idle_invoke :: proc(p: ^Page, c: Idle_Callback, deadline_ms: f64, did_timeout: b
 	if inst == nil { return }
 	bits := transmute(u64)deadline_ms
 	argv := [4]u32{c.user, u32(bits), u32(bits >> 32), did_timeout ? 1 : 0}   // (user: i32, deadline: f64, did_timeout: i32)
+	loaf_set_invoker(p, .User_Callback, "requestIdleCallback")   // Long Animation Frames
 	call_guest(p, inst, c.callback, argv[:])
 }
 

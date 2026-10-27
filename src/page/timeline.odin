@@ -35,6 +35,8 @@ Timeline_Settings :: struct {
 	event_entries:    int,
 	event_min_ms:     f64,
 	long_task_entries: int,
+	long_animation_frame_entries: int,
+	loaf_script_min_ms: f64,
 	lcp_entries:      int,
 	layout_shift_entries: int,
 	element_entries:  int,
@@ -55,6 +57,10 @@ TIMELINE_PREFS := [?]config.Def{
 		description = "An input event whose listeners took at least this long (rounded up to 8 ms) is recorded as an Event Timing entry; an observer asks for its own threshold (durationThreshold, 104 ms by default). The first input is recorded whatever it took."},
 	{name = "performance.long_task_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
 		description = "How many Long Tasks entries (a task of a page's scripts that took 50 ms or more, PerformanceObserver type \"longtask\") a document keeps for its observers. 0: none are recorded (tasks are not timed)."},
+	{name = "performance.long_animation_frame_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
+		description = "How many Long Animation Frames entries (a frame or task of the page that took 50 ms or more, PerformanceObserver type \"long-animation-frame\", PerformanceLongAnimationFrameTiming) a document keeps for its observers. 0: none are recorded (frames are not timed)."},
+	{name = "performance.long_animation_frame_script_min_ms", kind = .Float, default = {f = 5}, bounded = true, min = 0, max = 1000, unit = "ms",
+		description = "A script invocation inside a long animation frame that took at least this long (the specification's 5 ms) becomes a PerformanceScriptTiming in the entry's scripts list; shorter ones are not reported, to keep the list small. 0: every invocation of the frame is reported."},
 	// Largest Contentful Paint, Layout Instability and Element Timing: the spec keeps at most 150 of each; 0 turns a kind off.
 	{name = "performance.largest_contentful_paint_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
 		description = "How many Largest Contentful Paint entries (PerformanceObserver type \"largest-contentful-paint\") a document keeps: one per larger candidate painted, until the first user interaction. 0: largest contentful paint is not measured."},
@@ -76,6 +82,8 @@ timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
 		event_entries = int(config.int_of(p, "performance.event_timing_entries")),
 		event_min_ms = config.float_of(p, "performance.event_timing_min_ms"),
 		long_task_entries = int(config.int_of(p, "performance.long_task_entries")),
+		long_animation_frame_entries = int(config.int_of(p, "performance.long_animation_frame_entries")),
+		loaf_script_min_ms = config.float_of(p, "performance.long_animation_frame_script_min_ms"),
 		lcp_entries = int(config.int_of(p, "performance.largest_contentful_paint_entries")),
 		layout_shift_entries = int(config.int_of(p, "performance.layout_shift_entries")),
 		element_entries = int(config.int_of(p, "performance.element_timing_entries")),
@@ -87,7 +95,7 @@ timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
 
 // The kinds of entries (the values of Api_PerformanceEntryType from Navigation on).
 @(private)
-Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State }
+Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State, Long_Animation_Frame, Script }
 
 // One entry as the engine reads it (JSON): the members of the interfaces, absent ones are 0 or "".
 @(private)
@@ -142,9 +150,53 @@ Tl_Entry :: struct {
 	// LayoutShiftAttribution: the rects go through the JSON (previousRect / currentRect); each source's node handle stays
 	// here only (json:"-" below) and is wrapped live by Performance_timelineNode at the index of the source.
 	sources:        []Tl_Source `json:"sources,omitempty"`,
+	// Long Animation Frames (PerformanceLongAnimationFrameTiming): the rendering phase of the frame and the scripts it
+	// ran. renderStart / styleAndLayoutStart are 0 when the frame had no rendering update (a bare long task). Durations
+	// are on the page's performance timeline (ms since the time origin) for the timestamps, or plain ms for the spans.
+	render_start:       f64 `json:"renderStart,omitempty"`,
+	style_layout_start: f64 `json:"styleAndLayoutStart,omitempty"`,
+	style_duration:     f64 `json:"styleDuration,omitempty"`,
+	layout_duration:    f64 `json:"layoutDuration,omitempty"`,
+	blocking_duration:  f64 `json:"blockingDuration,omitempty"`,
+	first_ui_event:     f64 `json:"firstUIEventTimestamp,omitempty"`,
+	scripts:            []Tl_Script `json:"scripts,omitempty"`,
+	// PerformanceScriptTiming (one script run inside a long animation frame): its invoker and where it came from.
+	invoker_type:       string `json:"invokerType,omitempty"`,
+	invoker:            string `json:"invoker,omitempty"`,
+	execution_start:    f64    `json:"executionStart,omitempty"`,
+	source_url:         string `json:"sourceURL,omitempty"`,
+	source_function:    string `json:"sourceFunctionName,omitempty"`,
+	source_char:        i64    `json:"sourceCharPosition,omitempty"`,
+	source_line:        i64    `json:"sourceLine,omitempty"`,
+	source_column:      i64    `json:"sourceColumn,omitempty"`,
+	forced_style:       f64    `json:"forcedStyleDuration,omitempty"`,
+	forced_layout:      f64    `json:"forcedLayoutDuration,omitempty"`,
+	pause_duration:     f64    `json:"pauseDuration,omitempty"`,
+	window_attribution: string `json:"windowAttribution,omitempty"`,
 	// The element the entry refers to (LCP, Element Timing), kept out of the JSON: a handle cannot be put in JSON and stay
 	// valid. Performance_timelineNode wraps it live, or nothing when it left the document (the attribute goes null).
 	node:           base.Handle `json:"-"`,
+}
+
+// One script invocation inside a long animation frame (PerformanceScriptTiming), marshalled as a nested object in the
+// entry's `scripts`. The strings are owned by the entry and freed with it.
+@(private)
+Tl_Script :: struct {
+	invoker_type:       string `json:"invokerType"`,
+	invoker:            string `json:"invoker"`,
+	name:               string `json:"name"`,
+	start:              f64    `json:"startTime"`,
+	duration:           f64    `json:"duration"`,
+	execution_start:    f64    `json:"executionStart,omitempty"`,
+	source_url:         string `json:"sourceURL,omitempty"`,
+	source_function:    string `json:"sourceFunctionName,omitempty"`,
+	source_char:        i64    `json:"sourceCharPosition"`,
+	source_line:        i64    `json:"sourceLine"`,
+	source_column:      i64    `json:"sourceColumn"`,
+	forced_style:       f64    `json:"forcedStyleDuration,omitempty"`,
+	forced_layout:      f64    `json:"forcedLayoutDuration,omitempty"`,
+	pause_duration:     f64    `json:"pauseDuration,omitempty"`,
+	window_attribution: string `json:"windowAttribution"`,
 }
 
 // One source of a layout shift (LayoutShiftAttribution): the node that moved and its rectangle before and after, in
@@ -219,6 +271,9 @@ Page_Timeline :: struct {
 	ls_scan_mutations: u64,
 	ls_scan_w, ls_scan_h: f64,
 	ls_scanned: bool,
+	// Long Animation Frames: the frame being accumulated (timeline_loaf.odin). A frame is a depth-0 task and the
+	// rendering update it may trigger; the scripts it ran are collected here and emitted when the frame ends.
+	loaf: Loaf_Frame,
 }
 
 @(private)
@@ -253,6 +308,11 @@ tl_entry_free :: proc(e: ^Tl_Entry) {
 	delete(e.name); delete(e.initiator); delete(e.protocol); delete(e.content_type); delete(e.nav_type)
 	delete(e.id); delete(e.url); delete(e.identifier)
 	delete(e.sources)
+	delete(e.invoker_type); delete(e.invoker); delete(e.source_url); delete(e.source_function); delete(e.window_attribution)
+	for &s in e.scripts {
+		delete(s.invoker_type); delete(s.invoker); delete(s.name); delete(s.source_url); delete(s.source_function); delete(s.window_attribution)
+	}
+	delete(e.scripts)
 }
 
 @(private)
@@ -268,6 +328,7 @@ timeline_page_closing :: proc(data: rawptr) {
 	delete(t.nav.mime)
 	delete(t.et_seen)
 	delete(t.ls_prev)
+	loaf_frame_discard(&t.loaf)   // an animation frame left open when the page went: free its script strings
 	free(t)
 }
 
@@ -373,6 +434,8 @@ timeline_add :: proc(p: ^Page, kind: Tl_Kind, e: Tl_Entry) {
 	case .Layout_Shift: limit = p.settings.timeline.layout_shift_entries
 	case .Element: limit = p.settings.timeline.element_entries
 	case .Visibility_State: limit = p.settings.timeline.visibility_entries
+	case .Long_Animation_Frame: limit = p.settings.timeline.long_animation_frame_entries
+	case .Script: limit = 0   // scripts are carried inside long-animation-frame entries, never buffered on their own
 	case .Navigation, .Paint, .First_Input: limit = 64
 	}
 	if limit <= 0 { tmp := e; tl_entry_free(&tmp); b.next_seq += 1; return }
@@ -552,7 +615,7 @@ timeline_task_end :: proc(p: ^Page, begin: i64) {
 
 Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string {
 	p := c.page
-	if entry_type < .Navigation || entry_type > .Visibility_State { return "[]" }
+	if entry_type < .Navigation || entry_type > .Long_Animation_Frame { return "[]" }
 	kind := Tl_Kind(entry_type)
 	list := make([dynamic]Tl_Entry, context.temp_allocator)
 	if kind == .Navigation {
@@ -570,7 +633,7 @@ Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, fro
 }
 
 Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64 {
-	if entry_type < .Navigation || entry_type > .Visibility_State { return 0 }
+	if entry_type < .Navigation || entry_type > .Long_Animation_Frame { return 0 }
 	t := tl_of(c.page, false)
 	if t == nil { return 0 }
 	return t.bufs[Tl_Kind(entry_type)].next_seq

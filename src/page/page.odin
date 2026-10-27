@@ -301,6 +301,7 @@ dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	media_note_input(p, ev)      // sticky activation for autoplay (media_element.odin)
 	ev := ev
 	if timeline_is_discrete_input(ev.type) { timeline_layout_shift_input(p) }   // stops LCP, marks layout shifts near input
+	if dom.ui_composed(ev.type) { loaf_note_ui_event(p) }   // Long Animation Frames: firstUIEventTimestamp
 	timed := timeline_event_begin(p, &ev)   // Event Timing (timeline.odin)
 	ok := dom.dispatch(p.doc, &p.dp, target, ev)
 	if timed != 0 { timeline_event_end(p, &ev, timed) }
@@ -313,6 +314,7 @@ invoke_listener :: proc(user: rawptr, l: dom.Listener, event: base.Handle) -> bo
 	inst := instance_by_index(p, l.owner)
 	if inst == nil { return true }   // that module is gone: its listener has nothing to call
 	argv := [3]u32{l.user, u32(u64(event)), u32(u64(event) >> 32)}   // (user: i32, event: i64)
+	loaf_set_invoker(p, .Event_Listener, dom.event_type(&p.dp, event))   // Long Animation Frames: invoker = event type
 	call_guest(p, inst, l.callback, argv[:])
 	return true   // one failing listener does not stop the others
 }
