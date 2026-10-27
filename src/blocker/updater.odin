@@ -64,7 +64,9 @@ updater_stop :: proc(b: ^Blocker) {
 		if j.thread != nil { host.thread_join(j.thread); j.thread = nil }
 		j.user = nil
 		b.upd.job = nil
-		// the thread has posted compile_done: it frees the job when the loop runs it
+		// the thread has posted compile_done, which would free the job when the loop runs it: the loop is about to go and will
+		// not, so the job (its engine, the bodies of the lists it was given) is freed from the queue here
+		host.discard_posted(b.loop, compile_done, proc(d: rawptr) { job_free((^Job)(d)) })
 	}
 	for d in b.upd.downloads { delete(d.id); delete(d.etag); delete(d.last_modified); delete(d.body, base.process_allocator()) }
 	delete(b.upd.downloads)
@@ -73,6 +75,8 @@ updater_stop :: proc(b: ^Blocker) {
 	for q in b.upd.queue { delete(q) }
 	delete(b.upd.queue)
 	delete(b.upd.current_id); delete(b.upd.status)
+	delete(b.upd.pending_etag); delete(b.upd.pending_lm)   // (the headers of a list whose body the exit cancelled)
+	b.upd.pending_etag, b.upd.pending_lm = "", ""
 }
 
 @(private)

@@ -168,6 +168,8 @@ function Start-WrenChecked {
     $script:WrenExe = Join-Path (Split-Path $PSScriptRoot -Parent) 'build\wren_check.exe'
     $script:WrenCheckProfile = Join-Path $env:TEMP "wren-check-profile-$PID"
     Remove-Item -Recurse -Force $script:WrenCheckProfile -ErrorAction SilentlyContinue
+    # (no download of the blocker's lists in a session whose exit is checked for memory left allocated: the network of the day would decide)
+    $Pref = @('blocker.update.enabled=false', 'blocker.welcome_toast=false') + @($Pref)
     return Start-Wren -Size $Size -ProfileDir $script:WrenCheckProfile -Pref $Pref
 }
 function Stop-WrenChecked {

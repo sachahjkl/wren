@@ -21,6 +21,9 @@ if (-not $NoBuild -and $Exe -eq (Join-Path $root 'build\wren_check.exe')) {
 
 # Runs the check build on `$script` (lines; {o} is the test server's origin) with a fresh profile; returns its exit code.
 function Invoke-CheckSession($name, [string[]]$script, $statsFile = '', [string[]]$extra = @()) {
+    # (no download of the blocker's lists in a session of the check build: one still in flight when the browser exits, or an engine
+    # being built from it, is memory left allocated at the exit test, which then depends on how fast the network of the day is)
+    $extra = @('--pref', 'blocker.update.enabled=false', '--pref', 'blocker.welcome_toast=false') + $extra
     $dir = Join-Path $Out $name
     $profileDir = Join-Path $dir 'profile'
     if (Test-Path $profileDir) { Get-ChildItem $profileDir -Recurse -File | Remove-Item -Force }
