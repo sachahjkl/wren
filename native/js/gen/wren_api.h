@@ -523,6 +523,10 @@ enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Event = 6,
     wr_PerformanceEntryType_First_Input = 7,
     wr_PerformanceEntryType_Long_Task = 8,
+    wr_PerformanceEntryType_Largest_Contentful_Paint = 9,
+    wr_PerformanceEntryType_Layout_Shift = 10,
+    wr_PerformanceEntryType_Element = 11,
+    wr_PerformanceEntryType_Visibility_State = 12,
 };
 // A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
 // has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
@@ -2861,6 +2865,8 @@ WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearM
 WR_IMPORT("performance", "Performance_timeline") int32_t wr_Performance_timeline(int32_t entry_type, uint64_t from_seq, uint8_t *_buf, uint32_t _cap);
 // The sequence number the next entry of this kind will have.
 WR_IMPORT("performance", "Performance_timelineNextSeq") uint64_t wr_Performance_timelineNextSeq(int32_t entry_type);
+// Wraps the DOM node a timeline entry refers to and returns its handle, or 0 when there is none or it left the document.
+WR_IMPORT("performance", "Performance_timelineNode") uint64_t wr_Performance_timelineNode(int32_t entry_type, uint64_t seq, uint32_t index);
 // The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
 WR_IMPORT("performance", "Performance_timelineInterest") void wr_Performance_timelineInterest(uint32_t kinds);
 // Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).

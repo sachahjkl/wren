@@ -35,6 +35,12 @@ Timeline_Settings :: struct {
 	event_entries:    int,
 	event_min_ms:     f64,
 	long_task_entries: int,
+	lcp_entries:      int,
+	layout_shift_entries: int,
+	element_entries:  int,
+	visibility_entries: int,
+	lcp_min_bpp:      f64,
+	layout_shift_recent_input_ms: f64,
 }
 
 // Long Tasks: a task that took at least this long (the specification's 50 ms) is a long task.
@@ -49,6 +55,19 @@ TIMELINE_PREFS := [?]config.Def{
 		description = "An input event whose listeners took at least this long (rounded up to 8 ms) is recorded as an Event Timing entry; an observer asks for its own threshold (durationThreshold, 104 ms by default). The first input is recorded whatever it took."},
 	{name = "performance.long_task_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
 		description = "How many Long Tasks entries (a task of a page's scripts that took 50 ms or more, PerformanceObserver type \"longtask\") a document keeps for its observers. 0: none are recorded (tasks are not timed)."},
+	// Largest Contentful Paint, Layout Instability and Element Timing: the spec keeps at most 150 of each; 0 turns a kind off.
+	{name = "performance.largest_contentful_paint_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
+		description = "How many Largest Contentful Paint entries (PerformanceObserver type \"largest-contentful-paint\") a document keeps: one per larger candidate painted, until the first user interaction. 0: largest contentful paint is not measured."},
+	{name = "performance.layout_shift_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
+		description = "How many Layout Instability entries (PerformanceObserver type \"layout-shift\", LayoutShift) a document keeps: one per unexpected move of visible content. 0: layout shifts are not measured."},
+	{name = "performance.element_timing_entries", kind = .Int, default = {i = 150}, bounded = true, min = 0, max = 100_000,
+		description = "How many Element Timing entries (PerformanceObserver type \"element\", PerformanceElementTiming) a document keeps: one per element with an elementtiming attribute when it is first painted. 0: element timing is not measured."},
+	{name = "performance.visibility_state_entries", kind = .Int, default = {i = 50}, bounded = true, min = 0, max = 100_000,
+		description = "How many visibility-state entries (PerformanceObserver type \"visibility-state\", VisibilityStateEntry) a document keeps: one each time the page becomes visible or hidden. 0: visibility-state changes are not recorded."},
+	{name = "performance.largest_contentful_paint_min_bpp", kind = .Float, default = {f = 0.05}, bounded = true, min = 0, max = 100, unit = "bpp",
+		description = "An image whose displayed bits-per-pixel (encoded bytes * 8 / displayed area) is below this is too low-entropy to be a Largest Contentful Paint candidate (the specification's 0.05), so background and spacer images do not win. 0: images are never excluded for low entropy."},
+	{name = "performance.layout_shift_recent_input_ms", kind = .Float, default = {f = 500}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "A layout shift within this long after a discrete user input (a click or a key) is marked hadRecentInput and does not count against the page (the specification's 500 ms). 0: every shift counts."},
 }
 
 timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
@@ -57,12 +76,18 @@ timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
 		event_entries = int(config.int_of(p, "performance.event_timing_entries")),
 		event_min_ms = config.float_of(p, "performance.event_timing_min_ms"),
 		long_task_entries = int(config.int_of(p, "performance.long_task_entries")),
+		lcp_entries = int(config.int_of(p, "performance.largest_contentful_paint_entries")),
+		layout_shift_entries = int(config.int_of(p, "performance.layout_shift_entries")),
+		element_entries = int(config.int_of(p, "performance.element_timing_entries")),
+		visibility_entries = int(config.int_of(p, "performance.visibility_state_entries")),
+		lcp_min_bpp = config.float_of(p, "performance.largest_contentful_paint_min_bpp"),
+		layout_shift_recent_input_ms = config.float_of(p, "performance.layout_shift_recent_input_ms"),
 	}
 }
 
 // The kinds of entries (the values of Api_PerformanceEntryType from Navigation on).
 @(private)
-Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input, Long_Task }
+Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State }
 
 // One entry as the engine reads it (JSON): the members of the interfaces, absent ones are 0 or "".
 @(private)
@@ -100,6 +125,35 @@ Tl_Entry :: struct {
 	processing_end: f64     `json:"processingEnd,omitempty"`,
 	cancelable:     bool    `json:"cancelable,omitempty"`,
 	interaction_id: int     `json:"interactionId,omitempty"`,
+	// Largest Contentful Paint / Element Timing (loadTime from load_start, renderTime from start, toJSON reads these):
+	render_time:    f64     `json:"renderTime,omitempty"`,
+	load_time:      f64     `json:"loadTime,omitempty"`,
+	size:           f64     `json:"size,omitempty"`,     // visible area, CSS px^2 (unsigned long)
+	id:             string  `json:"id,omitempty"`,       // the element's id attribute ("" when none)
+	url:            string  `json:"url,omitempty"`,      // the image's request URL ("" for text / no image)
+	identifier:     string  `json:"identifier,omitempty"`,   // Element Timing: the elementtiming attribute
+	natural_w:      int     `json:"naturalWidth,omitempty"`,
+	natural_h:      int     `json:"naturalHeight,omitempty"`,
+	intersect_rect: [4]f64  `json:"intersectRect,omitempty"`,   // Element Timing intersectionRect (x, y, w, h)
+	// Layout Instability (LayoutShift): the score of this shift and whether a recent input preceded it.
+	value:          f64     `json:"value,omitempty"`,
+	had_input:      bool    `json:"hadRecentInput,omitempty"`,
+	last_input_ms:  f64     `json:"lastInputTime,omitempty"`,
+	// LayoutShiftAttribution: the rects go through the JSON (previousRect / currentRect); each source's node handle stays
+	// here only (json:"-" below) and is wrapped live by Performance_timelineNode at the index of the source.
+	sources:        []Tl_Source `json:"sources,omitempty"`,
+	// The element the entry refers to (LCP, Element Timing), kept out of the JSON: a handle cannot be put in JSON and stay
+	// valid. Performance_timelineNode wraps it live, or nothing when it left the document (the attribute goes null).
+	node:           base.Handle `json:"-"`,
+}
+
+// One source of a layout shift (LayoutShiftAttribution): the node that moved and its rectangle before and after, in
+// viewport coordinates, CSS px. The node handle is resolved live when the script reads it (Performance_timelineNode).
+@(private)
+Tl_Source :: struct {
+	node: base.Handle `json:"-"`,   // resolved live by Performance_timelineNode (a handle cannot be put in JSON and stay valid)
+	prev: [4]f64      `json:"previousRect"`,   // x, y, width, height, CSS px, viewport coordinates
+	cur:  [4]f64      `json:"currentRect"`,
 }
 
 @(private)
@@ -138,6 +192,33 @@ Page_Timeline :: struct {
 	painted:    bool,
 	first_input: bool,
 	interaction: int,
+	// Largest Contentful Paint: the area of the largest candidate reported so far (CSS px^2), and whether the algorithm
+	// has stopped (the first user interaction or the document being frozen / torn down ends it, as the spec says).
+	lcp_largest: f64,
+	lcp_stopped: bool,
+	// Layout Instability: session windows (informational), and the time of the last discrete input (hadRecentInput is
+	// true for a shift within performance.layout_shift_recent_input_ms of it).
+	ls_last_input_ms: f64,
+	ls_session_value: f64,
+	ls_session_first_ms: f64,
+	ls_session_last_ms:  f64,
+	ls_max_session:      f64,   // the largest session window so far (informational: Cumulative Layout Shift)
+	ls_prev:             map[base.Handle]Ls_Prev,   // where each box was in the previous frame (timeline_lcp.odin)
+	// Element Timing: the elements already reported (one entry per element, the first time it is painted).
+	et_seen: map[base.Handle]bool,
+	// Visibility: the last state reported, so only changes make an entry.
+	vis_hidden: bool,
+	vis_known:  bool,
+	// The document mutation count and viewport at the last Largest Contentful Paint / Element Timing scan: an unchanged
+	// layout and viewport cannot change the largest element, so the scan is skipped (it walks every box).
+	lcp_scan_mutations: u64,
+	lcp_scan_w, lcp_scan_h, lcp_scan_scroll: f64,
+	lcp_scanned: bool,
+	// The same gate for the layout-shift check: a shift can only happen when the layout changed (a mutation or a new
+	// viewport, not a scroll — scrolling is expected movement and never a layout shift).
+	ls_scan_mutations: u64,
+	ls_scan_w, ls_scan_h: f64,
+	ls_scanned: bool,
 }
 
 @(private)
@@ -170,6 +251,8 @@ tl_of :: proc(p: ^Page, create := true) -> ^Page_Timeline {
 @(private)
 tl_entry_free :: proc(e: ^Tl_Entry) {
 	delete(e.name); delete(e.initiator); delete(e.protocol); delete(e.content_type); delete(e.nav_type)
+	delete(e.id); delete(e.url); delete(e.identifier)
+	delete(e.sources)
 }
 
 @(private)
@@ -183,6 +266,8 @@ timeline_page_closing :: proc(data: rawptr) {
 		delete(b.entries)
 	}
 	delete(t.nav.mime)
+	delete(t.et_seen)
+	delete(t.ls_prev)
 	free(t)
 }
 
@@ -284,6 +369,10 @@ timeline_add :: proc(p: ^Page, kind: Tl_Kind, e: Tl_Entry) {
 	case .Resource: limit = t.res_limit
 	case .Event: limit = p.settings.timeline.event_entries
 	case .Long_Task: limit = p.settings.timeline.long_task_entries
+	case .Largest_Contentful_Paint: limit = p.settings.timeline.lcp_entries
+	case .Layout_Shift: limit = p.settings.timeline.layout_shift_entries
+	case .Element: limit = p.settings.timeline.element_entries
+	case .Visibility_State: limit = p.settings.timeline.visibility_entries
 	case .Navigation, .Paint, .First_Input: limit = 64
 	}
 	if limit <= 0 { tmp := e; tl_entry_free(&tmp); b.next_seq += 1; return }
@@ -387,6 +476,7 @@ timeline_painted :: proc(p: ^Page) {
 	now := page_now_ms(p)
 	timeline_add(p, .Paint, Tl_Entry{name = strings.clone("first-paint"), start = now})
 	timeline_add(p, .Paint, Tl_Entry{name = strings.clone("first-contentful-paint"), start = now})
+	timeline_visibility_state(p, !p.web.visible)   // the page's visibility when it is first shown (timeline_lcp.odin)
 }
 
 ////////////////////////////////
@@ -462,7 +552,7 @@ timeline_task_end :: proc(p: ^Page, begin: i64) {
 
 Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string {
 	p := c.page
-	if entry_type < .Navigation || entry_type > .Long_Task { return "[]" }
+	if entry_type < .Navigation || entry_type > .Visibility_State { return "[]" }
 	kind := Tl_Kind(entry_type)
 	list := make([dynamic]Tl_Entry, context.temp_allocator)
 	if kind == .Navigation {
@@ -480,10 +570,36 @@ Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, fro
 }
 
 Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64 {
-	if entry_type < .Navigation || entry_type > .Long_Task { return 0 }
+	if entry_type < .Navigation || entry_type > .Visibility_State { return 0 }
 	t := tl_of(c.page, false)
 	if t == nil { return 0 }
 	return t.bufs[Tl_Kind(entry_type)].next_seq
+}
+
+// The DOM node a timeline entry refers to, wrapped and returned as a handle, or 0 when there is none or it left the
+// document: LargestContentfulPaint.element / PerformanceElementTiming.element (index 0, the entry's own element), or the
+// node of a layout shift's `index`-th source (LayoutShiftAttribution.node). The engine wraps the returned handle.
+Performance_timelineNode :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, seq: u64, index: u32) -> u64 {
+	if entry_type < .Navigation || entry_type > .Visibility_State { return 0 }
+	t := tl_of(c.page, false)
+	if t == nil { return 0 }
+	b := &t.bufs[Tl_Kind(entry_type)]
+	h := base.NIL_HANDLE
+	for &e in b.entries {
+		if e.seq != seq { continue }
+		if entry_type == .Layout_Shift {
+			if int(index) < len(e.sources) { h = e.sources[index].node }
+		} else if index == 0 {
+			h = e.node
+		}
+		break
+	}
+	if h == base.NIL_HANDLE { return 0 }
+	// Only a node still in the document is returned (the attribute goes null once it is removed, as the specs say). The
+	// engine pins it when it wraps it; we never pin an entry's node, so an entry never keeps a removed node alive.
+	n := dom.get(c.page.doc, h)
+	if n == nil || !dom.is_connected(c.page.doc, h) { return 0 }
+	return u64(h)
 }
 
 Performance_timelineInterest :: proc(c: ^Call, kinds: u32) {
