@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Accessibility updates</title></head>
+<body>
+<!-- tools\a11y_e2e.ps1: a page that changes (its tree follows node by node), a frame (its document under its element),
+     a text field whose caret and selection are read -->
+<h1 id="h">Updates</h1>
+<ul id="list"><li>One</li><li>Two</li></ul>
+<div id="host"></div>
+<p><input id="field" type="text" value="Grace Hopper" aria-label="Field"></p>
+<iframe id="fr" title="Inner frame" style="width: 320px; height: 120px"
+        srcdoc="<!doctype html><title>Inner</title><button id=ib onclick=&quot;parent.postMessage('inner-click', '*')&quot;>Inside frame</button><p>Frame text</p>"></iframe>
+<script>
+window.__msgs = [];
+addEventListener('message', function (e) { window.__msgs.push(String(e.data)); });
+</script>
+</body>
+</html>

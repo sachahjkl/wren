@@ -71,6 +71,7 @@ Document :: struct {
 	nodes:      base.Pool(Node),
 	root:       base.Handle,       // the Document node
 	next_listener: Listener_Id,
+	listener_changes: u64,         // bumped when a listener is added or removed (what a click acts on: accessibility)
 	mutations:  u64,               // monotonic: renderers compare it to know when to re-layout
 	journal:    Journal,           // what the mutations were, when some reader asked (journal.odin)
 	scope:      ^base.Scope,
