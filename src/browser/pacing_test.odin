@@ -119,21 +119,22 @@ the_cadence_model_decides_as_the_browser_did :: proc(t: ^testing.T) {
 
 @(test)
 a_displayed_frame_gives_its_drag_sample_the_refresh_it_was_shown_at :: proc(t: ^testing.T) {
-	saved_cfg, saved_read := pacer.cfg, pacer.read_tick
-	defer { drag_probe_reset(); pacer.cfg, pacer.read_tick = saved_cfg, saved_read }
+	app := new(App)   // (no window: the pacing is the bare window's)
+	defer free(app)
+	defer drag_probe_reset()
 	drag_probe_reset()
 	for i in 0 ..< 3 { drag_probe.ring[i] = {} }
-	pacer.cfg.drag_probe = true
+	app.pacing.cfg.drag_probe = true
 	for read in ([?]i64{1000, 2000, 3000}) {
-		pacer.read_tick = read
-		drag_probe_note(10, 12)
+		pacer_of(app).read_tick = read
+		drag_probe_note(app, 10, 12)
 	}
-	drag_probe_displayed({read = {_nsec = 2000}, shown = {_nsec = 9000}})
-	drag_probe_displayed({read = {_nsec = 7777}, shown = {_nsec = 1}})   // a chrome frame of no drag: nothing matches
+	drag_probe_displayed(app, {read = {_nsec = 2000}, shown = {_nsec = 9000}})
+	drag_probe_displayed(app, {read = {_nsec = 7777}, shown = {_nsec = 1}})   // a chrome frame of no drag: nothing matches
 	testing.expect_value(t, drag_probe.ring[0].shown, 0)
 	testing.expect_value(t, drag_probe.ring[1].shown, 9000)
 	testing.expect_value(t, drag_probe.ring[2].shown, 0)
-	pacer.cfg.drag_probe = false
-	drag_probe_note(1, 1)
+	app.pacing.cfg.drag_probe = false
+	drag_probe_note(app, 1, 1)
 	testing.expect_value(t, drag_probe.n, 3)   // off: nothing recorded
 }

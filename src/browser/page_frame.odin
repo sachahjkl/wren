@@ -46,7 +46,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	ls := &page_render.settings
 	page.set_layout_journal(t.page, ls.incremental ? ls.inc_journal : 0)
 	// CSS animations and transitions sample the frame's time (pacing.odin), the live clock again between frames
-	page.set_frame_time(t.page, pacer.frame_ms)
+	page.set_frame_time(t.page, pacer_of(app).frame_ms)
 	pinned := t.page
 	defer page.set_frame_time(pinned, 0, unpin = true)
 	prof_begin(.Styles)
@@ -105,7 +105,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	p := &window_own(app).page_prep
 	paint_size := size
 	if p.frame != chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
-		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing() && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
+		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing(app) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
 			// only the size changed since the page phase, the window is being resized, and this page's layout is long:
 			// what was laid out is painted at its size, anchored at the top left, never stretched; the next frame lays
 			// it out at the new size (on the page thread, the chrome drawing meanwhile). Not while a panel inside the

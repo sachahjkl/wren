@@ -114,7 +114,7 @@ Comp :: struct {
 	group_units: [dynamic]int,
 	pool:       [dynamic]^draw.Picture,  // pictures of dropped chunks
 	frame:      i64,                     // frames painted
-	pass_ms:    f64,                     // frame time (pacer.frame_ms) of the last one with a new layout pass
+	pass_ms:    f64,                     // frame time (frame_now_ms) of the last one with a new layout pass
 	last_passes: u64,                    // layout passes seen at the last frame
 	doc:        ^dom.Document,
 	dc:         ^draw.Context,               // the context the pictures were recorded with
@@ -700,7 +700,7 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 	// laid out again frame after frame (a resize, an animation of a layout property): recording would cost more than
 	// drawing. Drawn directly until no layout pass came for settle_ms (a time, not a number of frames: the same at any
 	// frame rate), then what changed is recorded.
-	now := pacer.frame_ms
+	now := frame_now_ms()
 	busy := now - c.pass_ms < compositor_settings.settle_ms
 	if passes != c.last_passes {
 		c.last_passes = passes

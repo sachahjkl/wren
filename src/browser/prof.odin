@@ -319,7 +319,7 @@ sampler_proc :: proc(_: ^thread.Thread) {
 // timed submit it measured.
 prof_record :: proc(app: ^App, items, elements: int) {
 	if !prof.on { return }
-	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1, budget = frame_budget_ms()}
+	rec := Frame_Rec{t_ms = f32(f64(qpc() - prof.t0) * 1000 / prof.freq), gpu_index = -1, budget = frame_budget_ms(app)}
 	rec.lay_pass, rec.lay_steps, rec.lay_pre, rec.lay_why = prof.cur_lay.lay_pass, prof.cur_lay.lay_steps, prof.cur_lay.lay_pre, prof.cur_lay.lay_why
 	prof.cur_lay = {}
 	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
@@ -490,7 +490,7 @@ report_threads :: proc(sb: ^strings.Builder) {
 		}
 	}
 }
-prof_report :: proc() {
+prof_report :: proc(app: ^App) {
 	if !prof.on { return }
 	latency_probe_report()   // shell_latency.odin
 	sync.atomic_store(&prof.stop, true)
@@ -505,7 +505,7 @@ prof_report :: proc() {
 
 	ds := images.decoder_stats()
 	fmt.sbprintf(&sb, "image decoder threads: %d jobs, %d failed, %.1f ms busy (all threads), longest job %.1f ms\n", ds.jobs, ds.failed, ds.busy_ms, ds.longest_ms)
-	report_pacing(&sb)
+	report_pacing(app, &sb)
 	fmt.sbprintf(&sb, "%-12s %7s %8s %8s %8s %8s %9s\n", "phase (ms)", "n", "mean", "p50", "p95", "p99", "max")
 	for p in Phase {
 		if p == .None || p == .Idle { continue }
@@ -567,9 +567,10 @@ prof_report :: proc() {
 // wait for the screen and without Present: Present returns at once, except when the compositor has not taken the
 // previous frame yet (a frame right after idle time, started between two vblanks): then it blocks until the next vblank,
 // which is waiting, not work (the frame shows at the same vblank either way). Present is reported on its own.
-report_pacing :: proc(sb: ^strings.Builder) {
+report_pacing :: proc(app: ^App, sb: ^strings.Builder) {
+	pacer := pacer_of(app)
 	d := pacer.display
-	budget := f64(frame_budget_ms())
+	budget := f64(frame_budget_ms(app))
 	how := pacer.timed ? "timed" : fmt.tprintf("sync interval %d", pacer.interval)
 	fmt.sbprintf(sb, "pacing: display %.3f Hz (top mode %.0f Hz%s, %v), target %.3f Hz (%s, %s), budget %.3f ms\n", d.hz, d.max_hz, pacer.variable ? ", variable" : "", d.source, pacer.hz, how, pacer.tearing ? "tearing" : "vsync", budget)
 	cpu := make([dynamic]f64, 0, len(prof.frames), context.temp_allocator)
@@ -823,6 +824,6 @@ prof_mark :: proc(m: Startup_Mark) {}
 prof_layout :: proc(l: ^lay.Layout) { hud_layout(l) }
 prof_record :: proc(app: ^App, items, elements: int) {}
 prof_on :: proc() -> bool { return false }
-prof_report :: proc() {}
+prof_report :: proc(app: ^App) {}
 
 }

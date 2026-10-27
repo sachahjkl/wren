@@ -233,6 +233,7 @@ status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
 // The graph and the counters; returns the graph's box (nil when not shown).
 @(private = "file")
 status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
+	pacer := pacer_of(app)
 	em := ui.font_size()
 	n := &hud.nums
 	c := hud.cfg.comma
@@ -246,23 +247,23 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 			colors := hud_series_colors()
 			ui.next({width = ui.px(em * hud.cfg.graph_em), height = ui.px(ui.dense(em * 1.25))})
 			flat := transmute([len(Hud_Series)]draw.Color)colors
-			budget := hud_budget()
+			budget := hud_budget(app)
 			opts := ui.Frame_Graph_Opts{
 				colors = flat[:], series = len(Hud_Series), bars = hud.cfg.samples, budget = hud.cfg.budget_line ? budget : 0,
-				scale = hud.cfg.scale > 0 ? hud.cfg.scale : budget, max_scale = hud.cfg.max_scale, warn = hud_warn(), bad = hud_bad(),
+				scale = hud.cfg.scale > 0 ? hud.cfg.scale : budget, max_scale = hud.cfg.max_scale, warn = hud_warn(app), bad = hud_bad(app),
 			}
 			res := ui.frame_graph("###sb_graph", &hud.history, opts)
 			graph_box = res.box
 			if res.clicked { hud.panel_open = !hud.panel_open }
-			if res.hovered >= 0 { graph_tooltip(res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
+			if res.hovered >= 0 { graph_tooltip(app, res.hovered, colors) } else { tip(res.sig, "Time of the recent frames by phase: click for details (Ctrl+Shift+B)") }
 			ui.spacer(ui.px(em * 0.3))
 		case .Fps:
 			tip(ui.status_item(fmt.tprintf("%.0f fps###sb_fps", n.fps), mono = true), fmt.tprintf("Frames drawn per second (last %.0f ms). Nothing changes: no frames. The screen this window is on: %s Hz%s (frames aim for %s Hz).", hud.cfg.window_ms, fmt_hz(pacer.display.hz, c), pacer.display.max_hz > pacer.display.hz * 1.05 ? fmt.tprintf(", up to %s Hz%s", fmt_hz(pacer.display.max_hz, c), pacer.variable ? ": variable refresh, frames timed by the browser" : "") : "", fmt_hz(pacer.hz, c)))
 		case .Cpu:
 			text := n.frames > 0 ? fmt.tprintf("CPU %s ms###sb_cpu", fmt_ms(n.cpu_mean, c)) : "CPU -- ms###sb_cpu"
 			tone := "weak"
-			if bad := hud_bad(); bad > 0 && n.cpu_mean > bad { tone = "bad" } else if warn := hud_warn(); warn > 0 && n.cpu_mean > warn { tone = "warn" }
-			tip(ui.status_item(text, tone = tone, mono = true), fmt.tprintf("Work of the browser per frame, mean (waiting for the screen not counted). Budget %s ms (%s Hz)", fmt_ms(hud_budget(), c), fmt_hz(pacer.hz, c)))
+			if bad := hud_bad(app); bad > 0 && n.cpu_mean > bad { tone = "bad" } else if warn := hud_warn(app); warn > 0 && n.cpu_mean > warn { tone = "warn" }
+			tip(ui.status_item(text, tone = tone, mono = true), fmt.tprintf("Work of the browser per frame, mean (waiting for the screen not counted). Budget %s ms (%s Hz)", fmt_ms(hud_budget(app), c), fmt_hz(pacer.hz, c)))
 		case .Gpu:
 			text := "GPU n/a###sb_gpu"
 			if render.gpu_timing_enabled(&app.r) { text = n.gpu_n > 0 ? fmt.tprintf("GPU %s ms###sb_gpu", fmt_ms(n.gpu_mean, c)) : "GPU -- ms###sb_gpu" }
@@ -277,7 +278,7 @@ status_right :: proc(app: ^App) -> (graph_box: ^ui.Box) {
 
 // The values of one frame of the graph, next to the pointer.
 @(private = "file")
-graph_tooltip :: proc(index: int, colors: [Hud_Series]draw.Color) {
+graph_tooltip :: proc(app: ^App, index: int, colors: [Hud_Series]draw.Color) {
 	s := ui.history_at(&hud.history, index)
 	if s == nil { return }
 	em := ui.font_size()
@@ -293,7 +294,7 @@ graph_tooltip :: proc(index: int, colors: [Hud_Series]draw.Color) {
 			ui.stat_row(fmt.tprintf("tt_%d", int(k)), HUD_SERIES_NAMES[k], value, w, swatch_color = colors[k])
 		}
 		total := ui.sample_total(s, CPU_SERIES)
-		bad, warn := hud_bad(), hud_warn()
+		bad, warn := hud_bad(app), hud_warn(app)
 		tone := bad > 0 && total > bad ? "bad" : warn > 0 && total > warn ? "warn" : ""
 		ui.stat_row("tt_cpu", "CPU total", fmt.tprintf("%s ms", fmt_ms(total, c)), w, tone = tone)
 		// the three rows are always there ("--" when the frame had none): a row that came and went as the pointer crossed the bars of a
@@ -396,9 +397,10 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 	n := &hud.nums
 	c := hud.cfg.comma
+	pacer := pacer_of(app)
 	switch section {
 	case .Frames:
-		budget := n.budget > 0 ? n.budget : hud_budget()
+		budget := n.budget > 0 ? n.budget : hud_budget(app)
 		ui.stat_heading("frames", "FRAMES: MEAN / P95 / P99", w)
 		ui.stat_row("fps", "Per second", fmt.tprintf("%.0f of %s", n.fps, fmt_hz(pacer.hz, c)), w)
 		bt := fmt.tprintf("%.2f", budget)
@@ -430,7 +432,7 @@ panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
 		how := pacer.timed ? "timed" : pacer.interval > 1 ? fmt.tprintf("every %d refreshes", pacer.interval) : "every refresh"
 		ui.stat_row("d_target", "Target", fmt.tprintf("%s Hz, %s", fmt_hz(pacer.hz, c), how), w, mono = false)
 		mode := pacer.tearing ? "tearing (variable refresh)" : "vsync"
-		if pacer.cfg.mode == .Tearing && !pacer.tearing { mode = "vsync (no tearing support)" }
+		if app.pacing.cfg.mode == .Tearing && !pacer.tearing { mode = "vsync (no tearing support)" }
 		ui.stat_row("d_mode", "Present", mode, w, mono = false)
 		_, shown_total, missed_total := render.present_totals(&app.r)
 		ui.stat_row("d_tot", "Shown / missed, total", fmt.tprintf("%d / %d", shown_total, missed_total), w)

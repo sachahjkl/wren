@@ -198,6 +198,7 @@ video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -
 @(private = "file")
 screen_ahead_ns :: proc() -> i64 {
 	app := the_app
+	pacer := pacer_of(app)
 	now_ms := loop_ms(app, time.tick_now())
 	show_ms := pacer.frame_ms + pacer.period_ms
 	return i64(clamp(show_ms - now_ms, 0, 2 * pacer.period_ms) * 1e6)

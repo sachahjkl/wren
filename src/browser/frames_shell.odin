@@ -164,7 +164,7 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	fv.size, fv.scale = size, scale
 	ls := &page_render.settings
 	page.set_layout_journal(p, ls.incremental ? ls.inc_journal : 0)
-	page.set_frame_time(p, pacer.frame_ms)
+	page.set_frame_time(p, pacer_of(app).frame_ms)
 	defer page.set_frame_time(p, 0, unpin = true)
 	styled := page.styles(p, size.x / scale, size.y / scale, f64(scale))
 	if !p.render.painted {
