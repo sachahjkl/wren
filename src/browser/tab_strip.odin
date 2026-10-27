@@ -46,19 +46,11 @@ focused_tab_index :: proc(app: ^App) -> int {
 // Geometry: the toolkit's list of items reordered by dragging (ui/reorder.odin), under the names the shell and its
 // tests use (tab_strip_test.odin)
 
-// The tabs of a row scrolled by `offset` that show in `view` (`pitch` apart, `n` of them), and `margin` more on either side:
-// [first, last).
-strip_visible_tabs :: proc(offset, view, pitch: f32, n, margin: int) -> (first, last: int) {
-	if n <= 0 || pitch <= 0 { return 0, 0 }
-	first = clamp(int(math.floor(offset / pitch)) - margin, 0, n)
-	last = clamp(int(math.ceil((offset + view) / pitch)) + margin, first, n)
-	return
-}
-
-tab_width :: ui.reorder_item_size   // each tab's width: an equal share between the minimum and the maximum
-strip_offset :: ui.reorder_offset   // the scroll, in range, following the current tab when it changes
-drag_slot :: ui.reorder_slot        // the slot a dragged tab's middle is over
+tab_width :: ui.reorder_item_size        // each tab's width: an equal share between the minimum and the maximum
+strip_offset :: ui.reorder_offset        // the scroll, in range, following the current tab when it changes
+drag_slot :: ui.reorder_slot             // the slot a dragged tab's middle is over
 list_move :: ui.list_move
+strip_visible_tabs :: ui.reorder_visible // which tabs show, two on either side: only those are built
 
 ////////////////////////////////
 // Loading state
