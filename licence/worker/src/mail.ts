@@ -1,8 +1,9 @@
 // The licence by e-mail, through Cloudflare Email Service (the `send_email` binding, `env.EMAIL`):
 // https://developers.cloudflare.com/email-service/api/send-emails/workers-api/
 //
-// The binding takes no idempotency key: a second send() is a second mail. That is why issue.ts records that a send was
-// started before it starts one, and why only the errors that mean "nothing was sent" are worth another attempt.
+// The binding takes no idempotency key: a second send() is a second mail. The LicenseOrder Durable Object (src/order.ts)
+// is what guarantees a single send per purchase (it flips the record to "sending" before calling this, under its input
+// gate); here, only the errors that mean "nothing was sent" are reported as worth another attempt ("retry").
 
 import { b64Encode, utf8 } from "./encoding.ts";
 import type { EmailAddress, Env, OutgoingMail } from "./env.ts";
@@ -106,11 +107,7 @@ export async function deliverMail(env: Env, s: Stored): Promise<MailOutcome> {
 	} catch (e) {
 		const code = errorCode(e);
 		const result: MailResult = RETRY_CODES.has(code) ? "retry" : "failed";
-		console.log(JSON.stringify({ evt: result === "retry" ? "mail_deferred" : "mail_refused", code, order: s.order }));
+		console.log(JSON.stringify({ evt: result === "retry" ? "mail_attempt_deferred" : "mail_refused", code, order: s.order }));
 		return { result, detail: code };
 	}
-}
-
-export async function sendLicenceMail(env: Env, s: Stored): Promise<MailResult> {
-	return (await deliverMail(env, s)).result;
 }

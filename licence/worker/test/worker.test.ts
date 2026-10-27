@@ -18,8 +18,11 @@ function network(opts: { customers?: (c: Call) => Response } = {}) {
 
 const stateOf = (env: ReturnType<typeof makeEnv>) => JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!) as { mail: string; mail_detail?: string };
 
-const post = (env: ReturnType<typeof makeEnv>, net: ReturnType<typeof network>, b = body) => handle(webhookRequest(b), env, waiter, net.deps);
-const get = (env: ReturnType<typeof makeEnv>, path: string, net = network(), init: RequestInit = {}) => handle(new Request(URL_BASE + path, init), env, waiter, net.deps);
+// The Paddle customer is read inside the Durable Object now, which uses env._deps: point it at the test's network
+// before each call (the request wrappers do it; a few tests that call handle directly do it by hand with `run`).
+const run = (env: ReturnType<typeof makeEnv>, net: ReturnType<typeof network>, req: Request) => { env._deps = net.deps; return handle(req, env, waiter, net.deps); };
+const post = (env: ReturnType<typeof makeEnv>, net: ReturnType<typeof network>, b = body) => run(env, net, webhookRequest(b));
+const get = (env: ReturnType<typeof makeEnv>, path: string, net = network(), init: RequestInit = {}) => run(env, net, new Request(URL_BASE + path, init));
 
 test("transaction.completed issues a licence, keeps it and mails it", async () => {
 	const env = makeEnv();
@@ -135,10 +138,10 @@ test("a send whose outcome is lost is not repeated: the record says 'sending' an
 	assert.equal(env.EMAIL.attempts, 1, "no second mail");
 	assert.equal(stateOf(env).mail, "sending", "nothing written either");
 
-	// the buyer can still ask for it again
+	// the buyer can still ask for it again (a fresh Worker: it rehydrates the order from the KV copy)
 	const resend = makeEnv({ RESEND_ENABLED: "true" });
 	resend.LICENSES.data = new Map(env.LICENSES.data);
-	const res = await handle(new Request(URL_BASE + "/resend", { method: "POST", body: JSON.stringify({ email: "jeanne@example.org" }) }), resend, waiter, network().deps);
+	const res = await run(resend, network(), new Request(URL_BASE + "/resend", { method: "POST", body: JSON.stringify({ email: "jeanne@example.org" }) }));
 	assert.equal(res.status, 202);
 	assert.equal(resend.EMAIL.sent.length, 1);
 });
@@ -238,17 +241,20 @@ test("names are made safe to sign: control characters, bidi overrides, length", 
 	assert.equal(s.file.split("\n")[0], `# Wren licence (Supporter) for ${s.name}`);
 });
 
-test("a mail that cannot be sent now makes the webhook fail; the next delivery sends it and only it", async () => {
+test("a mail that cannot be sent now is queued (200) and the retry alarm sends it, and only it, later", async () => {
 	for (const code of ["E_RATE_LIMIT_EXCEEDED", "E_DAILY_LIMIT_EXCEEDED", "E_INTERNAL_SERVER_ERROR"]) {
 		const env = makeEnv();
 		env.EMAIL.fail = (n) => { if (n === 1) throw emailError(code); };
 		const net = network();
-		assert.equal((await post(env, net)).status, 500, code);
+		// the webhook is acknowledged (the Durable Object owns the retry now, not Paddle's redelivery): the licence
+		// exists, the mail is owed and an alarm is set for the first backoff rung.
+		const first = await post(env, net);
+		assert.equal(first.status, 200, code);
 		assert.deepEqual({ mail: stateOf(env).mail, detail: stateOf(env).mail_detail }, { mail: "pending", detail: code }, "the licence exists, the mail is owed");
 		assert.equal(env.EMAIL.sent.length, 0);
 
-		const retry = await post(env, net);
-		assert.equal(retry.status, 200, code);
+		// a minute later the alarm fires and the mail goes out
+		assert.equal(await env.ORDERS.runAlarms(NOW + 60_000), 1, code);
 		assert.equal(stateOf(env).mail, "sent");
 		assert.equal(env.EMAIL.sent.length, 1, "one mail in the end");
 		assert.equal(net.calls.filter((c) => c.url.startsWith("https://sandbox-api.paddle.com")).length, 1, "the customer is read once");
@@ -407,7 +413,7 @@ test("POST /resend: off by default, the same answer for known and unknown addres
 	const off = makeEnv();
 	await post(off, network());
 	const ask = (env: ReturnType<typeof makeEnv>, net: ReturnType<typeof network>, email: string) =>
-		handle(new Request(URL_BASE + "/resend", { method: "POST", body: JSON.stringify({ email }) }), env, waiter, net.deps);
+		run(env, net, new Request(URL_BASE + "/resend", { method: "POST", body: JSON.stringify({ email }) }));
 	assert.equal((await ask(off, network(), "jeanne@example.org")).status, 404);
 
 	const env = makeEnv({ RESEND_ENABLED: "true", RESEND_MAX_PER_HOUR: "2" });

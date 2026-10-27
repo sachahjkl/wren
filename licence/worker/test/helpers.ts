@@ -3,7 +3,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { b64urlEncode } from "../src/encoding.ts";
-import type { Deps, Env, KVNamespace, OutgoingMail, SendEmail } from "../src/env.ts";
+import type { Deps, DurableObjectId, DurableObjectNamespace, DurableObjectStub, Env, KVListResult, KVNamespace, OutgoingMail, SendEmail } from "../src/env.ts";
+import { LicenseOrder } from "../src/order.ts";
+import type { DurableObjectStateLike, DurableObjectStorage } from "../src/order.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = join(here, "..", "..", "..");
@@ -45,6 +47,81 @@ export class FakeKV implements KVNamespace {
 		this.writes++;
 		this.data.set(key, value);
 	}
+	async delete(key: string): Promise<void> {
+		this.data.delete(key);
+	}
+	async list(options: { prefix?: string; cursor?: string; limit?: number } = {}): Promise<KVListResult> {
+		const prefix = options.prefix ?? "";
+		const keys = [...this.data.keys()].filter((k) => k.startsWith(prefix)).sort().map((name) => ({ name }));
+		return { keys, list_complete: true };
+	}
+}
+
+// A Durable Object storage backed by a Map, with a single pending alarm (the test fires it with runAlarms()).
+class FakeStorage implements DurableObjectStorage {
+	map = new Map<string, unknown>();
+	alarm: number | null = null;
+	async get<T>(key: string): Promise<T | undefined> {
+		return this.map.get(key) as T | undefined;
+	}
+	async put<T>(key: string, value: T): Promise<void> {
+		this.map.set(key, structuredClone(value));
+	}
+	async setAlarm(scheduledTime: number): Promise<void> {
+		this.alarm = scheduledTime;
+	}
+	async getAlarm(): Promise<number | null> {
+		return this.alarm;
+	}
+	async deleteAlarm(): Promise<void> {
+		this.alarm = null;
+	}
+}
+
+class FakeState implements DurableObjectStateLike {
+	storage = new FakeStorage();
+	// The real input gate serialises; the test is single-threaded, so running fn inline is enough.
+	async blockConcurrencyWhile<T>(fn: () => Promise<T>): Promise<T> {
+		return await fn();
+	}
+}
+
+// A fake ORDERS namespace: one LicenseOrder per id, kept so a replay reaches the same object. The object uses the env's
+// current `_deps` (the test's fake network and clock), set by the request wrappers before each call.
+export class FakeOrders implements DurableObjectNamespace {
+	private readonly env: TestEnv;
+	readonly objects = new Map<string, { order: LicenseOrder; state: FakeState }>();
+	constructor(env: TestEnv) {
+		this.env = env;
+	}
+	idFromName(name: string): DurableObjectId {
+		return { toString: () => name };
+	}
+	get(id: DurableObjectId): DurableObjectStub {
+		const name = id.toString();
+		let obj = this.objects.get(name);
+		if (!obj) {
+			const state = new FakeState();
+			obj = { state, order: new LicenseOrder(state, this.env, this.env._deps) };
+			this.objects.set(name, obj);
+		}
+		// rebuild with the current deps so a later call sees the test's current clock and network
+		obj.order = new LicenseOrder(obj.state, this.env, this.env._deps);
+		const order = obj.order;
+		return { fetch: (input, init) => order.fetch(new Request(String(input), init)) };
+	}
+	// Fires every object whose alarm is due at or before `now`, as the runtime would. Returns how many ran.
+	async runAlarms(now: number): Promise<number> {
+		let ran = 0;
+		for (const { order, state } of this.objects.values()) {
+			if (state.storage.alarm !== null && state.storage.alarm <= now) {
+				state.storage.alarm = null;
+				await order.alarm();
+				ran++;
+			}
+		}
+		return ran;
+	}
 }
 
 // A fake `send_email` binding: keeps every message it was asked to send; `fail` is called before each one and may
@@ -71,11 +148,11 @@ export const PRICE_PATRON = "pri_01hsxyk2m7c4e8r5t3w9q6z1pd";
 export const TXN = "txn_01hv8wptq8987qeep44cyrewp9";
 export const NOW = Date.parse("2026-10-22T09:15:32Z");
 
-export type TestEnv = Env & { LICENSES: FakeKV; EMAIL: FakeEmail };
+export type TestEnv = Env & { LICENSES: FakeKV; EMAIL: FakeEmail; ORDERS: FakeOrders; _deps: Deps };
 
 // `makeEnv({ EMAIL: undefined })` is a Worker with no mail binding.
 export function makeEnv(extra: Partial<Env> = {}): TestEnv {
-	return {
+	const env = {
 		LICENSES: new FakeKV(),
 		EMAIL: new FakeEmail(),
 		LICENSE_PRIVATE_KEY: b64urlEncode(DEV_SEED),
@@ -88,8 +165,11 @@ export function makeEnv(extra: Partial<Env> = {}): TestEnv {
 		PRICE_PATRON,
 		ALLOWED_ORIGIN: "https://sachahjkl.github.io",
 		RESEND_ENABLED: "false",
+		_deps: { fetch: (() => { throw new Error("no network set for this env"); }) as unknown as typeof fetch, now: () => NOW },
 		...extra,
 	} as TestEnv;
+	env.ORDERS = new FakeOrders(env);
+	return env;
 }
 
 export function paddleSignature(body: string, secret = WEBHOOK_SECRET, ts = Math.floor(NOW / 1000)): string {

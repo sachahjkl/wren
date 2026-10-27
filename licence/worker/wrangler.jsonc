@@ -16,6 +16,11 @@
 	// No id: the deploy creates the namespace (or: create it yourself and add "id").
 	"kv_namespaces": [{ "binding": "LICENSES" }],
 
+	// One LicenseOrder Durable Object per transaction serialises a purchase (atomic idempotence, the mail retry queue
+	// through its alarm, the RGPD purge). SQLite-backed storage, declared in a migration below.
+	"durable_objects": { "bindings": [{ "name": "ORDERS", "class_name": "LicenseOrder" }] },
+	"migrations": [{ "tag": "v1", "new_sqlite_classes": ["LicenseOrder"] }],
+
 	// Cloudflare Email Service. Sending to buyers (anyone) needs the Workers Paid plan; on the free plan only verified
 	// destination addresses of the account work. `wrangler dev` only logs the mail; add "remote": true to send for real.
 	"send_email": [{ "name": "EMAIL" }],
@@ -30,7 +35,11 @@
 		"ALLOWED_ORIGIN": "https://sachahjkl.github.io",
 		"WEBHOOK_TOLERANCE_SECONDS": "300",
 		"RESEND_ENABLED": "false",
-		"RESEND_MAX_PER_HOUR": "3"
+		"RESEND_MAX_PER_HOUR": "3",
+		"RESEND_REQUIRE_TOKEN": "false",
+		"MAIL_BACKOFF_MINUTES": "1,5,30,120,720,2880",
+		"MAIL_MAX_ATTEMPTS": "7",
+		"PII_RETENTION_DAYS": "90"
 	},
 
 	"env": {
@@ -39,6 +48,8 @@
 			"workers_dev": true,
 			"observability": { "enabled": true },
 			"kv_namespaces": [{ "binding": "LICENSES" }],
+			"durable_objects": { "bindings": [{ "name": "ORDERS", "class_name": "LicenseOrder" }] },
+			"migrations": [{ "tag": "v1", "new_sqlite_classes": ["LicenseOrder"] }],
 			"send_email": [{ "name": "EMAIL" }],
 			"vars": {
 				"PADDLE_API_BASE": "https://sandbox-api.paddle.com",
@@ -50,7 +61,11 @@
 				"ALLOWED_ORIGIN": "https://sachahjkl.github.io,http://localhost:8765",
 				"WEBHOOK_TOLERANCE_SECONDS": "300",
 				"RESEND_ENABLED": "false",
-				"RESEND_MAX_PER_HOUR": "3"
+				"RESEND_MAX_PER_HOUR": "3",
+				"RESEND_REQUIRE_TOKEN": "false",
+				"MAIL_BACKOFF_MINUTES": "1,5,30,120,720,2880",
+				"MAIL_MAX_ATTEMPTS": "7",
+				"PII_RETENTION_DAYS": "90"
 			}
 		}
 	}
