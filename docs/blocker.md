@@ -53,6 +53,19 @@ a filter remembers (list, offset), and the journal reads the line from the `.src
   time, with `If-None-Match` / `If-Modified-Since`; a body that is not a filter list is refused and the previous copy stays;
   compilation runs on a thread named `wren-blocker-compile` at below-normal priority and the loop thread swaps the
   engine (documents keep the engine their cosmetic result came from until they end).
+- HTML filters (`html_filter.odin`): the `##^` filters of the visited host are applied to the body of its document (and
+  frame) response, on the loader, before the parser reads it (`rewrite_filter`, a `fetch.Body_Filter`). The whole HTML body
+  is held (up to `blocker.html_filters.max_body`, past which it streams through untouched), scanned with a tolerant byte
+  parser (no DOM: tag delimiters, nesting of the same tag, the raw text of `<script>` / `<style>` / `<textarea>` /
+  `<title>`), and every element a rule matches is deleted by byte range. The bytes are left in their original charset (only
+  byte ranges are removed; nothing is re-encoded); `:has-text` decodes just the matched element's text to UTF-8 for the
+  comparison. HTML answers of the targeted host only (never other types); the `#@#^` exceptions switch the host off; each
+  removal is counted and logged (outcome "element removed (HTML filter)").
+- Popups (`popup.odin`): the `$popup` filters stop the pop-up windows and tabs a page opens. The page's `window.open` path
+  asks the blocker (`page.embedder.popup_check`) with the opener document and the target URL; a `$popup` match blocks the
+  opening (no tab is created), exceptions (`@@||x^$popup`, `$~popup`) win. A pop-up backed by a recent click or key press
+  (HTML transient activation) to the opener's own registrable domain is never stopped; one a script opens on its own is.
+  Counted and logged (outcome "popup blocked").
 - Pages (`page_hooks.odin`, `procedural.odin`, `scriptlets.js`): the cosmetic filters of the host become a user-origin
   stylesheet before the first style computation; generic `.class` / `#id` selectors are applied only when the DOM has that
   class or id (looked up again, debounced, when the DOM changes); procedural selectors are evaluated natively on the DOM
@@ -73,6 +86,12 @@ exceptions `@@`. A line with an option the engine does not know (`$cookie=`, `$i
 Cosmetic: `##`, `#@#`, entities (`google.*`), `~domain` exclusions; procedural `:has() :has-text() :contains()
 :-abp-contains() :-abp-has() :matches-css() :matches-attr() :matches-path() :min-text-length() :not() :upward()
 :nth-ancestor() :remove() :style()`; AdGuard `#$#` style injections and `#%#//scriptlet()`; `##+js(name, args...)`.
+
+HTML filters: `##^selector` (and the exceptions `#@#^`) remove elements from a document's markup before it is parsed, so an
+inline ad script or a tracker iframe never exists (not hidden — gone). The selector is one element with `script iframe div
+* ^script` (a tag name, `*`, or uBlock's leading `^`), `[attr] [attr=v] [attr*=v] [attr^=v] [attr$=v] [attr~=v]`,
+`:has-text(x)` / `:contains(x)` (plain, `*` glob or `/regex/`), and `:not(:has-text(x))` / `:not([attr])`. Examples:
+`example.com##^script:has-text(window.adConfig)`, `example.com##^iframe[src*="/ads/"]`.
 
 ## Scriptlets: where each one is carried out
 
@@ -126,7 +145,8 @@ Stand-ins for `$redirect`: `noop.js`, `noop.css`, `noop.html` / `noopframe`, `no
 
 ## Preferences (`about:config`, `blocker.*`)
 
-`enabled`, `cosmetic.enabled`, `scriptlets.enabled`, `collapse.enabled`, `redirects.enabled`, `removeparam.enabled`,
+`enabled`, `cosmetic.enabled`, `scriptlets.enabled`, `html_filters.enabled`, `html_filters.max_body`, `popup.enabled`,
+`collapse.enabled`, `redirects.enabled`, `removeparam.enabled`,
 `update.enabled`, `update.interval_hours`, `update.start_delay_s`, `update.max_list_bytes`, `log.capacity`, `log.always`,
 `large_media_kb`, `hard_mode`, `remote_fonts`, `cosmetic.debounce_ms`, `cosmetic.max_selectors`, `engine.cache`,
 `badge.enabled`, `console.enabled`, `matrix.max_hosts`, `graph.points`.
