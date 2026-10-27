@@ -130,9 +130,10 @@ inc_demo_pages :: proc(t: ^testing.T) {
 		pages += 1
 		// one sequence per page, from the seed and the page's name: a demo page added to examples/site must not change what
 		// the pages after it are asked to do. (With one sequence for all pages, adding the fullscreen demo re-rolled layout.html's
-		// and found a divergence that is still there: an inline box that became a scroll container, `<span class="scroll">`,
-		// has an empty scrollable overflow after an incremental pass: verify_layout "overflow Rect{0} / Rect{...}".
-		// WREN_DEMOS_SEED=<n> tries other sequences.)
+		// and once surfaced a divergence on an inline box with overflow set, `<span class="scroll">`: a full pass seeded its
+		// scrollable overflow to its padding box while an incremental pass left it empty, though an inline box never becomes
+		// a scroll container and that value is never read (verify_layout "overflow Rect{0} / Rect{...}"). finish.odin now
+		// leaves an inline box's overflow empty in both paths. WREN_DEMOS_SEED=<n> tries other sequences.)
 		r = rand.create(seed ~ hash.fnv64a(transmute([]byte)fi.name))
 		d := new(Demo)
 		d.doc = dom.document_create(nil)
