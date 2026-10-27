@@ -235,8 +235,8 @@ foreign _m_canvas {
 	@(link_name = "ImageBitmap_width") c_ImageBitmap_width :: proc(a0: i64) -> i32 ---
 	@(link_name = "ImageBitmap_height") c_ImageBitmap_height :: proc(a0: i64) -> i32 ---
 	@(link_name = "ImageBitmap_close") c_ImageBitmap_close :: proc(a0: i64) ---
-	@(link_name = "Canvas_createBitmap") c_Canvas_createBitmap :: proc(a0: i64, a1: i32, a2: f64, a3: f64, a4: f64, a5: f64, a6: i32, a7: i32) -> i32 ---
-	@(link_name = "Canvas_bitmapFromPixels") c_Canvas_bitmapFromPixels :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32) -> i32 ---
+	@(link_name = "Canvas_createBitmap") c_Canvas_createBitmap :: proc(a0: i64, a1: i32, a2: f64, a3: f64, a4: f64, a5: f64, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32, a11: i32, a12: i32) -> i32 ---
+	@(link_name = "Canvas_bitmapFromPixels") c_Canvas_bitmapFromPixels :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32, a7: i32, a8: i32, a9: i32, a10: i32) -> i32 ---
 }
 
 foreign import _m_compression "compression"
@@ -2561,10 +2561,10 @@ foreign _m_workers {
 	return 0
 }
 @(export) case_324 :: proc "contextless" () -> i64 {
-	return i64(c_Canvas_createBitmap(0, 0, 0, 0, 0, 0, 0, i32(-4)))
+	return i64(c_Canvas_createBitmap(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, i32(-4)))
 }
 @(export) case_325 :: proc "contextless" () -> i64 {
-	return i64(c_Canvas_bitmapFromPixels(i32(-16), 64, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Canvas_bitmapFromPixels(i32(-16), 64, 0, 0, 0, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_326 :: proc "contextless" () -> i64 {
 	return i64(c_Compression_create(0, 0, i32(-4)))

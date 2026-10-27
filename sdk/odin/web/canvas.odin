@@ -182,8 +182,8 @@ foreign _m_canvas {
 	@(link_name = "ImageBitmap_width") _ImageBitmap_width :: proc(bitmap: ImageBitmap) -> u32 ---
 	@(link_name = "ImageBitmap_height") _ImageBitmap_height :: proc(bitmap: ImageBitmap) -> u32 ---
 	@(link_name = "ImageBitmap_close") _ImageBitmap_close :: proc(bitmap: ImageBitmap) ---
-	@(link_name = "Canvas_createBitmap") _Canvas_createBitmap :: proc(source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: i32, _ret: ^ImageBitmap) -> Error ---
-	@(link_name = "Canvas_bitmapFromPixels") _Canvas_bitmapFromPixels :: proc(data: [^]u8, data_len: u32, width: i32, height: i32, flip_y: i32, _ret: ^ImageBitmap) -> Error ---
+	@(link_name = "Canvas_createBitmap") _Canvas_createBitmap :: proc(source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32, _ret: ^ImageBitmap) -> Error ---
+	@(link_name = "Canvas_bitmapFromPixels") _Canvas_bitmapFromPixels :: proc(data: [^]u8, data_len: u32, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32, _ret: ^ImageBitmap) -> Error ---
 }
 
 // /////////////////////////////
@@ -1230,17 +1230,23 @@ ImageBitmap_close :: proc "contextless" (bitmap: ImageBitmap) {
 	_ImageBitmap_close(bitmap)
 }
 
-// createImageBitmap(image, sx, sy, sw, sh): `source` as for drawImage, `form` 0 (whole image) or 4 (a rectangle); the
-// bitmap is a copy of the pixels now. `flip_y` and `premultiply` follow ImageBitmapOptions. Not_Found: no pixels yet
-// (the image is not available); Invalid_State: broken or empty image; Index_Size: an empty rectangle.
-Canvas_createBitmap :: proc "contextless" (source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: bool) -> (result: ImageBitmap, err: Error) {
-	err = _Canvas_createBitmap(source, form, sx, sy, sw, sh, i32(1 if flip_y else 0), &result)
+// createImageBitmap(image, sx, sy, sw, sh, options): `source` as for drawImage, `form` 0 (whole image) or 4 (a
+// rectangle). The bitmap is a copy of the pixels now, with the full ImageBitmapOptions applied natively: `orient`
+// (0 from-image, 1 flipY), `premul` (0 default, 1 premultiply, 2 none — the result stored premultiplied either way;
+// `none` only affects a source whose alpha is not premultiplied, which never happens for our premultiplied bitmaps,
+// so it is a no-op here and kept for completeness), `colorspace` (0 default, 1 none — we keep the source sRGB bytes
+// so both behave the same), `resize_w` / `resize_h` the wanted output size (0 means keep that axis) and `resize_q`
+// (0 pixelated, 1 low, 2 medium, 3 high). Not_Found: no pixels yet (the image is not available); Invalid_State:
+// broken or empty image; Index_Size: an empty rectangle or an out-of-range resize.
+Canvas_createBitmap :: proc "contextless" (source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (result: ImageBitmap, err: Error) {
+	err = _Canvas_createBitmap(source, form, sx, sy, sw, sh, orient, premul, colorspace, resize_w, resize_h, resize_q, &result)
 	return
 }
 
-// An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob).
-Canvas_bitmapFromPixels :: proc "contextless" (data: []u8, width: i32, height: i32, flip_y: bool) -> (result: ImageBitmap, err: Error) {
-	err = _Canvas_bitmapFromPixels(raw_data(data), u32(len(data)), width, height, i32(1 if flip_y else 0), &result)
+// An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). `orient`, `premul`,
+// `colorspace`, `resize_*` and `resize_q` as Canvas_createBitmap.
+Canvas_bitmapFromPixels :: proc "contextless" (data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (result: ImageBitmap, err: Error) {
+	err = _Canvas_bitmapFromPixels(raw_data(data), u32(len(data)), width, height, orient, premul, colorspace, resize_w, resize_h, resize_q, &result)
 	return
 }
 

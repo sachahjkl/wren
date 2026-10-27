@@ -243,3 +243,6 @@ windows.odin window_ids process
 windows.odin pass_order process
 windows.odin pass_causes process
 devtools_net_preview.odin FONT_FORMAT_NAMES process  # a table of the names of the font formats
+canvas_shell.odin color_glyph_cache process  # the cache of the colour glyph bitmaps of the canvas text (cleared with the canvases)
+canvas_shell.odin color_glyph_next_uid process  # the next name of a cached colour glyph bitmap
+video_fast_path.odin vfast process  # the video fast path: what each video drew in the last page frame
