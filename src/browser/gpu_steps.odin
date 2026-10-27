@@ -162,23 +162,23 @@ gpu_steps_report :: proc(sb: ^strings.Builder, frames: []Frame_Rec) {}
 
 }
 
-// The panel's section: the last profile read back, and the kept effect results.
-panel_gpu_steps :: proc(app: ^App, w: f32) {
-	c := hud.cfg.comma
-	ui.stat_heading("gpusteps", "GPU STEPS, LAST FRAME MS", w)
-	st := &gpu_steps_state
-	if !render.gpu_timing_enabled(&app.r) || !st.have {
-		ui.stat_row("gs_none", "Steps", render.gpu_timing_enabled(&app.r) ? "--" : "not measured", w, mono = false)
-	} else {
-		p := st.last
-		for k in render.Gpu_Step {
-			s := p.steps[k]
-			if s.count == 0 { continue }
-			ui.stat_row(fmt.tprintf("gs_%d", int(k)), fmt.tprintf("%s (%d)", GPU_STEP_NAMES[k], s.count), fmt_ms(s.ms, c), w)
-		}
-		ui.stat_row("gs_targets", "Targets bound", fmt.tprintf("%d", p.target_changes), w)
+// The panel's section: the last profile read back (a line per step, run or not: the panel keeps its size), and the
+// kept effect results.
+panel_gpu_steps :: proc(out: ^[dynamic]Stat_Line, src: ^Panel_Source) {
+	c := src.comma
+	append(out, Stat_Line{id = "gpusteps", label = "GPU STEPS, LAST FRAME MS", heading = true})
+	measured := src.gpu_timing && src.gpu_have
+	state := !src.gpu_timing ? "not measured" : !src.gpu_have ? STAT_NONE : "measured"
+	append(out, Stat_Line{id = "gs_none", label = "Steps", value = state, mono = false})
+	p := src.gpu_last
+	for k in render.Gpu_Step {
+		s := p.steps[k]
+		ran := measured && s.count > 0
+		label := ran ? fmt.tprintf("%s (%d)", GPU_STEP_NAMES[k], s.count) : GPU_STEP_NAMES[k]
+		append(out, Stat_Line{id = fmt.tprintf("gs_%d", int(k)), label = label, value = ran ? fmt_ms(s.ms, c) : STAT_NONE, mono = true})
 	}
-	cs := st.cache
-	ui.stat_row("gs_kept", "Kept effects", fmt.tprintf("%d, %s", cs.entries, fmt_bytes(cs.bytes, c)), w)
-	ui.stat_row("gs_hits", "Reused / redrawn", fmt.tprintf("%d / %d", cs.hits, cs.misses), w)
+	append(out, Stat_Line{id = "gs_targets", label = "Targets bound", value = measured ? fmt.tprintf("%d", p.target_changes) : STAT_NONE, mono = true})
+	cs := src.gpu_cache
+	append(out, Stat_Line{id = "gs_kept", label = "Kept effects", value = fmt.tprintf("%d, %s", cs.entries, fmt_bytes(cs.bytes, c)), mono = true})
+	append(out, Stat_Line{id = "gs_hits", label = "Reused / redrawn", value = fmt.tprintf("%d / %d", cs.hits, cs.misses), mono = true})
 }

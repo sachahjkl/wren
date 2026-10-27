@@ -346,30 +346,103 @@ recent_detail :: proc(pick: proc(d: ^Frame_Detail) -> bool) -> ^Frame_Detail {
 
 Panel_Section :: enum u8 { Frames, Display, Phases, Style, Layout, Compositor, Gpu_Steps, Wasm, Memory, Build }
 
+// What a value reads while there is none (a step that did not run, a number not measured yet).
+STAT_NONE :: "\u2014"
+
+// A line of the panel: a section's heading, or a label and its value.
+Stat_Line :: struct {
+	id, label, value: string,
+	heading: bool,
+	mono:    bool,
+	tone:    string,       // tags of the value ("", "warn", "bad")
+	swatch:  draw.Color,   // not zero: a legend's colour before the label
+}
+
+// Everything the panel shows, read from the browser once per build (frame_stats_source): the lines are made from it
+// alone (panel_lines), so the same sections always have the same lines, whatever is measured or not at the moment.
+Panel_Source :: struct {
+	n:            Hud_Numbers,
+	comma:        bool,
+	budget:       f32,
+	pacer:        Pacer,
+	no_tearing:   bool,                 // tearing asked for, not supported
+	gpu_timing:   bool,
+	measured_hz:  f64,
+	shown_total, missed_total: u64,
+	colors:       [Hud_Series]draw.Color,
+	restyle:      Frame_Detail, has_restyle: bool,   // the last frame that restyled
+	layout:       Frame_Detail, has_layout: bool,    // ... that laid out
+	comp:         Frame_Detail, has_comp: bool,      // ... that composited the page
+	gpu_have:     bool,
+	gpu_last:     render.Gpu_Profile,
+	gpu_cache:    draw.Layer_Cache_Stats,
+	wasm_modules: int,
+	wasm_timing:  bool,
+	wasm_compiler: string,
+	tex:          render.Texture_Memory,
+	pic_used, pic_capacity: int,
+	images:       page.Image_Stats,
+}
+
+frame_stats_source :: proc(app: ^App, t: ^Tab) -> (s: Panel_Source) {
+	s.n = hud.nums
+	s.comma = hud.cfg.comma
+	s.budget = s.n.budget > 0 ? s.n.budget : hud_budget(app)
+	s.pacer = pacer_of(app)^
+	s.no_tearing = app.pacing.cfg.mode == .Tearing && !s.pacer.tearing
+	s.gpu_timing = render.gpu_timing_enabled(&app.r)
+	s.measured_hz = render.measured_refresh_hz(&app.r)
+	_, s.shown_total, s.missed_total = render.present_totals(&app.r)
+	s.colors = hud_series_colors()
+	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.restyle != .None }); d != nil { s.restyle, s.has_restyle = d^, true }
+	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.lay_pass != .None }); d != nil { s.layout, s.has_layout = d^, true }
+	if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.comp_valid }); d != nil { s.comp, s.has_comp = d^, true }
+	s.gpu_have, s.gpu_last, s.gpu_cache = gpu_steps_state.have, gpu_steps_state.last, gpu_steps_state.cache
+	s.wasm_modules = t != nil && t.page != nil ? len(t.page.instances) : 0
+	s.wasm_timing = hud.cfg.wasm_timing
+	s.wasm_compiler = config.string_of(&app.prefs, "wasm.wasmtime.compiler")
+	s.tex = render.texture_memory(&app.r)
+	s.pic_used, s.pic_capacity = draw.retained_bytes(&app.dc)
+	s.images = page.images_stats(t != nil ? t.page : nil)
+	return
+}
+
+// The panel's sections in `ncols` columns.
+frame_stats_layout :: proc(ncols: int) -> [][]Panel_Section {
+	// (about as many lines in each column: the panel is as tall as its longest)
+	@(static, rodata) three := [][]Panel_Section{{.Frames, .Display, .Style, .Wasm}, {.Gpu_Steps, .Memory}, {.Phases, .Layout, .Compositor, .Build}}
+	@(static, rodata) two := [][]Panel_Section{{.Frames, .Display, .Phases, .Style, .Layout}, {.Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
+	@(static, rodata) one := [][]Panel_Section{{.Frames, .Display, .Phases, .Style, .Layout, .Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
+	switch ncols {
+	case 3: return three
+	case 2: return two
+	}
+	return one
+}
+
 // Columns of label / value rows above the graph, in the status bar's text size: three when the window is wide enough,
-// else two, else one.
+// else two, else one. Its size and place never follow what is measured: every section always has the same lines (a
+// value not measured or a step that did not run reads STAT_NONE), the columns have a fixed width and the values are
+// in figures of one width.
 frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 	em0 := ui.font_size()
 	if ui.style({font_size = f32(int(em0 * 0.88 + 0.5))}) {
 		em := ui.font_size()
 		n := &hud.nums
-		c := hud.cfg.comma
 		col := em * 17
 		gap := em * 0.6
 		ncols := clamp(int((f32(active_window(app).win.size.x) - em) / (col + gap)), 1, 3)
 		w := col * f32(ncols) + gap * f32(ncols - 1)
-		layout: [][]Panel_Section
-		switch ncols {
-		case 3: layout = {{.Frames, .Display, .Gpu_Steps}, {.Phases, .Style, .Layout}, {.Compositor, .Wasm, .Memory, .Build}}
-		case 2: layout = {{.Frames, .Display, .Phases, .Style}, {.Layout, .Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
-		case:   layout = {{.Frames, .Display, .Phases, .Style, .Layout, .Compositor, .Gpu_Steps, .Wasm, .Memory, .Build}}
-		}
-		if ui.popover(PANEL_ID, anchor, w, .Above, align_right = true) {
+		src := frame_stats_source(app, t)
+		// against the window's right edge, not the graph's: the counters right of the graph change width with their
+		// numbers, and the panel moved with them
+		at := draw.Rect{{0, anchor.min.y}, {f32(active_window(app).win.size.x) - em * 0.5, anchor.max.y}}
+		if ui.popover(PANEL_ID, at, w, .Above, align_right = true) {
 			ui.next({width = ui.px(w), height = ui.px(ui.dense(em * 2.1))})
 			if ui.row(.Center, {}, "###fs_head") {
 				ui.spacer(ui.px(em * 0.9))
 				ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(hud.cfg.window_ms / 1000), c), n.frames) : "idle: no frames drawn lately"
+				what := n.frames > 0 ? fmt.tprintf("last %s s, %d frames", fmt_ms(f32(hud.cfg.window_ms / 1000), src.comma), n.frames) : "idle: no frames drawn lately"
 				ui.label(fmt.tprintf("Frame statistics, %s###fs_title", what))
 				ui.next({width = ui.px(em * 1.9), height = ui.px(em * 1.9), radius = em * CHROME_BUTTON_RADIUS})
 				close := ui.icon_button("###fs_close", GLYPH_CLOSE)
@@ -378,129 +451,132 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 				ui.spacer(ui.px(em * 0.4))
 			}
 			ui.hline(ui.px(w))
-			ui.next({width = ui.px(w), height = ui.children_sum()})
-			if ui.row(.Start, {}, "###fs_cols") {
-				for sections, i in layout {
-					if i > 0 { ui.spacer(ui.px(gap)) }
-					ui.next({width = ui.px(col), height = ui.children_sum()})
-					if ui.column(.Start, {}, fmt.tprintf("###fs_col%d", i)) {
-						for s in sections { panel_section(app, t, s, col) }
-					}
-				}
-			}
+			frame_stats_columns(&src, frame_stats_layout(ncols), col, gap)
 			ui.spacer(ui.px(em * 0.5))
 		}
 	}
 }
 
-@(private = "file")
-panel_section :: proc(app: ^App, t: ^Tab, section: Panel_Section, w: f32) {
-	n := &hud.nums
-	c := hud.cfg.comma
-	pacer := pacer_of(app)
+// The columns of the panel (its body); returns their row.
+frame_stats_columns :: proc(src: ^Panel_Source, layout: [][]Panel_Section, col, gap: f32) -> ^ui.Box {
+	w := col * f32(len(layout)) + gap * f32(max(len(layout) - 1, 0))
+	ui.next({width = ui.px(w), height = ui.children_sum()})
+	box: ^ui.Box
+	if ui.row(.Start, {}, "###fs_cols") {
+		box = ui.parent_box()
+		for sections, i in layout {
+			if i > 0 { ui.spacer(ui.px(gap)) }
+			ui.next({width = ui.px(col), height = ui.children_sum()})
+			if ui.column(.Start, {}, fmt.tprintf("###fs_col%d", i)) {
+				for s in sections {
+					for l in panel_lines(src, s) {
+						if l.heading { ui.stat_heading(l.id, l.label, col); continue }
+						ui.stat_row(l.id, l.label, l.value, col, mono = l.mono, swatch_color = l.swatch, tone = l.tone)
+					}
+				}
+			}
+		}
+	}
+	return box
+}
+
+// The lines of a section (temp): always the same ids in the same order for a section, whatever `src` holds.
+panel_lines :: proc(src: ^Panel_Source, section: Panel_Section) -> []Stat_Line {
+	out := make([dynamic]Stat_Line, context.temp_allocator)
+	head :: proc(out: ^[dynamic]Stat_Line, id, text: string) { append(out, Stat_Line{id = id, label = text, heading = true}) }
+	row :: proc(out: ^[dynamic]Stat_Line, id, label, value: string, mono := true, tone := "", swatch := draw.Color{}) {
+		append(out, Stat_Line{id = id, label = label, value = value, mono = mono, tone = tone, swatch = swatch})
+	}
+	n := &src.n
+	c := src.comma
+	pacer := &src.pacer
 	switch section {
 	case .Frames:
-		budget := n.budget > 0 ? n.budget : hud_budget(app)
-		ui.stat_heading("frames", "FRAMES: MEAN / P95 / P99", w)
-		ui.stat_row("fps", "Per second", fmt.tprintf("%.0f of %s", n.fps, fmt_hz(pacer.hz, c)), w)
+		budget := src.budget
+		head(&out, "frames", "FRAMES: MEAN / P95 / P99")
+		row(&out, "fps", "Per second", fmt.tprintf("%.0f of %s", n.fps, fmt_hz(pacer.hz, c)))
 		bt := fmt.tprintf("%.2f", budget)
-		ui.stat_row("budget", "Budget ms", c ? decimal_comma(bt) : bt, w)
-		ui.stat_row("cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_p99, c)) : "--", w,
+		row(&out, "budget", "Budget ms", c ? decimal_comma(bt) : bt)
+		row(&out, "cpu", "CPU ms", n.frames > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.cpu_mean, c), fmt_ms(n.cpu_p95, c), fmt_ms(n.cpu_p99, c)) : STAT_NONE,
 			tone = n.frames > 0 && n.cpu_p99 > budget ? "warn" : "")
 		gpu := "not measured"
-		if render.gpu_timing_enabled(&app.r) { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_p95, c), fmt_ms(n.gpu_p99, c)) : "--" }
-		ui.stat_row("gpu", "GPU ms", gpu, w, tone = n.gpu_n > 0 && n.gpu_p99 > budget ? "warn" : "")
-		ui.stat_row("max", "Longest, CPU / GPU", n.frames > 0 ? fmt.tprintf("%s / %s", fmt_ms(n.cpu_max, c), n.gpu_n > 0 ? fmt_ms(n.gpu_max, c) : "--") : "--", w)
-		ui.stat_row("over", "Over budget", fmt.tprintf("%d + %d of %d", n.over, n.gpu_over, n.frames), w, tone = n.over + n.gpu_over > 0 ? "warn" : "")
-		ui.stat_row("missed", "Missed refreshes", n.shown > 0 ? fmt.tprintf("%d of %d", n.missed, n.shown) : "--", w, tone = n.missed > 0 ? "bad" : "")
-		ui.stat_row("lat", "Input to screen", n.lat_n > 0 ? fmt.tprintf("%s / %s ms", fmt_ms(n.lat_mean, c), fmt_ms(n.lat_p95, c)) : "--", w)
+		if src.gpu_timing { gpu = n.gpu_n > 0 ? fmt.tprintf("%s / %s / %s", fmt_ms(n.gpu_mean, c), fmt_ms(n.gpu_p95, c), fmt_ms(n.gpu_p99, c)) : STAT_NONE }
+		row(&out, "gpu", "GPU ms", gpu, tone = n.gpu_n > 0 && n.gpu_p99 > budget ? "warn" : "")
+		row(&out, "max", "Longest, CPU / GPU", n.frames > 0 ? fmt.tprintf("%s / %s", fmt_ms(n.cpu_max, c), n.gpu_n > 0 ? fmt_ms(n.gpu_max, c) : STAT_NONE) : STAT_NONE)
+		row(&out, "over", "Over budget", fmt.tprintf("%d + %d of %d", n.over, n.gpu_over, n.frames), tone = n.over + n.gpu_over > 0 ? "warn" : "")
+		row(&out, "missed", "Missed refreshes", n.shown > 0 ? fmt.tprintf("%d of %d", n.missed, n.shown) : STAT_NONE, tone = n.missed > 0 ? "bad" : "")
+		row(&out, "lat", "Input to screen", n.lat_n > 0 ? fmt.tprintf("%s / %s ms", fmt_ms(n.lat_mean, c), fmt_ms(n.lat_p95, c)) : STAT_NONE)
 	case .Display:
-		ui.stat_heading("display", "DISPLAY", w)
+		head(&out, "display", "DISPLAY")
 		d := pacer.display
-		src := "default"
+		src_name := "default"
 		switch d.source {
-		case .Display_Config: src = "exact"
-		case .Mode:           src = "mode"
-		case .Dwm:            src = "DWM"
-		case .Default:        src = "assumed"
+		case .Display_Config: src_name = "exact"
+		case .Mode:           src_name = "mode"
+		case .Dwm:            src_name = "DWM"
+		case .Default:        src_name = "assumed"
 		}
-		ui.stat_row("d_hz", "Monitor", fmt.tprintf("%s Hz (%s)", fmt_hz(d.hz, c), src), w)
-		ui.stat_row("d_max", "Top mode", fmt.tprintf("%s Hz%s", fmt_hz(d.max_hz, c), pacer.variable ? ", variable" : ""), w, mono = false)
-		if pacer.live_hz > 0 { ui.stat_row("d_live", "Compositor now", fmt.tprintf("%s Hz", fmt_hz(pacer.live_hz, c)), w) }
-		measured := render.measured_refresh_hz(&app.r)
-		ui.stat_row("d_meas", "Measured vblanks", measured > 0 ? fmt.tprintf("%s Hz", fmt_hz(measured, c)) : "--", w)
+		row(&out, "d_hz", "Monitor", fmt.tprintf("%s Hz (%s)", fmt_hz(d.hz, c), src_name))
+		row(&out, "d_max", "Top mode", fmt.tprintf("%s Hz%s", fmt_hz(d.max_hz, c), pacer.variable ? ", variable" : ""), mono = false)
+		row(&out, "d_live", "Compositor now", pacer.live_hz > 0 ? fmt.tprintf("%s Hz", fmt_hz(pacer.live_hz, c)) : STAT_NONE)
+		row(&out, "d_meas", "Measured vblanks", src.measured_hz > 0 ? fmt.tprintf("%s Hz", fmt_hz(src.measured_hz, c)) : STAT_NONE)
 		how := pacer.timed ? "timed" : pacer.interval > 1 ? fmt.tprintf("every %d refreshes", pacer.interval) : "every refresh"
-		ui.stat_row("d_target", "Target", fmt.tprintf("%s Hz, %s", fmt_hz(pacer.hz, c), how), w, mono = false)
+		row(&out, "d_target", "Target", fmt.tprintf("%s Hz, %s", fmt_hz(pacer.hz, c), how), mono = false)
 		mode := pacer.tearing ? "tearing (variable refresh)" : "vsync"
-		if app.pacing.cfg.mode == .Tearing && !pacer.tearing { mode = "vsync (no tearing support)" }
-		ui.stat_row("d_mode", "Present", mode, w, mono = false)
-		_, shown_total, missed_total := render.present_totals(&app.r)
-		ui.stat_row("d_tot", "Shown / missed, total", fmt.tprintf("%d / %d", shown_total, missed_total), w)
+		if src.no_tearing { mode = "vsync (no tearing support)" }
+		row(&out, "d_mode", "Present", mode, mono = false)
+		row(&out, "d_tot", "Shown / missed, total", fmt.tprintf("%d / %d", src.shown_total, src.missed_total))
 	case .Phases:
-		colors := hud_series_colors()
-		ui.stat_heading("phases", "PHASES, MEAN MS", w)
+		head(&out, "phases", "PHASES, MEAN MS")
 		for k in Hud_Series {
-			ui.stat_row(fmt.tprintf("ph_%d", int(k)), fmt.tprintf("%s (%s)", HUD_SERIES_NAMES[k], HUD_SERIES_HELP[k]), fmt_ms(n.series[k], c), w, swatch_color = colors[k])
+			row(&out, fmt.tprintf("ph_%d", int(k)), fmt.tprintf("%s (%s)", HUD_SERIES_NAMES[k], HUD_SERIES_HELP[k]), fmt_ms(n.series[k], c), swatch = src.colors[k])
 		}
 	case .Style:
-		ui.stat_heading("style", "STYLE", w)
-		last := "none"
-		if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.restyle != .None }); d != nil { last = restyle_text(d) }
-		ui.stat_row("rs_last", "Last", last, w, mono = false)
-		ui.stat_row("rs_count", "Full / partial", fmt.tprintf("%d / %d", n.full_restyles, n.partial_restyles), w)
+		head(&out, "style", "STYLE")
+		row(&out, "rs_last", "Last", src.has_restyle ? restyle_text(&src.restyle) : "none", mono = false)
+		row(&out, "rs_count", "Full / partial", fmt.tprintf("%d / %d", n.full_restyles, n.partial_restyles))
 	case .Layout:
-		ui.stat_heading("layout", "LAYOUT", w)
-		if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.lay_pass != .None }); d != nil {
-			total: f32
-			for s in d.lay_steps { total += s }
-			ui.stat_row("lp_last", fmt.tprintf("Last, %s", pass_name(d.lay_pass)), fmt.tprintf("%s ms", fmt_ms(total, c)), w)
-			for name, i in ([5]string{"box tree", "layout", "finishing", "display list", "bands"}) {
-				if d.lay_steps[i] >= 0.01 { ui.stat_row(fmt.tprintf("lp_s%d", i), fmt.tprintf("  %s", name), fmt_ms(d.lay_steps[i], c), w) }
-			}
-			ui.stat_row("lp_size", "Boxes / items", fmt.tprintf("%s / %s", fmt_count(int(d.lay_boxes)), fmt_count(int(d.lay_items))), w)
-			if d.lay_pass == .Full { ui.stat_row("lp_pre", "Ahead / taken", fmt.tprintf("%d / %d", d.lay_pre[0], d.lay_pre[1]), w) }
-		} else {
-			ui.stat_row("lp_last", "Last", "none", w, mono = false)
+		head(&out, "layout", "LAYOUT")
+		d := &src.layout
+		total: f32
+		for s in d.lay_steps { total += s }
+		row(&out, "lp_last", src.has_layout ? fmt.tprintf("Last, %s", pass_name(d.lay_pass)) : "Last", src.has_layout ? fmt.tprintf("%s ms", fmt_ms(total, c)) : "none")
+		for name, i in ([5]string{"box tree", "layout", "finishing", "display list", "bands"}) {
+			row(&out, fmt.tprintf("lp_s%d", i), fmt.tprintf("  %s", name), src.has_layout && d.lay_steps[i] >= 0.01 ? fmt_ms(d.lay_steps[i], c) : STAT_NONE)
 		}
-		ui.stat_row("lp_count", "Full / incr. / refresh", fmt.tprintf("%d / %d / %d", n.passes[.Full], n.passes[.Incremental], n.passes[.Refresh]), w)
+		row(&out, "lp_size", "Boxes / items", src.has_layout ? fmt.tprintf("%s / %s", fmt_count(int(d.lay_boxes)), fmt_count(int(d.lay_items))) : STAT_NONE)
+		row(&out, "lp_pre", "Ahead / taken", src.has_layout && d.lay_pass == .Full ? fmt.tprintf("%d / %d", d.lay_pre[0], d.lay_pre[1]) : STAT_NONE)
+		row(&out, "lp_count", "Full / incr. / refresh", fmt.tprintf("%d / %d / %d", n.passes[.Full], n.passes[.Incremental], n.passes[.Refresh]))
 	case .Compositor:
-		ui.stat_heading("comp", "COMPOSITOR, LAST FRAME", w)
-		if d := recent_detail(proc(d: ^Frame_Detail) -> bool { return d.comp_valid }); d != nil {
-			cs := d.comp
-			ui.stat_row("cp_chunks", "Pictures / visible", fmt.tprintf("%d / %d", cs.chunks, cs.visible), w)
-			ui.stat_row("cp_replay", "Replayed / recorded", fmt.tprintf("%d / %d", cs.replayed, cs.recorded), w)
-			ui.stat_row("cp_slots", "Slots / direct items", fmt.tprintf("%d / %d", cs.slots_set, cs.immediate_items), w)
-		} else {
-			ui.stat_row("cp_none", "Page", "not drawn", w, mono = false)
-		}
-	case .Gpu_Steps: panel_gpu_steps(app, w)
+		head(&out, "comp", "COMPOSITOR, LAST FRAME")
+		cs := src.comp.comp
+		has := src.has_comp
+		row(&out, "cp_chunks", "Pictures / visible", has ? fmt.tprintf("%d / %d", cs.chunks, cs.visible) : "page not drawn", mono = has)
+		row(&out, "cp_replay", "Replayed / recorded", has ? fmt.tprintf("%d / %d", cs.replayed, cs.recorded) : STAT_NONE)
+		row(&out, "cp_slots", "Slots / direct items", has ? fmt.tprintf("%d / %d", cs.slots_set, cs.immediate_items) : STAT_NONE)
+	case .Gpu_Steps: panel_gpu_steps(&out, src)
 	case .Wasm:
-		ui.stat_heading("wasm", "WEBASSEMBLY", w)
-		mods := t != nil && t.page != nil ? len(t.page.instances) : 0
-		ui.stat_row("w_mods", "Modules", fmt.tprintf("%d", mods), w)
-		ui.stat_row("w_time", "In calls, ms / frame", hud.cfg.wasm_timing ? fmt_ms(n.wasm_mean, c) : "not measured", w)
-		ui.stat_row("w_engine", "Wasmtime", fmt.tprintf("%s, %s", wasm.WASMTIME_VERSION, config.string_of(&app.prefs, "wasm.wasmtime.compiler")), w, mono = false)
+		head(&out, "wasm", "WEBASSEMBLY")
+		row(&out, "w_mods", "Modules", fmt.tprintf("%d", src.wasm_modules))
+		row(&out, "w_time", "In calls, ms / frame", src.wasm_timing ? fmt_ms(n.wasm_mean, c) : "not measured")
+		row(&out, "w_engine", "Wasmtime", fmt.tprintf("%s, %s", wasm.WASMTIME_VERSION, src.wasm_compiler), mono = false)
 	case .Memory:
-		ui.stat_heading("mem", "MEMORY", w)
-		if n.mem_valid {
-			ui.stat_row("m_ws", "Working set", fmt_bytes(n.working_set, c), w)
-			ui.stat_row("m_priv", "Private", fmt_bytes(n.private_bytes, c), w)
-		}
-		tm := render.texture_memory(&app.r)
-		ui.stat_row("m_tex", "GPU images", fmt_bytes(tm.images, c), w)
-		ui.stat_row("m_gly", "Glyphs, layers", fmt.tprintf("%s, %s", fmt_bytes(tm.glyphs, c), fmt_bytes(tm.targets, c)), w)
-		used, capacity := draw.retained_bytes(&app.dc)
-		ui.stat_row("m_pic", "Pictures", fmt.tprintf("%s of %s", fmt_bytes(used, c), fmt_bytes(capacity, c)), w)
-		is := page.images_stats(t != nil ? t.page : nil)
-		ui.stat_row("m_img", fmt.tprintf("Image cache (%d)", is.entries), fmt.tprintf("%s of %s", fmt_bytes(is.bytes, c), fmt_bytes(is.limit, c)), w)
+		head(&out, "mem", "MEMORY")
+		row(&out, "m_ws", "Working set", n.mem_valid ? fmt_bytes(n.working_set, c) : STAT_NONE)
+		row(&out, "m_priv", "Private", n.mem_valid ? fmt_bytes(n.private_bytes, c) : STAT_NONE)
+		row(&out, "m_tex", "GPU images", fmt_bytes(src.tex.images, c))
+		row(&out, "m_gly", "Glyphs, layers", fmt.tprintf("%s, %s", fmt_bytes(src.tex.glyphs, c), fmt_bytes(src.tex.targets, c)))
+		row(&out, "m_pic", "Pictures", fmt.tprintf("%s of %s", fmt_bytes(src.pic_used, c), fmt_bytes(src.pic_capacity, c)))
+		row(&out, "m_img", fmt.tprintf("Image cache (%d)", src.images.entries), fmt.tprintf("%s of %s", fmt_bytes(src.images.bytes, c), fmt_bytes(src.images.limit, c)))
 	case .Build:
-		ui.stat_heading("build", "BUILD", w)
-		ui.stat_row("b_ver", "Version", APP_VERSION_SHOWN, w)
-		ui.stat_row("b_commit", "Commit", APP_COMMIT_DATE != "" ? fmt.tprintf("%s, %s", app_commit(), APP_COMMIT_DATE) : app_commit(), w)
-		ui.stat_row("b_kind", "Build", build_description(), w, mono = false)
-		ui.stat_row("b_tk", "Toolkit", ui.VERSION, w)
-		ui.stat_row("b_odin", "Odin", ODIN_VERSION, w)
+		head(&out, "build", "BUILD")
+		row(&out, "b_ver", "Version", APP_VERSION_SHOWN)
+		row(&out, "b_commit", "Commit", APP_COMMIT_DATE != "" ? fmt.tprintf("%s, %s", app_commit(), APP_COMMIT_DATE) : app_commit())
+		row(&out, "b_kind", "Build", build_description(), mono = false)
+		row(&out, "b_tk", "Toolkit", ui.VERSION)
+		row(&out, "b_odin", "Odin", ODIN_VERSION)
 	}
+	return out[:]
 }
 
 // Ctrl+B / Ctrl+Shift+B, and the View menu.
