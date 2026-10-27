@@ -49,6 +49,8 @@ Outcome :: enum u8 {
 	Site_Off,       // filtering is off for the site
 	Policy,         // blocked by a site switch (hard mode, fonts, large media)
 	Header,         // blocked by a response header filter
+	Html_Filtered,  // an element removed from the document's markup by a `##^` HTML filter
+	Popup,          // a popup opening stopped by a `$popup` filter
 }
 
 Cell :: struct { allowed, blocked: u32 }
@@ -121,6 +123,8 @@ Event :: struct {
 
 Totals :: struct {
 	blocked, allowed, redirected, rewritten: u64,
+	html_filtered: u64,              // elements removed from document markup by `##^` HTML filters
+	popups:  u64,                    // popup openings stopped by `$popup`
 	pages:   u64,
 	since:   i64,                    // unix seconds
 }
@@ -503,7 +507,7 @@ decide :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, r: ^fetch.Intercept_Resul
 		}
 	}
 
-	switch outcome {
+	#partial switch outcome {
 	case .Blocked, .Dyn_Blocked, .Policy, .Header:
 		r.action = .Block
 		if rule != adblock.NO_FILTER { reason = rule_text(b, b.engine, rule) }
@@ -557,6 +561,39 @@ record :: proc(b: ^Blocker, tab: ^Tab_State, q: ^fetch.Intercept_Query, req: ^ad
 		}
 		b.version += 1
 	}
+}
+
+// An element was removed from a document's markup by a `##^` HTML filter (html_filter.odin, in the body filter's finish on
+// the loop thread). It is counted and logged like the other blocks; there is no per-tab resolution here (the filter runs
+// after the response, from the loader), so the journal entry carries the document URL and the element's tag.
+@(private)
+html_hit_cb :: proc(user: rawptr, doc_url, tag: string) {
+	b := (^Blocker)(user)
+	b.totals.html_filtered += 1
+	b.totals.blocked += 1
+	if b.journal.armed || b.cfg.log_always {
+		reason := strings.concatenate({"##^", tag}, context.temp_allocator)
+		journal_add(&b.journal, Log_Entry{
+			time = unix_ms(), tab = 0, type = .Document, outcome = .Html_Filtered, url = doc_url, doc = doc_url,
+			rule = reason, filter = adblock.NO_FILTER, list = 0, engine = b.generation,
+		})
+	}
+	b.version += 1
+}
+
+// A popup opening was stopped by a `$popup` filter (popup.odin). `opener_url` is the document that tried to open it,
+// `target_url` what it tried to open, `rule` the filter text.
+@(private)
+popup_blocked_record :: proc(b: ^Blocker, opener_url, target_url, rule: string) {
+	b.totals.popups += 1
+	b.totals.blocked += 1
+	if b.journal.armed || b.cfg.log_always {
+		journal_add(&b.journal, Log_Entry{
+			time = unix_ms(), tab = 0, type = .Popup, outcome = .Popup, url = target_url, doc = opener_url,
+			rule = rule, filter = adblock.NO_FILTER, list = 0, engine = b.generation,
+		})
+	}
+	b.version += 1
 }
 
 @(private)

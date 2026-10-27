@@ -24,6 +24,10 @@ Embedder_Hooks :: struct {
 	before_script: proc(user: rawptr, p: ^Page, script: base.Handle),
 	// The parser has finished: readyState is interactive.
 	parsed:        proc(user: rawptr, p: ^Page),
+	// A new window / tab is about to open from page `p` for `url` (absolute): `user_gesture` is whether the opening is
+	// backed by a recent click or key press in `p` (HTML transient activation). The blocker returns true to stop it
+	// (a `$popup` filter): the opening is dropped, no tab is created. nil = popups are never stopped here.
+	popup_check:   proc(user: rawptr, p: ^Page, url: string, user_gesture: bool) -> bool,
 	// Frames and images whose request the blocker stopped are hidden instead of showing an error or a broken image.
 	collapse_blocked: bool,
 }
