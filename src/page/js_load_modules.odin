@@ -423,7 +423,10 @@ module_graph_run :: proc(p: ^Page, g: ^Module_Graph) {
 
 Module_import :: proc(c: ^Call, id: i32, specifier: string, base_url: string, type: Api_ModuleType) -> Api_Error {
 	p := c.page
-	b := base_url != "" ? base_url : p.env.location.href
+	// HTML "HostLoadImportedModule": a referrer that is no script with a URL (code given to eval by a tool, a
+	// new Function, a name such as "<input>") resolves against the document's base URL
+	b := base_url
+	if _, abs := url.parse_absolute(b, context.temp_allocator); !abs { b = document_base_url(p) }
 	resolved, msg, ok := module_resolve(p, specifier, b)
 	if !ok { return fail(c, .Type, msg) }
 	ms := modules_of(p)
