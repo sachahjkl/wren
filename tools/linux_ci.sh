@@ -28,6 +28,10 @@ wanted() {
 }
 ulimit -s 32768
 mkdir -p build/linux
+# (package js_image #loads build/js/wren_js.wasm, which only a Windows build makes: an empty file lets odin check go through, and the tests
+# that run the JS engine (page, blocker) are skipped while it is a stub)
+JS_STUB=0
+if [ ! -s build/js/wren_js.wasm ]; then mkdir -p build/js; : > build/js/wren_js.wasm; JS_STUB=1; fi
 fail=0
 for p in "${CHECK[@]}"; do
   wanted "$p" || continue
@@ -40,6 +44,7 @@ done
 for t in "${TESTS[@]}"; do
   p="${t%%:*}"; extra=""; [ "$p" != "$t" ] && extra="${t#*:}"
   wanted "$p" || continue
+  if [ $JS_STUB -eq 1 ] && { [ "$p" = page ] || [ "$p" = blocker ]; }; then echo "test skip  src/$p (needs the JS engine's wasm)"; continue; fi
   name="$(echo "$p" | tr '/' '_')"
   out=$("$ODIN" test "src/$p" -vet "${COLL[@]}" -define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true $extra -out:"build/linux/${name}_test" 2>&1)
   if echo "$out" | grep -qE "All tests were successful|The test was successful"; then
