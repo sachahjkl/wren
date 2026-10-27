@@ -1,6 +1,7 @@
 package canvas2d
 
 import "core:math"
+import "core:sync"
 import "core:testing"
 
 @(private = "file")
@@ -609,6 +610,9 @@ save_restore_and_reset :: proc(t: ^testing.T) {
 // A text engine whose glyphs are unit squares: enough to see where text goes.
 @(private = "file")
 fake_outline: Path
+// (the tests that draw with it run one at a time: it is one outline, and each frees it when it ends)
+@(private = "file")
+fake_lock: sync.Mutex
 
 @(private = "file")
 fake_engine :: proc() -> Text_Engine {
@@ -634,6 +638,8 @@ fake_engine :: proc() -> Text_Engine {
 text_is_drawn_from_outlines :: proc(t: ^testing.T) {
 	c, b := make_ctx(60, 30)
 	defer free_ctx(&c, b)
+	sync.mutex_lock(&fake_lock)
+	defer sync.mutex_unlock(&fake_lock)
 	defer path_destroy(&fake_outline)
 	c.text = fake_engine()
 	style_set_color(&c.state.fill, {0, 0, 0, 1})
@@ -720,6 +726,8 @@ overflow_nan_and_limits :: proc(t: ^testing.T) {
 	for i in 0 ..< MAX_STOPS + 10 { gradient_add_stop(g, f64(i) / f64(MAX_STOPS), {0, 1, 0, 1}) }
 	testing.expect_value(t, len(g.stops), MAX_STOPS)
 	// text that is cut
+	sync.mutex_lock(&fake_lock)
+	defer sync.mutex_unlock(&fake_lock)
 	c.text = fake_engine()
 	defer path_destroy(&fake_outline)
 	c.opts.text_bytes = 4
