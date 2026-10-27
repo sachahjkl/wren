@@ -16,11 +16,11 @@ COLL=(-collection:wb=src -collection:toolkit=ext/gui_toolkit)
 # are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
 CHECK=(base host config css http i18n xml adblock canvas2d license dom url html cookies csp forms style layout
        webfont wasm js idb httpcache images webauthn instance desktop remote tools/testenv
-       net fetch media page blocker remote/client)
+       net fetch media page blocker remote/client tools/crashtrace)
 # (name, extra flags): wasm, remote and remote/client run on one thread, as on Windows (one channel per process)
 TESTS=(base host config css http i18n xml adblock canvas2d dom url html cookies csp forms style layout webfont js
        httpcache webauthn instance desktop tools/testenv "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
-       net fetch media blocker page "remote/client:-define:ODIN_TEST_THREADS=1")
+       net fetch media blocker page "remote/client:-define:ODIN_TEST_THREADS=1" tools/crashtrace)
 wanted() {
   [ ${#ONLY[@]} -eq 0 ] && return 0
   for o in "${ONLY[@]}"; do [ "$o" = "$1" ] && return 0; done
