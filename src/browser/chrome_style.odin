@@ -486,7 +486,14 @@ field_frame_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	inner := draw.rect_pad(r, -lw)
 	ir := max(f.radius - lw, 0)
 	vgradient(dc, inner, inner.min.y, inner.max.y, c.field_top, c.field, {1, 1, 1, 1}, {ir, ir, ir, ir})
-	draw.rect(dc, {{r.min.x + f.radius * 0.7, r.max.y}, {r.max.x - f.radius * 0.7, r.max.y + lw}}, c.edge_light)
+	// the light line fades out along the curve of the corners instead of stopping dead where it starts
+	lit := draw.Rect{{r.min.x + f.radius * 0.25, r.max.y}, {r.max.x - f.radius * 0.25, r.max.y + lw}}
+	w := max(lit.max.x - lit.min.x, 1)
+	fade := min(f.radius * 1.2 / w, 0.5)
+	clear := c.edge_light
+	clear.a = 0
+	stops := [4]draw.Gradient_Stop{{color = clear, pos = 0}, {color = c.edge_light, pos = fade}, {color = c.edge_light, pos = 1 - fade}, {color = clear, pos = 1}}
+	draw.gradient(dc, lit, {kind = .Linear, space = .Srgb, start = {0, 0}, end = {w, 0}, stops = stops[:], dither = true})
 }
 
 // The toolbar's row: the row `address_row` fills. Classic: it carries the toolbar's gradient and lines.

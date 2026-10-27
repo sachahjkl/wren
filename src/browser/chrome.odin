@@ -206,7 +206,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		// that starts one border in repaints the inner half of the ring where it covers, so the ring goes from two pixels to
 		// one and back at the chip's divider (a double border). The focused bar's chip starts where the ring ends.
 		seg_inset := inset
-		if !classic_on() && ui.focus_key() == window_own(app).address_key { seg_inset = max(math.ceil(1.5 * ui.scale()), inset) }
+		if ui.focus_key() == window_own(app).address_key { seg_inset = max(math.ceil(1.5 * ui.scale()), inset) }
 		security_chip(app, t, seg_inset, h - 2 * seg_inset, max(field_radius - seg_inset, 0))
 	}
 	if bw := active_window(app); bw.focus_address {
