@@ -1,24 +1,15 @@
 package page
 
 // Web Crypto, the parts that make sense without JavaScript objects (import module "crypto"):
-//   * crypto.getRandomValues: the system RNG (BCryptGenRandom), at most crypto.max_random_bytes per call;
+//   * crypto.getRandomValues: the system RNG (core:crypto's rand_bytes), at most crypto.max_random_bytes per call;
 //   * crypto.randomUUID: a version 4 UUID from the same source;
-//   * crypto.subtle.digest: SHA-1 / SHA-256 / SHA-384 / SHA-512 through BCrypt, fulfilled with a buffer. Inputs of at
+//   * crypto.subtle.digest: SHA-1 / SHA-256 / SHA-384 / SHA-512 from core:crypto, fulfilled with a buffer. Inputs of at
 //     least crypto.digest_offload_bytes are copied and hashed on a worker of the blocking pool.
 
+import "core:crypto"
+import "core:crypto/hash"
 import "core:strings"
-import win "core:sys/windows"
 import "wb:host"
-
-foreign import bcrypt_lib "system:Bcrypt.lib"
-
-@(default_calling_convention = "system")
-foreign bcrypt_lib {
-	BCryptCreateHash :: proc(hAlgorithm: rawptr, phHash: ^rawptr, pbHashObject: [^]u8, cbHashObject: u32, pbSecret: [^]u8, cbSecret: u32, dwFlags: u32) -> i32 ---
-	BCryptHashData :: proc(hHash: rawptr, pbInput: [^]u8, cbInput: u32, dwFlags: u32) -> i32 ---
-	BCryptFinishHash :: proc(hHash: rawptr, pbOutput: [^]u8, cbOutput: u32, dwFlags: u32) -> i32 ---
-	BCryptDestroyHash :: proc(hHash: rawptr) -> i32 ---
-}
 
 Digest_Algorithm :: enum u8 { Invalid, SHA1, SHA256, SHA384, SHA512 }
 
@@ -43,41 +34,29 @@ digest_size :: proc(a: Digest_Algorithm) -> int {
 	return 0
 }
 
-// BCrypt's pseudo-handles of the hash providers (Windows 10+): no provider to open or close, usable from any thread.
 @(private)
-bcrypt_alg :: proc(a: Digest_Algorithm) -> rawptr {
+core_alg :: proc(a: Digest_Algorithm) -> hash.Algorithm {
 	switch a {
-	case .Invalid: return nil
-	case .SHA1:   return rawptr(uintptr(0x31))
-	case .SHA256: return rawptr(uintptr(0x41))
-	case .SHA384: return rawptr(uintptr(0x51))
-	case .SHA512: return rawptr(uintptr(0x61))
+	case .Invalid: return .Invalid
+	case .SHA1:   return .Insecure_SHA1   // (what the Web Crypto API still offers, for old protocols)
+	case .SHA256: return .SHA256
+	case .SHA384: return .SHA384
+	case .SHA512: return .SHA512
 	}
-	return nil
+	return .Invalid
 }
 
 // One-shot digest; `out` must hold digest_size(a) bytes. Any thread.
 digest :: proc(a: Digest_Algorithm, data: []byte, out: []byte) -> bool {
 	if a == .Invalid || len(out) < digest_size(a) { return false }
-	h: rawptr
-	if BCryptCreateHash(bcrypt_alg(a), &h, nil, 0, nil, 0, 0) != 0 { return false }
-	defer BCryptDestroyHash(h)
-	rest := data
-	for len(rest) > 0 {
-		n := min(len(rest), 1 << 30)
-		if BCryptHashData(h, raw_data(rest), u32(n), 0) != 0 { return false }
-		rest = rest[n:]
-	}
-	return BCryptFinishHash(h, raw_data(out), u32(digest_size(a)), 0) == 0
+	hash.hash_bytes_to_buffer(core_alg(a), data, out[:digest_size(a)])
+	return true
 }
 
 random_bytes :: proc(out: []byte) -> bool {
-	rest := out
-	for len(rest) > 0 {
-		n := min(len(rest), 1 << 30)
-		if win.BCryptGenRandom(nil, raw_data(rest), u32(n), win.BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0 { return false }
-		rest = rest[n:]
-	}
+	if len(out) == 0 { return true }
+	when !crypto.HAS_RAND_BYTES { return false }
+	crypto.rand_bytes(out)
 	return true
 }
 

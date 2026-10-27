@@ -83,10 +83,14 @@ collection so that a detached tree nothing holds is freed (`src/page/js_realm.od
 
 ## Image and font decoders
 
-`src/images` decodes on its own threads, never on the interface thread. PNG, JPEG, GIF, BMP, ICO and TIFF go through
-the platform (WIC; HEIF too when the Store codec is installed). WebP, AVIF and SVG are always available, whatever
-Windows has installed, through the crate `native\media`, part of Wren's one Rust static library (see "The Rust
-library" below; about 6 MB added to the exe):
+`src/images` decodes on its own threads, never on the interface thread. Every format but HEIF is decoded by the crate
+`native\media`, part of Wren's one Rust static library (see "The Rust library" below), the same on every system; HEIF
+goes through the platform (WIC, when the Store codec is installed), and `images.decode.system_codecs` hands PNG, JPEG,
+GIF, BMP, ICO and TIFF to WIC as before (`src/images/parity_test_windows.odin` compares both on every fixture):
+
+- **PNG / APNG, JPEG, GIF, BMP, ICO, TIFF**: image 0.25.10 (png, zune-jpeg, gif, tiff; `native/media/src/raster.rs`):
+  EXIF orientation, ICC profiles, GIF and APNG animation composed by the decoder, the ICO entry that fits the size
+  shown; PNG and JPEG encoding for the canvas.
 
 - **SVG**: resvg 0.48.1 (usvg + tiny-skia; text with the system fonts through fontdb). Rendered at the size it is
   shown at (device pixels), in the secure static mode of SVG images (no external resource, script or animation);
