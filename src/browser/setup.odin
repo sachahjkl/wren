@@ -411,6 +411,21 @@ setup_use_standalone :: proc(app: ^App) {
 	request_frames(app, 2)
 }
 
+// Whether the profile remembers a "Use standalone" choice (the dialog no longer opens by itself). The Setup dialog shows
+// this and offers to undo it, so the choice made with one click can be taken back with another.
+setup_is_standalone :: proc(app: ^App) -> bool {
+	choice, _ := setup_choice(app)
+	return choice == "standalone"
+}
+
+// Undoes "Use standalone": the dialog will offer Setup again at the next start of a copy that is not installed. The
+// dialog stays open so the user can act now; the choice file is cleared.
+setup_cancel_standalone :: proc(app: ^App) {
+	setup_choice_write(app, "")
+	ui.toast(.Info, "%s will offer Setup again.", APP_NAME)
+	request_frames(app, 3)
+}
+
 ////////////////////////////////
 // Start-up
 

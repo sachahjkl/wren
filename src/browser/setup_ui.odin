@@ -185,9 +185,11 @@ setup_build :: proc(app: ^App) {
 	inner := width - 2 * pad
 	// placed near the top, and not moved by its own content: centred on its height, it jumped when the first frame (height not known
 	// yet) became the second, and again when the disk was read and "Loading" became the real state. It only moves up when it would
-	// not fit under that line.
+	// not fit under that line. Before the first frame measured the dialog (fit_h still 0), an estimate keeps it from being placed
+	// too low and then jumping up: a capture taken right after it opens (wren ctl shot) then shows it in its place, at any DPI.
+	est_h := stp.fit_h > 0 ? stp.fit_h : min(win_h * 0.7, em * 34)
 	top := win_h * 0.12
-	if stp.fit_h > 0 && top + stp.fit_h > win_h { top = max(win_h - stp.fit_h, em * 0.6) }
+	if top + est_h > win_h { top = max(win_h - est_h, em * 0.6) }
 	open := true
 	if ui.modal("setup", width, &open, top / win_h) {
 		if ui.style({radius = 0}) { setup_frame(app, width, inner, pad, win_h) }
@@ -397,6 +399,30 @@ setup_middle :: proc(app: ^App, width, inner, pad: f32, f: ^Setup_Facts, known, 
 		ui.spacer(ui.px(pad))
 	}
 	ui.spacer(ui.px(em * 0.6))
+
+	// "Use standalone" was chosen before: say so, and offer to undo it here (the choice made with one click is taken back
+	// with another). Only when nothing is installed and the dialog is not busy; an installed copy has no such choice.
+	if known && !busy && setup_is_standalone(app) {
+		ui.next({width = ui.px(width), height = ui.px(ui.dense(em * 2.3))})
+		if ui.row(.Center) {
+			ui.spacer(ui.px(pad))
+			ui.next({width = ui.px(inner), height = ui.pct(1)})
+			if ui.tags("card") {
+				if ui.row(.Center, {.Draw_Background, .Draw_Border}, "###setup_standalone_row") {
+					ui.spacer(ui.px(em * 0.9))
+					if ui.tags("weak") {
+						ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
+						ui.label(fmt.aprintf("%s is set to run standalone and will not offer Setup by itself.###setup_standalone_note", desktop_identity().name, allocator = ui.frame_allocator()))
+					}
+					ui.next({width = ui.text_size(em * 1.4), height = ui.px(ui.dense(em * 1.9))})
+					if ui.tags("ghost_button") { if ui.button("Offer Setup again###setup_standalone_undo").clicked { setup_cancel_standalone(app) } }
+					ui.spacer(ui.px(em * 0.9))
+				}
+			}
+			ui.spacer(ui.px(pad))
+		}
+		ui.spacer(ui.px(em * 0.6))
+	}
 }
 @(private = "file")
 setup_badge :: proc(text, tone: string, solid: bool) {

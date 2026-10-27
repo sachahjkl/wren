@@ -63,7 +63,8 @@ cli_usage_text :: proc() -> string {
 	row(&sb, "--setup", i18n.tr("opens the Setup dialog"))
 	row(&sb, "--remote[=name]", i18n.tr("opens the remote control channel (wren ctl)"))
 	row(&sb, "--headless", i18n.tr("never shows the window (it renders all the same)"))
-	row(&sb, "--desktop-integration=<mode>", i18n.tr("install, remove or status: the file types, the menu entry, the PATH"))
+	row(&sb, "--desktop-integration=<mode>", i18n.tr("install, remove, status or uninstall: the file types, the menu entry, the PATH"))
+	row(&sb, "--uninstall [--purge]", i18n.tr("removes the installed copy silently (--purge also deletes the profile)"))
 	fmt.sbprintf(&sb, "\n%s\n", i18n.tr("A file or a host named ctl, help or version is written ./ctl, ./help, ./version."))
 	return strings.to_string(sb)
 }

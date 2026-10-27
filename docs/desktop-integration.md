@@ -135,10 +135,17 @@ window reads the box's state at once.
 
 ## Command line
 
-`wren --desktop-integration=install|remove|status`, without a window. Exit codes: install and remove 0 done / 1 failed;
-status 0 installed / 1 absent / 2 to repair / 3 unreadable. The program is a Windows GUI program: to get the exit code, run
-it with `Start-Process -Wait -PassThru` (or `start /wait`); its output goes to a redirected standard output, else to the
-parent's console. It applies the preferences below (what the last Setup chose).
+`wren --desktop-integration=install|remove|status|uninstall`, without a window. Exit codes: install and remove 0 done /
+1 failed; status 0 installed / 1 absent / 2 to repair / 3 unreadable. The program is a Windows GUI program: to get the
+exit code, run it with `Start-Process -Wait -PassThru` (or `start /wait`); its output goes to a redirected standard
+output, else to the parent's console. It applies the preferences below (what the last Setup chose).
+
+`wren --uninstall [--purge]` is the shorthand for `--desktop-integration=uninstall`: it removes the whole installed copy
+silently — the integration (shortcuts, the browser registration), the PATH entry, the Settings > Apps record and the
+files Setup placed — and keeps the user's profile unless `--purge` is given (which also deletes the profile: preferences,
+history, cookies, session, crash reports, licence). Exit codes: 0 done, 1 failed, 5 done but some files are in use and are
+removed when the running copy closes (the one being uninstalled is the one running). `remove` takes away only the
+integration; `uninstall` takes away the installed copy. `--install` is the shorthand for `--desktop-integration=install`.
 
 ## Preferences
 
