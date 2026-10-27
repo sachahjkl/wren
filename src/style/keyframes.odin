@@ -23,6 +23,8 @@ Keyframe_Block :: struct {
 	has_easing: bool,
 	props:      Prop_Set,
 	customs:    []Custom_Decl,   // custom properties the keyframe sets: registered ones animate what uses them
+	composition: Composition,    // the keyframe's own composite operation (Web Animations keyframe `composite`)
+	has_composition: bool,       // false: the effect's
 }
 
 Keyframes_Set :: struct {

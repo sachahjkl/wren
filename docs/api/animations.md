@@ -35,6 +35,18 @@ Checked by the browser on every call (`lookup_Animation`).
 | `Removed` | 1 |  |%!(EXTRA false)
 | `Persisted` | 2 |  |%!(EXTRA false)
 
+### struct `CssAnimationInfo`
+
+A CSS animation or transition among Animation_relevant's handles (src/page/web_animations_css.odin).
+
+| field | type | |
+|---|---|---|
+| `kind` | `i32` | 0 not a CSS one (a script's), 1 CSSAnimation, 2 CSSTransition |%!(EXTRA false)
+| `target` | `u64` |  |%!(EXTRA false)
+| `delay` | `f64` |  |%!(EXTRA false)
+| `duration` | `f64` |  |%!(EXTRA false)
+| `iterations` | `f64` |  |%!(EXTRA false)
+
 ## Functions
 
 ### `Animation_create`
@@ -320,6 +332,26 @@ The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of i
 whole document when `root` is 0, in composite order: 8 bytes per handle.
 
 Host: `Animation_relevant :: proc(c: ^Call, root: Api_Node, subtree: bool) -> []u8`
+
+### `Animation_cssBind`
+
+```
+CssAnimationInfo Animation_cssBind(Animation animation, MicrotaskCallback notify, i32 user)
+```
+
+What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
+
+Host: `Animation_cssBind :: proc(c: ^Call, animation: Api_Animation, notify: u32, user: i32) -> Api_CssAnimationInfo`
+
+### `Animation_cssName`
+
+```
+string Animation_cssName(Animation animation)
+```
+
+CSSAnimation.animationName / CSSTransition.transitionProperty ("" once it is gone).
+
+Host: `Animation_cssName :: proc(c: ^Call, animation: Api_Animation) -> string`
 
 ### `DocumentTimeline_currentTime`
 

@@ -246,6 +246,19 @@ function Test-WebApis($server) {
     $null = Wren-Ctl click --selector 'h1'   # (the menu is centred in the viewport: the heading is outside it)
     $null = Wren-Ctl wait function '!document.getElementById("menu").matches(":popover-open")' --timeout 5000
     Check 'a click outside closes the menu' ((Wren-Eval 'document.getElementById("menu").matches(":popover-open")') -eq 'false')
+    # examples/site/remote/popover-clip.htm: a popover inside a 10 px box that clips and makes a stacking context, under a
+    # fixed red cover of z-index 1000: in the top layer it is painted whole, at the centre of the viewport, above the cover
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/popover-clip.htm" --wait idle
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'popover-top.png'
+    $null = Wren-Shot $png -Tab
+    if (Test-Path $png) {
+        Add-Type -AssemblyName System.Drawing
+        $bmp = [System.Drawing.Bitmap]::FromFile($png); $cx = [int]($bmp.Width / 2); $cy = [int]($bmp.Height / 2); $bmp.Dispose()
+        $px = Pixel $png $cx $cy
+        Check "a popover is in the top layer: above a z-index 1000 cover, not clipped by its 10 px ancestor ($($px -join ','))" (Near $px @(0, 128, 0) 24)
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the page was captured' $false $global:WrenErr }
 
     # examples/site/navigation.html: a real click on a link is intercepted by the page's navigate listener (the document
     # stays: its marker too), a navigation to another page carries its state there, the browser's Back brings the demo
@@ -273,6 +286,32 @@ function Test-WebApis($server) {
     $null = Wren-Ctl wait function 'location.search === "" && window.lastNav === "traverse:true"' --timeout 10000
     $second = Wren-Eval ('[window.lastNav, navigation.currentEntry.index, String(window.marker) === "' + $marker + '"].join()')
     Check "a second Back: a same-document traversal the page intercepts ($second)" ($second -eq "traverse:true,$base,true")
+    # another document reached by a push: navigation.activation; the browser's reload button fires navigate, which the page
+    # intercepts (the document stays)
+    $null = Wren-Eval 'navigation.navigate("remote/fixture.htm?act"); 1'
+    $null = Wren-Ctl wait function 'location.search === "?act" && document.readyState === "complete"' --timeout 10000
+    $act = Wren-Eval '[navigation.activation.navigationType, navigation.activation.entry === navigation.currentEntry, navigation.activation.from && navigation.activation.from.url.includes("navigation.html")].join()'
+    Check "navigation.activation of a pushed document ($act)" ($act -eq 'push,true,true')
+    $null = Wren-Eval 'window.keep = "kept"; navigation.addEventListener("navigate", (e) => { if (e.navigationType === "reload") { window.sawReload = e.userInitiated; e.intercept(); } }); 1'
+    $null = Wren-Ctl cmd nav.reload
+    $null = Wren-Ctl wait function 'window.sawReload === true' --timeout 10000
+    $rl = Wren-Eval '[window.sawReload, window.keep].join()'
+    Check "the reload button fires navigate (user initiated), intercepted: the document stays ($rl)" ($rl -eq 'true,kept')
+
+    # examples/site/remote/xhtml.xhtml, served as application/xhtml+xml: parsed as XML (a self-closed <div/> is empty, names
+    # keep their case), its CDATA script runs, its style applies (the box painted blue)
+    Section '7d web APIs in the browser: an XHTML page'
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/xhtml.xhtml" --wait idle
+    $x = Wren-Eval 'String(window.xhtml)'
+    Check "parsed as XML, its script ran ($x)" ($x -eq 'application/xhtml+xml,p,id dataName,0,myElement')
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'xhtml-box.png'
+    $null = Wren-Shot $png -Selector '#box'
+    if (Test-Path $png) {
+        $px = Pixel $png 10 10
+        Check "its style applies ($($px -join ','))" (Near $px @(0, 0, 255) 24)
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the box was captured' $false $global:WrenErr }
 }
 
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------

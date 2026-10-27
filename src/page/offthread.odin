@@ -147,6 +147,8 @@ Html_Job :: struct {
 	css_opt:    css.Parse_Options,
 	max_sheet:  int,
 	scripting:  bool,             // parsed with the scripting flag: <noscript> holds text (js_load_write.odin)
+	xhtml:      bool,             // application/xhtml+xml: parsed as XML (js_xml_parse.odin)
+	location:   string,           // owned: the document's URL (what an XML parse error says)
 	out:        Parsed_Document,
 	done:       Document_Parsed,
 	user:       rawptr,
@@ -186,8 +188,16 @@ html_work :: proc(data: rawptr) {
 	j.out.decoded = true
 	doc := dom.document_create(nil)
 	j.out.doc = doc
-	j.out.result = html.parse_into(doc, doc.root, text, j.max_nodes)
-	if j.scripting { noscript_as_text(doc) }
+	if j.xhtml {
+		// HTML "load an XML document": an XML document whose elements of the XHTML namespace are HTML elements; one
+		// that is not well-formed shows the parse error
+		dom.get(doc, doc.root).xml = .Document_XHTML
+		_, fits := xml_fill(doc, doc.root, string(text), j.max_nodes, j.location)
+		j.out.result = {ok = true, truncated = !fits}
+	} else {
+		j.out.result = html.parse_into(doc, doc.root, text, j.max_nodes)
+		if j.scripting { noscript_as_text(doc) }
+	}
 	if j.max_sheet < 0 { return }
 	stack := make([dynamic]base.Handle, context.temp_allocator)
 	append(&stack, doc.root)
@@ -209,7 +219,7 @@ html_work :: proc(data: rawptr) {
 @(private)
 html_job_free :: proc(j: ^Html_Job) {
 	parsed_document_destroy(&j.out)
-	delete(j.data); delete(j.charset); delete(j.default_encoding)
+	delete(j.data); delete(j.charset); delete(j.default_encoding); delete(j.location)
 	free(j)
 }
 
@@ -238,10 +248,14 @@ html_done :: proc(data: rawptr) {
 // Decodes (BOM, `header_charset`, <meta> prescan, then html.default_encoding) and parses `data` into a new document,
 // on the blocking pool when preferences allow, then calls `done` on the UI thread with the result, which `done` gives to
 // `adopt_document` (or drops). Called synchronously, before returning, on the fallback path. Not called at all if the
-// page closes first.
-parse_document :: proc(p: ^Page, data: []byte, header_charset: string, done: Document_Parsed, user: rawptr) {
+// page closes first. `mime`: the response's type; application/xhtml+xml is parsed as XML.
+parse_document :: proc(p: ^Page, data: []byte, header_charset: string, done: Document_Parsed, user: rawptr, mime := "") {
 	j := html_job_make(p, data, true, header_charset)
 	j.done, j.user = done, user
+	if mime == "application/xhtml+xml" {
+		j.xhtml = true
+		j.location = strings.clone(p.env.location.href)
+	}
 	ts := &p.settings.threads
 	if pool := blocking_pool(p); pool != nil && ts.parse_html && len(data) >= ts.parse_html_min_bytes {
 		j.out.offthread = true

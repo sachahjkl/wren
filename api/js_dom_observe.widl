@@ -29,6 +29,10 @@ partial module dom {
   /// The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
   /// removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
   Node Range_contents(Node start, u32 start_offset, Node end, u32 end_offset, i32 mode) raises;
+  /// range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+  /// Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+  /// "already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+  Node Range_createContextualFragment(Node start, string markup) raises;
 
   /// The document's selection.
   struct SelectionState {

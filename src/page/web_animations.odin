@@ -54,6 +54,9 @@ Web_Animation :: struct {
 	notify_queued: bool,
 	kept:          bool,
 	queued_events: int,
+	css:           u64,          // a CSS animation's or transition's serial on the style timeline (web_animations_css.odin); 0: a script's
+	css_transition: bool,
+	css_name:      string,       // owned: animationName / transitionProperty
 }
 
 @(private)
@@ -75,6 +78,7 @@ Web_Anims :: struct {
 	updating: bool,
 	now:      f64,                       // the timeline's time for this task (anims_now)
 	now_valid, now_posted: bool,
+	css:      map[u64]u64,               // CSS animations and transitions given to scripts: serial -> Animation (web_animations_css.odin)
 }
 
 web_animation_vt := Object_VTable{name = "Animation", destroy = web_animation_destroy}
@@ -95,6 +99,7 @@ web_anims_destroy :: proc(p: ^Page) {
 	if w.timer != base.NIL_HANDLE { host.clear_timer(p.loop, w.timer) }
 	delete(w.list)
 	delete(w.events)
+	delete(w.css)
 	free(w)
 	p.anim.scripted = nil
 }
@@ -106,12 +111,14 @@ web_animation_destroy :: proc(p: ^Page, data: rawptr) {
 		if w := p.anim.scripted; w != nil {
 			for x, i in w.list { if x == a { ordered_remove(&w.list, i); break } }
 			for i := len(w.events) - 1; i >= 0; i -= 1 { if w.events[i].anim == a.self { ordered_remove(&w.events, i) } }
+			if a.css != 0 { delete_key(&w.css, a.css) }
 		}
-		if p.anim.timeline != nil { style.timeline_script_remove(p.anim.timeline, a.id) }
+		if p.anim.timeline != nil && a.css == 0 { style.timeline_script_remove(p.anim.timeline, a.id) }
 	}
 	for s in a.props { delete(s) }
 	delete(a.props)
 	delete(a.ops)
+	delete(a.css_name)
 	free(a)
 }
 
@@ -150,6 +157,10 @@ anims_zero :: proc(p: ^Page) -> f64 {
 
 @(private)
 anim_end :: proc(a: ^Web_Animation) -> f64 {
+	if a.css != 0 {
+		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		return ok ? info.delay + info.duration * info.iterations : 0
+	}
 	if !a.has_effect { return 0 }
 	t := style.timeline_script_timing(a.page.anim.timeline, a.id)
 	return t != nil ? style.effect_end_time(t^) : 0
@@ -157,6 +168,11 @@ anim_end :: proc(a: ^Web_Animation) -> f64 {
 
 @(private)
 anim_current :: proc(a: ^Web_Animation) -> (f64, bool) {
+	if a.css != 0 {
+		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		if !ok || info.canceled { return 0, false }
+		return info.current, true
+	}
 	if a.has_hold { return a.hold, true }
 	if !a.timeline || !a.has_start { return 0, false }
 	return (anims_now(a.page) - a.start) * a.rate, true
@@ -173,6 +189,15 @@ anim_apply_pending_rate :: proc(a: ^Web_Animation) {
 }
 
 anim_play_state :: proc(a: ^Web_Animation) -> Api_AnimationPlayState {
+	if a.css != 0 {
+		info, ok := style.timeline_css_info(a.page.anim.timeline, a.css)
+		switch {
+		case !ok || info.canceled: return .Idle
+		case info.finished: return .Finished
+		case !info.running: return .Paused
+		}
+		return .Running
+	}
 	cur, has := anim_current(a)
 	if !has && !a.has_start && a.pending == .None { return .Idle }
 	if a.pending == .Pause || (!a.has_start && a.pending != .Play) { return .Paused }
@@ -218,7 +243,7 @@ anim_resolve_ready :: proc(a: ^Web_Animation) {
 @(private)
 anim_changed :: proc(a: ^Web_Animation) {
 	p := a.page
-	if p.closed { return }
+	if p.closed || a.css != 0 { return }   // a CSS one: the style timeline runs it
 	if a.has_effect {
 		clock := style.Script_Clock{start = a.start, hold = a.hold, has_start = a.has_start, has_hold = a.has_hold, rate = a.rate, timeline = a.timeline}
 		if a.replace == .Removed { clock = {rate = 1} }   // removed: no local time, no values
@@ -560,6 +585,7 @@ Animation_setTimeline :: proc(c: ^Call, animation: Api_Animation, document_timel
 
 Animation_play :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 	a := animation.data
+	if a.css != 0 { css_anim_control(a, .Play); return .None }
 	defer anim_changed(a)
 	if !anim_play(a, true) { return fail(c, .Invalid_State, "Cannot play reversed Animation with infinite target effect end.") }
 	return .None
@@ -567,6 +593,7 @@ Animation_play :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 
 Animation_pause :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 	a := animation.data
+	if a.css != 0 { css_anim_control(a, .Pause); return .None }
 	defer anim_changed(a)
 	if !anim_pause(a) { return fail(c, .Invalid_State, "Cannot pause, Animation has infinite target effect end.") }
 	return .None
@@ -574,6 +601,11 @@ Animation_pause :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 
 Animation_finish :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 	a := animation.data
+	if a.css != 0 {
+		if math.is_inf(anim_end(a)) { return fail(c, .Invalid_State, "Cannot finish Animation with an infinite target effect end.") }
+		css_anim_control(a, .Finish)
+		return .None
+	}
 	rate := anim_effective_rate(a)
 	end := anim_end(a)
 	if rate == 0 { return fail(c, .Invalid_State, "Cannot finish Animation with a playbackRate of 0.") }
@@ -600,6 +632,7 @@ Animation_finish :: proc(c: ^Call, animation: Api_Animation) -> Api_Error {
 
 Animation_cancel :: proc(c: ^Call, animation: Api_Animation) {
 	a := animation.data
+	if a.css != 0 { css_anim_control(a, .Cancel); return }
 	if anim_play_state(a) != .Idle {
 		anim_reset_pending(a)
 		if a.finished == .Pending {
@@ -709,6 +742,10 @@ Animation_currentTime :: proc(c: ^Call, animation: Api_Animation) -> f64 {
 
 Animation_set_currentTime :: proc(c: ^Call, animation: Api_Animation, time: f64) -> Api_Error {
 	a := animation.data
+	if a.css != 0 {
+		if !math.is_nan(time) { style.timeline_css_seek(c.page.anim.timeline, a.css, time) }
+		return .None
+	}
 	defer anim_changed(a)
 	if math.is_nan(time) {
 		if _, has := anim_current(a); has { return fail(c, .Type, "currentTime may not be changed from resolved to unresolved") }
@@ -720,6 +757,12 @@ Animation_set_currentTime :: proc(c: ^Call, animation: Api_Animation, time: f64)
 
 Animation_startTime :: proc(c: ^Call, animation: Api_Animation) -> f64 {
 	a := animation.data
+	if a.css != 0 {
+		// a running one started `current` ago on the timeline; a paused or idle one has none
+		cur, has := anim_current(a)
+		if !has || anim_play_state(a) == .Paused { return math.nan_f64() }
+		return style.timeline_now(c.page.anim.timeline) - cur + anims_zero(c.page)
+	}
 	return a.has_start ? a.start + anims_zero(c.page) : math.nan_f64()
 }
 
@@ -767,6 +810,7 @@ Animation_computedTiming :: proc(c: ^Call, animation: Api_Animation, which: i32)
 	a := animation.data
 	nan := math.nan_f64()
 	cur, has := anim_current(a)
+	if a.css != 0 { return which == 0 && has ? cur : nan }
 	if which == 0 { return has && a.has_effect ? cur : nan }
 	t := a.has_effect ? style.timeline_script_timing(c.page.anim.timeline, a.id) : nil
 	if t == nil || !has { return nan }
@@ -778,22 +822,24 @@ Animation_computedTiming :: proc(c: ^Call, animation: Api_Animation, which: i32)
 Animation_relevant :: proc(c: ^Call, root: Api_Node, subtree: bool) -> []u8 {
 	p := c.page
 	d := call_doc(c)
-	w := p.anim.scripted
-	if d == nil || w == nil { return nil }
+	if d == nil { return nil }
+	w := anims_of(p)
 	out := make([dynamic]u8, 0, 8 * len(w.list), context.temp_allocator)
 	r := H(root.handle)
+	in_scope :: proc(d: ^dom.Document, target, r: base.Handle, subtree: bool) -> bool {
+		if r == base.NIL_HANDLE { return dom.is_connected(d, target) }
+		if target == r { return true }
+		if !subtree { return false }
+		for cur := dom.parent_or_host(d, target); cur != base.NIL_HANDLE; cur = dom.parent_or_host(d, cur) {
+			if cur == r { return true }
+		}
+		return false
+	}
+	// CSS transitions, then CSS animations, then the scripts' (Web Animations 1 §5.7 composite order)
+	css_relevant(p, d, r, subtree, in_scope, &out)
 	for a in w.list {
 		if a.target == base.NIL_HANDLE || !anim_relevant(a) || dom.get(d, a.target) == nil { continue }
-		if r == base.NIL_HANDLE {
-			if !dom.is_connected(d, a.target) { continue }
-		} else if a.target != r {
-			if !subtree { continue }
-			inside := false
-			for cur := dom.parent_or_host(d, a.target); cur != base.NIL_HANDLE; cur = dom.parent_or_host(d, cur) {
-				if cur == r { inside = true; break }
-			}
-			if !inside { continue }
-		}
+		if !in_scope(d, a.target, r, subtree) { continue }
 		v := a.self
 		for k in 0 ..< 8 { append(&out, u8(v >> (8 * uint(k)))) }
 	}

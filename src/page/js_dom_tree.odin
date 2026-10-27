@@ -240,6 +240,7 @@ Node_cloneNode :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, Api_Error)
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "cloneNode: this browser has one document per page; the document cannot be cloned") }
 	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be cloned.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
+	scripts_cloned(c.page, H(node.handle), h)   // (js_load_fragment.odin)
 	// a clone of a node of the document is in the document's realm: its custom elements are upgraded (HTML "create an
 	// element": cloning enqueues an upgrade reaction); one of a template's contents stays inert
 	if rn := dom.get(c.page.doc, dom.shadow_including_root(c.page.doc, H(node.handle))); rn == nil || !(rn.kind == .Fragment && rn.held) {
@@ -252,6 +253,7 @@ Document_importNodeCopy :: proc(c: ^Call, node: Api_Node, deep: bool) -> (u64, A
 	if node.data.kind == .Document { return 0, fail(c, .Not_Supported, "importNode: this browser has one document per page; the document cannot be imported") }
 	if node.data.is_shadow { return 0, fail(c, .Not_Supported, "A shadow root cannot be imported.") }
 	h := dom.clone_node(c.page.doc, H(node.handle), deep)
+	scripts_cloned(c.page, H(node.handle), h)
 	custom_elements_cloned(c.page, h)
 	return u64(h), .None
 }
@@ -809,7 +811,13 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
-	h := dom.create_element(d, local_name)
+	h: base.Handle
+	if root := dom.get(d, d.root); dom.is_xml_document(root) {
+		// a page loaded as XML: its elements keep their names' case (application/xhtml+xml: in the HTML namespace)
+		h = xml_create_element(d, root.xml == .Document_XHTML ? dom.NS_HTML : "", "", local_name)
+	} else {
+		h = dom.create_element(d, local_name)
+	}
 	custom_elements_created(c.page, h)   // a defined name: constructed before createElement returns
 	return u64(h), .None
 }
@@ -846,6 +854,7 @@ Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qual
 	if d == nil { return 0, no_document(c) }
 	ns, prefix, local, err := validate_and_extract(c, namespace, qualified_name, true)
 	if err != .None { return 0, err }
+	if dom.is_xml_document(dom.get(d, d.root)) { return u64(xml_create_element(d, ns, prefix, local)), .None }
 	return u64(dom.create_element_ns(d, local, dom.namespace_of(ns), ns, prefix)), .None
 }
 
@@ -888,7 +897,10 @@ Document_inputEncoding :: proc(c: ^Call) -> string { return document_encoding(c.
 @(private)
 document_encoding :: proc(p: ^Page) -> string { return "UTF-8" }
 
-Document_contentType :: proc(c: ^Call) -> string { return "text/html" }
+Document_contentType :: proc(c: ^Call) -> string {
+	if d := jd_doc(c); d != nil && dom.get(d, d.root).xml == .Document_XHTML { return "application/xhtml+xml" }
+	return "text/html"
+}
 
 Document_doctype :: proc(c: ^Call) -> u64 {
 	d := jd_doc(c)

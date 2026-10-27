@@ -672,7 +672,7 @@ frame_document_body :: proc(n: ^Navigable, l: ^Frame_Load, data: []byte) {
 	}
 	switch {
 	case mime == "" || mime == "text/html" || mime == "application/xhtml+xml":
-		parse_document(c, data, l.charset, frame_parsed, n)
+		parse_document(c, data, l.charset, frame_parsed, n, mime)
 	case strings.has_prefix(mime, "text/") || mime == "application/json" || mime == "application/javascript" || strings.has_suffix(mime, "+json") || strings.has_suffix(mime, "+xml") || mime == "application/xml":
 		dec := strings.clone(string(data[:min(len(data), 1 << 20)]), context.temp_allocator)
 		pre := dom.create_element(c.doc, "pre")

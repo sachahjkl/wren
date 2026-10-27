@@ -18,12 +18,12 @@ import "wb:css"
 //
 // Keyframes come packed by the engine (native/js/runtime/web_animations.c): keyframes separated by U+001E, the fields
 // of one separated by U+001F: its computed offset, its easing ("" for linear), then property name / value pairs (CSS
-// names, custom properties included). Each value is parsed for its property alone: a value that would hold another
-// declaration ("red; width: 0") is refused like an invalid one. Keyframes at the same offset stay distinct (the later
-// wins once its offset is reached), as Web Animations says.
+// names, custom properties included; the pair `composite` is the keyframe's own composite operation, over the
+// effect's). Each value is parsed for its property alone: a value that would hold another declaration ("red; width:
+// 0") is refused like an invalid one. Keyframes at the same offset stay distinct (the later wins once its offset is
+// reached), as Web Animations says.
 //
-// Limits: the composite operation of a keyframe is not used (the effect's applies to all of its keyframes); effects on
-// pseudo-elements are not supported (the engine refuses them).
+// Limits: effects on pseudo-elements are not supported (the engine refuses them).
 
 Effect_Phase :: enum u8 { Before, Active, After }
 
@@ -174,6 +174,14 @@ script_keyframes_compile :: proc(e: ^Engine, packed: string, a: runtime.Allocato
 		for i := 2; i + 1 < len(fields); i += 2 {
 			name, value := fields[i], fields[i + 1]
 			if name == "" || strings.trim_space(value) == "" { continue }
+			if name == "composite" {   // (no CSS property has that name) the keyframe's composite operation
+				switch value {
+				case "replace": b.composition, b.has_composition = .Replace, true
+				case "add": b.composition, b.has_composition = .Add, true
+				case "accumulate": b.composition, b.has_composition = .Accumulate, true
+				}
+				continue
+			}
 			if !strings.has_prefix(name, "--") {
 				p, _, known := lookup_property(name)
 				if !known || not_in_keyframes(p) || p == .Animation_Timing_Function { continue }

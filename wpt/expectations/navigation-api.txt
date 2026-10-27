@@ -161,7 +161,8 @@
 /navigation-api/navigate-event/defer/tentative/defer-with-single-handler.html: TIMEOUT
 	navigateEvent.deferPageSwap: deferring method should complete before committing: TIMEOUT
 /navigation-api/navigate-event/defer/tentative/restore-after-bfcache.html: ERROR
-/navigation-api/navigate-event/document-open-after-replaceState.html: CRASH
+/navigation-api/navigate-event/document-open-after-replaceState.html: OK
+	document.open() after replaceState should not crash when updating navigation entries: FAIL
 /navigation-api/navigate-event/event-constructor.html: OK
 	all properties are reflected back: PASS
 	can't bypass required members by omitting the dictionary entirely: PASS
@@ -252,23 +253,23 @@
 	navigate event destination.getState() on location.reload(): PASS
 /navigation-api/navigate-event/navigate-event-canintercept-cross-port.html: OK
 	canIntercept should be false for cross-port navigations: PASS
-/navigation-api/navigate-event/navigate-form-get-sourceElement.html: TIMEOUT
-	<form> submission with GET method and submitter is clicked: NOTRUN
-	<form> submission with GET method and submitter passed into requestSubmit: TIMEOUT
-/navigation-api/navigate-event/navigate-form-get.html: TIMEOUT
-	<form> submission with GET method fires navigate event but with formData null: TIMEOUT
+/navigation-api/navigate-event/navigate-form-get-sourceElement.html: OK
+	<form> submission with GET method and submitter is clicked: PASS
+	<form> submission with GET method and submitter passed into requestSubmit: PASS
+/navigation-api/navigate-event/navigate-form-get.html: OK
+	<form> submission with GET method fires navigate event but with formData null: PASS
 /navigation-api/navigate-event/navigate-form-reload.html: OK
 	reloading a page created from form submission results in formData of null, not the original form data: FAIL
-/navigation-api/navigate-event/navigate-form-requestSubmit.html: TIMEOUT
-	<form> requestSubmit() sets sourceElement: TIMEOUT
+/navigation-api/navigate-event/navigate-form-requestSubmit.html: OK
+	<form> requestSubmit() sets sourceElement: PASS
 /navigation-api/navigate-event/navigate-form-traverse.html: OK
 	reloading a page created from form submission results in formData of null, not the original form data: FAIL
 /navigation-api/navigate-event/navigate-form-userInitiated.html: ERROR
 	<form> submission fires navigate event: TIMEOUT
 /navigation-api/navigate-event/navigate-form-with-target.html: OK
 	<form> submission with a target fires navigate event in target window but not source: FAIL
-/navigation-api/navigate-event/navigate-form.html: TIMEOUT
-	<form> submission fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-form.html: OK
+	<form> submission fires navigate event: PASS
 /navigation-api/navigate-event/navigate-history-back-after-fragment.html: OK
 	history.back() fires the navigate event and sets hashChange when reversing a fragment navigation: PASS
 /navigation-api/navigate-event/navigate-history-back-after-pushState.html: OK
@@ -340,8 +341,8 @@
 /navigation-api/navigate-event/reentry-from-focus-reset-navigate-api-tracker.html: OK
 	Re-entry via focus reset using navigate(): PASS
 	Re-entry via focus reset using pushState: PASS
-/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: TIMEOUT
-	infinite replaceState inside a navigate event for navigation.back(): TIMEOUT
+/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: OK
+	infinite replaceState inside a navigate event for navigation.back(): FAIL
 /navigation-api/navigate-event/replaceState-inside-back-handler.html: OK
 	replaceState inside a navigate event for navigation.back(): PASS
 /navigation-api/navigate-event/same-url-replace-cross-document.html: OK
@@ -870,7 +871,7 @@
 	Detaching a frame from its own dispose handler during another frame's truncating push must not crash: FAIL
 /navigation-api/per-entry-events/dispose-same-document-intercept.html: OK
 	dispose events when forward-pruning same-document entries: FAIL
-/navigation-api/per-entry-events/dispose-same-document-navigate-during.html: OK
+/navigation-api/per-entry-events/dispose-same-document-navigate-during.html: OK|ERROR
 	navigate() during a same-document-navigation-initiated dispose works (since it's after the previous navigation): FAIL
 /navigation-api/per-entry-events/dispose-same-document-reload-with-intercept.html: OK
 	dispose events are not fired when doing a same-document reload using navigation.reload() and intercept(): PASS

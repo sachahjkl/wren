@@ -25,4 +25,16 @@ module navigation {
   string Navigation_pending() raises;
   /// destination.getState() of that navigation: Not_Found when it has none.
   string Navigation_pendingState() raises;
+  /// What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+  /// submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+  struct NavigationSource {
+    u64 source;
+    u64 form;
+    u64 submitter;
+  }
+  NavigationSource Navigation_pendingSource();
+  /// navigation.activation: "<type> <from key>" (type as Navigation_pending's; from key 0: null, the entry of the
+  /// document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
+  /// navigation the browser measured (activation null).
+  string Navigation_activation();
 }

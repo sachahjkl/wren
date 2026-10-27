@@ -247,6 +247,7 @@ foreign _m_dom {
 	@(link_name = "Range_comparePoints") _Range_comparePoints :: proc(first: u64, first_offset: u32, second: u64, second_offset: u32) -> i32 ---
 	@(link_name = "Range_text") _Range_text :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Range_contents") _Range_contents :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, mode: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Range_createContextualFragment") _Range_createContextualFragment :: proc(start: u64, markup: [^]u8, markup_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Selection_state") _Selection_state :: proc(_ret: ^SelectionState) ---
 	@(link_name = "Selection_setRange") _Selection_setRange :: proc(anchor: u64, anchor_offset: u32, focus: u64, focus_offset: u32) -> Error ---
 	@(link_name = "Selection_clear") _Selection_clear :: proc() ---
@@ -341,6 +342,8 @@ foreign _m_dom {
 	@(link_name = "DOMParser_parseXMLNode") _DOMParser_parseXMLNode :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "ProcessingInstruction_target") _ProcessingInstruction_target :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Document_xmlContentType") _Document_xmlContentType :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_createXMLElement") _Document_createXMLElement :: proc(document: u64, namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, with_namespace: i32, _ret: ^Element) -> Error ---
+	@(link_name = "DOMImplementation_createDocument") _DOMImplementation_createDocument :: proc(namespace: [^]u8, namespace_len: u32, qualified_name: [^]u8, qualified_name_len: u32, doctype: u64, _ret: ^Node) -> Error ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
 	@(link_name = "ResizeObserver_create") _ResizeObserver_create :: proc(notify: MicrotaskCallback, user: i32) -> Object ---
@@ -2646,6 +2649,14 @@ Range_contents :: proc "contextless" (start: $T_start, start_offset: u32, end: $
 	return
 }
 
+// range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+// Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+// "already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+Range_createContextualFragment :: proc "contextless" (start: $T_start, markup: string) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 {
+	err = _Range_createContextualFragment(u64(start), raw_data(markup), u32(len(markup)), &result)
+	return
+}
+
 // The selection (offsets in UTF-16 code units for Text nodes).
 Selection_state :: proc "contextless" () -> (result: SelectionState) {
 	_Selection_state(&result)
@@ -3939,6 +3950,29 @@ Document_xmlContentType_alloc :: proc(document: $T_document, allocator: runtime.
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// createElement(localName) (`with_namespace` false) or createElementNS(namespace, qualifiedName) of an XML document
+// (DOMParser's XML types, createDocument): an element of that document, whose names keep their case (tagName as
+// written, attribute names as given); createElement gives it the HTML namespace only in an application/xhtml+xml
+// document. Invalid_Character, Namespace as the others; Not_Found when `document` is not an XML document.
+Document_createXMLElement :: proc "contextless" (document: $T_document, namespace: Maybe(string) = nil, qualified_name: string, with_namespace: bool) -> (result: Element, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	err = _Document_createXMLElement(u64(document), _namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), i32(1 if with_namespace else 0), &result)
+	return
+}
+
+// document.implementation.createDocument(namespace, qualifiedName, doctype): a new inert XMLDocument, with the
+// doctype (a node made by createDocumentType, not in a tree) and its element when the name is not empty; its
+// contentType follows the namespace (application/xhtml+xml, image/svg+xml, else application/xml).
+DOMImplementation_createDocument :: proc "contextless" (namespace: Maybe(string) = nil, qualified_name: string, doctype: $T_doctype) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_doctype)) && size_of(T_doctype) == 8 {
+	_namespace_p: [^]u8
+	_namespace_n := max(u32)
+	if v, ok := namespace.?; ok { _namespace_p, _namespace_n = raw_data(v), u32(len(v)) }
+	err = _DOMImplementation_createDocument(_namespace_p, _namespace_n, raw_data(qualified_name), u32(len(qualified_name)), u64(doctype), &result)
+	return
 }
 
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.

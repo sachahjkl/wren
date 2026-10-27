@@ -101,7 +101,7 @@ open_page :: proc(process: ^base.Scope, source: string, lh: ^Layout_Host, name: 
 	clear(&logs)
 	p := page.page_create(&loop, &loader, &settings, process, fmt.tprintf("http://127.0.0.1:8765/jsdom/%s", name), console)
 	page.set_layout_embedder(p, {user = lh, update = layout_update, viewport = layout_viewport, scroll_to = layout_scroll})
-	page.load_html(p, transmute([]byte)source)
+	page.load_html(p, transmute([]byte)source, strings.has_suffix(name, ".xhtml") ? "application/xhtml+xml" : "")
 	page.js_run(p, transmute([]byte)harness, "harness.js")
 	page.scripts_start(p)
 	start := time.tick_now()
@@ -150,11 +150,11 @@ main :: proc() {
 
 	// the pages named on the command line, or every page of the folder
 	names := make([dynamic]string)
-	for a in os.args[1:] { if strings.has_suffix(a, ".html") { append(&names, strings.clone(filepath.base(a))) } }
+	for a in os.args[1:] { if strings.has_suffix(a, ".html") || strings.has_suffix(a, ".xhtml") { append(&names, strings.clone(filepath.base(a))) } }
 	if len(names) == 0 {
 		infos, err := os.read_all_directory_by_path(PAGES_DIR, context.allocator)
 		if err != nil { fmt.eprintln("cannot read", PAGES_DIR); os.exit(2) }
-		for fi in infos { if strings.has_suffix(fi.name, ".html") && fi.name != "bench.html" && fi.name != "leaks.html" { append(&names, strings.clone(fi.name)) } }
+		for fi in infos { if (strings.has_suffix(fi.name, ".html") || strings.has_suffix(fi.name, ".xhtml")) && fi.name != "bench.html" && fi.name != "leaks.html" { append(&names, strings.clone(fi.name)) } }
 		os.file_info_slice_delete(infos, context.allocator)
 		slice.sort(names[:])
 		append(&names, strings.clone("leaks.html"))

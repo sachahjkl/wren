@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>An XHTML page: parsed as XML</title></head>
+<body>
+<p id="p" myAttr="1">text<br/>after</p>
+<div id="empty"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="1" height="1"/></svg>
+<script><![CDATA[
+section("a page served as application/xhtml+xml", () => {
+  eq("contentType", document.contentType, "application/xhtml+xml");
+  const p = document.getElementById("p");
+  t("its elements in the XHTML namespace", p.namespaceURI === "http://www.w3.org/1999/xhtml" && p instanceof HTMLParagraphElement);
+  eq("tagName as written (not upper-cased)", p.tagName, "p");
+  eq("attribute names keep their case", p.getAttributeNames().join(), "id,myAttr");
+  eq("a self-closed div is empty and closed (not the HTML parser's)", document.getElementById("empty").childNodes.length, 0);
+  eq("and the next element is not inside it", document.getElementById("empty").nextElementSibling.localName, "svg");
+  eq("SVG in its namespace", document.querySelector("svg") && document.querySelector("svg").namespaceURI, "http://www.w3.org/2000/svg");
+  eq("CDATA script ran: body children", document.body.children.length >= 4, true);
+  const made = document.createElement("myElement");
+  eq("createElement keeps the case", made.localName, "myElement");
+  eq("in the XHTML namespace", made.namespaceURI, "http://www.w3.org/1999/xhtml");
+});
+done();
+]]></script>
+</body>
+</html>

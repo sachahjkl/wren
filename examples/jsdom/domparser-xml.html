@@ -6,7 +6,7 @@ const parse = (s, type) => new DOMParser().parseFromString(s, type || "applicati
 
 section("an XML document", () => {
   const doc = parse(`<?xml version="1.0"?><!DOCTYPE root><root xmlns="urn:default" xmlns:x="urn:x" x:attr="1&amp;2"><Child>text &lt;here&gt;</Child><x:item id="i1"/><![CDATA[<raw & data>]]><?app some data?><!--note--></root>`);
-  t("XMLDocument", doc instanceof XMLDocument && doc instanceof Document);
+  t("a Document, not an XMLDocument (only createDocument makes those)", !(doc instanceof XMLDocument) && doc instanceof Document);
   eq("contentType", doc.contentType, "application/xml");
   eq("text/xml contentType", parse("<a/>", "text/xml").contentType, "text/xml");
   const root = doc.documentElement;
