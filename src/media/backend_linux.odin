@@ -1,6 +1,6 @@
 package media
 
-// The platform backend on Linux: the built-in decoders of native/media. Video: AV1 by rav1d (av1_soft.odin) and H.264
+// The platform backend on Linux: the built-in decoders of native/media. Video: AV1 by rav1d and VP9 by vp9dec (av1_soft.odin, vp9_soft.odin) and H.264
 // by openh264 / VA-API (h264_linux.odin). Audio: Symphonia and libopus (audio_decode_rust.odin), played through cpal
 // (audio_out_cpal.odin), or the null output when there is no device or the preference asks for silence. Other codecs
 // answer "not supported" (canPlayType says "", a source falls to its next one or fails as an unsupported format).
@@ -25,7 +25,8 @@ backend_name :: proc() -> string { return "built-in" }
 
 backend_video_decoder :: proc(t: Track, prefer_gpu: bool) -> ^Video_Decoder {
 	#partial switch t.codec {
-	case .AV1:  return av1_soft_create(t)
+	case .AV1:  if software_av1_enabled() { return av1_soft_create(t) }
+	case .VP9:  if software_vp9_enabled() { return vp9_soft_create(t) }
 	case .H264: return h264_create(t, prefer_gpu)
 	}
 	return nil
@@ -43,7 +44,8 @@ backend_audio_output :: proc(rate: int) -> ^Audio_Output {
 
 backend_video_support :: proc(c: Codec) -> Decoder_Support {
 	#partial switch c {
-	case .AV1:  return av1_soft_supported()
+	case .AV1:  if software_av1_enabled() { return av1_soft_supported() }
+	case .VP9:  if software_vp9_enabled() { return vp9_soft_supported() }
 	case .H264: return h264_supported()
 	}
 	return {}

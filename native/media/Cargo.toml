@@ -33,6 +33,11 @@ zenavif-parse = "=0.6.2"
 enough = "=0.4.5"   # zenavif-parse's cancellation token (Unstoppable)
 # AV1: the Rust port of dav1d (dav1d's assembly kernels: NASM at build time)
 rav1d = { version = "=1.1.0", default-features = false, features = ["asm", "bitdepth_8", "bitdepth_16"] }
+# VP9: a from-scratch, clean-room pure-Rust decoder (no C/FFI, no build-time toolchain beyond the Rust compiler), MIT.
+# The media player's software VP9 (src/media/vp9_soft.odin): YouTube's high resolutions on a machine without the
+# system's VP9 decoder. Runtime-detected AVX2 fast paths and tile-parallel decode inside; its output is bit-exact
+# against the official conformance corpus. Pinned exactly and by Cargo.lock.
+vp9dec = "=0.1.1"
 # Colour management (Firefox's): ICC profiles and CICP to sRGB
 qcms = { version = "=0.3.0", default-features = false, features = ["iccv4-enabled"] }
 # WOFF2 web fonts (src/woff2.rs): Dropbox's Brotli decompressor, safe Rust (bounds checks kept: no "unsafe" feature)

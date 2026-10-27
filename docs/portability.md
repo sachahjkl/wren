@@ -52,7 +52,7 @@ Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `fe
 | fetch | own 27 | ok | `file:` paths POSIX off Windows (`directory_unix.odin`: stat, realpath, readdir; natural name order; dot files hidden) |
 | page | own 6 | ok | `screen` from `primary_screen` (Win32; the viewport elsewhere until the toolkit has a display API) |
 | blocker, httpcache | deps | ok | (net, fetch, page) |
-| media | own 21 | ok | `backend_linux.odin`: AV1 by the built-in rav1d decoder (`av1_soft.odin`), the null audio output |
+| media | own 21 | ok | `backend_linux.odin`: AV1 by the built-in rav1d decoder (`av1_soft.odin`) and VP9 by the built-in vp9dec decoder (`vp9_soft.odin`), the null audio output |
 | remote/client | own 40 | ok | `conn_linux.odin` (Unix socket), `spawn_linux.odin` (posix_spawn, /proc) |
 | remote | ok (no server) | ok, server | `server_linux.odin` on a Unix socket |
 | tools/crashtrace | own 116 | ok | `crashtrace_linux.odin` |
@@ -96,7 +96,8 @@ of `media`, `desktop` and `webauthn` for Linux, a page with `<audio>` / `<video>
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media
-  Foundation (and could fall back to it when MF has no AV1 decoder: not wired).
+  Foundation and now falls back to the software decoder when MF has no AV1 decoder (`backend_windows.odin`,
+  `media.software.av1_fallback`).
 - **Audio, next**: `symphonia` (AAC-LC, MP3, FLAC, Vorbis, PCM; pure Rust) for decoding, Opus by libopus (`opus` crate,
   C built by cc: no pure-Rust decoder is mature), `cpal` (ALSA, which PipeWire and PulseAudio serve) for the output, in
   `native/media`, behind `Audio_Decoder` / `Audio_Output`. New crates: pinned, `THIRD_PARTY.md`, `native/rust-crates.txt`.
@@ -106,7 +107,10 @@ of `media`, `desktop` and `webauthn` for Linux, a page with `<audio>` / `<video>
   (VA-API directly, or GStreamer / FFmpeg, out of scope by the brief). Proposal: VA-API for H.264 / HEVC / VP9 where the
   GPU has it (the Linux counterpart of DXVA), and openh264's downloaded binary as the software fallback, behind a
   preference, the way Firefox does.
-- **VP8 / VP9**: libvpx (C) or VA-API; nothing in pure Rust is ready.
+- **VP9**: vp9dec (a from-scratch pure-Rust decoder, MIT, no C/FFI), in software, on every system (`vp9_soft.odin`),
+  the same way as AV1; Windows falls back to it when Media Foundation has no VP9 decoder (`media.software.vp9_fallback`).
+  YouTube serves VP9 for its high resolutions, so this is what plays them on a machine without the VP9 Store extension.
+- **VP8**: no pure-Rust decoder is ready; VA-API where the GPU has it, or libvpx (C), is the remaining option.
 
 ## Inventory of slice 1 (2026-10-27)
 

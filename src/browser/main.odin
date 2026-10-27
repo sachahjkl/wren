@@ -729,6 +729,8 @@ page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	if shell_nested() {
 		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
+		// the video fast path: keep a video playing over the frozen page (video_fast_path.odin)
+		if t != nil && t.kind == .Web { video_fast_path_overlay(app, t, dc, b.rect) }
 		return
 	}
 	for other in wnd.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use

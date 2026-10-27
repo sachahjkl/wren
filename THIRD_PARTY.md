@@ -22,6 +22,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [image](https://github.com/image-rs/image) (PNG, JPEG, GIF, BMP, ICO, TIFF; png, zune-jpeg, gif, tiff, moxcms) | 0.25.10 | MIT OR Apache-2.0 | `native/media` |
 | [zenavif-parse](https://crates.io/crates/zenavif-parse) | 0.6.2 | MPL-2.0 | `native/media` |
 | [rav1d](https://github.com/memorysafety/rav1d) | 1.1.0 | BSD-2-Clause | `native/media` |
+| [vp9dec](https://github.com/ChanyaVRC/vp9dec) | 0.1.1 | MIT | `native/media` (software VP9) |
 | [qcms](https://github.com/FirefoxGraphics/qcms) | 0.3.0 | MIT | `native/media` |
 | [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) | 6.1.0 | BSD-3-Clause OR MIT | `native/media` |
 | [Symphonia](https://github.com/pdeljanov/Symphonia) (AAC-LC, MP3, FLAC, Vorbis, PCM audio decoding) | 0.5.4 | MPL-2.0 | `native/media` (Linux / macOS audio) |

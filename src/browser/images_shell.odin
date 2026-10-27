@@ -94,6 +94,7 @@ images_shell_init :: proc(app: ^App) {
 	shell.next_ms = -1
 	set_replaced_sizes(lay.Replaced_Api{user = app, intrinsic = shell_intrinsic, ratio = shell_ratio})
 	video_shell_init(app)
+	video_fast_path_init(app)
 }
 
 // The natural ratio of a replaced element that has no natural size (an SVG image or inline <svg> with only a viewBox).
@@ -157,6 +158,7 @@ images_set_texture_api :: proc(api: Texture_Api) {
 
 images_shell_destroy :: proc(app: ^App) {
 	canvas_gpu_destroy(app)
+	video_fast_path_destroy(app)
 	video_shell_destroy(app)
 	release_all_textures()
 	delete(shell.textures)
@@ -238,6 +240,7 @@ images_paint_begin_frame :: proc(app: ^App) {
 	}
 	page.images_paint_begin()
 	video_shell_begin_frame(app)
+	video_fast_path_begin_frame(app)
 	canvas_gpu_begin_frame(app)
 	shell.epoch += 1
 	shell.now_ms = f64(host.now_ns(&app.loop)) / 1e6
