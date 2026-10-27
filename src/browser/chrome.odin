@@ -202,7 +202,12 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		ui.a11y({name = i18n.tr("Address and search bar"), shortcut = "Ctrl+L"})
 		res = ui.line_edit("###address", &wnd.address, i18n.tr("Search or enter an address"))
 		field_radius := res.box != nil ? res.box.radius : em * 0.5
-		security_chip(app, t, inset, h - 2 * inset, max(field_radius - inset, 0))
+		// The focus ring (the toolkit draws it 1.5 scale units wide, over the field's border) is wider than the border: a chip
+		// that starts one border in repaints the inner half of the ring where it covers, so the ring goes from two pixels to
+		// one and back at the chip's divider (a double border). The focused bar's chip starts where the ring ends.
+		seg_inset := inset
+		if !classic_on() && ui.focus_key() == window_own(app).address_key { seg_inset = max(math.ceil(1.5 * ui.scale()), inset) }
+		security_chip(app, t, seg_inset, h - 2 * seg_inset, max(field_radius - seg_inset, 0))
 	}
 	if bw := active_window(app); bw.focus_address {
 		bw.focus_address = false
