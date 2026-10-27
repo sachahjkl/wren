@@ -11,9 +11,11 @@ package browser
 // so the browser composes once per video frame; a paused video asks for nothing.
 
 import "core:fmt"
+import "core:math"
 import "core:strings"
 import "core:time"
 import "toolkit:draw"
+import "toolkit:font"
 import "toolkit:render"
 import "wb:base"
 import "wb:host"
@@ -219,8 +221,55 @@ video_paint_content :: proc(dc: ^draw.Context, p: ^page.Page, node: base.Handle,
 		draw.image(dc, t.tex, dst, {}, draw.Color{1, 1, 1, 1})
 		if clip { draw.pop_clip(dc) }
 		vshell.painted += 1
+		// the fast path: remember this video's picture and where it sits so a chrome frame can keep it moving while a
+		// long script freezes the rest of the page (video_fast_path.odin). Eligible only when it fills its box opaquely
+		// and nothing is drawn over it, so overlaying it over the page's last frame cannot show a wrong pixel.
+		video_fast_path_record(app, p, node, t.tex, dst, !clip && !view.paused)
 	}
+	video_paint_subtitles(dc, app, p, node, content, scale)
 	return true
+}
+
+// Draws the active cues of a video's showing text tracks over its box (the ::cue defaults: white text on a translucent
+// black box, near the bottom). The cue layer sits in the page, over the video, so it follows scroll and transforms like
+// the picture; the page is not restyled for it. Text tracks and this layer are native (no script runs to lay cues out).
+@(private = "file")
+video_paint_subtitles :: proc(dc: ^draw.Context, app: ^App, p: ^page.Page, node: base.Handle, content: draw.Rect, scale: f32) {
+	lines := page.media_subtitle_lines(p, node)
+	if len(lines) == 0 { return }
+	f := app.ui_font
+	cw := content.max.x - content.min.x
+	ch := content.max.y - content.min.y
+	if cw <= 0 || ch <= 0 { return }
+	// a cue is sized to the box: ~5% of the height, clamped so a tiny inline video stays legible and a huge one is not shouted at
+	size := math.round(clamp(ch * 0.055, 13 * scale, 44 * scale))
+	m := font.metrics(&app.fonts, f, size)
+	line_h := m.line_height
+	pad := math.round(size * 0.25)
+	bottom := content.max.y - math.round(ch * 0.06)   // a little above the very bottom (controls live there)
+	// lay the lines from the bottom up, so the first cue line sits highest
+	y := bottom - f32(len(lines)) * line_h
+	for ln in lines {
+		// the line's text, joined; bold / italic / underline of its runs are not reflected by the single UI font here,
+		// but the text itself is complete
+		b := strings.builder_make(context.temp_allocator)
+		for r in ln.runs { strings.write_string(&b, r.text) }
+		text := strings.to_string(b)
+		if text == "" { y += line_h; continue }
+		tw := font.text_width(&app.fonts, f, size, text)
+		x: f32
+		switch ln.align {
+		case 1: x = content.min.x + pad * 2
+		case 2: x = content.max.x - pad * 2 - tw
+		case: x = content.min.x + (cw - tw) * 0.5
+		}
+		box := draw.Rect{{x - pad, y - m.ascent - pad * 0.3}, {x + tw + pad, y + m.descent + pad * 0.3}}
+		box.min.x = max(box.min.x, content.min.x)
+		box.max.x = min(box.max.x, content.max.x)
+		draw.rect(dc, box, draw.Color{0, 0, 0, 0.6})
+		draw.text(dc, f, size, {math.round(x), math.round(y)}, draw.Color{1, 1, 1, 1}, text)
+		y += line_h
+	}
 }
 
 // Profile build: what the videos did, for the report (prof.odin). The cadence is the time between two pictures reaching

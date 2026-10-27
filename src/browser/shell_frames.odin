@@ -51,6 +51,8 @@ SHELL_FRAME_PREFS := [?]config.Def{
 		description = "Keep a copy of each tab's last page frame on the GPU (the page area's size, 4 bytes per pixel), shown while the page is busy and scrolled at once by the wheel. Off: a busy page shows its canvas color."},
 	{name = "browser.shell.snapshot_tabs", kind = .Int, default = {i = 4}, bounded = true, min = 1, max = 64, unit = "tabs",
 		description = "Tabs whose last page frame is kept (browser.shell.snapshot): the current one and the ones shown most recently."},
+	{name = "browser.video.fast_path", kind = .String, default = {s = "auto"}, choices = {"auto", "off", "verify"},
+		description = "While a page is busy (a long script), keep playing a video that fills its box by drawing its newest picture over the page's last frame, so the video does not freeze with the rest of the page. auto: on. off: the video freezes with the page. verify: a diagnostic mode that also records the normal path and reports in the console when the fast path would differ from it."},
 }
 
 register_shell_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, SHELL_FRAME_PREFS[:]) }
