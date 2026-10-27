@@ -391,7 +391,9 @@ shell_chrome_frame :: proc(app: ^App) {
 	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
+	partial_redraw_frame_begin(app)   // partial_redraw.odin
 	ui.draw_tree(wnd.ui, &app.dc)
+	partial_redraw_mark_chrome(app)   // partial_redraw.odin: the page's damage is marked by the compositor during draw_tree
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
 	remote_capture_arm(app)   // remote_shell.odin: a capture of this window

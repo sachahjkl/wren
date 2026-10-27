@@ -1085,6 +1085,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	app.show_console = app.cfg.show_console
+	gpu_apply_prefs(app)   // partial_redraw.odin: browser.gpu.partial_redraw / _verify -> the renderer
 	if .Downloads in groups { downloads_apply(app); prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
@@ -1255,10 +1256,12 @@ frame :: proc(app: ^App, idled := false) {
 	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
+	partial_redraw_frame_begin(app)   // partial_redraw.odin: open the damage region; the compositor marks the page's, the chrome marks its own
 	prof_begin(.UI_Draw)
 	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
+	partial_redraw_mark_chrome(app)   // partial_redraw.odin: the chrome (tabs, toolbar, dialogs) is marked conservatively until the UI tree tracks its own damage
 	prof_end(.UI_Draw)
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
