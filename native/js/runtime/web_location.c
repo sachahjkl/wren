@@ -198,6 +198,9 @@ static JSValue state_decode(JSContext *ctx, const char *s, size_t n)
     return r;
 }
 
+char *web_state_encode(JSContext *ctx, JSValueConst v, size_t *out_len) { return state_encode(ctx, v, out_len); }
+JSValue web_state_decode(JSContext *ctx, const char *s, size_t n) { return state_decode(ctx, s, n); }
+
 /* ---- History ---- */
 
 typedef struct web_history {

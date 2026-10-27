@@ -1,0 +1,1067 @@
+# web-platform-tests expectations of Wren for navigation-api, written by tools\wpt.ps1 -Update
+# <test>: OK|ERROR|TIMEOUT|CRASH|PRECONDITION_FAILED, then its subtests (tab): PASS|FAIL|TIMEOUT|NOTRUN|PRECONDITION_FAILED; "A|B" accepts either
+/navigation-api/currententrychange-event/anchor-click.html: OK
+	currententrychange fires for link click: PASS
+/navigation-api/currententrychange-event/constructor.html: OK
+	all properties are reflected back: PASS
+	can't bypass required members by omitting the dictionary entirely: PASS
+	defaults are as expected: PASS
+	from is required: PASS
+/navigation-api/currententrychange-event/history-back-same-doc.html: OK
+	currententrychange fires for history.back(): PASS
+/navigation-api/currententrychange-event/history-pushState.html: OK
+	currententrychange fires for history.pushState(): PASS
+/navigation-api/currententrychange-event/history-replaceState.html: OK
+	currententrychange fires for history.replaceState(): PASS
+/navigation-api/currententrychange-event/location-api.html: OK
+	currententrychange fires for location API navigations: FAIL
+/navigation-api/currententrychange-event/navigate-from-initial-about-blank-same-doc-popup.html: OK
+	currententrychange does not fire when navigating away from the initial about:blank (popup window): FAIL
+/navigation-api/currententrychange-event/navigate-from-initial-about-blank-same-doc.html: OK
+	currententrychange does not fire when navigating away from the initial about:blank: FAIL
+/navigation-api/currententrychange-event/navigate-from-initial-about-blank.html: OK
+	currententrychange does not fire when navigating away from the initial about:blank: FAIL
+/navigation-api/currententrychange-event/navigation-back-forward-cross-doc.html: OK
+	currententrychange does not fire for cross-document navigation.back() and navigation.forward(): FAIL
+/navigation-api/currententrychange-event/navigation-back-forward-same-doc.html: OK
+	currententrychange fires for same-document navigation.back() and navigation.forward(): PASS
+/navigation-api/currententrychange-event/navigation-navigate-cross-doc.html: OK
+	currententrychange does not fire for cross-document navigation.navigate(): FAIL
+/navigation-api/currententrychange-event/navigation-navigate-intercept.html: OK
+	currententrychange fires for navigation.navigate() intercepted by intercept(): FAIL
+/navigation-api/currententrychange-event/navigation-navigate-preventDefault.html: OK
+	currententrychange does not fire when onnavigate preventDefault() is called: PASS
+/navigation-api/currententrychange-event/navigation-navigate-replace-cross-doc.html: OK
+	currententrychange does not fire for cross-document navigation.navigate() with replace: FAIL
+/navigation-api/currententrychange-event/navigation-navigate-replace-intercept.html: OK
+	currententrychange fires for navigation.navigate() with replace intercepted by intercept(): FAIL
+/navigation-api/currententrychange-event/navigation-navigate-replace-same-doc.html: OK
+	currententrychange fires for navigation.navigate() with replace: PASS
+/navigation-api/currententrychange-event/navigation-navigate-same-doc.html: OK
+	currententrychange fires for navigation.navigate(): PASS
+/navigation-api/currententrychange-event/navigation-reload-cross-doc.html: OK
+	currententrychange does not fire for cross-document navigation.reload(): FAIL
+/navigation-api/currententrychange-event/navigation-reload-intercept.html: OK
+	currententrychange fires for navigation.reload() intercepted by intercept(): FAIL
+/navigation-api/currententrychange-event/navigation-updateCurrentEntry.html: OK
+	currententrychange fires for navigation.updateCurrentEntry(): PASS
+/navigation-api/currententrychange-event/not-on-load.html: OK
+	No navigation API events happen on initial page load: PASS
+/navigation-api/currententrychange-event/properties.html: OK
+	NavigationCurrentEntryChangeEvent's properties: PASS
+/navigation-api/focus-reset/autofocus.html?delayed-checkpoint: ERROR
+	An element with autofocus, introduced after finished, does not get focused: NOTRUN
+	An element with autofocus, introduced between committed and finished, gets focused: NOTRUN
+	An element with autofocus, present before navigation but disabled before finished, does not get focused: NOTRUN
+	An element with autofocus, present before navigation but with its autofocus attribute removed before finished, does not get focused: NOTRUN
+	An element with autofocus, present before navigation, gets focused: NOTRUN
+	Two elements with autofocus, present before navigation, but the first gets disabled; the second gets focused: NOTRUN
+	Two elements with autofocus, present before navigation; the first gets focused: NOTRUN
+/navigation-api/focus-reset/autofocus.html?same-checkpoint: ERROR
+	An element with autofocus, introduced after finished, does not get focused: NOTRUN
+	An element with autofocus, introduced between committed and finished, gets focused: NOTRUN
+	An element with autofocus, present before navigation but disabled before finished, does not get focused: NOTRUN
+	An element with autofocus, present before navigation but with its autofocus attribute removed before finished, does not get focused: NOTRUN
+	An element with autofocus, present before navigation, gets focused: NOTRUN
+	Two elements with autofocus, present before navigation, but the first gets disabled; the second gets focused: NOTRUN
+	Two elements with autofocus, present before navigation; the first gets focused: NOTRUN
+/navigation-api/focus-reset/basic.html: TIMEOUT
+	Does not reset the focus when focusReset is set to 'manual': NOTRUN
+	Does not reset the focus when no navigate handler is present: TIMEOUT
+	Invalid values for focusReset throw: PASS
+	Resets the focus when focusReset is explicitly set to 'after-transition': NOTRUN
+	Resets the focus when focusReset is explicitly set to undefined: NOTRUN
+	Resets the focus when no focusReset option is provided: NOTRUN
+	Resets the focus when no focusReset option is provided (nontrivial fulfilled promise): NOTRUN
+	Resets the focus when no focusReset option is provided (rejected promise): NOTRUN
+/navigation-api/focus-reset/change-focus-again-in-blur-during-intercept.html: OK
+	change-focus-again-in-blur-during-intercept: FAIL
+/navigation-api/focus-reset/change-focus-back-to-origial-during-intercept.html: OK
+	change-focus-back-to-origial-during-intercept: FAIL
+/navigation-api/focus-reset/change-focus-during-intercept.html: OK
+	change-focus-during-intercept: PASS
+/navigation-api/focus-reset/change-focus-then-remove-during-intercept.html: OK
+	change-focus-then-remove-during-intercept: PASS
+/navigation-api/focus-reset/focus-reset-timing.html: OK
+	Focus should be reset before navigateerror: FAIL
+	Focus should be reset before navigatesuccess: PASS
+/navigation-api/focus-reset/multiple-intercept.html: TIMEOUT
+	(not provided) + after-transition: TIMEOUT
+	(not provided) + manual: NOTRUN
+	after-transition + (not provided): NOTRUN
+	after-transition + manual: NOTRUN
+	manual + (not provided): NOTRUN
+	manual + after-transition: NOTRUN
+/navigation-api/navigate-event/cross-origin-traversal-does-not-fire-navigate.html: OK
+	A cross-origin traversal does not fire the navigate event: FAIL
+/navigation-api/navigate-event/cross-origin-traversal-redirect.html: OK
+	A traversal that redirects from same-origin to cross-origin fires the navigate event: FAIL
+/navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/click-crossdocument-crossorigin.html: TIMEOUT
+	clicking on an <a> element that navigates cross-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/click-crossdocument-sameorigin.html: OK
+	clicking on an <a> element that navigates cross-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/click-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/click-samedocument-crossorigin.html: TIMEOUT
+	clicking on an <a> element that navigates same-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/click-samedocument-sameorigin.html: OK
+	clicking on an <a> element that navigates same-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/location-crossdocument-crossorigin.html: OK
+	using location.href to navigate cross-document targeting a cross-origin window: PASS
+/navigation-api/navigate-event/cross-window/location-crossdocument-sameorigin.html: OK
+	using location.href to navigate cross-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/location-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/location-samedocument-crossorigin.html: TIMEOUT
+	using location.href to navigate same-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/location-samedocument-sameorigin.html: OK
+	using location.href to navigate same-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/open-crossdocument-crossorigin.html: OK
+	using window.open() to navigate cross-document targeting a cross-origin window: PASS
+/navigation-api/navigate-event/cross-window/open-crossdocument-sameorigin.html: OK
+	using window.open() to navigate cross-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/open-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/open-samedocument-crossorigin.html: TIMEOUT
+	using window.open() to navigate same-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/open-samedocument-sameorigin.html: OK
+	using window.open() to navigate same-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/submit-crossdocument-crossorigin.html: TIMEOUT
+	submitting a <form> element that navigates cross-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/submit-crossdocument-sameorigin.html: OK
+	submitting a <form> element that navigates cross-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin-sameorigindomain.sub.html: ERROR
+/navigation-api/navigate-event/cross-window/submit-samedocument-crossorigin.html: TIMEOUT
+	submitting a <form> element that navigates same-document targeting a cross-origin window: TIMEOUT
+/navigation-api/navigate-event/cross-window/submit-samedocument-sameorigin.html: OK
+	submitting a <form> element that navigates same-document targeting a same-origin window: FAIL
+/navigation-api/navigate-event/dangling-navigate-event-after-bfcache-restore.html: OK
+	navigateerror should not fire when calling pushState after restoring from bfcache: FAIL
+/navigation-api/navigate-event/defaultPrevented-navigation-preempted.html: OK
+	navigateEvent.defaultPrevented isn't affected when the navigation is preempted after dispatch: FAIL
+/navigation-api/navigate-event/defaultPrevented-window-stop-after-dispatch.html: OK
+	window.stop() doesn't affect navigateEvent.defaultPrevented after dispatch: FAIL
+/navigation-api/navigate-event/defer/tentative/defer-after-dispatch.html: OK
+	event.deferPageSwap() throws if used after the dispatch phase: FAIL
+/navigation-api/navigate-event/defer/tentative/defer-back.html: TIMEOUT
+	\n  navigateEvent.deferPageSwap: deferring is not allowed for cross-document traverse\n  navigations\n: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-cross-origin.html: TIMEOUT
+	navigateEvent.deferPageSwap: deferring is not allowed for cross-origin navigations: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-restore-callback-abort.html: TIMEOUT
+	\n  navigateEvent.deferPageSwap: deferring method should complete before\n  committing\n: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-same-document.html: TIMEOUT
+	\n  navigateEvent.deferPageSwap: deferring is not allowed for same-document navigations\n: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-with-multiple-handlers-and-single-reject.html: TIMEOUT
+	\n  navigateEvent.deferPageSwap: rejecting a single handler resumes navigation and ignores\n  other handlers\n: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-with-multiple-handlers.html: TIMEOUT
+	\n  navigateEvent.deferPageSwap: multiple deferring methods should complete before\n  committing\n: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-with-single-handler-reject.html: TIMEOUT
+	navigateEvent.deferPageSwap: rejecting a handler does not stop navigation: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/defer-with-single-handler.html: TIMEOUT
+	navigateEvent.deferPageSwap: deferring method should complete before committing: TIMEOUT
+/navigation-api/navigate-event/defer/tentative/restore-after-bfcache.html: ERROR
+/navigation-api/navigate-event/document-open-after-replaceState.html: CRASH
+/navigation-api/navigate-event/event-constructor.html: OK
+	all properties are reflected back: PASS
+	can't bypass required members by omitting the dictionary entirely: PASS
+	defaults are as expected: PASS
+	destination is required: PASS
+	hasUAVisualTransition is default false: PASS
+	signal is required: PASS
+/navigation-api/navigate-event/intercept-after-dispatch.html: OK
+	event.intercept() throws if used after the dispatch phase: PASS
+/navigation-api/navigate-event/intercept-and-navigate.html: OK
+	Using intercept() then navigate() in the ensuing currententrychange should abort the finished promise (but not the committed promise): PASS
+/navigation-api/navigate-event/intercept-canceled-event.html: OK
+	event.intercept() throws if used on a canceled event: PASS
+/navigation-api/navigate-event/intercept-cross-document-same-origin.html: OK
+	event.intercept() intercepts a same-origin cross-document navigation: PASS
+/navigation-api/navigate-event/intercept-cross-origin-focus-without-user-activation.html: OK
+	Navigation API intercept() focus reset should work if navigation was user-initiated: FAIL
+	Navigation API intercept() focus reset shouldn't bypass focus-without-user-activation permissions policy: FAIL
+/navigation-api/navigate-event/intercept-cross-origin.html: OK
+	event.intercept() should throw if called for a cross origin navigation: FAIL
+/navigation-api/navigate-event/intercept-detach-multiple.html: OK
+	event.intercept() throws if used on an event from a detached iframe: FAIL
+/navigation-api/navigate-event/intercept-detach.html: OK
+	event.intercept() throws if used on an event from a detached iframe: FAIL
+/navigation-api/navigate-event/intercept-handler-null-or-undefined.html: OK
+	event.intercept() should not throw if the handler is explicit undefined: PASS
+	event.intercept() should throw if the handler is null: PASS
+/navigation-api/navigate-event/intercept-handler-returns-non-promise.html: OK
+	event.intercept() should resolve immediately if the handler doesn't return a promise: PASS
+/navigation-api/navigate-event/intercept-handler-throws.html: OK
+	event.intercept() should abort if the handler throws: PASS
+/navigation-api/navigate-event/intercept-history-pushState.html: OK
+	event.intercept() should proceed if the given promise resolves: PASS
+/navigation-api/navigate-event/intercept-history-replaceState.html: OK
+	event.intercept() should proceed if the given promise resolves: PASS
+/navigation-api/navigate-event/intercept-multiple-times-reject.html: OK
+	event.intercept() is called multiple times and one of the promises rejects: PASS
+/navigation-api/navigate-event/intercept-multiple-times.html: OK
+	navigation.navigate() returns a finished promise that awaits all promises if event.intercept() is called multiple times: PASS
+/navigation-api/navigate-event/intercept-navigation-back.html: OK
+	event.intercept() can intercept navigation.back(): PASS
+/navigation-api/navigate-event/intercept-on-synthetic-event.html: OK
+	event.intercept() throws if invoked on a synthetic event: PASS
+/navigation-api/navigate-event/intercept-popstate-no-handler.html: OK
+	event.intercept() should provide popstate with a valid state object: PASS
+/navigation-api/navigate-event/intercept-popstate.html: OK
+	event.intercept() should provide popstate with a valid state object 2: PASS
+/navigation-api/navigate-event/intercept-reject.html: OK
+	event.intercept() should abort if the given promise rejects: PASS
+/navigation-api/navigate-event/intercept-resolve.html: OK
+	event.intercept() should proceed if the given promise resolves: PASS
+/navigation-api/navigate-event/intercept-same-document-history-back.html: OK
+	event.intercept() can intercept same-document history.back(): PASS
+/navigation-api/navigate-event/intercepted-navigation-after-bfcache-restore.html: OK
+	An intercepted navigation that is ongoing when entering the BFCache should finish after restoring: FAIL
+/navigation-api/navigate-event/navigate-anchor-cross-origin.html: TIMEOUT
+	<a> cross-origin navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-anchor-download-userInitiated.html: ERROR
+	<a download> click fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-anchor-download.html: TIMEOUT
+	<a> fires navigate and populates downloadRequest with '': TIMEOUT
+	<a> fires navigate and populates downloadRequest with 'filename': TIMEOUT
+	<area> fires navigate and populates downloadRequest with '': TIMEOUT
+	<area> fires navigate and populates downloadRequest with 'filename': TIMEOUT
+/navigation-api/navigate-event/navigate-anchor-fragment.html: OK
+	Fragment <a> click fires navigate event: FAIL
+/navigation-api/navigate-event/navigate-anchor-same-origin-cross-document.html: OK
+	<a> cross-document (but same-origin) navigate event: FAIL
+/navigation-api/navigate-event/navigate-anchor-same-url.html: OK
+	<a> to identical url is a replace navigation: FAIL
+/navigation-api/navigate-event/navigate-anchor-userInitiated.html: ERROR
+	Fragment <a> click fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-anchor-with-target.html: OK
+	<a> with a target fires navigate event in target window but not source: FAIL
+/navigation-api/navigate-event/navigate-destination-after-detach.html: OK
+	navigate event destination after iframe detach: FAIL
+/navigation-api/navigate-event/navigate-destination-dynamic-index.html: OK
+	navigate event destination.index should be dynamic: FAIL
+/navigation-api/navigate-event/navigate-destination-getState-back-forward.html: OK
+	navigate event destination.getState() on back/forward navigation: PASS
+/navigation-api/navigate-event/navigate-destination-getState-fragment-via-href.html: OK
+	navigate event destination.getState() carries over the previous entry's state on a user-initiated fragment navigation: FAIL
+/navigation-api/navigate-event/navigate-destination-getState-fragment-via-navigate.html: OK
+	navigate event destination.getState() carries over the previous entry's state on a user-initiated fragment navigation: PASS
+/navigation-api/navigate-event/navigate-destination-getState-navigate.html: OK
+	navigate event destination.getState() should be the state given to navigate(): PASS
+/navigation-api/navigate-event/navigate-destination-getState-reload.html: OK
+	navigate event destination.getState() on location.reload(): PASS
+/navigation-api/navigate-event/navigate-event-canintercept-cross-port.html: OK
+	canIntercept should be false for cross-port navigations: PASS
+/navigation-api/navigate-event/navigate-form-get-sourceElement.html: TIMEOUT
+	<form> submission with GET method and submitter is clicked: NOTRUN
+	<form> submission with GET method and submitter passed into requestSubmit: TIMEOUT
+/navigation-api/navigate-event/navigate-form-get.html: TIMEOUT
+	<form> submission with GET method fires navigate event but with formData null: TIMEOUT
+/navigation-api/navigate-event/navigate-form-reload.html: OK
+	reloading a page created from form submission results in formData of null, not the original form data: FAIL
+/navigation-api/navigate-event/navigate-form-requestSubmit.html: TIMEOUT
+	<form> requestSubmit() sets sourceElement: TIMEOUT
+/navigation-api/navigate-event/navigate-form-traverse.html: OK
+	reloading a page created from form submission results in formData of null, not the original form data: FAIL
+/navigation-api/navigate-event/navigate-form-userInitiated.html: ERROR
+	<form> submission fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-form-with-target.html: OK
+	<form> submission with a target fires navigate event in target window but not source: FAIL
+/navigation-api/navigate-event/navigate-form.html: TIMEOUT
+	<form> submission fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-history-back-after-fragment.html: OK
+	history.back() fires the navigate event and sets hashChange when reversing a fragment navigation: PASS
+/navigation-api/navigate-event/navigate-history-back-after-pushState.html: OK
+	history.back() fires the navigate event when reversing a pushState(): PASS
+/navigation-api/navigate-event/navigate-history-back-bfcache.html: ERROR
+/navigation-api/navigate-event/navigate-history-back-cross-document.html: OK
+	navigate event for history.back() - cross-document: FAIL
+/navigation-api/navigate-event/navigate-history-back-noop.html: OK
+	history.back() does not fire a navigate event when there's nothing to navigate: FAIL
+/navigation-api/navigate-event/navigate-history-go-0.html: OK
+	history.go(0) fires the navigate event: FAIL
+/navigation-api/navigate-event/navigate-history-pushState.html: OK
+	history.pushState() fires the navigate event: PASS
+/navigation-api/navigate-event/navigate-history-replaceState.html: OK
+	history.replaceState() fires the navigate event: PASS
+/navigation-api/navigate-event/navigate-history-traversal-during-onnavigate-should-reject.html: OK
+	Test that await navigation.back().finished during onnavigate should reject: FAIL
+/navigation-api/navigate-event/navigate-history-traversal-during-onnavigate.html: OK
+	Test that navigation.back() silently aborts during onnavigate: FAIL
+	Test that navigation.traverseTo() works during onnavigate: FAIL
+/navigation-api/navigate-event/navigate-iframe-location.html: OK
+	location API on another window fires navigate event in the target window only: FAIL
+/navigation-api/navigate-event/navigate-location.html: OK
+	location API fires navigate event: FAIL
+/navigation-api/navigate-event/navigate-meta-refresh.html: OK
+	<meta> refresh fires navigate event: FAIL
+/navigation-api/navigate-event/navigate-multiple-history-pushState.html: OK
+	history.pushState() called multiple times gives correct event order: FAIL
+/navigation-api/navigate-event/navigate-multiple-location.html: OK
+	location.href set multiple times gives correct event order: FAIL
+/navigation-api/navigate-event/navigate-multiple-navigation-navigate.html: OK
+	navigation.navigate() multiple times gives correct event order: FAIL
+/navigation-api/navigate-event/navigate-multiple-nested-navigateerror.html: OK
+	aborting a navigation repeatedly aborts navigations started from navigateerror handlers: FAIL
+/navigation-api/navigate-event/navigate-navigation-back-cross-document.html: OK
+	navigate event for navigation.back() - cross-document: FAIL
+/navigation-api/navigate-event/navigate-navigation-back-same-document-in-iframe.html: OK
+	navigate event for navigation.back() - same-document in an iframe: FAIL
+/navigation-api/navigate-event/navigate-navigation-back-same-document.html: OK
+	navigate event for navigation.back() - same-document: PASS
+/navigation-api/navigate-event/navigate-navigation-navigate.html: OK
+	navigate event for navigation.navigate(): PASS
+/navigation-api/navigate-event/navigate-svg-anchor-fragment.html: TIMEOUT
+	<svg:a> click fires navigate event: TIMEOUT
+/navigation-api/navigate-event/navigate-to-javascript.html: OK
+	navigate event does not fire for javascript: URL navigations: FAIL
+/navigation-api/navigate-event/navigate-to-srcdoc.html: OK
+	navigate event fires appropriately (and can be canceled) for adding the srcdoc attribute: FAIL
+/navigation-api/navigate-event/navigate-window-open-self.html: TIMEOUT
+	window.open() fires navigate event when targeting self: TIMEOUT
+/navigation-api/navigate-event/navigate-window-open.html: OK
+	window.open() fires navigate event in target window but not source: FAIL
+/navigation-api/navigate-event/navigatesuccess-cross-document.html: OK
+	navigatesuccess does not fire for a cross-document navigation: FAIL
+/navigation-api/navigate-event/navigatesuccess-same-document.html: OK
+	navigatesuccess fires for a same-document navigation: PASS
+/navigation-api/navigate-event/navigation-back-cross-document-preventDefault.html: TIMEOUT
+	navigation.back() cross-document cannot be cancelled with the navigate event: TIMEOUT
+/navigation-api/navigate-event/navigation-back-same-document-preventDefault.html: OK
+	navigation.back() same-document preventDefault: FAIL
+/navigation-api/navigate-event/navigation-traverseTo-in-iframe-same-document-preventDefault.html: OK
+	navigation.traverseTo() in an iframe with same-document preventDefault in its parent: FAIL
+/navigation-api/navigate-event/navigation-traverseTo-navigates-top-and-same-doc-child-and-cross-doc-child.html: OK
+	navigation.traverseTo() can navigate 3 frames of different types with correct navigate event cancelable values: FAIL
+/navigation-api/navigate-event/navigation-traverseTo-same-document-preventDefault-multiple-windows.html: OK
+	navigation.traverseTo() - if a top window cancels the traversal, any iframes should not fire navigate: FAIL
+/navigation-api/navigate-event/navigation-traverseTo-top-cancels-cross-document-child.html: OK
+	navigate.traverseTo() cancelled by top frame cancels cross-document iframe: FAIL
+/navigation-api/navigate-event/reentry-from-focus-reset-navigate-api-tracker.html: OK
+	Re-entry via focus reset using navigate(): PASS
+	Re-entry via focus reset using pushState: PASS
+/navigation-api/navigate-event/replaceState-inside-back-handler-infinite.optional.html: TIMEOUT
+	infinite replaceState inside a navigate event for navigation.back(): TIMEOUT
+/navigation-api/navigate-event/replaceState-inside-back-handler.html: OK
+	replaceState inside a navigate event for navigation.back(): PASS
+/navigation-api/navigate-event/same-url-replace-cross-document.html: OK
+	navigate() to the current URL cross document should replace: PASS
+/navigation-api/navigate-event/same-url-replace-same-document.html: OK
+	navigate() to the current URL same document should replace: PASS
+/navigation-api/navigate-event/signal-abort-detach-in-onnavigate.html: OK
+	window detach inside a navigate event signals event.signal: FAIL
+/navigation-api/navigate-event/signal-abort-intercept.html: OK
+	event.intercept() does not signal event.signal: PASS
+/navigation-api/navigate-event/signal-abort-preventDefault.html: OK
+	event.preventDefault() signals event.signal: PASS
+/navigation-api/navigate-event/signal-abort-reentry-navigate-api-tracker.html: OK
+	Re-entry via abort signal using navigate(): FAIL
+	Re-entry via abort signal using pushState: PASS
+/navigation-api/navigate-event/signal-abort-window-stop-after-intercept.html: OK
+	window.stop() cancels the navigate event's intercept() and signals event.signal: FAIL
+/navigation-api/navigate-event/signal-abort-window-stop-in-onnavigate.html: OK
+	window.stop() signals event.signal inside a navigate event handler: FAIL
+/navigation-api/navigate-event/signal-abort-window-stop.html: OK
+	window.stop() signals event.signal: FAIL
+/navigation-api/navigate-event/sourceElement-cross-origin.sub.html: TIMEOUT
+	NavigateEvent.sourceElement should be null for cross-origin same-document initiators: TIMEOUT
+/navigation-api/navigate-event/traverseTo-detach.html: OK
+	event is canceled when an iframe is detached: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop&to=coop-coep: OK
+	navigation.activation.from after same-origin coop to coop-coep and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop&to=coop-coep&cross-origin: OK
+	navigation.activation.from after cross-origin coop to coop-coep and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop&to=none: OK
+	navigation.activation.from after same-origin coop to none and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop&to=none&cross-origin: OK
+	navigation.activation.from after cross-origin coop to none and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop-coep&to=coop: OK
+	navigation.activation.from after same-origin coop-coep to coop and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop-coep&to=coop&cross-origin: OK
+	navigation.activation.from after cross-origin coop-coep to coop and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop-coep&to=none: OK
+	navigation.activation.from after same-origin coop-coep to none and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=coop-coep&to=none&cross-origin: OK
+	navigation.activation.from after cross-origin coop-coep to none and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=none&to=coop: OK
+	navigation.activation.from after same-origin none to coop and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=none&to=coop&cross-origin: OK
+	navigation.activation.from after cross-origin none to coop and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=none&to=coop-coep: OK
+	navigation.activation.from after same-origin none to coop-coep and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-coop-coep.https.html?from=none&to=coop-coep&cross-origin: OK
+	navigation.activation.from after cross-origin none to coop-coep and back: FAIL
+/navigation-api/navigation-activation/activation-after-bfcache-cross-origin-clears-from.html: ERROR
+/navigation-api/navigation-activation/activation-after-bfcache-cross-origin.html: ERROR
+/navigation-api/navigation-activation/activation-after-bfcache.html: ERROR
+/navigation-api/navigation-activation/activation-history-pushState.html: OK
+	navigation.activation.entry should not change due to history.pushState(): FAIL
+/navigation-api/navigation-activation/activation-history-replaceState.html: OK
+	navigation.activation.entry should be orphaned by history.replaceState(): FAIL
+/navigation-api/navigation-activation/activation-initial-about-blank.html: OK
+	navigation.activation interaction with initial about:blank: FAIL
+/navigation-api/navigation-activation/activation-push-cross-origin.html: OK
+	navigation.activation after push cross-origin: FAIL
+/navigation-api/navigation-activation/activation-push.html: OK
+	navigation.activation after push: FAIL
+/navigation-api/navigation-activation/activation-reload.html: OK
+	navigation.activation after reload: FAIL
+/navigation-api/navigation-activation/activation-replace-cross-origin.html: OK
+	navigation.activation after replace cross-origin: FAIL
+/navigation-api/navigation-activation/activation-replace.html: OK
+	navigation.activation after replace: FAIL
+/navigation-api/navigation-activation/activation-same-document-then-cross-document.html: OK
+	navigation.activation same-document then cross-document: FAIL
+/navigation-api/navigation-activation/activation-traverse-not-in-entries.html: TIMEOUT
+	navigation.activation - traverse from a non-contiguous same-origin url: TIMEOUT
+/navigation-api/navigation-activation/activation-traverse-then-clobber.html: OK
+	navigation.activation - traverse, then push same-document: FAIL
+/navigation-api/navigation-activation/activation-traverse.html: OK
+	navigation.activation after traverse: FAIL
+/navigation-api/navigation-history-entry/after-detach.html: OK
+	navigation.currentEntry/entries()/canGoBack/canGoForward after iframe removal: FAIL
+/navigation-api/navigation-history-entry/current-basic.html: OK
+	Basic tests for navigation.currentEntry: FAIL
+/navigation-api/navigation-history-entry/entries-across-origins.html: OK
+	navigation.entries() should only contain entries that are both same-origin and contiguous: FAIL
+/navigation-api/navigation-history-entry/entries-after-bfcache-in-iframe.html: ERROR
+/navigation-api/navigation-history-entry/entries-after-bfcache.html: ERROR
+/navigation-api/navigation-history-entry/entries-after-blank-navigation-from-cross-origin.html: OK
+	entries() should not be leaked from cross-origin when navigating to about:blank: FAIL
+/navigation-api/navigation-history-entry/entries-after-blank-navigation.html: OK
+	entries() after navigation to about:blank: FAIL
+/navigation-api/navigation-history-entry/entries-after-blob-navigation.html: OK
+	entries() after navigation to a blob: URL: FAIL
+/navigation-api/navigation-history-entry/entries-after-cross-document-forward-pruning.html: OK
+	navigation.entries() behavior after forward-pruning due to cross-document navs: FAIL
+/navigation-api/navigation-history-entry/entries-after-javascript-url-navigation.html: OK
+	entries() after navigation to a javascript: URL: FAIL
+/navigation-api/navigation-history-entry/entries-after-navigations-in-multiple-windows.html: OK
+	navigation.entries() behavior when multiple windows navigate.: FAIL
+/navigation-api/navigation-history-entry/entries-after-server-redirect-replace.html: OK
+	A navigation to a redirected page ends up on the page redirected to: FAIL
+/navigation-api/navigation-history-entry/entries-after-server-redirect.html: OK
+	A navigation to a redirected page ends up on the page redirected to: FAIL
+/navigation-api/navigation-history-entry/entries-after-srcdoc-navigation.html: OK
+	entries() after setting a srcdoc attribute: FAIL
+/navigation-api/navigation-history-entry/entries-array-equality.html: OK
+	navigation.entries() should not return an identical object on repeated invocations: PASS
+/navigation-api/navigation-history-entry/entries-in-new-javascript-url-iframe.html: OK
+	entries() and currentEntry should be set in a new javascript: URL iframe: FAIL
+/navigation-api/navigation-history-entry/entries-in-new-srcdoc-iframe.html: OK
+	entries() and currentEntry should be set in a new srcdoc iframe: FAIL
+/navigation-api/navigation-history-entry/entries-mainframe-with-iframe.html: OK
+	navigation.entries() for main frame excludes iframe history entries: FAIL
+/navigation-api/navigation-history-entry/entries-when-inactive.html: OK
+	A non-active entry in navigation.entries() should not be modified when a different entry is modified: PASS
+/navigation-api/navigation-history-entry/entry-after-detach.html: OK
+	NavigationHistoryEntry properties after detach: FAIL
+/navigation-api/navigation-history-entry/index-not-in-entries.html: OK
+	entry.index should return -1 when not in navigation.entries(): FAIL
+/navigation-api/navigation-history-entry/key-id-back-cross-document.html: TIMEOUT
+	NavigationHistoryEntry's key and id on cross-document back navigation: TIMEOUT
+/navigation-api/navigation-history-entry/key-id-back-same-document.html: OK
+	NavigationHistoryEntry's key and id on same-document back navigation: PASS
+/navigation-api/navigation-history-entry/key-id-location-reload-intercept.html: OK
+	NavigationHistoryEntry's key and id after location.reload() intercepted by intercept(): FAIL
+/navigation-api/navigation-history-entry/key-id-location-reload.html: OK
+	NavigationHistoryEntry's key and id after location.reload(): FAIL
+/navigation-api/navigation-history-entry/key-id-location-replace-cross-origin.html: OK
+	NavigationHistoryEntry's key and id after location.replace(): FAIL
+/navigation-api/navigation-history-entry/key-id-location-replace.html: OK
+	NavigationHistoryEntry's key and id after location.replace(): FAIL
+/navigation-api/navigation-history-entry/no-referrer-dynamic-url-censored.html: OK
+	The url of a document is censored by a no-referrer policy dynamically: FAIL
+/navigation-api/navigation-history-entry/no-referrer-from-meta-url-censored.html: OK
+	The url of a document with no-referrer referrer meta tag is censored in NavigationHistoryEntry: FAIL
+/navigation-api/navigation-history-entry/no-referrer-url-censored.html: OK
+	The url of a document with no-referrer referrer policy is censored in NavigationHistoryEntry: FAIL
+/navigation-api/navigation-history-entry/opaque-origin-data-url.html: OK
+	entries() and currentEntry after navigation to a data: URL (which has an opaque origin): PASS
+/navigation-api/navigation-history-entry/opaque-origin.html: OK
+	navigation.currentEntry/entries()/canGoBack/canGoForward in an opaque origin iframe: PASS
+/navigation-api/navigation-history-entry/sameDocument-after-fragment-navigate.html: OK
+	entry.sameDocument after same-document navigations: PASS
+/navigation-api/navigation-history-entry/sameDocument-after-navigate-restore.html: OK
+	entry.sameDocument is properly restored after cross-document back: FAIL
+/navigation-api/navigation-history-entry/sameDocument-after-navigate.html: OK
+	entry.sameDocument after cross-document navigation: FAIL
+/navigation-api/navigation-history-entry/state-after-navigate-restore.html: OK
+	entry.getState() is properly restored after cross-document back: FAIL
+/navigation-api/navigation-methods/back-forward-multiple-frames.html: OK
+	navigation.back() and navigation.forward() can navigate multiple frames: FAIL
+/navigation-api/navigation-methods/disambigaute-back.html: OK
+	navigation.back() goes to the nearest back entry: FAIL
+/navigation-api/navigation-methods/disambigaute-forward.html: OK
+	navigation.forward() goes to the nearest forward entry: FAIL
+/navigation-api/navigation-methods/disambigaute-traverseTo-back-multiple.html: OK
+	navigation.traverseTo() goes to the nearest entry when going back: FAIL
+/navigation-api/navigation-methods/disambigaute-traverseTo-forward-multiple.html: OK
+	navigation.traverseTo() goes to the nearest entry when going forward: FAIL
+/navigation-api/navigation-methods/forward-to-pruned-entry.html: TIMEOUT
+	If forward pruning clobbers the target of a traverse, abort: TIMEOUT
+/navigation-api/navigation-methods/navigate-base-url.html: OK
+	navigate() must resolve URLs relative to navigation object's base URL: FAIL
+/navigation-api/navigation-methods/navigate-from-initial-about-blank-gc.html: OK
+	navigate() from <iframe> with src="" but still on initial about:blank doesn't cause a crash on GC: FAIL
+/navigation-api/navigation-methods/navigate-from-initial-about-blank-src.html: OK
+	navigate() from <iframe> with src="" but still on initial about:blank works: FAIL
+/navigation-api/navigation-methods/navigate-from-initial-about-blank.html: OK
+	navigate() from <iframe> still on initial about:blank works: FAIL
+/navigation-api/navigation-methods/navigate-history-push-not-loaded.html: OK
+	navigate() with history: 'push' in a document that has not yet had its load event: PASS
+/navigation-api/navigation-methods/navigate-history-push-same-url-cross-document.html: OK
+	navigate() to the current URL with history: 'push' and allow it to go cross document: FAIL
+/navigation-api/navigation-methods/navigate-history-push-same-url.html: OK
+	navigate() to the current URL with history: 'push' and intercept so it remains same-document: PASS
+/navigation-api/navigation-methods/navigate-history-state-replace.html: OK
+	history.state should be nulled by navigate(): PASS
+/navigation-api/navigation-methods/navigate-history-state.html: OK
+	history.state should be nulled by navigate(): PASS
+/navigation-api/navigation-methods/navigate-info-and-state.html: OK
+	navigate() with info and state: PASS
+/navigation-api/navigation-methods/navigate-intercept-history-state.html: OK
+	history.story should be nulled by navigate() handled by intercept(): PASS
+/navigation-api/navigation-methods/navigate-relative-url-utf8.html?encoding=utf8: OK
+	navigate() should resolve URLs assuming UTF-8, ignoring the document's encoding: FAIL
+/navigation-api/navigation-methods/navigate-relative-url-utf8.html?encoding=windows-1252: OK
+	navigate() should resolve URLs assuming UTF-8, ignoring the document's encoding: FAIL
+/navigation-api/navigation-methods/navigate-relative-url-utf8.html?encoding=x-cp1251: OK
+	navigate() should resolve URLs assuming UTF-8, ignoring the document's encoding: FAIL
+/navigation-api/navigation-methods/navigate-relative-url.html: OK
+	navigate() should resolve urls relative to navigation object, not the caller: FAIL
+/navigation-api/navigation-methods/navigate-replace-cross-document.html: OK
+	navigate() with history: 'replace' option: FAIL
+/navigation-api/navigation-methods/navigate-replace-same-document.html: OK
+	navigate() with history: 'replace' option: PASS
+/navigation-api/navigation-methods/navigate-same-document.html: OK
+	navigate() navigates same-document and fires onnavigate (async): FAIL
+	navigate() navigates same-document and fires onnavigate (sync): FAIL
+/navigation-api/navigation-methods/navigate-state-repeated-await.html: OK
+	navigate() with state should work correctly when called repeatedly - with awaits: PASS
+/navigation-api/navigation-methods/navigate-state-repeated.html: OK
+	navigate() with state should work correctly when called repeatedly: PASS
+/navigation-api/navigation-methods/reload-base-url.html: OK
+	reload() must ignore the Navigation object's base URL: FAIL
+/navigation-api/navigation-methods/reload-info.html: OK
+	reload() variant with only info: FAIL
+/navigation-api/navigation-methods/reload-navigation-timing.html: OK
+	reload() appears as a reload to navigation timing APIs: FAIL
+/navigation-api/navigation-methods/reload-no-args.html: OK
+	reload() variant with no state or info: FAIL
+/navigation-api/navigation-methods/reload-service-worker-fetch-event.html: OK
+	reload() appears as a reload to service worker fetch event handlers: FAIL
+/navigation-api/navigation-methods/reload-state-and-info.html: OK
+	reload() variant with info and new state: FAIL
+/navigation-api/navigation-methods/reload-state-undefined.html: OK
+	reload() variant with info and state: undefined counts the same as not present (because of Web IDL dictionary semantics), so preserves the state: FAIL
+/navigation-api/navigation-methods/return-value/back-204-205-download.html: OK
+	back() promises to 204s never settle: FAIL
+	back() promises to 205s never settle: FAIL
+	back() promises to Content-Disposition: attachment responses never settle: FAIL
+/navigation-api/navigation-methods/return-value/back-already-detached.html: OK
+	back() in a detached window: FAIL
+/navigation-api/navigation-methods/return-value/back-beforeunload.html: OK
+	back() inside onbeforeunload: FAIL
+/navigation-api/navigation-methods/return-value/back-forward-initial-about-blank.html: OK
+	back() and forward() in initial about:blank document: FAIL
+/navigation-api/navigation-methods/return-value/back-forward-opaque-origin.html: OK
+	navigation.back()/forward() in an opaque origin iframe: FAIL
+/navigation-api/navigation-methods/return-value/back-forward-out-of-bounds.html: OK
+	back() and forward() out of bounds: FAIL
+/navigation-api/navigation-methods/return-value/back-intercept-rejected.html: OK
+	back() promise rejection with rejected intercept(): PASS
+/navigation-api/navigation-methods/return-value/back-intercept.html: OK
+	back() and intercept() with a fulfilled promise: PASS
+/navigation-api/navigation-methods/return-value/back.html: OK
+	back() promises: PASS
+/navigation-api/navigation-methods/return-value/forward-already-detached.html: OK
+	forward() in a detached window: FAIL
+/navigation-api/navigation-methods/return-value/forward-beforeunload.html: OK
+	forward() inside onbeforeunload: FAIL
+/navigation-api/navigation-methods/return-value/forward-intercept-rejected.html: OK
+	forward() promise rejection with rejected intercept(): PASS
+/navigation-api/navigation-methods/return-value/forward-intercept.html: OK
+	forward() and intercept() with a fulfilled promise: PASS
+/navigation-api/navigation-methods/return-value/forward.html: OK
+	forward() promises: PASS
+/navigation-api/navigation-methods/return-value/navigate-204-205-download.html: OK
+	navigate() promises to 204s never settle: FAIL
+	navigate() promises to 205s never settle: FAIL
+	navigate() promises to Content-Disposition: attachment responses never settle: FAIL
+/navigation-api/navigation-methods/return-value/navigate-already-detached.html: OK
+	navigate() in a detached window: FAIL
+/navigation-api/navigation-methods/return-value/navigate-beforeunload.html: OK
+	navigate() inside onbeforeunload: FAIL
+/navigation-api/navigation-methods/return-value/navigate-cross-document.html: OK
+	cross-document navigate() promises never settle: FAIL
+/navigation-api/navigation-methods/return-value/navigate-detach-in-onnavigate.html: OK
+	navigate() promise rejections when detaching an iframe inside onnavigate: FAIL
+/navigation-api/navigation-methods/return-value/navigate-detach-in-serialization.html: OK
+	navigate() promise rejections when detaching an iframe inside state serialization: FAIL
+/navigation-api/navigation-methods/return-value/navigate-file-url.html: TIMEOUT
+	navigate() to a file: URL: TIMEOUT
+/navigation-api/navigation-methods/return-value/navigate-initial-about-blank-cross-document.html: OK
+	navigate() in initial about:blank document (cross-document): FAIL
+/navigation-api/navigation-methods/return-value/navigate-initial-about-blank.html: OK
+	navigate() in initial about:blank document: FAIL
+/navigation-api/navigation-methods/return-value/navigate-intercept-interrupted.html: OK
+	interrupted navigate() promises with intercept(): PASS
+/navigation-api/navigation-methods/return-value/navigate-intercept-rejected.html: OK
+	navigate() and intercept() with a rejected promise: PASS
+/navigation-api/navigation-methods/return-value/navigate-intercept.html: OK
+	navigate() and intercept() with a fulfilled promise: PASS
+/navigation-api/navigation-methods/return-value/navigate-interrupted-within-onnavigate.html: OK
+	if navigate() is called inside onnavigate, the previous navigation and navigate event are cancelled: PASS
+/navigation-api/navigation-methods/return-value/navigate-interrupted.html: OK
+	interrupted navigate() promises: FAIL
+/navigation-api/navigation-methods/return-value/navigate-invalid-url.html: OK
+	navigate() with an invalid URL: PASS
+/navigation-api/navigation-methods/return-value/navigate-javascript-url.html: OK
+	navigate() to "javascript:'foo'" with { history: 'replace' }: FAIL
+	navigate() to "javascript:void 0" with { history: 'replace' }: FAIL
+/navigation-api/navigation-methods/return-value/navigate-opaque-origin.html: OK
+	navigation.navigate() in an opaque origin iframe: FAIL
+/navigation-api/navigation-methods/return-value/navigate-pagehide.html: OK
+	navigate() inside onpagehide: FAIL
+/navigation-api/navigation-methods/return-value/navigate-preventDefault.html: OK
+	navigate() when the onnavigate handler calls preventDefault(): PASS
+/navigation-api/navigation-methods/return-value/navigate-push-initial-about-blank.html: OK
+	navigate() with history: 'push' in initial about:blank document: FAIL
+/navigation-api/navigation-methods/return-value/navigate-push-javascript-url.html: OK
+	navigate() to "javascript:'foo'" with { history: 'push' }: FAIL
+	navigate() to "javascript:void 0" with { history: 'push' }: FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-beforeunload-unserializablestate.html: OK
+	navigate() with an unserializable state inside onbeforeunload "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-detached-unserializablestate.html: OK
+	navigate() with unserializable state in a detached iframe throws "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-invalidurl-beforeunload.html: OK
+	navigate() with an invalid URL inside onbeforeunload throws "SyntaxError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-invalidurl-detached.html: OK
+	navigate() with an invalid URL in a detached iframe throws "SyntaxError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-invalidurl-pagehide.html: OK
+	navigate() with an invalid URL inside onpagehide throws "SyntaxError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-invalidurl-unserializablestate.html: OK
+	navigate() with an invalid URL and unserializable state throws "SyntaxError", not "DataCloneError": PASS
+/navigation-api/navigation-methods/return-value/navigate-rejection-order-pagehide-unserializablestate.html: OK
+	navigate() with an unserializable state inside onpagehide throws "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/navigate-unserializable-state.html: OK
+	navigate() with an unserializable state (SharedArrayBuffer): FAIL
+	navigate() with an unserializable state (WritableStream): PASS
+/navigation-api/navigation-methods/return-value/navigate.html: OK
+	navigate() promises: PASS
+/navigation-api/navigation-methods/return-value/reload-already-detached.html: OK
+	reload() in a detached window: FAIL
+/navigation-api/navigation-methods/return-value/reload-beforeunload.html: OK
+	reload() inside onbeforeunload: FAIL
+/navigation-api/navigation-methods/return-value/reload-detach-in-onnavigate.html: OK
+	reload() promise rejections when detaching an iframe inside onnavigate: FAIL
+/navigation-api/navigation-methods/return-value/reload-detach-in-serialization.html: OK
+	reload() promise rejections when detaching an iframe inside state serialization: FAIL
+/navigation-api/navigation-methods/return-value/reload-initial-about-blank.html: OK
+	reload() in initial about:blank document: FAIL
+/navigation-api/navigation-methods/return-value/reload-intercept-rejected.html: OK
+	reload() and intercept() with a rejected promise: PASS
+/navigation-api/navigation-methods/return-value/reload-intercept.html: OK
+	reload() and intercept() with a fulfilled promise: PASS
+/navigation-api/navigation-methods/return-value/reload-pagehide.html: OK
+	reload() inside onpagehide: FAIL
+/navigation-api/navigation-methods/return-value/reload-preventDefault.html: OK
+	reload() when the onnavigate handler calls preventDefault(): PASS
+/navigation-api/navigation-methods/return-value/reload-rejection-order-beforeunload-unserializablestate.html: OK
+	reload() with an unserializable state inside onbeforeunload throws "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/reload-rejection-order-detached-unserializablestate.html: OK
+	reload() with unserializable state in a detached iframe throws "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/reload-rejection-order-pagehide-unserializablestate.html: OK
+	reload() with an unserializable state inside onpagehide throws "DataCloneError", not "InvalidStateError": FAIL
+/navigation-api/navigation-methods/return-value/reload-unserializable-state.html: OK
+	reload() with an unserializable state (SharedArrayBuffer): FAIL
+	reload() with an unserializable state (WritableStream): PASS
+/navigation-api/navigation-methods/return-value/reload.html: OK
+	reload() promises never settle (without intercept()): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-already-detached.html: OK
+	traverseTo() in a detached window: FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-beforeunload.html: OK
+	traverseTo() inside onbeforeunload: FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-cross-document-preventDefault.html: OK
+	traverseTo() promise never settle when preventDefault()ing the navigate event (cross-document): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-current.html: OK
+	traverseTo() with current key: PASS
+/navigation-api/navigation-methods/return-value/traverseTo-detach-cross-document-before-navigate-event.html: OK
+	traverseTo() promise rejections when detaching an iframe before onnavigate (cross-document): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-detach-cross-document.html: OK
+	traverseTo() promise rejections when detaching an iframe inside onnavigate (cross-document): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-detach-same-document-before-navigate-event.html: OK
+	traverseTo() promise rejections when detaching an iframe before onnavigate (same-document): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-detach-same-document.html: OK
+	traverseTo() promise rejections when detaching an iframe inside onnavigate (same-document): FAIL
+/navigation-api/navigation-methods/return-value/traverseTo-intercept-rejected.html: OK
+	traverseTo() promise rejection with rejected intercept(): PASS
+/navigation-api/navigation-methods/return-value/traverseTo-intercept.html: OK
+	traverseTo() and intercept() with a fulfilled promise: PASS
+/navigation-api/navigation-methods/return-value/traverseTo-invalid-key.html: OK
+	traverseTo() with invalid key: PASS
+/navigation-api/navigation-methods/return-value/traverseTo-repeated.html: OK
+	Repeated navigation.traverseTo() with the same key: PASS
+/navigation-api/navigation-methods/return-value/traverseTo.html: OK
+	traverseTo() promises: PASS
+/navigation-api/navigation-methods/sandboxing-back-parent.html: OK
+	A sandboxed iframe cannot navigate its parent via its own navigation object by using back(): FAIL
+/navigation-api/navigation-methods/sandboxing-back-sibling.html: OK
+	A sandboxed iframe cannot navigate its sibling via its own navigation object by using back(): FAIL
+/navigation-api/navigation-methods/sandboxing-navigate-parent.html: OK
+	A sandboxed iframe can use its sibling's navigation object to call navigate(), as long as allow-same-origin is present: FAIL
+/navigation-api/navigation-methods/sandboxing-navigate-sibling.html: OK
+	A sandboxed iframe can use its parent's navigation object to call navigate(), as long as allow-same-origin is present: FAIL
+/navigation-api/navigation-methods/traverseTo-after-adding-iframe.html: OK
+	navigation.traverseTo() should work in an iframe that is not present in all history entries: FAIL
+/navigation-api/navigation-methods/traverseTo-after-data-url.html: OK
+	navigation.traverseTo() should work in an iframe that started at a data: url: FAIL
+/navigation-api/navigation-methods/traverseTo-cross-document.html: OK
+	cross-document traverseTo(), back(), and forward(): FAIL
+/navigation-api/navigation-methods/traverseTo-detach-between-navigate-and-navigatesuccess.html: OK
+	Detach a window between when a traverseTo() fires navigate and navigatesuccess: FAIL
+/navigation-api/navigation-methods/traverseTo-multiple-steps.html: OK
+	goto() can precisely traverse multiple steps in the joint session history: PASS
+/navigation-api/navigation-methods/traverseTo-navigates-multiple-iframes.html: OK
+	entries() should be correct after a traversal that navigates multiple browsing contexts: FAIL
+/navigation-api/navigation-methods/traverseTo-same-document.html: OK
+	same-document navigate.traverseTo(), back(), and forward(): PASS
+/navigation-api/navigation-methods/traverseTo-with-cross-origin-in-history.html: OK
+	navigation.traverseTo() should work in an iframe that has navigated across origins: FAIL
+/navigation-api/ordering-and-transition/anchor-download-aborts-previous-navigation.html: OK
+	<a download> aborts previous navigations: FAIL
+/navigation-api/ordering-and-transition/anchor-download-intercept-reject.html?currententrychange: TIMEOUT
+	event and promise ordering for <a download> intercepted by passing a rejected promise to intercept(): TIMEOUT
+/navigation-api/ordering-and-transition/anchor-download-intercept-reject.html?no-currententrychange: TIMEOUT
+	event and promise ordering for <a download> intercepted by passing a rejected promise to intercept(): TIMEOUT
+/navigation-api/ordering-and-transition/anchor-download-intercept.html?currententrychange: TIMEOUT
+	event and promise ordering for <a download> intercepted by intercept(): TIMEOUT
+/navigation-api/ordering-and-transition/anchor-download-intercept.html?no-currententrychange: TIMEOUT
+	event and promise ordering for <a download> intercepted by intercept(): TIMEOUT
+/navigation-api/ordering-and-transition/anchor-download.html: OK
+	<a download> fires navigate, but not navigatesuccess or navigateerror when not intercepted by intercept(): FAIL
+/navigation-api/ordering-and-transition/back-cross-document-event-order-with-pagehide.html: OK
+	back() event ordering for cross-document traversal: FAIL
+/navigation-api/ordering-and-transition/back-cross-document-event-order.html: OK
+	back() event ordering for cross-document traversal: FAIL
+/navigation-api/ordering-and-transition/back-same-document-intercept-reject.html?currententrychange: OK
+	event and promise ordering for same-document navigation.back() intercepted by passing a rejected promise to intercept(): PASS
+/navigation-api/ordering-and-transition/back-same-document-intercept-reject.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.back() intercepted by passing a rejected promise to intercept(): PASS
+/navigation-api/ordering-and-transition/back-same-document-intercept.html?currententrychange: OK
+	event and promise ordering for same-document navigation.back() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/back-same-document-intercept.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.back() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/back-same-document.html?currententrychange: OK
+	event and promise ordering for same-document navigation.back(): FAIL
+/navigation-api/ordering-and-transition/back-same-document.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.back(): FAIL
+/navigation-api/ordering-and-transition/currententrychange-before-popstate-intercept.html: OK
+	currententrychange fires before popstate for navigation.back() and navigation.forward(): FAIL
+/navigation-api/ordering-and-transition/currententrychange-dispose-ordering.html: OK
+	Ordering between Navigation currententrychange and NavigationHistoryEntry dispose events: FAIL
+/navigation-api/ordering-and-transition/intercept-async.html?currententrychange: OK
+	ordering when intercept() handler has sync and async blocks: PASS
+/navigation-api/ordering-and-transition/intercept-async.html?no-currententrychange: OK
+	ordering when intercept() handler has sync and async blocks: PASS
+/navigation-api/ordering-and-transition/location-href-canceled.html: OK
+	event and promise ordering for the location.href setter where the navigate event is canceled: PASS
+/navigation-api/ordering-and-transition/location-href-double-intercept.html?currententrychange: OK
+	event and promise ordering when location.href is set repeatedly and handled by intercept(): PASS
+/navigation-api/ordering-and-transition/location-href-double-intercept.html?no-currententrychange: OK
+	event and promise ordering when location.href is set repeatedly and handled by intercept(): PASS
+/navigation-api/ordering-and-transition/location-href-intercept-reentrant.html?currententrychange: OK
+	event and promise ordering for the location.href setter intercepted by intercept() where we set location.href again inside the navigate handler: PASS
+/navigation-api/ordering-and-transition/location-href-intercept-reentrant.html?no-currententrychange: OK
+	event and promise ordering for the location.href setter intercepted by intercept() where we set location.href again inside the navigate handler: PASS
+/navigation-api/ordering-and-transition/location-href-intercept-reject.html?currententrychange: OK
+	event and promise ordering for location.href setter intercepted by passing a rejected promise to intercept(): FAIL
+/navigation-api/ordering-and-transition/location-href-intercept-reject.html?no-currententrychange: OK
+	event and promise ordering for location.href setter intercepted by passing a rejected promise to intercept(): FAIL
+/navigation-api/ordering-and-transition/location-href-intercept.html?currententrychange: OK
+	event and promise ordering for location.href setter intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/location-href-intercept.html?no-currententrychange: OK
+	event and promise ordering for location.href setter intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/navigate-204-205-download-then-same-document.html: OK
+	event and promise ordering when navigate() is to a 204s and then to a same-document navigation: FAIL
+	event and promise ordering when navigate() is to a 205s and then to a same-document navigation: FAIL
+	event and promise ordering when navigate() is to a Content-Disposition: attachment responses and then to a same-document navigation: FAIL
+/navigation-api/ordering-and-transition/navigate-canceled.html: OK
+	event and promise ordering for navigation.navigate() where the navigate event is canceled: PASS
+/navigation-api/ordering-and-transition/navigate-cross-document-double.html: OK
+	event and promise ordering when navigate() is called to a cross-document destination, interrupting another navigate() to a cross-document destination: FAIL
+/navigation-api/ordering-and-transition/navigate-cross-document-event-order-with-pagehide.html: OK
+	navigate() event ordering for cross-document navigation: FAIL
+/navigation-api/ordering-and-transition/navigate-cross-document-event-order.html: OK
+	navigate() event ordering for cross-document navigation: FAIL
+/navigation-api/ordering-and-transition/navigate-double-intercept.html?currententrychange: OK
+	event and promise ordering when navigate() is called repeatedly and handled by intercept(): PASS
+/navigation-api/ordering-and-transition/navigate-double-intercept.html?no-currententrychange: OK
+	event and promise ordering when navigate() is called repeatedly and handled by intercept(): PASS
+/navigation-api/ordering-and-transition/navigate-in-transition-finished.html?currententrychange: OK
+	event and promise ordering when navigate() is called inside the transition.finished promise handler: PASS
+/navigation-api/ordering-and-transition/navigate-in-transition-finished.html?no-currententrychange: OK
+	event and promise ordering when navigate() is called inside the transition.finished promise handler: PASS
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler-redirect.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler that redirects: FAIL
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler-redirect.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler that redirects: FAIL
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler-reject.tentative.html?currententrychange: TIMEOUT
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler: TIMEOUT
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler-reject.tentative.html?no-currententrychange: TIMEOUT
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler: TIMEOUT
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler: FAIL
+/navigation-api/ordering-and-transition/navigate-intercept-precommitHandler.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept() with a precommitHandler: FAIL
+/navigation-api/ordering-and-transition/navigate-intercept-stop.html?currententrychange: OK
+	event and promise ordering for navigation.navigate() intercepted by intercept() but then stopped using window.stop(): FAIL
+/navigation-api/ordering-and-transition/navigate-intercept-stop.html?no-currententrychange: OK
+	event and promise ordering for navigation.navigate() intercepted by intercept() but then stopped using window.stop(): FAIL
+/navigation-api/ordering-and-transition/navigate-intercept.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/navigate-intercept.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/navigate-same-document-intercept-reentrant.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() inside the navigate handler: PASS
+/navigation-api/ordering-and-transition/navigate-same-document-intercept-reentrant.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() inside the navigate handler: PASS
+/navigation-api/ordering-and-transition/navigate-same-document-intercept-reject.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by passing a rejected promise to intercept(): FAIL
+/navigation-api/ordering-and-transition/navigate-same-document-intercept-reject.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate() intercepted by passing a rejected promise to intercept(): FAIL
+/navigation-api/ordering-and-transition/navigate-same-document.html?currententrychange: OK
+	event and promise ordering for same-document navigation.navigate(): FAIL
+/navigation-api/ordering-and-transition/navigate-same-document.html?no-currententrychange: OK
+	event and promise ordering for same-document navigation.navigate(): FAIL
+/navigation-api/ordering-and-transition/reload-canceled.html: OK
+	event and promise ordering for navigation.reload() where the navigate event is canceled: PASS
+/navigation-api/ordering-and-transition/reload-intercept-reject.html?currententrychange: OK
+	event and promise ordering for navigation.reload() intercepted by intercept(): FAIL
+/navigation-api/ordering-and-transition/reload-intercept-reject.html?no-currententrychange: OK
+	event and promise ordering for navigation.reload() intercepted by intercept(): FAIL
+/navigation-api/ordering-and-transition/reload-intercept.html?currententrychange: OK
+	event and promise ordering for navigation.reload() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/reload-intercept.html?no-currententrychange: OK
+	event and promise ordering for navigation.reload() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/reload-no-popstate.html: OK
+	event and promise ordering for navigation.reload() intercepted by intercept(): PASS
+/navigation-api/ordering-and-transition/transition-cross-document.html: OK
+	cross-document back() must leave transition null: FAIL
+	cross-document navigate() must leave transition null: FAIL
+	cross-document reload() must leave transition null: FAIL
+/navigation-api/ordering-and-transition/transition-finished-mark-as-handled.html: OK
+	navigation.transition.finished must not trigger unhandled rejections: PASS
+/navigation-api/ordering-and-transition/transition-realms-and-identity.html: OK
+	Realm and identity of the navigation.transition object and its finished promise: FAIL
+/navigation-api/ordering-and-transition/transition-to.html: TIMEOUT
+	navigation.transition.to matches the navigate event's destination: TIMEOUT
+/navigation-api/per-entry-events/dispose-after-bfcache.html: ERROR
+/navigation-api/per-entry-events/dispose-cross-document.html: OK
+	No dispose events are fired due to cross-document forward pruning: FAIL
+/navigation-api/per-entry-events/dispose-for-full-session-history.tentative.html: OK
+	Dispose should fire when an entry is removed from session history due to too many entries: PASS
+/navigation-api/per-entry-events/dispose-for-navigation-in-child-entries-updated.html: OK
+	Entries truncated by a child frame's push must be removed from entries() before their dispose events fire: FAIL
+/navigation-api/per-entry-events/dispose-for-navigation-in-child.html: OK
+	Dispose events should fire when entries are removed by a navigation in a different frame: FAIL
+/navigation-api/per-entry-events/dispose-for-navigation-in-sibling-detach-frame.html: OK
+	Detaching a frame from its own dispose handler during another frame's truncating push must not crash: FAIL
+/navigation-api/per-entry-events/dispose-same-document-intercept.html: OK
+	dispose events when forward-pruning same-document entries: FAIL
+/navigation-api/per-entry-events/dispose-same-document-navigate-during.html: OK
+	navigate() during a same-document-navigation-initiated dispose works (since it's after the previous navigation): FAIL
+/navigation-api/per-entry-events/dispose-same-document-reload-with-intercept.html: OK
+	dispose events are not fired when doing a same-document reload using navigation.reload() and intercept(): PASS
+/navigation-api/per-entry-events/dispose-same-document-replace-with-intercept.html: OK
+	dispose events when doing a same-document replace using navigation.navigate() and intercept(): FAIL
+/navigation-api/per-entry-events/dispose-same-document-replaceState.html: OK
+	dispose events when doing a same-document replace using history.replaceState(): PASS
+/navigation-api/per-entry-events/dispose-same-document.html: OK
+	dispose events when forward-pruning same-document entries: PASS
+/navigation-api/per-entry-events/dispose-skip-current-on-truncate.html: OK
+	Removing a currentEntry from the joint session history shouldn't dispose it: FAIL
+/navigation-api/precommit-handler/multiple-intercept.html: OK
+	(not provided) + handler: PASS
+	(not provided) + precommitHandler: FAIL
+	handler + (not provided): PASS
+	handler + handler: PASS
+	handler + precommitHandler: FAIL
+	precommitHandler + (not provided): FAIL
+	precommitHandler + handler: FAIL
+	precommitHandler + precommitHandler: FAIL
+/navigation-api/precommit-handler/precommitHandler-addHandler-throws.html: OK
+	addHandler() after commit: FAIL
+	addHandler() after finish: FAIL
+	addHandler() in detached iframe: FAIL
+/navigation-api/precommit-handler/precommitHandler-addHandler.html: OK
+	handler added in addHandler() delays navigation finish: FAIL
+	handler added in addHandler() is executed in the correct order: FAIL
+/navigation-api/precommit-handler/precommitHandler-back-and-forth.html: OK
+	\n  Test that going back and forward during a precommitHandler ends up in the\n  correct entry\n: FAIL
+/navigation-api/precommit-handler/precommitHandler-javascript-url-before-commit.html: OK
+	A javascript: URL navigation aborts a navigate event whose precommitHandler is still pending: FAIL
+/navigation-api/precommit-handler/precommitHandler-new-navigation-before-commit.html: OK
+	Cancel a navigation with a precommitHandler before commit by starting a new navigation: FAIL
+/navigation-api/precommit-handler/precommitHandler-push.html: OK
+	precommitHandler for a push navigation, reject after commit: PASS
+	precommitHandler for a push navigation, reject before commit: FAIL
+	precommitHandler for a push navigation, success: PASS
+/navigation-api/precommit-handler/precommitHandler-redirect-non-api-navigation.html: OK
+	precommitHandler redirect() on non-API navigation does not serialize state: FAIL
+	precommitHandler redirect() with state on non-API navigation (link click): FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-options.html: OK
+	precommitHandler redirect() with options dictionary: FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-push-changed-to-replace.html: OK
+	precommitHandler redirect() push changed to replace: FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-push.html: OK
+	precommitHandler redirect() push: FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-replace-changed-to-push.html: OK
+	precommitHandler redirect() replace changed to push: FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-replace.html: OK
+	precommitHandler redirect() replace: FAIL
+/navigation-api/precommit-handler/precommitHandler-redirect-throws.html: OK
+	redirect() after commit: FAIL
+	redirect() after finish: FAIL
+	redirect() in detached iframe: FAIL
+	redirect() reload: PASS
+	redirect() to cross-origin url: PASS
+	redirect() to invalid url: PASS
+	redirect() traverse: PASS
+	redirect() with an unserializable state object: FAIL
+/navigation-api/precommit-handler/precommitHandler-reload.html: OK
+	precommitHandler for a reload navigation, reject after commit: PASS
+	precommitHandler for a reload navigation, reject before commit: FAIL
+	precommitHandler for a reload navigation, success: PASS
+/navigation-api/precommit-handler/precommitHandler-replace.html: OK
+	precommitHandler for a replace navigation, reject after commit: PASS
+	precommitHandler for a replace navigation, reject before commit: FAIL
+	precommitHandler for a replace navigation, success: PASS
+/navigation-api/precommit-handler/precommitHandler-traversal-commit-new-navigation-before-commit.html: OK
+	Cancel a precommitHandler traversal before commit by starting a new navigation: PASS
+/navigation-api/precommit-handler/precommitHandler-traversal-window-stop-before-commit.html: OK
+	precommitHandler traversal is not aborted by window.stop() before commit: FAIL
+/navigation-api/precommit-handler/precommitHandler-traverse.html: OK
+	precommitHandler for a traverse navigation, reject after commit: FAIL
+	precommitHandler for a traverse navigation, reject before commit: FAIL
+	precommitHandler for a traverse navigation, success: FAIL
+/navigation-api/precommit-handler/precommitHandler-uncancelable.html: OK
+	precommitHandler for an uncancelable traverse navigation: FAIL
+/navigation-api/precommit-handler/precommitHandler-window-stop-before-commit.html: OK
+	 precommitHandler with window.stop() before fragment navigation commit: FAIL
+	 precommitHandler with window.stop() before navigation commit: FAIL
+	Setup: PASS
+/navigation-api/scroll-behavior/after-transition-basic.html: OK
+	scroll: after-transition should scroll when back completes: FAIL
+/navigation-api/scroll-behavior/after-transition-change-history-scroll-restoration-during-promise.html: OK
+	scroll: after-transition should ignore history.scrollRestoration even if it changes in the middle of the navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-explicit-scroll.html: OK
+	scroll: scroll() should preempt after-transition: FAIL
+/navigation-api/scroll-behavior/after-transition-intercept-handler-modifies.html: OK
+	scroll: state should be saved before intercept handlers run: FAIL
+/navigation-api/scroll-behavior/after-transition-push.html: OK
+	scroll: after-transition should work on a push navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-reject.html: OK
+	scroll: after-transition should not scroll when the intercept() handler rejects: FAIL
+/navigation-api/scroll-behavior/after-transition-reload-after-traverse.html: OK
+	scroll: after-transition on a reload of a traversed-to fragment entry scrolls to the fragment: FAIL
+/navigation-api/scroll-behavior/after-transition-reload-no-fragment.html: OK
+	scroll: after-transition on a reload without a fragment scrolls to the beginning of the document: FAIL
+/navigation-api/scroll-behavior/after-transition-reload-no-scroll-anchoring.html: OK
+	scroll: after-transition should work on a reload navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-reload.html: OK
+	scroll: after-transition should work on a reload navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-replace.html: OK
+	scroll: after-transition should work on a replace navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-skips-restore-when-scrolled.html: OK
+	scroll: after-transition should not restore scroll if the document was scrolled during the navigation: FAIL
+/navigation-api/scroll-behavior/after-transition-timing.html: OK
+	scroll: after-transition should scroll when back completes, just before navigatesuccess: FAIL
+/navigation-api/scroll-behavior/after-transition-traverse-no-fragment.html: OK
+	scroll: after-transition on a traverse to an entry without a fragment restores the scroll position: FAIL
+/navigation-api/scroll-behavior/after-transition-traverse-to-fragment.html: OK
+	scroll: after-transition on a traverse to an entry with a fragment restores the scroll position: FAIL
+/navigation-api/scroll-behavior/manual-basic.html: OK
+	scroll: manual should prevent auto scroll on back.: FAIL
+/navigation-api/scroll-behavior/manual-immediate-scroll.html: OK
+	scroll: scroll() should not work inside a navigate event handler: FAIL
+/navigation-api/scroll-behavior/manual-scroll-after-dispatch.html: OK
+	scroll: scroll() should work after a navigate event dispatch: FAIL
+/navigation-api/scroll-behavior/manual-scroll-after-resolve.html: OK
+	scroll: scroll() should throw after a navigation finished promise fulfills: FAIL
+/navigation-api/scroll-behavior/manual-scroll-clears-target-when-fragment-does-not-exist.html: OK
+	scroll: scroll() should clear the CSS :target element when the fragment does not exist: FAIL
+/navigation-api/scroll-behavior/manual-scroll-clears-target-when-no-fragment.html: OK
+	scroll: scroll() should clear the CSS :target element when the destination url contains no fragment: FAIL
+/navigation-api/scroll-behavior/manual-scroll-fragment-does-not-exist.html: OK
+	scroll: scroll() should scroll to beginning of document when the fragment does not exist: FAIL
+/navigation-api/scroll-behavior/manual-scroll-in-precommit-handler.html: OK
+	scroll: scroll() in precommitHandler throws: FAIL
+/navigation-api/scroll-behavior/manual-scroll-push.html: OK
+	scroll: scroll() should work on a push navigation: FAIL
+/navigation-api/scroll-behavior/manual-scroll-reload-no-scroll-anchoring.html: OK
+	scroll: scroll() should work on a reload navigation: FAIL
+/navigation-api/scroll-behavior/manual-scroll-reload.html: OK
+	scroll: scroll() should work on a reload navigation: FAIL
+/navigation-api/scroll-behavior/manual-scroll-repeated.html: OK
+	scroll: scroll() should throw if called a second time: FAIL
+/navigation-api/scroll-behavior/manual-scroll-replace.html: OK
+	scroll: scroll() should work on a replace navigation: FAIL
+/navigation-api/scroll-behavior/manual-scroll-resets-when-no-fragment.html: OK
+	scroll: scroll() should reset scroll position when the destination url contains no fragment: FAIL
+/navigation-api/scroll-behavior/scroll-after-preventDefault.html: OK
+	scroll: scroll() should throw after preventDefault: PASS
+/navigation-api/scroll-behavior/scroll-on-synthetic-event.html: OK
+	scroll: scroll() should throw if invoked on a synthetic event.: PASS
+/navigation-api/scroll-behavior/scroll-without-intercept.html: OK
+	scroll: scroll() should throw for non-intercept: PASS
+/navigation-api/state/cross-document-away-and-back.html?method=navigate: OK
+	entry.getState() behavior after navigating away and back: FAIL
+/navigation-api/state/cross-document-away-and-back.html?method=updateCurrentEntry: OK
+	entry.getState() behavior after navigating away and back: FAIL
+/navigation-api/state/cross-document-getState-undefined.html: OK
+	Default behavior for entry.getState() for a non-current cross-document entry: FAIL
+/navigation-api/state/cross-document-getState.html: OK
+	entry.getState() still works for a non-current cross-document entry: FAIL
+/navigation-api/state/cross-document-location-api.html?method=navigate: OK
+	entry.getState() behavior after cross-document location API navigation: FAIL
+/navigation-api/state/cross-document-location-api.html?method=updateCurrentEntry: OK
+	entry.getState() behavior after cross-document location API navigation: FAIL
+/navigation-api/state/history-pushState.html?method=navigate: OK
+	entry.getState() after history.pushState(): FAIL
+/navigation-api/state/history-pushState.html?method=updateCurrentEntry: OK
+	entry.getState() after history.pushState(): FAIL
+/navigation-api/state/history-replaceState.html?method=navigate: OK
+	entry.getState() after history.replaceState(): FAIL
+/navigation-api/state/history-replaceState.html?method=updateCurrentEntry: OK
+	entry.getState() after history.replaceState(): FAIL
+/navigation-api/state/location-reload.html?method=navigate: OK
+	entry.getState() after location.reload(): FAIL
+/navigation-api/state/location-reload.html?method=updateCurrentEntry: OK
+	entry.getState() after location.reload(): FAIL
+/navigation-api/state/same-document-away-and-back-location-api.html: ERROR
+	entry.getState() behavior after navigating away using a fragment change, then back: TIMEOUT
+/navigation-api/state/same-document-away-and-back-navigation-api.html: OK
+	entry.getState() behavior after navigating away using the navigation API, then back: PASS
+/navigation-api/updateCurrentEntry-method/basic.html: OK
+	updateCurrentEntry() works as expected: PASS
+/navigation-api/updateCurrentEntry-method/exception-order-initial-about-blank-unserializablestate.html: OK
+	updateCurrentEntry() with unserializable state on the initial about:blank must throw an "InvalidStateError", not a "DataCloneError": FAIL
+/navigation-api/updateCurrentEntry-method/exception-order-not-fully-active-unserializablestate.html: OK
+	updateCurrentEntry() with unserializable state while not fully active must throw an "InvalidStateError", not a "DataCloneError": FAIL
+/navigation-api/updateCurrentEntry-method/initial-about-blank.html: OK
+	updateCurrentEntry() must throw if the document is still on the initial about:blank: FAIL
+/navigation-api/updateCurrentEntry-method/no-args.html: OK
+	updateCurrentEntry() must throw if state is not given: PASS
+/navigation-api/updateCurrentEntry-method/not-fully-active.html: OK
+	updateCurrentEntry() must throw if the document is not fully active: FAIL
+/navigation-api/updateCurrentEntry-method/opaque-origin.html: OK
+	navigation.updateCurrentEntry() in an opaque origin iframe: PASS
+/navigation-api/updateCurrentEntry-method/reentrancy-on-serialize.html: TIMEOUT
+	 : TIMEOUT
+/navigation-api/updateCurrentEntry-method/same-document-away-and-back-location-api.html: ERROR
+	entry.getState() behavior after navigating away using the location API, then back: TIMEOUT
+/navigation-api/updateCurrentEntry-method/unserializable.html: OK
+	updateCurrentEntry() must throw if state is unserializable (SharedArrayBuffer): FAIL
+	updateCurrentEntry() must throw if state is unserializable (WritableStream): FAIL

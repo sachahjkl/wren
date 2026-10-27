@@ -1024,10 +1024,56 @@ JSValue wjr_NamedNodeMap_removeNamedItem(JSContext *ctx, JSValueConst this_val, 
 JSValue wjr_NamedNodeMap_removeNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NamedNodeMap_setNamedItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NamedNodeMap_setNamedItemNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigateEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigateEvent_get_canIntercept(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_destination(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_downloadRequest(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_formData(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_hasUAVisualTransition(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_hashChange(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_info(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_navigationType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_signal(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_sourceElement(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_get_userInitiated(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigateEvent_intercept(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigateEvent_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationCurrentEntryChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationCurrentEntryChangeEvent_get_from(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationCurrentEntryChangeEvent_get_navigationType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationDestination_getState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationDestination_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationDestination_get_index(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationDestination_get_key(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationDestination_get_sameDocument(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationDestination_get_url(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationHistoryEntry_getState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationHistoryEntry_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationHistoryEntry_get_index(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationHistoryEntry_get_key(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationHistoryEntry_get_sameDocument(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationHistoryEntry_get_url(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigationPreloadManager_disable(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigationPreloadManager_enable(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigationPreloadManager_getState(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigationPreloadManager_setHeaderValue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationTransition_get_committed(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationTransition_get_finished(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationTransition_get_from(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationTransition_get_navigationType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationTransition_get_to(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_back(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_entries(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_forward(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_get_activation(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_get_canGoBack(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_get_canGoForward(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_get_currentEntry(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_get_transition(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Navigation_navigate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_reload(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_traverseTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Navigation_updateCurrentEntry(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigatorConcurrentHardware_get_hardwareConcurrency(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigatorCookies_get_cookieEnabled(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigatorID_get_appCodeName(JSContext *ctx, JSValueConst this_val);
@@ -1655,6 +1701,7 @@ JSValue wjr_Window_get_frames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_history(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_length(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_location(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Window_get_navigation(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_navigator(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_opener(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Window_get_parent(JSContext *ctx, JSValueConst this_val);
@@ -13208,23 +13255,23 @@ static const wj_member wj_m_MessageEvent[] = {
     { "initMessageEvent", WJ_M_METHOD, 0, 1, wjr_MessageEvent_initMessageEvent, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigateEvent[] = {
-    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "destination", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "canIntercept", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "userInitiated", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hashChange", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "formData", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "downloadRequest", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "info", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "hasUAVisualTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "sourceElement", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "intercept", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "scroll", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_navigationType, NULL, 0 },
+    { "destination", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_destination, NULL, 0 },
+    { "canIntercept", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_canIntercept, NULL, 0 },
+    { "userInitiated", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_userInitiated, NULL, 0 },
+    { "hashChange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_hashChange, NULL, 0 },
+    { "signal", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_signal, NULL, 0 },
+    { "formData", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_formData, NULL, 0 },
+    { "downloadRequest", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_downloadRequest, NULL, 0 },
+    { "info", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_info, NULL, 0 },
+    { "hasUAVisualTransition", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_hasUAVisualTransition, NULL, 0 },
+    { "sourceElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigateEvent_get_sourceElement, NULL, 0 },
+    { "intercept", WJ_M_METHOD, 0, 0, wjr_NavigateEvent_intercept, NULL, NULL, 0 },
+    { "scroll", WJ_M_METHOD, 0, 0, wjr_NavigateEvent_scroll, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationCurrentEntryChangeEvent[] = {
-    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationCurrentEntryChangeEvent_get_navigationType, NULL, 0 },
+    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationCurrentEntryChangeEvent_get_from, NULL, 0 },
 };
 static const wj_member wj_m_OfflineAudioCompletionEvent[] = {
     { "renderedBuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -13834,30 +13881,30 @@ static const wj_member wj_m_MessagePort[] = {
     { "onmessageerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_MessagePort_get_onmessageerror, wjg_MessagePort_set_onmessageerror, 0 },
 };
 static const wj_member wj_m_Navigation[] = {
-    { "entries", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "currentEntry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "updateCurrentEntry", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "transition", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "activation", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "canGoBack", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "canGoForward", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "navigate", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "reload", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "traverseTo", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "back", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
-    { "forward", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "entries", WJ_M_METHOD, 0, 0, wjr_Navigation_entries, NULL, NULL, 0 },
+    { "currentEntry", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigation_get_currentEntry, NULL, 0 },
+    { "updateCurrentEntry", WJ_M_METHOD, 0, 1, wjr_Navigation_updateCurrentEntry, NULL, NULL, 0 },
+    { "transition", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigation_get_transition, NULL, 0 },
+    { "activation", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigation_get_activation, NULL, 0 },
+    { "canGoBack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigation_get_canGoBack, NULL, 0 },
+    { "canGoForward", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Navigation_get_canGoForward, NULL, 0 },
+    { "navigate", WJ_M_METHOD, 0, 1, wjr_Navigation_navigate, NULL, NULL, 0 },
+    { "reload", WJ_M_METHOD, 0, 0, wjr_Navigation_reload, NULL, NULL, 0 },
+    { "traverseTo", WJ_M_METHOD, 0, 1, wjr_Navigation_traverseTo, NULL, NULL, 0 },
+    { "back", WJ_M_METHOD, 0, 0, wjr_Navigation_back, NULL, NULL, 0 },
+    { "forward", WJ_M_METHOD, 0, 0, wjr_Navigation_forward, NULL, NULL, 0 },
     { "onnavigate", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Navigation_get_onnavigate, wjg_Navigation_set_onnavigate, 0 },
     { "onnavigatesuccess", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Navigation_get_onnavigatesuccess, wjg_Navigation_set_onnavigatesuccess, 0 },
     { "onnavigateerror", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Navigation_get_onnavigateerror, wjg_Navigation_set_onnavigateerror, 0 },
     { "oncurrententrychange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Navigation_get_oncurrententrychange, wjg_Navigation_set_oncurrententrychange, 0 },
 };
 static const wj_member wj_m_NavigationHistoryEntry[] = {
-    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "sameDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getState", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationHistoryEntry_get_url, NULL, 0 },
+    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationHistoryEntry_get_key, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationHistoryEntry_get_id, NULL, 0 },
+    { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationHistoryEntry_get_index, NULL, 0 },
+    { "sameDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationHistoryEntry_get_sameDocument, NULL, 0 },
+    { "getState", WJ_M_METHOD, 0, 0, wjr_NavigationHistoryEntry_getState, NULL, NULL, 0 },
     { "ondispose", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_NavigationHistoryEntry_get_ondispose, wjg_NavigationHistoryEntry_set_ondispose, 0 },
 };
 static const wj_member wj_m_NetworkInformation[] = {
@@ -16158,7 +16205,7 @@ static const wj_member wj_m_Window[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Window_get_name, wjg_Window_set_name, 0 },
     { "location", WJ_M_ATTRIBUTE, WJ_F_UNFORGEABLE, 0, NULL, wjr_Window_get_location, wjg_Window_set_location, 0 },
     { "history", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_history, NULL, 0 },
-    { "navigation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
+    { "navigation", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, wjr_Window_get_navigation, wj_replaceable_setter, 0 },
     { "customElements", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Window_get_customElements, NULL, 0 },
     { "locationbar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
     { "menubar", WJ_M_ATTRIBUTE, WJ_F_REPLACEABLE, 0, NULL, NULL, wj_replaceable_setter, 0 },
@@ -16883,12 +16930,12 @@ static const wj_member wj_m_NavigationActivation[] = {
     { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationDestination[] = {
-    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "sameDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getState", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
+    { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_url, NULL, 0 },
+    { "key", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_key, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_id, NULL, 0 },
+    { "index", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_index, NULL, 0 },
+    { "sameDocument", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_sameDocument, NULL, 0 },
+    { "getState", WJ_M_METHOD, 0, 0, wjr_NavigationDestination_getState, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationPrecommitController[] = {
     { "redirect", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -16901,11 +16948,11 @@ static const wj_member wj_m_NavigationPreloadManager[] = {
     { "getState", WJ_M_METHOD, WJ_F_SECURE, 0, wjr_NavigationPreloadManager_getState, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationTransition[] = {
-    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "to", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "committed", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "finished", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationTransition_get_navigationType, NULL, 0 },
+    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationTransition_get_from, NULL, 0 },
+    { "to", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationTransition_get_to, NULL, 0 },
+    { "committed", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationTransition_get_committed, NULL, 0 },
+    { "finished", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationTransition_get_finished, NULL, 0 },
 };
 static const wj_member wj_m_Navigator[] = {
     { "sendBeacon", WJ_M_METHOD, 0, 1, wjr_Navigator_sendBeacon, NULL, NULL, 0 },
@@ -18662,11 +18709,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MessageEvent, .n_members = 6, .subtree_end = 150,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigateEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "NavigateEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_NavigateEvent_constructor,
       .members = wj_m_NavigateEvent, .n_members = 13, .subtree_end = 151,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigationCurrentEntryChangeEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
+    { .name = "NavigationCurrentEntryChangeEvent", .parent = 122, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_NavigationCurrentEntryChangeEvent_constructor,
       .members = wj_m_NavigationCurrentEntryChangeEvent, .n_members = 2, .subtree_end = 152,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18990,11 +19037,11 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MessagePort, .n_members = 5, .subtree_end = 232,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "Navigation", .parent = 181, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "Navigation", .parent = 181, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_Navigation, .n_members = 16, .subtree_end = 233,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigationHistoryEntry", .parent = 181, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "NavigationHistoryEntry", .parent = 181, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationHistoryEntry, .n_members = 7, .subtree_end = 234,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -19870,7 +19917,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 452,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigationDestination", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "NavigationDestination", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationDestination, .n_members = 6, .subtree_end = 453,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -19882,7 +19929,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NavigationPreloadManager, .n_members = 4, .subtree_end = 455,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigationTransition", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "NavigationTransition", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationTransition, .n_members = 5, .subtree_end = 456,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
