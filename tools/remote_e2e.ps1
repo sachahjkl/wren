@@ -617,6 +617,10 @@ try {
     $null = Wren-Ctl type 'Wren'
     $null = Wren-Ctl key 'Shift+A'
     Check 'type and key reach the focused field' ((Wren-Ctl eval 'document.getElementById("name").value') -eq 'WrenA') (Wren-Ctl eval 'document.getElementById("name").value')
+    # a button below the fold of a fixed box that scrolls (a consent banner): that box is scrolled first, the page cannot bring it in
+    $null = Wren-Ctl eval 'document.getElementById("banner").hidden = false'
+    $acc = Wren-Ctl click --selector '#accept'
+    Check 'click --selector scrolls the box the element is in' ((Wren-Ctl eval 'document.getElementById("banner").hidden') -eq 'true') "click at $acc, banner scrollTop $(Wren-Ctl eval 'document.getElementById("banner").scrollTop')"
 
     $con = Wren-Ctl console
     Check 'console log' ($con -match 'fixture ready' -and $con -match 'warn: a warning')

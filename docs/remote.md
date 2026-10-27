@@ -221,7 +221,7 @@ path). The rest is in the `Wren.` domain.
 | `Input.dispatchMouseEvent {type, x, y, button, modifiers, deltaX, deltaY, notches, space}` | type mouseMoved, mousePressed, mouseReleased, mouseWheel; x and y in page CSS pixels, `"space":"window"` for window pixels |
 | `Input.dispatchKeyEvent {type, key, text, modifiers}` / `Input.insertText {text}` | through the same events as a real keyboard |
 | `Wren.wait {for, selector, expression, visible, frames, timeout, idleMs, quietMs, maxCpuMs}` | for: load, idle, stable, quiet, selector, function, frames; `quiet` answers `{waitedMs, cpuMs}` |
-| `Wren.click {x, y \| selector, button, count}` | an element is scrolled into view, then clicked in the middle |
+| `Wren.click {x, y \| selector, button, count}` | an element is scrolled into view (the boxes that scroll around it, a dialog's, then the page), then clicked in the middle |
 | `Wren.drag`, `Wren.type {text}`, `Wren.key {keys, repeat}` | |
 | `Wren.stats`, `Wren.console {since, clear}`, `Wren.network {clear}` | the status bar's numbers and the process's (pid, uptimeMs, cpuTimeMs, threads, handles...); the tab's console and request logs |
 | `Wren.getPref {name}` / `setPref {name, value, override}` / `resetPref {name \| all}` / `listPrefs {prefix}` | about:config |

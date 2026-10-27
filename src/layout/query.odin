@@ -384,6 +384,39 @@ set_scroll :: proc(l: ^Layout, node: base.Handle, off: Vec2) -> (Vec2, bool) {
 	return v, true
 }
 
+// Scrolls the scroll containers `node`'s box is in, innermost first, so that its border box shows in each (centred
+// when it did not), up to the document or a fixed box, which are left as they are: the document's scroll is the
+// caller's. What a click on an element below the fold of a scrolling dialog needs before the page can be clicked.
+// Returns whether some offset changed.
+reveal_in_scroll_containers :: proc(l: ^Layout, node: base.Handle) -> bool {
+	bi := box_index(l, node)
+	if bi == NONE || !l.valid { return false }
+	rect := border_rect(&l.boxes[bi])
+	changed := false
+	for s := l.boxes[bi].space; s != NONE; s = l.spaces[s].parent {
+		sp := &l.spaces[s]
+		#partial switch sp.kind {
+		case .Scroll:
+			owner := l.boxes[sp.box].node
+			cur, _ := scroll_of(l, owner)
+			want := cur
+			pw, ph := sp.port.max.x - sp.port.min.x, sp.port.max.y - sp.port.min.y
+			if rect.min.y < sp.port.min.y + want.y || rect.max.y > sp.port.max.y + want.y {
+				want.y = rect.min.y - sp.port.min.y - max(ph - (rect.max.y - rect.min.y), 0) / 2
+			}
+			if rect.min.x < sp.port.min.x + want.x || rect.max.x > sp.port.max.x + want.x {
+				want.x = rect.min.x - sp.port.min.x - max(pw - (rect.max.x - rect.min.x), 0) / 2
+			}
+			got, _ := set_scroll(l, owner, want)
+			if got != cur { changed = true }
+			rect = {rect.min - got, rect.max - got}
+		case .Document, .Fixed:
+			return changed
+		}
+	}
+	return changed
+}
+
 // Largest scroll offset of a scroll container.
 scroll_max :: proc(l: ^Layout, node: base.Handle) -> (Vec2, bool) {
 	bi := box_index(l, node)
