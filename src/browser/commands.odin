@@ -415,7 +415,8 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tabs_toggle_collapsed(app) }})
 	for np in ui.NAMED_PALETTES {
 		name := strings.to_lower(np.name, virtual.arena_allocator(&r.arena))
-		add(r, {name = fmt.aprintf("view.theme.%s", name, allocator = a), title = fmt.aprintf("Theme: %s", np.name, allocator = a), category = "View",
+		slug, _ := strings.replace_all(name, " ", "_", context.temp_allocator)
+		add(r, {name = fmt.aprintf("view.theme.%s", slug, allocator = a), title = fmt.aprintf("Theme: %s", np.name, allocator = a), category = "View",
 			keywords = np.palette.dark ? "colors appearance palette dark" : "colors appearance palette light", arg = name,
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return strings.equal_fold(app.cfg.ui_theme, c.arg) },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) {
