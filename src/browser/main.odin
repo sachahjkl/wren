@@ -1320,8 +1320,9 @@ main :: proc() {
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
 	remote_asked, remote_name, a7 := extract_remote(a6[:])   // --remote[=name]: the remote control channel (remote_shell.odin)
 	headless_mode, a8 := extract_switch(a7[:], "--headless")   // the window is never shown (it renders all the same: remote captures read the frame)
+	cdp_port, cdp_have_port, cdp_address, a9 := cdp_extract_args(a8[:])   // --remote-debugging-port[=N] / --remote-debugging-address (cdp.odin)
 	app.prefs = config.prefs_make()
-	rest, arg_errors := config.apply_args(&app.prefs, a8[:], context.temp_allocator)   // (read before the first frame)
+	rest, arg_errors := config.apply_args(&app.prefs, a9[:], context.temp_allocator)   // (read before the first frame)
 	cfg_dir := platform.config_dir(context.temp_allocator)
 	portable_dir := profile_override == "" ? portable_profile_dir() : ""   // a copy with wren.portable beside it keeps its profile beside it (setup.odin)
 	app.portable = portable_dir != ""
@@ -1345,7 +1346,7 @@ main :: proc() {
 		os.exit(2)
 	}
 	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
-	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
+	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode || cdp_have_port)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
 
@@ -1355,7 +1356,19 @@ main :: proc() {
 	font.init(&app.fonts, font_settings_from_prefs(&app.prefs))
 	preload := fonts_preload_start(app)   // the font state is the preload thread's until fonts_preload_finish
 	app.headless = headless_mode
-	first_window := platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
+	first_window: ^platform.Window
+	if headless_mode {
+		// a real headless window: no HWND at all, so it works with no desktop session (a service, SSH, CI). It renders to an
+		// offscreen target the capture reads. The size and the DPI are physical pixels at the emulated scale (window --size /
+		// --dpi, or a remote client's setDeviceMetricsOverride, resize it). The scale is browser.ui.scale (0: no display to
+		// follow, so 1).
+		scale := f32(config.float_of(&app.prefs, "browser.ui.scale"))
+		if scale <= 0 { scale = 1 }
+		first_window = platform.open_window_offscreen(APP_NAME, {int(1280 * scale + 0.5), int(800 * scale + 0.5)}, dpi_scale = scale)
+	} else {
+		first_window = platform.open_window(APP_NAME, {1280, 800}, transparent = config.bool_of(&app.prefs, "browser.window.fixed_surface"), integrated_title = config.bool_of(&app.prefs, "browser.window.integrated_titlebar"))
+	}
+	if first_window == nil { fmt.eprintln("cannot open the window"); return }
 	window_adopt_primary(app, first_window)   // windows.odin: the window the App's per-window fields are about
 	prof_mark(.Window)
 
@@ -1409,14 +1422,23 @@ main :: proc() {
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
 	remote_start(app, remote_asked, remote_name)   // remote_shell.odin: the pipe, when asked for   // (tab_log keeps its copy)
+	cdp_start(app, cdp_port, cdp_have_port, cdp_address)   // cdp.odin: the CDP / WebDriver BiDi WebSocket, when asked for
 	desktop_watch_begin(app, profile_override != "")   // desktop_shell.odin: the system tells when the integration changes (the box in about:config and the Setup dialog follow it)
 	setup_startup(app, profile_override != "", setup_requested)   // setup.odin: a copy that is not the installed one is offered Setup; --setup opens it
 	update_startup(app, profile_override != "")   // update_check.odin: the daily check, when it is on and due
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
-	if !render.init(&app.r, active_window(app).win.hwnd, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
-	if fixed_size := fixed_surface_size(app, active_window(app).win.hwnd); fixed_size.x > 0 {
+	if headless_mode {
+		// no window: the renderer draws into an offscreen target of the window's size. Captures read it (render.capture_*,
+		// on both backends). It resizes with the window (window_resize_offscreen).
+		if !render.init_offscreen(&app.r, active_window(app).win.size) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return }
+	} else {
+		if !render.init(&app.r, active_window(app).win.hwnd, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	}
+	fixed_size: [2]int
+	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win.hwnd) }
+	if fixed_size.x > 0 {
 		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
 		// (browser.window.fixed_surface; render.set_fixed_surface; the developer tools' window does the same)
 		render.set_fixed_surface(&app.r, fixed_size)
@@ -1477,10 +1499,11 @@ main :: proc() {
 		remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
 	}
 
-	for w in app.windows { win.ShowWindow(w.win.hwnd, win.SW_HIDE) }   // closed means gone from the screen at once, whatever the teardown below takes
+	for w in app.windows { if w.win.hwnd != nil { win.ShowWindow(w.win.hwnd, win.SW_HIDE) } }   // closed means gone from the screen at once, whatever the teardown below takes (a headless window has no HWND)
 	windows_shutdown_begin(app)   // windows.odin: the other windows give up their own state
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")
+	cdp_stop(app)      // cdp.odin: the CDP / BiDi WebSocket server and its clients
 	remote_stop(app)   // remote_shell.odin: the pipe and its clients
 	if remote_fast_exit { recovery_end(app); crashtrace.end_session(); os.exit(remote_exit_code) }   // Browser.close {fast}: a throwaway profile; the teardown below is a quarter of a second
 	host.shutdown_step("instance_end")
