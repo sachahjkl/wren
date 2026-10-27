@@ -82,7 +82,7 @@ static JSValue intl_new_this(JSContext *ctx, JSValueConst this_val, int iface_pr
     if (JS_IsUndefined(this_val)) { if (is_new) { *is_new = false; } return JS_UNDEFINED; }
     if (is_new) { *is_new = true; }
     JSValue proto = JS_GetPropertyStr(ctx, this_val, "prototype");
-    JSValue obj = JS_IsObject(proto) ? JS_NewObjectProtoClass(ctx, proto, JS_CLASS_OBJECT) : JS_NewObject(ctx);
+    JSValue obj = JS_IsObject(proto) ? JS_NewObjectProto(ctx, proto) : JS_NewObject(ctx);
     JS_FreeValue(ctx, proto);
     return obj;
 }
@@ -640,7 +640,7 @@ static JSValue nf_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
         JS_FreeValue(ctx, nf);
         JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
         JS_FreeValue(ctx, ctor);
-        obj = JS_NewObjectProtoClass(ctx, proto, JS_CLASS_OBJECT);
+        obj = JS_NewObjectProto(ctx, proto);
         JS_FreeValue(ctx, proto);
     }
     if (!nf_build(ctx, obj, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1))) { JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
@@ -1161,7 +1161,7 @@ static JSValue dtf_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValue
         JS_FreeValue(ctx, intl);
         JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype");
         JS_FreeValue(ctx, ctor);
-        obj = JS_NewObjectProtoClass(ctx, proto, JS_CLASS_OBJECT);
+        obj = JS_NewObjectProto(ctx, proto);
         JS_FreeValue(ctx, proto);
     }
     if (!dtf_build(ctx, obj, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1))) { JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
@@ -1233,7 +1233,7 @@ static JSValue pr_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     JS_FreeValue(ctx, intl);
     JSValue nfproto = JS_GetPropertyStr(ctx, nfctor, "prototype");
     JS_FreeValue(ctx, nfctor);
-    JSValue nf = JS_NewObjectProtoClass(ctx, nfproto, JS_CLASS_OBJECT);
+    JSValue nf = JS_NewObjectProto(ctx, nfproto);
     JS_FreeValue(ctx, nfproto);
     JSValue enstr = JS_NewString(ctx, "en");
     if (!nf_build(ctx, nf, enstr, o)) { JS_FreeValue(ctx, enstr); JS_FreeValue(ctx, nf); JS_FreeValue(ctx, o); JS_FreeValue(ctx, obj); return JS_EXCEPTION; }
@@ -1659,7 +1659,7 @@ static JSValue coll_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValu
         JSValue intl = JS_GetPropertyStr(ctx, wj_the_realm.global, "Intl");
         JSValue ctor = JS_GetPropertyStr(ctx, intl, "Collator"); JS_FreeValue(ctx, intl);
         JSValue proto = JS_GetPropertyStr(ctx, ctor, "prototype"); JS_FreeValue(ctx, ctor);
-        obj = JS_NewObjectProtoClass(ctx, proto, JS_CLASS_OBJECT); JS_FreeValue(ctx, proto);
+        obj = JS_NewObjectProto(ctx, proto); JS_FreeValue(ctx, proto);
     }
     JSValue canon = intl_canonical_locales(ctx, wj_arg(argc, (JSValue *)argv, 0));
     if (JS_IsException(canon)) { JS_FreeValue(ctx, obj); return canon; }
@@ -2053,6 +2053,15 @@ static JSValue make_ctor(JSContext *ctx, const char *name, JSCFunction *fn, int 
     return ctor;
 }
 
+/* the prototype of a global constructor (the class ids of the engine are not public) */
+static JSValue class_proto(JSContext *ctx, JSValueConst global, const char *name)
+{
+    JSValue c = JS_GetPropertyStr(ctx, global, name);
+    JSValue p = JS_GetPropertyStr(ctx, c, "prototype");
+    JS_FreeValue(ctx, c);
+    return p;
+}
+
 void wj_install_intl(JSContext *ctx)
 {
     JSValue global = wj_the_realm.global;
@@ -2150,18 +2159,18 @@ void wj_install_intl(JSContext *ctx)
     def_ne(ctx, global, "Intl", intl);
 
     /* the locale-sensitive methods of the standard library */
-    JSValue date_proto = JS_GetClassProto(ctx, JS_CLASS_DATE);
+    JSValue date_proto = class_proto(ctx, global, "Date");
     def_ne(ctx, date_proto, "toLocaleString", JS_NewCFunctionMagic(ctx, date_to_locale, "toLocaleString", 0, JS_CFUNC_generic_magic, 0));
     def_ne(ctx, date_proto, "toLocaleDateString", JS_NewCFunctionMagic(ctx, date_to_locale, "toLocaleDateString", 0, JS_CFUNC_generic_magic, 1));
     def_ne(ctx, date_proto, "toLocaleTimeString", JS_NewCFunctionMagic(ctx, date_to_locale, "toLocaleTimeString", 0, JS_CFUNC_generic_magic, 2));
     JS_FreeValue(ctx, date_proto);
-    JSValue number_proto = JS_GetClassProto(ctx, JS_CLASS_NUMBER);
+    JSValue number_proto = class_proto(ctx, global, "Number");
     def_ne(ctx, number_proto, "toLocaleString", JS_NewCFunction(ctx, number_to_locale, "toLocaleString", 0));
     JS_FreeValue(ctx, number_proto);
-    JSValue bigint_proto = JS_GetClassProto(ctx, JS_CLASS_BIG_INT);
+    JSValue bigint_proto = class_proto(ctx, global, "BigInt");
     def_ne(ctx, bigint_proto, "toLocaleString", JS_NewCFunction(ctx, number_to_locale, "toLocaleString", 0));
     JS_FreeValue(ctx, bigint_proto);
-    JSValue string_proto = JS_GetClassProto(ctx, JS_CLASS_STRING);
+    JSValue string_proto = class_proto(ctx, global, "String");
     def_ne(ctx, string_proto, "localeCompare", JS_NewCFunction(ctx, string_locale_compare, "localeCompare", 1));
     JS_FreeValue(ctx, string_proto);
 }
