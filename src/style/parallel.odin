@@ -70,8 +70,7 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 	host.parallel_for(pool, tasks, proc(data: rawptr, i: int) {
 		j := (^Par_Job)(data)
 		p := pass_make(j.e, j.s, j.doc, j.state)
-		arena := new(virtual.Arena)
-		_ = virtual.arena_init_growing(arena)
+		arena := thread_arena_make()
 		p.alloc = virtual.arena_allocator(arena)
 		r := j.ranges[i]
 		for f in j.frames[r[0]:r[1]] { style_subtree(p, f.h, f.parent, f.bloom, root_ctx = f.ctx) }
@@ -81,4 +80,14 @@ style_document_parallel :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, stat
 		append(&s.thread_arenas, job.arenas[i])
 		pass_destroy(job.passes[i])
 	}
+}
+
+// The arena of a style thread's computed styles, kept by the Styled (thread_arenas) and freed by its owner's thread: its
+// header comes from the process's allocator, whoever runs the item (the caller's allocator may not be thread-safe: a
+// test's), and styled_destroy frees it there.
+@(private)
+thread_arena_make :: proc() -> ^virtual.Arena {
+	arena := new(virtual.Arena, base.process_allocator())
+	_ = virtual.arena_init_growing(arena)
+	return arena
 }

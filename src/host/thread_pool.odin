@@ -8,6 +8,7 @@ package host
 
 import "core:sync"
 import "core:time"
+import "wb:base"
 
 Parallel_Proc :: #type proc(data: rawptr, index: int)
 
@@ -28,7 +29,14 @@ Thread_Pool :: struct {
 }
 
 // `threads` helpers besides the caller (0 = everything runs on the caller).
+//
+// The helpers start from the process's context, never the caller's: they outlive it and run the items of whoever calls
+// parallel_for, and what an item allocates on them (a style thread's pass and arena) goes through their context's
+// allocator, from several threads at once. A test's allocator (a rollback stack per test, not thread-safe) shared that
+// way corrupted the style tests' memory now and then (a rule pointer holding a node handle, a bounds trap on a pool
+// thread). The pool itself is in the process's memory too (thread_pool_destroy frees it there).
 thread_pool_make :: proc(threads: int, stack_bytes := 0) -> ^Thread_Pool {
+	context = base.process_context()
 	p := new(Thread_Pool)
 	for _ in 0 ..< max(threads, 0) {
 		t := thread_start(pool_thread, p, stack_bytes, name = "wren-pool")
@@ -40,6 +48,7 @@ thread_pool_make :: proc(threads: int, stack_bytes := 0) -> ^Thread_Pool {
 
 thread_pool_destroy :: proc(p: ^Thread_Pool) {
 	if p == nil { return }
+	context = base.process_context()   // (where thread_pool_make allocated)
 	sync.mutex_lock(&p.mu)
 	p.stopping = true
 	sync.cond_broadcast(&p.cond)
