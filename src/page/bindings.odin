@@ -62,8 +62,8 @@ Node_nextSibling :: proc(c: ^Call, node: Api_Node) -> u64 { return u64(node.data
 Node_nodeType :: proc(c: ^Call, node: Api_Node) -> i32 {
 	switch node.data.kind {
 	case .Element: return 1
-	case .Text: return 3
-	case .Comment: return 8
+	case .Text: return node.data.xml == .CDATA ? 4 : 3
+	case .Comment: return node.data.xml == .Processing_Instruction ? 7 : 8
 	case .Document: return 9
 	case .Doctype: return 10
 	case .Fragment: return 11

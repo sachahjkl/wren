@@ -437,6 +437,7 @@ JSValue wjr_Document_get_adoptedStyleSheets(JSContext *ctx, JSValueConst this_va
 JSValue wjr_Document_get_all(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_anchors(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_body(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_Document_get_contentType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_doctype(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Document_get_documentElement(JSContext *ctx, JSValueConst this_val);
@@ -3796,6 +3797,17 @@ static JSValue wjg_CharacterData_remove(JSContext *ctx, JSValueConst this_val, i
     return JS_UNDEFINED;
 }
 
+/* ProcessingInstruction.target -> dom.ProcessingInstruction_target */
+static JSValue wjg_ProcessingInstruction_get_target(JSContext *ctx, JSValueConst this_val)
+{
+    wj_obj *self = wj_this(ctx, this_val, 239);
+    if (!self) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_ProcessingInstruction_target(self->handle, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { return wj_throw_status(ctx, n, "ProcessingInstruction.target"); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
+}
+
 /* Text.splitText() -> dom.Text_splitText */
 static JSValue wjg_Text_splitText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -3916,17 +3928,6 @@ static JSValue wjg_Document_get_inputEncoding(JSContext *ctx, JSValueConst this_
     int32_t n;
     WJ_FETCH_STRING(n, wr_Document_inputEncoding(wj_scratch.data, wj_scratch.cap));
     if (n < 0) { return wj_throw_status(ctx, n, "Document.inputEncoding"); }
-    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
-}
-
-/* Document.contentType -> dom.Document_contentType */
-static JSValue wjg_Document_get_contentType(JSContext *ctx, JSValueConst this_val)
-{
-    wj_obj *self = wj_this(ctx, this_val, 242);
-    if (!self) { return JS_EXCEPTION; }
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_Document_contentType(wj_scratch.data, wj_scratch.cap));
-    if (n < 0) { return wj_throw_status(ctx, n, "Document.contentType"); }
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
@@ -13998,7 +13999,7 @@ static const wj_member wj_m_Comment[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ProcessingInstruction[] = {
-    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ProcessingInstruction_get_target, NULL, 0 },
     { "hasAttributes", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "getAttributeNames", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
     { "getAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
@@ -14035,7 +14036,7 @@ static const wj_member wj_m_Document[] = {
     { "characterSet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_characterSet, NULL, 0 },
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_charset, NULL, 0 },
     { "inputEncoding", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_inputEncoding, NULL, 0 },
-    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_contentType, NULL, 0 },
+    { "contentType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_contentType, NULL, 0 },
     { "doctype", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_doctype, NULL, 0 },
     { "documentElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_documentElement, NULL, 0 },
     { "getElementsByTagName", WJ_M_METHOD, 0, 1, wjr_Document_getElementsByTagName, NULL, NULL, 0 },

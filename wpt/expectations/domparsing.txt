@@ -9,7 +9,7 @@
 	DOMParser parses HTML tag soup with no problems: PASS
 	DOMParser should handle the content of <noembed> as raw text: PASS
 	DOMParser throws on an invalid enum value: PASS
-	Location value: FAIL
+	Location value: PASS
 	Parsing of id attribute: PASS
 	compatMode: FAIL
 	compatMode for a proper DOCTYPE: PASS
@@ -130,45 +130,45 @@
 	Child window with parent method (text/html): FAIL
 	Child window with parent method (text/xml): FAIL
 	DOMParser: Document's url: FAIL
-	Parent window (application/xhtml+xml): FAIL
-	Parent window (application/xml): FAIL
-	Parent window (image/svg+xml): FAIL
+	Parent window (application/xhtml+xml): PASS
+	Parent window (application/xml): PASS
+	Parent window (image/svg+xml): PASS
 	Parent window (text/html): PASS
-	Parent window (text/xml): FAIL
-	Parent window with child method (application/xhtml+xml): FAIL
-	Parent window with child method (application/xml): FAIL
-	Parent window with child method (image/svg+xml): FAIL
+	Parent window (text/xml): PASS
+	Parent window with child method (application/xhtml+xml): PASS
+	Parent window with child method (application/xml): PASS
+	Parent window with child method (image/svg+xml): PASS
 	Parent window with child method (text/html): PASS
-	Parent window with child method (text/xml): FAIL
+	Parent window with child method (text/xml): PASS
 /domparsing/DOMParser-parseFromString-url-pushstate.html: OK
-	application/xhtml+xml invalid XML: created normally: FAIL
+	application/xhtml+xml invalid XML: created normally: PASS
 	application/xhtml+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	application/xhtml+xml valid: created normally: FAIL
+	application/xhtml+xml valid: created normally: PASS
 	application/xhtml+xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: PASS
 	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: FAIL
 	application/xhtml+xml valid: created using another iframe's DOMParser from this frame: FAIL
-	application/xml invalid XML: created normally: FAIL
+	application/xml invalid XML: created normally: PASS
 	application/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	application/xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	application/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	application/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	application/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	application/xml valid: created normally: FAIL
+	application/xml valid: created normally: PASS
 	application/xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	application/xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	application/xml valid: created using a parser from this frame and the method from the iframe: PASS
 	application/xml valid: created using another iframe's DOMParser from that frame: FAIL
 	application/xml valid: created using another iframe's DOMParser from this frame: FAIL
-	image/svg+xml invalid XML: created normally: FAIL
+	image/svg+xml invalid XML: created normally: PASS
 	image/svg+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	image/svg+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	image/svg+xml valid: created normally: FAIL
+	image/svg+xml valid: created normally: PASS
 	image/svg+xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	image/svg+xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	image/svg+xml valid: created using a parser from this frame and the method from the iframe: PASS
 	image/svg+xml valid: created using another iframe's DOMParser from that frame: FAIL
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
@@ -176,45 +176,45 @@
 	text/html valid: created using a parser from this frame and the method from the iframe: PASS
 	text/html valid: created using another iframe's DOMParser from that frame: FAIL
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
-	text/xml invalid XML: created normally: FAIL
+	text/xml invalid XML: created normally: PASS
 	text/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	text/xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	text/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	text/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	text/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	text/xml valid: created normally: FAIL
+	text/xml valid: created normally: PASS
 	text/xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	text/xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	text/xml valid: created using a parser from this frame and the method from the iframe: PASS
 	text/xml valid: created using another iframe's DOMParser from that frame: FAIL
 	text/xml valid: created using another iframe's DOMParser from this frame: FAIL
 /domparsing/DOMParser-parseFromString-url.html: OK
-	application/xhtml+xml invalid XML: created normally: FAIL
+	application/xhtml+xml invalid XML: created normally: PASS
 	application/xhtml+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	application/xhtml+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	application/xhtml+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	application/xhtml+xml valid: created normally: FAIL
+	application/xhtml+xml valid: created normally: PASS
 	application/xhtml+xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	application/xhtml+xml valid: created using a parser from this frame and the method from the iframe: PASS
 	application/xhtml+xml valid: created using another iframe's DOMParser from that frame: FAIL
 	application/xhtml+xml valid: created using another iframe's DOMParser from this frame: FAIL
-	application/xml invalid XML: created normally: FAIL
+	application/xml invalid XML: created normally: PASS
 	application/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	application/xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	application/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	application/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	application/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	application/xml valid: created normally: FAIL
+	application/xml valid: created normally: PASS
 	application/xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	application/xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	application/xml valid: created using a parser from this frame and the method from the iframe: PASS
 	application/xml valid: created using another iframe's DOMParser from that frame: FAIL
 	application/xml valid: created using another iframe's DOMParser from this frame: FAIL
-	image/svg+xml invalid XML: created normally: FAIL
+	image/svg+xml invalid XML: created normally: PASS
 	image/svg+xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	image/svg+xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	image/svg+xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	image/svg+xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	image/svg+xml valid: created normally: FAIL
+	image/svg+xml valid: created normally: PASS
 	image/svg+xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	image/svg+xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	image/svg+xml valid: created using a parser from this frame and the method from the iframe: PASS
 	image/svg+xml valid: created using another iframe's DOMParser from that frame: FAIL
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
@@ -222,64 +222,64 @@
 	text/html valid: created using a parser from this frame and the method from the iframe: PASS
 	text/html valid: created using another iframe's DOMParser from that frame: FAIL
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
-	text/xml invalid XML: created normally: FAIL
+	text/xml invalid XML: created normally: PASS
 	text/xml invalid XML: created using a parser from the iframe and the method from this frame: FAIL
-	text/xml invalid XML: created using a parser from this frame and the method from the iframe: FAIL
+	text/xml invalid XML: created using a parser from this frame and the method from the iframe: PASS
 	text/xml invalid XML: created using another iframe's DOMParser from that frame: FAIL
 	text/xml invalid XML: created using another iframe's DOMParser from this frame: FAIL
-	text/xml valid: created normally: FAIL
+	text/xml valid: created normally: PASS
 	text/xml valid: created using a parser from the iframe and the method from this frame: FAIL
-	text/xml valid: created using a parser from this frame and the method from the iframe: FAIL
+	text/xml valid: created using a parser from this frame and the method from the iframe: PASS
 	text/xml valid: created using another iframe's DOMParser from that frame: FAIL
 	text/xml valid: created using another iframe's DOMParser from this frame: FAIL
 /domparsing/DOMParser-parseFromString-xml-CDATA.html: OK
-	Should parse HTML within a CDATA section in type application/xhtml+xml: FAIL
-	Should parse HTML within a CDATA section in type application/xml: FAIL
-	Should parse HTML within a CDATA section in type image/svg+xml: FAIL
-	Should parse HTML within a CDATA section in type text/xml: FAIL
-	Should parse reserved characters within a CDATA section in type application/xhtml+xml: FAIL
-	Should parse reserved characters within a CDATA section in type application/xml: FAIL
-	Should parse reserved characters within a CDATA section in type image/svg+xml: FAIL
-	Should parse reserved characters within a CDATA section in type text/xml: FAIL
+	Should parse HTML within a CDATA section in type application/xhtml+xml: PASS
+	Should parse HTML within a CDATA section in type application/xml: PASS
+	Should parse HTML within a CDATA section in type image/svg+xml: PASS
+	Should parse HTML within a CDATA section in type text/xml: PASS
+	Should parse reserved characters within a CDATA section in type application/xhtml+xml: PASS
+	Should parse reserved characters within a CDATA section in type application/xml: PASS
+	Should parse reserved characters within a CDATA section in type image/svg+xml: PASS
+	Should parse reserved characters within a CDATA section in type text/xml: PASS
 /domparsing/DOMParser-parseFromString-xml-doctype.html: OK
 	Doctype parsing of System Id can handle a quoted value: FAIL
 	Doctype parsing of System Id can handle empty string: FAIL
-	Doctype parsing of System Id must fail on ommitted value: FAIL
+	Doctype parsing of System Id must fail on ommitted value: PASS
 /domparsing/DOMParser-parseFromString-xml-empty-nodes.html: OK
-	Should generate an empty CDATA Section node in type application/xhtml+xml: FAIL
-	Should generate an empty CDATA Section node in type application/xml: FAIL
-	Should generate an empty CDATA Section node in type image/svg+xml: FAIL
-	Should generate an empty CDATA Section node in type text/xml: FAIL
-	Should generate an empty comment node in type application/xhtml+xml: FAIL
-	Should generate an empty comment node in type application/xml: FAIL
-	Should generate an empty comment node in type image/svg+xml: FAIL
-	Should generate an empty comment node in type text/xml: FAIL
+	Should generate an empty CDATA Section node in type application/xhtml+xml: PASS
+	Should generate an empty CDATA Section node in type application/xml: PASS
+	Should generate an empty CDATA Section node in type image/svg+xml: PASS
+	Should generate an empty CDATA Section node in type text/xml: PASS
+	Should generate an empty comment node in type application/xhtml+xml: PASS
+	Should generate an empty comment node in type application/xml: PASS
+	Should generate an empty comment node in type image/svg+xml: PASS
+	Should generate an empty comment node in type text/xml: PASS
 /domparsing/DOMParser-parseFromString-xml-internal-subset.html: OK
-	Parsing and serialization of doctype internal subset: FAIL
+	Parsing and serialization of doctype internal subset: PASS
 /domparsing/DOMParser-parseFromString-xml-parsererror.html: OK
 	A lone surrogate is replaced with U+FFFD: FAIL
-	A valid surrogate pair is preserved: FAIL
-	DOMParser: <parsererror> element added on error, 15<span: FAIL
-	DOMParser: <parsererror> element added on error, 6</span>: FAIL
-	DOMParser: <parsererror> element added on error, < span>2</span>: FAIL
-	DOMParser: <parsererror> element added on error, <8:test xmlns:8="urn:x-test:test">16</8:test>: FAIL
-	DOMParser: <parsererror> element added on error, <span ::="test">11</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span :test="testing">3</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span ="noattr">10</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span data-test=testing>14</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span novalue>9</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span x:test="testing">1</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span xmlns:="urn:x-test:test">12</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span xmlns:p1 xmlns:p2="urn:x-test:test"/>17: FAIL
-	DOMParser: <parsererror> element added on error, <span xmlns:xmlns="">13</span>: FAIL
-	DOMParser: <parsererror> element added on error, <span>5: FAIL
-	DOMParser: <parsererror> element added on error, <span>7< /span>: FAIL
-	DOMParser: <parsererror> element added on error, <span>8</ span>: FAIL
-	DOMParser: <parsererror> element added on error, <span><em>4</span></em>: FAIL
-	application/xhtml+xml is preserved in the error document: FAIL
-	application/xml is preserved in the error document: FAIL
-	image/svg+xml is preserved in the error document: FAIL
-	text/xml is preserved in the error document: FAIL
+	A valid surrogate pair is preserved: PASS
+	DOMParser: <parsererror> element added on error, 15<span: PASS
+	DOMParser: <parsererror> element added on error, 6</span>: PASS
+	DOMParser: <parsererror> element added on error, < span>2</span>: PASS
+	DOMParser: <parsererror> element added on error, <8:test xmlns:8="urn:x-test:test">16</8:test>: PASS
+	DOMParser: <parsererror> element added on error, <span ::="test">11</span>: PASS
+	DOMParser: <parsererror> element added on error, <span :test="testing">3</span>: PASS
+	DOMParser: <parsererror> element added on error, <span ="noattr">10</span>: PASS
+	DOMParser: <parsererror> element added on error, <span data-test=testing>14</span>: PASS
+	DOMParser: <parsererror> element added on error, <span novalue>9</span>: PASS
+	DOMParser: <parsererror> element added on error, <span x:test="testing">1</span>: PASS
+	DOMParser: <parsererror> element added on error, <span xmlns:="urn:x-test:test">12</span>: PASS
+	DOMParser: <parsererror> element added on error, <span xmlns:p1 xmlns:p2="urn:x-test:test"/>17: PASS
+	DOMParser: <parsererror> element added on error, <span xmlns:xmlns="">13</span>: PASS
+	DOMParser: <parsererror> element added on error, <span>5: PASS
+	DOMParser: <parsererror> element added on error, <span>7< /span>: PASS
+	DOMParser: <parsererror> element added on error, <span>8</ span>: PASS
+	DOMParser: <parsererror> element added on error, <span><em>4</span></em>: PASS
+	application/xhtml+xml is preserved in the error document: PASS
+	application/xml is preserved in the error document: PASS
+	image/svg+xml is preserved in the error document: PASS
+	text/xml is preserved in the error document: PASS
 /domparsing/DOMParser-parseFromString-xml-scripting-support-disabled.html: OK
 	parseFromString as HTML, append importNode result: FAIL
 	parseFromString as HTML, appendChild: PASS
@@ -295,14 +295,14 @@
 	parseFromString as XML, svg script, append importNode result, but with namespace prefix: FAIL
 	parseFromString as XML, svg script, appendChild: FAIL
 /domparsing/DOMParser-parseFromString-xml.html: OK
-	Should parse correctly in type application/xhtml+xml: FAIL
-	Should parse correctly in type application/xml: FAIL
-	Should parse correctly in type image/svg+xml: FAIL
-	Should parse correctly in type text/xml: FAIL
-	Should return an error document for XML wellformedness errors in type application/xhtml+xml: FAIL
-	Should return an error document for XML wellformedness errors in type application/xml: FAIL
-	Should return an error document for XML wellformedness errors in type image/svg+xml: FAIL
-	Should return an error document for XML wellformedness errors in type text/xml: FAIL
+	Should parse correctly in type application/xhtml+xml: PASS
+	Should parse correctly in type application/xml: PASS
+	Should parse correctly in type image/svg+xml: PASS
+	Should parse correctly in type text/xml: PASS
+	Should return an error document for XML wellformedness errors in type application/xhtml+xml: PASS
+	Should return an error document for XML wellformedness errors in type application/xml: PASS
+	Should return an error document for XML wellformedness errors in type image/svg+xml: PASS
+	Should return an error document for XML wellformedness errors in type text/xml: PASS
 	XMLDocument interface for correctly parsed document with type application/xhtml+xml: FAIL
 	XMLDocument interface for correctly parsed document with type application/xml: FAIL
 	XMLDocument interface for correctly parsed document with type image/svg+xml: FAIL
@@ -311,28 +311,28 @@
 	XMLDocument interface for incorrectly parsed document with type application/xml: FAIL
 	XMLDocument interface for incorrectly parsed document with type image/svg+xml: FAIL
 	XMLDocument interface for incorrectly parsed document with type text/xml: FAIL
-	scripting must be disabled with type application/xhtml+xml: FAIL
-	scripting must be disabled with type application/xml: FAIL
-	scripting must be disabled with type image/svg+xml: FAIL
-	scripting must be disabled with type text/xml: FAIL
+	scripting must be disabled with type application/xhtml+xml: PASS
+	scripting must be disabled with type application/xml: PASS
+	scripting must be disabled with type image/svg+xml: PASS
+	scripting must be disabled with type text/xml: PASS
 /domparsing/DOMParser-xml-character-entities.html: OK
-	Should parse XML character entities correctly in type application/xhtml+xml: FAIL
-	Should parse XML character entities correctly in type application/xml: FAIL
-	Should parse XML character entities correctly in type image/svg+xml: FAIL
-	Should parse XML character entities correctly in type text/xml: FAIL
-	Should return an error document for undefined (HTML) character entities in type application/xhtml+xml: FAIL
-	Should return an error document for undefined (HTML) character entities in type application/xml: FAIL
-	Should return an error document for undefined (HTML) character entities in type image/svg+xml: FAIL
-	Should return an error document for undefined (HTML) character entities in type text/xml: FAIL
+	Should parse XML character entities correctly in type application/xhtml+xml: PASS
+	Should parse XML character entities correctly in type application/xml: PASS
+	Should parse XML character entities correctly in type image/svg+xml: PASS
+	Should parse XML character entities correctly in type text/xml: PASS
+	Should return an error document for undefined (HTML) character entities in type application/xhtml+xml: PASS
+	Should return an error document for undefined (HTML) character entities in type application/xml: PASS
+	Should return an error document for undefined (HTML) character entities in type image/svg+xml: PASS
+	Should return an error document for undefined (HTML) character entities in type text/xml: PASS
 /domparsing/XMLSerializer-serializeToString.html: OK
 	Attribute nodes are serialized as the empty string: FAIL
-	Attribute value escapes: apos: FAIL
-	Attribute value escapes: gt: FAIL
-	Attribute value escapes: lt: FAIL
-	Attribute value escapes: quot: FAIL
+	Attribute value escapes: apos: PASS
+	Attribute value escapes: gt: PASS
+	Attribute value escapes: lt: PASS
+	Attribute value escapes: quot: PASS
 	Check children were included for void elements: PASS
 	Check if "ns1" is generated even if the element already has xmlns:ns1.: FAIL
-	Check if a prefix bound to an empty namespace URI ("no namespace") serialize: FAIL
+	Check if a prefix bound to an empty namespace URI ("no namespace") serialize: PASS
 	Check if an attribute with namespace and no prefix is serialized with the nearest-declared prefix: FAIL
 	Check if an attribute with namespace and no prefix is serialized with the nearest-declared prefix even if the prefix is assigned to another namespace.: FAIL
 	Check if attribute serialization takes into account of following xmlns:* attributes: FAIL
@@ -349,21 +349,21 @@
 	Check if start tag serialization drops element prefix if the namespace is same as inherited default namespace.: FAIL
 	Check if start tag serialization finds an appropriate prefix.: FAIL
 	Check if start tag serialization takes into account of its xmlns:* attributes: FAIL
-	Check if the default namespace is correctly reset.: FAIL
+	Check if the default namespace is correctly reset.: PASS
 	Check if the prefix of an attribute is NOT preserved in a case where neither its prefix nor its namespace URI is not already used.: FAIL
 	Check if the prefix of an attribute is replaced with a generated one in a case where the prefix is already mapped to a different namespace URI.: FAIL
 	Check if the prefix of an attribute is replaced with another existing prefix mapped to the same namespace URI.: FAIL
-	Check if there is no redundant empty namespace declaration.: FAIL
+	Check if there is no redundant empty namespace declaration.: PASS
 	Drop inconsistent xmlns="..." by matching on local name: FAIL
 	[TENTATIVE] check XMLSerializer.serializeToString escapes attribute values for roundtripping: FAIL
-	check XMLSerializer.serializeToString method could parsing document to string: FAIL
-	check XMLSerializer.serializeToString method could parsing xmldoc to string: FAIL
+	check XMLSerializer.serializeToString method could parsing document to string: PASS
+	check XMLSerializer.serializeToString method could parsing xmldoc to string: PASS
 /domparsing/createContextualFragment-xhtml.xhtml: ERROR
 /domparsing/createContextualFragment.html: OK
 	<html> and <body> must work the same, 1: PASS
 	<html> and <body> must work the same, 2: PASS
 	<html> in a different namespace shouldn't be special: PASS
-	<script>s should be run when appended to the document (but not before): PASS
+	<script>s should be run when appended to the document (but not before): FAIL
 	Don't auto-create <body> when applied to <html>: PASS
 	Implicit <body> creation: PASS
 	Must not throw INVALID_STATE_ERR for a detached node.: PASS
@@ -575,7 +575,7 @@
 	Setting outerHTML on an Element without a parent should have no effect: PASS
 /domparsing/parsed-document-origin.window.html: OK
 	DOMParser's parseFromString() with text/html: PASS
-	DOMParser's parseFromString() with text/xml: FAIL
+	DOMParser's parseFromString() with text/xml: PASS
 	Document.parseHTML(): FAIL
 	Document.parseHTMLUnsafe(): PASS
 	This document has a tuple origin (prerequisite for the tests below): PASS
@@ -2179,13 +2179,13 @@
 	streamPrependHTMLUnsafe on <title> initializes tokenizer in RCDATA state: FAIL
 	streamPrependHTMLUnsafe on <xmp> initializes tokenizer in RAWTEXT state: FAIL
 /domparsing/tentative/unclosed-script-already-started.html: OK
-	Control: closed <script> from setHTMLUnsafe({runScripts: true}) runs: PASS
+	Control: closed <script> from setHTMLUnsafe({runScripts: true}) runs: FAIL
 	Unclosed <script> from createContextualFragment() never runs: FAIL
 	Unclosed <script> from innerHTML never runs once connected: FAIL
 	Unclosed <script> from setHTMLUnsafe({runScripts: true}) never runs: FAIL
 /domparsing/xml-parse-serialize-roundtrip.html: OK
-	DOMParser and XMLSerializer should round trip with CDATA sections: large CDATA: FAIL
-	DOMParser and XMLSerializer should round trip with CDATA sections: multiple CDATAs: FAIL
+	DOMParser and XMLSerializer should round trip with CDATA sections: large CDATA: PASS
+	DOMParser and XMLSerializer should round trip with CDATA sections: multiple CDATAs: PASS
 /domparsing/xml-serialization.xhtml: ERROR
 /domparsing/xmldomparser.html: OK
 	XML Dom Parse readyState Test: FAIL

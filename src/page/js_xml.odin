@@ -75,9 +75,23 @@ xml_serialize :: proc(p: ^Page, root: base.Handle, limit: int) -> (out: string, 
 		}
 		switch n.kind {
 		case .Text:
-			xml_escape(&b, n.text, false)
+			if n.xml == .CDATA {
+				strings.write_string(&b, "<![CDATA[")
+				strings.write_string(&b, n.text)
+				strings.write_string(&b, "]]>")
+			} else {
+				xml_escape(&b, n.text, false)
+			}
 			continue
 		case .Comment:
+			if n.xml == .Processing_Instruction {
+				strings.write_string(&b, "<?")
+				strings.write_string(&b, n.name)
+				strings.write_byte(&b, ' ')
+				strings.write_string(&b, n.text)
+				strings.write_string(&b, "?>")
+				continue
+			}
 			strings.write_string(&b, "<!--")
 			strings.write_string(&b, n.text)
 			strings.write_string(&b, "-->")

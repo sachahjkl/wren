@@ -338,6 +338,9 @@ foreign _m_dom {
 	@(link_name = "Document_set_body") _Document_set_body :: proc(body: u64) -> Error ---
 	@(link_name = "DOMImplementation_createHTMLDocument") _DOMImplementation_createHTMLDocument :: proc(title: [^]u8, title_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "DOMParser_parseHTMLNode") _DOMParser_parseHTMLNode :: proc(html: [^]u8, html_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "DOMParser_parseXMLNode") _DOMParser_parseXMLNode :: proc(text: [^]u8, text_len: u32, type: [^]u8, type_len: u32, _ret: ^Node) -> Error ---
+	@(link_name = "ProcessingInstruction_target") _ProcessingInstruction_target :: proc(node: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Document_xmlContentType") _Document_xmlContentType :: proc(document: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DOMImplementation_createDocumentType") _DOMImplementation_createDocumentType :: proc(name: [^]u8, name_len: u32, public_id: [^]u8, public_id_len: u32, system_id: [^]u8, system_id_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Document_partOf") _Document_partOf :: proc(document: u64, which: i32) -> Node ---
 	@(link_name = "ResizeObserver_create") _ResizeObserver_create :: proc(notify: MicrotaskCallback, user: i32) -> Object ---
@@ -3870,6 +3873,72 @@ DOMImplementation_createHTMLDocument :: proc "contextless" (title: Maybe(string)
 DOMParser_parseHTMLNode :: proc "contextless" (html: string) -> (result: Node, err: Error) {
 	err = _DOMParser_parseHTMLNode(raw_data(html), u32(len(html)), &result)
 	return
+}
+
+// parseFromString(text, type) for the XML types (text/xml, application/xml, application/xhtml+xml, image/svg+xml):
+// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
+// type, Quota past dom.max_fragment_nodes.
+DOMParser_parseXMLNode :: proc "contextless" (text: string, type: string) -> (result: Node, err: Error) {
+	err = _DOMParser_parseXMLNode(raw_data(text), u32(len(text)), raw_data(type), u32(len(type)), &result)
+	return
+}
+
+// processingInstruction.target
+ProcessingInstruction_target :: proc "contextless" (node: $T_node, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _ProcessingInstruction_target(u64(node), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of ProcessingInstruction_target's result.
+ProcessingInstruction_target_len :: proc "contextless" (node: $T_node) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	n := _ProcessingInstruction_target(u64(node), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// ProcessingInstruction_target's result in a buffer allocated to fit.
+ProcessingInstruction_target_alloc :: proc(node: $T_node, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _ProcessingInstruction_target(u64(node), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
+Document_xmlContentType :: proc "contextless" (document: $T_document, buf: []u8) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	n := _Document_xmlContentType(u64(document), raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Document_xmlContentType's result.
+Document_xmlContentType_len :: proc "contextless" (document: $T_document) -> (int, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	n := _Document_xmlContentType(u64(document), nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Document_xmlContentType's result in a buffer allocated to fit.
+Document_xmlContentType_alloc :: proc(document: $T_document, allocator: runtime.Allocator) -> (string, Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_document)) && size_of(T_document) == 8 {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Document_xmlContentType(u64(document), raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
 }
 
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.

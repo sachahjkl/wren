@@ -1,0 +1,60 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DOMParser for XML</title>
+<script>
+const parse = (s, type) => new DOMParser().parseFromString(s, type || "application/xml");
+
+section("an XML document", () => {
+  const doc = parse(`<?xml version="1.0"?><!DOCTYPE root><root xmlns="urn:default" xmlns:x="urn:x" x:attr="1&amp;2"><Child>text &lt;here&gt;</Child><x:item id="i1"/><![CDATA[<raw & data>]]><?app some data?><!--note--></root>`);
+  t("XMLDocument", doc instanceof XMLDocument && doc instanceof Document);
+  eq("contentType", doc.contentType, "application/xml");
+  eq("text/xml contentType", parse("<a/>", "text/xml").contentType, "text/xml");
+  const root = doc.documentElement;
+  eq("root localName", root.localName, "root");
+  eq("root namespace", root.namespaceURI, "urn:default");
+  eq("doctype", doc.doctype && doc.doctype.name, "root");
+  const child = root.firstChild;
+  eq("names keep their case", child.localName + " " + child.tagName, "Child Child");
+  eq("child namespace (inherited default)", child.namespaceURI, "urn:default");
+  eq("entities decoded", child.textContent, "text <here>");
+  const item = child.nextSibling;
+  eq("prefixed element", item.prefix + ":" + item.localName + " " + item.namespaceURI, "x:item urn:x");
+  eq("prefixed attribute", root.getAttribute("x:attr"), "1&2");
+  const cdata = item.nextSibling;
+  t("CDATASection", cdata instanceof CDATASection && cdata instanceof Text && cdata.nodeType === 4 && cdata.nodeName === "#cdata-section");
+  eq("CDATA data", cdata.data, "<raw & data>");
+  const pi = cdata.nextSibling;
+  t("ProcessingInstruction", pi instanceof ProcessingInstruction && pi.nodeType === 7 && pi.target === "app" && pi.nodeName === "app");
+  eq("PI data", pi.data, "some data");
+  eq("comment", pi.nextSibling.nodeType, 8);
+  eq("querySelector in the document", doc.querySelector("item") === item, true);
+});
+
+section("XMLSerializer round trip", () => {
+  const src = `<root xmlns="urn:d"><a b="1"><![CDATA[x<y]]></a><?pi d?></root>`;
+  const out = new XMLSerializer().serializeToString(parse(src));
+  eq("serialized", out, src);
+});
+
+section("SVG and XHTML", () => {
+  const svg = parse(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle r="4"/></svg>`, "image/svg+xml");
+  t("SVG element", svg.documentElement instanceof SVGSVGElement && svg.contentType === "image/svg+xml");
+  t("SVG child", svg.documentElement.firstChild instanceof SVGCircleElement);
+  const x = parse(`<html xmlns="http://www.w3.org/1999/xhtml"><body><p>hi</p></body></html>`, "application/xhtml+xml");
+  t("XHTML element", x.documentElement.firstChild.firstChild instanceof HTMLParagraphElement);
+});
+
+section("parse errors", () => {
+  const bad = (s) => { const d = parse(s); const r = d.documentElement; return r && r.localName === "parsererror" && r.namespaceURI === "http://www.mozilla.org/newlayout/xml/parsererror.xml"; };
+  t("mismatched tags", bad("<a><b></a>"));
+  t("unclosed", bad("<a>"));
+  t("two roots", bad("<a/><b/>"));
+  t("unbound prefix", bad("<p:a/>"));
+  t("undefined entity", bad("<a>&nbsp;</a>"));
+  t("empty", bad(""));
+  t("the message says where", parse("<a>\n<b></c></a>").documentElement.textContent.includes("Line Number 2"));
+  t("an internal entity is defined", parse(`<!DOCTYPE a [<!ENTITY e "E">]><a>&e;</a>`).documentElement.textContent === "E");
+  throws("another type", () => new DOMParser().parseFromString("<a/>", "text/plain"), "TypeError");
+});
+done();
+</script>

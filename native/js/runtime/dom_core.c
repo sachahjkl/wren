@@ -683,14 +683,15 @@ JSValue wjr_DOMParser_constructor(JSContext *ctx, JSValueConst new_target, int a
 }
 
 /* parseFromString(string, type): "text/html" parses a whole document into a new inert one (scripts never run in it,
- * no declarative shadow roots); the XML types need XML documents, which this browser does not have
- * (NotSupportedError, as createDocument). A type outside DOMParserSupportedType is a TypeError. */
+ * no declarative shadow roots); the XML types make an XMLDocument (src/page/js_xml_parse.odin), a <parsererror> one
+ * when the text is not well-formed. A type outside DOMParserSupportedType is a TypeError. */
 JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     if (!wj_this(ctx, this_val, WJ_IFACE_DOMParser)) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "DOMParser.parseFromString", 2, argc); }
     wj_str s, type;
-    if (!wj_to_str(ctx, argv[0], &s, 0, "")) { return JS_EXCEPTION; }
+    /* (as USVString: a lone surrogate becomes U+FFFD, which the parsers accept) */
+    if (!wj_to_str(ctx, argv[0], &s, WJ_STR_USV, "")) { return JS_EXCEPTION; }
     if (!wj_to_str(ctx, argv[1], &type, 0, "")) { wj_str_free(ctx, &s); return JS_EXCEPTION; }
     static const char *const xml_types[] = {"text/xml", "application/xml", "application/xhtml+xml", "image/svg+xml"};
     bool html = type.len == 9 && memcmp(type.ptr, "text/html", 9) == 0, xml = false;
@@ -703,13 +704,26 @@ JSValue wjr_DOMParser_parseFromString(JSContext *ctx, JSValueConst this_val, int
         int32_t st = wr_DOMParser_parseHTMLNode((const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, &h);
         r = wrap_new_node(ctx, st, h, "DOMParser.parseFromString");
     } else if (xml) {
-        r = wj_throw_dom(ctx, "NotSupportedError", "XML documents are not supported by this browser.");
+        uint64_t h = 0;
+        int32_t st = wr_DOMParser_parseXMLNode((const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, (const uint8_t *)type.ptr, (uint32_t)type.len, &h);
+        r = wrap_new_node(ctx, st, h, "DOMParser.parseFromString");
     } else {
         r = JS_ThrowTypeError(ctx, "Failed to execute 'parseFromString' on 'DOMParser': The provided value '%.*s' is not a valid enum value of type DOMParserSupportedType.", (int)(type.len > 64 ? 64 : type.len), type.ptr ? type.ptr : "");
     }
     wj_str_free(ctx, &s);
     wj_str_free(ctx, &type);
     return r;
+}
+
+/* document.contentType: an XML document's own type (DOMParser's), else the page's */
+JSValue wjr_Document_get_contentType(JSContext *ctx, JSValueConst this_val)
+{
+    uint64_t h = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!h) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Document_xmlContentType(h, wj_scratch.data, wj_scratch.cap));
+    if (n < 0) { WJ_FETCH_STRING(n, wr_Document_contentType(wj_scratch.data, wj_scratch.cap)); }
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
 }
 
 /* ---- XMLSerializer ---- */
@@ -749,7 +763,10 @@ JSValue wjr_Document_get_defaultView(JSContext *ctx, JSValueConst this_val)
 
 JSValue wjr_Document_get_location(JSContext *ctx, JSValueConst this_val)
 {
-    if (!wj_this(ctx, this_val, WJ_IFACE_Document)) { return JS_EXCEPTION; }
+    wj_obj *o = wj_this(ctx, this_val, WJ_IFACE_Document);
+    if (!o) { return JS_EXCEPTION; }
+    /* null for a document without a browsing context (createHTMLDocument's, DOMParser's) */
+    if (o->handle && !is_page_document(o->handle)) { return JS_NULL; }
     return JS_GetPropertyStr(ctx, wj_the_realm.global, "location");
 }
 
