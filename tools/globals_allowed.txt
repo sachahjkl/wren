@@ -152,6 +152,9 @@ measure_test.odin MEASURE_TEXTS test
 memcheck.odin driver process
 memory_trim.odin MEMORY_PREFS process  # a table
 memory_trim.odin trim_state process
+newtab_art.odin ART_PREFS process  # a table
+newtab_art.odin ART_COMMONS_CATEGORIES process  # a table
+newtab_art.odin art process  # the artistic new tab's cache, task and preferences
 os_settings.odin OS_SETTINGS_PREFS process  # a table
 os_settings.odin os_anim process
 pacing.odin FRAME_PREFS process  # a table
