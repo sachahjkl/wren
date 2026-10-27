@@ -522,7 +522,7 @@ save_dialog_work :: proc(data: rawptr) {
 		dlg->SetFileTypes(2, &types[0])
 		dlg->SetDefaultExtension(win.utf8_to_wstring(ext[1:], context.temp_allocator))
 	}
-	if dlg->Show(job.app.win.hwnd) < 0 { free_all(context.temp_allocator); return }
+	if dlg->Show(active_window(job.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
 	item: ^win.IShellItem
 	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
 	defer item->Release()

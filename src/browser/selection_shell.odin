@@ -422,7 +422,7 @@ selection_paint_begin :: proc(app: ^App, t: ^Tab) {
 		spaint.on = true
 		spaint.start, spaint.end = a, b
 	}
-	active := app.win.focused
+	active := active_window(app).win.focused
 	if c, ok := parse_pref_color(active ? ix.sel_bg : ix.sel_inactive_bg); ok { spaint.bg = c } else if active { spaint.bg = sys_color(win.COLOR_HIGHLIGHT) } else {
 		spaint.bg = draw.srgb(0.78, 0.78, 0.78, 1)
 		if c2, ok2 := parse_pref_color(ix.sel_bg); ok2 { spaint.bg = c2; spaint.bg.a *= 0.5 }

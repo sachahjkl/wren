@@ -21,8 +21,9 @@ attach_js_layout :: proc(app: ^App, t: ^Tab, p: ^page.Page) {
 // is known (page/scroll_events.odin).
 @(private = "file")
 page_area :: proc(app: ^App) -> draw.Vec2 {
-	r := draw.rect_size(active_window(app).page_rect)
-	if (r.x <= 0 || r.y <= 0) && app.win != nil { return {f32(app.win.size.x), f32(app.win.size.y)} }
+	wnd := active_window(app)
+	r := draw.rect_size(wnd.page_rect)
+	if (r.x <= 0 || r.y <= 0) && wnd.win != nil { return {f32(wnd.win.size.x), f32(wnd.win.size.y)} }
 	return r
 }
 

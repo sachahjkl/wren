@@ -208,7 +208,7 @@ devtools_zoom :: proc(app: ^App, step: f32) {
 
 // Whether the panel is shown for `t` (a web page), and where.
 devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
-	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) || devtools_detached() { return {}, false }
+	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(active_window(app).win) || devtools_detached() { return {}, false }
 	if app.active != nil {
 		if dev.window == 0 || window_by_id(app, dev.window) == nil { dev.window = app.active.id }
 		if dev.window != app.active.id { return {}, false }
@@ -532,14 +532,14 @@ devtools_reset_layout :: proc(app: ^App) {
 
 // The room the panel takes (physical px): its size, but never more than 70 % of the window along its axis.
 devtools_extent :: proc(app: ^App, vertical: bool) -> f32 {
-	room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
+	room := vertical ? f32(active_window(app).win.size.x) : f32(active_window(app).win.size.y)
 	return clamp(dev.size * ui.scale(), 80, math.max(room * 0.7, 80))
 }
 
 // A bar between the page and the panel: dragging it resizes the panel (the toolkit's splitter; the panel is after the bar
 // unless it is docked on the left). Not a Tab stop: the page's and the panel's focus order stay as they were.
 devtools_splitter :: proc(app: ^App, vertical: bool) {
-	room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
+	room := vertical ? f32(active_window(app).win.size.x) : f32(active_window(app).win.size.y)
 	r := ui.splitter("###dt_split", vertical ? .X : .Y, &dev.size, 80, math.max(room / ui.scale() - 160, 80),
 		{after = dev.dock != .Left, thickness = dt_px(5), no_keyboard = true})
 	if r.dragging {
@@ -562,7 +562,7 @@ devtools_float_drag :: proc(app: ^App, sig: ui.Signal, what: Dev_Drag) {
 	}
 	if sig.dragging && dev.drag == what {
 		d := sig.drag_delta / sc
-		win := [2]f32{f32(app.win.size.x), f32(app.win.size.y)} / sc
+		win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
 		if what == .Move {
 			dev.float_pos = {clamp(dev.drag_from[0] + d.x, 0, math.max(win.x - 120, 0)), clamp(dev.drag_from[1] + d.y, 0, math.max(win.y - 60, 0))}
 		} else {
@@ -582,7 +582,7 @@ devtools_floating :: proc(app: ^App, t: ^Tab) {
 		return
 	}
 	sc := ui.scale()
-	win := [2]f32{f32(app.win.size.x), f32(app.win.size.y)} / sc
+	win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
 	if !dev.float_set {
 		dev.float_size = {math.max(win.x * 0.55, 360), math.max(win.y * 0.5, 240)}
 		dev.float_pos = {win.x - dev.float_size[0] - 24, win.y - dev.float_size[1] - 40}

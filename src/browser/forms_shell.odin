@@ -1693,7 +1693,7 @@ start_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle, color: bool) 
 	n := dom.get(p.doc, input)
 	if n == nil { return }
 	job := new(Picker_Job)
-	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, app.win.hwnd
+	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, active_window(app).win.hwnd
 	job.multiple = forms.has_attr(n, "multiple")
 	job.max_files = app.page_settings.forms.upload_max_files
 	if color {
@@ -1782,7 +1782,7 @@ picker_work :: proc(data: rawptr) {
 		return
 	}
 	// the toolkit's Open dialog (the one File System Access pickers use too)
-	d := platform.File_Dialog{owner = job.app.win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
+	d := platform.File_Dialog{owner = active_window(job.app).win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
 	filters: [1]platform.File_Filter
 	if job.filter != "" {
 		filters[0] = {name = "Accepted files", patterns = strings.split(job.filter, ";", context.temp_allocator)}

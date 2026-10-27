@@ -69,7 +69,7 @@ devtools_window_make :: proc(app: ^App) {
 	platform.set_dark_title(w, pal_ok ? pal.dark : true)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 	dev_win = dw
 	dev.visible = true
 	platform.show_window(w)
@@ -84,7 +84,7 @@ devtools_attach :: proc(app: ^App) {
 	if dw == nil { return }
 	dev_win = nil
 	ui.destroy(&dw.ui)
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 	render.surface_destroy(&app.r, &dw.surf)
 	platform.destroy_window(dw.win)
 	delete(dw.title)
@@ -121,6 +121,7 @@ devtools_window_tick :: proc(app: ^App) {
 // goes on as well, so the page, its timers and its loads do not stop while the panel's window is dragged. Not from a chrome frame:
 // nothing of the page may run there (shell_frames.odin).
 devtools_window_loop_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	// (not inside a frame's page phase, build or drawing: windows.odin, the frame gate. Its frame is a Light one, but not in the
 	// page phase either: the panel's input (the console) may run the page's scripts)
 	g := platform.frame_gate()
@@ -130,10 +131,10 @@ devtools_window_loop_frame :: proc(app: ^App) {
 		return
 	}
 	devtools_window_frame(app)
-	if chrome_frames.nested || platform.is_closed(app.win) { return }
+	if chrome_frames.nested || platform.is_closed(wnd.win) { return }
 	app.pass_first = true
 	frame(app, true)   // (idled: it returns at once when there is nothing to draw nor to run)
-	if active_window(app).frames_requested > 0 { active_window(app).frames_requested -= 1 }
+	if wnd.frames_requested > 0 { wnd.frames_requested -= 1 }
 }
 
 devtools_window_frame :: proc(app: ^App) {
@@ -191,7 +192,7 @@ devtools_window_frame :: proc(app: ^App) {
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !resizing)
 	prof_window_frame(frame_start, present_start)   // prof.odin: the window's frames of a profile run
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 }
 
 

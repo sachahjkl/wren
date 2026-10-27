@@ -65,7 +65,7 @@ tabs_position_of :: proc(s: string) -> Tabs_Position {
 
 // The tabs are in a sidebar now (not in full screen: its bars bring the row of tabs over the page).
 tabs_in_sidebar :: proc(app: ^App) -> bool {
-	return favs.cfg.position != .Top && !platform.is_fullscreen(app.win)
+	return favs.cfg.position != .Top && !platform.is_fullscreen(active_window(app).win)
 }
 
 // A window's tab sidebar from frame to frame (Window_Own.sidebar).
@@ -244,7 +244,7 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 		if c := ui.box_from_key(ui.key_from_string(bar.key, TITLEBAR_SLOT_IDS[.Chips])); c != nil { chips_w = c.rect.max.x - c.rect.min.x }
 	}
 	want, drag_min := titlebar_wants(app, chips_w)
-	l := titlebar_layout(f32(app.win.size.x), want, drag_min)
+	l := titlebar_layout(f32(active_window(app).win.size.x), want, drag_min)
 	tb := ui.frame_new(Titlebar_Build)
 	tb^ = {app, t}
 	bar := titlebar_row_build(l, h, proc(p: Titlebar_Part, user: rawptr) {
@@ -286,7 +286,7 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 		own.sidebar.live_w = sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
 	}
 	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
-	extent := sidebar_extent(f32(app.win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
+	extent := sidebar_extent(f32(active_window(app).win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
@@ -405,7 +405,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	_ = ui.signal(area)   // the wheel
 	own.strip.area_key = area.key
 	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
-	view_h := area.size.y > 0 ? area.size.y : f32(app.win.size.y)
+	view_h := area.size.y > 0 ? area.size.y : f32(active_window(app).win.size.y)
 	limit := max(f32(n) * rh - view_h, 0)
 
 	// a new current tab is scrolled into view (not while one is dragged: the list follows the pointer then)

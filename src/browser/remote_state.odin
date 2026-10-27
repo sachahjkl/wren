@@ -156,9 +156,10 @@ checkpoint_free :: proc(c: ^Checkpoint) {
 }
 
 window_capture :: proc(app: ^App) -> Window_State {
+	wnd := active_window(app)
 	rc: win.RECT
-	win.GetWindowRect(app.win.hwnd, &rc)
-	return {int(rc.left), int(rc.top), int(app.win.size.x), int(app.win.size.y), window_state(app)}
+	win.GetWindowRect(wnd.win.hwnd, &rc)
+	return {int(rc.left), int(rc.top), int(wnd.win.size.x), int(wnd.win.size.y), window_state(app)}
 }
 
 checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> ^Checkpoint {
@@ -238,7 +239,7 @@ chrome_reset :: proc(app: ^App) {
 	if blocker_picker_active() { blocker_picker_cancel(app) }
 	if devtools_detached() { devtools_attach(app) }
 	if dev.visible { devtools_toggle(app) }
-	if platform.is_fullscreen(app.win) { toggle_fullscreen(app) }
+	if platform.is_fullscreen(active_window(app).win) { toggle_fullscreen(app) }
 	downloads_cancel_all()
 }
 

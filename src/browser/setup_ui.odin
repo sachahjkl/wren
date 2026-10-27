@@ -177,7 +177,7 @@ setup_build :: proc(app: ^App) {
 	setup_sync_inputs(app)
 	setup_validate()
 	em := ui.font_size()
-	win_w, win_h := f32(app.win.size.x), f32(app.win.size.y)
+	win_w, win_h := f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)
 	pad := math.round(em * 1.1)
 	max_w := max(win_w - em * 2, 22 * em)
 	if stp.width_em == 0 { stp.width_em = 46 }

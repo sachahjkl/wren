@@ -123,7 +123,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if classic { _, _, _, plus_pull = classic_plus_metrics(&cg, em, dpi, plus_w) }
 		plus_room := classic ? plus_w - plus_pull : new_w + em * 0.3
 		fixed := lead + plus_room + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
-		avail := max(f32(app.win.size.x) - fixed, em * 4)
+		avail := max(f32(active_window(app).win.size.x) - fixed, em * 4)
 		n := len(wnd.tabs)
 		w := math.round(tab_width(avail - cg.overlap, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
 		vis := min(f32(n) * w + cg.overlap, avail)   // what the tabs show of the strip, flares apart

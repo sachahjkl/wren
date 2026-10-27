@@ -48,7 +48,7 @@ browser_command_of_appcommand :: proc(cmd: int) -> Browser_Command {
 @(private = "file") cmd_hwnd: win.HWND
 
 app_commands_init :: proc(app: ^App) {
-	hwnd := app.win.hwnd
+	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
 	win.SetWindowSubclass(hwnd, cmd_subclass, CMD_SUBCLASS_ID, 0)
 	cmd_hwnd = hwnd

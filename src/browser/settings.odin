@@ -112,8 +112,9 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 
 // The interface's scale: browser.ui.scale, else the display's (window_chrome.odin, main.odin's build).
 ui_scale_of :: proc(app: ^App) -> f32 {
+	wnd := active_window(app)
 	if app.cfg.ui_scale > 0 { return app.cfg.ui_scale }
-	return app.win != nil && app.win.dpi_scale > 0 ? app.win.dpi_scale : 1
+	return wnd.win != nil && wnd.win.dpi_scale > 0 ? wnd.win.dpi_scale : 1
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {

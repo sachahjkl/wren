@@ -13,10 +13,10 @@ webauthn_shell_init :: proc(app: ^App) {
 	page.webauthn_embedder = {
 		window = proc(p: ^page.Page) -> (hwnd: rawptr, focused: bool) {
 			app := the_app
-			if app == nil || app.win == nil { return nil, true }
+			if app == nil || active_window(app).win == nil { return nil, true }
 			t := current_tab(app)
 			shown := t != nil && t.page == p && t.kind == .Web
-			return rawptr(app.win.hwnd), shown && (app.win.focused || app.win.active)
+			return rawptr(active_window(app).win.hwnd), shown && (active_window(app).win.focused || active_window(app).win.active)
 		},
 		// the chip appears or goes: the next frame draws it (an idle window draws nothing otherwise)
 		changed = proc(p: ^page.Page) {

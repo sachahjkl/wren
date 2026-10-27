@@ -118,9 +118,9 @@ page_cursor_view_destroy :: proc(v: ^Page_Cursor_View) {
 
 page_cursor_shutdown :: proc(app: ^App) {
 	config.unwatch(&app.prefs, pcs.watch)
-	platform.set_cursor(app.win, .Arrow)
+	platform.set_cursor(active_window(app).win, .Arrow)
 	v := &window_own(app).cursor
-	for e in v.cache { platform.custom_cursor_release(app.win, e.cc) }
+	for e in v.cache { platform.custom_cursor_release(active_window(app).win, e.cc) }
 	page_cursor_view_destroy(v)
 	delete(pcs.log_path)
 	pcs = {}
@@ -290,7 +290,7 @@ cache_add :: proc(app: ^App, v: ^Page_Cursor_View, key: u64, cc: platform.Custom
 			if oldest < 0 || e.used < v.cache[oldest].used { oldest = i }
 		}
 		if oldest < 0 { break }
-		platform.custom_cursor_release(app.win, v.cache[oldest].cc)
+		platform.custom_cursor_release(active_window(app).win, v.cache[oldest].cc)
 		unordered_remove(&v.cache, oldest)
 	}
 }
@@ -299,6 +299,7 @@ cache_add :: proc(app: ^App, v: ^Page_Cursor_View, key: u64, cc: platform.Custom
 // broken, too large, or a large one that would reach outside the page area).
 @(private = "file")
 cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f32, scale: f32) -> platform.Custom_Cursor {
+	wnd := active_window(app)
 	if !ccfg.images || len(images) == 0 || t.page == nil { return 0 }
 	dppx := f32(1)
 	if t.page.engine != nil && t.page.engine.env.dppx > 0 { dppx = f32(t.page.engine.env.dppx) }
@@ -314,7 +315,7 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 		if ccfg.large_css > 0 && (css.x > f32(ccfg.large_css) || css.y > f32(ccfg.large_css)) {
 			lo := pos - hot * scale
 			hi := lo + css * scale
-			r := active_window(app).page_rect
+			r := wnd.page_rect
 			if lo.x < r.min.x || lo.y < r.min.y || hi.x > r.max.x || hi.y > r.max.y { continue }
 		}
 		want := [2]int{max(int(css.x * scale + 0.5), 1), max(int(css.y * scale + 0.5), 1)}
@@ -324,13 +325,13 @@ cursor_image :: proc(app: ^App, t: ^Tab, images: []style.Cursor_Image, pos: [2]f
 		kb: [5]u64 = {fp.texture, fp.generation, u64(transmute(u32)hot.x) << 32 | u64(transmute(u32)hot.y), u64(transmute(u32)css.x) << 32 | u64(transmute(u32)css.y), u64(fp.width) << 32 | u64(fp.height)}
 		key := hash.fnv64a(transmute([]u8)kb[:]) | 1
 		pv := &window_own(app).cursor
-		if cc := cache_find(pv, key); cc != 0 && platform.custom_cursor_valid(app.win, cc) { return cc }
+		if cc := cache_find(pv, key); cc != 0 && platform.custom_cursor_valid(wnd.win, cc) { return cc }
 		pixels := fp.pixels
 		if fp.stride != fp.width * 4 {
 			pixels = make([]u8, fp.width * fp.height * 4, context.temp_allocator)
 			for y in 0 ..< fp.height { copy(pixels[y * fp.width * 4:][:fp.width * 4], fp.pixels[y * fp.stride:][:fp.width * 4]) }
 		}
-		cc, err := platform.custom_cursor_create(app.win, pixels, {fp.width, fp.height}, hot * density, density, key, ccfg.image_max_css)
+		cc, err := platform.custom_cursor_create(wnd.win, pixels, {fp.width, fp.height}, hot * density, density, key, ccfg.image_max_css)
 		if err != .None { continue }
 		cache_add(app, pv, key, cc)
 		return cc
@@ -384,7 +385,7 @@ page_cursor_events :: proc(app: ^App, events: []platform.Event) {
 // The window's cursor for this frame (after the chrome's build): the page's over the page area, else the chrome's.
 window_cursor_apply :: proc(app: ^App) {
 	wnd := active_window(app)
-	st := app.ui_state
+	st := active_window(app).ui
 	v := &window_own(app).cursor
 	wc := Window_Cursor{keyword = ui.cursor(st)}
 	pos := ui.mouse_pos()
@@ -398,11 +399,11 @@ window_cursor_apply :: proc(app: ^App) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
 	if c, dragging := dnd_cursor(); dragging { wc = Window_Cursor{keyword = c} }   // dnd_shell.odin: the drag's operation
-	if wc.custom != 0 && !platform.custom_cursor_valid(app.win, wc.custom) { wc.custom = 0 }
+	if wc.custom != 0 && !platform.custom_cursor_valid(active_window(app).win, wc.custom) { wc.custom = 0 }
 	if wc.custom != 0 {
-		platform.set_cursor_custom(app.win, wc.custom, wc.keyword, wc.scale)
+		platform.set_cursor_custom(active_window(app).win, wc.custom, wc.keyword, wc.scale)
 	} else {
-		platform.set_cursor(app.win, wc.keyword)
+		platform.set_cursor(active_window(app).win, wc.keyword)
 	}
 	if !v.shown_ok || wc.keyword != v.shown.keyword || wc.custom != v.shown.custom || wc.node != v.shown.node {
 		if pcs.log_path != "" { cursor_log(app, wc) }

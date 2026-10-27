@@ -6,7 +6,7 @@ package browser
 //
 // The shell was written for one window. What is a window's lives in its Browser_Window and is read there: its tabs, page
 // area and frames (Window_Ctx: active_window(app).tabs, w.tabs, request_frames(app, n)), the chrome's state (Window_Own).
-// `app.win` and `app.ui_state` still name the *active* window's, set by window_activate. A frame is made for one window at a
+// Its native window and toolkit state too (active_window(app).win, .ui). A frame is made for one window at a
 // time, with that window active; what runs outside a frame (tasks of the loop, remote calls, menus) acts on the front window (the
 // last one used), or finds a tab's own window (window_of_tab).
 //
@@ -129,7 +129,6 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if app.active != nil { window_deactivate(app) }
 	if w == nil { return }
 	pacer_adopt(w)
-	app.win, app.ui_state = w.win, w.ui
 	app.active = w
 	ui.use(w.ui)
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
@@ -352,8 +351,8 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
 	bw.ui.icon_font = app.icons
-	bw.ui.mono_font = app.ui_state.mono_font
-	ui.use(app.ui_state)
+	bw.ui.mono_font = active_window(app).ui.mono_font
+	ui.use(active_window(app).ui)
 	bw.frames_requested = 4
 	append(&app.windows, bw)
 	if show && !app.headless { window_show(bw) }
@@ -409,7 +408,7 @@ window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
 	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
 	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
 	paint := platform.take_paint_request(w.win)
-	return w.frames_requested != 0 || ui.needs_frame(app.ui_state) || ui.wake_due(app.ui_state) || paint || events_waiting
+	return w.frames_requested != 0 || ui.needs_frame(w.ui) || ui.wake_due(w.ui) || paint || events_waiting
 }
 
 
@@ -433,7 +432,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		w.minimized = len(app.windows) > 1 && platform.is_minimized(w.win)
 		causes[i] = window_has_cause(app, w)
 		any_cause ||= causes[i]
-		if ms := ui.wake_in_ms(app.ui_state); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
+		if ms := ui.wake_in_ms(w.ui); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
 	}
 	idled := false
 	if !any_cause {
@@ -635,5 +634,5 @@ windows_destroy :: proc(app: ^App) {
 	delete(pass_order); delete(pass_causes)
 	pass_order, pass_causes = nil, nil
 	app.windows = nil
-	app.active, app.front, app.win, app.ui_state = nil, nil, nil, nil
+	app.active, app.front = nil, nil
 }

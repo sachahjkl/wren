@@ -171,10 +171,10 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	defer page_render_test_unlock()
 	app := new(App)
 	defer free(app)
-	app.ui_state = new(ui.State)
-	defer free(app.ui_state)
-	ui.init(app.ui_state, nil, nil)
-	defer ui.destroy(app.ui_state)
+	active_window(app).ui = new(ui.State)
+	defer free(active_window(app).ui)
+	ui.init(active_window(app).ui, nil, nil)
+	defer ui.destroy(active_window(app).ui)
 	tab := new(Tab)
 	defer free(tab)
 	tab.kind = .History
@@ -184,7 +184,7 @@ tree_takes_its_events :: proc(t: ^testing.T) {
 	defer hview.mode = saved_mode
 	defer history_tree_destroy()   // the canvas's state, as about:history's closing leaves it
 	hview.mode = 1
-	tview.built = app.ui_state.build_index
+	tview.built = active_window(app).ui.build_index
 	tview.view_rect = {{0, 100}, {800, 600}}
 	events := []platform.Event{
 		{kind = .Scroll, pos = {400, 300}, delta = {0, 1}},

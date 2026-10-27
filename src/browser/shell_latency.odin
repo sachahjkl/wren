@@ -33,7 +33,7 @@ latency_probe_polled :: proc(events: int) {
 latency_probe_presented :: proc(app: ^App, kind: u8 = 0) {
 	if !prof.on || lat_cur.polled == 0 { return }
 	lat_cur.presented = qpc()
-	lat_cur.w, lat_cur.h = i32(app.win.size.x), i32(app.win.size.y)
+	lat_cur.w, lat_cur.h = i32(active_window(app).win.size.x), i32(active_window(app).win.size.y)
 	lat_cur.kind = kind
 	append(&lat_frames, lat_cur)
 	lat_cur = {}
