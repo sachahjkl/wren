@@ -461,8 +461,7 @@ writes `APP_VERSION`.)
 
 Wren's source is public, under the [PolyForm Strict License 1.0.0](LICENSE): you may read it and use the program for
 noncommercial purposes (personal use, charities, schools, public bodies, research); you may not redistribute it, sell it,
-or make changes or new works from it, and commercial use needs the author's agreement (contact@froment.software). Versions up
-to 0.3.0 were published under the MIT license and stay under it. The libraries below keep their own licenses. Wren stands
+or make changes or new works from it, and commercial use needs the author's agreement (contact@froment.software). The libraries below keep their own licenses. Wren stands
 on:
 
 - [Odin](https://odin-lang.org) by Ginger Bill and contributors;
