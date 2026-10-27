@@ -15,10 +15,10 @@ wj_val wj_wrap_owned(wj_ctx *ctx, uint64_t handle, int iface, JSValueConst new_t
 /* A string attribute read off a host handle (wr_<Iface>_<attr>(handle, buf, cap) -> len). */
 #define TRACK_STRING(ctx, iface, handle, call)                                        \
     do {                                                                              \
-        int32_t _n;                                                                   \
-        WJ_FETCH_STRING(_n, call);                                                    \
-        if (_n < 0) { return wj_throw_status(ctx, _n, #call); }                       \
-        return web_utf8_string(ctx, wj_scratch.data, (size_t)_n, false);              \
+        int32_t _tn;                                                                  \
+        WJ_FETCH_STRING(_tn, call);                                                   \
+        if (_tn < 0) { return wj_throw_status(ctx, _tn, #call); }                     \
+        return web_utf8_string(ctx, wj_scratch.data, (size_t)_tn, false);             \
     } while (0)
 
 /* The handle of `this`, checked against an interface; sets an exception and returns 0 when it is not. */
