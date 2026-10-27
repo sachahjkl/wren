@@ -1,6 +1,7 @@
 package images
 
-// Decoding with WIC. Each thread keeps its own imaging factory (Codec_Context): WIC objects are free-threaded, but a
+// Decoding with WIC (HEIF always; PNG, JPEG, GIF, BMP, ICO and TIFF with images.decode.system_codecs, else built in:
+// decode.odin). Each thread keeps its own imaging factory (Codec_Context): WIC objects are free-threaded, but a
 // factory per thread avoids any cross-thread traffic, and the thread's COM apartment is the multithreaded one.
 //
 // Pipeline for a still image: frame -> [scaler (Fant) when decoded smaller] -> format converter to 32bppRGBA ->
@@ -8,6 +9,19 @@ package images
 // itself, so a reduced JPEG is decoded at 1/2, 1/4 or 1/8 scale in the DCT before the final resampling.
 
 import win "core:sys/windows"
+
+CLSID_WICHeifDecoder := GUID{0xe9a4a80a, 0x44fe, 0x4de4, {0x89, 0x71, 0x71, 0x50, 0xb1, 0x0a, 0x51, 0x99}}
+
+// The optional codecs of this system (pool.odin's `codecs`): HEIF needs the Store's extension.
+@(private)
+probe_codecs :: proc() {
+	unk: rawptr
+	if succeeded(win.CoCreateInstance(&CLSID_WICHeifDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
+		codecs.heif = true
+		com_release(unk)
+	}
+	codecs.probed = true
+}
 
 Codec_Context :: struct {
 	factory:  ^IWICImagingFactory,
@@ -96,6 +110,8 @@ run :: proc(c: ^Codec_Context, b: ^Blob, data: []byte, opts: Decode_Options, hea
 			if e := check_size(hw, hh, l); e != .None { return nil, info, e }
 		}
 		return native_raster(data, info, opts, header_only)
+	case .Png, .Jpeg, .Gif, .Bmp, .Ico, .Tiff:
+		if !l.system_decoders { return builtin_run(data, info, opts, header_only) }
 	}
 	if hw, hh, known := header_size(data, info.format); known {
 		if e := check_size(hw, hh, l); e != .None { return nil, info, e }
