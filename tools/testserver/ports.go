@@ -6,6 +6,8 @@
 //	base+2  http   a second origin of the same hosts
 //	base+3  http   the web-platform-tests origin (wpt.go)
 //	base+4  https  the web-platform-tests origin, self-signed
+//	base+5 .. base+9  the network stack's transport origins (transport.go): HTTP/2 + HTTP/3, TLS 1.3 only, bad
+//	        certificates, a proxy
 //
 // The base: -base-port N, else WREN_TEST_BASE_PORT, else 8765 (the demos, demo.bat and the release package use the
 // default; tools\test_all.ps1 gives each run a block of its own so that several worktrees test side by side).
@@ -30,7 +32,7 @@ const defaultBasePort = 8765
 
 // Number of ports of a block and the step between candidate blocks of -scan.
 const (
-	portBlock = 5
+	portBlock = 10
 	scanStep  = 10
 	scanTries = 200
 )
@@ -79,14 +81,19 @@ func portsRewrite(b []byte) []byte {
 // The listeners of a block: plain TCP for base+0 and base+2, TLS for base+1 (and the WPT pair when wanted). All of
 // them or none: a block half bound is closed again.
 type portListeners struct {
-	http, https, other, wpt, wptTLS net.Listener
+	http, https, other, wpt, wptTLS      net.Listener
+	h2, tls13, expired, wrongName, proxy net.Listener   // transport.go
+	h3                                   net.PacketConn // UDP base+5
 }
 
 func (l *portListeners) close() {
-	for _, x := range []net.Listener{l.http, l.https, l.other, l.wpt, l.wptTLS} {
+	for _, x := range []net.Listener{l.http, l.https, l.other, l.wpt, l.wptTLS, l.h2, l.tls13, l.expired, l.wrongName, l.proxy} {
 		if x != nil {
 			x.Close()
 		}
+	}
+	if l.h3 != nil {
+		l.h3.Close()
 	}
 }
 
@@ -107,6 +114,14 @@ func listenBlock(base int, withWPT bool, cert tls.Certificate) (*portListeners, 
 	if withWPT {
 		l.wpt = listen(wptHTTPPort)
 		l.wptTLS = listen(wptHTTPSPort)
+	}
+	l.h2 = listen(base + 5)
+	l.tls13 = listen(base + 6)
+	l.expired = listen(base + 7)
+	l.wrongName = listen(base + 8)
+	l.proxy = listen(base + 9)
+	if err == nil {
+		l.h3, err = net.ListenPacket("udp", fmt.Sprintf("127.0.0.1:%d", base+5))
 	}
 	if err != nil {
 		l.close()

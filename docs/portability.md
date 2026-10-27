@@ -52,7 +52,7 @@ errors in its own files; "deps" fails only through the packages it imports.
 | blocker | own 26 | deps | fetch, net, page, media | done in its own files |
 | page | own 21 | own 6 | `js_web_media.odin` (screen metrics: toolkit), `images.odin`; fetch, net, media | small, after the toolkit's display API |
 | media | own 21 | own 21 | Media Foundation, WASAPI (the backend interface exists: `backend_<os>.odin`) | large |
-| net, fetch | own 23, 27 | own 23, 27 | WinHTTP: replaced by the Rust network stack (another branch) | (other branch) |
+| net, fetch | own 23, 27 | own 23, 27 | the Rust network stack (`native/net`, `src/net/rust.odin`) is the default and portable; the WinHTTP backend's calls still sit in `client.odin` / `websocket.odin` | small (move them to `*_windows.odin`, Rust only elsewhere) |
 | browser | own 476 | own 457 | the shell: windows, menus, tray, drag and drop, DWM, the D3D11 compositor path | large |
 | tools/crashtrace | own 116 | own 116 | dbghelp, SEH | medium (signals + libunwind / backtrace) |
 | toolkit/platform | own 2 | own 2 | `Native_Window` (no Linux window yet) | large (Wayland + X11 backend) |

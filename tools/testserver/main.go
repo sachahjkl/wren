@@ -1,4 +1,4 @@
-// Local server for exercising the network stack (no dependencies beyond Go's standard library).
+// Local server for exercising the network stack (Go's standard library, plus quic-go for HTTP/3: transport.go).
 //
 //	go run ./tools/testserver            # http on :8765, https (self-signed) on :8766, http on :8767, WPT on :8768
 //	testserver -base-port N [-scan] [-port-file F] [-parent-pid P]   # another block of ports (ports.go), ending with
@@ -127,10 +127,12 @@ func main() {
 	registerFrameHandlers(mux)
 	registerSWHandlers(mux)
 	registerPartitionHandlers(mux)
+	registerTransportHandlers(mux)
 
 	// every listener bound before anything is served or announced (ports.go)
 	l := bindPorts(selfSigned())
 	serveWPTOn(l.wpt, l.wptTLS)
+	serveTransport(l, mux)
 	go func() { log.Fatal(http.Serve(l.other, mux)) }()
 	go func() { log.Fatal(http.Serve(l.https, mux)) }()
 	writePortFile()

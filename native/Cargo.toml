@@ -14,7 +14,7 @@
 # runs with --locked. Profiles live here only (Cargo ignores those of members and path dependencies).
 [workspace]
 resolver = "2"
-members = ["media", "wren_native"]
+members = ["media", "net", "wren_native"]
 
 # Two profiles, the same code generation for each crate; they differ only in what happens across crates:
 #   release   what is shipped (build.bat release, and profile: measured as shipped): fat LTO, the whole graph optimized
