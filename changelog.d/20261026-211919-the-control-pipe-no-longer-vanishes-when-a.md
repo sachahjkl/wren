@@ -1,3 +1,0 @@
-type: Fixed
-
-**The control pipe no longer vanishes when a client connects and goes at once** (`remote.accept_main`): a client that closes before the server listens (a security query such as `Get-Acl`, a probe) made `ConnectNamedPipe` fail with `ERROR_NO_DATA`, and the accept thread ended for good, with the pipe: the process lived and no `wren ctl` could reach it (20000 quick connections left 3 before it was gone). The loop now only ends when the server is stopped: a failed connect makes the next instance before the old one is closed, a failed creation is retried. This was the cause of two failures of `remote_e2e` on the CI ("the pipe lets in this user only", "two instances answer separately"), not the elevation of the runner. A check in `remote_e2e` makes the storm.

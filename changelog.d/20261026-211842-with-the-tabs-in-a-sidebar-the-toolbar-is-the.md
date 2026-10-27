@@ -1,3 +1,0 @@
-type: Changed
-
-**With the tabs in a sidebar, the toolbar is the title bar** (`browser.tabs.position = left | right`, integrated title bar): one row of the Wren icon, back, forward, reload, the address bar, the shield, the menu and the window buttons, instead of a nearly empty title bar above the toolbar; the empty parts drag the window (double click maximizes, Snap Layouts on the maximize button, the top resize band). In a narrow window the address bar keeps `browser.tabs.sidebar_address_min_em` (10 em) and the shield, then forward, then reload make room. Tabs at the top, the system's title bar and full screen are unchanged.
