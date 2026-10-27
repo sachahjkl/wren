@@ -2,12 +2,16 @@ package html
 
 import "core:strings"
 
-foreign import lexbor_enc {
-	"../../build/lexbor/lexbor.lib",
-	"system:msvcrt.lib",
-	"system:ucrt.lib",
-	"system:libvcruntime.lib",
-	"system:legacy_stdio_definitions.lib",
+when ODIN_OS == .Windows {
+	foreign import lexbor_enc {
+		"../../build/lexbor/lexbor.lib",
+		"system:msvcrt.lib",
+		"system:ucrt.lib",
+		"system:libvcruntime.lib",
+		"system:legacy_stdio_definitions.lib",
+	}
+} else {
+	foreign import lexbor_enc { "../../build/lexbor-" + ODIN_OS_STRING + "/liblexbor.a" }   // tools/build_lexbor.sh
 }
 
 @(default_calling_convention = "c")
