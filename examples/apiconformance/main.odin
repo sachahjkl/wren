@@ -605,6 +605,8 @@ foreign _m_dom {
 	@(link_name = "DOMParser_parseXMLNode") c_DOMParser_parseXMLNode :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32) -> i32 ---
 	@(link_name = "ProcessingInstruction_target") c_ProcessingInstruction_target :: proc(a0: i64, a1: i32, a2: i32) -> i32 ---
 	@(link_name = "Document_xmlContentType") c_Document_xmlContentType :: proc(a0: i64, a1: i32, a2: i32) -> i32 ---
+	@(link_name = "Document_createXMLElement") c_Document_createXMLElement :: proc(a0: i64, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i32 ---
+	@(link_name = "DOMImplementation_createDocument") c_DOMImplementation_createDocument :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i64, a5: i32) -> i32 ---
 	@(link_name = "DOMImplementation_createDocumentType") c_DOMImplementation_createDocumentType :: proc(a0: i32, a1: i32, a2: i32, a3: i32, a4: i32, a5: i32, a6: i32) -> i32 ---
 	@(link_name = "Document_partOf") c_Document_partOf :: proc(a0: i64, a1: i32) -> i64 ---
 	@(link_name = "ResizeObserver_create") c_ResizeObserver_create :: proc(a0: i32, a1: i32) -> i64 ---
@@ -5888,135 +5890,159 @@ foreign _m_workers {
 	return i64(c_Document_xmlContentType(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
 @(export) case_1327 :: proc "contextless" () -> i64 {
-	return i64(c_DOMImplementation_createDocumentType(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Document_createXMLElement(0, i32(-16), 64, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1328 :: proc "contextless" () -> i64 {
-	return i64(c_DOMImplementation_createDocumentType(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Document_createXMLElement(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1329 :: proc "contextless" () -> i64 {
-	return i64(c_DOMImplementation_createDocumentType(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Document_createXMLElement(0, p(&BAD), 4, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1330 :: proc "contextless" () -> i64 {
-	return i64(c_DOMImplementation_createDocumentType(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_Document_createXMLElement(0, p(&GOOD), 1, p(&BAD), 4, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1331 :: proc "contextless" () -> i64 {
-	return i64(c_Document_partOf(0x7ABC_0000_0000_0001, 0))
+	return i64(c_DOMImplementation_createDocument(i32(-16), 64, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1332 :: proc "contextless" () -> i64 {
-	return i64(c_DataTransfer_itemEntry(0, 0, i32(-4)))
+	return i64(c_DOMImplementation_createDocument(p(&BAD), 4, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1333 :: proc "contextless" () -> i64 {
-	return i64(c_DataTransfer_itemEntry(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0])))
+	return i64(c_DOMImplementation_createDocument(p(&GOOD), 1, p(&BAD), 4, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
 @(export) case_1334 :: proc "contextless" () -> i64 {
+	return i64(c_DOMImplementation_createDocument(p(&GOOD), 1, p(&GOOD), 1, 0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1335 :: proc "contextless" () -> i64 {
+	return i64(c_DOMImplementation_createDocumentType(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1336 :: proc "contextless" () -> i64 {
+	return i64(c_DOMImplementation_createDocumentType(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1337 :: proc "contextless" () -> i64 {
+	return i64(c_DOMImplementation_createDocumentType(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1338 :: proc "contextless" () -> i64 {
+	return i64(c_DOMImplementation_createDocumentType(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1339 :: proc "contextless" () -> i64 {
+	return i64(c_Document_partOf(0x7ABC_0000_0000_0001, 0))
+}
+@(export) case_1340 :: proc "contextless" () -> i64 {
+	return i64(c_DataTransfer_itemEntry(0, 0, i32(-4)))
+}
+@(export) case_1341 :: proc "contextless" () -> i64 {
+	return i64(c_DataTransfer_itemEntry(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0])))
+}
+@(export) case_1342 :: proc "contextless" () -> i64 {
 	c_FsEntry_info(0, i32(-4))
 	return 0
 }
-@(export) case_1335 :: proc "contextless" () -> i64 {
+@(export) case_1343 :: proc "contextless" () -> i64 {
 	c_FsEntry_info(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]))
 	return 0
 }
-@(export) case_1336 :: proc "contextless" () -> i64 {
+@(export) case_1344 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_name(0, i32(-16), 64))
 }
-@(export) case_1337 :: proc "contextless" () -> i64 {
+@(export) case_1345 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_name(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1338 :: proc "contextless" () -> i64 {
+@(export) case_1346 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_fullPath(0, i32(-16), 64))
 }
-@(export) case_1339 :: proc "contextless" () -> i64 {
+@(export) case_1347 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_fullPath(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1340 :: proc "contextless" () -> i64 {
+@(export) case_1348 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_filesystemName(0, i32(-16), 64))
 }
-@(export) case_1341 :: proc "contextless" () -> i64 {
+@(export) case_1349 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_filesystemName(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1342 :: proc "contextless" () -> i64 {
+@(export) case_1350 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_parent(0x7ABC_0000_0000_0001))
 }
-@(export) case_1343 :: proc "contextless" () -> i64 {
+@(export) case_1351 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_root(0x7ABC_0000_0000_0001))
 }
-@(export) case_1344 :: proc "contextless" () -> i64 {
+@(export) case_1352 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_file(0x7ABC_0000_0000_0001))
 }
-@(export) case_1345 :: proc "contextless" () -> i64 {
+@(export) case_1353 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_lookup(0, i32(-16), 64, 0))
 }
-@(export) case_1346 :: proc "contextless" () -> i64 {
+@(export) case_1354 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_lookup(0x7ABC_0000_0000_0001, p(&GOOD), 1, 0))
 }
-@(export) case_1347 :: proc "contextless" () -> i64 {
+@(export) case_1355 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_lookup(0, p(&BAD), 4, 0))
 }
-@(export) case_1348 :: proc "contextless" () -> i64 {
+@(export) case_1356 :: proc "contextless" () -> i64 {
 	return i64(c_FsEntry_createReader(0x7ABC_0000_0000_0001))
 }
-@(export) case_1349 :: proc "contextless" () -> i64 {
+@(export) case_1357 :: proc "contextless" () -> i64 {
 	return i64(c_FsReader_read(0x7ABC_0000_0000_0001))
 }
-@(export) case_1350 :: proc "contextless" () -> i64 {
+@(export) case_1358 :: proc "contextless" () -> i64 {
 	return i64(c_FsReader_entry(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1351 :: proc "contextless" () -> i64 {
+@(export) case_1359 :: proc "contextless" () -> i64 {
 	return i64(c_EventTarget_dispatchEngineEvent(0, i32(-16), 64, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1352 :: proc "contextless" () -> i64 {
+@(export) case_1360 :: proc "contextless" () -> i64 {
 	return i64(c_EventTarget_dispatchEngineEvent(0x7ABC_0000_0000_0001, p(&GOOD), 1, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1353 :: proc "contextless" () -> i64 {
+@(export) case_1361 :: proc "contextless" () -> i64 {
 	return i64(c_EventTarget_dispatchEngineEvent(0, p(&BAD), 4, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1354 :: proc "contextless" () -> i64 {
+@(export) case_1362 :: proc "contextless" () -> i64 {
 	return i64(c_Event_engineId(0x7ABC_0000_0000_0001))
 }
-@(export) case_1355 :: proc "contextless" () -> i64 {
+@(export) case_1363 :: proc "contextless" () -> i64 {
 	return i64(c_Event_interface(0x7ABC_0000_0000_0001))
 }
-@(export) case_1356 :: proc "contextless" () -> i64 {
+@(export) case_1364 :: proc "contextless" () -> i64 {
 	return i64(c_Event_bubbles(0x7ABC_0000_0000_0001))
 }
-@(export) case_1357 :: proc "contextless" () -> i64 {
+@(export) case_1365 :: proc "contextless" () -> i64 {
 	return i64(c_Event_cancelable(0x7ABC_0000_0000_0001))
 }
-@(export) case_1358 :: proc "contextless" () -> i64 {
+@(export) case_1366 :: proc "contextless" () -> i64 {
 	return i64(c_Event_composed(0x7ABC_0000_0000_0001))
 }
-@(export) case_1359 :: proc "contextless" () -> i64 {
+@(export) case_1367 :: proc "contextless" () -> i64 {
 	return i64(c_Event_eventPhase(0x7ABC_0000_0000_0001))
 }
-@(export) case_1360 :: proc "contextless" () -> i64 {
+@(export) case_1368 :: proc "contextless" () -> i64 {
 	return i64(c_Event_timeStamp(0x7ABC_0000_0000_0001))
 }
-@(export) case_1361 :: proc "contextless" () -> i64 {
+@(export) case_1369 :: proc "contextless" () -> i64 {
 	return i64(c_Event_isTrusted(0x7ABC_0000_0000_0001))
 }
-@(export) case_1362 :: proc "contextless" () -> i64 {
+@(export) case_1370 :: proc "contextless" () -> i64 {
 	return i64(c_Event_propagationStopped(0x7ABC_0000_0000_0001))
 }
-@(export) case_1363 :: proc "contextless" () -> i64 {
+@(export) case_1371 :: proc "contextless" () -> i64 {
 	return i64(c_Document_writeMarkup(i32(-16), 64))
 }
-@(export) case_1364 :: proc "contextless" () -> i64 {
+@(export) case_1372 :: proc "contextless" () -> i64 {
 	return i64(c_Script_allowInline(0, 0, i32(-16), 64))
 }
-@(export) case_1365 :: proc "contextless" () -> i64 {
+@(export) case_1373 :: proc "contextless" () -> i64 {
 	return i64(c_Script_allowInline(0, 2147483632, p(&GOOD), 1))
 }
-@(export) case_1366 :: proc "contextless" () -> i64 {
+@(export) case_1374 :: proc "contextless" () -> i64 {
 	return i64(c_Script_allowEval(i32(-16), 64))
 }
-@(export) case_1367 :: proc "contextless" () -> i64 {
+@(export) case_1375 :: proc "contextless" () -> i64 {
 	c_Script_javascriptResult(i32(-16), 64)
 	return 0
 }
-@(export) case_1368 :: proc "contextless" () -> i64 {
+@(export) case_1376 :: proc "contextless" () -> i64 {
 	return i64(c_Script_baseName(i32(-16), 64))
 }
-@(export) case_1369 :: proc "contextless" () -> i64 {
+@(export) case_1377 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Script_baseName(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6029,10 +6055,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1370 :: proc "contextless" () -> i64 {
+@(export) case_1378 :: proc "contextless" () -> i64 {
 	return i64(c_Module_resolve(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1371 :: proc "contextless" () -> i64 {
+@(export) case_1379 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Module_resolve(p(&GOOD), 1, p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6045,10 +6071,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1372 :: proc "contextless" () -> i64 {
+@(export) case_1380 :: proc "contextless" () -> i64 {
 	return i64(c_Module_source(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1373 :: proc "contextless" () -> i64 {
+@(export) case_1381 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Module_source(p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6061,34 +6087,34 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1374 :: proc "contextless" () -> i64 {
+@(export) case_1382 :: proc "contextless" () -> i64 {
 	return i64(c_Module_request(i32(-16), 64, p(&GOOD), 1, 0))
 }
-@(export) case_1375 :: proc "contextless" () -> i64 {
+@(export) case_1383 :: proc "contextless" () -> i64 {
 	return i64(c_Module_request(p(&GOOD), 1, p(&GOOD), 1, 2147483632))
 }
-@(export) case_1376 :: proc "contextless" () -> i64 {
+@(export) case_1384 :: proc "contextless" () -> i64 {
 	return i64(c_Module_import(0, i32(-16), 64, p(&GOOD), 1, 0))
 }
-@(export) case_1377 :: proc "contextless" () -> i64 {
+@(export) case_1385 :: proc "contextless" () -> i64 {
 	return i64(c_Module_import(0, p(&GOOD), 1, p(&GOOD), 1, 2147483632))
 }
-@(export) case_1378 :: proc "contextless" () -> i64 {
+@(export) case_1386 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_createScript(i32(-16), 64, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1379 :: proc "contextless" () -> i64 {
+@(export) case_1387 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_createScript(p(&GOOD), 1, p(&GOOD), 1, 2147483632, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1380 :: proc "contextless" () -> i64 {
+@(export) case_1388 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_postSerialized(0, i32(-16), 64))
 }
-@(export) case_1381 :: proc "contextless" () -> i64 {
+@(export) case_1389 :: proc "contextless" () -> i64 {
 	return i64(c_DedicatedWorkerGlobalScope_postSerialized(i32(-16), 64))
 }
-@(export) case_1382 :: proc "contextless" () -> i64 {
+@(export) case_1390 :: proc "contextless" () -> i64 {
 	return i64(c_WorkerGlobalScope_importScript(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1383 :: proc "contextless" () -> i64 {
+@(export) case_1391 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_WorkerGlobalScope_importScript(p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6101,22 +6127,22 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1384 :: proc "contextless" () -> i64 {
+@(export) case_1392 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorker_connect(i32(-16), 64, p(&GOOD), 1, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1385 :: proc "contextless" () -> i64 {
+@(export) case_1393 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorker_connect(p(&GOOD), 1, p(&GOOD), 1, 2147483632, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1386 :: proc "contextless" () -> i64 {
+@(export) case_1394 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_createScriptBytes(i32(-16), 64, p(&GOOD), 1, 0, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1387 :: proc "contextless" () -> i64 {
+@(export) case_1395 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_createScriptBytes(p(&GOOD), 1, p(&GOOD), 1, 2147483632, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1388 :: proc "contextless" () -> i64 {
+@(export) case_1396 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_pendingError(i32(-16), 64))
 }
-@(export) case_1389 :: proc "contextless" () -> i64 {
+@(export) case_1397 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Worker_pendingError(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6129,23 +6155,23 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1390 :: proc "contextless" () -> i64 {
+@(export) case_1398 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorker_connectBytes(i32(-16), 64, p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1391 :: proc "contextless" () -> i64 {
+@(export) case_1399 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorker_connectBytes(p(&GOOD), 1, p(&GOOD), 1, 2147483632, 0, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1392 :: proc "contextless" () -> i64 {
+@(export) case_1400 :: proc "contextless" () -> i64 {
 	return i64(c_ResizeObserver_observe(0, 0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1393 :: proc "contextless" () -> i64 {
+@(export) case_1401 :: proc "contextless" () -> i64 {
 	c_ResizeObserver_unobserve(0, 0x7ABC_0000_0000_0001)
 	return 0
 }
-@(export) case_1394 :: proc "contextless" () -> i64 {
+@(export) case_1402 :: proc "contextless" () -> i64 {
 	return i64(c_ResizeObserver_takeEntries(0, i32(-16), 64))
 }
-@(export) case_1395 :: proc "contextless" () -> i64 {
+@(export) case_1403 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ResizeObserver_takeEntries(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6158,19 +6184,19 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1396 :: proc "contextless" () -> i64 {
+@(export) case_1404 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_create(0, 0, 0, i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1397 :: proc "contextless" () -> i64 {
+@(export) case_1405 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_create(0, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1398 :: proc "contextless" () -> i64 {
+@(export) case_1406 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_create(0, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1399 :: proc "contextless" () -> i64 {
+@(export) case_1407 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_rootMargin(0, i32(-16), 64))
 }
-@(export) case_1400 :: proc "contextless" () -> i64 {
+@(export) case_1408 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_IntersectionObserver_rootMargin(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6183,10 +6209,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1401 :: proc "contextless" () -> i64 {
+@(export) case_1409 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_scrollMargin(0, i32(-16), 64))
 }
-@(export) case_1402 :: proc "contextless" () -> i64 {
+@(export) case_1410 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_IntersectionObserver_scrollMargin(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6199,17 +6225,17 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1403 :: proc "contextless" () -> i64 {
+@(export) case_1411 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_observe(0, 0x7ABC_0000_0000_0001))
 }
-@(export) case_1404 :: proc "contextless" () -> i64 {
+@(export) case_1412 :: proc "contextless" () -> i64 {
 	c_IntersectionObserver_unobserve(0, 0x7ABC_0000_0000_0001)
 	return 0
 }
-@(export) case_1405 :: proc "contextless" () -> i64 {
+@(export) case_1413 :: proc "contextless" () -> i64 {
 	return i64(c_IntersectionObserver_takeRecords(0, i32(-16), 64))
 }
-@(export) case_1406 :: proc "contextless" () -> i64 {
+@(export) case_1414 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_IntersectionObserver_takeRecords(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6222,108 +6248,108 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1407 :: proc "contextless" () -> i64 {
+@(export) case_1415 :: proc "contextless" () -> i64 {
 	return i64(c_Element_attachShadowInit(0, 0, 0, 0, 0, 0, i32(-4)))
 }
-@(export) case_1408 :: proc "contextless" () -> i64 {
+@(export) case_1416 :: proc "contextless" () -> i64 {
 	return i64(c_Element_attachShadowInit(0x7ABC_0000_0000_0001, 0, 0, 0, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1409 :: proc "contextless" () -> i64 {
+@(export) case_1417 :: proc "contextless" () -> i64 {
 	c_CustomElements_disable(i32(-16), 64, 0, 0)
 	return 0
 }
-@(export) case_1410 :: proc "contextless" () -> i64 {
+@(export) case_1418 :: proc "contextless" () -> i64 {
 	c_CustomElements_disable(p(&BAD), 4, 0, 0)
 	return 0
 }
-@(export) case_1411 :: proc "contextless" () -> i64 {
+@(export) case_1419 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_mode(0, i32(-16), 64))
 }
-@(export) case_1412 :: proc "contextless" () -> i64 {
+@(export) case_1420 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_mode(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1413 :: proc "contextless" () -> i64 {
+@(export) case_1421 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_delegatesFocus(0x7ABC_0000_0000_0001))
 }
-@(export) case_1414 :: proc "contextless" () -> i64 {
+@(export) case_1422 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_clonable(0x7ABC_0000_0000_0001))
 }
-@(export) case_1415 :: proc "contextless" () -> i64 {
+@(export) case_1423 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_serializable(0x7ABC_0000_0000_0001))
 }
-@(export) case_1416 :: proc "contextless" () -> i64 {
+@(export) case_1424 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_slotAssignment(0, i32(-16), 64))
 }
-@(export) case_1417 :: proc "contextless" () -> i64 {
+@(export) case_1425 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_slotAssignment(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1418 :: proc "contextless" () -> i64 {
+@(export) case_1426 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_host(0x7ABC_0000_0000_0001))
 }
-@(export) case_1419 :: proc "contextless" () -> i64 {
+@(export) case_1427 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_innerHTML(0, i32(-16), 64))
 }
-@(export) case_1420 :: proc "contextless" () -> i64 {
+@(export) case_1428 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_innerHTML(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1421 :: proc "contextless" () -> i64 {
+@(export) case_1429 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_set_innerHTML(0, i32(-16), 64))
 }
-@(export) case_1422 :: proc "contextless" () -> i64 {
+@(export) case_1430 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_set_innerHTML(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1423 :: proc "contextless" () -> i64 {
+@(export) case_1431 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_set_innerHTML(0, p(&BAD), 4))
 }
-@(export) case_1424 :: proc "contextless" () -> i64 {
+@(export) case_1432 :: proc "contextless" () -> i64 {
 	return i64(c_ShadowRoot_activeElement(0x7ABC_0000_0000_0001))
 }
-@(export) case_1425 :: proc "contextless" () -> i64 {
+@(export) case_1433 :: proc "contextless" () -> i64 {
 	return i64(c_Node_getHTML(0, 0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1426 :: proc "contextless" () -> i64 {
+@(export) case_1434 :: proc "contextless" () -> i64 {
 	return i64(c_Node_getHTML(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1427 :: proc "contextless" () -> i64 {
+@(export) case_1435 :: proc "contextless" () -> i64 {
 	return i64(c_Node_setHTMLUnsafe(0, i32(-16), 64))
 }
-@(export) case_1428 :: proc "contextless" () -> i64 {
+@(export) case_1436 :: proc "contextless" () -> i64 {
 	return i64(c_Node_setHTMLUnsafe(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1429 :: proc "contextless" () -> i64 {
+@(export) case_1437 :: proc "contextless" () -> i64 {
 	return i64(c_Node_setHTMLUnsafe(0, p(&BAD), 4))
 }
-@(export) case_1430 :: proc "contextless" () -> i64 {
+@(export) case_1438 :: proc "contextless" () -> i64 {
 	return i64(c_Document_parseHTMLUnsafeNode(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1431 :: proc "contextless" () -> i64 {
+@(export) case_1439 :: proc "contextless" () -> i64 {
 	return i64(c_Document_parseHTMLUnsafeNode(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1432 :: proc "contextless" () -> i64 {
+@(export) case_1440 :: proc "contextless" () -> i64 {
 	return i64(c_Node_rootNodeComposed(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1433 :: proc "contextless" () -> i64 {
+@(export) case_1441 :: proc "contextless" () -> i64 {
 	return i64(c_Slottable_assignedSlot(0x7ABC_0000_0000_0001))
 }
-@(export) case_1434 :: proc "contextless" () -> i64 {
+@(export) case_1442 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLSlotElement_assignedPacked(0, 0, 0, i32(-16), 64))
 }
-@(export) case_1435 :: proc "contextless" () -> i64 {
+@(export) case_1443 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLSlotElement_assignedPacked(0x7ABC_0000_0000_0001, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1436 :: proc "contextless" () -> i64 {
+@(export) case_1444 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLSlotElement_assignNodes(0, i32(-16), 64))
 }
-@(export) case_1437 :: proc "contextless" () -> i64 {
+@(export) case_1445 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLSlotElement_assignNodes(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1438 :: proc "contextless" () -> i64 {
+@(export) case_1446 :: proc "contextless" () -> i64 {
 	return i64(c_Document_shadowIncludingByName(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1439 :: proc "contextless" () -> i64 {
+@(export) case_1447 :: proc "contextless" () -> i64 {
 	return i64(c_Document_shadowIncludingByName(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1440 :: proc "contextless" () -> i64 {
+@(export) case_1448 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Document_shadowIncludingByName(p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6336,57 +6362,57 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1441 :: proc "contextless" () -> i64 {
+@(export) case_1449 :: proc "contextless" () -> i64 {
 	return i64(c_DocumentOrShadowRoot_elementsFromPointPacked(0, 0, 0, i32(-16), 64))
 }
-@(export) case_1442 :: proc "contextless" () -> i64 {
+@(export) case_1450 :: proc "contextless" () -> i64 {
 	return i64(c_DocumentOrShadowRoot_elementsFromPointPacked(0x7ABC_0000_0000_0001, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1443 :: proc "contextless" () -> i64 {
+@(export) case_1451 :: proc "contextless" () -> i64 {
 	return i64(c_Node_shadowIncludingElements(0, i32(-16), 64))
 }
-@(export) case_1444 :: proc "contextless" () -> i64 {
+@(export) case_1452 :: proc "contextless" () -> i64 {
 	return i64(c_Node_shadowIncludingElements(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1445 :: proc "contextless" () -> i64 {
+@(export) case_1453 :: proc "contextless" () -> i64 {
 	return i64(c_Event_composedPathPacked(0, i32(-16), 64))
 }
-@(export) case_1446 :: proc "contextless" () -> i64 {
+@(export) case_1454 :: proc "contextless" () -> i64 {
 	return i64(c_Event_composedPathPacked(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1447 :: proc "contextless" () -> i64 {
+@(export) case_1455 :: proc "contextless" () -> i64 {
 	return i64(c_Event_relatedNow(0x7ABC_0000_0000_0001))
 }
-@(export) case_1448 :: proc "contextless" () -> i64 {
+@(export) case_1456 :: proc "contextless" () -> i64 {
 	return i64(c_Element_attachInternals(0, i32(-4)))
 }
-@(export) case_1449 :: proc "contextless" () -> i64 {
+@(export) case_1457 :: proc "contextless" () -> i64 {
 	return i64(c_Element_attachInternals(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1450 :: proc "contextless" () -> i64 {
+@(export) case_1458 :: proc "contextless" () -> i64 {
 	c_CustomStates_add(0, i32(-16), 64)
 	return 0
 }
-@(export) case_1451 :: proc "contextless" () -> i64 {
+@(export) case_1459 :: proc "contextless" () -> i64 {
 	c_CustomStates_add(0, p(&BAD), 4)
 	return 0
 }
-@(export) case_1452 :: proc "contextless" () -> i64 {
+@(export) case_1460 :: proc "contextless" () -> i64 {
 	return i64(c_CustomStates_delete(0, i32(-16), 64))
 }
-@(export) case_1453 :: proc "contextless" () -> i64 {
+@(export) case_1461 :: proc "contextless" () -> i64 {
 	return i64(c_CustomStates_delete(0, p(&BAD), 4))
 }
-@(export) case_1454 :: proc "contextless" () -> i64 {
+@(export) case_1462 :: proc "contextless" () -> i64 {
 	return i64(c_CustomStates_has(0, i32(-16), 64))
 }
-@(export) case_1455 :: proc "contextless" () -> i64 {
+@(export) case_1463 :: proc "contextless" () -> i64 {
 	return i64(c_CustomStates_has(0, p(&BAD), 4))
 }
-@(export) case_1456 :: proc "contextless" () -> i64 {
+@(export) case_1464 :: proc "contextless" () -> i64 {
 	return i64(c_CustomStates_list(0, i32(-16), 64))
 }
-@(export) case_1457 :: proc "contextless" () -> i64 {
+@(export) case_1465 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_CustomStates_list(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6399,25 +6425,25 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1458 :: proc "contextless" () -> i64 {
+@(export) case_1466 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_create(i32(-16), 64, 0, p(&GOOD), 1))
 }
-@(export) case_1459 :: proc "contextless" () -> i64 {
+@(export) case_1467 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_create(p(&BAD), 4, 0, p(&GOOD), 1))
 }
-@(export) case_1460 :: proc "contextless" () -> i64 {
+@(export) case_1468 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_create(p(&GOOD), 1, 0, p(&BAD), 4))
 }
-@(export) case_1461 :: proc "contextless" () -> i64 {
+@(export) case_1469 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_replaceText(0, i32(-16), 64))
 }
-@(export) case_1462 :: proc "contextless" () -> i64 {
+@(export) case_1470 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_replaceText(0, p(&BAD), 4))
 }
-@(export) case_1463 :: proc "contextless" () -> i64 {
+@(export) case_1471 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_ruleText(0, 0, i32(-16), 64))
 }
-@(export) case_1464 :: proc "contextless" () -> i64 {
+@(export) case_1472 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_CSSStyleSheet_ruleText(0, 0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6430,16 +6456,16 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1465 :: proc "contextless" () -> i64 {
+@(export) case_1473 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_insertRuleAt(0, i32(-16), 64, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1466 :: proc "contextless" () -> i64 {
+@(export) case_1474 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_insertRuleAt(0, p(&BAD), 4, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1467 :: proc "contextless" () -> i64 {
+@(export) case_1475 :: proc "contextless" () -> i64 {
 	return i64(c_CSSStyleSheet_mediaText(0, i32(-16), 64))
 }
-@(export) case_1468 :: proc "contextless" () -> i64 {
+@(export) case_1476 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_CSSStyleSheet_mediaText(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6452,27 +6478,27 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1469 :: proc "contextless" () -> i64 {
+@(export) case_1477 :: proc "contextless" () -> i64 {
 	c_CSSStyleSheet_setMediaText(0, i32(-16), 64)
 	return 0
 }
-@(export) case_1470 :: proc "contextless" () -> i64 {
+@(export) case_1478 :: proc "contextless" () -> i64 {
 	c_CSSStyleSheet_setMediaText(0, p(&BAD), 4)
 	return 0
 }
-@(export) case_1471 :: proc "contextless" () -> i64 {
+@(export) case_1479 :: proc "contextless" () -> i64 {
 	return i64(c_DocumentOrShadowRoot_adopt(0, i32(-16), 64))
 }
-@(export) case_1472 :: proc "contextless" () -> i64 {
+@(export) case_1480 :: proc "contextless" () -> i64 {
 	return i64(c_DocumentOrShadowRoot_adopt(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1473 :: proc "contextless" () -> i64 {
+@(export) case_1481 :: proc "contextless" () -> i64 {
 	return i64(c_Navigator_get(0, i32(-16), 64))
 }
-@(export) case_1474 :: proc "contextless" () -> i64 {
+@(export) case_1482 :: proc "contextless" () -> i64 {
 	return i64(c_Navigator_get(2147483632, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1475 :: proc "contextless" () -> i64 {
+@(export) case_1483 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Navigator_get(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6485,352 +6511,352 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1476 :: proc "contextless" () -> i64 {
+@(export) case_1484 :: proc "contextless" () -> i64 {
 	return i64(c_Beacon_send(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1477 :: proc "contextless" () -> i64 {
+@(export) case_1485 :: proc "contextless" () -> i64 {
 	return i64(c_Beacon_send(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1478 :: proc "contextless" () -> i64 {
+@(export) case_1486 :: proc "contextless" () -> i64 {
 	return i64(c_Beacon_send(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4))
 }
-@(export) case_1479 :: proc "contextless" () -> i64 {
+@(export) case_1487 :: proc "contextless" () -> i64 {
 	return i64(c_Clipboard_writeText(i32(-16), 64))
 }
-@(export) case_1480 :: proc "contextless" () -> i64 {
+@(export) case_1488 :: proc "contextless" () -> i64 {
 	return i64(c_Clipboard_writeText(p(&BAD), 4))
 }
-@(export) case_1481 :: proc "contextless" () -> i64 {
+@(export) case_1489 :: proc "contextless" () -> i64 {
 	return i64(c_MediaQueryList_create(i32(-16), 64))
 }
-@(export) case_1482 :: proc "contextless" () -> i64 {
+@(export) case_1490 :: proc "contextless" () -> i64 {
 	return i64(c_MediaQueryList_create(p(&BAD), 4))
 }
-@(export) case_1483 :: proc "contextless" () -> i64 {
+@(export) case_1491 :: proc "contextless" () -> i64 {
 	return i64(c_MediaQueryList_media(0, i32(-16), 64))
 }
-@(export) case_1484 :: proc "contextless" () -> i64 {
+@(export) case_1492 :: proc "contextless" () -> i64 {
 	return i64(c_MediaQueryList_media(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1485 :: proc "contextless" () -> i64 {
+@(export) case_1493 :: proc "contextless" () -> i64 {
 	return i64(c_MediaQueryList_matches(0x7ABC_0000_0000_0001))
 }
-@(export) case_1486 :: proc "contextless" () -> i64 {
+@(export) case_1494 :: proc "contextless" () -> i64 {
 	return i64(c_Screen_get(2147483632))
 }
-@(export) case_1487 :: proc "contextless" () -> i64 {
+@(export) case_1495 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_fileAt(0, 0, i32(-4)))
 }
-@(export) case_1488 :: proc "contextless" () -> i64 {
+@(export) case_1496 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_fileAt(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1489 :: proc "contextless" () -> i64 {
+@(export) case_1497 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_setBlob(0, i32(-16), 64, 0, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1490 :: proc "contextless" () -> i64 {
+@(export) case_1498 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_setBlob(0x7ABC_0000_0000_0001, p(&GOOD), 1, 0, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1491 :: proc "contextless" () -> i64 {
+@(export) case_1499 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_setBlob(0, p(&GOOD), 1, 0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1492 :: proc "contextless" () -> i64 {
+@(export) case_1500 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_setBlob(0, p(&GOOD), 1, 0, p(&GOOD), 1, p(&BAD), 4))
 }
-@(export) case_1493 :: proc "contextless" () -> i64 {
+@(export) case_1501 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_encode(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1494 :: proc "contextless" () -> i64 {
+@(export) case_1502 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_encode(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1495 :: proc "contextless" () -> i64 {
+@(export) case_1503 :: proc "contextless" () -> i64 {
 	return i64(c_FormData_encode(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1496 :: proc "contextless" () -> i64 {
+@(export) case_1504 :: proc "contextless" () -> i64 {
 	return i64(c_XMLSerializer_serialize(0, i32(-16), 64))
 }
-@(export) case_1497 :: proc "contextless" () -> i64 {
+@(export) case_1505 :: proc "contextless" () -> i64 {
 	return i64(c_XMLSerializer_serialize(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1498 :: proc "contextless" () -> i64 {
+@(export) case_1506 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_currentSrc(0, i32(-16), 64))
 }
-@(export) case_1499 :: proc "contextless" () -> i64 {
+@(export) case_1507 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_currentSrc(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1500 :: proc "contextless" () -> i64 {
+@(export) case_1508 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_networkState(0x7ABC_0000_0000_0001))
 }
-@(export) case_1501 :: proc "contextless" () -> i64 {
+@(export) case_1509 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_readyState(0x7ABC_0000_0000_0001))
 }
-@(export) case_1502 :: proc "contextless" () -> i64 {
+@(export) case_1510 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_seeking(0x7ABC_0000_0000_0001))
 }
-@(export) case_1503 :: proc "contextless" () -> i64 {
+@(export) case_1511 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_currentTime(0x7ABC_0000_0000_0001))
 }
-@(export) case_1504 :: proc "contextless" () -> i64 {
+@(export) case_1512 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_set_currentTime(0x7ABC_0000_0000_0001, 0)
 	return 0
 }
-@(export) case_1505 :: proc "contextless" () -> i64 {
+@(export) case_1513 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_duration(0x7ABC_0000_0000_0001))
 }
-@(export) case_1506 :: proc "contextless" () -> i64 {
+@(export) case_1514 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_paused(0x7ABC_0000_0000_0001))
 }
-@(export) case_1507 :: proc "contextless" () -> i64 {
+@(export) case_1515 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_ended(0x7ABC_0000_0000_0001))
 }
-@(export) case_1508 :: proc "contextless" () -> i64 {
+@(export) case_1516 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_defaultPlaybackRate(0x7ABC_0000_0000_0001))
 }
-@(export) case_1509 :: proc "contextless" () -> i64 {
+@(export) case_1517 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_set_defaultPlaybackRate(0x7ABC_0000_0000_0001, 0)
 	return 0
 }
-@(export) case_1510 :: proc "contextless" () -> i64 {
+@(export) case_1518 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_playbackRate(0x7ABC_0000_0000_0001))
 }
-@(export) case_1511 :: proc "contextless" () -> i64 {
+@(export) case_1519 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_set_playbackRate(0x7ABC_0000_0000_0001, 0)
 	return 0
 }
-@(export) case_1512 :: proc "contextless" () -> i64 {
+@(export) case_1520 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_preservesPitch(0x7ABC_0000_0000_0001))
 }
-@(export) case_1513 :: proc "contextless" () -> i64 {
+@(export) case_1521 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_set_preservesPitch(0x7ABC_0000_0000_0001, 0)
 	return 0
 }
-@(export) case_1514 :: proc "contextless" () -> i64 {
+@(export) case_1522 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_volume(0x7ABC_0000_0000_0001))
 }
-@(export) case_1515 :: proc "contextless" () -> i64 {
+@(export) case_1523 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_set_volume(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1516 :: proc "contextless" () -> i64 {
+@(export) case_1524 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_muted(0x7ABC_0000_0000_0001))
 }
-@(export) case_1517 :: proc "contextless" () -> i64 {
+@(export) case_1525 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_set_muted(0x7ABC_0000_0000_0001, 0)
 	return 0
 }
-@(export) case_1518 :: proc "contextless" () -> i64 {
+@(export) case_1526 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_ranges(0, 0, i32(-16), 64))
 }
-@(export) case_1519 :: proc "contextless" () -> i64 {
+@(export) case_1527 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_ranges(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1520 :: proc "contextless" () -> i64 {
+@(export) case_1528 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_setSourceHandle(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1521 :: proc "contextless" () -> i64 {
+@(export) case_1529 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_errorCode(0x7ABC_0000_0000_0001))
 }
-@(export) case_1522 :: proc "contextless" () -> i64 {
+@(export) case_1530 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_errorMessage(0, i32(-16), 64))
 }
-@(export) case_1523 :: proc "contextless" () -> i64 {
+@(export) case_1531 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_errorMessage(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1524 :: proc "contextless" () -> i64 {
+@(export) case_1532 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_play(0x7ABC_0000_0000_0001))
 }
-@(export) case_1525 :: proc "contextless" () -> i64 {
+@(export) case_1533 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_pause(0x7ABC_0000_0000_0001)
 	return 0
 }
-@(export) case_1526 :: proc "contextless" () -> i64 {
+@(export) case_1534 :: proc "contextless" () -> i64 {
 	c_HTMLMediaElement_load(0x7ABC_0000_0000_0001)
 	return 0
 }
-@(export) case_1527 :: proc "contextless" () -> i64 {
+@(export) case_1535 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_canPlayType(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1528 :: proc "contextless" () -> i64 {
+@(export) case_1536 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_canPlayType(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1529 :: proc "contextless" () -> i64 {
+@(export) case_1537 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLMediaElement_canPlayType(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1530 :: proc "contextless" () -> i64 {
+@(export) case_1538 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLVideoElement_videoWidth(0x7ABC_0000_0000_0001))
 }
-@(export) case_1531 :: proc "contextless" () -> i64 {
+@(export) case_1539 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLVideoElement_videoHeight(0x7ABC_0000_0000_0001))
 }
-@(export) case_1532 :: proc "contextless" () -> i64 {
+@(export) case_1540 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLVideoElement_playbackQuality(0, i32(-16), 64))
 }
-@(export) case_1533 :: proc "contextless" () -> i64 {
+@(export) case_1541 :: proc "contextless" () -> i64 {
 	return i64(c_HTMLVideoElement_playbackQuality(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1534 :: proc "contextless" () -> i64 {
+@(export) case_1542 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_create(i32(-4)))
 }
-@(export) case_1535 :: proc "contextless" () -> i64 {
+@(export) case_1543 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_registerObjectURL(0, i32(-16), 64))
 }
-@(export) case_1536 :: proc "contextless" () -> i64 {
+@(export) case_1544 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_registerObjectURL(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1537 :: proc "contextless" () -> i64 {
+@(export) case_1545 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_registerObjectURL(0, p(&BAD), 4))
 }
-@(export) case_1538 :: proc "contextless" () -> i64 {
+@(export) case_1546 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_handle(0, i32(-4)))
 }
-@(export) case_1539 :: proc "contextless" () -> i64 {
+@(export) case_1547 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_handle(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1540 :: proc "contextless" () -> i64 {
+@(export) case_1548 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSourceHandle_take(0, i32(-4)))
 }
-@(export) case_1541 :: proc "contextless" () -> i64 {
+@(export) case_1549 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSourceHandle_take(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1542 :: proc "contextless" () -> i64 {
+@(export) case_1550 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSourceHandle_adopt(0, i32(-4)))
 }
-@(export) case_1543 :: proc "contextless" () -> i64 {
+@(export) case_1551 :: proc "contextless" () -> i64 {
 	c_MediaSource_revokeObjectURL(i32(-16), 64)
 	return 0
 }
-@(export) case_1544 :: proc "contextless" () -> i64 {
+@(export) case_1552 :: proc "contextless" () -> i64 {
 	c_MediaSource_revokeObjectURL(p(&BAD), 4)
 	return 0
 }
-@(export) case_1545 :: proc "contextless" () -> i64 {
+@(export) case_1553 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_isTypeSupported(i32(-16), 64))
 }
-@(export) case_1546 :: proc "contextless" () -> i64 {
+@(export) case_1554 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_isTypeSupported(p(&BAD), 4))
 }
-@(export) case_1547 :: proc "contextless" () -> i64 {
+@(export) case_1555 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_sourceBuffers(0x7ABC_0000_0000_0001))
 }
-@(export) case_1548 :: proc "contextless" () -> i64 {
+@(export) case_1556 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_activeSourceBuffers(0x7ABC_0000_0000_0001))
 }
-@(export) case_1549 :: proc "contextless" () -> i64 {
+@(export) case_1557 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_readyState(0, i32(-16), 64))
 }
-@(export) case_1550 :: proc "contextless" () -> i64 {
+@(export) case_1558 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_readyState(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1551 :: proc "contextless" () -> i64 {
+@(export) case_1559 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_duration(0x7ABC_0000_0000_0001))
 }
-@(export) case_1552 :: proc "contextless" () -> i64 {
+@(export) case_1560 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_set_duration(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1553 :: proc "contextless" () -> i64 {
+@(export) case_1561 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_addSourceBuffer(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1554 :: proc "contextless" () -> i64 {
+@(export) case_1562 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_addSourceBuffer(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1555 :: proc "contextless" () -> i64 {
+@(export) case_1563 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_addSourceBuffer(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1556 :: proc "contextless" () -> i64 {
+@(export) case_1564 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_removeSourceBuffer(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1557 :: proc "contextless" () -> i64 {
+@(export) case_1565 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_removeSourceBuffer(0, 0x7ABC_0000_0000_0001))
 }
-@(export) case_1558 :: proc "contextless" () -> i64 {
+@(export) case_1566 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_endOfStream(0, i32(-16), 64))
 }
-@(export) case_1559 :: proc "contextless" () -> i64 {
+@(export) case_1567 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_endOfStream(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1560 :: proc "contextless" () -> i64 {
+@(export) case_1568 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_endOfStream(0, p(&BAD), 4))
 }
-@(export) case_1561 :: proc "contextless" () -> i64 {
+@(export) case_1569 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_setLiveSeekableRange(0x7ABC_0000_0000_0001, 0, 0))
 }
-@(export) case_1562 :: proc "contextless" () -> i64 {
+@(export) case_1570 :: proc "contextless" () -> i64 {
 	return i64(c_MediaSource_clearLiveSeekableRange(0x7ABC_0000_0000_0001))
 }
-@(export) case_1563 :: proc "contextless" () -> i64 {
+@(export) case_1571 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBufferList_length(0x7ABC_0000_0000_0001))
 }
-@(export) case_1564 :: proc "contextless" () -> i64 {
+@(export) case_1572 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBufferList_item(0, 0, i32(-4)))
 }
-@(export) case_1565 :: proc "contextless" () -> i64 {
+@(export) case_1573 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBufferList_item(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1566 :: proc "contextless" () -> i64 {
+@(export) case_1574 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_mode(0, i32(-16), 64))
 }
-@(export) case_1567 :: proc "contextless" () -> i64 {
+@(export) case_1575 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_mode(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1568 :: proc "contextless" () -> i64 {
+@(export) case_1576 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_mode(0, i32(-16), 64))
 }
-@(export) case_1569 :: proc "contextless" () -> i64 {
+@(export) case_1577 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_mode(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1570 :: proc "contextless" () -> i64 {
+@(export) case_1578 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_mode(0, p(&BAD), 4))
 }
-@(export) case_1571 :: proc "contextless" () -> i64 {
+@(export) case_1579 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_updating(0x7ABC_0000_0000_0001))
 }
-@(export) case_1572 :: proc "contextless" () -> i64 {
+@(export) case_1580 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_ranges(0, i32(-16), 64))
 }
-@(export) case_1573 :: proc "contextless" () -> i64 {
+@(export) case_1581 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_ranges(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1574 :: proc "contextless" () -> i64 {
+@(export) case_1582 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_timestampOffset(0x7ABC_0000_0000_0001))
 }
-@(export) case_1575 :: proc "contextless" () -> i64 {
+@(export) case_1583 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_timestampOffset(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1576 :: proc "contextless" () -> i64 {
+@(export) case_1584 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_appendWindowStart(0x7ABC_0000_0000_0001))
 }
-@(export) case_1577 :: proc "contextless" () -> i64 {
+@(export) case_1585 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_appendWindowStart(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1578 :: proc "contextless" () -> i64 {
+@(export) case_1586 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_appendWindowEnd(0x7ABC_0000_0000_0001))
 }
-@(export) case_1579 :: proc "contextless" () -> i64 {
+@(export) case_1587 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_set_appendWindowEnd(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1580 :: proc "contextless" () -> i64 {
+@(export) case_1588 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_appendBuffer(0, i32(-16), 64))
 }
-@(export) case_1581 :: proc "contextless" () -> i64 {
+@(export) case_1589 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_appendBuffer(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1582 :: proc "contextless" () -> i64 {
+@(export) case_1590 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_abort(0x7ABC_0000_0000_0001))
 }
-@(export) case_1583 :: proc "contextless" () -> i64 {
+@(export) case_1591 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_changeType(0, i32(-16), 64))
 }
-@(export) case_1584 :: proc "contextless" () -> i64 {
+@(export) case_1592 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_changeType(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1585 :: proc "contextless" () -> i64 {
+@(export) case_1593 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_changeType(0, p(&BAD), 4))
 }
-@(export) case_1586 :: proc "contextless" () -> i64 {
+@(export) case_1594 :: proc "contextless" () -> i64 {
 	return i64(c_SourceBuffer_remove(0x7ABC_0000_0000_0001, 0, 0))
 }
-@(export) case_1587 :: proc "contextless" () -> i64 {
+@(export) case_1595 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_entries(i32(-16), 64))
 }
-@(export) case_1588 :: proc "contextless" () -> i64 {
+@(export) case_1596 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Navigation_entries(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6843,10 +6869,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1589 :: proc "contextless" () -> i64 {
+@(export) case_1597 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_getState(0, 0, i32(-16), 64))
 }
-@(export) case_1590 :: proc "contextless" () -> i64 {
+@(export) case_1598 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Navigation_getState(0, 0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6859,31 +6885,31 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1591 :: proc "contextless" () -> i64 {
+@(export) case_1599 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_updateCurrentEntry(i32(-16), 64))
 }
-@(export) case_1592 :: proc "contextless" () -> i64 {
+@(export) case_1600 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_updateCurrentEntry(p(&BAD), 4))
 }
-@(export) case_1593 :: proc "contextless" () -> i64 {
+@(export) case_1601 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_navigate(i32(-16), 64, p(&GOOD), 1, 0))
 }
-@(export) case_1594 :: proc "contextless" () -> i64 {
+@(export) case_1602 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_navigate(p(&BAD), 4, p(&GOOD), 1, 0))
 }
-@(export) case_1595 :: proc "contextless" () -> i64 {
+@(export) case_1603 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_navigate(p(&GOOD), 1, p(&BAD), 4, 0))
 }
-@(export) case_1596 :: proc "contextless" () -> i64 {
+@(export) case_1604 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_reload(i32(-16), 64))
 }
-@(export) case_1597 :: proc "contextless" () -> i64 {
+@(export) case_1605 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_reload(p(&BAD), 4))
 }
-@(export) case_1598 :: proc "contextless" () -> i64 {
+@(export) case_1606 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_pending(i32(-16), 64))
 }
-@(export) case_1599 :: proc "contextless" () -> i64 {
+@(export) case_1607 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Navigation_pending(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6896,10 +6922,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1600 :: proc "contextless" () -> i64 {
+@(export) case_1608 :: proc "contextless" () -> i64 {
 	return i64(c_Navigation_pendingState(i32(-16), 64))
 }
-@(export) case_1601 :: proc "contextless" () -> i64 {
+@(export) case_1609 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Navigation_pendingState(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -6912,124 +6938,124 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1602 :: proc "contextless" () -> i64 {
+@(export) case_1610 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_start(i32(-16), 64, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
-@(export) case_1603 :: proc "contextless" () -> i64 {
+@(export) case_1611 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_start(p(&BAD), 4, 0, 0, p(&GOOD), 1, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
-@(export) case_1604 :: proc "contextless" () -> i64 {
+@(export) case_1612 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
-@(export) case_1605 :: proc "contextless" () -> i64 {
+@(export) case_1613 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_start(p(&GOOD), 1, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, 0, 0, 0, 0, 0))
 }
-@(export) case_1606 :: proc "contextless" () -> i64 {
+@(export) case_1614 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_state(0x7ABC_0000_0000_0001))
 }
-@(export) case_1607 :: proc "contextless" () -> i64 {
+@(export) case_1615 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_status(0x7ABC_0000_0000_0001))
 }
-@(export) case_1608 :: proc "contextless" () -> i64 {
+@(export) case_1616 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_type(0x7ABC_0000_0000_0001))
 }
-@(export) case_1609 :: proc "contextless" () -> i64 {
+@(export) case_1617 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_redirected(0x7ABC_0000_0000_0001))
 }
-@(export) case_1610 :: proc "contextless" () -> i64 {
+@(export) case_1618 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_headers(0, i32(-16), 64))
 }
-@(export) case_1611 :: proc "contextless" () -> i64 {
+@(export) case_1619 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_headers(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1612 :: proc "contextless" () -> i64 {
+@(export) case_1620 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_url(0, i32(-16), 64))
 }
-@(export) case_1613 :: proc "contextless" () -> i64 {
+@(export) case_1621 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_url(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1614 :: proc "contextless" () -> i64 {
+@(export) case_1622 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_error(0, i32(-16), 64))
 }
-@(export) case_1615 :: proc "contextless" () -> i64 {
+@(export) case_1623 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_error(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1616 :: proc "contextless" () -> i64 {
+@(export) case_1624 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_errorKind(0x7ABC_0000_0000_0001))
 }
-@(export) case_1617 :: proc "contextless" () -> i64 {
+@(export) case_1625 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_bodyLength(0x7ABC_0000_0000_0001))
 }
-@(export) case_1618 :: proc "contextless" () -> i64 {
+@(export) case_1626 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_readBody(0, 0, i32(-16), 64))
 }
-@(export) case_1619 :: proc "contextless" () -> i64 {
+@(export) case_1627 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_readBody(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1620 :: proc "contextless" () -> i64 {
+@(export) case_1628 :: proc "contextless" () -> i64 {
 	return i64(c_Fetch_release(0x7ABC_0000_0000_0001))
 }
-@(export) case_1621 :: proc "contextless" () -> i64 {
+@(export) case_1629 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_mark(i32(-16), 64, 0))
 }
-@(export) case_1622 :: proc "contextless" () -> i64 {
+@(export) case_1630 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_mark(p(&BAD), 4, 0))
 }
-@(export) case_1623 :: proc "contextless" () -> i64 {
+@(export) case_1631 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measure(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1624 :: proc "contextless" () -> i64 {
+@(export) case_1632 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measure(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1625 :: proc "contextless" () -> i64 {
+@(export) case_1633 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measure(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1))
 }
-@(export) case_1626 :: proc "contextless" () -> i64 {
+@(export) case_1634 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measure(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4))
 }
-@(export) case_1627 :: proc "contextless" () -> i64 {
+@(export) case_1635 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measureTimes(i32(-16), 64, 0, 0))
 }
-@(export) case_1628 :: proc "contextless" () -> i64 {
+@(export) case_1636 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_measureTimes(p(&BAD), 4, 0, 0))
 }
-@(export) case_1629 :: proc "contextless" () -> i64 {
+@(export) case_1637 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryCount(i32(-16), 64, 0))
 }
-@(export) case_1630 :: proc "contextless" () -> i64 {
+@(export) case_1638 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryCount(p(&BAD), 4, 0))
 }
-@(export) case_1631 :: proc "contextless" () -> i64 {
+@(export) case_1639 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryCount(p(&GOOD), 1, 2147483632))
 }
-@(export) case_1632 :: proc "contextless" () -> i64 {
+@(export) case_1640 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryStartTime(i32(-16), 64, 0, 0))
 }
-@(export) case_1633 :: proc "contextless" () -> i64 {
+@(export) case_1641 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryStartTime(p(&BAD), 4, 0, 0))
 }
-@(export) case_1634 :: proc "contextless" () -> i64 {
+@(export) case_1642 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryStartTime(p(&GOOD), 1, 2147483632, 0))
 }
-@(export) case_1635 :: proc "contextless" () -> i64 {
+@(export) case_1643 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryDuration(i32(-16), 64, 0, 0))
 }
-@(export) case_1636 :: proc "contextless" () -> i64 {
+@(export) case_1644 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryDuration(p(&BAD), 4, 0, 0))
 }
-@(export) case_1637 :: proc "contextless" () -> i64 {
+@(export) case_1645 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryDuration(p(&GOOD), 1, 2147483632, 0))
 }
-@(export) case_1638 :: proc "contextless" () -> i64 {
+@(export) case_1646 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryName(i32(-16), 64, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1639 :: proc "contextless" () -> i64 {
+@(export) case_1647 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryName(p(&BAD), 4, 0, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1640 :: proc "contextless" () -> i64 {
+@(export) case_1648 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryName(p(&GOOD), 1, 2147483632, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1641 :: proc "contextless" () -> i64 {
+@(export) case_1649 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Performance_entryName(p(&GOOD), 1, 0, 0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7042,38 +7068,38 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1642 :: proc "contextless" () -> i64 {
+@(export) case_1650 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryType(i32(-16), 64, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1643 :: proc "contextless" () -> i64 {
+@(export) case_1651 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryType(p(&BAD), 4, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1644 :: proc "contextless" () -> i64 {
+@(export) case_1652 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_entryType(p(&GOOD), 1, 2147483632, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1645 :: proc "contextless" () -> i64 {
+@(export) case_1653 :: proc "contextless" () -> i64 {
 	c_Performance_clearMarks(i32(-16), 64)
 	return 0
 }
-@(export) case_1646 :: proc "contextless" () -> i64 {
+@(export) case_1654 :: proc "contextless" () -> i64 {
 	c_Performance_clearMarks(p(&BAD), 4)
 	return 0
 }
-@(export) case_1647 :: proc "contextless" () -> i64 {
+@(export) case_1655 :: proc "contextless" () -> i64 {
 	c_Performance_clearMeasures(i32(-16), 64)
 	return 0
 }
-@(export) case_1648 :: proc "contextless" () -> i64 {
+@(export) case_1656 :: proc "contextless" () -> i64 {
 	c_Performance_clearMeasures(p(&BAD), 4)
 	return 0
 }
-@(export) case_1649 :: proc "contextless" () -> i64 {
+@(export) case_1657 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_timeline(0, 0, i32(-16), 64))
 }
-@(export) case_1650 :: proc "contextless" () -> i64 {
+@(export) case_1658 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_timeline(2147483632, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1651 :: proc "contextless" () -> i64 {
+@(export) case_1659 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Performance_timeline(0, 0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7086,79 +7112,79 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1652 :: proc "contextless" () -> i64 {
+@(export) case_1660 :: proc "contextless" () -> i64 {
 	return i64(c_Performance_timelineNextSeq(2147483632))
 }
-@(export) case_1653 :: proc "contextless" () -> i64 {
+@(export) case_1661 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_show(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1654 :: proc "contextless" () -> i64 {
+@(export) case_1662 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_show(0, 0x7ABC_0000_0000_0001))
 }
-@(export) case_1655 :: proc "contextless" () -> i64 {
+@(export) case_1663 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_hide(0x7ABC_0000_0000_0001))
 }
-@(export) case_1656 :: proc "contextless" () -> i64 {
+@(export) case_1664 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_toggle(0, 0, 0, i32(-4)))
 }
-@(export) case_1657 :: proc "contextless" () -> i64 {
+@(export) case_1665 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_toggle(0x7ABC_0000_0000_0001, 0, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1658 :: proc "contextless" () -> i64 {
+@(export) case_1666 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_toggle(0, 0, 0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1659 :: proc "contextless" () -> i64 {
+@(export) case_1667 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_state(0x7ABC_0000_0000_0001))
 }
-@(export) case_1660 :: proc "contextless" () -> i64 {
+@(export) case_1668 :: proc "contextless" () -> i64 {
 	return i64(c_Popover_targetOf(0x7ABC_0000_0000_0001))
 }
-@(export) case_1661 :: proc "contextless" () -> i64 {
+@(export) case_1669 :: proc "contextless" () -> i64 {
 	return i64(c_Port_post(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1662 :: proc "contextless" () -> i64 {
+@(export) case_1670 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_postSerializedPorts(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1663 :: proc "contextless" () -> i64 {
+@(export) case_1671 :: proc "contextless" () -> i64 {
 	return i64(c_DedicatedWorkerGlobalScope_postSerializedPorts(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1664 :: proc "contextless" () -> i64 {
+@(export) case_1672 :: proc "contextless" () -> i64 {
 	return i64(c_Broadcast_open(i32(-16), 64))
 }
-@(export) case_1665 :: proc "contextless" () -> i64 {
+@(export) case_1673 :: proc "contextless" () -> i64 {
 	return i64(c_Broadcast_open(p(&BAD), 4))
 }
-@(export) case_1666 :: proc "contextless" () -> i64 {
+@(export) case_1674 :: proc "contextless" () -> i64 {
 	return i64(c_Broadcast_post(0, i32(-16), 64))
 }
-@(export) case_1667 :: proc "contextless" () -> i64 {
+@(export) case_1675 :: proc "contextless" () -> i64 {
 	return i64(c_MessageEvent_portEnds(0, i32(-16), 64))
 }
-@(export) case_1668 :: proc "contextless" () -> i64 {
+@(export) case_1676 :: proc "contextless" () -> i64 {
 	return i64(c_MessageEvent_portEnds(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1669 :: proc "contextless" () -> i64 {
+@(export) case_1677 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_register(i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1670 :: proc "contextless" () -> i64 {
+@(export) case_1678 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_register(p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1671 :: proc "contextless" () -> i64 {
+@(export) case_1679 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_register(p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1672 :: proc "contextless" () -> i64 {
+@(export) case_1680 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_register(p(&GOOD), 1, p(&GOOD), 1, p(&BAD), 4, 0, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1673 :: proc "contextless" () -> i64 {
+@(export) case_1681 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_getRegistration(i32(-16), 64))
 }
-@(export) case_1674 :: proc "contextless" () -> i64 {
+@(export) case_1682 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_getRegistration(p(&BAD), 4))
 }
-@(export) case_1675 :: proc "contextless" () -> i64 {
+@(export) case_1683 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_registrationIds(i32(-16), 64))
 }
-@(export) case_1676 :: proc "contextless" () -> i64 {
+@(export) case_1684 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorker_registrationIds(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7171,10 +7197,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1677 :: proc "contextless" () -> i64 {
+@(export) case_1685 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerRegistration_info(0, i32(-16), 64))
 }
-@(export) case_1678 :: proc "contextless" () -> i64 {
+@(export) case_1686 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorkerRegistration_info(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7187,10 +7213,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1679 :: proc "contextless" () -> i64 {
+@(export) case_1687 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_info(0, i32(-16), 64))
 }
-@(export) case_1680 :: proc "contextless" () -> i64 {
+@(export) case_1688 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorker_info(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7203,16 +7229,16 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1681 :: proc "contextless" () -> i64 {
+@(export) case_1689 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerRegistration_updateId(0, i32(-4)))
 }
-@(export) case_1682 :: proc "contextless" () -> i64 {
+@(export) case_1690 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerRegistration_preload(0, 0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1683 :: proc "contextless" () -> i64 {
+@(export) case_1691 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerRegistration_preload(0, 0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1684 :: proc "contextless" () -> i64 {
+@(export) case_1692 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorkerRegistration_preload(0, 0, p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7225,13 +7251,13 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1685 :: proc "contextless" () -> i64 {
+@(export) case_1693 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_postToWorker(0, i32(-16), 64))
 }
-@(export) case_1686 :: proc "contextless" () -> i64 {
+@(export) case_1694 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorker_takeMessage(i32(-16), 64))
 }
-@(export) case_1687 :: proc "contextless" () -> i64 {
+@(export) case_1695 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorker_takeMessage(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7244,10 +7270,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1688 :: proc "contextless" () -> i64 {
+@(export) case_1696 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerGlobalScope_scope(i32(-16), 64))
 }
-@(export) case_1689 :: proc "contextless" () -> i64 {
+@(export) case_1697 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorkerGlobalScope_scope(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7260,10 +7286,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1690 :: proc "contextless" () -> i64 {
+@(export) case_1698 :: proc "contextless" () -> i64 {
 	return i64(c_ServiceWorkerGlobalScope_scriptURL(i32(-16), 64))
 }
-@(export) case_1691 :: proc "contextless" () -> i64 {
+@(export) case_1699 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_ServiceWorkerGlobalScope_scriptURL(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7276,14 +7302,14 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1692 :: proc "contextless" () -> i64 {
+@(export) case_1700 :: proc "contextless" () -> i64 {
 	c_SwEvent_next(i32(-4))
 	return 0
 }
-@(export) case_1693 :: proc "contextless" () -> i64 {
+@(export) case_1701 :: proc "contextless" () -> i64 {
 	return i64(c_SwEvent_text(0, i32(-16), 64))
 }
-@(export) case_1694 :: proc "contextless" () -> i64 {
+@(export) case_1702 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_SwEvent_text(0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7296,10 +7322,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1695 :: proc "contextless" () -> i64 {
+@(export) case_1703 :: proc "contextless" () -> i64 {
 	return i64(c_SwEvent_body(i32(-16), 64))
 }
-@(export) case_1696 :: proc "contextless" () -> i64 {
+@(export) case_1704 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_SwEvent_body(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7312,31 +7338,31 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1697 :: proc "contextless" () -> i64 {
+@(export) case_1705 :: proc "contextless" () -> i64 {
 	c_ServiceWorkerGlobalScope_reply(0, 0, 0, i32(-16), 64, p(&GOOD), 1, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1698 :: proc "contextless" () -> i64 {
+@(export) case_1706 :: proc "contextless" () -> i64 {
 	c_ServiceWorkerGlobalScope_reply(0, 0, 0, p(&BAD), 4, p(&GOOD), 1, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1699 :: proc "contextless" () -> i64 {
+@(export) case_1707 :: proc "contextless" () -> i64 {
 	c_ServiceWorkerGlobalScope_reply(0, 0, 0, p(&GOOD), 1, p(&BAD), 4, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1700 :: proc "contextless" () -> i64 {
+@(export) case_1708 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_length(0, i32(-4)))
 }
-@(export) case_1701 :: proc "contextless" () -> i64 {
+@(export) case_1709 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_length(2147483632, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1702 :: proc "contextless" () -> i64 {
+@(export) case_1710 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_key(0, 0, i32(-16), 64))
 }
-@(export) case_1703 :: proc "contextless" () -> i64 {
+@(export) case_1711 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_key(2147483632, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1704 :: proc "contextless" () -> i64 {
+@(export) case_1712 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Storage_key(0, 0, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7349,16 +7375,16 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1705 :: proc "contextless" () -> i64 {
+@(export) case_1713 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_getItem(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1706 :: proc "contextless" () -> i64 {
+@(export) case_1714 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_getItem(2147483632, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1707 :: proc "contextless" () -> i64 {
+@(export) case_1715 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_getItem(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1708 :: proc "contextless" () -> i64 {
+@(export) case_1716 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Storage_getItem(0, p(&GOOD), 1, buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7371,190 +7397,190 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1709 :: proc "contextless" () -> i64 {
+@(export) case_1717 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_setItem(0, i32(-16), 64, p(&GOOD), 1))
 }
-@(export) case_1710 :: proc "contextless" () -> i64 {
+@(export) case_1718 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_setItem(2147483632, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1711 :: proc "contextless" () -> i64 {
+@(export) case_1719 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_removeItem(0, i32(-16), 64))
 }
-@(export) case_1712 :: proc "contextless" () -> i64 {
+@(export) case_1720 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_removeItem(2147483632, p(&GOOD), 1))
 }
-@(export) case_1713 :: proc "contextless" () -> i64 {
+@(export) case_1721 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_removeItem(0, p(&BAD), 4))
 }
-@(export) case_1714 :: proc "contextless" () -> i64 {
+@(export) case_1722 :: proc "contextless" () -> i64 {
 	return i64(c_Storage_clear(2147483632))
 }
-@(export) case_1715 :: proc "contextless" () -> i64 {
+@(export) case_1723 :: proc "contextless" () -> i64 {
 	return i64(c_StorageEvent_get(0, 0, i32(-16), 64))
 }
-@(export) case_1716 :: proc "contextless" () -> i64 {
+@(export) case_1724 :: proc "contextless" () -> i64 {
 	return i64(c_StorageEvent_get(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1717 :: proc "contextless" () -> i64 {
+@(export) case_1725 :: proc "contextless" () -> i64 {
 	return i64(c_StorageEvent_get(0, 2147483632, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1718 :: proc "contextless" () -> i64 {
+@(export) case_1726 :: proc "contextless" () -> i64 {
 	return i64(c_StorageEvent_storageArea(0, i32(-4)))
 }
-@(export) case_1719 :: proc "contextless" () -> i64 {
+@(export) case_1727 :: proc "contextless" () -> i64 {
 	return i64(c_StorageEvent_storageArea(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1720 :: proc "contextless" () -> i64 {
+@(export) case_1728 :: proc "contextless" () -> i64 {
 	return i64(c_Timers_clear(0x7ABC_0000_0000_0001))
 }
-@(export) case_1721 :: proc "contextless" () -> i64 {
+@(export) case_1729 :: proc "contextless" () -> i64 {
 	return i64(c_URL_parse(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1722 :: proc "contextless" () -> i64 {
+@(export) case_1730 :: proc "contextless" () -> i64 {
 	return i64(c_URL_parse(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1723 :: proc "contextless" () -> i64 {
+@(export) case_1731 :: proc "contextless" () -> i64 {
 	return i64(c_URL_parse(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1724 :: proc "contextless" () -> i64 {
+@(export) case_1732 :: proc "contextless" () -> i64 {
 	return i64(c_URL_canParse(i32(-16), 64, p(&GOOD), 1))
 }
-@(export) case_1725 :: proc "contextless" () -> i64 {
+@(export) case_1733 :: proc "contextless" () -> i64 {
 	return i64(c_URL_canParse(p(&BAD), 4, p(&GOOD), 1))
 }
-@(export) case_1726 :: proc "contextless" () -> i64 {
+@(export) case_1734 :: proc "contextless" () -> i64 {
 	return i64(c_URL_canParse(p(&GOOD), 1, p(&BAD), 4))
 }
-@(export) case_1727 :: proc "contextless" () -> i64 {
+@(export) case_1735 :: proc "contextless" () -> i64 {
 	return i64(c_URL_get(0, 0, i32(-16), 64))
 }
-@(export) case_1728 :: proc "contextless" () -> i64 {
+@(export) case_1736 :: proc "contextless" () -> i64 {
 	return i64(c_URL_get(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1729 :: proc "contextless" () -> i64 {
+@(export) case_1737 :: proc "contextless" () -> i64 {
 	return i64(c_URL_get(0, 2147483632, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1730 :: proc "contextless" () -> i64 {
+@(export) case_1738 :: proc "contextless" () -> i64 {
 	return i64(c_URL_set(0, 0, i32(-16), 64))
 }
-@(export) case_1731 :: proc "contextless" () -> i64 {
+@(export) case_1739 :: proc "contextless" () -> i64 {
 	return i64(c_URL_set(0x7ABC_0000_0000_0001, 0, p(&GOOD), 1))
 }
-@(export) case_1732 :: proc "contextless" () -> i64 {
+@(export) case_1740 :: proc "contextless" () -> i64 {
 	return i64(c_URL_set(0, 2147483632, p(&GOOD), 1))
 }
-@(export) case_1733 :: proc "contextless" () -> i64 {
+@(export) case_1741 :: proc "contextless" () -> i64 {
 	return i64(c_URL_set(0, 0, p(&BAD), 4))
 }
-@(export) case_1734 :: proc "contextless" () -> i64 {
+@(export) case_1742 :: proc "contextless" () -> i64 {
 	return i64(c_URL_searchParams(0x7ABC_0000_0000_0001))
 }
-@(export) case_1735 :: proc "contextless" () -> i64 {
+@(export) case_1743 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_create(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1736 :: proc "contextless" () -> i64 {
+@(export) case_1744 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_create(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1737 :: proc "contextless" () -> i64 {
+@(export) case_1745 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_size(0x7ABC_0000_0000_0001))
 }
-@(export) case_1738 :: proc "contextless" () -> i64 {
+@(export) case_1746 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_append(0, i32(-16), 64, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1739 :: proc "contextless" () -> i64 {
+@(export) case_1747 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_append(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1740 :: proc "contextless" () -> i64 {
+@(export) case_1748 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_delete(0, i32(-16), 64, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1741 :: proc "contextless" () -> i64 {
+@(export) case_1749 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_delete(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1742 :: proc "contextless" () -> i64 {
+@(export) case_1750 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_delete(0, p(&BAD), 4, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1743 :: proc "contextless" () -> i64 {
+@(export) case_1751 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_delete(0, p(&GOOD), 1, p(&BAD), 4)
 	return 0
 }
-@(export) case_1744 :: proc "contextless" () -> i64 {
+@(export) case_1752 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_get(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1745 :: proc "contextless" () -> i64 {
+@(export) case_1753 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_get(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1746 :: proc "contextless" () -> i64 {
+@(export) case_1754 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_get(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1747 :: proc "contextless" () -> i64 {
+@(export) case_1755 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_count(0, i32(-16), 64))
 }
-@(export) case_1748 :: proc "contextless" () -> i64 {
+@(export) case_1756 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_count(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1749 :: proc "contextless" () -> i64 {
+@(export) case_1757 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_count(0, p(&BAD), 4))
 }
-@(export) case_1750 :: proc "contextless" () -> i64 {
+@(export) case_1758 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_getNth(0, i32(-16), 64, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1751 :: proc "contextless" () -> i64 {
+@(export) case_1759 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_getNth(0x7ABC_0000_0000_0001, p(&GOOD), 1, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1752 :: proc "contextless" () -> i64 {
+@(export) case_1760 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_getNth(0, p(&BAD), 4, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1753 :: proc "contextless" () -> i64 {
+@(export) case_1761 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_has(0, i32(-16), 64, p(&GOOD), 1))
 }
-@(export) case_1754 :: proc "contextless" () -> i64 {
+@(export) case_1762 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_has(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1))
 }
-@(export) case_1755 :: proc "contextless" () -> i64 {
+@(export) case_1763 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_has(0, p(&BAD), 4, p(&GOOD), 1))
 }
-@(export) case_1756 :: proc "contextless" () -> i64 {
+@(export) case_1764 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_has(0, p(&GOOD), 1, p(&BAD), 4))
 }
-@(export) case_1757 :: proc "contextless" () -> i64 {
+@(export) case_1765 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_set(0, i32(-16), 64, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1758 :: proc "contextless" () -> i64 {
+@(export) case_1766 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_set(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(&GOOD), 1)
 	return 0
 }
-@(export) case_1759 :: proc "contextless" () -> i64 {
+@(export) case_1767 :: proc "contextless" () -> i64 {
 	c_URLSearchParams_sort(0x7ABC_0000_0000_0001)
 	return 0
 }
-@(export) case_1760 :: proc "contextless" () -> i64 {
+@(export) case_1768 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_toString(0, i32(-16), 64))
 }
-@(export) case_1761 :: proc "contextless" () -> i64 {
+@(export) case_1769 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_toString(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1762 :: proc "contextless" () -> i64 {
+@(export) case_1770 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_nameAt(0, 0, i32(-16), 64))
 }
-@(export) case_1763 :: proc "contextless" () -> i64 {
+@(export) case_1771 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_nameAt(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1764 :: proc "contextless" () -> i64 {
+@(export) case_1772 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_valueAt(0, 0, i32(-16), 64))
 }
-@(export) case_1765 :: proc "contextless" () -> i64 {
+@(export) case_1773 :: proc "contextless" () -> i64 {
 	return i64(c_URLSearchParams_valueAt(0x7ABC_0000_0000_0001, 0, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1766 :: proc "contextless" () -> i64 {
+@(export) case_1774 :: proc "contextless" () -> i64 {
 	return i64(c_Exception_message(i32(-16), 64))
 }
-@(export) case_1767 :: proc "contextless" () -> i64 {
+@(export) case_1775 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_Exception_message(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7567,100 +7593,100 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1768 :: proc "contextless" () -> i64 {
+@(export) case_1776 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1769 :: proc "contextless" () -> i64 {
+@(export) case_1777 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1770 :: proc "contextless" () -> i64 {
+@(export) case_1778 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1771 :: proc "contextless" () -> i64 {
+@(export) case_1779 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_readyState(0x7ABC_0000_0000_0001))
 }
-@(export) case_1772 :: proc "contextless" () -> i64 {
+@(export) case_1780 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_url(0, i32(-16), 64))
 }
-@(export) case_1773 :: proc "contextless" () -> i64 {
+@(export) case_1781 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_url(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1774 :: proc "contextless" () -> i64 {
+@(export) case_1782 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_protocol(0, i32(-16), 64))
 }
-@(export) case_1775 :: proc "contextless" () -> i64 {
+@(export) case_1783 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_protocol(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1776 :: proc "contextless" () -> i64 {
+@(export) case_1784 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_extensions(0, i32(-16), 64))
 }
-@(export) case_1777 :: proc "contextless" () -> i64 {
+@(export) case_1785 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_extensions(0x7ABC_0000_0000_0001, p(cast(^[4]u8)&SCRATCH[0]), 16))
 }
-@(export) case_1778 :: proc "contextless" () -> i64 {
+@(export) case_1786 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_bufferedAmount(0x7ABC_0000_0000_0001))
 }
-@(export) case_1779 :: proc "contextless" () -> i64 {
+@(export) case_1787 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_binaryType(0x7ABC_0000_0000_0001))
 }
-@(export) case_1780 :: proc "contextless" () -> i64 {
+@(export) case_1788 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_setBinaryType(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1781 :: proc "contextless" () -> i64 {
+@(export) case_1789 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_send(0, i32(-16), 64))
 }
-@(export) case_1782 :: proc "contextless" () -> i64 {
+@(export) case_1790 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_send(0x7ABC_0000_0000_0001, p(&GOOD), 1))
 }
-@(export) case_1783 :: proc "contextless" () -> i64 {
+@(export) case_1791 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_sendBuffer(0x7ABC_0000_0000_0001, 0))
 }
-@(export) case_1784 :: proc "contextless" () -> i64 {
+@(export) case_1792 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_sendBuffer(0, 0x7ABC_0000_0000_0001))
 }
-@(export) case_1785 :: proc "contextless" () -> i64 {
+@(export) case_1793 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_close(0, 0, i32(-16), 64))
 }
-@(export) case_1786 :: proc "contextless" () -> i64 {
+@(export) case_1794 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_close(0x7ABC_0000_0000_0001, 0, p(&GOOD), 1))
 }
-@(export) case_1787 :: proc "contextless" () -> i64 {
+@(export) case_1795 :: proc "contextless" () -> i64 {
 	return i64(c_WebSocket_close(0, 0, p(&BAD), 4))
 }
-@(export) case_1788 :: proc "contextless" () -> i64 {
+@(export) case_1796 :: proc "contextless" () -> i64 {
 	return i64(c_CloseEvent_wasClean(0x7ABC_0000_0000_0001))
 }
-@(export) case_1789 :: proc "contextless" () -> i64 {
+@(export) case_1797 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_create(i32(-16), 64, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1790 :: proc "contextless" () -> i64 {
+@(export) case_1798 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_create(p(&BAD), 4, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1791 :: proc "contextless" () -> i64 {
+@(export) case_1799 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_create(p(&GOOD), 1, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0])))
 }
-@(export) case_1792 :: proc "contextless" () -> i64 {
+@(export) case_1800 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_postMessage(0, i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1793 :: proc "contextless" () -> i64 {
+@(export) case_1801 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_postMessage(0x7ABC_0000_0000_0001, p(&GOOD), 1, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1794 :: proc "contextless" () -> i64 {
+@(export) case_1802 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_postMessage(0, p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1795 :: proc "contextless" () -> i64 {
+@(export) case_1803 :: proc "contextless" () -> i64 {
 	return i64(c_Worker_terminate(0x7ABC_0000_0000_0001))
 }
-@(export) case_1796 :: proc "contextless" () -> i64 {
+@(export) case_1804 :: proc "contextless" () -> i64 {
 	return i64(c_DedicatedWorkerGlobalScope_postMessage(i32(-16), 64, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1797 :: proc "contextless" () -> i64 {
+@(export) case_1805 :: proc "contextless" () -> i64 {
 	return i64(c_DedicatedWorkerGlobalScope_postMessage(p(&BAD), 4, p(cast(^[4]u8)&SCRATCH[0]), 0))
 }
-@(export) case_1798 :: proc "contextless" () -> i64 {
+@(export) case_1806 :: proc "contextless" () -> i64 {
 	return i64(c_DedicatedWorkerGlobalScope_name(i32(-16), 64))
 }
-@(export) case_1799 :: proc "contextless" () -> i64 {
+@(export) case_1807 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_DedicatedWorkerGlobalScope_name(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7673,10 +7699,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1800 :: proc "contextless" () -> i64 {
+@(export) case_1808 :: proc "contextless" () -> i64 {
 	return i64(c_SharedWorkerGlobalScope_name(i32(-16), 64))
 }
-@(export) case_1801 :: proc "contextless" () -> i64 {
+@(export) case_1809 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_SharedWorkerGlobalScope_name(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7689,10 +7715,10 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1802 :: proc "contextless" () -> i64 {
+@(export) case_1810 :: proc "contextless" () -> i64 {
 	return i64(c_WorkerGlobalScope_location(i32(-16), 64))
 }
-@(export) case_1803 :: proc "contextless" () -> i64 {
+@(export) case_1811 :: proc "contextless" () -> i64 {
 	buf := i32(uintptr(&OUT[0]))
 	n := i64(c_WorkerGlobalScope_location(buf, 0))
 	if n < 0 { return 1 }   // an error: nothing to measure
@@ -7705,8 +7731,8 @@ foreign _m_workers {
 	for i in int(n) ..< int(n) + 16 { if OUT[i] != 0xAA { return -4 } }
 	return 0
 }
-@(export) case_1804 :: proc "contextless" () -> i64 {
+@(export) case_1812 :: proc "contextless" () -> i64 {
 	return i64(c_MessageEvent_transfer(0x7ABC_0000_0000_0001, 0))
 }
 
-@(export) case_count :: proc "contextless" () -> i32 { return 1805 }
+@(export) case_count :: proc "contextless" () -> i32 { return 1813 }

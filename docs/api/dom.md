@@ -3321,6 +3321,35 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Document_xmlContentType :: proc(c: ^Call, document: Api_Node) -> (string, Api_Error)`
 
+### `Document_createXMLElement`
+
+```
+Element Document_createXMLElement(Node document, optional string namespace, string qualified_name, bool with_namespace) raises
+```
+
+createElement(localName) (`with_namespace` false) or createElementNS(namespace, qualifiedName) of an XML document
+(DOMParser's XML types, createDocument): an element of that document, whose names keep their case (tagName as
+written, attribute names as given); createElement gives it the HTML namespace only in an application/xhtml+xml
+document. Invalid_Character, Namespace as the others; Not_Found when `document` is not an XML document.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_createXMLElement :: proc(c: ^Call, document: Api_Node, namespace: Maybe(string), qualified_name: string, with_namespace: bool) -> (u64, Api_Error)`
+
+### `DOMImplementation_createDocument`
+
+```
+Node DOMImplementation_createDocument(optional string namespace, string qualified_name, optional Node doctype) raises
+```
+
+document.implementation.createDocument(namespace, qualifiedName, doctype): a new inert XMLDocument, with the
+doctype (a node made by createDocumentType, not in a tree) and its element when the name is not empty; its
+contentType follows the namespace (application/xhtml+xml, image/svg+xml, else application/xml).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DOMImplementation_createDocument :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string, doctype: Api_Node) -> (u64, Api_Error)`
+
 ### `DOMImplementation_createDocumentType`
 
 ```

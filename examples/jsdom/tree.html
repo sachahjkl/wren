@@ -259,7 +259,7 @@ section("DOMImplementation", () => {
   document.getElementById("root").lastChild.remove();
   const dt = impl.createDocumentType("svg", "-//W3C//DTD SVG 1.1//EN", "x.dtd");
   eq("createDocumentType", dt.nodeType + "," + dt.name + "," + dt.publicId, "10,svg,-//W3C//DTD SVG 1.1//EN");
-  throws("createDocument", () => impl.createDocument(null, "x"), "NotSupportedError");
+  eq("createDocument", impl.createDocument(null, "x") instanceof XMLDocument, true);
 });
 
 // document.all is [IsHTMLDDA]: falsy, typeof "undefined", == undefined but not === undefined (Polymer-Resin tells an
@@ -284,7 +284,7 @@ section("DOMParser", () => {
   const sh = p.parseFromString("<div><template shadowrootmode=open><i></i></template></div>", "text/html");
   t("no declarative shadow roots", sh.body.firstChild.shadowRoot === null && sh.querySelector("template") !== null);
   eq("the page is untouched", document.querySelectorAll("#a").length, 0);
-  eq("an XML type makes an XMLDocument", p.parseFromString("<x/>", "application/xml") instanceof XMLDocument, true);
+  eq("an XML type makes a Document (not an XMLDocument)", p.parseFromString("<x/>", "application/xml") instanceof XMLDocument, false);
   throws("a type outside the enumeration", () => p.parseFromString("x", "text/plain"), "TypeError");
 });
 

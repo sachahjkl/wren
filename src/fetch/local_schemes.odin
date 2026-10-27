@@ -190,6 +190,7 @@ mime_for_extension :: proc(path: string) -> string {
 	if dot < 0 { return "application/octet-stream" }
 	switch strings.to_lower(path[dot + 1:], context.temp_allocator) {
 	case "html", "htm": return "text/html;charset=utf-8"
+	case "xhtml", "xht": return "application/xhtml+xml"
 	case "css":         return "text/css"
 	case "js", "mjs":   return "text/javascript"
 	case "json":        return "application/json"

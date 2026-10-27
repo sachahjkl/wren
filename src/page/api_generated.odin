@@ -19438,6 +19438,93 @@ _t_dom_Document_xmlContentType :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// Document_createXMLElement :: proc(c: ^Call, document: Api_Node, namespace: Maybe(string), qualified_name: string, with_namespace: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_Document_createXMLElement :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_absent1 := wasm.is_absent(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), 0 if _absent1 else wasm.addr(&f, a[2]))
+	if !_k1 { return wasm.trap_bounds(&f, "dom.Document_createXMLElement", "namespace") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "dom.Document_createXMLElement", "qualified_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.Document_createXMLElement", "result pointer") }
+	_p1: Maybe(string)
+	if !_absent1 {
+		_v1 := string(_s1[:wasm.addr(&f, a[2])])
+		if !wasm.valid_utf8(_v1) {
+			return _fail_status(&c, a, .Type, "dom.Document_createXMLElement: argument namespace is not valid UTF-8")
+		}
+		_p1 = _v1
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "dom.Document_createXMLElement: argument qualified_name is not valid UTF-8")
+	}
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.Document_createXMLElement: argument document is not a live Node")
+	}
+	_p3 := a[5].i32 != 0
+	_r, _err := Document_createXMLElement(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// DOMImplementation_createDocument :: proc(c: ^Call, namespace: Maybe(string), qualified_name: string, doctype: Api_Node) -> (u64, Api_Error)
+@(private = "file")
+_t_dom_DOMImplementation_createDocument :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_absent0 := wasm.is_absent(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), 0 if _absent0 else wasm.addr(&f, a[1]))
+	if !_k0 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocument", "namespace") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocument", "qualified_name") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "dom.DOMImplementation_createDocument", "result pointer") }
+	_p0: Maybe(string)
+	if !_absent0 {
+		_v0 := string(_s0[:wasm.addr(&f, a[1])])
+		if !wasm.valid_utf8(_v0) {
+			return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocument: argument namespace is not valid UTF-8")
+		}
+		_p0 = _v0
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "dom.DOMImplementation_createDocument: argument qualified_name is not valid UTF-8")
+	}
+	_p2 := Api_Node{handle = u64(a[4].i64)}
+	if _p2.handle != 0 { _p2.data = lookup_Node(&c, _p2.handle) }
+	if _p2.handle != 0 && _p2.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "dom.DOMImplementation_createDocument: argument doctype is not a live Node")
+	}
+	_r, _err := DOMImplementation_createDocument(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // DOMImplementation_createDocumentType :: proc(c: ^Call, name: string, public_id: string, system_id: string) -> (u64, Api_Error)
 @(private = "file")
 _t_dom_DOMImplementation_createDocumentType :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -27715,6 +27802,8 @@ api_imports := [?]wasm.Import{
 	{module = "dom", name = "DOMParser_parseXMLNode", fn = _t_dom_DOMParser_parseXMLNode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "ProcessingInstruction_target", fn = _t_dom_ProcessingInstruction_target, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "dom", name = "Document_xmlContentType", fn = _t_dom_Document_xmlContentType, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "Document_createXMLElement", fn = _t_dom_Document_createXMLElement, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DOMImplementation_createDocument", fn = _t_dom_DOMImplementation_createDocument, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "DOMImplementation_createDocumentType", fn = _t_dom_DOMImplementation_createDocumentType, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "Document_partOf", fn = _t_dom_Document_partOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "entries", name = "DataTransfer_itemEntry", fn = _t_entries_DataTransfer_itemEntry, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},

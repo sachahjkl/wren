@@ -233,10 +233,12 @@ apply_response_headers :: proc(p: ^Page, csp_values, csp_report_only_values: []s
 // Replaces the blank skeleton by the parsed document, then applies <meta http-equiv="Content-Security-Policy"> and
 // <meta name="referrer">. `utf8` is already decoded (see html.decode_document).
 // Synchronous, on the calling thread; `parse_document` + `adopt_document` is the same with decoding, off the UI thread.
-load_html :: proc(p: ^Page, utf8: []byte) -> html.Parse_Result {
+// `mime` application/xhtml+xml: parsed as XML (offthread.odin).
+load_html :: proc(p: ^Page, utf8: []byte, mime := "") -> html.Parse_Result {
 	j := html_job_make(p, utf8, false, "")
 	defer html_job_free(j)
 	j.page = nil
+	if mime == "application/xhtml+xml" { j.xhtml, j.location = true, strings.clone(p.env.location.href) }
 	html_work(j)
 	return adopt_document(p, &j.out)
 }

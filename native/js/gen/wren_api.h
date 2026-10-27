@@ -1707,6 +1707,15 @@ WR_IMPORT("dom", "DOMParser_parseXMLNode") int32_t wr_DOMParser_parseXMLNode(con
 WR_IMPORT("dom", "ProcessingInstruction_target") int32_t wr_ProcessingInstruction_target(uint64_t node, uint8_t *_buf, uint32_t _cap);
 // document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
 WR_IMPORT("dom", "Document_xmlContentType") int32_t wr_Document_xmlContentType(uint64_t document, uint8_t *_buf, uint32_t _cap);
+// createElement(localName) (`with_namespace` false) or createElementNS(namespace, qualifiedName) of an XML document
+// (DOMParser's XML types, createDocument): an element of that document, whose names keep their case (tagName as
+// written, attribute names as given); createElement gives it the HTML namespace only in an application/xhtml+xml
+// document. Invalid_Character, Namespace as the others; Not_Found when `document` is not an XML document.
+WR_IMPORT("dom", "Document_createXMLElement") int32_t wr_Document_createXMLElement(uint64_t document, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, int32_t with_namespace, uint64_t *_ret);
+// document.implementation.createDocument(namespace, qualifiedName, doctype): a new inert XMLDocument, with the
+// doctype (a node made by createDocumentType, not in a tree) and its element when the name is not empty; its
+// contentType follows the namespace (application/xhtml+xml, image/svg+xml, else application/xml).
+WR_IMPORT("dom", "DOMImplementation_createDocument") int32_t wr_DOMImplementation_createDocument(const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, uint64_t doctype, uint64_t *_ret);
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
 WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,

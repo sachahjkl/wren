@@ -84,7 +84,7 @@ Element_setAttribute :: proc(c: ^Call, element: Api_Element, name, value: string
 }
 
 Element_getAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> (string, Api_Error) {
-	v, ok := dom.get_attribute(c.page.doc, H(element.handle), name)
+	v, ok := dom.get_attribute_exact(c.page.doc, H(element.handle), name)
 	if !ok { return "", .Not_Found }
 	return v, .None
 }
