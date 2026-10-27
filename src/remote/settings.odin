@@ -46,6 +46,15 @@ PREFS := [?]config.Def{
 		description = "The most CPU time (all threads) the process may use during the window of a wait for `quiet`. The system adds CPU time up in ticks of about 15.6 ms, so 20 lets one tick through and stops at two."},
 	{name = "browser.remote.max_checkpoints", kind = .Int, default = {i = 16}, bounded = true, min = 1, max = 1024,
 		description = "Checkpoints (`wren ctl checkpoint save`) a running Wren keeps at once: each holds the cookies and the localStorage it was taken with, in memory."},
+	// The CDP / WebDriver BiDi adapter (src/browser/cdp.odin): a WebSocket server standard tools (Puppeteer, Playwright
+	// connectOverCDP, Chrome DevTools) connect to. Off unless this pref or --remote-debugging-port asks for it; it binds
+	// 127.0.0.1 only and refuses a handshake whose Host or Origin is not loopback (the DNS-rebinding guard).
+	{name = "remote.cdp.enabled", kind = .Bool, default = {b = false}, restart = true,
+		description = "Listen for Chrome DevTools Protocol and WebDriver BiDi over a local WebSocket (Puppeteer, Playwright connectOverCDP, Chrome DevTools). Binds 127.0.0.1 only; a non-loopback Host or Origin is refused. Off by default; --remote-debugging-port=N turns it on for one run. The port is remote.cdp.port (0: the system picks one), written to DevToolsActivePort in the profile."},
+	{name = "remote.cdp.port", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 65535, restart = true,
+		description = "Port the CDP / WebDriver BiDi WebSocket listens on (0: the system picks a free one, written to DevToolsActivePort in the profile). --remote-debugging-port=N overrides it for one run."},
+	{name = "remote.cdp.max_clients", kind = .Int, default = {i = 8}, bounded = true, min = 1, max = 256, restart = true,
+		description = "CDP / WebDriver BiDi clients served at once. Another one is turned away."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, PREFS[:]) }

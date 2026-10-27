@@ -280,14 +280,22 @@ remote_answer :: proc(conn: u64, id: string, rep: Reply) {
 	if rep.code != 0 { remote_send(conn, remote.response_error(id, rep.code, rep.message, rep.data)) } else { remote_send(conn, remote.response_ok(id, rep.result)) }
 }
 
-remote_send :: proc(conn: u64, line: string) { remote.send(conn, line) }
+// A conn id with CDP_CONN_TAG set is a CDP / BiDi client of the WebSocket transport (cdp.odin), not the pipe: its
+// replies and events are translated and sent there. The tag is the top bit (pipe and TCP ids both start at 1).
+CDP_CONN_TAG :: u64(1) << 63
 
-// To the clients that asked for events (Remote.subscribe).
+remote_send :: proc(conn: u64, line: string) {
+	if conn & CDP_CONN_TAG != 0 { cdp_deliver(conn, line); return }
+	remote.send(conn, line)
+}
+
+// To the clients that asked for events (Remote.subscribe), and to every CDP client (they subscribe on connect).
 remote_event :: proc(name: string, params: string) {
 	r := &the_remote
-	if len(r.subs) == 0 { return }
 	line := remote.event_line(name, params)
-	for c in r.subs { remote.send(c, line) }
+	for c in r.subs {
+		if c & CDP_CONN_TAG != 0 { cdp_on_wren_event(c, name, params) } else { remote.send(c, line) }
+	}
 }
 
 remote_subscribed :: proc() -> bool { return len(the_remote.subs) > 0 }
