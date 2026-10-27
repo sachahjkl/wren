@@ -73,15 +73,15 @@
 /html/browsers/history/the-history-interface/history_back_1.html: TIMEOUT
 	history.back() with session history: TIMEOUT
 /html/browsers/history/the-history-interface/history_back_cross_realm_method.html: OK
-	history.back() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+	history.back() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_forward.html: OK
 	history forward: PASS
 /html/browsers/history/the-history-interface/history_forward_1.html: TIMEOUT
 	history.forward() with session history: TIMEOUT
 /html/browsers/history/the-history-interface/history_forward_cross_realm_method.html: OK
-	history.forward() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+	history.forward() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_go_cross_realm_method.html: OK
-	history.go() uses this's associated document's browsing context to determine if navigation is allowed: FAIL
+	history.go() uses this's associated document's browsing context to determine if navigation is allowed: PASS
 /html/browsers/history/the-history-interface/history_go_minus.html: OK
 	history go minus: PASS
 /html/browsers/history/the-history-interface/history_go_no_argument.html: TIMEOUT

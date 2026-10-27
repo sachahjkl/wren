@@ -407,8 +407,8 @@
 	Test set SourceBuffer.timestampOffset during a pending appendBuffer().: PASS
 	Test slow appending does not trigger stalled events.: PASS
 	Test zero byte SourceBuffer.appendBuffer() call triggering an 'ended' to 'open' transition.: PASS
-/media-source/mediasource-appendbuffer-quota-exceeded.html: OK|TIMEOUT
-	Appending data repeatedly should fill up the buffer and throw a QuotaExceededError when buffer is full.: FAIL|TIMEOUT
+/media-source/mediasource-appendbuffer-quota-exceeded.html: TIMEOUT
+	Appending data repeatedly should fill up the buffer and throw a QuotaExceededError when buffer is full.: TIMEOUT
 /media-source/mediasource-appendbuffer-sharedarraybuffer.window.html: ERROR
 /media-source/mediasource-appendwindow.html: OK
 	Test appendWindowStart and appendWindowEnd value after a sourceBuffer.abort().: PASS

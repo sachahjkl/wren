@@ -10,7 +10,7 @@
 	can also be set in OPEN state: PASS
 	default value is false, set value is true: PASS
 	setting on synchronous XHR: PASS
-	setting withCredentials when in DONE state (synchronous): FAIL
+	setting withCredentials when in DONE state (synchronous): PASS
 	setting withCredentials when not in UNSENT, OPENED state (asynchronous): PASS
 /xhr/abort-after-receive.any.html: OK
 	XMLHttpRequest: abort() after successful receive should not fire "abort" event: PASS
@@ -310,8 +310,8 @@
 	Blob range with whitespace after hyphen: FAIL
 	Blob range with whitespace around equals sign: FAIL
 	Blob range with whitespace before and after hyphen: FAIL
-/xhr/close-worker-with-xhr-in-progress.html: TIMEOUT
-	Terminating a worker with a XHR in progress doesn't crash: TIMEOUT
+/xhr/close-worker-with-xhr-in-progress.html: OK
+	Terminating a worker with a XHR in progress doesn't crash: PASS
 /xhr/content-type-unmodified.any.html: OK
 	content-type-unmodified: FAIL
 /xhr/content-type-unmodified.any.worker.html: OK
@@ -329,7 +329,9 @@
 /xhr/cors-upload.any.html: OK
 	Cross-Origin POST FormData body but no preflight: FAIL
 	Cross-Origin POST with preflight and FormData body: FAIL
-/xhr/cors-upload.any.worker.html: CRASH
+/xhr/cors-upload.any.worker.html: OK
+	Cross-Origin POST FormData body but no preflight: FAIL
+	Cross-Origin POST with preflight and FormData body: FAIL
 /xhr/data-uri.htm: OK
 	XHR method DELETE with MIME type text/plain: FAIL
 	XHR method GET with MIME type image/png: FAIL
@@ -442,7 +444,14 @@
 	testFormDataAppendNull2: PASS
 	testFormDataAppendUndefined1: PASS
 	testFormDataAppendUndefined2: PASS
-/xhr/formdata/append.any.worker.html: CRASH
+/xhr/formdata/append.any.worker.html: OK
+	testFormDataAppend1: PASS
+	testFormDataAppend2: PASS
+	testFormDataAppendEmptyBlob: FAIL
+	testFormDataAppendNull1: PASS
+	testFormDataAppendNull2: PASS
+	testFormDataAppendUndefined1: PASS
+	testFormDataAppendUndefined2: PASS
 /xhr/formdata/constructor-formelement.html: OK
 	test that FormData is correctly constructed from the form data set: FAIL
 /xhr/formdata/constructor-submitter-coordinate.html: OK
@@ -470,13 +479,20 @@
 	testFormDataDelete: PASS
 	testFormDataDeleteNonExistentKey: PASS
 	testFormDataDeleteOtherKey: PASS
-/xhr/formdata/delete.any.worker.html: CRASH
+/xhr/formdata/delete.any.worker.html: OK
+	testFormDataDelete: PASS
+	testFormDataDeleteNonExistentKey: PASS
+	testFormDataDeleteOtherKey: PASS
 /xhr/formdata/foreach.any.html: OK
 	Entries iterator should return duplicate keys and non-deleted values: FAIL
 	Iterator should return duplicate keys and non-deleted values: FAIL
 	Keys iterator should return duplicates: PASS
 	Values iterator should return non-deleted values: FAIL
-/xhr/formdata/foreach.any.worker.html: CRASH
+/xhr/formdata/foreach.any.worker.html: OK
+	Entries iterator should return duplicate keys and non-deleted values: FAIL
+	Iterator should return duplicate keys and non-deleted values: FAIL
+	Keys iterator should return duplicates: PASS
+	Values iterator should return non-deleted values: FAIL
 /xhr/formdata/get-formelement.html: OK
 	testFormDataGetAllFromEmptyForm: PASS
 	testFormDataGetAllFromForm: PASS
@@ -491,7 +507,13 @@
 	testFormDataGetAllEmpty2: PASS
 	testFormDataGetNull1: PASS
 	testFormDataGetNull2: PASS
-/xhr/formdata/get.any.worker.html: CRASH
+/xhr/formdata/get.any.worker.html: OK
+	testFormDataGet: PASS
+	testFormDataGetAll: PASS
+	testFormDataGetAllEmpty1: PASS
+	testFormDataGetAllEmpty2: PASS
+	testFormDataGetNull1: PASS
+	testFormDataGetNull2: PASS
 /xhr/formdata/has-formelement.html: OK
 	testFormDataHasFromEmptyForm: PASS
 	testFormDataHasFromForm: PASS
@@ -500,12 +522,18 @@
 	testFormDataHas: PASS
 	testFormDataHasEmpty1: PASS
 	testFormDataHasEmpty2: PASS
-/xhr/formdata/has.any.worker.html: CRASH
+/xhr/formdata/has.any.worker.html: OK
+	testFormDataHas: PASS
+	testFormDataHasEmpty1: PASS
+	testFormDataHasEmpty2: PASS
 /xhr/formdata/iteration.any.html: OK
 	Appending a value pair during iteration causes it to be reached during iteration: PASS
 	Iteration skips elements removed while iterating: PASS
 	Removing elements already iterated over causes an element to be skipped during iteration: PASS
-/xhr/formdata/iteration.any.worker.html: CRASH
+/xhr/formdata/iteration.any.worker.html: OK
+	Appending a value pair during iteration causes it to be reached during iteration: PASS
+	Iteration skips elements removed while iterating: PASS
+	Removing elements already iterated over causes an element to be skipped during iteration: PASS
 /xhr/formdata/set-blob.any.html: OK
 	append() should create a single File for each Blob: FAIL
 	blob with custom name: FAIL
@@ -513,7 +541,13 @@
 	blob without type: FAIL
 	file with lastModified and custom name: FAIL
 	file without lastModified or custom name: FAIL
-/xhr/formdata/set-blob.any.worker.html: CRASH
+/xhr/formdata/set-blob.any.worker.html: OK
+	append() should create a single File for each Blob: FAIL
+	blob with custom name: FAIL
+	blob with type: PASS
+	blob without type: FAIL
+	file with lastModified and custom name: FAIL
+	file without lastModified or custom name: FAIL
 /xhr/formdata/set-formelement.html: OK
 	testFormDataSetToForm1: PASS
 	testFormDataSetToForm2: PASS
@@ -531,7 +565,14 @@
 	testFormDataSetNull2: PASS
 	testFormDataSetUndefined1: PASS
 	testFormDataSetUndefined2: PASS
-/xhr/formdata/set.any.worker.html: CRASH
+/xhr/formdata/set.any.worker.html: OK
+	testFormDataSet1: PASS
+	testFormDataSet2: PASS
+	testFormDataSetEmptyBlob: PASS
+	testFormDataSetNull1: PASS
+	testFormDataSetNull2: PASS
+	testFormDataSetUndefined1: PASS
+	testFormDataSetUndefined2: PASS
 /xhr/formdata/submitter-coordinate-value.html: OK
 	dispatched event coordinates should match user intention coordinates: FAIL
 /xhr/getallresponseheaders-after-reuse.html: OK
@@ -797,7 +838,167 @@
 	XMLHttpRequestUpload must be primary interface of (new XMLHttpRequest()).upload: FAIL
 	idl_test setup: PASS
 	idl_test validation: PASS
-/xhr/idlharness.any.worker.html: CRASH
+/xhr/idlharness.any.worker.html: OK
+	Document includes DocumentOrShadowRoot: member names are unique: PASS
+	Document includes GlobalEventHandlers: member names are unique: PASS
+	Document includes NonElementParentNode: member names are unique: PASS
+	Document includes ParentNode: member names are unique: PASS
+	Document includes XPathEvaluatorBase: member names are unique: PASS
+	FormData interface object length: PASS
+	FormData interface object name: PASS
+	FormData interface: calling append(USVString, Blob, optional USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling append(USVString, USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling delete(USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling get(USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling getAll(USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling has(USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling set(USVString, Blob, optional USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: calling set(USVString, USVString) on new FormData() with too few arguments must throw TypeError: PASS
+	FormData interface: existence and properties of interface object: PASS
+	FormData interface: existence and properties of interface prototype object: PASS
+	FormData interface: existence and properties of interface prototype object's "constructor" property: PASS
+	FormData interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	FormData interface: iterable<USVString, FormDataEntryValue>: PASS
+	FormData interface: new FormData() must inherit property "append(USVString, Blob, optional USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "append(USVString, USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "delete(USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "get(USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "getAll(USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "has(USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "set(USVString, Blob, optional USVString)" with the proper type: PASS
+	FormData interface: new FormData() must inherit property "set(USVString, USVString)" with the proper type: PASS
+	FormData interface: operation append(USVString, Blob, optional USVString): PASS
+	FormData interface: operation append(USVString, USVString): PASS
+	FormData interface: operation delete(USVString): PASS
+	FormData interface: operation get(USVString): PASS
+	FormData interface: operation getAll(USVString): PASS
+	FormData interface: operation has(USVString): PASS
+	FormData interface: operation set(USVString, Blob, optional USVString): PASS
+	FormData interface: operation set(USVString, USVString): PASS
+	FormData must be primary interface of new FormData(): PASS
+	Partial interface Document: member names are unique: PASS
+	Partial interface Document[2]: member names are unique: PASS
+	ProgressEvent interface object length: PASS
+	ProgressEvent interface object name: PASS
+	ProgressEvent interface: attribute lengthComputable: PASS
+	ProgressEvent interface: attribute loaded: PASS
+	ProgressEvent interface: attribute total: PASS
+	ProgressEvent interface: existence and properties of interface object: PASS
+	ProgressEvent interface: existence and properties of interface prototype object: PASS
+	ProgressEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ProgressEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ProgressEvent interface: new ProgressEvent("type") must inherit property "lengthComputable" with the proper type: PASS
+	ProgressEvent interface: new ProgressEvent("type") must inherit property "loaded" with the proper type: PASS
+	ProgressEvent interface: new ProgressEvent("type") must inherit property "total" with the proper type: PASS
+	ProgressEvent must be primary interface of new ProgressEvent("type"): PASS
+	Stringification of (new XMLHttpRequest()).upload: PASS
+	Stringification of new FormData(): PASS
+	Stringification of new ProgressEvent("type"): PASS
+	Stringification of new XMLHttpRequest(): PASS
+	XMLHttpRequest interface object length: PASS
+	XMLHttpRequest interface object name: PASS
+	XMLHttpRequest interface: attribute onreadystatechange: PASS
+	XMLHttpRequest interface: attribute readyState: PASS
+	XMLHttpRequest interface: attribute response: PASS
+	XMLHttpRequest interface: attribute responseText: PASS
+	XMLHttpRequest interface: attribute responseType: PASS
+	XMLHttpRequest interface: attribute responseURL: PASS
+	XMLHttpRequest interface: attribute status: PASS
+	XMLHttpRequest interface: attribute statusText: PASS
+	XMLHttpRequest interface: attribute timeout: PASS
+	XMLHttpRequest interface: attribute upload: PASS
+	XMLHttpRequest interface: attribute withCredentials: PASS
+	XMLHttpRequest interface: calling getResponseHeader(ByteString) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: calling open(ByteString, USVString) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: calling open(ByteString, USVString, boolean, optional USVString?, optional USVString?) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: calling overrideMimeType(DOMString) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: calling send(optional (Document or XMLHttpRequestBodyInit)?) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: calling setRequestHeader(ByteString, ByteString) on new XMLHttpRequest() with too few arguments must throw TypeError: PASS
+	XMLHttpRequest interface: constant DONE on interface object: PASS
+	XMLHttpRequest interface: constant DONE on interface prototype object: PASS
+	XMLHttpRequest interface: constant HEADERS_RECEIVED on interface object: PASS
+	XMLHttpRequest interface: constant HEADERS_RECEIVED on interface prototype object: PASS
+	XMLHttpRequest interface: constant LOADING on interface object: PASS
+	XMLHttpRequest interface: constant LOADING on interface prototype object: PASS
+	XMLHttpRequest interface: constant OPENED on interface object: PASS
+	XMLHttpRequest interface: constant OPENED on interface prototype object: PASS
+	XMLHttpRequest interface: constant UNSENT on interface object: PASS
+	XMLHttpRequest interface: constant UNSENT on interface prototype object: PASS
+	XMLHttpRequest interface: existence and properties of interface object: PASS
+	XMLHttpRequest interface: existence and properties of interface prototype object: PASS
+	XMLHttpRequest interface: existence and properties of interface prototype object's "constructor" property: PASS
+	XMLHttpRequest interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	XMLHttpRequest interface: member responseXML: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "DONE" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "HEADERS_RECEIVED" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "LOADING" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "OPENED" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "UNSENT" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "abort()" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "getAllResponseHeaders()" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "getResponseHeader(ByteString)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "onreadystatechange" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "open(ByteString, USVString)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "open(ByteString, USVString, boolean, optional USVString?, optional USVString?)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "overrideMimeType(DOMString)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "readyState" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "response" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "responseText" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "responseType" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "responseURL" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "send(optional (Document or XMLHttpRequestBodyInit)?)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "setRequestHeader(ByteString, ByteString)" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "status" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "statusText" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "timeout" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "upload" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must inherit property "withCredentials" with the proper type: PASS
+	XMLHttpRequest interface: new XMLHttpRequest() must not have property "responseXML": PASS
+	XMLHttpRequest interface: operation abort(): PASS
+	XMLHttpRequest interface: operation getAllResponseHeaders(): PASS
+	XMLHttpRequest interface: operation getResponseHeader(ByteString): PASS
+	XMLHttpRequest interface: operation open(ByteString, USVString): PASS
+	XMLHttpRequest interface: operation open(ByteString, USVString, boolean, optional USVString?, optional USVString?): PASS
+	XMLHttpRequest interface: operation overrideMimeType(DOMString): PASS
+	XMLHttpRequest interface: operation send(optional (Document or XMLHttpRequestBodyInit)?): PASS
+	XMLHttpRequest interface: operation setRequestHeader(ByteString, ByteString): PASS
+	XMLHttpRequest must be primary interface of new XMLHttpRequest(): PASS
+	XMLHttpRequestEventTarget interface object length: PASS
+	XMLHttpRequestEventTarget interface object name: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onabort" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onerror" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onload" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onloadend" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onloadstart" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "onprogress" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: (new XMLHttpRequest()).upload must inherit property "ontimeout" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: attribute onabort: PASS
+	XMLHttpRequestEventTarget interface: attribute onerror: PASS
+	XMLHttpRequestEventTarget interface: attribute onload: PASS
+	XMLHttpRequestEventTarget interface: attribute onloadend: PASS
+	XMLHttpRequestEventTarget interface: attribute onloadstart: PASS
+	XMLHttpRequestEventTarget interface: attribute onprogress: PASS
+	XMLHttpRequestEventTarget interface: attribute ontimeout: PASS
+	XMLHttpRequestEventTarget interface: existence and properties of interface object: PASS
+	XMLHttpRequestEventTarget interface: existence and properties of interface prototype object: PASS
+	XMLHttpRequestEventTarget interface: existence and properties of interface prototype object's "constructor" property: PASS
+	XMLHttpRequestEventTarget interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onabort" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onerror" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onload" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onloadend" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onloadstart" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "onprogress" with the proper type: PASS
+	XMLHttpRequestEventTarget interface: new XMLHttpRequest() must inherit property "ontimeout" with the proper type: PASS
+	XMLHttpRequestUpload interface object length: FAIL
+	XMLHttpRequestUpload interface object name: FAIL
+	XMLHttpRequestUpload interface: existence and properties of interface object: FAIL
+	XMLHttpRequestUpload interface: existence and properties of interface prototype object: FAIL
+	XMLHttpRequestUpload interface: existence and properties of interface prototype object's "constructor" property: FAIL
+	XMLHttpRequestUpload interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	XMLHttpRequestUpload must be primary interface of (new XMLHttpRequest()).upload: FAIL
+	idl_test setup: PASS
+	idl_test validation: PASS
 /xhr/json.any.html: OK
 	Ensure UTF-16 results in an error: PASS
 	Ensure the correct JSON parser is used: PASS
@@ -905,7 +1106,7 @@
 	XMLHttpRequest: open() in document that is not fully active (but may be active) should throw: NOTRUN
 /xhr/open-url-multi-window.htm: TIMEOUT
 	XMLHttpRequest: open() resolving URLs (multi-Window; 1): NOTRUN
-/xhr/open-url-redirected-sharedworker-origin.htm: ERROR
+/xhr/open-url-redirected-sharedworker-origin.htm: TIMEOUT
 /xhr/open-url-redirected-worker-origin.htm: TIMEOUT
 /xhr/open-url-worker-origin.htm: OK
 	Origin header: FAIL
@@ -1137,49 +1338,49 @@
 	Set responseType to "text" when readyState is UNSENT.: PASS
 /xhr/responsetype.any.worker.html: OK
 	Initial value of responseType: PASS
-	Set responseType to "" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "" when readyState is DONE.: PASS
 	Set responseType to "" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "" when readyState is LOADING.: PASS
 	Set responseType to "" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "" when readyState is OPENED.: PASS
 	Set responseType to "" when readyState is UNSENT.: PASS
-	Set responseType to "arraybuffer" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "arraybuffer" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "arraybuffer" when readyState is DONE.: PASS
 	Set responseType to "arraybuffer" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "arraybuffer" when readyState is LOADING.: PASS
 	Set responseType to "arraybuffer" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "arraybuffer" when readyState is OPENED.: PASS
 	Set responseType to "arraybuffer" when readyState is UNSENT.: PASS
-	Set responseType to "blob" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "blob" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "blob" when readyState is DONE.: PASS
 	Set responseType to "blob" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "blob" when readyState is LOADING.: PASS
 	Set responseType to "blob" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "blob" when readyState is OPENED.: PASS
 	Set responseType to "blob" when readyState is UNSENT.: PASS
-	Set responseType to "document" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "document" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "document" when readyState is DONE.: PASS
 	Set responseType to "document" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "document" when readyState is LOADING.: PASS
 	Set responseType to "document" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "document" when readyState is OPENED.: PASS
 	Set responseType to "document" when readyState is UNSENT.: PASS
-	Set responseType to "json" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "json" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "json" when readyState is DONE.: PASS
 	Set responseType to "json" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "json" when readyState is LOADING.: PASS
 	Set responseType to "json" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "json" when readyState is OPENED.: PASS
 	Set responseType to "json" when readyState is UNSENT.: PASS
-	Set responseType to "nosuchtype" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "nosuchtype" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "nosuchtype" when readyState is DONE.: PASS
 	Set responseType to "nosuchtype" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "nosuchtype" when readyState is LOADING.: PASS
 	Set responseType to "nosuchtype" when readyState is OPENED and the sync flag is set.: PASS
 	Set responseType to "nosuchtype" when readyState is OPENED.: PASS
 	Set responseType to "nosuchtype" when readyState is UNSENT.: PASS
-	Set responseType to "text" when readyState is DONE and the sync flag is set.: FAIL
+	Set responseType to "text" when readyState is DONE and the sync flag is set.: PASS
 	Set responseType to "text" when readyState is DONE.: PASS
 	Set responseType to "text" when readyState is HEADERS_RECEIVED.: PASS
 	Set responseType to "text" when readyState is LOADING.: PASS
@@ -1194,7 +1395,7 @@
 	responseURL reflects the new response after abort() and reuse: PASS
 /xhr/responseurl-after-abort.any.worker.html: OK
 	abort() during DONE clears responseURL (async): PASS
-	abort() during DONE clears responseURL (sync): FAIL
+	abort() during DONE clears responseURL (sync): PASS
 	abort() during HEADERS_RECEIVED clears responseURL: PASS
 	abort() during LOADING clears responseURL: PASS
 	responseURL reflects the new response after abort() and reuse: PASS
@@ -1358,7 +1559,8 @@
 	sending the ES Math object: FAIL
 /xhr/send-data-formdata.any.html: OK
 	XMLHttpRequest.send(formdata): FAIL
-/xhr/send-data-formdata.any.worker.html: CRASH
+/xhr/send-data-formdata.any.worker.html: OK
+	send-data-formdata: FAIL
 /xhr/send-data-isolation.html: OK
 	Modifying a Uint8Array after send() does not affect the sent data: FAIL
 	Modifying a typed array view after send() does not affect the sent data: FAIL
@@ -2099,11 +2301,11 @@
 /xhr/sync-no-progress.any.html: OK
 	progress event should not be fired by sync XHR: FAIL
 /xhr/sync-no-progress.any.worker.html: OK
-	progress event should not be fired by sync XHR: FAIL
+	progress event should not be fired by sync XHR: PASS
 /xhr/sync-no-timeout.any.html: OK
 	Sync XHR should not have a timeout: FAIL
 /xhr/sync-no-timeout.any.worker.html: OK
-	Sync XHR should not have a timeout: FAIL
+	Sync XHR should not have a timeout: PASS
 /xhr/sync-xhr-and-window-onload.html: OK
 	sync XHR should not fire window.onload synchronously: FAIL
 /xhr/sync-xhr-supported-by-permissions-policy.tentative.html: OK
@@ -2227,11 +2429,11 @@
 /xhr/xmlhttprequest-timeout-worker-simple.html?timeout hit before load: OK
 	Timeout test: timeout hit before load, timeout scheduled at 2000: FAIL
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?load fires normally: OK
-	Timeout test: Unexpected error: NetworkError: Failed to execute 'send' on 'XMLHttpRequest': synchronous requests are not supported: FAIL
+	Timeout test: load fires normally, timeout scheduled at 5000: PASS
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?no time out scheduled, load fires normally: OK
-	Timeout test: Unexpected error: NetworkError: Failed to execute 'send' on 'XMLHttpRequest': synchronous requests are not supported: FAIL
+	Timeout test: no time out scheduled, load fires normally, timeout scheduled at 0: PASS
 /xhr/xmlhttprequest-timeout-worker-synconworker.html?timeout hit before load: OK
-	Timeout test: Unexpected error: NetworkError: Failed to execute 'send' on 'XMLHttpRequest': synchronous requests are not supported: FAIL
+	Timeout test: timeout hit before load, timeout scheduled at 2000: FAIL
 /xhr/xmlhttprequest-timeout-worker-twice.html?load fires normally with no timeout set, twice: OK
 	Timeout test: load fires normally with no timeout set, twice, original timeout at 0, reset at 2000 to 0: PASS
 /xhr/xmlhttprequest-timeout-worker-twice.html?load fires normally with same timeout set twice: OK

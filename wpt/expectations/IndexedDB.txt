@@ -835,12 +835,12 @@
 	Opening a transaction defaults to a read-only mode: PASS
 /IndexedDB/idbfactory-databases-opaque-origin.html: OK
 	IDBFactory.databases() in data URL dedicated worker should throw SecurityError: PASS
-	IDBFactory.databases() in data URL shared worker should throw SecurityError: FAIL
+	IDBFactory.databases() in data URL shared worker should throw SecurityError: PASS
 	IDBFactory.databases() in non-sandboxed iframe should not reject: PASS
 	IDBFactory.databases() in sandboxed iframe should reject: PASS
 /IndexedDB/idbfactory-deleteDatabase-opaque-origin.html: OK
 	IDBFactory.deleteDatabase() in data URL dedicated worker should throw SecurityError: PASS
-	IDBFactory.deleteDatabase() in data URL shared worker should throw SecurityError: FAIL
+	IDBFactory.deleteDatabase() in data URL shared worker should throw SecurityError: PASS
 	IDBFactory.deleteDatabase() in non-sandboxed iframe should not throw: PASS
 	IDBFactory.deleteDatabase() in sandboxed iframe should throw SecurityError: PASS
 /IndexedDB/idbfactory-deleteDatabase-request-success.any.html: OK
@@ -853,7 +853,7 @@
 	Properties of error event from failed open(): PASS
 /IndexedDB/idbfactory-open-opaque-origin.html: OK
 	IDBFactory.open() in data URL dedicated workers should throw SecurityError: PASS
-	IDBFactory.open() in data URL shared workers should throw SecurityError: FAIL
+	IDBFactory.open() in data URL shared workers should throw SecurityError: PASS
 	IDBFactory.open() in non-sandboxed iframe should not throw: PASS
 	IDBFactory.open() in sandboxed iframe should throw SecurityError: PASS
 /IndexedDB/idbfactory-open-request-error.any.html: OK
@@ -3192,13 +3192,14 @@
 	Array: foo,bar: PASS
 	Array: foo,bar,,,,,,,,,true,false,,,,,,,,,123,456,,,,,,,,,: PASS
 	Blob: [object Blob]: PASS
-	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): FAIL
-	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): FAIL
-	DOMPoint: [object DOMPoint]: FAIL
-	DOMPointReadOnly: [object DOMPointReadOnly]: FAIL
+	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): PASS
+	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): PASS
+	DOMPoint: [object DOMPoint]: PASS
+	DOMPointReadOnly: [object DOMPointReadOnly]: PASS
 	DOMRect: [object DOMRect]: PASS
 	DOMRectReadOnly: [object DOMRectReadOnly]: PASS
 	File: [object File]: PASS
+	FileList: [object FileList]: FAIL
 	ImageData: [object ImageData]: PASS
 	Not serializable: Event: [object Event]: PASS
 	Not serializable: MessageChannel: [object MessageChannel]: PASS
@@ -3211,7 +3212,6 @@
 	TypeError: TypeError: ghi: PASS
 	URIError: URIError: PASS
 	URIError: URIError: ghi: PASS
-	undefined: undefined: FAIL
 /IndexedDB/structured-clone.any.html?21-40: OK
 	Boolean: false: PASS
 	Boolean: true: PASS
@@ -3323,10 +3323,10 @@
 	Array: foo,bar: PASS
 	Array: foo,bar,,,,,,,,,true,false,,,,,,,,,123,456,,,,,,,,,: PASS
 	Blob: [object Blob]: PASS
-	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): FAIL
-	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): FAIL
-	DOMPoint: [object DOMPoint]: FAIL
-	DOMPointReadOnly: [object DOMPointReadOnly]: FAIL
+	DOMMatrix: matrix(1, 0, 0, 1, 0, 0): PASS
+	DOMMatrixReadOnly: matrix(1, 0, 0, 1, 0, 0): PASS
+	DOMPoint: [object DOMPoint]: PASS
+	DOMPointReadOnly: [object DOMPointReadOnly]: PASS
 	DOMRect: [object DOMRect]: PASS
 	DOMRectReadOnly: [object DOMRectReadOnly]: PASS
 	File: [object File]: PASS
@@ -3609,8 +3609,8 @@
 	Recursive value - array directly contains self: PASS
 	Recursive value - array indirectly contains self: PASS
 	Recursive value - array member contains self: PASS
-/IndexedDB/worker-termination-aborts-upgrade.window.html: TIMEOUT
-	Worker Termination Aborts a Pending Upgrade: TIMEOUT
+/IndexedDB/worker-termination-aborts-upgrade.window.html: OK
+	Worker Termination Aborts a Pending Upgrade: PASS
 /IndexedDB/writer-starvation.any.html: OK
 	IDB read requests should not starve write requests: PASS
 /IndexedDB/writer-starvation.any.worker.html: OK

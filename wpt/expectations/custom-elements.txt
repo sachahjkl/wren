@@ -895,7 +895,7 @@
 /custom-elements/reactions/Animation.html: OK
 	Animation.animate must enqueue an attributeChanged reaction when it adds the observed style attribute: FAIL
 	Animation.animate must enqueue an attributeChanged reaction when it mutates the observed style attribute: FAIL
-	Animation.animate must not enqueue an attributeChanged reaction when it mutates the style attribute but the style attribute is not observed: FAIL
+	Animation.animate must not enqueue an attributeChanged reaction when it mutates the style attribute but the style attribute is not observed: PASS
 /custom-elements/reactions/AriaMixin-element-attributes.html: OK
 	ariaActiveDescendantElement in Element must enqueue an attributeChanged reaction when adding aria-activedescendant content attribute: FAIL
 	ariaActiveDescendantElement in Element must enqueue an attributeChanged reaction when replacing an existing attribute: FAIL
@@ -1153,8 +1153,8 @@
 	lang on HTMLElement must enqueue an attributeChanged reaction when adding lang content attribute: PASS
 	lang on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
 	outerText on HTMLElement must enqueue a disconnected reaction: PASS
-	popover on HTMLElement must enqueue an attributeChanged reaction when adding popover content attribute: PRECONDITION_FAILED
-	popover on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PRECONDITION_FAILED
+	popover on HTMLElement must enqueue an attributeChanged reaction when adding popover content attribute: PASS
+	popover on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
 	spellcheck on HTMLElement must enqueue an attributeChanged reaction when adding spellcheck content attribute: PASS
 	spellcheck on HTMLElement must enqueue an attributeChanged reaction when replacing an existing attribute: PASS
 	tabIndex on HTMLElement must enqueue an attributeChanged reaction when adding tabindex content attribute: PASS

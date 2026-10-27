@@ -2686,7 +2686,7 @@
 	text-transform applied to parent element ("<div id='parent'><div id='target'>abc"): PASS
 /html/dom/elements/the-innertext-and-outertext-properties/getter-first-letter-marker-multicol.html: OK
 	Test innerText/outerText for a combination of a list item with ::first-letter in multicol: PASS
-/html/dom/elements/the-innertext-and-outertext-properties/getter.html: ERROR
+/html/dom/elements/the-innertext-and-outertext-properties/getter.html: TIMEOUT
 	 ("<table><tfoot><tr><td>footer</tfoot><thead><tr><td style='visibility:collapse'>thead</thead><tbody><tr><td>tbody</tbody></table>"): FAIL
 	 <iframe> subdocument ignored ("<div><iframe src='data:text/html,abc'>"): PASS
 	&nbsp; preserved ("<div>&nbsp;"): PASS
@@ -4151,31 +4151,31 @@
 	BeforeUnloadEvent interface: existence and properties of interface prototype object: FAIL
 	BeforeUnloadEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	BeforeUnloadEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	BroadcastChannel interface object length: FAIL
-	BroadcastChannel interface object name: FAIL
-	BroadcastChannel interface: attribute name: FAIL
-	BroadcastChannel interface: attribute onmessage: FAIL
-	BroadcastChannel interface: attribute onmessageerror: FAIL
-	BroadcastChannel interface: existence and properties of interface object: FAIL
-	BroadcastChannel interface: existence and properties of interface prototype object: FAIL
-	BroadcastChannel interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	BroadcastChannel interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	BroadcastChannel interface: operation close(): FAIL
-	BroadcastChannel interface: operation postMessage(any): FAIL
-	CanvasGradient interface object length: FAIL
-	CanvasGradient interface object name: FAIL
-	CanvasGradient interface: existence and properties of interface object: FAIL
-	CanvasGradient interface: existence and properties of interface prototype object: FAIL
-	CanvasGradient interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CanvasGradient interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CanvasGradient interface: operation addColorStop(double, DOMString): FAIL
-	CanvasPattern interface object length: FAIL
-	CanvasPattern interface object name: FAIL
-	CanvasPattern interface: existence and properties of interface object: FAIL
-	CanvasPattern interface: existence and properties of interface prototype object: FAIL
-	CanvasPattern interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CanvasPattern interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CanvasPattern interface: operation setTransform(optional DOMMatrix2DInit): FAIL
+	BroadcastChannel interface object length: PASS
+	BroadcastChannel interface object name: PASS
+	BroadcastChannel interface: attribute name: PASS
+	BroadcastChannel interface: attribute onmessage: PASS
+	BroadcastChannel interface: attribute onmessageerror: PASS
+	BroadcastChannel interface: existence and properties of interface object: PASS
+	BroadcastChannel interface: existence and properties of interface prototype object: PASS
+	BroadcastChannel interface: existence and properties of interface prototype object's "constructor" property: PASS
+	BroadcastChannel interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	BroadcastChannel interface: operation close(): PASS
+	BroadcastChannel interface: operation postMessage(any): PASS
+	CanvasGradient interface object length: PASS
+	CanvasGradient interface object name: PASS
+	CanvasGradient interface: existence and properties of interface object: PASS
+	CanvasGradient interface: existence and properties of interface prototype object: PASS
+	CanvasGradient interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CanvasGradient interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CanvasGradient interface: operation addColorStop(double, DOMString): PASS
+	CanvasPattern interface object length: PASS
+	CanvasPattern interface object name: PASS
+	CanvasPattern interface: existence and properties of interface object: PASS
+	CanvasPattern interface: existence and properties of interface prototype object: PASS
+	CanvasPattern interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CanvasPattern interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CanvasPattern interface: operation setTransform(optional DOMMatrix2DInit): PASS
 	CanvasRenderingContext2D includes CanvasCompositing: member names are unique: PASS
 	CanvasRenderingContext2D includes CanvasDrawImage: member names are unique: PASS
 	CanvasRenderingContext2D includes CanvasDrawPath: member names are unique: PASS
@@ -4193,96 +4193,96 @@
 	CanvasRenderingContext2D includes CanvasTextDrawingStyles: member names are unique: PASS
 	CanvasRenderingContext2D includes CanvasTransform: member names are unique: PASS
 	CanvasRenderingContext2D includes CanvasUserInterface: member names are unique: PASS
-	CanvasRenderingContext2D interface object length: FAIL
-	CanvasRenderingContext2D interface object name: FAIL
-	CanvasRenderingContext2D interface: attribute canvas: FAIL
-	CanvasRenderingContext2D interface: attribute direction: FAIL
-	CanvasRenderingContext2D interface: attribute fillStyle: FAIL
-	CanvasRenderingContext2D interface: attribute filter: FAIL
-	CanvasRenderingContext2D interface: attribute font: FAIL
-	CanvasRenderingContext2D interface: attribute fontKerning: FAIL
-	CanvasRenderingContext2D interface: attribute fontStretch: FAIL
-	CanvasRenderingContext2D interface: attribute fontVariantCaps: FAIL
-	CanvasRenderingContext2D interface: attribute globalAlpha: FAIL
-	CanvasRenderingContext2D interface: attribute globalCompositeOperation: FAIL
-	CanvasRenderingContext2D interface: attribute imageSmoothingEnabled: FAIL
-	CanvasRenderingContext2D interface: attribute imageSmoothingQuality: FAIL
-	CanvasRenderingContext2D interface: attribute lang: FAIL
-	CanvasRenderingContext2D interface: attribute letterSpacing: FAIL
-	CanvasRenderingContext2D interface: attribute lineCap: FAIL
-	CanvasRenderingContext2D interface: attribute lineDashOffset: FAIL
-	CanvasRenderingContext2D interface: attribute lineJoin: FAIL
-	CanvasRenderingContext2D interface: attribute lineWidth: FAIL
-	CanvasRenderingContext2D interface: attribute miterLimit: FAIL
-	CanvasRenderingContext2D interface: attribute shadowBlur: FAIL
-	CanvasRenderingContext2D interface: attribute shadowColor: FAIL
-	CanvasRenderingContext2D interface: attribute shadowOffsetX: FAIL
-	CanvasRenderingContext2D interface: attribute shadowOffsetY: FAIL
-	CanvasRenderingContext2D interface: attribute strokeStyle: FAIL
-	CanvasRenderingContext2D interface: attribute textAlign: FAIL
-	CanvasRenderingContext2D interface: attribute textBaseline: FAIL
-	CanvasRenderingContext2D interface: attribute textRendering: FAIL
-	CanvasRenderingContext2D interface: attribute wordSpacing: FAIL
-	CanvasRenderingContext2D interface: existence and properties of interface object: FAIL
-	CanvasRenderingContext2D interface: existence and properties of interface prototype object: FAIL
-	CanvasRenderingContext2D interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	CanvasRenderingContext2D interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	CanvasRenderingContext2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	CanvasRenderingContext2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation beginPath(): FAIL
-	CanvasRenderingContext2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation clearRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation clip(Path2D, optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation clip(optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation closePath(): FAIL
-	CanvasRenderingContext2D interface: operation createConicGradient(double, double, double): FAIL
-	CanvasRenderingContext2D interface: operation createImageData(ImageData): FAIL
-	CanvasRenderingContext2D interface: operation createImageData(long, long, optional ImageDataSettings): FAIL
-	CanvasRenderingContext2D interface: operation createLinearGradient(double, double, double, double): FAIL
-	CanvasRenderingContext2D interface: operation createPattern(CanvasImageSource, DOMString): FAIL
-	CanvasRenderingContext2D interface: operation createRadialGradient(double, double, double, double, double, double): FAIL
+	CanvasRenderingContext2D interface object length: PASS
+	CanvasRenderingContext2D interface object name: PASS
+	CanvasRenderingContext2D interface: attribute canvas: PASS
+	CanvasRenderingContext2D interface: attribute direction: PASS
+	CanvasRenderingContext2D interface: attribute fillStyle: PASS
+	CanvasRenderingContext2D interface: attribute filter: PASS
+	CanvasRenderingContext2D interface: attribute font: PASS
+	CanvasRenderingContext2D interface: attribute fontKerning: PASS
+	CanvasRenderingContext2D interface: attribute fontStretch: PASS
+	CanvasRenderingContext2D interface: attribute fontVariantCaps: PASS
+	CanvasRenderingContext2D interface: attribute globalAlpha: PASS
+	CanvasRenderingContext2D interface: attribute globalCompositeOperation: PASS
+	CanvasRenderingContext2D interface: attribute imageSmoothingEnabled: PASS
+	CanvasRenderingContext2D interface: attribute imageSmoothingQuality: PASS
+	CanvasRenderingContext2D interface: attribute lang: PASS
+	CanvasRenderingContext2D interface: attribute letterSpacing: PASS
+	CanvasRenderingContext2D interface: attribute lineCap: PASS
+	CanvasRenderingContext2D interface: attribute lineDashOffset: PASS
+	CanvasRenderingContext2D interface: attribute lineJoin: PASS
+	CanvasRenderingContext2D interface: attribute lineWidth: PASS
+	CanvasRenderingContext2D interface: attribute miterLimit: PASS
+	CanvasRenderingContext2D interface: attribute shadowBlur: PASS
+	CanvasRenderingContext2D interface: attribute shadowColor: PASS
+	CanvasRenderingContext2D interface: attribute shadowOffsetX: PASS
+	CanvasRenderingContext2D interface: attribute shadowOffsetY: PASS
+	CanvasRenderingContext2D interface: attribute strokeStyle: PASS
+	CanvasRenderingContext2D interface: attribute textAlign: PASS
+	CanvasRenderingContext2D interface: attribute textBaseline: PASS
+	CanvasRenderingContext2D interface: attribute textRendering: PASS
+	CanvasRenderingContext2D interface: attribute wordSpacing: PASS
+	CanvasRenderingContext2D interface: existence and properties of interface object: PASS
+	CanvasRenderingContext2D interface: existence and properties of interface prototype object: PASS
+	CanvasRenderingContext2D interface: existence and properties of interface prototype object's "constructor" property: PASS
+	CanvasRenderingContext2D interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	CanvasRenderingContext2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	CanvasRenderingContext2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation beginPath(): PASS
+	CanvasRenderingContext2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation clearRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation clip(Path2D, optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation clip(optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation closePath(): PASS
+	CanvasRenderingContext2D interface: operation createConicGradient(double, double, double): PASS
+	CanvasRenderingContext2D interface: operation createImageData(ImageData): PASS
+	CanvasRenderingContext2D interface: operation createImageData(long, long, optional ImageDataSettings): PASS
+	CanvasRenderingContext2D interface: operation createLinearGradient(double, double, double, double): PASS
+	CanvasRenderingContext2D interface: operation createPattern(CanvasImageSource, DOMString): PASS
+	CanvasRenderingContext2D interface: operation createRadialGradient(double, double, double, double, double, double): PASS
 	CanvasRenderingContext2D interface: operation drawFocusIfNeeded(Element): FAIL
 	CanvasRenderingContext2D interface: operation drawFocusIfNeeded(Path2D, Element): FAIL
-	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	CanvasRenderingContext2D interface: operation fill(Path2D, optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation fill(optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation fillRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation fillText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation getContextAttributes(): FAIL
-	CanvasRenderingContext2D interface: operation getImageData(long, long, long, long, optional ImageDataSettings): FAIL
-	CanvasRenderingContext2D interface: operation getLineDash(): FAIL
-	CanvasRenderingContext2D interface: operation getTransform(): FAIL
-	CanvasRenderingContext2D interface: operation isContextLost(): FAIL
-	CanvasRenderingContext2D interface: operation isPointInPath(Path2D, unrestricted double, unrestricted double, optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation isPointInPath(unrestricted double, unrestricted double, optional CanvasFillRule): FAIL
-	CanvasRenderingContext2D interface: operation isPointInStroke(Path2D, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation lineTo(unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation measureText(DOMString): FAIL
-	CanvasRenderingContext2D interface: operation moveTo(unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation putImageData(ImageData, long, long): FAIL
-	CanvasRenderingContext2D interface: operation putImageData(ImageData, long, long, long, long, long, long): FAIL
-	CanvasRenderingContext2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation reset(): FAIL
-	CanvasRenderingContext2D interface: operation resetTransform(): FAIL
-	CanvasRenderingContext2D interface: operation restore(): FAIL
-	CanvasRenderingContext2D interface: operation rotate(unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): FAIL
-	CanvasRenderingContext2D interface: operation save(): FAIL
-	CanvasRenderingContext2D interface: operation scale(unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation setLineDash(sequence<unrestricted double>): FAIL
-	CanvasRenderingContext2D interface: operation setTransform(optional DOMMatrix2DInit): FAIL
-	CanvasRenderingContext2D interface: operation setTransform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation stroke(): FAIL
-	CanvasRenderingContext2D interface: operation stroke(Path2D): FAIL
-	CanvasRenderingContext2D interface: operation strokeRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation strokeText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation transform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	CanvasRenderingContext2D interface: operation translate(unrestricted double, unrestricted double): FAIL
+	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	CanvasRenderingContext2D interface: operation fill(Path2D, optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation fill(optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation fillRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation fillText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation getContextAttributes(): PASS
+	CanvasRenderingContext2D interface: operation getImageData(long, long, long, long, optional ImageDataSettings): PASS
+	CanvasRenderingContext2D interface: operation getLineDash(): PASS
+	CanvasRenderingContext2D interface: operation getTransform(): PASS
+	CanvasRenderingContext2D interface: operation isContextLost(): PASS
+	CanvasRenderingContext2D interface: operation isPointInPath(Path2D, unrestricted double, unrestricted double, optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation isPointInPath(unrestricted double, unrestricted double, optional CanvasFillRule): PASS
+	CanvasRenderingContext2D interface: operation isPointInStroke(Path2D, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation lineTo(unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation measureText(DOMString): PASS
+	CanvasRenderingContext2D interface: operation moveTo(unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation putImageData(ImageData, long, long): PASS
+	CanvasRenderingContext2D interface: operation putImageData(ImageData, long, long, long, long, long, long): PASS
+	CanvasRenderingContext2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation reset(): PASS
+	CanvasRenderingContext2D interface: operation resetTransform(): PASS
+	CanvasRenderingContext2D interface: operation restore(): PASS
+	CanvasRenderingContext2D interface: operation rotate(unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): PASS
+	CanvasRenderingContext2D interface: operation save(): PASS
+	CanvasRenderingContext2D interface: operation scale(unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation setLineDash(sequence<unrestricted double>): PASS
+	CanvasRenderingContext2D interface: operation setTransform(optional DOMMatrix2DInit): PASS
+	CanvasRenderingContext2D interface: operation setTransform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation stroke(): PASS
+	CanvasRenderingContext2D interface: operation stroke(Path2D): PASS
+	CanvasRenderingContext2D interface: operation strokeRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation strokeText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation transform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	CanvasRenderingContext2D interface: operation translate(unrestricted double, unrestricted double): PASS
 	CharacterData includes ChildNode: member names are unique: PASS
 	CharacterData includes NonDocumentTypeChildNode: member names are unique: PASS
 	CharacterData interface: operation afterHTML(DOMString, optional SetHTMLOptions): FAIL
@@ -4351,42 +4351,42 @@
 	DOMStringMap interface: existence and properties of interface prototype object: FAIL
 	DOMStringMap interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	DOMStringMap interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DataTransfer interface object length: FAIL
-	DataTransfer interface object name: FAIL
-	DataTransfer interface: attribute dropEffect: FAIL
-	DataTransfer interface: attribute effectAllowed: FAIL
-	DataTransfer interface: attribute files: FAIL
-	DataTransfer interface: attribute items: FAIL
-	DataTransfer interface: attribute types: FAIL
-	DataTransfer interface: existence and properties of interface object: FAIL
-	DataTransfer interface: existence and properties of interface prototype object: FAIL
-	DataTransfer interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DataTransfer interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DataTransfer interface: operation clearData(optional DOMString): FAIL
-	DataTransfer interface: operation getData(DOMString): FAIL
-	DataTransfer interface: operation setData(DOMString, DOMString): FAIL
-	DataTransfer interface: operation setDragImage(Element, long, long): FAIL
-	DataTransferItem interface object length: FAIL
-	DataTransferItem interface object name: FAIL
-	DataTransferItem interface: attribute kind: FAIL
-	DataTransferItem interface: attribute type: FAIL
-	DataTransferItem interface: existence and properties of interface object: FAIL
-	DataTransferItem interface: existence and properties of interface prototype object: FAIL
-	DataTransferItem interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DataTransferItem interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DataTransferItem interface: operation getAsFile(): FAIL
-	DataTransferItem interface: operation getAsString(FunctionStringCallback?): FAIL
-	DataTransferItemList interface object length: FAIL
-	DataTransferItemList interface object name: FAIL
-	DataTransferItemList interface: attribute length: FAIL
-	DataTransferItemList interface: existence and properties of interface object: FAIL
-	DataTransferItemList interface: existence and properties of interface prototype object: FAIL
-	DataTransferItemList interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DataTransferItemList interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	DataTransferItemList interface: operation add(DOMString, DOMString): FAIL
-	DataTransferItemList interface: operation add(File): FAIL
-	DataTransferItemList interface: operation clear(): FAIL
-	DataTransferItemList interface: operation remove(unsigned long): FAIL
+	DataTransfer interface object length: PASS
+	DataTransfer interface object name: PASS
+	DataTransfer interface: attribute dropEffect: PASS
+	DataTransfer interface: attribute effectAllowed: PASS
+	DataTransfer interface: attribute files: PASS
+	DataTransfer interface: attribute items: PASS
+	DataTransfer interface: attribute types: PASS
+	DataTransfer interface: existence and properties of interface object: PASS
+	DataTransfer interface: existence and properties of interface prototype object: PASS
+	DataTransfer interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DataTransfer interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DataTransfer interface: operation clearData(optional DOMString): PASS
+	DataTransfer interface: operation getData(DOMString): PASS
+	DataTransfer interface: operation setData(DOMString, DOMString): PASS
+	DataTransfer interface: operation setDragImage(Element, long, long): PASS
+	DataTransferItem interface object length: PASS
+	DataTransferItem interface object name: PASS
+	DataTransferItem interface: attribute kind: PASS
+	DataTransferItem interface: attribute type: PASS
+	DataTransferItem interface: existence and properties of interface object: PASS
+	DataTransferItem interface: existence and properties of interface prototype object: PASS
+	DataTransferItem interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DataTransferItem interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DataTransferItem interface: operation getAsFile(): PASS
+	DataTransferItem interface: operation getAsString(FunctionStringCallback?): PASS
+	DataTransferItemList interface object length: PASS
+	DataTransferItemList interface object name: PASS
+	DataTransferItemList interface: attribute length: PASS
+	DataTransferItemList interface: existence and properties of interface object: PASS
+	DataTransferItemList interface: existence and properties of interface prototype object: PASS
+	DataTransferItemList interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DataTransferItemList interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	DataTransferItemList interface: operation add(DOMString, DOMString): PASS
+	DataTransferItemList interface: operation add(File): PASS
+	DataTransferItemList interface: operation clear(): PASS
+	DataTransferItemList interface: operation remove(unsigned long): PASS
 	DedicatedWorkerGlobalScope includes AnimationFrameProvider: member names are unique: PASS
 	DedicatedWorkerGlobalScope includes MessageEventTarget: member names are unique: PASS
 	DedicatedWorkerGlobalScope interface: existence and properties of interface object: PASS
@@ -4398,13 +4398,13 @@
 	Document includes XPathEvaluatorBase: member names are unique: PASS
 	DocumentFragment includes NonElementParentNode: member names are unique: PASS
 	DocumentFragment includes ParentNode: member names are unique: PASS
-	DragEvent interface object length: FAIL
-	DragEvent interface object name: FAIL
-	DragEvent interface: attribute dataTransfer: FAIL
-	DragEvent interface: existence and properties of interface object: FAIL
-	DragEvent interface: existence and properties of interface prototype object: FAIL
-	DragEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	DragEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	DragEvent interface object length: PASS
+	DragEvent interface object name: PASS
+	DragEvent interface: attribute dataTransfer: PASS
+	DragEvent interface: existence and properties of interface object: PASS
+	DragEvent interface: existence and properties of interface prototype object: PASS
+	DragEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	DragEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Element includes ARIAMixin: member names are unique: PASS
 	Element includes ARIANotifyMixin: member names are unique: PASS
 	Element includes ChildNode: member names are unique: PASS
@@ -4512,15 +4512,15 @@
 	History interface: operation go(optional long): PASS
 	History interface: operation pushState(any, DOMString, optional USVString?): PASS
 	History interface: operation replaceState(any, DOMString, optional USVString?): PASS
-	ImageBitmap interface object length: FAIL
-	ImageBitmap interface object name: FAIL
-	ImageBitmap interface: attribute height: FAIL
-	ImageBitmap interface: attribute width: FAIL
-	ImageBitmap interface: existence and properties of interface object: FAIL
-	ImageBitmap interface: existence and properties of interface prototype object: FAIL
-	ImageBitmap interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	ImageBitmap interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	ImageBitmap interface: operation close(): FAIL
+	ImageBitmap interface object length: PASS
+	ImageBitmap interface object name: PASS
+	ImageBitmap interface: attribute height: PASS
+	ImageBitmap interface: attribute width: PASS
+	ImageBitmap interface: existence and properties of interface object: PASS
+	ImageBitmap interface: existence and properties of interface prototype object: PASS
+	ImageBitmap interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ImageBitmap interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	ImageBitmap interface: operation close(): PASS
 	ImageBitmapRenderingContext interface object length: FAIL
 	ImageBitmapRenderingContext interface object name: FAIL
 	ImageBitmapRenderingContext interface: attribute canvas: FAIL
@@ -4529,17 +4529,17 @@
 	ImageBitmapRenderingContext interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	ImageBitmapRenderingContext interface: existence and properties of interface prototype object's @@unscopables property: FAIL
 	ImageBitmapRenderingContext interface: operation transferFromImageBitmap(ImageBitmap?): FAIL
-	ImageData interface object length: FAIL
-	ImageData interface object name: FAIL
-	ImageData interface: attribute colorSpace: FAIL
-	ImageData interface: attribute data: FAIL
-	ImageData interface: attribute height: FAIL
-	ImageData interface: attribute pixelFormat: FAIL
-	ImageData interface: attribute width: FAIL
-	ImageData interface: existence and properties of interface object: FAIL
-	ImageData interface: existence and properties of interface prototype object: FAIL
-	ImageData interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	ImageData interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	ImageData interface object length: PASS
+	ImageData interface object name: PASS
+	ImageData interface: attribute colorSpace: PASS
+	ImageData interface: attribute data: PASS
+	ImageData interface: attribute height: PASS
+	ImageData interface: attribute pixelFormat: PASS
+	ImageData interface: attribute width: PASS
+	ImageData interface: existence and properties of interface object: PASS
+	ImageData interface: existence and properties of interface prototype object: PASS
+	ImageData interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ImageData interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	Location interface object length: PASS
 	Location interface object name: PASS
 	Location interface: existence and properties of interface object: PASS
@@ -4645,22 +4645,22 @@
 	MathMLElement interface: attribute tabIndex: PASS
 	MathMLElement interface: operation blur(): FAIL
 	MathMLElement interface: operation focus(optional FocusOptions): PASS
-	MediaError interface object length: FAIL
-	MediaError interface object name: FAIL
-	MediaError interface: attribute code: FAIL
-	MediaError interface: attribute message: FAIL
-	MediaError interface: constant MEDIA_ERR_ABORTED on interface object: FAIL
-	MediaError interface: constant MEDIA_ERR_ABORTED on interface prototype object: FAIL
-	MediaError interface: constant MEDIA_ERR_DECODE on interface object: FAIL
-	MediaError interface: constant MEDIA_ERR_DECODE on interface prototype object: FAIL
-	MediaError interface: constant MEDIA_ERR_NETWORK on interface object: FAIL
-	MediaError interface: constant MEDIA_ERR_NETWORK on interface prototype object: FAIL
-	MediaError interface: constant MEDIA_ERR_SRC_NOT_SUPPORTED on interface object: FAIL
-	MediaError interface: constant MEDIA_ERR_SRC_NOT_SUPPORTED on interface prototype object: FAIL
-	MediaError interface: existence and properties of interface object: FAIL
-	MediaError interface: existence and properties of interface prototype object: FAIL
-	MediaError interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	MediaError interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	MediaError interface object length: PASS
+	MediaError interface object name: PASS
+	MediaError interface: attribute code: PASS
+	MediaError interface: attribute message: PASS
+	MediaError interface: constant MEDIA_ERR_ABORTED on interface object: PASS
+	MediaError interface: constant MEDIA_ERR_ABORTED on interface prototype object: PASS
+	MediaError interface: constant MEDIA_ERR_DECODE on interface object: PASS
+	MediaError interface: constant MEDIA_ERR_DECODE on interface prototype object: PASS
+	MediaError interface: constant MEDIA_ERR_NETWORK on interface object: PASS
+	MediaError interface: constant MEDIA_ERR_NETWORK on interface prototype object: PASS
+	MediaError interface: constant MEDIA_ERR_SRC_NOT_SUPPORTED on interface object: PASS
+	MediaError interface: constant MEDIA_ERR_SRC_NOT_SUPPORTED on interface prototype object: PASS
+	MediaError interface: existence and properties of interface object: PASS
+	MediaError interface: existence and properties of interface prototype object: PASS
+	MediaError interface: existence and properties of interface prototype object's "constructor" property: PASS
+	MediaError interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	MessageChannel interface object length: PASS
 	MessageChannel interface object name: PASS
 	MessageChannel interface: attribute port1: PASS
@@ -4872,19 +4872,19 @@
 	NotRestoredReasons interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	NotRestoredReasons interface: existence and properties of interface prototype object's @@unscopables property: FAIL
 	NotRestoredReasons interface: operation toJSON(): FAIL
-	OffscreenCanvas interface object length: FAIL
-	OffscreenCanvas interface object name: FAIL
-	OffscreenCanvas interface: attribute height: FAIL
-	OffscreenCanvas interface: attribute oncontextlost: FAIL
-	OffscreenCanvas interface: attribute oncontextrestored: FAIL
-	OffscreenCanvas interface: attribute width: FAIL
-	OffscreenCanvas interface: existence and properties of interface object: FAIL
-	OffscreenCanvas interface: existence and properties of interface prototype object: FAIL
-	OffscreenCanvas interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	OffscreenCanvas interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	OffscreenCanvas interface: operation convertToBlob(optional ImageEncodeOptions): FAIL
-	OffscreenCanvas interface: operation getContext(OffscreenRenderingContextId, optional any): FAIL
-	OffscreenCanvas interface: operation transferToImageBitmap(): FAIL
+	OffscreenCanvas interface object length: PASS
+	OffscreenCanvas interface object name: PASS
+	OffscreenCanvas interface: attribute height: PASS
+	OffscreenCanvas interface: attribute oncontextlost: PASS
+	OffscreenCanvas interface: attribute oncontextrestored: PASS
+	OffscreenCanvas interface: attribute width: PASS
+	OffscreenCanvas interface: existence and properties of interface object: PASS
+	OffscreenCanvas interface: existence and properties of interface prototype object: PASS
+	OffscreenCanvas interface: existence and properties of interface prototype object's "constructor" property: PASS
+	OffscreenCanvas interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	OffscreenCanvas interface: operation convertToBlob(optional ImageEncodeOptions): PASS
+	OffscreenCanvas interface: operation getContext(OffscreenRenderingContextId, optional any): PASS
+	OffscreenCanvas interface: operation transferToImageBitmap(): PASS
 	OffscreenCanvasRenderingContext2D includes CanvasCompositing: member names are unique: PASS
 	OffscreenCanvasRenderingContext2D includes CanvasDrawImage: member names are unique: PASS
 	OffscreenCanvasRenderingContext2D includes CanvasDrawPath: member names are unique: PASS
@@ -4901,94 +4901,94 @@
 	OffscreenCanvasRenderingContext2D includes CanvasText: member names are unique: PASS
 	OffscreenCanvasRenderingContext2D includes CanvasTextDrawingStyles: member names are unique: PASS
 	OffscreenCanvasRenderingContext2D includes CanvasTransform: member names are unique: PASS
-	OffscreenCanvasRenderingContext2D interface object length: FAIL
-	OffscreenCanvasRenderingContext2D interface object name: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute canvas: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute direction: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute fillStyle: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute filter: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute font: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute fontKerning: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute fontStretch: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute fontVariantCaps: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute globalAlpha: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute globalCompositeOperation: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute imageSmoothingEnabled: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute imageSmoothingQuality: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute lang: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute letterSpacing: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute lineCap: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute lineDashOffset: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute lineJoin: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute lineWidth: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute miterLimit: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute shadowBlur: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute shadowColor: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute shadowOffsetX: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute shadowOffsetY: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute strokeStyle: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute textAlign: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute textBaseline: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute textRendering: FAIL
-	OffscreenCanvasRenderingContext2D interface: attribute wordSpacing: FAIL
-	OffscreenCanvasRenderingContext2D interface: existence and properties of interface object: FAIL
-	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object: FAIL
-	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	OffscreenCanvasRenderingContext2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation beginPath(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation clearRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation clip(Path2D, optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation clip(optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation closePath(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createConicGradient(double, double, double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createImageData(ImageData): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createImageData(long, long, optional ImageDataSettings): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createLinearGradient(double, double, double, double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createPattern(CanvasImageSource, DOMString): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation createRadialGradient(double, double, double, double, double, double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation fill(Path2D, optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation fill(optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation fillRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation fillText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation getContextAttributes(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation getImageData(long, long, long, long, optional ImageDataSettings): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation getLineDash(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation getTransform(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation isContextLost(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation isPointInPath(Path2D, unrestricted double, unrestricted double, optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation isPointInPath(unrestricted double, unrestricted double, optional CanvasFillRule): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation isPointInStroke(Path2D, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation lineTo(unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation measureText(DOMString): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation moveTo(unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation putImageData(ImageData, long, long): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation putImageData(ImageData, long, long, long, long, long, long): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation reset(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation resetTransform(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation restore(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation rotate(unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation save(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation scale(unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation setLineDash(sequence<unrestricted double>): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation setTransform(optional DOMMatrix2DInit): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation setTransform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation stroke(): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation stroke(Path2D): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation strokeRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation strokeText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation transform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	OffscreenCanvasRenderingContext2D interface: operation translate(unrestricted double, unrestricted double): FAIL
+	OffscreenCanvasRenderingContext2D interface object length: PASS
+	OffscreenCanvasRenderingContext2D interface object name: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute canvas: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute direction: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute fillStyle: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute filter: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute font: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute fontKerning: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute fontStretch: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute fontVariantCaps: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute globalAlpha: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute globalCompositeOperation: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute imageSmoothingEnabled: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute imageSmoothingQuality: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute lang: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute letterSpacing: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute lineCap: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute lineDashOffset: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute lineJoin: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute lineWidth: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute miterLimit: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute shadowBlur: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute shadowColor: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute shadowOffsetX: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute shadowOffsetY: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute strokeStyle: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute textAlign: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute textBaseline: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute textRendering: PASS
+	OffscreenCanvasRenderingContext2D interface: attribute wordSpacing: PASS
+	OffscreenCanvasRenderingContext2D interface: existence and properties of interface object: PASS
+	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object: PASS
+	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object's "constructor" property: PASS
+	OffscreenCanvasRenderingContext2D interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	OffscreenCanvasRenderingContext2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	OffscreenCanvasRenderingContext2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation beginPath(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation clearRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation clip(Path2D, optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation clip(optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation closePath(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createConicGradient(double, double, double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createImageData(ImageData): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createImageData(long, long, optional ImageDataSettings): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createLinearGradient(double, double, double, double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createPattern(CanvasImageSource, DOMString): PASS
+	OffscreenCanvasRenderingContext2D interface: operation createRadialGradient(double, double, double, double, double, double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation drawImage(CanvasImageSource, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	OffscreenCanvasRenderingContext2D interface: operation fill(Path2D, optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation fill(optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation fillRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation fillText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation getContextAttributes(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation getImageData(long, long, long, long, optional ImageDataSettings): PASS
+	OffscreenCanvasRenderingContext2D interface: operation getLineDash(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation getTransform(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation isContextLost(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation isPointInPath(Path2D, unrestricted double, unrestricted double, optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation isPointInPath(unrestricted double, unrestricted double, optional CanvasFillRule): PASS
+	OffscreenCanvasRenderingContext2D interface: operation isPointInStroke(Path2D, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation isPointInStroke(unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation lineTo(unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation measureText(DOMString): PASS
+	OffscreenCanvasRenderingContext2D interface: operation moveTo(unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation putImageData(ImageData, long, long): PASS
+	OffscreenCanvasRenderingContext2D interface: operation putImageData(ImageData, long, long, long, long, long, long): PASS
+	OffscreenCanvasRenderingContext2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation reset(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation resetTransform(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation restore(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation rotate(unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): PASS
+	OffscreenCanvasRenderingContext2D interface: operation save(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation scale(unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation setLineDash(sequence<unrestricted double>): PASS
+	OffscreenCanvasRenderingContext2D interface: operation setTransform(optional DOMMatrix2DInit): PASS
+	OffscreenCanvasRenderingContext2D interface: operation setTransform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation stroke(): PASS
+	OffscreenCanvasRenderingContext2D interface: operation stroke(Path2D): PASS
+	OffscreenCanvasRenderingContext2D interface: operation strokeRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation strokeText(DOMString, unrestricted double, unrestricted double, optional unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation transform(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	OffscreenCanvasRenderingContext2D interface: operation translate(unrestricted double, unrestricted double): PASS
 	Origin interface object length: FAIL
 	Origin interface object name: FAIL
 	Origin interface: attribute opaque: FAIL
@@ -5045,23 +5045,23 @@
 	Partial interface mixin NonDocumentTypeChildNode: member names are unique: PASS
 	Partial interface mixin NonDocumentTypeChildNode: original interface mixin defined: PASS
 	Path2D includes CanvasPath: member names are unique: PASS
-	Path2D interface object length: FAIL
-	Path2D interface object name: FAIL
-	Path2D interface: existence and properties of interface object: FAIL
-	Path2D interface: existence and properties of interface prototype object: FAIL
-	Path2D interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	Path2D interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	Path2D interface: operation addPath(Path2D, optional DOMMatrix2DInit): FAIL
-	Path2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	Path2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation closePath(): FAIL
-	Path2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): FAIL
-	Path2D interface: operation lineTo(unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation moveTo(unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): FAIL
-	Path2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): FAIL
+	Path2D interface object length: PASS
+	Path2D interface object name: PASS
+	Path2D interface: existence and properties of interface object: PASS
+	Path2D interface: existence and properties of interface prototype object: PASS
+	Path2D interface: existence and properties of interface prototype object's "constructor" property: PASS
+	Path2D interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	Path2D interface: operation addPath(Path2D, optional DOMMatrix2DInit): PASS
+	Path2D interface: operation arc(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	Path2D interface: operation arcTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	Path2D interface: operation bezierCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	Path2D interface: operation closePath(): PASS
+	Path2D interface: operation ellipse(unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional boolean): PASS
+	Path2D interface: operation lineTo(unrestricted double, unrestricted double): PASS
+	Path2D interface: operation moveTo(unrestricted double, unrestricted double): PASS
+	Path2D interface: operation quadraticCurveTo(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	Path2D interface: operation rect(unrestricted double, unrestricted double, unrestricted double, unrestricted double): PASS
+	Path2D interface: operation roundRect(unrestricted double, unrestricted double, unrestricted double, unrestricted double, optional (unrestricted double or DOMPointInit or sequence<(unrestricted double or DOMPointInit)>)): PASS
 	Plugin interface object length: FAIL
 	Plugin interface object name: FAIL
 	Plugin interface: attribute description: FAIL
@@ -5259,14 +5259,14 @@
 	ShadowRoot interface: operation setHTML(DOMString, optional SetHTMLOptions): FAIL
 	ShadowRoot interface: operation setHTMLUnsafe((TrustedHTML or DOMString), optional (SetHTMLUnsafeOptions or TrustedHTMLParserOptions)): PASS
 	SharedWorker includes AbstractWorker: member names are unique: PASS
-	SharedWorker interface object length: FAIL
-	SharedWorker interface object name: FAIL
-	SharedWorker interface: attribute onerror: FAIL
-	SharedWorker interface: attribute port: FAIL
-	SharedWorker interface: existence and properties of interface object: FAIL
-	SharedWorker interface: existence and properties of interface prototype object: FAIL
-	SharedWorker interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	SharedWorker interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	SharedWorker interface object length: PASS
+	SharedWorker interface object name: PASS
+	SharedWorker interface: attribute onerror: PASS
+	SharedWorker interface: attribute port: PASS
+	SharedWorker interface: existence and properties of interface object: PASS
+	SharedWorker interface: existence and properties of interface prototype object: PASS
+	SharedWorker interface: existence and properties of interface prototype object's "constructor" property: PASS
+	SharedWorker interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	SharedWorkerGlobalScope interface: existence and properties of interface object: PASS
 	Storage interface object length: PASS
 	Storage interface object name: PASS
@@ -5299,24 +5299,24 @@
 	SubmitEvent interface: existence and properties of interface prototype object: FAIL
 	SubmitEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	SubmitEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	TextMetrics interface object length: FAIL
-	TextMetrics interface object name: FAIL
-	TextMetrics interface: attribute actualBoundingBoxAscent: FAIL
-	TextMetrics interface: attribute actualBoundingBoxDescent: FAIL
-	TextMetrics interface: attribute actualBoundingBoxLeft: FAIL
-	TextMetrics interface: attribute actualBoundingBoxRight: FAIL
-	TextMetrics interface: attribute alphabeticBaseline: FAIL
-	TextMetrics interface: attribute emHeightAscent: FAIL
-	TextMetrics interface: attribute emHeightDescent: FAIL
-	TextMetrics interface: attribute fontBoundingBoxAscent: FAIL
-	TextMetrics interface: attribute fontBoundingBoxDescent: FAIL
-	TextMetrics interface: attribute hangingBaseline: FAIL
-	TextMetrics interface: attribute ideographicBaseline: FAIL
-	TextMetrics interface: attribute width: FAIL
-	TextMetrics interface: existence and properties of interface object: FAIL
-	TextMetrics interface: existence and properties of interface prototype object: FAIL
-	TextMetrics interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	TextMetrics interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	TextMetrics interface object length: PASS
+	TextMetrics interface object name: PASS
+	TextMetrics interface: attribute actualBoundingBoxAscent: PASS
+	TextMetrics interface: attribute actualBoundingBoxDescent: PASS
+	TextMetrics interface: attribute actualBoundingBoxLeft: PASS
+	TextMetrics interface: attribute actualBoundingBoxRight: PASS
+	TextMetrics interface: attribute alphabeticBaseline: PASS
+	TextMetrics interface: attribute emHeightAscent: PASS
+	TextMetrics interface: attribute emHeightDescent: PASS
+	TextMetrics interface: attribute fontBoundingBoxAscent: PASS
+	TextMetrics interface: attribute fontBoundingBoxDescent: PASS
+	TextMetrics interface: attribute hangingBaseline: PASS
+	TextMetrics interface: attribute ideographicBaseline: PASS
+	TextMetrics interface: attribute width: PASS
+	TextMetrics interface: existence and properties of interface object: PASS
+	TextMetrics interface: existence and properties of interface prototype object: PASS
+	TextMetrics interface: existence and properties of interface prototype object's "constructor" property: PASS
+	TextMetrics interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	TextTrack interface object length: FAIL
 	TextTrack interface object name: FAIL
 	TextTrack interface: attribute activeCues: FAIL
@@ -5366,24 +5366,24 @@
 	TextTrackList interface: existence and properties of interface prototype object's "constructor" property: FAIL
 	TextTrackList interface: existence and properties of interface prototype object's @@unscopables property: FAIL
 	TextTrackList interface: operation getTrackById(DOMString): FAIL
-	TimeRanges interface object length: FAIL
-	TimeRanges interface object name: FAIL
-	TimeRanges interface: attribute length: FAIL
-	TimeRanges interface: existence and properties of interface object: FAIL
-	TimeRanges interface: existence and properties of interface prototype object: FAIL
-	TimeRanges interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	TimeRanges interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	TimeRanges interface: operation end(unsigned long): FAIL
-	TimeRanges interface: operation start(unsigned long): FAIL
-	ToggleEvent interface object length: FAIL
-	ToggleEvent interface object name: FAIL
-	ToggleEvent interface: attribute newState: FAIL
-	ToggleEvent interface: attribute oldState: FAIL
-	ToggleEvent interface: attribute source: FAIL
-	ToggleEvent interface: existence and properties of interface object: FAIL
-	ToggleEvent interface: existence and properties of interface prototype object: FAIL
-	ToggleEvent interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	ToggleEvent interface: existence and properties of interface prototype object's @@unscopables property: FAIL
+	TimeRanges interface object length: PASS
+	TimeRanges interface object name: PASS
+	TimeRanges interface: attribute length: PASS
+	TimeRanges interface: existence and properties of interface object: PASS
+	TimeRanges interface: existence and properties of interface prototype object: PASS
+	TimeRanges interface: existence and properties of interface prototype object's "constructor" property: PASS
+	TimeRanges interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	TimeRanges interface: operation end(unsigned long): PASS
+	TimeRanges interface: operation start(unsigned long): PASS
+	ToggleEvent interface object length: PASS
+	ToggleEvent interface object name: PASS
+	ToggleEvent interface: attribute newState: PASS
+	ToggleEvent interface: attribute oldState: PASS
+	ToggleEvent interface: attribute source: PASS
+	ToggleEvent interface: existence and properties of interface object: PASS
+	ToggleEvent interface: existence and properties of interface prototype object: PASS
+	ToggleEvent interface: existence and properties of interface prototype object's "constructor" property: PASS
+	ToggleEvent interface: existence and properties of interface prototype object's @@unscopables property: PASS
 	TrackEvent interface object length: FAIL
 	TrackEvent interface object name: FAIL
 	TrackEvent interface: attribute track: FAIL
@@ -5485,13 +5485,13 @@
 	Worklet interface: existence and properties of interface prototype object's @@unscopables property: FAIL
 	Worklet interface: operation addModule(USVString, optional WorkletOptions): FAIL
 	WorkletGlobalScope interface: existence and properties of interface object: PASS
-	XMLSerializer interface object length: FAIL
-	XMLSerializer interface object name: FAIL
-	XMLSerializer interface: existence and properties of interface object: FAIL
-	XMLSerializer interface: existence and properties of interface prototype object: FAIL
-	XMLSerializer interface: existence and properties of interface prototype object's "constructor" property: FAIL
-	XMLSerializer interface: existence and properties of interface prototype object's @@unscopables property: FAIL
-	XMLSerializer interface: operation serializeToString(Node): FAIL
+	XMLSerializer interface object length: PASS
+	XMLSerializer interface object name: PASS
+	XMLSerializer interface: existence and properties of interface object: PASS
+	XMLSerializer interface: existence and properties of interface prototype object: PASS
+	XMLSerializer interface: existence and properties of interface prototype object's "constructor" property: PASS
+	XMLSerializer interface: existence and properties of interface prototype object's @@unscopables property: PASS
+	XMLSerializer interface: operation serializeToString(Node): PASS
 	idl_test setup: FAIL
 	idl_test validation: PASS
 /html/dom/idlharness.https.html?include=(Document|Window): OK
@@ -5734,8 +5734,8 @@
 	HTMLButtonElement interface: attribute formTarget: PASS
 	HTMLButtonElement interface: attribute labels: PASS
 	HTMLButtonElement interface: attribute name: PASS
-	HTMLButtonElement interface: attribute popoverTargetAction: FAIL
-	HTMLButtonElement interface: attribute popoverTargetElement: FAIL
+	HTMLButtonElement interface: attribute popoverTargetAction: PASS
+	HTMLButtonElement interface: attribute popoverTargetElement: PASS
 	HTMLButtonElement interface: attribute type: PASS
 	HTMLButtonElement interface: attribute validationMessage: PASS
 	HTMLButtonElement interface: attribute validity: PASS
@@ -5750,15 +5750,15 @@
 	HTMLButtonElement interface: operation setCustomValidity(DOMString): PASS
 	HTMLCanvasElement interface object length: PASS
 	HTMLCanvasElement interface object name: PASS
-	HTMLCanvasElement interface: attribute height: FAIL
-	HTMLCanvasElement interface: attribute width: FAIL
+	HTMLCanvasElement interface: attribute height: PASS
+	HTMLCanvasElement interface: attribute width: PASS
 	HTMLCanvasElement interface: existence and properties of interface object: FAIL
 	HTMLCanvasElement interface: existence and properties of interface prototype object: PASS
 	HTMLCanvasElement interface: existence and properties of interface prototype object's "constructor" property: PASS
 	HTMLCanvasElement interface: existence and properties of interface prototype object's @@unscopables property: PASS
-	HTMLCanvasElement interface: operation getContext(DOMString, optional any): FAIL
-	HTMLCanvasElement interface: operation toBlob(BlobCallback, optional DOMString, optional any): FAIL
-	HTMLCanvasElement interface: operation toDataURL(optional DOMString, optional any): FAIL
+	HTMLCanvasElement interface: operation getContext(DOMString, optional any): PASS
+	HTMLCanvasElement interface: operation toBlob(BlobCallback, optional DOMString, optional any): PASS
+	HTMLCanvasElement interface: operation toDataURL(optional DOMString, optional any): PASS
 	HTMLCanvasElement interface: operation transferControlToOffscreen(): FAIL
 	HTMLDListElement interface object length: PASS
 	HTMLDListElement interface object name: PASS
@@ -5918,7 +5918,7 @@
 	HTMLElement interface: attribute onwebkittransitionend: PASS
 	HTMLElement interface: attribute onwheel: PASS
 	HTMLElement interface: attribute outerText: PASS
-	HTMLElement interface: attribute popover: FAIL
+	HTMLElement interface: attribute popover: PASS
 	HTMLElement interface: attribute spellcheck: PASS
 	HTMLElement interface: attribute tabIndex: PASS
 	HTMLElement interface: attribute title: PASS
@@ -5932,9 +5932,9 @@
 	HTMLElement interface: operation blur(): PASS
 	HTMLElement interface: operation click(): PASS
 	HTMLElement interface: operation focus(optional FocusOptions): PASS
-	HTMLElement interface: operation hidePopover(): FAIL
-	HTMLElement interface: operation showPopover(optional ShowPopoverOptions): FAIL
-	HTMLElement interface: operation togglePopover(optional (TogglePopoverOptions or boolean)): FAIL
+	HTMLElement interface: operation hidePopover(): PASS
+	HTMLElement interface: operation showPopover(optional ShowPopoverOptions): PASS
+	HTMLElement interface: operation togglePopover(optional (TogglePopoverOptions or boolean)): PASS
 	HTMLEmbedElement interface object length: PASS
 	HTMLEmbedElement interface object name: PASS
 	HTMLEmbedElement interface: attribute align: PASS
@@ -6156,7 +6156,7 @@
 	HTMLInputElement interface: attribute defaultValue: PASS
 	HTMLInputElement interface: attribute dirName: PASS
 	HTMLInputElement interface: attribute disabled: PASS
-	HTMLInputElement interface: attribute files: FAIL
+	HTMLInputElement interface: attribute files: PASS
 	HTMLInputElement interface: attribute form: PASS
 	HTMLInputElement interface: attribute formAction: PASS
 	HTMLInputElement interface: attribute formEnctype: PASS
@@ -6175,8 +6175,8 @@
 	HTMLInputElement interface: attribute name: PASS
 	HTMLInputElement interface: attribute pattern: PASS
 	HTMLInputElement interface: attribute placeholder: PASS
-	HTMLInputElement interface: attribute popoverTargetAction: FAIL
-	HTMLInputElement interface: attribute popoverTargetElement: FAIL
+	HTMLInputElement interface: attribute popoverTargetAction: PASS
+	HTMLInputElement interface: attribute popoverTargetElement: PASS
 	HTMLInputElement interface: attribute readOnly: PASS
 	HTMLInputElement interface: attribute required: PASS
 	HTMLInputElement interface: attribute selectionDirection: PASS
@@ -6290,9 +6290,9 @@
 	HTMLMediaElement interface object name: PASS
 	HTMLMediaElement interface: attribute audioTracks: FAIL
 	HTMLMediaElement interface: attribute autoplay: PASS
-	HTMLMediaElement interface: attribute buffered: FAIL
+	HTMLMediaElement interface: attribute buffered: PASS
 	HTMLMediaElement interface: attribute controls: PASS
-	HTMLMediaElement interface: attribute crossOrigin: FAIL
+	HTMLMediaElement interface: attribute crossOrigin: PASS
 	HTMLMediaElement interface: attribute currentSrc: PASS
 	HTMLMediaElement interface: attribute currentTime: PASS
 	HTMLMediaElement interface: attribute defaultMuted: PASS
@@ -6306,14 +6306,14 @@
 	HTMLMediaElement interface: attribute networkState: PASS
 	HTMLMediaElement interface: attribute paused: PASS
 	HTMLMediaElement interface: attribute playbackRate: PASS
-	HTMLMediaElement interface: attribute played: FAIL
-	HTMLMediaElement interface: attribute preload: FAIL
+	HTMLMediaElement interface: attribute played: PASS
+	HTMLMediaElement interface: attribute preload: PASS
 	HTMLMediaElement interface: attribute preservesPitch: PASS
 	HTMLMediaElement interface: attribute readyState: PASS
-	HTMLMediaElement interface: attribute seekable: FAIL
+	HTMLMediaElement interface: attribute seekable: PASS
 	HTMLMediaElement interface: attribute seeking: PASS
 	HTMLMediaElement interface: attribute src: PASS
-	HTMLMediaElement interface: attribute srcObject: FAIL
+	HTMLMediaElement interface: attribute srcObject: PASS
 	HTMLMediaElement interface: attribute textTracks: FAIL
 	HTMLMediaElement interface: attribute videoTracks: FAIL
 	HTMLMediaElement interface: attribute volume: PASS
@@ -6835,8 +6835,8 @@
 	HTMLVideoElement interface: attribute height: PASS
 	HTMLVideoElement interface: attribute playsInline: PASS
 	HTMLVideoElement interface: attribute poster: PASS
-	HTMLVideoElement interface: attribute videoHeight: FAIL
-	HTMLVideoElement interface: attribute videoWidth: FAIL
+	HTMLVideoElement interface: attribute videoHeight: PASS
+	HTMLVideoElement interface: attribute videoWidth: PASS
 	HTMLVideoElement interface: attribute width: PASS
 	HTMLVideoElement interface: existence and properties of interface object: FAIL
 	HTMLVideoElement interface: existence and properties of interface prototype object: PASS
@@ -8081,68 +8081,68 @@
 	audio.controls: setAttribute() to true: PASS
 	audio.controls: setAttribute() to undefined: PASS
 	audio.controls: typeof IDL attribute: PASS
-	audio.crossOrigin: IDL get with DOM attribute unset: FAIL
-	audio.crossOrigin: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.crossOrigin: IDL set to "": FAIL
-	audio.crossOrigin: IDL set to "+100": FAIL
-	audio.crossOrigin: IDL set to ".5": FAIL
-	audio.crossOrigin: IDL set to "5%": FAIL
-	audio.crossOrigin: IDL set to "ANONYMOUS": FAIL
-	audio.crossOrigin: IDL set to "USE-CREDENTIALS": FAIL
-	audio.crossOrigin: IDL set to "\\0": FAIL
-	audio.crossOrigin: IDL set to "anonymous": FAIL
-	audio.crossOrigin: IDL set to "anonymous\\0": FAIL
-	audio.crossOrigin: IDL set to "anonymouſ": FAIL
-	audio.crossOrigin: IDL set to "nonymous": FAIL
-	audio.crossOrigin: IDL set to "se-credentials": FAIL
-	audio.crossOrigin: IDL set to "use-credentials": FAIL
-	audio.crossOrigin: IDL set to "use-credentials\\0": FAIL
-	audio.crossOrigin: IDL set to "uſe-credentialſ": FAIL
-	audio.crossOrigin: IDL set to "xanonymous": FAIL
-	audio.crossOrigin: IDL set to "xuse-credentials": FAIL
-	audio.crossOrigin: IDL set to -Infinity: FAIL
-	audio.crossOrigin: IDL set to 1.5: FAIL
-	audio.crossOrigin: IDL set to 7: FAIL
-	audio.crossOrigin: IDL set to Infinity: FAIL
-	audio.crossOrigin: IDL set to NaN: FAIL
-	audio.crossOrigin: IDL set to false: FAIL
-	audio.crossOrigin: IDL set to null: FAIL
-	audio.crossOrigin: IDL set to object "[object Object]": FAIL
-	audio.crossOrigin: IDL set to object "test-toString": FAIL
-	audio.crossOrigin: IDL set to object "test-valueOf": FAIL
-	audio.crossOrigin: IDL set to true: FAIL
+	audio.crossOrigin: IDL get with DOM attribute unset: PASS
+	audio.crossOrigin: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.crossOrigin: IDL set to "": PASS
+	audio.crossOrigin: IDL set to "+100": PASS
+	audio.crossOrigin: IDL set to ".5": PASS
+	audio.crossOrigin: IDL set to "5%": PASS
+	audio.crossOrigin: IDL set to "ANONYMOUS": PASS
+	audio.crossOrigin: IDL set to "USE-CREDENTIALS": PASS
+	audio.crossOrigin: IDL set to "\\0": PASS
+	audio.crossOrigin: IDL set to "anonymous": PASS
+	audio.crossOrigin: IDL set to "anonymous\\0": PASS
+	audio.crossOrigin: IDL set to "anonymouſ": PASS
+	audio.crossOrigin: IDL set to "nonymous": PASS
+	audio.crossOrigin: IDL set to "se-credentials": PASS
+	audio.crossOrigin: IDL set to "use-credentials": PASS
+	audio.crossOrigin: IDL set to "use-credentials\\0": PASS
+	audio.crossOrigin: IDL set to "uſe-credentialſ": PASS
+	audio.crossOrigin: IDL set to "xanonymous": PASS
+	audio.crossOrigin: IDL set to "xuse-credentials": PASS
+	audio.crossOrigin: IDL set to -Infinity: PASS
+	audio.crossOrigin: IDL set to 1.5: PASS
+	audio.crossOrigin: IDL set to 7: PASS
+	audio.crossOrigin: IDL set to Infinity: PASS
+	audio.crossOrigin: IDL set to NaN: PASS
+	audio.crossOrigin: IDL set to false: PASS
+	audio.crossOrigin: IDL set to null: PASS
+	audio.crossOrigin: IDL set to object "[object Object]": PASS
+	audio.crossOrigin: IDL set to object "test-toString": PASS
+	audio.crossOrigin: IDL set to object "test-valueOf": PASS
+	audio.crossOrigin: IDL set to true: PASS
 	audio.crossOrigin: IDL set to undefined: FAIL
-	audio.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.crossOrigin: setAttribute() to "": FAIL
-	audio.crossOrigin: setAttribute() to "+100": FAIL
-	audio.crossOrigin: setAttribute() to ".5": FAIL
-	audio.crossOrigin: setAttribute() to "5%": FAIL
-	audio.crossOrigin: setAttribute() to "ANONYMOUS": FAIL
-	audio.crossOrigin: setAttribute() to "USE-CREDENTIALS": FAIL
-	audio.crossOrigin: setAttribute() to "\\0": FAIL
-	audio.crossOrigin: setAttribute() to "anonymous": FAIL
-	audio.crossOrigin: setAttribute() to "anonymous\\0": FAIL
-	audio.crossOrigin: setAttribute() to "anonymouſ": FAIL
-	audio.crossOrigin: setAttribute() to "nonymous": FAIL
-	audio.crossOrigin: setAttribute() to "se-credentials": FAIL
-	audio.crossOrigin: setAttribute() to "use-credentials": FAIL
-	audio.crossOrigin: setAttribute() to "use-credentials\\0": FAIL
-	audio.crossOrigin: setAttribute() to "uſe-credentialſ": FAIL
-	audio.crossOrigin: setAttribute() to "xanonymous": FAIL
-	audio.crossOrigin: setAttribute() to "xuse-credentials": FAIL
-	audio.crossOrigin: setAttribute() to -Infinity: FAIL
-	audio.crossOrigin: setAttribute() to 1.5: FAIL
-	audio.crossOrigin: setAttribute() to 7: FAIL
-	audio.crossOrigin: setAttribute() to Infinity: FAIL
-	audio.crossOrigin: setAttribute() to NaN: FAIL
-	audio.crossOrigin: setAttribute() to false: FAIL
-	audio.crossOrigin: setAttribute() to null: FAIL
-	audio.crossOrigin: setAttribute() to object "[object Object]": FAIL
-	audio.crossOrigin: setAttribute() to object "test-toString": FAIL
-	audio.crossOrigin: setAttribute() to object "test-valueOf": FAIL
-	audio.crossOrigin: setAttribute() to true: FAIL
-	audio.crossOrigin: setAttribute() to undefined: FAIL
-	audio.crossOrigin: typeof IDL attribute: FAIL
+	audio.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.crossOrigin: setAttribute() to "": PASS
+	audio.crossOrigin: setAttribute() to "+100": PASS
+	audio.crossOrigin: setAttribute() to ".5": PASS
+	audio.crossOrigin: setAttribute() to "5%": PASS
+	audio.crossOrigin: setAttribute() to "ANONYMOUS": PASS
+	audio.crossOrigin: setAttribute() to "USE-CREDENTIALS": PASS
+	audio.crossOrigin: setAttribute() to "\\0": PASS
+	audio.crossOrigin: setAttribute() to "anonymous": PASS
+	audio.crossOrigin: setAttribute() to "anonymous\\0": PASS
+	audio.crossOrigin: setAttribute() to "anonymouſ": PASS
+	audio.crossOrigin: setAttribute() to "nonymous": PASS
+	audio.crossOrigin: setAttribute() to "se-credentials": PASS
+	audio.crossOrigin: setAttribute() to "use-credentials": PASS
+	audio.crossOrigin: setAttribute() to "use-credentials\\0": PASS
+	audio.crossOrigin: setAttribute() to "uſe-credentialſ": PASS
+	audio.crossOrigin: setAttribute() to "xanonymous": PASS
+	audio.crossOrigin: setAttribute() to "xuse-credentials": PASS
+	audio.crossOrigin: setAttribute() to -Infinity: PASS
+	audio.crossOrigin: setAttribute() to 1.5: PASS
+	audio.crossOrigin: setAttribute() to 7: PASS
+	audio.crossOrigin: setAttribute() to Infinity: PASS
+	audio.crossOrigin: setAttribute() to NaN: PASS
+	audio.crossOrigin: setAttribute() to false: PASS
+	audio.crossOrigin: setAttribute() to null: PASS
+	audio.crossOrigin: setAttribute() to object "[object Object]": PASS
+	audio.crossOrigin: setAttribute() to object "test-toString": PASS
+	audio.crossOrigin: setAttribute() to object "test-valueOf": PASS
+	audio.crossOrigin: setAttribute() to true: PASS
+	audio.crossOrigin: setAttribute() to undefined: PASS
+	audio.crossOrigin: typeof IDL attribute: PASS
 	audio.defaultMuted (<audio muted>): IDL get with DOM attribute unset: PASS
 	audio.defaultMuted (<audio muted>): IDL set to " foo ": PASS
 	audio.defaultMuted (<audio muted>): IDL set to "": PASS
@@ -8463,74 +8463,74 @@
 	audio.loop: setAttribute() to true: PASS
 	audio.loop: setAttribute() to undefined: PASS
 	audio.loop: typeof IDL attribute: PASS
-	audio.preload: IDL get with DOM attribute unset: FAIL
-	audio.preload: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.preload: IDL set to "": FAIL
-	audio.preload: IDL set to "+100": FAIL
-	audio.preload: IDL set to ".5": FAIL
-	audio.preload: IDL set to "5%": FAIL
-	audio.preload: IDL set to "AUTO": FAIL
-	audio.preload: IDL set to "METADATA": FAIL
-	audio.preload: IDL set to "NONE": FAIL
-	audio.preload: IDL set to "\\0": FAIL
-	audio.preload: IDL set to "auto": FAIL
-	audio.preload: IDL set to "auto\\0": FAIL
-	audio.preload: IDL set to "etadata": FAIL
-	audio.preload: IDL set to "metadata": FAIL
-	audio.preload: IDL set to "metadata\\0": FAIL
-	audio.preload: IDL set to "none": FAIL
-	audio.preload: IDL set to "none\\0": FAIL
-	audio.preload: IDL set to "one": FAIL
-	audio.preload: IDL set to "uto": FAIL
-	audio.preload: IDL set to "xauto": FAIL
-	audio.preload: IDL set to "xmetadata": FAIL
-	audio.preload: IDL set to "xnone": FAIL
-	audio.preload: IDL set to -Infinity: FAIL
-	audio.preload: IDL set to 1.5: FAIL
-	audio.preload: IDL set to 7: FAIL
-	audio.preload: IDL set to Infinity: FAIL
-	audio.preload: IDL set to NaN: FAIL
-	audio.preload: IDL set to false: FAIL
-	audio.preload: IDL set to null: FAIL
-	audio.preload: IDL set to object "[object Object]": FAIL
-	audio.preload: IDL set to object "test-toString": FAIL
-	audio.preload: IDL set to object "test-valueOf": FAIL
-	audio.preload: IDL set to true: FAIL
-	audio.preload: IDL set to undefined: FAIL
-	audio.preload: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	audio.preload: setAttribute() to "": FAIL
-	audio.preload: setAttribute() to "+100": FAIL
-	audio.preload: setAttribute() to ".5": FAIL
-	audio.preload: setAttribute() to "5%": FAIL
-	audio.preload: setAttribute() to "AUTO": FAIL
-	audio.preload: setAttribute() to "METADATA": FAIL
-	audio.preload: setAttribute() to "NONE": FAIL
-	audio.preload: setAttribute() to "\\0": FAIL
-	audio.preload: setAttribute() to "auto": FAIL
-	audio.preload: setAttribute() to "auto\\0": FAIL
-	audio.preload: setAttribute() to "etadata": FAIL
-	audio.preload: setAttribute() to "metadata": FAIL
-	audio.preload: setAttribute() to "metadata\\0": FAIL
-	audio.preload: setAttribute() to "none": FAIL
-	audio.preload: setAttribute() to "none\\0": FAIL
-	audio.preload: setAttribute() to "one": FAIL
-	audio.preload: setAttribute() to "uto": FAIL
-	audio.preload: setAttribute() to "xauto": FAIL
-	audio.preload: setAttribute() to "xmetadata": FAIL
-	audio.preload: setAttribute() to "xnone": FAIL
-	audio.preload: setAttribute() to -Infinity: FAIL
-	audio.preload: setAttribute() to 1.5: FAIL
-	audio.preload: setAttribute() to 7: FAIL
-	audio.preload: setAttribute() to Infinity: FAIL
-	audio.preload: setAttribute() to NaN: FAIL
-	audio.preload: setAttribute() to false: FAIL
-	audio.preload: setAttribute() to null: FAIL
-	audio.preload: setAttribute() to object "[object Object]": FAIL
-	audio.preload: setAttribute() to object "test-toString": FAIL
-	audio.preload: setAttribute() to object "test-valueOf": FAIL
-	audio.preload: setAttribute() to true: FAIL
-	audio.preload: setAttribute() to undefined: FAIL
-	audio.preload: typeof IDL attribute: FAIL
+	audio.preload: IDL get with DOM attribute unset: PASS
+	audio.preload: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.preload: IDL set to "": PASS
+	audio.preload: IDL set to "+100": PASS
+	audio.preload: IDL set to ".5": PASS
+	audio.preload: IDL set to "5%": PASS
+	audio.preload: IDL set to "AUTO": PASS
+	audio.preload: IDL set to "METADATA": PASS
+	audio.preload: IDL set to "NONE": PASS
+	audio.preload: IDL set to "\\0": PASS
+	audio.preload: IDL set to "auto": PASS
+	audio.preload: IDL set to "auto\\0": PASS
+	audio.preload: IDL set to "etadata": PASS
+	audio.preload: IDL set to "metadata": PASS
+	audio.preload: IDL set to "metadata\\0": PASS
+	audio.preload: IDL set to "none": PASS
+	audio.preload: IDL set to "none\\0": PASS
+	audio.preload: IDL set to "one": PASS
+	audio.preload: IDL set to "uto": PASS
+	audio.preload: IDL set to "xauto": PASS
+	audio.preload: IDL set to "xmetadata": PASS
+	audio.preload: IDL set to "xnone": PASS
+	audio.preload: IDL set to -Infinity: PASS
+	audio.preload: IDL set to 1.5: PASS
+	audio.preload: IDL set to 7: PASS
+	audio.preload: IDL set to Infinity: PASS
+	audio.preload: IDL set to NaN: PASS
+	audio.preload: IDL set to false: PASS
+	audio.preload: IDL set to null: PASS
+	audio.preload: IDL set to object "[object Object]": PASS
+	audio.preload: IDL set to object "test-toString": PASS
+	audio.preload: IDL set to object "test-valueOf": PASS
+	audio.preload: IDL set to true: PASS
+	audio.preload: IDL set to undefined: PASS
+	audio.preload: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	audio.preload: setAttribute() to "": PASS
+	audio.preload: setAttribute() to "+100": PASS
+	audio.preload: setAttribute() to ".5": PASS
+	audio.preload: setAttribute() to "5%": PASS
+	audio.preload: setAttribute() to "AUTO": PASS
+	audio.preload: setAttribute() to "METADATA": PASS
+	audio.preload: setAttribute() to "NONE": PASS
+	audio.preload: setAttribute() to "\\0": PASS
+	audio.preload: setAttribute() to "auto": PASS
+	audio.preload: setAttribute() to "auto\\0": PASS
+	audio.preload: setAttribute() to "etadata": PASS
+	audio.preload: setAttribute() to "metadata": PASS
+	audio.preload: setAttribute() to "metadata\\0": PASS
+	audio.preload: setAttribute() to "none": PASS
+	audio.preload: setAttribute() to "none\\0": PASS
+	audio.preload: setAttribute() to "one": PASS
+	audio.preload: setAttribute() to "uto": PASS
+	audio.preload: setAttribute() to "xauto": PASS
+	audio.preload: setAttribute() to "xmetadata": PASS
+	audio.preload: setAttribute() to "xnone": PASS
+	audio.preload: setAttribute() to -Infinity: PASS
+	audio.preload: setAttribute() to 1.5: PASS
+	audio.preload: setAttribute() to 7: PASS
+	audio.preload: setAttribute() to Infinity: PASS
+	audio.preload: setAttribute() to NaN: PASS
+	audio.preload: setAttribute() to false: PASS
+	audio.preload: setAttribute() to null: PASS
+	audio.preload: setAttribute() to object "[object Object]": PASS
+	audio.preload: setAttribute() to object "test-toString": PASS
+	audio.preload: setAttribute() to object "test-valueOf": PASS
+	audio.preload: setAttribute() to true: PASS
+	audio.preload: setAttribute() to undefined: PASS
+	audio.preload: typeof IDL attribute: PASS
 	audio.src: IDL get with DOM attribute unset: PASS
 	audio.src: IDL set to " foo ": PASS
 	audio.src: IDL set to "": PASS
@@ -8824,77 +8824,77 @@
 	canvas.dir: setAttribute() to true: PASS
 	canvas.dir: setAttribute() to undefined: PASS
 	canvas.dir: typeof IDL attribute: PASS
-	canvas.height: IDL get with DOM attribute unset: FAIL
-	canvas.height: IDL set to "-0": FAIL
-	canvas.height: IDL set to 0: FAIL
-	canvas.height: IDL set to 1: FAIL
+	canvas.height: IDL get with DOM attribute unset: PASS
+	canvas.height: IDL set to "-0": PASS
+	canvas.height: IDL set to 0: PASS
+	canvas.height: IDL set to 1: PASS
 	canvas.height: IDL set to 2147483648: FAIL
-	canvas.height: IDL set to 257: FAIL
+	canvas.height: IDL set to 257: PASS
 	canvas.height: IDL set to 4294967295: FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	canvas.height: setAttribute() to " \\v7": FAIL
-	canvas.height: setAttribute() to "": FAIL
-	canvas.height: setAttribute() to "+": FAIL
-	canvas.height: setAttribute() to "+100": FAIL
-	canvas.height: setAttribute() to "-": FAIL
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	canvas.height: setAttribute() to " \\v7": PASS
+	canvas.height: setAttribute() to "": PASS
+	canvas.height: setAttribute() to "+": PASS
+	canvas.height: setAttribute() to "+100": PASS
+	canvas.height: setAttribute() to "-": PASS
 	canvas.height: setAttribute() to "-0": FAIL
-	canvas.height: setAttribute() to "-1": FAIL
-	canvas.height: setAttribute() to ".5": FAIL
-	canvas.height: setAttribute() to "0": FAIL
-	canvas.height: setAttribute() to "1": FAIL
-	canvas.height: setAttribute() to "5%": FAIL
-	canvas.height: setAttribute() to "7\\v": FAIL
-	canvas.height: setAttribute() to "\\0": FAIL
-	canvas.height: setAttribute() to "\\f7": FAIL
-	canvas.height: setAttribute() to "\\f\\v7": FAIL
-	canvas.height: setAttribute() to "\\n7": FAIL
-	canvas.height: setAttribute() to "\\n\\v7": FAIL
-	canvas.height: setAttribute() to "\\r7": FAIL
-	canvas.height: setAttribute() to "\\r\\v7": FAIL
-	canvas.height: setAttribute() to "\\t7": FAIL
-	canvas.height: setAttribute() to "\\t\\v7": FAIL
-	canvas.height: setAttribute() to "\\v7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to "᠎7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to " 7": FAIL
-	canvas.height: setAttribute() to "　7": FAIL
-	canvas.height: setAttribute() to "﻿7": FAIL
-	canvas.height: setAttribute() to -1: FAIL
-	canvas.height: setAttribute() to -2147483648: FAIL
-	canvas.height: setAttribute() to -2147483649: FAIL
-	canvas.height: setAttribute() to -36: FAIL
-	canvas.height: setAttribute() to -Infinity: FAIL
-	canvas.height: setAttribute() to 0: FAIL
-	canvas.height: setAttribute() to 1: FAIL
-	canvas.height: setAttribute() to 1.5: FAIL
-	canvas.height: setAttribute() to 2147483648: FAIL
-	canvas.height: setAttribute() to 257: FAIL
-	canvas.height: setAttribute() to 4294967295: FAIL
-	canvas.height: setAttribute() to 4294967296: FAIL
-	canvas.height: setAttribute() to Infinity: FAIL
-	canvas.height: setAttribute() to NaN: FAIL
-	canvas.height: setAttribute() to false: FAIL
-	canvas.height: setAttribute() to object "2": FAIL
-	canvas.height: setAttribute() to object "3": FAIL
-	canvas.height: setAttribute() to object "[object Object]": FAIL
-	canvas.height: setAttribute() to true: FAIL
-	canvas.height: setAttribute() to undefined: FAIL
-	canvas.height: typeof IDL attribute: FAIL
+	canvas.height: setAttribute() to "-1": PASS
+	canvas.height: setAttribute() to ".5": PASS
+	canvas.height: setAttribute() to "0": PASS
+	canvas.height: setAttribute() to "1": PASS
+	canvas.height: setAttribute() to "5%": PASS
+	canvas.height: setAttribute() to "7\\v": PASS
+	canvas.height: setAttribute() to "\\0": PASS
+	canvas.height: setAttribute() to "\\f7": PASS
+	canvas.height: setAttribute() to "\\f\\v7": PASS
+	canvas.height: setAttribute() to "\\n7": PASS
+	canvas.height: setAttribute() to "\\n\\v7": PASS
+	canvas.height: setAttribute() to "\\r7": PASS
+	canvas.height: setAttribute() to "\\r\\v7": PASS
+	canvas.height: setAttribute() to "\\t7": PASS
+	canvas.height: setAttribute() to "\\t\\v7": PASS
+	canvas.height: setAttribute() to "\\v7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to "᠎7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to " 7": PASS
+	canvas.height: setAttribute() to "　7": PASS
+	canvas.height: setAttribute() to "﻿7": PASS
+	canvas.height: setAttribute() to -1: PASS
+	canvas.height: setAttribute() to -2147483648: PASS
+	canvas.height: setAttribute() to -2147483649: PASS
+	canvas.height: setAttribute() to -36: PASS
+	canvas.height: setAttribute() to -Infinity: PASS
+	canvas.height: setAttribute() to 0: PASS
+	canvas.height: setAttribute() to 1: PASS
+	canvas.height: setAttribute() to 1.5: PASS
+	canvas.height: setAttribute() to 2147483648: PASS
+	canvas.height: setAttribute() to 257: PASS
+	canvas.height: setAttribute() to 4294967295: PASS
+	canvas.height: setAttribute() to 4294967296: PASS
+	canvas.height: setAttribute() to Infinity: PASS
+	canvas.height: setAttribute() to NaN: PASS
+	canvas.height: setAttribute() to false: PASS
+	canvas.height: setAttribute() to object "2": PASS
+	canvas.height: setAttribute() to object "3": PASS
+	canvas.height: setAttribute() to object "[object Object]": PASS
+	canvas.height: setAttribute() to true: PASS
+	canvas.height: setAttribute() to undefined: PASS
+	canvas.height: typeof IDL attribute: PASS
 	canvas.hidden: IDL get with DOM attribute unset: PASS
 	canvas.hidden: IDL set to " foo ": PASS
 	canvas.hidden: IDL set to "": PASS
@@ -9077,77 +9077,77 @@
 	canvas.title: setAttribute() to true: PASS
 	canvas.title: setAttribute() to undefined: PASS
 	canvas.title: typeof IDL attribute: PASS
-	canvas.width: IDL get with DOM attribute unset: FAIL
-	canvas.width: IDL set to "-0": FAIL
-	canvas.width: IDL set to 0: FAIL
-	canvas.width: IDL set to 1: FAIL
+	canvas.width: IDL get with DOM attribute unset: PASS
+	canvas.width: IDL set to "-0": PASS
+	canvas.width: IDL set to 0: PASS
+	canvas.width: IDL set to 1: PASS
 	canvas.width: IDL set to 2147483648: FAIL
-	canvas.width: IDL set to 257: FAIL
+	canvas.width: IDL set to 257: PASS
 	canvas.width: IDL set to 4294967295: FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	canvas.width: setAttribute() to " \\v7": FAIL
-	canvas.width: setAttribute() to "": FAIL
-	canvas.width: setAttribute() to "+": FAIL
-	canvas.width: setAttribute() to "+100": FAIL
-	canvas.width: setAttribute() to "-": FAIL
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	canvas.width: setAttribute() to " \\v7": PASS
+	canvas.width: setAttribute() to "": PASS
+	canvas.width: setAttribute() to "+": PASS
+	canvas.width: setAttribute() to "+100": PASS
+	canvas.width: setAttribute() to "-": PASS
 	canvas.width: setAttribute() to "-0": FAIL
-	canvas.width: setAttribute() to "-1": FAIL
-	canvas.width: setAttribute() to ".5": FAIL
-	canvas.width: setAttribute() to "0": FAIL
-	canvas.width: setAttribute() to "1": FAIL
-	canvas.width: setAttribute() to "5%": FAIL
-	canvas.width: setAttribute() to "7\\v": FAIL
-	canvas.width: setAttribute() to "\\0": FAIL
-	canvas.width: setAttribute() to "\\f7": FAIL
-	canvas.width: setAttribute() to "\\f\\v7": FAIL
-	canvas.width: setAttribute() to "\\n7": FAIL
-	canvas.width: setAttribute() to "\\n\\v7": FAIL
-	canvas.width: setAttribute() to "\\r7": FAIL
-	canvas.width: setAttribute() to "\\r\\v7": FAIL
-	canvas.width: setAttribute() to "\\t7": FAIL
-	canvas.width: setAttribute() to "\\t\\v7": FAIL
-	canvas.width: setAttribute() to "\\v7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to "᠎7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to " 7": FAIL
-	canvas.width: setAttribute() to "　7": FAIL
-	canvas.width: setAttribute() to "﻿7": FAIL
-	canvas.width: setAttribute() to -1: FAIL
-	canvas.width: setAttribute() to -2147483648: FAIL
-	canvas.width: setAttribute() to -2147483649: FAIL
-	canvas.width: setAttribute() to -36: FAIL
-	canvas.width: setAttribute() to -Infinity: FAIL
-	canvas.width: setAttribute() to 0: FAIL
-	canvas.width: setAttribute() to 1: FAIL
-	canvas.width: setAttribute() to 1.5: FAIL
-	canvas.width: setAttribute() to 2147483648: FAIL
-	canvas.width: setAttribute() to 257: FAIL
-	canvas.width: setAttribute() to 4294967295: FAIL
-	canvas.width: setAttribute() to 4294967296: FAIL
-	canvas.width: setAttribute() to Infinity: FAIL
-	canvas.width: setAttribute() to NaN: FAIL
-	canvas.width: setAttribute() to false: FAIL
-	canvas.width: setAttribute() to object "2": FAIL
-	canvas.width: setAttribute() to object "3": FAIL
-	canvas.width: setAttribute() to object "[object Object]": FAIL
-	canvas.width: setAttribute() to true: FAIL
-	canvas.width: setAttribute() to undefined: FAIL
-	canvas.width: typeof IDL attribute: FAIL
+	canvas.width: setAttribute() to "-1": PASS
+	canvas.width: setAttribute() to ".5": PASS
+	canvas.width: setAttribute() to "0": PASS
+	canvas.width: setAttribute() to "1": PASS
+	canvas.width: setAttribute() to "5%": PASS
+	canvas.width: setAttribute() to "7\\v": PASS
+	canvas.width: setAttribute() to "\\0": PASS
+	canvas.width: setAttribute() to "\\f7": PASS
+	canvas.width: setAttribute() to "\\f\\v7": PASS
+	canvas.width: setAttribute() to "\\n7": PASS
+	canvas.width: setAttribute() to "\\n\\v7": PASS
+	canvas.width: setAttribute() to "\\r7": PASS
+	canvas.width: setAttribute() to "\\r\\v7": PASS
+	canvas.width: setAttribute() to "\\t7": PASS
+	canvas.width: setAttribute() to "\\t\\v7": PASS
+	canvas.width: setAttribute() to "\\v7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to "᠎7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to " 7": PASS
+	canvas.width: setAttribute() to "　7": PASS
+	canvas.width: setAttribute() to "﻿7": PASS
+	canvas.width: setAttribute() to -1: PASS
+	canvas.width: setAttribute() to -2147483648: PASS
+	canvas.width: setAttribute() to -2147483649: PASS
+	canvas.width: setAttribute() to -36: PASS
+	canvas.width: setAttribute() to -Infinity: PASS
+	canvas.width: setAttribute() to 0: PASS
+	canvas.width: setAttribute() to 1: PASS
+	canvas.width: setAttribute() to 1.5: PASS
+	canvas.width: setAttribute() to 2147483648: PASS
+	canvas.width: setAttribute() to 257: PASS
+	canvas.width: setAttribute() to 4294967295: PASS
+	canvas.width: setAttribute() to 4294967296: PASS
+	canvas.width: setAttribute() to Infinity: PASS
+	canvas.width: setAttribute() to NaN: PASS
+	canvas.width: setAttribute() to false: PASS
+	canvas.width: setAttribute() to object "2": PASS
+	canvas.width: setAttribute() to object "3": PASS
+	canvas.width: setAttribute() to object "[object Object]": PASS
+	canvas.width: setAttribute() to true: PASS
+	canvas.width: setAttribute() to undefined: PASS
+	canvas.width: typeof IDL attribute: PASS
 	embed.accessKey: IDL get with DOM attribute unset: PASS
 	embed.accessKey: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
 	embed.accessKey: IDL set to "": PASS
@@ -15610,68 +15610,68 @@
 	video.controls: setAttribute() to true: PASS
 	video.controls: setAttribute() to undefined: PASS
 	video.controls: typeof IDL attribute: PASS
-	video.crossOrigin: IDL get with DOM attribute unset: FAIL
-	video.crossOrigin: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.crossOrigin: IDL set to "": FAIL
-	video.crossOrigin: IDL set to "+100": FAIL
-	video.crossOrigin: IDL set to ".5": FAIL
-	video.crossOrigin: IDL set to "5%": FAIL
-	video.crossOrigin: IDL set to "ANONYMOUS": FAIL
-	video.crossOrigin: IDL set to "USE-CREDENTIALS": FAIL
-	video.crossOrigin: IDL set to "\\0": FAIL
-	video.crossOrigin: IDL set to "anonymous": FAIL
-	video.crossOrigin: IDL set to "anonymous\\0": FAIL
-	video.crossOrigin: IDL set to "anonymouſ": FAIL
-	video.crossOrigin: IDL set to "nonymous": FAIL
-	video.crossOrigin: IDL set to "se-credentials": FAIL
-	video.crossOrigin: IDL set to "use-credentials": FAIL
-	video.crossOrigin: IDL set to "use-credentials\\0": FAIL
-	video.crossOrigin: IDL set to "uſe-credentialſ": FAIL
-	video.crossOrigin: IDL set to "xanonymous": FAIL
-	video.crossOrigin: IDL set to "xuse-credentials": FAIL
-	video.crossOrigin: IDL set to -Infinity: FAIL
-	video.crossOrigin: IDL set to 1.5: FAIL
-	video.crossOrigin: IDL set to 7: FAIL
-	video.crossOrigin: IDL set to Infinity: FAIL
-	video.crossOrigin: IDL set to NaN: FAIL
-	video.crossOrigin: IDL set to false: FAIL
-	video.crossOrigin: IDL set to null: FAIL
-	video.crossOrigin: IDL set to object "[object Object]": FAIL
-	video.crossOrigin: IDL set to object "test-toString": FAIL
-	video.crossOrigin: IDL set to object "test-valueOf": FAIL
-	video.crossOrigin: IDL set to true: FAIL
+	video.crossOrigin: IDL get with DOM attribute unset: PASS
+	video.crossOrigin: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.crossOrigin: IDL set to "": PASS
+	video.crossOrigin: IDL set to "+100": PASS
+	video.crossOrigin: IDL set to ".5": PASS
+	video.crossOrigin: IDL set to "5%": PASS
+	video.crossOrigin: IDL set to "ANONYMOUS": PASS
+	video.crossOrigin: IDL set to "USE-CREDENTIALS": PASS
+	video.crossOrigin: IDL set to "\\0": PASS
+	video.crossOrigin: IDL set to "anonymous": PASS
+	video.crossOrigin: IDL set to "anonymous\\0": PASS
+	video.crossOrigin: IDL set to "anonymouſ": PASS
+	video.crossOrigin: IDL set to "nonymous": PASS
+	video.crossOrigin: IDL set to "se-credentials": PASS
+	video.crossOrigin: IDL set to "use-credentials": PASS
+	video.crossOrigin: IDL set to "use-credentials\\0": PASS
+	video.crossOrigin: IDL set to "uſe-credentialſ": PASS
+	video.crossOrigin: IDL set to "xanonymous": PASS
+	video.crossOrigin: IDL set to "xuse-credentials": PASS
+	video.crossOrigin: IDL set to -Infinity: PASS
+	video.crossOrigin: IDL set to 1.5: PASS
+	video.crossOrigin: IDL set to 7: PASS
+	video.crossOrigin: IDL set to Infinity: PASS
+	video.crossOrigin: IDL set to NaN: PASS
+	video.crossOrigin: IDL set to false: PASS
+	video.crossOrigin: IDL set to null: PASS
+	video.crossOrigin: IDL set to object "[object Object]": PASS
+	video.crossOrigin: IDL set to object "test-toString": PASS
+	video.crossOrigin: IDL set to object "test-valueOf": PASS
+	video.crossOrigin: IDL set to true: PASS
 	video.crossOrigin: IDL set to undefined: FAIL
-	video.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.crossOrigin: setAttribute() to "": FAIL
-	video.crossOrigin: setAttribute() to "+100": FAIL
-	video.crossOrigin: setAttribute() to ".5": FAIL
-	video.crossOrigin: setAttribute() to "5%": FAIL
-	video.crossOrigin: setAttribute() to "ANONYMOUS": FAIL
-	video.crossOrigin: setAttribute() to "USE-CREDENTIALS": FAIL
-	video.crossOrigin: setAttribute() to "\\0": FAIL
-	video.crossOrigin: setAttribute() to "anonymous": FAIL
-	video.crossOrigin: setAttribute() to "anonymous\\0": FAIL
-	video.crossOrigin: setAttribute() to "anonymouſ": FAIL
-	video.crossOrigin: setAttribute() to "nonymous": FAIL
-	video.crossOrigin: setAttribute() to "se-credentials": FAIL
-	video.crossOrigin: setAttribute() to "use-credentials": FAIL
-	video.crossOrigin: setAttribute() to "use-credentials\\0": FAIL
-	video.crossOrigin: setAttribute() to "uſe-credentialſ": FAIL
-	video.crossOrigin: setAttribute() to "xanonymous": FAIL
-	video.crossOrigin: setAttribute() to "xuse-credentials": FAIL
-	video.crossOrigin: setAttribute() to -Infinity: FAIL
-	video.crossOrigin: setAttribute() to 1.5: FAIL
-	video.crossOrigin: setAttribute() to 7: FAIL
-	video.crossOrigin: setAttribute() to Infinity: FAIL
-	video.crossOrigin: setAttribute() to NaN: FAIL
-	video.crossOrigin: setAttribute() to false: FAIL
-	video.crossOrigin: setAttribute() to null: FAIL
-	video.crossOrigin: setAttribute() to object "[object Object]": FAIL
-	video.crossOrigin: setAttribute() to object "test-toString": FAIL
-	video.crossOrigin: setAttribute() to object "test-valueOf": FAIL
-	video.crossOrigin: setAttribute() to true: FAIL
-	video.crossOrigin: setAttribute() to undefined: FAIL
-	video.crossOrigin: typeof IDL attribute: FAIL
+	video.crossOrigin: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.crossOrigin: setAttribute() to "": PASS
+	video.crossOrigin: setAttribute() to "+100": PASS
+	video.crossOrigin: setAttribute() to ".5": PASS
+	video.crossOrigin: setAttribute() to "5%": PASS
+	video.crossOrigin: setAttribute() to "ANONYMOUS": PASS
+	video.crossOrigin: setAttribute() to "USE-CREDENTIALS": PASS
+	video.crossOrigin: setAttribute() to "\\0": PASS
+	video.crossOrigin: setAttribute() to "anonymous": PASS
+	video.crossOrigin: setAttribute() to "anonymous\\0": PASS
+	video.crossOrigin: setAttribute() to "anonymouſ": PASS
+	video.crossOrigin: setAttribute() to "nonymous": PASS
+	video.crossOrigin: setAttribute() to "se-credentials": PASS
+	video.crossOrigin: setAttribute() to "use-credentials": PASS
+	video.crossOrigin: setAttribute() to "use-credentials\\0": PASS
+	video.crossOrigin: setAttribute() to "uſe-credentialſ": PASS
+	video.crossOrigin: setAttribute() to "xanonymous": PASS
+	video.crossOrigin: setAttribute() to "xuse-credentials": PASS
+	video.crossOrigin: setAttribute() to -Infinity: PASS
+	video.crossOrigin: setAttribute() to 1.5: PASS
+	video.crossOrigin: setAttribute() to 7: PASS
+	video.crossOrigin: setAttribute() to Infinity: PASS
+	video.crossOrigin: setAttribute() to NaN: PASS
+	video.crossOrigin: setAttribute() to false: PASS
+	video.crossOrigin: setAttribute() to null: PASS
+	video.crossOrigin: setAttribute() to object "[object Object]": PASS
+	video.crossOrigin: setAttribute() to object "test-toString": PASS
+	video.crossOrigin: setAttribute() to object "test-valueOf": PASS
+	video.crossOrigin: setAttribute() to true: PASS
+	video.crossOrigin: setAttribute() to undefined: PASS
+	video.crossOrigin: typeof IDL attribute: PASS
 	video.defaultMuted (<video muted>): IDL get with DOM attribute unset: PASS
 	video.defaultMuted (<video muted>): IDL set to " foo ": PASS
 	video.defaultMuted (<video muted>): IDL set to "": PASS
@@ -16148,74 +16148,74 @@
 	video.poster: setAttribute() to true: PASS
 	video.poster: setAttribute() to undefined: PASS
 	video.poster: typeof IDL attribute: PASS
-	video.preload: IDL get with DOM attribute unset: FAIL
-	video.preload: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.preload: IDL set to "": FAIL
-	video.preload: IDL set to "+100": FAIL
-	video.preload: IDL set to ".5": FAIL
-	video.preload: IDL set to "5%": FAIL
-	video.preload: IDL set to "AUTO": FAIL
-	video.preload: IDL set to "METADATA": FAIL
-	video.preload: IDL set to "NONE": FAIL
-	video.preload: IDL set to "\\0": FAIL
-	video.preload: IDL set to "auto": FAIL
-	video.preload: IDL set to "auto\\0": FAIL
-	video.preload: IDL set to "etadata": FAIL
-	video.preload: IDL set to "metadata": FAIL
-	video.preload: IDL set to "metadata\\0": FAIL
-	video.preload: IDL set to "none": FAIL
-	video.preload: IDL set to "none\\0": FAIL
-	video.preload: IDL set to "one": FAIL
-	video.preload: IDL set to "uto": FAIL
-	video.preload: IDL set to "xauto": FAIL
-	video.preload: IDL set to "xmetadata": FAIL
-	video.preload: IDL set to "xnone": FAIL
-	video.preload: IDL set to -Infinity: FAIL
-	video.preload: IDL set to 1.5: FAIL
-	video.preload: IDL set to 7: FAIL
-	video.preload: IDL set to Infinity: FAIL
-	video.preload: IDL set to NaN: FAIL
-	video.preload: IDL set to false: FAIL
-	video.preload: IDL set to null: FAIL
-	video.preload: IDL set to object "[object Object]": FAIL
-	video.preload: IDL set to object "test-toString": FAIL
-	video.preload: IDL set to object "test-valueOf": FAIL
-	video.preload: IDL set to true: FAIL
-	video.preload: IDL set to undefined: FAIL
-	video.preload: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": FAIL
-	video.preload: setAttribute() to "": FAIL
-	video.preload: setAttribute() to "+100": FAIL
-	video.preload: setAttribute() to ".5": FAIL
-	video.preload: setAttribute() to "5%": FAIL
-	video.preload: setAttribute() to "AUTO": FAIL
-	video.preload: setAttribute() to "METADATA": FAIL
-	video.preload: setAttribute() to "NONE": FAIL
-	video.preload: setAttribute() to "\\0": FAIL
-	video.preload: setAttribute() to "auto": FAIL
-	video.preload: setAttribute() to "auto\\0": FAIL
-	video.preload: setAttribute() to "etadata": FAIL
-	video.preload: setAttribute() to "metadata": FAIL
-	video.preload: setAttribute() to "metadata\\0": FAIL
-	video.preload: setAttribute() to "none": FAIL
-	video.preload: setAttribute() to "none\\0": FAIL
-	video.preload: setAttribute() to "one": FAIL
-	video.preload: setAttribute() to "uto": FAIL
-	video.preload: setAttribute() to "xauto": FAIL
-	video.preload: setAttribute() to "xmetadata": FAIL
-	video.preload: setAttribute() to "xnone": FAIL
-	video.preload: setAttribute() to -Infinity: FAIL
-	video.preload: setAttribute() to 1.5: FAIL
-	video.preload: setAttribute() to 7: FAIL
-	video.preload: setAttribute() to Infinity: FAIL
-	video.preload: setAttribute() to NaN: FAIL
-	video.preload: setAttribute() to false: FAIL
-	video.preload: setAttribute() to null: FAIL
-	video.preload: setAttribute() to object "[object Object]": FAIL
-	video.preload: setAttribute() to object "test-toString": FAIL
-	video.preload: setAttribute() to object "test-valueOf": FAIL
-	video.preload: setAttribute() to true: FAIL
-	video.preload: setAttribute() to undefined: FAIL
-	video.preload: typeof IDL attribute: FAIL
+	video.preload: IDL get with DOM attribute unset: PASS
+	video.preload: IDL set to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.preload: IDL set to "": PASS
+	video.preload: IDL set to "+100": PASS
+	video.preload: IDL set to ".5": PASS
+	video.preload: IDL set to "5%": PASS
+	video.preload: IDL set to "AUTO": PASS
+	video.preload: IDL set to "METADATA": PASS
+	video.preload: IDL set to "NONE": PASS
+	video.preload: IDL set to "\\0": PASS
+	video.preload: IDL set to "auto": PASS
+	video.preload: IDL set to "auto\\0": PASS
+	video.preload: IDL set to "etadata": PASS
+	video.preload: IDL set to "metadata": PASS
+	video.preload: IDL set to "metadata\\0": PASS
+	video.preload: IDL set to "none": PASS
+	video.preload: IDL set to "none\\0": PASS
+	video.preload: IDL set to "one": PASS
+	video.preload: IDL set to "uto": PASS
+	video.preload: IDL set to "xauto": PASS
+	video.preload: IDL set to "xmetadata": PASS
+	video.preload: IDL set to "xnone": PASS
+	video.preload: IDL set to -Infinity: PASS
+	video.preload: IDL set to 1.5: PASS
+	video.preload: IDL set to 7: PASS
+	video.preload: IDL set to Infinity: PASS
+	video.preload: IDL set to NaN: PASS
+	video.preload: IDL set to false: PASS
+	video.preload: IDL set to null: PASS
+	video.preload: IDL set to object "[object Object]": PASS
+	video.preload: IDL set to object "test-toString": PASS
+	video.preload: IDL set to object "test-valueOf": PASS
+	video.preload: IDL set to true: PASS
+	video.preload: IDL set to undefined: PASS
+	video.preload: setAttribute() to " \\0\\x01\\x02\\x03\\x04\\x05\\x06\\x07 \\b\\t\\n\\v\\f\\r\\x0e\\x0f \\x10\\x11\\x12\\x13\\x14\\x15\\x16\\x17 \\x18\\x19\\x1a\\x1b\\x1c\\x1d\\x1e\\x1f  foo ": PASS
+	video.preload: setAttribute() to "": PASS
+	video.preload: setAttribute() to "+100": PASS
+	video.preload: setAttribute() to ".5": PASS
+	video.preload: setAttribute() to "5%": PASS
+	video.preload: setAttribute() to "AUTO": PASS
+	video.preload: setAttribute() to "METADATA": PASS
+	video.preload: setAttribute() to "NONE": PASS
+	video.preload: setAttribute() to "\\0": PASS
+	video.preload: setAttribute() to "auto": PASS
+	video.preload: setAttribute() to "auto\\0": PASS
+	video.preload: setAttribute() to "etadata": PASS
+	video.preload: setAttribute() to "metadata": PASS
+	video.preload: setAttribute() to "metadata\\0": PASS
+	video.preload: setAttribute() to "none": PASS
+	video.preload: setAttribute() to "none\\0": PASS
+	video.preload: setAttribute() to "one": PASS
+	video.preload: setAttribute() to "uto": PASS
+	video.preload: setAttribute() to "xauto": PASS
+	video.preload: setAttribute() to "xmetadata": PASS
+	video.preload: setAttribute() to "xnone": PASS
+	video.preload: setAttribute() to -Infinity: PASS
+	video.preload: setAttribute() to 1.5: PASS
+	video.preload: setAttribute() to 7: PASS
+	video.preload: setAttribute() to Infinity: PASS
+	video.preload: setAttribute() to NaN: PASS
+	video.preload: setAttribute() to false: PASS
+	video.preload: setAttribute() to null: PASS
+	video.preload: setAttribute() to object "[object Object]": PASS
+	video.preload: setAttribute() to object "test-toString": PASS
+	video.preload: setAttribute() to object "test-valueOf": PASS
+	video.preload: setAttribute() to true: PASS
+	video.preload: setAttribute() to undefined: PASS
+	video.preload: typeof IDL attribute: PASS
 	video.src: IDL get with DOM attribute unset: PASS
 	video.src: IDL set to " foo ": PASS
 	video.src: IDL set to "": PASS
@@ -68448,15 +68448,15 @@
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-element-unblocks-rendering.optional.html: OK
 	Render-blocking on parser-inserted async module script is cancellable: PASS
-	Render-blocking on parser-inserted async script is cancellable: FAIL|PASS
-	Render-blocking on parser-inserted defer script is cancellable: PASS|FAIL
+	Render-blocking on parser-inserted async script is cancellable: FAIL
+	Render-blocking on parser-inserted defer script is cancellable: FAIL
 	Render-blocking on parser-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted inline style is cancellable: PASS
 	Render-blocking on script-inserted module script is cancellable: PASS
 	Render-blocking on script-inserted script is cancellable: PASS
 	Render-blocking on script-inserted stylesheet link is cancellable: PASS
 /html/dom/render-blocking/remove-pending-async-render-blocking-script.html: OK
-	Removed render-blocking script should not indefinitely block rendering: FAIL  # assert_equals: expected (undefined) undefined but got (number) 1
+	Removed render-blocking script should not indefinitely block rendering: PASS
 /html/dom/render-blocking/script-inserted-inline-module-with-import.html: OK
 	Script-inserted module script elements with "blocking=render" are render-blocking: FAIL
 /html/dom/render-blocking/script-inserted-module-script.html: OK
