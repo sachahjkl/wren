@@ -7,7 +7,7 @@ line of `about:wren`:
 - without a licence: `Unregistered — free during the beta · Support Wren`;
 - with one: `Registered to <name>`, with the edition, the date, the order number and a thank-you.
 
-The code stays under the MIT licence ([LICENSE](../LICENSE)). The licence is separate from the code.
+The code is under the PolyForm Strict License 1.0.0 ([LICENSE](../LICENSE)). A supporter licence is separate from the code's license.
 
 ## How it works
 

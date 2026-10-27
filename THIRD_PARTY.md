@@ -1,6 +1,6 @@
 # Third-party components
 
-Wren's own code is under the PolyForm Strict License 1.0.0 ([LICENSE](LICENSE); versions up to 0.3.0 stay MIT). Its `gui_toolkit` is a separate project and stays MIT. `wren.exe` (`build\wren.exe`) statically links the
+Wren's own code is under the PolyForm Strict License 1.0.0 ([LICENSE](LICENSE)). Its `gui_toolkit` is a separate project and stays MIT. `wren.exe` (`build\wren.exe`) statically links the
 components below; their license texts are in the executable (bout:licenses) and in the repository.
 
 | Component | Version | License | Where |
