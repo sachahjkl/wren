@@ -123,6 +123,16 @@ activation_age_ns :: proc(p: ^Page) -> (age: i64, ok: bool) {
 	return host.now_ns(p.loop) - d.activation_ns, true
 }
 
+// HTML transient activation for the purpose of popup blocking: a click or key press in the page within the transient
+// activation lifetime (5 s, the HTML default). Used by the content blocker to tell a user-opened window from one a script
+// opens on its own ($popup).
+POPUP_ACTIVATION_NS :: i64(5_000) * 1_000_000
+
+popup_has_gesture :: proc(p: ^Page) -> bool {
+	age, ok := activation_age_ns(p)
+	return ok && age <= POPUP_ACTIVATION_NS
+}
+
 // For the shell: the ceremony the page is waiting for, if any.
 webauthn_pending :: proc(p: ^Page) -> (pending: bool, create: bool, rp_id: string) {
 	d := webauthn_doc(p)

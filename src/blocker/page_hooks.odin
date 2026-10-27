@@ -50,7 +50,7 @@ Poke :: struct { hs: ^Doc_Hooks }
 install_page_hooks :: proc(b: ^Blocker) {
 	page.embedder = page.Embedder_Hooks{
 		user = b, realm_started = hook_realm_started, adopted = hook_adopted, before_styles = hook_before_styles,
-		before_script = hook_before_script, parsed = hook_parsed,
+		before_script = hook_before_script, parsed = hook_parsed, popup_check = popup_check,
 		collapse_blocked = b.cfg.collapse,
 	}
 }
