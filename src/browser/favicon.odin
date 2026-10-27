@@ -62,15 +62,20 @@ TAB_PREFS := [?]config.Def{
 		description = "Tab titles and icons follow changes of the document (document.title, <link rel=icon> added by a script) at most this often."},
 }
 
+// The tabs' preferences make the Tabs category of about:config (their names stay browser.tabs.*).
 register_tab_prefs :: proc(p: ^config.Prefs) {
-	config.register(p, TAB_PREFS[:])
-	config.register(p, SIDEBAR_PREFS[:])   // tab_sidebar.odin
+	config.register(p, TAB_PREFS[:], "tabs")
+	config.register(p, SIDEBAR_PREFS[:], "tabs")   // tab_sidebar.odin
+	config.register(p, TAB_GROUP_PREFS[:], "tabs")   // tab_groups.odin
+	config.register(p, TAB_SOUND_PREFS[:], "tabs")   // tab_sound.odin
 }
 
 Tab_Settings :: struct {
 	position:                         Tabs_Position,   // tab_sidebar.odin: the row of tabs, or a sidebar
 	side_w, side_collapsed_w:         f32,             // the sidebar's width, wide and icons only (CSS px)
 	side_collapsed:                   bool,
+	side_anim_ms:                     f32,             // opening and closing the sidebar (0: at once)
+	side_pins_max:                    f32,             // the share of the window's height the pinned tabs take at most
 	side_row_em:                      f32,
 	side_address_min_em:              f32,             // the address field's narrowest in the title bar (sidebar_titlebar)
 	max_w_em, min_w_em, close_min_em: f32,
@@ -92,6 +97,8 @@ tab_settings_from_prefs :: proc(p: ^config.Prefs) -> Tab_Settings {
 		side_w = f32(config.int_of(p, "browser.tabs.sidebar_width")),
 		side_collapsed_w = f32(config.int_of(p, "browser.tabs.sidebar_collapsed_width")),
 		side_collapsed = config.bool_of(p, "browser.tabs.sidebar_collapsed"),
+		side_anim_ms = f32(config.int_of(p, "browser.tabs.sidebar_animation_ms")),
+		side_pins_max = f32(config.float_of(p, "browser.tabs.sidebar_pins_max")),
 		side_row_em = f32(config.float_of(p, "browser.tabs.sidebar_row_em")),
 		side_address_min_em = f32(config.float_of(p, "browser.tabs.sidebar_address_min_em")),
 		max_w_em = f32(config.float_of(p, "browser.tabs.max_width_em")),

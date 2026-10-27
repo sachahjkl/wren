@@ -76,6 +76,49 @@ sidebar_extents :: proc(t: ^testing.T) {
 	testing.expect_value(t, sidebar_extent(60, 240, 1, true, 48), 30)          // (the room of a tiny window comes first)
 }
 
+// Opening and closing the sidebar: its width, the icon of a row and the header's buttons go from one end to the other
+// without a jump (each step of `open` moves them by a step's share), the ends being the closed and the open layouts as
+// they were built before the animation; the titles show nothing while the rows are narrow.
+@(test)
+sidebar_opens_without_a_jump :: proc(t: ^testing.T) {
+	testing.expect_value(t, sidebar_open_extent(48, 240, 0), 48)
+	testing.expect_value(t, sidebar_open_extent(48, 240, 1), 240)
+	testing.expect_value(t, sidebar_open_extent(48, 240, 0.5), 144)
+	testing.expect_value(t, sidebar_open_extent(48, 240, 2), 240)   // (an overshoot is held)
+	testing.expect_value(t, side_title_alpha(0), 0)
+	testing.expect_value(t, side_title_alpha(0.2), 0)
+	testing.expect_value(t, side_title_alpha(1), 1)
+	testing.expect_value(t, side_icon_x(40, 16, 10, 0), 12)   // centred in the narrow row
+	testing.expect_value(t, side_icon_x(200, 16, 10, 1), 10)  // at the padding of the open row
+	bw, bh, inset: f32 = 38, 35, 6
+	closed := side_header_layout(48, bw, bh, inset, 0)
+	opened := side_header_layout(240, bw, bh, inset, 1)
+	testing.expect_value(t, closed.h, inset * 3 + bh * 2)      // one above the other
+	testing.expect_value(t, closed.toggle, [2]f32{5, inset})
+	testing.expect_value(t, closed.add, [2]f32{5, inset * 2 + bh})
+	testing.expect_value(t, opened.h, bh + inset * 2)          // side by side
+	testing.expect_value(t, opened.toggle, [2]f32{inset * 2, inset})
+	testing.expect_value(t, opened.add, [2]f32{240 - inset * 2 - bw, inset})
+	steps :: 60
+	prev_e := sidebar_open_extent(48, 240, 0)
+	prev := closed
+	prev_a: f32
+	for k in 1 ..= steps {
+		o := f32(k) / steps
+		e := sidebar_open_extent(48, 240, o)
+		l := side_header_layout(e, bw, bh, inset, o)
+		testing.expect(t, e >= prev_e && e - prev_e <= (240 - 48) / f32(steps) + 1)
+		testing.expect(t, abs(l.h - prev.h) <= bh / f32(steps) + 1)
+		testing.expect(t, abs(l.add.x - prev.add.x) <= 240 / f32(steps) + 1 && abs(l.add.y - prev.add.y) <= (inset + bh) / f32(steps) + 1)
+		testing.expect(t, abs(l.toggle.x - prev.toggle.x) <= 240 / f32(steps) + 1)
+		a := side_title_alpha(o)
+		testing.expect(t, a >= prev_a)
+		prev_e, prev, prev_a = e, l, a
+	}
+	testing.expect(t, sidebar_open_rate(0) > 1e6)                  // at once
+	testing.expect(t, abs(1 - math.pow(2, -sidebar_open_rate(180) * 0.18) - 0.95) < 0.001)   // 95 % of the way in 180 ms
+}
+
 // The page and the sidebar share the body without overlapping, whatever the position: the sidebar's width and the page's
 // make the window's width, and a page at the top has it all.
 @(test)
@@ -136,6 +179,24 @@ sidebar_builds_only_the_visible_rows :: proc(t: ^testing.T) {
 	f, l = side_visible_rows(0, 0, 400, 40, 0, 80)
 	testing.expect_value(t, l, 0)
 	testing.expect_value(t, f, 0)
+}
+
+// The row of tabs builds the tabs in view and a margin, whatever the number of tabs.
+@(test)
+strip_builds_only_the_visible_tabs :: proc(t: ^testing.T) {
+	f, l := strip_visible_tabs(0, 1000, 70, 1000, 2)
+	testing.expect_value(t, f, 0)
+	testing.expect_value(t, l, 17)          // 1000 / 70 = 14.3: 15 tabs, and 2
+	f, l = strip_visible_tabs(35000, 1000, 70, 1000, 2)
+	testing.expect_value(t, f, 498)
+	testing.expect_value(t, l, 517)
+	f, l = strip_visible_tabs(69000, 1000, 70, 1000, 2)   // the end
+	testing.expect_value(t, l, 1000)
+	f, l = strip_visible_tabs(0, 1000, 200, 3, 2)         // few tabs: all
+	testing.expect_value(t, f, 0)
+	testing.expect_value(t, l, 3)
+	f, l = strip_visible_tabs(0, 1000, 70, 0, 2)
+	testing.expect_value(t, l, 0)
 }
 
 // The geometry of the row of tabs, along Y: the row a dragged tab goes to, and the scroll that keeps the current tab in view.
