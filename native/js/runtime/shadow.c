@@ -1245,7 +1245,7 @@ int wj_named_properties_install(JSContext *ctx)
     if (JS_IsFunction(ctx, element)) {
         JSValue proto = JS_GetPropertyStr(ctx, element, "prototype");
         JSAtom a = JS_NewAtom(ctx, "part");
-        JS_DefinePropertyGetSet(ctx, proto, a, JS_NewCFunction(ctx, (JSCFunction *)part_get, "get part", 0), JS_NewCFunction(ctx, (JSCFunction *)part_set, "set part", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+        JS_DefinePropertyGetSet(ctx, proto, a, JS_NewCFunction2(ctx, (JSCFunction *)part_get, "get part", 0, JS_CFUNC_getter, 0), JS_NewCFunction2(ctx, (JSCFunction *)part_set, "set part", 1, JS_CFUNC_setter, 0), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
         JS_FreeAtom(ctx, a);
         JS_FreeValue(ctx, proto);
     }
