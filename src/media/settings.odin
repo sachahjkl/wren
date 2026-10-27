@@ -28,6 +28,12 @@ Settings :: struct {
 	av1:             bool,
 	controls:        bool,     // draw the built-in controls of <video controls>
 	controls_hide_ms: f64,
+	managed_low:     Time,     // ManagedMediaSource: buffered-ahead below this starts streaming
+	managed_high:    Time,     // and above this stops it
+	max_video_frame_callbacks: int,   // requestVideoFrameCallback callbacks waiting on one video
+	tracks:          bool,     // expose audioTracks / videoTracks / textTracks and <track>
+	subtitles:       bool,     // render showing text tracks over the video
+	subtitle_lines:  int,      // most cue lines drawn at once (a runaway cue file cannot flood the layer)
 }
 
 MEDIA_PREFS := [?]config.Def{
@@ -83,6 +89,18 @@ MEDIA_PREFS := [?]config.Def{
 		description = "Draw the built-in controls (play, position, volume) of <video controls> and <audio controls>."},
 	{name = "media.controls.hide_ms", kind = .Float, default = {f = 2500}, bounded = true, min = 0, max = 60000, unit = "ms",
 		description = "How long the controls of a playing video stay after the pointer stopped over it."},
+	{name = "media.mse.managed.low_seconds", kind = .Float, default = {f = 10}, bounded = true, min = 0, max = 3600, unit = "s",
+		description = "ManagedMediaSource: the user agent asks a page to stream (startstreaming) once less than this is buffered ahead of the playback position."},
+	{name = "media.mse.managed.high_seconds", kind = .Float, default = {f = 25}, bounded = true, min = 0, max = 3600, unit = "s",
+		description = "ManagedMediaSource: the user agent tells a page to stop (endstreaming) once this much is buffered ahead. Must be above media.mse.managed.low_seconds."},
+	{name = "media.video_frame_callbacks.max", kind = .Int, default = {i = 10_000}, bounded = true, min = 1, max = 100_000_000,
+		description = "Most requestVideoFrameCallback callbacks one <video> may have waiting. Past it, requests fail (return 0)."},
+	{name = "media.tracks.enabled", kind = .Bool, default = {b = true},
+		description = "Expose a media element's audioTracks, videoTracks and textTracks, <track> elements and addTextTrack. Off: those lists are always empty and tracks stay implicit."},
+	{name = "media.subtitles.enabled", kind = .Bool, default = {b = true},
+		description = "Draw the cues of showing text tracks (subtitles, captions) over the video. Off: text tracks still expose their cues to scripts but nothing is painted."},
+	{name = "media.subtitles.max_lines", kind = .Int, default = {i = 32}, bounded = true, min = 1, max = 1000, unit = "lines",
+		description = "Most subtitle cue lines drawn over a video at once, so that a cue file with thousands of overlapping cues cannot flood the subtitle layer."},
 }
 
 register_prefs :: proc(p: ^config.Prefs) { config.register(p, MEDIA_PREFS[:]) }
@@ -122,5 +140,11 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		av1 = config.bool_of(p, "media.codec.av1"),
 		controls = config.bool_of(p, "media.controls.enabled"),
 		controls_hide_ms = config.float_of(p, "media.controls.hide_ms"),
+		managed_low = Time(config.float_of(p, "media.mse.managed.low_seconds") * 1e9),
+		managed_high = Time(config.float_of(p, "media.mse.managed.high_seconds") * 1e9),
+		max_video_frame_callbacks = int(config.int_of(p, "media.video_frame_callbacks.max")),
+		tracks = config.bool_of(p, "media.tracks.enabled"),
+		subtitles = config.bool_of(p, "media.subtitles.enabled"),
+		subtitle_lines = int(config.int_of(p, "media.subtitles.max_lines")),
 	}
 }
