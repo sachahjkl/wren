@@ -168,6 +168,8 @@ main :: proc() {
 		return true
 	})
 	pump_for(100)
+	// (what the CI shows when images never load: the requests still in flight, what became of the first image)
+	fmt.printf("  requests in flight %d, #simple is %v\n", fetch.in_flight(&loader), page.image_view(cur, node("simple")).state)
 	events := strings.clone(attr("data-events"), context.allocator)
 	fmt.printf("  events: %s\n", events)
 	for id in expected_load {
