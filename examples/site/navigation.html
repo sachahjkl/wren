@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Navigation API</title>
+<style>
+  body { max-width: 780px; margin: 24px auto; font-family: sans-serif; font-size: 17px; }
+  h1 { color: #1c7ed6; }
+  nav a { margin-right: 14px; }
+  button { margin: 4px; padding: 6px 12px; }
+  #view { margin: 16px 0; padding: 12px 16px; background: #f1f3f5; border-radius: 8px; min-height: 3em; }
+  #entries { font-family: monospace; font-size: 13px; white-space: pre; color: #495057; }
+  #log { font-family: monospace; font-size: 13px; color: #495057; white-space: pre; min-height: 5em; }
+</style>
+</head>
+<body>
+<h1>Navigation API</h1>
+<p>A small single-page application on <code>window.navigation</code>: the links stay in this document (a
+<code>navigate</code> listener intercepts them and draws the view), the back and forward buttons of the browser and of
+the page traverse its entries, each entry keeps its own state (<code>navigation.navigate(url, {state})</code>), and
+the link to another page is a real navigation (coming back shows this document again from the back/forward cache).</p>
+<nav>
+  <a id="link-home" href="?view=home">Home</a>
+  <a id="link-about" href="?view=about">About</a>
+  <a id="link-contact" href="?view=contact">Contact</a>
+  <a id="link-other" href="remote/fixture.htm">Another page</a>
+</nav>
+<div>
+  <button id="back">Back</button>
+  <button id="forward">Forward</button>
+  <button id="count">Visit counter: +1 (state)</button>
+  <button id="reload">Reload (intercepted)</button>
+</div>
+<div id="view"></div>
+<div id="entries"></div>
+<div id="log"></div>
+<script>
+window.marker = Math.random();   // the same value while this document lives (an intercepted navigation keeps it)
+window.navCount = 0;
+const $ = (id) => document.getElementById(id);
+const log = (s) => { $("log").textContent = (s + "\n" + $("log").textContent).split("\n").slice(0, 6).join("\n"); };
+const viewOf = (url) => new URL(url).searchParams.get("view") || "home";
+const texts = { home: "Welcome home.", about: "About this demo: one document, many entries.", contact: "Write to nobody@example.com." };
+
+function render() {
+  const e = navigation.currentEntry;
+  const visits = (e.getState() || {}).visits || 0;
+  $("view").textContent = (texts[viewOf(e.url)] || "Unknown view.") + " (visits: " + visits + ")";
+  $("entries").textContent = navigation.entries().map((x) => (x === e ? "> " : "  ") + x.index + " " + new URL(x.url).search + (x.sameDocument ? "" : " (other document)")).join("\n");
+  $("back").disabled = !navigation.canGoBack;
+  $("forward").disabled = !navigation.canGoForward;
+}
+
+navigation.addEventListener("navigate", (e) => {
+  window.lastNav = e.navigationType + ":" + e.userInitiated;
+  log("navigate " + e.navigationType + (e.userInitiated ? " (user)" : "") + " -> " + new URL(e.destination.url).search);
+  const dest = new URL(e.destination.url);
+  if (!e.canIntercept || dest.pathname !== location.pathname) { return; }   // another page: a real navigation
+  e.intercept({ handler: async () => { window.navCount++; render(); } });
+});
+navigation.addEventListener("navigatesuccess", () => log("navigatesuccess"));
+navigation.addEventListener("navigateerror", (e) => log("navigateerror " + e.message));
+navigation.addEventListener("currententrychange", (e) => { log("currententrychange " + e.navigationType); render(); });
+window.addEventListener("pageshow", (e) => { if (e.persisted) { window.restored = (window.restored || 0) + 1; render(); } });
+
+$("back").onclick = () => navigation.back();
+$("forward").onclick = () => navigation.forward();
+$("reload").onclick = () => navigation.reload();
+$("count").onclick = () => {
+  const s = navigation.currentEntry.getState() || {};
+  navigation.updateCurrentEntry({ state: { visits: (s.visits || 0) + 1 } });
+};
+render();
+</script>
+</body>
+</html>

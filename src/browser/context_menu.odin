@@ -401,6 +401,7 @@ follow_link :: proc(app: ^App, t: ^Tab, href: string) {
 	resolved, ok := url.parse(href, &p.env.location, context.temp_allocator)
 	if !ok { tab_log(t, .Error, fmt.tprintf("invalid link %q", href)); return }
 	if page.follow_fragment_link(p, resolved) { return }
+	if page.navigation_link(p, resolved) { return }   // the document's navigate listener took it (Navigation API)
 	navigate(app, t, resolved.href, p, user_activation = true)
 }
 

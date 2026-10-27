@@ -148,6 +148,9 @@ Host :: struct {
 	popover_invoke:  proc(user: rawptr, invoker: base.Handle),
 	popover_dismiss: proc(user: rawptr, target: base.Handle),
 	close_request:   proc(user: rawptr) -> bool,
+	// The activation of a link (<a> / <area> with href) clicked by a script (element.click(), a dispatched click): the
+	// page follows it. A user's click is the embedder's (it follows links itself). Optional.
+	follow_link:     proc(user: rawptr, link: base.Handle),
 }
 
 Report :: struct {

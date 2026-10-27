@@ -42,6 +42,8 @@ Navigate_Request :: struct {
 	kind:  Navigate_Kind,
 	url:   string,   // absolute, valid during the call
 	delta: int,      // Traverse
+	nav_state: string,      // Assign / Replace / Reload: the Navigation API state of the entry (navigation.navigate({state}))
+	has_nav_state: bool,    // ... when there is one: the embedder sets it on the entry (session_set_nav_state)
 }
 
 Navigate_Hook :: #type proc(user: rawptr, p: ^Page, req: Navigate_Request)
@@ -87,6 +89,7 @@ Web_State :: struct {
 	session:         ^Session_History,
 	history_state:   string,    // history.state of the current entry (owned)
 	has_state:       bool,
+	nav_pending:     ^Nav_Pending,   // the navigation whose navigate event is being fired (navigation.odin)
 	perf:            [dynamic]Perf_Entry,
 	perf_warned:     bool,
 	event_details:   [dynamic]Event_Detail,   // StorageEvent / PopStateEvent / HashChangeEvent fields while dispatching

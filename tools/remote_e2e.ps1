@@ -236,6 +236,33 @@ function Test-WebApis($server) {
     $null = Wren-Ctl click --selector 'h1'   # (the menu is centred in the viewport: the heading is outside it)
     $null = Wren-Ctl wait function '!document.getElementById("menu").matches(":popover-open")' --timeout 5000
     Check 'a click outside closes the menu' ((Wren-Eval 'document.getElementById("menu").matches(":popover-open")') -eq 'false')
+
+    # examples/site/navigation.html: a real click on a link is intercepted by the page's navigate listener (the document
+    # stays: its marker too), a navigation to another page carries its state there, the browser's Back brings the demo
+    # back from the back/forward cache with the right current entry, and a second Back is a same-document traversal the
+    # page intercepts (userInitiated)
+    Section '7c web APIs in the browser: Navigation API'
+    $null = Wren-Ctl nav "$($server.Origin)/site/navigation.html" --wait idle
+    # (the pages of the scenarios before are entries of the same origin: indexes are counted from the demo's)
+    $marker = Wren-Eval 'String(window.marker)'
+    $base = [int](Wren-Eval 'navigation.currentEntry.index')
+    $null = Wren-Ctl click --selector '#link-about'
+    $null = Wren-Ctl wait function 'location.search === "?view=about" && window.navCount === 1' --timeout 10000
+    $click = Wren-Eval '[location.search, navigation.currentEntry.index, navigation.canGoForward, window.lastNav].join()'
+    Check "a clicked link is intercepted: a new entry ($click)" ($click -eq "?view=about,$($base + 1),false,push:true")
+    Check 'the document stayed' ((Wren-Eval 'String(window.marker)') -eq $marker)
+    $null = Wren-Eval 'navigation.navigate("remote/fixture.htm", { state: { from: "demo" } }); 1'
+    $null = Wren-Ctl wait function 'location.pathname.endsWith("/fixture.htm") && document.readyState === "complete"' --timeout 10000
+    $st = Wren-Eval '[navigation.currentEntry.getState() && navigation.currentEntry.getState().from, navigation.currentEntry.index, navigation.entries()[navigation.currentEntry.index - 1].sameDocument].join()'
+    Check "another document: its entry has the state, the entries before it are listed ($st)" ($st -eq "demo,$($base + 2),false")
+    $null = Wren-Ctl cmd nav.back
+    $null = Wren-Ctl wait function 'location.search === "?view=about" && document.readyState === "complete"' --timeout 10000
+    $back = Wren-Eval ('[String(window.marker) === "' + $marker + '", navigation.currentEntry.index, navigation.canGoForward, navigation.entries()[navigation.currentEntry.index + 1].getState().from].join()')
+    Check "Back: the demo from the back/forward cache, its entry current again, the next one keeps its state ($back)" ($back -eq "true,$($base + 1),true,demo")
+    $null = Wren-Ctl cmd nav.back
+    $null = Wren-Ctl wait function 'location.search === "" && window.lastNav === "traverse:true"' --timeout 10000
+    $second = Wren-Eval ('[window.lastNav, navigation.currentEntry.index, String(window.marker) === "' + $marker + '"].join()')
+    Check "a second Back: a same-document traversal the page intercepts ($second)" ($second -eq "traverse:true,$base,true")
 }
 
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------

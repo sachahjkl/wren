@@ -287,6 +287,7 @@ activate :: proc(f: ^Forms, at, target: base.Handle, info: Click_Info, was_check
 		if n != nil && n.name == "summary" {
 			if d := details_of_summary(f, at); d != base.NIL_HANDLE { toggle_details(f, d) }
 		}
+		if n != nil && (n.name == "a" || n.name == "area") && !info.trusted && f.host.follow_link != nil && is_connected(f, at) { f.host.follow_link(f.host.user, at) }
 	}
 }
 

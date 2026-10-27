@@ -1,0 +1,211 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Navigation API</title>
+<body>
+<p id="target">target</p>
+<script>
+const nav = navigation;
+const rejects = async (name, p, errName) => {
+  try { await p; t(name, false, "fulfilled, want " + errName); }
+  catch (e) { t(name, !!e && e.name === errName, "rejected with " + (e && e.name) + " (" + (e && e.message) + "), want " + errName); }
+};
+const log = [];
+for (const type of ["navigate", "navigatesuccess", "navigateerror", "currententrychange"]) {
+  nav.addEventListener(type, (e) => log.push(type + (e.navigationType !== undefined ? ":" + e.navigationType : "")));
+}
+
+section("interface", () => {
+  eq("window.navigation is a Navigation", nav instanceof Navigation && nav instanceof EventTarget, true);
+  eq("the same object", window.navigation, nav);
+  eq("entries()", nav.entries().length, 1);
+  const e = nav.currentEntry;
+  eq("currentEntry is entries()[0]", e, nav.entries()[0]);
+  eq("currentEntry.url", e.url, location.href);
+  eq("currentEntry.index", e.index, 0);
+  eq("currentEntry.sameDocument", e.sameDocument, true);
+  t("key and id", typeof e.key === "string" && e.key !== "" && typeof e.id === "string" && e.id !== "");
+  eq("getState() without a state", e.getState(), undefined);
+  eq("canGoBack", nav.canGoBack, false);
+  eq("canGoForward", nav.canGoForward, false);
+  eq("transition", nav.transition, null);
+  eq("activation", nav.activation, null);
+  t("NavigationHistoryEntry", e instanceof NavigationHistoryEntry && e instanceof EventTarget);
+  eq("onnavigate", nav.onnavigate, null);
+});
+
+section("updateCurrentEntry", () => {
+  const before = nav.currentEntry;
+  let ev = null;
+  nav.addEventListener("currententrychange", (e) => { ev = e; }, { once: true });
+  const st = { a: 1, list: [1, 2] };
+  nav.updateCurrentEntry({ state: st });
+  const got = nav.currentEntry.getState();
+  eq("getState() is a copy", got !== st && got.a === 1 && got.list[1] === 2, true);
+  eq("the same entry", nav.currentEntry, before);
+  t("currententrychange", ev instanceof NavigationCurrentEntryChangeEvent && ev.navigationType === null && ev.from === before);
+  throws("state is required", () => nav.updateCurrentEntry({}), "TypeError");
+  throws("a function cannot be a state", () => nav.updateCurrentEntry({ state: () => 1 }), "DataCloneError");
+});
+
+section("intercept outside the dispatch, constructed events", () => {
+  throws("NavigateEvent needs its init", () => new NavigateEvent("navigate"), "TypeError");
+  throws("NavigateEvent needs a destination", () => new NavigateEvent("navigate", { signal: new AbortController().signal }), "TypeError");
+});
+
+(async () => {
+  // a fragment: same document, push, hashChange
+  log.length = 0;
+  let ev = null;
+  nav.addEventListener("navigate", (e) => { ev = e; }, { once: true });
+  const first = nav.currentEntry;
+  const r = nav.navigate("#target", { info: { why: "test" } });
+  t("navigate() returns committed and finished", r.committed instanceof Promise && r.finished instanceof Promise);
+  t("navigate event", ev instanceof NavigateEvent && ev.isTrusted && ev.cancelable);
+  eq("navigationType", ev.navigationType, "push");
+  eq("hashChange", ev.hashChange, true);
+  eq("canIntercept", ev.canIntercept, true);
+  eq("userInitiated", ev.userInitiated, false);
+  eq("info", ev.info && ev.info.why, "test");
+  t("destination", ev.destination instanceof NavigationDestination && ev.destination.url === location.href && ev.destination.sameDocument && ev.destination.key === "" && ev.destination.index === -1);
+  t("signal", ev.signal instanceof AbortSignal && !ev.signal.aborted);
+  throws("intercept() after the dispatch", () => ev.intercept(), "InvalidStateError");
+  const committed = await r.committed;
+  eq("committed: the new entry", committed, nav.currentEntry);
+  eq("finished: the same entry", await r.finished, committed);
+  eq("two entries", nav.entries().length, 2);
+  eq("index", committed.index, 1);
+  t("a new key", committed.key !== first.key && committed.id !== first.id);
+  eq("canGoBack", nav.canGoBack, true);
+  eq("events", log.join(","), "navigate:push,currententrychange:push,navigatesuccess");
+  eq("the old entry keeps its state", first.getState().a, 1);
+  eq("the new entry has none", committed.getState(), undefined);
+
+  // an intercepted navigation to another path: the document stays, the handler runs after the commit
+  log.length = 0;
+  let during = null, handlerAt = null;
+  nav.addEventListener("navigate", (e) => {
+    e.intercept({ handler: async () => {
+      handlerAt = location.pathname;
+      during = nav.transition && nav.transition.navigationType + ":" + (nav.transition.from === committed);
+      await later();
+    } });
+  }, { once: true });
+  const r2 = nav.navigate("/jsdom/route1?x=1", { state: { route: 1 }, info: 5 });
+  const c2 = await r2.committed;
+  eq("intercepted: the URL changed", location.pathname + location.search, "/jsdom/route1?x=1");
+  const f2 = await r2.finished;
+  eq("finished after the handler", f2, c2);
+  eq("the handler ran after the commit", handlerAt, "/jsdom/route1");
+  eq("transition during the handler", during, "push:true");
+  eq("transition is over", nav.transition, null);
+  eq("the navigation's state", nav.currentEntry.getState().route, 1);
+  eq("history.state is null", history.state, null);
+  eq("intercepted events", log.join(","), "navigate:push,currententrychange:push,navigatesuccess");
+
+  // cancelled
+  log.length = 0;
+  nav.addEventListener("navigate", (e) => e.preventDefault(), { once: true });
+  const r3 = nav.navigate("#cancelled");
+  await rejects("cancelled: committed rejects", r3.committed, "AbortError");
+  await rejects("cancelled: finished rejects", r3.finished, "AbortError");
+  eq("cancelled: nothing changed", location.hash, "");
+  eq("cancelled events", log.join(","), "navigate:push,navigateerror");
+
+  // a handler that fails
+  log.length = 0;
+  let errEv = null;
+  nav.addEventListener("navigateerror", (e) => { errEv = e; }, { once: true });
+  nav.addEventListener("navigate", (e) => e.intercept({ handler: () => Promise.reject(new RangeError("boom")) }), { once: true });
+  const r4 = nav.navigate("/jsdom/route2");
+  await r4.committed;
+  await rejects("a failed handler: finished rejects", r4.finished, "RangeError");
+  t("navigateerror", errEv instanceof ErrorEvent && errEv.error instanceof RangeError && errEv.message.includes("RangeError: boom"));
+  eq("the URL changed all the same", location.pathname, "/jsdom/route2");
+
+  // pushState and replaceState fire navigate; replace keeps the key, changes the id
+  log.length = 0;
+  const types = [];
+  const onNav = (e) => types.push(e.navigationType + ":" + e.destination.sameDocument + ":" + e.canIntercept);
+  nav.addEventListener("navigate", onNav);
+  const k = nav.currentEntry.key, id = nav.currentEntry.id;
+  history.replaceState({ h: 1 }, "", "/jsdom/replaced");
+  eq("replaceState: same key", nav.currentEntry.key, k);
+  t("replaceState: new id", nav.currentEntry.id !== id);
+  history.pushState(null, "", "/jsdom/pushed");
+  nav.removeEventListener("navigate", onNav);
+  eq("history API navigations", types.join(","), "replace:true:true,push:true:true");
+  nav.addEventListener("navigate", (e) => e.preventDefault(), { once: true });
+  history.pushState(null, "", "/jsdom/refused");
+  eq("a cancelled pushState changes nothing", location.pathname, "/jsdom/pushed");
+
+  // reload, intercepted: the document stays
+  log.length = 0;
+  nav.addEventListener("navigate", (e) => e.intercept(), { once: true });
+  const r5 = nav.reload({ info: "r" });
+  await r5.finished;
+  eq("intercepted reload", log.join(","), "navigate:reload,currententrychange:reload,navigatesuccess");
+
+  // back: a traversal of this document, intercepted
+  log.length = 0;
+  const n = nav.entries().length;
+  const backTo = nav.entries()[nav.currentEntry.index - 1];
+  let tev = null;
+  nav.addEventListener("navigate", (e) => { tev = e; e.intercept(); }, { once: true });
+  const r6 = nav.back({ info: "back" });
+  const c6 = await r6.committed;
+  eq("back: the entry before", c6, backTo);
+  await r6.finished;
+  t("traverse event", tev && tev.navigationType === "traverse" && tev.destination.key === backTo.key && tev.destination.index === backTo.index && tev.info === "back");
+  eq("the entries stay", nav.entries().length, n);
+  eq("canGoForward", nav.canGoForward, true);
+  eq("traverse events", log.join(","), "navigate:traverse,currententrychange:traverse,navigatesuccess");
+  const fwd = nav.entries()[nav.currentEntry.index + 1];
+  const r7 = nav.forward();
+  await r7.finished;
+  eq("forward", nav.currentEntry, fwd);
+
+  // the forward entries go when a new one is pushed after going back: dispose
+  await nav.back().finished;
+  const gone = nav.entries()[nav.currentEntry.index + 1];
+  let disposed = false;
+  gone.addEventListener("dispose", () => { disposed = true; });
+  await nav.navigate("#new-branch").finished;
+  nav.entries();
+  t("dispose", disposed && gone.index === -1);
+
+  // errors
+  await rejects("traverseTo an unknown key", nav.traverseTo("nope").finished, "InvalidStateError");
+  await rejects("forward without an entry ahead", nav.forward().committed, "InvalidStateError");
+  await rejects("an invalid URL", nav.navigate("http://[bad").committed, "SyntaxError");
+  const same = nav.traverseTo(nav.currentEntry.key);
+  eq("traverseTo the current entry", await same.finished, nav.currentEntry);
+
+  // another origin cannot be intercepted (the listener cancels it so the page stays)
+  let crossCan = null, crossThrow = null;
+  nav.addEventListener("navigate", (e) => {
+    crossCan = e.canIntercept;
+    try { e.intercept(); } catch (x) { crossThrow = x.name; }
+    e.preventDefault();
+  }, { once: true });
+  nav.navigate("https://example.com/");
+  eq("another origin: canIntercept", crossCan, false);
+  eq("another origin: intercept() throws", crossThrow, "SecurityError");
+
+  // a new navigation aborts the ongoing one
+  let firstSignal = null;
+  nav.addEventListener("navigate", (e) => { firstSignal = e.signal; e.intercept({ handler: () => new Promise(() => {}) }); }, { once: true });
+  const slow = nav.navigate("/jsdom/slow");
+  await slow.committed;
+  const quick = nav.navigate("#quick");
+  await rejects("the aborted navigation's finished", slow.finished, "AbortError");
+  t("its signal aborted", firstSignal.aborted && firstSignal.reason.name === "AbortError");
+  await quick.finished;
+  eq("the new one finished", location.hash, "#quick");
+
+  // a constructed event cannot be intercepted
+  const fake = new NavigateEvent("navigate", { destination: tev.destination, signal: new AbortController().signal, canIntercept: true });
+  eq("constructed: canIntercept", fake.canIntercept, true);
+  throws("constructed: intercept()", () => fake.intercept(), "SecurityError");
+  done();
+})().catch((e) => { t("navigation (async)", false, e && e.name + ": " + e.message + "\n" + e.stack); done(); });
+</script>

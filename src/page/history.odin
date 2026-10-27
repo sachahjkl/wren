@@ -32,6 +32,9 @@ History_Entry :: struct {
 	visited_ms: i64,     // ... last made current
 	seq:       u64,      // order of the last visits within the tree: the child with the highest is the active branch
 	scroll_manual: bool, // history.scrollRestoration = "manual" for this entry
+	nav_id:    u64,      // Navigation API "id": new for every entry, and again when the entry is replaced (`id` is its "key")
+	nav_state: string,   // owned; the Navigation API state (navigation.navigate({state}), updateCurrentEntry) when has_nav_state
+	has_nav_state: bool,
 	persisted: Persisted_State,   // what the document showed when it was left (history_state.odin)
 	parent:    ^History_Entry,    // nil for the tree's root (no URL: the top of the tab)
 	children:  [dynamic]^History_Entry,   // in the order they were made
@@ -44,6 +47,7 @@ Session_History :: struct {
 	current:   ^History_Entry,
 	count:     int,                      // nodes, the root aside
 	next_id:   u64,
+	next_nav_id: u64,                    // Navigation API ids (History_Entry.nav_id)
 	seq:       u64,
 	window:    int,                      // most entries in `entries` (0: 50)
 	max_nodes: int,                      // most nodes (0: 1000)
@@ -54,7 +58,7 @@ Session_History :: struct {
 entry_free :: proc(e: ^History_Entry) {
 	for c in e.children { entry_free(c) }
 	delete(e.children)
-	delete(e.url); delete(e.state); delete(e.title); delete(e.icon)
+	delete(e.url); delete(e.state); delete(e.title); delete(e.icon); delete(e.nav_state)
 	persisted_destroy(&e.persisted)
 	free(e)
 }
@@ -154,7 +158,8 @@ session_push :: proc(sh: ^Session_History, url: string, doc: u64, state := "", h
 	parent := sh.current != nil ? sh.current : root
 	sh.next_id += 1
 	e := new(History_Entry)
-	e^ = History_Entry{id = sh.next_id, url = strings.clone(url), state = strings.clone(state), has_state = has_state, doc = doc, parent = parent, created_ms = now_unix_ms()}
+	sh.next_nav_id += 1
+	e^ = History_Entry{id = sh.next_id, nav_id = sh.next_nav_id, url = strings.clone(url), state = strings.clone(state), has_state = has_state, doc = doc, parent = parent, created_ms = now_unix_ms()}
 	if sh.current != nil { e.scroll_manual = sh.current.scroll_manual && doc != 0 && doc == sh.current.doc }   // (same document: the mode carries over, as in HTML)
 	append(&parent.children, e)
 	sh.count += 1
@@ -169,11 +174,24 @@ session_replace :: proc(sh: ^Session_History, url: string, state := "", has_stat
 	cur := session_current(sh)
 	if cur == nil { session_push(sh, url, 0, state, has_state, dedupe = false); return }
 	if cur.url != url { delete(cur.url); cur.url = strings.clone(url) }
+	// another entry in the same place for the Navigation API (same key, new id); its state starts empty
+	sh.next_nav_id += 1
+	cur.nav_id = sh.next_nav_id
+	session_set_nav_state(sh, "", false)
 	if set_state {
 		delete(cur.state)
 		cur.state, cur.has_state = strings.clone(state), has_state
 	}
 	sh.serial += 1
+}
+
+// Sets the Navigation API state of the current entry (has_state false: none, getState() gives undefined).
+session_set_nav_state :: proc(sh: ^Session_History, state: string, has_state: bool) {
+	cur := session_current(sh)
+	if cur == nil { return }
+	delete(cur.nav_state)
+	cur.nav_state = strings.clone(state) if has_state else ""
+	cur.has_nav_state = has_state
 }
 
 // The entry `delta` steps away on the path the web sees, or nil when there is none.
@@ -336,6 +354,8 @@ session_load :: proc(sh: ^Session_History, saved: []Saved_Entry, current: u64, w
 		e := new(History_Entry)
 		e^ = History_Entry{id = s.id, url = strings.clone(s.url), title = strings.clone(s.title), icon = strings.clone(s.icon), state = strings.clone(s.state), has_state = s.has_state,
 			created_ms = s.created_ms, visited_ms = s.visited_ms, seq = s.seq, scroll_manual = s.scroll_manual, parent = parent}
+		sh.next_nav_id += 1
+		e.nav_id = sh.next_nav_id
 		e.persisted.saved = s.scroll != {} || s.zoom != 0
 		e.persisted.scroll = s.scroll
 		e.persisted.zoom = s.zoom
