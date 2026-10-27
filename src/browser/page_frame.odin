@@ -93,6 +93,11 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	restore_tick(app, t, size)   // history_restore.odin: an entry shown again comes back where it was
 	scroll_to_fragment(t, size)
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
+	// Performance Timeline entries that depend on the paint (page/timeline_lcp.odin): the largest contentful paint and the
+	// element-timing entries from the layout just settled, and the layout shifts against the previous frame
+	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+	page.timeline_present(t.page, &t.layout, vp)
+	page.timeline_layout_shift_check(t.page, &t.layout, vp)
 	frames_prepare(app, t, size, scale)   // its frames at their boxes' sizes (frames_shell.odin)
 	page_prep.state = .Ready
 }
