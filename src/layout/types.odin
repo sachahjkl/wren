@@ -92,7 +92,8 @@ Font_Request :: struct {
 	stretch:    f32,               // percentage
 	features:   []Font_Feature,    // OpenType features in order (later settings of a tag win): font-variant-*,
 	                               // font-kerning, then font-feature-settings
-	variations: []Font_Variation,  // font-variation-settings
+	variations: []Font_Variation,  // font-variation-settings, with the `opsz` axis added for font-optical-sizing: auto
+	language:   string,            // the element's BCP 47 `lang` (for locale forms, `locl`), "" none
 }
 
 Font_Feature :: struct { tag: [4]u8, value: u32 }
@@ -268,6 +269,7 @@ Font_Info :: struct {
 	stretch:  f32,
 	features: []Font_Feature,
 	variations: []Font_Variation,
+	language: string,
 }
 
 Line :: struct {

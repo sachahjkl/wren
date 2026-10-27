@@ -14,6 +14,13 @@ Font_Variation_Setting :: struct { tag: [4]u8, value: f32 }
 Font_Kerning :: enum u8 { Auto, Normal, None }
 Font_Variant_Position :: enum u8 { Normal, Sub, Super }
 
+// CSS Fonts 4 §11.5: `auto` lets a variable face with an `opsz` axis set it to the font size; `none` leaves it alone.
+Font_Optical_Sizing :: enum u8 { Auto, None }
+
+// CSS Text 4 §9 / SVG: a hint for the trade-off between speed, legibility and geometric precision. `optimizeSpeed`
+// turns off kerning and optional ligatures (what a browser does for it); the others keep them on.
+Text_Rendering :: enum u8 { Auto, Optimize_Speed, Optimize_Legibility, Geometric_Precision }
+
 // Empty set: `normal`. None alone: `none` (every ligature off).
 Ligature_Value :: enum u8 {
 	None, Common, No_Common, Discretionary, No_Discretionary, Historical, No_Historical, Contextual, No_Contextual,
@@ -199,6 +206,19 @@ apply_font_feature_prop :: proc(cx: ^Cx, p: Prop, vs: []css.Value) -> bool {
 		return ok
 	case .Font_Kerning: return set_enum(vs, &c.font_kerning)
 	case .Font_Variant_Position: return set_enum(vs, &c.font_variant_position)
+	case .Font_Optical_Sizing: return set_enum(vs, &c.font_optical_sizing)
+	case .Text_Rendering:
+		// CSS / SVG keywords are camelCase (optimizeSpeed...), so match them by hand rather than by the enum name
+		id, ok := ident_raw(vs)
+		if !ok { return false }
+		switch css.lower_temp(id) {
+		case "auto":                 c.text_rendering = .Auto
+		case "optimizespeed":        c.text_rendering = .Optimize_Speed
+		case "optimizelegibility":   c.text_rendering = .Optimize_Legibility
+		case "geometricprecision":   c.text_rendering = .Geometric_Precision
+		case: return false
+		}
+		return true
 	case .Font_Variant_Ligatures:
 		v, ok := parse_ligatures(vs)
 		if ok { c.font_variant_ligatures = v }

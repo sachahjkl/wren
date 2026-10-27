@@ -341,6 +341,7 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	strings.write_int(&sb, int(req.stretch * 10))
 	for f in req.features { tag := f.tag; strings.write_byte(&sb, '|'); strings.write_string(&sb, string(tag[:])); strings.write_int(&sb, int(f.value)) }
 	for v in req.variations { tag := v.tag; strings.write_byte(&sb, '~'); strings.write_string(&sb, string(tag[:])); strings.write_int(&sb, int(v.value * 100)) }
+	if req.language != "" { strings.write_byte(&sb, '@'); strings.write_string(&sb, req.language) }
 	key := strings.to_string(sb)
 	if id, ok := pf.resolved[key]; ok { return id }
 
@@ -373,7 +374,7 @@ resolve_request :: proc(pf: ^Page_Fonts, req: ^lay.Font_Request, settings: ^styl
 	}
 	feats := make([]font.Feature, len(req.features), context.temp_allocator)
 	for f, i in req.features { feats[i] = {f.tag, f.value} }
-	id := font.cascade(pf.state, dedup[:], feats)
+	id := font.cascade(pf.state, dedup[:], feats, language = req.language)
 	if web { own_cascade(pf, id, dedup[:]) }   // (with the shared faces it uses: web_font_faces.odin)
 	pf.resolved[strings.clone(key)] = id
 	return id

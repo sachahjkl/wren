@@ -159,6 +159,8 @@ prop_fields :: proc(c: ^Computed, p: Prop) -> (a: any, b: any) {
 	case .Font_Variant_Numeric: return fa(&c.font_variant_numeric), NO_FIELD
 	case .Font_Variant_East_Asian: return fa(&c.font_variant_east_asian), NO_FIELD
 	case .Font_Variant_Position: return fa(&c.font_variant_position), NO_FIELD
+	case .Font_Optical_Sizing: return fa(&c.font_optical_sizing), NO_FIELD
+	case .Text_Rendering: return fa(&c.text_rendering), NO_FIELD
 	case .Unicode_Bidi: return fa(&c.unicode_bidi), NO_FIELD
 	case .Display: return fa(&c.display), NO_FIELD
 	case .Position: return fa(&c.position), NO_FIELD
