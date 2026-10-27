@@ -133,12 +133,12 @@
 	Parent window (application/xhtml+xml): FAIL
 	Parent window (application/xml): FAIL
 	Parent window (image/svg+xml): FAIL
-	Parent window (text/html): FAIL
+	Parent window (text/html): PASS
 	Parent window (text/xml): FAIL
 	Parent window with child method (application/xhtml+xml): FAIL
 	Parent window with child method (application/xml): FAIL
 	Parent window with child method (image/svg+xml): FAIL
-	Parent window with child method (text/html): FAIL
+	Parent window with child method (text/html): PASS
 	Parent window with child method (text/xml): FAIL
 /domparsing/DOMParser-parseFromString-url-pushstate.html: OK
 	application/xhtml+xml invalid XML: created normally: FAIL
@@ -173,7 +173,7 @@
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: FAIL
-	text/html valid: created using a parser from this frame and the method from the iframe: FAIL
+	text/html valid: created using a parser from this frame and the method from the iframe: PASS
 	text/html valid: created using another iframe's DOMParser from that frame: FAIL
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
 	text/xml invalid XML: created normally: FAIL
@@ -219,7 +219,7 @@
 	image/svg+xml valid: created using another iframe's DOMParser from this frame: FAIL
 	text/html valid: created normally: PASS
 	text/html valid: created using a parser from the iframe and the method from this frame: FAIL
-	text/html valid: created using a parser from this frame and the method from the iframe: FAIL
+	text/html valid: created using a parser from this frame and the method from the iframe: PASS
 	text/html valid: created using another iframe's DOMParser from that frame: FAIL
 	text/html valid: created using another iframe's DOMParser from this frame: FAIL
 	text/xml invalid XML: created normally: FAIL
@@ -330,14 +330,14 @@
 	Attribute value escapes: gt: FAIL
 	Attribute value escapes: lt: FAIL
 	Attribute value escapes: quot: FAIL
-	Check children were included for void elements: FAIL
+	Check children were included for void elements: PASS
 	Check if "ns1" is generated even if the element already has xmlns:ns1.: FAIL
 	Check if a prefix bound to an empty namespace URI ("no namespace") serialize: FAIL
 	Check if an attribute with namespace and no prefix is serialized with the nearest-declared prefix: FAIL
 	Check if an attribute with namespace and no prefix is serialized with the nearest-declared prefix even if the prefix is assigned to another namespace.: FAIL
 	Check if attribute serialization takes into account of following xmlns:* attributes: FAIL
 	Check if attribute serialization takes into account of the same prefix declared in an ancestor element: FAIL
-	Check if document fragment serializes.: FAIL
+	Check if document fragment serializes.: PASS
 	Check if end tag serialization matches start tag for elements in the XML namespace.: FAIL
 	Check if end tag serialization matches start tag when an appropriate prefix is found.: FAIL
 	Check if generated prefixes match to "ns${index}".: FAIL
@@ -531,18 +531,18 @@
 /domparsing/insert_adjacent_html.html: OK
 	A text node inserted via insertAdjacentHTML should not be merged with a sibling text node.: PASS
 	Afterbegin child node not in tree but has parent: PASS
-	Afterbegin content again, with next sibling: FAIL
-	Afterbegin content without next sibling: FAIL
-	Afterbegin content2 test again, now that there's a next sibling: FAIL
-	Afterbegin content2 without next sibling: FAIL
+	Afterbegin content again, with next sibling: PASS
+	Afterbegin content without next sibling: PASS
+	Afterbegin content2 test again, now that there's a next sibling: PASS
+	Afterbegin content2 without next sibling: PASS
 	BeforeEnd child node not in tree but has parent: PASS
-	BeforeEnd content again, with next sibling: FAIL
-	BeforeEnd content without next sibling: FAIL
-	BeforeEnd content2 test again, now that there's a next sibling: FAIL
-	BeforeEnd content2 without next sibling: FAIL
+	BeforeEnd content again, with next sibling: PASS
+	BeforeEnd content without next sibling: PASS
+	BeforeEnd content2 test again, now that there's a next sibling: PASS
+	BeforeEnd content2 without next sibling: PASS
 	Inserting after being and before end should order things correctly: PASS
 	Inserting kids of the <html> element should not do weird things with implied <body>/<head> tags: FAIL
-	Should not run script when appending things which have descendant <script> inserted via insertAdjacentHTML: FAIL
+	Should not run script when appending things which have descendant <script> inserted via insertAdjacentHTML: PASS
 	Should throw when inserting with invalid position string: PASS
 	When the parent node is a document, insertAdjacentHTML should throw for beforebegin and afterend (comments): PASS
 	When the parent node is a document, insertAdjacentHTML should throw for beforebegin and afterend (elements): PASS
@@ -551,15 +551,15 @@
 	When the parent node is null, insertAdjacentHTML should throw for beforebegin and afterend (elements): PASS
 	When the parent node is null, insertAdjacentHTML should throw for beforebegin and afterend (text): PASS
 	afterend child node not in tree but has parent: PASS
-	afterend content again, with next sibling: FAIL
-	afterend content without next sibling: FAIL
-	afterend content2 test again, now that there's a next sibling: FAIL
-	afterend content2 without next sibling: FAIL
+	afterend content again, with next sibling: PASS
+	afterend content without next sibling: PASS
+	afterend content2 test again, now that there's a next sibling: PASS
+	afterend content2 without next sibling: PASS
 	beforeBegin child node not in tree but has parent: PASS
-	beforeBegin content again, with next sibling: FAIL
-	beforeBegin content without next sibling: FAIL
-	beforeBegin content2 test again, now that there's a next sibling: FAIL
-	beforeBegin content2 without next sibling: FAIL
+	beforeBegin content again, with next sibling: PASS
+	beforeBegin content without next sibling: PASS
+	beforeBegin content2 test again, now that there's a next sibling: PASS
+	beforeBegin content2 without next sibling: PASS
 /domparsing/outerhtml-01.html: OK
 	outerHTML: child of #document: PASS
 /domparsing/outerhtml-02.html: OK

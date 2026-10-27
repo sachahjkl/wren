@@ -88,18 +88,19 @@
 	timeOrigin should be set after beforeunload: FAIL
 /hr-time/performance-tojson.html: OK
 	Test performance.toJSON(): FAIL
-/hr-time/raf-coarsened-time.https.html: ERROR
+/hr-time/raf-coarsened-time.https.html: OK
+	raf-coarsened-time: FAIL
 /hr-time/test_cross_frame_start.html: OK
 	Child and parent time bases are correct: FAIL
 	Child created at least 1 second after parent: FAIL
 	Setup the frame: PASS
 	child performance.now() > 0: FAIL
 	parent performance.now() > 0: PASS
-/hr-time/timeOrigin.html: TIMEOUT
-	Window and worker timeOrigins are close when created one after another.: TIMEOUT
-	Window and worker timeOrigins differ when worker is created after a delay.: TIMEOUT
+/hr-time/timeOrigin.html: OK
+	Window and worker timeOrigins are close when created one after another.: PASS
+	Window and worker timeOrigins differ when worker is created after a delay.: PASS
 	Window timeOrigin is close to Date.now() when there is no system clock adjustment.: PASS
 /hr-time/timing-attack.html: OK
-	The recommended minimum resolution of the Performance interface has been set to 100 microseconds for cross-origin isolated contexts.: FAIL
-/hr-time/window-worker-timeOrigin.window.html: TIMEOUT
-	timeOrigin and now() should be correctly ordered between window and worker: TIMEOUT
+	The recommended minimum resolution of the Performance interface has been set to 100 microseconds for cross-origin isolated contexts.: PASS
+/hr-time/window-worker-timeOrigin.window.html: OK
+	timeOrigin and now() should be correctly ordered between window and worker: PASS

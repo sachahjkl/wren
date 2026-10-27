@@ -28,8 +28,8 @@
 	Test script error unhandled.: PASS
 /workers/SharedWorker-simple.html: OK
 	Test simple shared worker construction case.: PASS
-/workers/SharedWorkerPerformanceNow.html: OK|TIMEOUT
-	performance.now() exists in shared workers and reports reasonable times: FAIL|TIMEOUT
+/workers/SharedWorkerPerformanceNow.html: OK
+	performance.now() exists in shared workers and reports reasonable times: FAIL
 /workers/SharedWorker_blobUrl.html: TIMEOUT
 	Blob URL shared by document on SharedWorker: TIMEOUT
 /workers/SharedWorker_dataUrl.html: TIMEOUT
@@ -41,8 +41,8 @@
 	Test calling functions from WorkerContext.: PASS
 /workers/Worker-constructor-proto.any.worker.html: OK
 	Tests that setting the proto of a built in constructor is not reset.: FAIL
-/workers/Worker-creation-happens-in-parallel.https.html: OK|TIMEOUT
-	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT|PASS|FAIL
+/workers/Worker-creation-happens-in-parallel.https.html: TIMEOUT
+	Tests that creation of a "new Worker()" will occur in parallel: TIMEOUT
 /workers/Worker-custom-event.any.worker.html: OK
 	Test CustomEvents on workers.: PASS
 /workers/Worker-formdata.any.worker.html: OK
@@ -255,8 +255,8 @@
 	Test constructing a shared worker with null: PASS
 /workers/constructors/SharedWorker/number-arguments.html: OK
 	Test constructing a shared worker with 1: PASS
-/workers/constructors/SharedWorker/port-onmessage.html: OK|TIMEOUT
-	Test SharedWorker.port.onmessage: PASS|TIMEOUT
+/workers/constructors/SharedWorker/port-onmessage.html: OK
+	Test SharedWorker.port.onmessage: PASS
 /workers/constructors/SharedWorker/port-properties.html: OK
 	worker.port: PASS
 /workers/constructors/SharedWorker/port-readonly.html: OK
@@ -677,8 +677,8 @@
 	setInterval: PASS
 /workers/interfaces/WorkerUtils/WindowTimers/004.html: OK
 	clearInterval: PASS
-/workers/interfaces/WorkerUtils/WindowTimers/005.html: OK|TIMEOUT
-	setInterval when closing: PASS|TIMEOUT
+/workers/interfaces/WorkerUtils/WindowTimers/005.html: OK
+	setInterval when closing: PASS
 /workers/interfaces/WorkerUtils/importScripts/001.worker.html: OK
 	001: PASS
 /workers/interfaces/WorkerUtils/importScripts/002.worker.html: OK
@@ -969,7 +969,7 @@
 	Same-origin top-level module script loading with "no-referrer" referrer policy: TIMEOUT
 	Same-origin top-level module script loading with "origin" referrer policy: NOTRUN
 	Same-origin top-level module script loading with "same-origin" referrer policy: NOTRUN
-/workers/modules/shared-worker-import.window.html: OK|TIMEOUT
+/workers/modules/shared-worker-import.window.html: TIMEOUT
 	Dynamic import and then static import.: NOTRUN
 	Dynamic import.: NOTRUN
 	Nested dynamic import.: NOTRUN
@@ -979,7 +979,7 @@
 	Static import and then dynamic import.: NOTRUN
 	Static import.: PASS
 	eval(import()).: NOTRUN
-/workers/modules/shared-worker-options-credentials.html: OK|TIMEOUT
+/workers/modules/shared-worker-options-credentials.html: TIMEOUT
 	Test initialization: setting up cross-origin cookie: FAIL
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (default).: NOTRUN
 	new SharedWorker() with type=classic should always send the credentials for same-origin dynamic imports regardless of the credentials option (include).: NOTRUN

@@ -52,7 +52,7 @@
 /html/semantics/scripting-1/the-script-element/css-module/css-module-worker-test.html: OK
 	A dynamic import CSS Module within a web worker should not load and should not attempt to fetch the module.: FAIL
 	A static import CSS Module within a web worker should not load and should not attempt to fetch the module.: FAIL
-	An attempt to load a CSS module as a worker should fail.: FAIL
+	An attempt to load a CSS module as a worker should fail.: PASS
 /html/semantics/scripting-1/the-script-element/css-module/import-css-module-basic.html: ERROR
 /html/semantics/scripting-1/the-script-element/css-module/import-css-module-dynamic.html: OK
 	Ensure that loading a CSS module with dymnamic import() fails without a type attribute: PASS
@@ -155,9 +155,9 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/031.html: OK
 	 scheduler: focus and blur events: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/032.html: OK
-	 scheduler: innerHTML and scripts: FAIL
+	 scheduler: innerHTML and scripts: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/033.html: OK
-	 scheduler: innerHTML and scripts moved in DOM: FAIL
+	 scheduler: innerHTML and scripts moved in DOM: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/034.html: OK
 	 scheduler: innerHTML adding frames with JS in: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/035.html: OK
@@ -311,7 +311,7 @@
 /html/semantics/scripting-1/the-script-element/execution-timing/111.html: OK
 	 scheduler: removing async attribute at runtime: FAIL
 /html/semantics/scripting-1/the-script-element/execution-timing/112.html: OK
-	 scheduler: removing async attribute at runtime, script also has defer attribute: FAIL
+	 scheduler: removing async attribute at runtime, script also has defer attribute: PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/113.html: OK
 	 scheduler: Altering DOM using innerHTML during parse : PASS
 /html/semantics/scripting-1/the-script-element/execution-timing/114.html: OK
@@ -433,7 +433,7 @@
 	Dynamic import with an unsupported import attribute should fail: FAIL
 	Dynamic import with an unsupported type attribute should fail: PASS
 /html/semantics/scripting-1/the-script-element/import-attributes/dynamic-import-with-attributes-argument.any.worker.html: OK
-	Dynamic import with an empty with clause should succeed: FAIL
+	Dynamic import with an empty with clause should succeed: PASS
 	Dynamic import with an unsupported import attribute should fail: FAIL
 	Dynamic import with an unsupported type attribute should fail: PASS
 /html/semantics/scripting-1/the-script-element/import-attributes/empty-attributes-clause.html: OK
@@ -450,8 +450,8 @@
 	UTF-16LE BOM should result in parse error in JSON module script: PASS
 	UTF-8 BOM should be stripped when decoding JSON module script: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/charset-bom.any.worker.html: OK
-	UTF-16BE BOM should result in parse error in JSON module script: FAIL
-	UTF-16LE BOM should result in parse error in JSON module script: FAIL
+	UTF-16BE BOM should result in parse error in JSON module script: PASS
+	UTF-16LE BOM should result in parse error in JSON module script: PASS
 	UTF-8 BOM should be stripped when decoding JSON module script: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/charset.html: ERROR
 /html/semantics/scripting-1/the-script-element/json-module/cors-crossorigin-requests.html: OK
@@ -669,7 +669,7 @@
 	Try importing JSON module with MIME type 🚀application/vnd.api+json: PASS
 /html/semantics/scripting-1/the-script-element/json-module/json-module-service-worker-test.https.html: OK
 	JSON Module dynamic import should not load within the context of a service worker: FAIL
-	Javascript importing JSON Module should load within the context of a service worker: FAIL
+	Javascript importing JSON Module should load within the context of a service worker: PASS
 	Trying to register a service worker with a top-level JSON Module should fail: FAIL
 /html/semantics/scripting-1/the-script-element/json-module/load-error-events.html: OK
 	inline, 200, not parser-inserted: PASS
@@ -689,11 +689,11 @@
 	Non-object: string: PASS
 	Non-object: true: PASS
 /html/semantics/scripting-1/the-script-element/json-module/non-object.any.worker.html: OK
-	Non-object: array: FAIL
-	Non-object: false: FAIL
-	Non-object: null: FAIL
-	Non-object: string: FAIL
-	Non-object: true: FAIL
+	Non-object: array: PASS
+	Non-object: false: PASS
+	Non-object: null: PASS
+	Non-object: string: PASS
+	Non-object: true: PASS
 /html/semantics/scripting-1/the-script-element/json-module/parse-error-location.tentative.html: OK
 	JSON modules: parse error file location: PASS
 /html/semantics/scripting-1/the-script-element/json-module/parse-error.html: OK
@@ -750,7 +750,9 @@
 /html/semantics/scripting-1/the-script-element/microtasks/checkpoint-after-window-onerror.html: OK
 	Promise resolved during #report-the-error: PASS
 	Promise resolved during event handlers other than error: FAIL
-/html/semantics/scripting-1/the-script-element/microtasks/checkpoint-after-workerglobalscope-onerror-module.html: ERROR
+/html/semantics/scripting-1/the-script-element/microtasks/checkpoint-after-workerglobalscope-onerror-module.html: OK
+	Promise resolved during #report-the-error: PASS
+	Promise resolved during event handlers other than error: PASS
 /html/semantics/scripting-1/the-script-element/microtasks/checkpoint-after-workerglobalscope-onerror.html: OK
 	Promise resolved during #report-the-error: PASS
 	Promise resolved during event handlers other than error: PASS
@@ -925,7 +927,7 @@
 	import() should not drain the microtask queue if it fails during specifier resolution: PASS
 	import() should not drain the microtask queue when loading an already loaded module: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/microtasks/basic.any.worker.html: OK
-	import() should drain the microtask queue when fetching a new module: FAIL
+	import() should drain the microtask queue when fetching a new module: PASS
 	import() should not drain the microtask queue if it fails during specifier resolution: PASS
 	import() should not drain the microtask queue when loading an already loaded module: FAIL
 /html/semantics/scripting-1/the-script-element/module/dynamic-import/microtasks/css-import-in-worker.any.worker.html: OK
@@ -1066,8 +1068,8 @@
 	import.meta.resolve resolves URLs relative to the import.meta.url, not relative to the active script when it is called: another module script: PASS
 	import.meta.resolve still works if its global has been destroyed (by detaching the iframe): FAIL
 /html/semantics/scripting-1/the-script-element/module/import-meta/import-meta-url.html: OK
-	import.meta.url at top-level module DedicatedWorker: FAIL
-	import.meta.url at top-level module SharedWorker: FAIL
+	import.meta.url at top-level module DedicatedWorker: PASS
+	import.meta.url at top-level module SharedWorker: PASS
 	import.meta.url in a dependent external script: PASS
 	import.meta.url in a root external script: PASS
 	import.meta.url in a root inline script: PASS
@@ -1143,14 +1145,15 @@
 /html/semantics/scripting-1/the-script-element/module/module-vs-script-2.html: OK
 	Test that evaluating something as classic script does not prevent it from being evaluated as module script.: PASS
 /html/semantics/scripting-1/the-script-element/module/modulepreload-cross-origin-referrerpolicy.sub.html: TIMEOUT
-	Cross-origin modulepreload with default referrer policy should load: TIMEOUT
-	Cross-origin modulepreload with no-referrer policy should load: NOTRUN
+	Cross-origin modulepreload with default referrer policy should load: FAIL
+	Cross-origin modulepreload with no-referrer policy should load: TIMEOUT
 	Cross-origin modulepreload with origin policy should load: NOTRUN
 	Cross-origin modulepreload with same-origin policy should load: NOTRUN
 	Cross-origin modulepreload with strict-origin policy should load: NOTRUN
 	Cross-origin modulepreload with strict-origin-when-cross-origin policy should load: NOTRUN
 	Cross-origin modulepreload with unsafe-url policy should load: NOTRUN
-/html/semantics/scripting-1/the-script-element/module/modulepreload-inline-referrerpolicy.html: ERROR
+/html/semantics/scripting-1/the-script-element/module/modulepreload-inline-referrerpolicy.html: OK
+	Inline modulepreload elements should respect the referrerpolicy attribute: FAIL
 /html/semantics/scripting-1/the-script-element/module/modulepreload-referrer-check.html: OK
 	Modulepreload should send a referrer header: FAIL
 /html/semantics/scripting-1/the-script-element/module/modulepreload-referrerpolicy.html: TIMEOUT
@@ -1204,8 +1207,8 @@
 	Async modules only scheduling microtasks don't block execution of sibling modules: PASS
 	Async modules scheduling tasks don't block execution of sibling modules: PASS
 /html/semantics/scripting-1/the-script-element/module/top-level-await/sibling-imports-not-blocked.any.worker.html: OK
-	Async modules only scheduling microtasks don't block execution of sibling modules: FAIL
-	Async modules scheduling tasks don't block execution of sibling modules: FAIL
+	Async modules only scheduling microtasks don't block execution of sibling modules: PASS
+	Async modules scheduling tasks don't block execution of sibling modules: PASS
 /html/semantics/scripting-1/the-script-element/module/type.html: OK
 	type=" module ": FAIL
 	type=" module": FAIL
@@ -2869,7 +2872,7 @@
 	Test that <script> doesn't load when the src is text.: PASS
 /html/semantics/scripting-1/the-script-element/text-module/service-worker-test.https.html: OK
 	Javascript importing text module should load within the context of a service worker: FAIL
-	Text module dynamic import should not load within the context of a service worker: FAIL
+	Text module dynamic import should not load within the context of a service worker: PASS
 	Trying to register a service worker with a top-level text module should fail: FAIL
 /html/semantics/scripting-1/the-template-element/additions-to-parsing-xhtml-documents/node-document.html: OK
 	Parsing XHTML: Node's node document must be set to that of the element to which it will be appended. Test empty template: FAIL
@@ -3650,8 +3653,10 @@
 	<template for> in innerHTML patching inner element: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-invalid.html: OK
 	<template for> with a nonexistent ID should attach: PASS
-/html/semantics/scripting-1/the-template-element/template-for/template-for-invokes-pagehide-with-end.html: ERROR
-/html/semantics/scripting-1/the-template-element/template-for/template-for-invokes-pagehide-without-end.html: ERROR
+/html/semantics/scripting-1/the-template-element/template-for/template-for-invokes-pagehide-with-end.html: OK
+	Patching only removes elements that were present when patching is prepared (with <?end>): FAIL
+/html/semantics/scripting-1/the-template-element/template-for/template-for-invokes-pagehide-without-end.html: OK
+	Patching only removes elements that were present when patching is prepared: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-move-cross-document.html: OK
 	Moving the target to another document while appending redirects parser output there: FAIL
 /html/semantics/scripting-1/the-template-element/template-for/template-for-move-end-while-appending.html: OK
