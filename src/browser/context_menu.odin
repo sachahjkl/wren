@@ -25,13 +25,14 @@ import lay "wb:layout"
 import "wb:page"
 import "wb:url"
 
-Ctx_Kind :: enum u8 { Page, Tab, Address }
+Ctx_Kind :: enum u8 { Page, Tab, Address, Group }
 
 Context_Request :: struct {
 	kind:        Ctx_Kind,
 	pos:         [2]f32,
 	keyboard:    bool,
 	tab:         int,
+	group:       u64,            // .Group: the id of the window's group (tab_groups.odin)
 	page:        ^page.Page,     // the page the menu is about (it closes if that page goes away)
 	link:        string,         // absolute URL (owned)
 	link_text:   string,         // owned
@@ -177,6 +178,10 @@ tab_context_menu :: proc(app: ^App, index: int, pos: [2]f32, keyboard := false) 
 	request(app, Context_Request{kind = .Tab, tab = index, pos = pos, keyboard = keyboard})
 }
 
+group_context_menu :: proc(app: ^App, id: u64, pos: [2]f32, keyboard := false) {
+	request(app, Context_Request{kind = .Group, group = id, pos = pos, keyboard = keyboard})
+}
+
 address_context_menu :: proc(app: ^App, pos: [2]f32, keyboard := false) {
 	request(app, Context_Request{kind = .Address, pos = pos, keyboard = keyboard})
 }
@@ -212,6 +217,7 @@ context_menus_build :: proc(app: ^App) {
 		case .Page: page_menu_items(app, t, r)
 		case .Tab: tab_menu_items(app, r)
 		case .Address: address_menu_items(app)
+		case .Group: group_menu_items(app, r.group)   // tab_groups.odin
 		}
 	}
 }
@@ -310,6 +316,9 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 	ui.menu_separator()
 	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
 	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
+	ui.menu_separator()
+	tab_menu_group_items(app, t)   // tab_groups.odin: pin, groups
+	if !ui.ctx_menu_is_open(ui.key_from_string(0, CTX_MENU_ID)) { return }
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
 	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }

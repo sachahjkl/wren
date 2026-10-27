@@ -38,6 +38,7 @@ import "wb:page"
 Window_Ctx :: struct {
 	tabs:             [dynamic]^Tab,
 	current:          int,            // the tab shown (an index in tabs)
+	groups:           [dynamic]Tab_Group,   // tab_groups.odin: the groups its tabs are in (freed with the window)
 	address:          ui.Text_Field,  // the address field
 	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
 	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
@@ -111,6 +112,7 @@ window_own_destroy :: proc(own: ^Window_Own) {
 	context_menu_state_destroy(&own.ctx_menu)
 	device_input_destroy(&own.devices)
 	page_a11y_destroy(&own.a11y)
+	sidebar_destroy(&own.sidebar)
 }
 
 ////////////////////////////////
@@ -365,6 +367,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	window_own_destroy(&w.own)
 	window_deactivate(app)
 	delete(w.tabs)
+	tab_groups_destroy(&w.groups)
 	ui.field_destroy(&w.address)
 	// the swap chain: another window's becomes the renderer's own when it is the primary one that goes
 	idx := -1
@@ -518,20 +521,21 @@ tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_f
 	if src == dest {
 		to := at < 0 ? len(st) - 1 : min(at, len(st) - 1)
 		sc^ = list_move(st[:], si, to, sc^)
-		window_request(app, src, 2)
-		recovery_touch(app)
+		tabs_fix(app, src)   // tab_groups.odin: pinned first, groups together
 		return true
 	}
 	showing := sc^ == si
+	t.group = 0   // (a group is its window's)
 	sc^ = tab_list_take(st, sc^, si)
 	dc := window_current(app, dest)
 	dc^, _ = tab_list_put(dt, dc^, at, t, true)
 	if len(st) > 0 { ui.field_set(window_address(app, src), st[sc^].url) } else { src.closing = true }
 	ui.field_set(window_address(app, dest), t.url)
 	if devtools_follow && showing && dev.visible && dev.window == src.id { dev.window = dest.id }
+	if len(st) > 0 { tabs_fix(app, src) }
+	tabs_fix(app, dest)
 	window_request(app, src, 3)
 	window_request(app, dest, 3)
-	recovery_touch(app)
 	return true
 }
 
@@ -618,11 +622,13 @@ windows_destroy :: proc(app: ^App) {
 	for w in app.windows {
 		delete(w.title)
 		delete(w.tabs)
+		tab_groups_destroy(&w.groups)
 		free(w.ui)
 		platform.destroy_window(w.win)
 		free(w)
 	}
 	delete(app.windows)
+	tab_groups_destroy(&app.bare.groups)
 	delete(pass_order); delete(pass_causes)
 	pass_order, pass_causes = nil, nil
 	app.windows = nil

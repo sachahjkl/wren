@@ -222,6 +222,33 @@ commands_build :: proc(r: ^Command_Registry) {
 			return w != nil && len(window_tabs(app, w)) > 1
 		},
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_detach(app, t) }})
+	// pinned tabs and groups (tab_groups.odin)
+	add(r, {name = "tab.pin", title = i18n.tr("Pin or unpin tab"), category = "Tabs", keywords = "pinned app tab sticky keep",
+		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.pinned },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_pinned(app, t, !t.pinned) }})
+	add(r, {name = "tab.group_new", title = i18n.tr("Add tab to a new group"), category = "Tabs", keywords = "group tabs together organize",
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { _ = tab_group_new(app, t) }})
+	add(r, {name = "tab.group_leave", title = i18n.tr("Remove tab from its group"), category = "Tabs", keywords = "ungroup group",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_group_leave(app, t) }})
+	add(r, {name = "tab.group_collapse", title = i18n.tr("Collapse or expand the tab's group"), category = "Tabs", keywords = "group fold hide",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) {
+			w, _ := window_of_tab(app, t)
+			if gi := group_index(w.groups[:], t.group); gi >= 0 { group_set_collapsed(app, w, t.group, !w.groups[gi].collapsed) }
+		}})
+	add(r, {name = "tab.group_rename", title = i18n.tr("Rename the tab's group"), category = "Tabs", keywords = "group name title",
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 && favs.cfg.position != .Top },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { group_rename_begin(app, t.group) }})
+	for gc in Group_Color {
+		add(r, {name = fmt.aprintf("tab.group_color.%s", GROUP_COLOR_NAMES[gc], allocator = a), title = fmt.aprintf("%s: %s", i18n.tr("Tab group colour"), GROUP_COLOR_NAMES[gc], allocator = a),
+			category = "Tabs", keywords = "group colour color", arg = GROUP_COLOR_NAMES[gc],
+			enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.group != 0 },
+			run = proc(app: ^App, t: ^Tab, c: ^Command) {
+				w, _ := window_of_tab(app, t)
+				if col, ok := group_color_of(c.arg); ok { group_set_color(app, w, t.group, col) }
+			}})
+	}
 	add(r, {name = "window.new", title = "New window", category = "Window", keywords = "open another", keys = keys(&r.arena, {key = .N, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { window_new(app) }})
 	add(r, {name = "tab.restore_crashed", title = "Restore the tabs of the session that crashed", category = "Tabs", keywords = "crash recovery reopen saved",

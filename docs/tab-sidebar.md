@@ -95,6 +95,44 @@ of the list scrolls it. A new current tab is scrolled into view; a drag does not
 Nothing animates at rest: the rows slide only while tabs move, the loading indicator turns only while a tab loads, and no frame is
 drawn for the sidebar otherwise.
 
+## Pinned tabs and groups
+
+`src/browser/tab_groups.odin` holds the model, `src/browser/tab_sidebar_list.odin` draws it.
+
+* **Pinned tabs** are at the start of the window's tabs and in no group. The sidebar shows them as a grid of icons above
+  the list, as many per line as the width holds (one in the narrow column), in a box of their own that scrolls past
+  `browser.tabs.sidebar_pins_max` of the window's height (0.4). The row of tabs shows their icon alone. Pin and unpin from a
+  tab's menu or `tab.pin`; drag a pinned tab over another to reorder them; drag a tab of the list up to the pinned tabs to
+  pin it, a pinned tab down into the list to unpin it.
+* **Groups** belong to a window: an id (unique in the window), a name (may be empty: the header then says how many tabs),
+  one of nine colours (`grey blue red yellow green pink purple cyan orange`) and whether it is collapsed. Its tabs are next
+  to each other. The sidebar shows a header row before them (a disc of its colour, a ring when collapsed; its name) and a
+  rail of its colour beside its rows; the row of tabs a line of its colour along the top of each of its tabs.
+  * a click on the header collapses or expands it (its tabs leave the list; the current tab is never hidden: collapsing
+    the group of the current tab selects the nearest tab outside it, a tab of a collapsed group that becomes current opens
+    it); a double click renames it in place (Enter or leaving the field keeps the name, Escape gives up); right click: rename,
+    collapse, colour, new tab in the group, ungroup, close the group;
+  * a tab's menu: add to a new group, add to one of the window's groups, remove from its group; the commands `tab.group_new`,
+    `tab.group_leave`, `tab.group_collapse`, `tab.group_rename`, `tab.group_color.<colour>` act on the current tab;
+  * a tab dragged in the list with its middle over a tab of a group joins it, over a tab outside the group or over a
+    header leaves it (`side_drop`); moved with the keyboard (`Ctrl+Shift+PageUp/PageDown`), it takes the group of the tab whose
+    place it takes;
+  * a group without tabs goes; a tab moved to another window leaves its group.
+* The order rule (pinned first, a group's tabs together) is restored by `tabs_normalize` after anything that moves tabs or
+  changes what they are in (`tabs_fix`).
+* **Saved**: with the session and the crash recovery (`session.odin`: `tgroup` lines for a window's groups, `pin` and
+  `group <id>` after a tab; an older reader skips them). Without the session, the pinned tabs come back at the next start
+  (`browser.tabs.restore_pinned`, on by default: `pinned.txt` in the profile). The "restore the crashed session" command
+  opens the tabs into the current window: their pins come back, their groups not.
+* `wren ctl tabs --json` gives each tab's `pinned`, `group`, `groupName`, `groupColor`, `groupCollapsed` and the `rect` its
+  last frame drew it at in the tab bar (window pixels), and `tabGroups` (each window's groups and their header's `rect`).
+
+| Preference | Default | |
+|---|---|---|
+| `browser.tabs.sidebar_pins_max` | 0.4 | 0.1 to 0.9: the share of the window's height the pinned tabs take at most. |
+| `browser.tabs.restore_pinned` | on | The pinned tabs come back without the session. |
+| `browser.tabs.group_name_max` | 64 | 1 to 1024 characters. |
+
 ## Tests
 
 `src/browser/tab_sidebar_test.odin`: the position names and preferences (the three values, a refused value, the bounds), the
@@ -102,4 +140,13 @@ width of the sidebar, the page and the sidebar sharing the window without overla
 view of 1000 tabs, the geometry of the reorder along Y, the toolbar in the title bar (`titlebar_parts_share_the_window`: the
 parts touch and make the window's width, the field's minimum, what hides and in which order; `titlebar_row_regions`: the row
 built by `titlebar_row_build` gives the window a caption whose holes are the parts' clickable boxes, the window buttons, and
-the hit test of each part, the drag areas and the top resize band).
+the hit test of each part, the drag areas and the top resize band), `sidebar_opens_without_a_jump`.
+
+`src/browser/tab_groups_test.odin`: the order rule, groups without tabs going, the rows of the list with groups (headers,
+collapsed groups, the binary search, 1000 tabs in 50 groups), where a dragged tab goes and in which group, the pinned tabs'
+grid, pins and groups through a session file.
+
+`tools/sidebar_tabs_e2e.ps1` (no window shown, `wren ctl`; in `test_all`): the opening and closing animation seen by the
+page's resize events; pinning, reordering pinned tabs, pinning and unpinning by dragging; a group made, joined by dragging,
+renamed in its header, coloured, collapsed and expanded by a click, left by dragging, gone with its last tab; the pinned
+tabs back after a restart without the session, the group with it. `-ShotDir` writes a picture of each state.
