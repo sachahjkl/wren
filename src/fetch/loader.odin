@@ -1070,9 +1070,9 @@ file_work :: proc(data: rawptr) {
 	if attrs.folder {
 		if !j.document { j.err = strings.clone(fmt.tprintf("%s is a folder", j.path)); return }
 		if !j.slash { j.outcome = .Redirect; return }
-		dir := strings.trim_right(j.path, "\\")
+		dir := strings.trim_right(j.path, FILE_SEP_STR)
 		for name in j.files.index_names {
-			p := strings.concatenate({dir, "\\", name}, context.temp_allocator)
+			p := strings.concatenate({dir, FILE_SEP_STR, name}, context.temp_allocator)
 			ia, ist := file_attributes(p)
 			if ist != .Ok || ia.folder { continue }
 			if read_file_into(j, p, ia.size) { j.outcome = .Index; j.index = strings.clone(name) }
