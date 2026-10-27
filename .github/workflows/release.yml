@@ -43,6 +43,17 @@ jobs:
         shell: cmd
         run: call build.bat release
 
+      # The exe above is built, with the fat-LTO library. The unit tests link the library of build\native too, and the toolkit's text
+      # tests hang or crash with the fat-LTO one on the runners (not on a development machine: not understood; the exe's own
+      # end-to-end tests, text included, pass): they get the quick one, which is what the CI tests run against.
+      - name: Native library for the unit tests (quick profile)
+        run: |
+          ./tools/build_native.ps1 -Profile quick
+          if ($LASTEXITCODE) { exit 1 }
+          # (test_all rebuilds the exe when a library is newer than it: the release exe is the one to pack, its content is the
+          # same, so its date follows the library's)
+          (Get-Item build\wren.exe).LastWriteTimeUtc = [DateTime]::UtcNow
+
       - name: Tests (tools\test_all.ps1 -CI)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\test_all.ps1 -CI

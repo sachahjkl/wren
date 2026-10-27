@@ -102,6 +102,10 @@ a_damaged_checkpoint_is_ignored_and_a_damaged_section_rebuilt :: proc(t: ^testin
 		harness_init(&h2, "damaged", fresh = false)
 		stem := origin_stem(&h2.m, "http://a.test")
 		ck := fmt.tprintf("%s.widx", stem)
+		// (a compaction on a pool thread may have moved the checkpoint to a later generation by now, and deleted the first)
+		for g := u32(16); g > 0; g -= 1 {
+			if p := generation_name(stem, g, ".widx", context.temp_allocator); os.exists(p) { ck = p; break }
+		}
 		data, err := os.read_entire_file(ck, context.temp_allocator)
 		testing.expect(t, err == nil && len(data) > CK_HEADER, "a checkpoint was written")
 		harness_destroy(&h2)
