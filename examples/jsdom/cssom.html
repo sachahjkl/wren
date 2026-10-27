@@ -1,0 +1,153 @@
+<!doctype html>
+<html><head><title>CSSOM stylesheets</title>
+<style id="s1" title="main">p.a { margin-left: 5px } p.b { margin-left: 6px }</style>
+</head>
+<body>
+<p class="a" id="pa">a</p><p class="b" id="pb">b</p>
+<script>
+// The stylesheets of <style> elements for scripts (CSSOM §6.1-6.3: LinkStyle.sheet, document.styleSheets, insertRule /
+// deleteRule / cssRules on an element's sheet). https://www.speedtest.net/ stayed blank: its React bundle styles with
+// Emotion (MUI), whose speedy mode makes an empty <style> and fills it with sheet.insertRule; without `sheet` the first
+// render threw, React unmounted the whole tree and the page reported the error to its own server only.
+const px = (el, prop) => getComputedStyle(el)[prop];
+
+section("element.sheet of a <style>", () => {
+  const s1 = document.getElementById("s1");
+  const sh = s1.sheet;
+  t("a CSSStyleSheet", sh instanceof CSSStyleSheet && sh instanceof StyleSheet);
+  eq("the same object each time", s1.sheet, sh);
+  eq("ownerNode", sh.ownerNode, s1);
+  eq("href of a <style>", sh.href, null);
+  eq("title", sh.title, "main");
+  eq("type", sh.type, "text/css");
+  t("cssRules is a CSSRuleList", sh.cssRules instanceof CSSRuleList);
+  eq("cssRules [SameObject]", sh.cssRules, sh.cssRules);
+  eq("two rules", sh.cssRules.length, 2);
+  eq("cssText", sh.cssRules[0].cssText, "p.a { margin-left: 5px }");
+  eq("selectorText", sh.cssRules.item(1).selectorText, "p.b");
+  eq("item past the end", sh.cssRules.item(9), null);
+  eq("the same rule object while nothing changes", sh.cssRules[0], sh.cssRules[0]);
+  eq("not on other elements", document.body.sheet, undefined);
+  eq("a detached <style> has none", document.createElement("style").sheet, null);
+});
+
+section("document.styleSheets", () => {
+  const list = document.styleSheets;
+  t("a StyleSheetList", list instanceof StyleSheetList);
+  eq("[SameObject]", document.styleSheets, list);
+  eq("one sheet", list.length, 1);
+  eq("[0] is the <style>'s", list[0], document.getElementById("s1").sheet);
+  eq("item(0)", list.item(0), list[0]);
+  eq("item past the end", list.item(5), null);
+  const extra = document.createElement("style");
+  extra.textContent = "p.a { padding-left: 1px }";
+  document.head.appendChild(extra);
+  eq("live: a new <style> at once", list.length, 2);
+  eq("in tree order", list[1], extra.sheet);
+  extra.remove();
+  eq("its sheet goes with it", extra.sheet, null);
+  eq("live: removed", list.length, 1);
+});
+
+// What Emotion (@emotion/sheet) does, as written there
+function sheetForTag(tag) {
+  if (tag.sheet) { return tag.sheet; }
+  for (let i = 0; i < document.styleSheets.length; i++) {
+    if (document.styleSheets[i].ownerNode === tag) { return document.styleSheets[i]; }
+  }
+}
+
+section("insertRule into an empty <style> (Emotion's speedy mode)", () => {
+  const tag = document.createElement("style");
+  tag.setAttribute("data-emotion", "css");
+  tag.appendChild(document.createTextNode(""));
+  tag.setAttribute("data-s", "");
+  document.head.appendChild(tag);
+  const sheet = sheetForTag(tag);
+  t("sheetForTag finds the sheet", sheet instanceof CSSStyleSheet);
+  eq("empty", sheet.cssRules.length, 0);
+  const box = document.createElement("div");
+  box.className = "css-1";
+  document.body.appendChild(box);
+  eq("index returned", sheet.insertRule(".css-1 { margin-left: 7px }", sheet.cssRules.length), 0);
+  eq("the rule applies", px(box, "marginLeft"), "7px");
+  for (let i = 0; i < 300; i++) { sheet.insertRule(`.css-x${i} { margin-top: ${i}px }`, sheet.cssRules.length); }
+  eq("301 rules", sheet.cssRules.length, 301);
+  eq("the text stays empty", tag.textContent, "");
+  box.className = "css-1 css-x42";
+  eq("a rule inserted later applies", px(box, "marginTop"), "42px");
+  eq("the last rule's text", sheet.cssRules[300].cssText, ".css-x299 { margin-top: 299px }");
+  sheet.insertRule(".css-1 { margin-left: 9px }", 0);
+  eq("inserted at 0: the later rule wins", px(box, "marginLeft"), "7px");
+  sheet.deleteRule(1);
+  eq("deleteRule", px(box, "marginLeft"), "9px");
+  throws("not one rule", () => sheet.insertRule("}{ nonsense", 0), "SyntaxError");
+  throws("two rules", () => sheet.insertRule("a {} b {}", 0), "SyntaxError");
+  throws("insertRule past the end", () => sheet.insertRule("a {}", 9999), "IndexSizeError");
+  throws("deleteRule past the end", () => sheet.deleteRule(9999), "IndexSizeError");
+  eq("a mutation elsewhere keeps the rules", (document.body.appendChild(document.createElement("i")), px(box, "marginLeft")), "9px");
+  sheet.disabled = true;
+  eq("disabled", px(box, "marginLeft"), "0px");
+  sheet.disabled = false;
+  eq("enabled again", px(box, "marginLeft"), "9px");
+  throws("replaceSync is for constructed sheets", () => sheet.replaceSync("a {}"), "NotAllowedError");
+  throws("an element's sheet cannot be adopted", () => { document.adoptedStyleSheets = [sheet]; }, "NotAllowedError");
+  tag.textContent = ".css-1 { margin-left: 3px }";
+  t("a new text, a new sheet", tag.sheet !== sheet && tag.sheet.cssRules.length === 1);
+  eq("the inserted rules went with the old sheet", px(box, "marginLeft"), "3px");
+  eq("the old sheet has lost its element", sheet.ownerNode, null);
+  box.remove();
+  tag.remove();
+});
+
+section("rules of the parsed text keep applying next to inserted ones", () => {
+  const sh = document.getElementById("s1").sheet;
+  const first = sh.cssRules[0];
+  sh.insertRule("p.c { margin-left: 1px }", 0);
+  eq("a rule keeps its object when one is inserted before it", sh.cssRules[1], first);
+  sh.deleteRule(0);
+  eq("... and when that one goes", sh.cssRules[0], first);
+  sh.insertRule("p.a { padding-left: 4px }", sh.cssRules.length);
+  const pa = document.getElementById("pa");
+  eq("parsed rule", px(pa, "marginLeft"), "5px");
+  eq("inserted rule", px(pa, "paddingLeft"), "4px");
+  sh.deleteRule(sh.cssRules.length - 1);
+  eq("deleted again", px(pa, "paddingLeft"), "0px");
+  eq("cssRules follows", sh.cssRules.length, 2);
+});
+
+section("a <style> in a shadow tree", () => {
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = host.attachShadow({mode: "open"});
+  root.innerHTML = "<style></style><span id='sp'>x</span>";
+  const st = root.querySelector("style");
+  eq("shadowRoot.styleSheets", root.styleSheets.length, 1);
+  eq("its sheet", root.styleSheets[0], st.sheet);
+  eq("not in document.styleSheets", document.styleSheets.length, 1);
+  st.sheet.insertRule("span { margin-left: 8px }", 0);
+  eq("applies inside the tree", px(root.getElementById("sp"), "marginLeft"), "8px");
+  host.remove();
+});
+
+section("constructed sheets still work the same", () => {
+  const c = new CSSStyleSheet();
+  c.replaceSync("p { margin-right: 2px } b { margin-right: 3px }");
+  eq("two rules", c.cssRules.length, 2);
+  c.insertRule("i { margin-right: 4px }", 1);
+  eq("insertRule", c.cssRules[1].cssText, "i { margin-right: 4px }");
+  throws("@import into a constructed sheet", () => c.insertRule("@import url(x.css);", 0), "SyntaxError");
+  eq("ownerNode null", c.ownerNode, null);
+  document.adoptedStyleSheets = [c];
+  eq("adopted", px(document.getElementById("pb"), "marginRight"), "2px");
+  document.adoptedStyleSheets = [];
+});
+
+// import() of code with no script URL of its own (a string given to eval): the document's URL is the base, an absolute
+// specifier needs none (it once failed with "invalid base").
+const url = "data:text/javascript,export default 41 + 1;";
+(0, eval)("import(" + JSON.stringify(url) + ")").then(
+  (m) => { eq("import() from eval code", m.default, 42); done(); },
+  (e) => { t("import() from eval code", false, String(e)); done(); });
+</script>
+</body></html>

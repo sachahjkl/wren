@@ -11,7 +11,6 @@ package page
 
 import "core:strings"
 import "wb:base"
-import "wb:css"
 import "wb:dom"
 import "wb:html"
 import "wb:style"
@@ -447,166 +446,6 @@ CustomStates_list :: proc(c: ^Call, internals: u64) -> string {
 	return strings.to_string(b)
 }
 
-////////////////////////////////
-// Constructable stylesheets (CSSOM §6.1.2)
-
-@(private)
-Css_Sheet :: struct {
-	id:    u64,                // the engine's sheet
-	rules: [dynamic]string,    // the text of each top-level rule (cssRules)
-	media: string,
-}
-
-@(private)
-css_sheet_vt := Object_VTable{name = "CSSStyleSheet", destroy = proc(p: ^Page, data: rawptr) {
-	s := (^Css_Sheet)(data)
-	if !p.closed && p.engine != nil { style.engine_constructed_destroy(p.engine, s.id) }
-	for r in s.rules { delete(r) }
-	delete(s.rules)
-	delete(s.media)
-	free(s)
-}}
-
-@(private)
-css_sheet_of :: proc(c: ^Call, h: u64) -> ^Css_Sheet {
-	if c.page.engine == nil { return nil }
-	return (^Css_Sheet)(object_data(c.page, h, &css_sheet_vt))
-}
-
-// The top-level rules of a stylesheet's text, as written (the source of each, trimmed): what cssRules lists.
-// Strings, comments and nested blocks are skipped over; a rule ends at its block's closing brace, or at a semicolon
-// for a statement at-rule.
-@(private)
-split_rules :: proc(text: string, allocator := context.temp_allocator) -> [dynamic]string {
-	out := make([dynamic]string, allocator)
-	depth, start := 0, 0
-	i := 0
-	for i < len(text) {
-		ch := text[i]
-		switch {
-		case ch == '/' && i + 1 < len(text) && text[i + 1] == '*':
-			end := strings.index(text[i + 2:], "*/")
-			if start == i && depth == 0 { start = end < 0 ? len(text) : i + 2 + end + 2 }   // a comment before a rule
-			i = end < 0 ? len(text) : i + 2 + end + 2
-			continue
-		case ch == '"' || ch == '\'':
-			i += 1
-			for i < len(text) && text[i] != ch {
-				if text[i] == '\\' { i += 1 }
-				i += 1
-			}
-		case ch == '{': depth += 1
-		case ch == '}':
-			depth -= 1
-			if depth <= 0 {
-				depth = 0
-				if r := strings.trim_space(text[start:i + 1]); r != "" { append(&out, r) }
-				start = i + 1
-			}
-		case ch == ';' && depth == 0:
-			if r := strings.trim_space(text[start:i + 1]); r != "" { append(&out, r) }
-			start = i + 1
-		}
-		i += 1
-	}
-	if r := strings.trim_space(text[min(start, len(text)):]); r != "" { append(&out, r) }
-	return out
-}
-
-@(private)
-is_import_rule :: proc(r: string) -> bool { return len(r) >= 7 && strings.equal_fold(r[:7], "@import") }
-
-// The sheet's rules joined, given to the engine.
-@(private)
-css_sheet_commit :: proc(p: ^Page, s: ^Css_Sheet) {
-	style.engine_constructed_replace(p.engine, s.id, strings.join(s.rules[:], "\n", context.temp_allocator))
-}
-
-CSSStyleSheet_create :: proc(c: ^Call, media: string, disabled: bool, base_url: string) -> u64 {
-	p := c.page
-	if p.engine == nil { return 0 }
-	s := new(Css_Sheet)
-	s.media = strings.clone(media)
-	s.id = style.engine_constructed_create(p.engine, "", media, base_url != "" ? base_url : p.env.location.href)
-	if disabled { style.engine_constructed_set_disabled(p.engine, s.id, true) }
-	return object_create(p, &css_sheet_vt, s, c.owner)
-}
-
-CSSStyleSheet_replaceText :: proc(c: ^Call, sheet: u64, text: string) -> Api_Error {
-	s := css_sheet_of(c, sheet)
-	if s == nil { return fail(c, .Invalid_Handle, "not a constructed stylesheet") }
-	for r in s.rules { delete(r) }
-	clear(&s.rules)
-	for r in split_rules(text) {
-		if is_import_rule(r) { continue }   // replace() and replaceSync() ignore @import (CSSOM §6.1.2)
-		append(&s.rules, strings.clone(r))
-	}
-	css_sheet_commit(c.page, s)
-	return .None
-}
-
-CSSStyleSheet_ruleCount :: proc(c: ^Call, sheet: u64) -> u32 {
-	s := css_sheet_of(c, sheet)
-	return s != nil ? u32(len(s.rules)) : 0
-}
-
-CSSStyleSheet_ruleText :: proc(c: ^Call, sheet: u64, index: u32) -> (string, Api_Error) {
-	s := css_sheet_of(c, sheet)
-	if s == nil || int(index) >= len(s.rules) { return "", fail(c, .Index_Size, "The index is past the end of the rule list.") }
-	return s.rules[index], .None
-}
-
-CSSStyleSheet_insertRuleAt :: proc(c: ^Call, sheet: u64, rule: string, index: u32) -> (u32, Api_Error) {
-	s := css_sheet_of(c, sheet)
-	if s == nil { return 0, fail(c, .Invalid_Handle, "not a constructed stylesheet") }
-	if int(index) > len(s.rules) { return 0, fail(c, .Index_Size, "Failed to execute 'insertRule' on 'CSSStyleSheet': The index provided is larger than the maximum index.") }
-	parts := split_rules(rule)
-	if len(parts) != 1 { return 0, fail(c, .Syntax, "Failed to execute 'insertRule' on 'CSSStyleSheet': Failed to parse the rule.") }
-	if is_import_rule(parts[0]) { return 0, fail(c, .Syntax, "Failed to execute 'insertRule' on 'CSSStyleSheet': Can't insert @import rules into a constructed stylesheet.") }
-	parsed := css.parse_stylesheet(parts[0], style.parse_options(&c.page.engine.settings))
-	defer { css.stylesheet_destroy(parsed); free(parsed) }
-	if len(parsed.rules) != 1 { return 0, fail(c, .Syntax, "Failed to execute 'insertRule' on 'CSSStyleSheet': Failed to parse the rule.") }
-	inject_at(&s.rules, int(index), strings.clone(parts[0]))
-	css_sheet_commit(c.page, s)
-	return index, .None
-}
-
-CSSStyleSheet_deleteRuleAt :: proc(c: ^Call, sheet: u64, index: u32) -> Api_Error {
-	s := css_sheet_of(c, sheet)
-	if s == nil { return fail(c, .Invalid_Handle, "not a constructed stylesheet") }
-	if int(index) >= len(s.rules) { return fail(c, .Index_Size, "Failed to execute 'deleteRule' on 'CSSStyleSheet': The index provided is larger than the maximum index.") }
-	delete(s.rules[index])
-	ordered_remove(&s.rules, int(index))
-	css_sheet_commit(c.page, s)
-	return .None
-}
-
-CSSStyleSheet_isDisabled :: proc(c: ^Call, sheet: u64) -> bool {
-	s := css_sheet_of(c, sheet)
-	if s == nil { return false }
-	sh := style.engine_find_sheet(c.page.engine, s.id)
-	return sh != nil && sh.disabled
-}
-
-CSSStyleSheet_setDisabled :: proc(c: ^Call, sheet: u64, disabled: bool) {
-	if s := css_sheet_of(c, sheet); s != nil { style.engine_constructed_set_disabled(c.page.engine, s.id, disabled) }
-}
-
-CSSStyleSheet_mediaText :: proc(c: ^Call, sheet: u64) -> string {
-	s := css_sheet_of(c, sheet)
-	return s != nil ? s.media : ""
-}
-
-CSSStyleSheet_setMediaText :: proc(c: ^Call, sheet: u64, media: string) {
-	s := css_sheet_of(c, sheet)
-	if s == nil { return }
-	delete(s.media)
-	s.media = strings.clone(media)
-	style.engine_constructed_set_media(c.page.engine, s.id, media)
-}
-
-CSSStyleSheet_isConstructed :: proc(c: ^Call, sheet: u64) -> bool { return css_sheet_of(c, sheet) != nil }
-
 DocumentOrShadowRoot_adopt :: proc(c: ^Call, root: Api_Node, sheets: []u64) -> Api_Error {
 	p := c.page
 	d := call_doc(c)
@@ -614,7 +453,7 @@ DocumentOrShadowRoot_adopt :: proc(c: ^Call, root: Api_Node, sheets: []u64) -> A
 	ids := make([]u64, len(sheets), context.temp_allocator)
 	for h, i in sheets {
 		s := css_sheet_of(c, h)
-		if s == nil { return fail(c, .Not_Allowed, "Failed to set the 'adoptedStyleSheets' property: Can't adopt non-constructed stylesheets.") }
+		if s == nil || s.owner != base.NIL_HANDLE { return fail(c, .Not_Allowed, "Failed to set the 'adoptedStyleSheets' property: Can't adopt non-constructed stylesheets.") }
 		ids[i] = s.id
 	}
 	r := H(root.handle)
