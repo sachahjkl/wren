@@ -1,4 +1,5 @@
-// Package net: HTTP(S) client on top of WinHTTP's asynchronous mode.
+// Package net: HTTP(S) client on top of WinHTTP's asynchronous mode, or of the built-in stack (rust.odin,
+// network.backend = rust: its own threads, the same queues, limits, events and handles as below).
 //
 // Design
 //   * No thread of ours: WinHTTP's own pool runs the state machine (send, receive headers, read chunks) and calls
@@ -17,6 +18,7 @@ package net
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:time"
@@ -115,12 +117,14 @@ Job :: struct {
 	terminal:     bool,
 	secure_flags: u32,
 	marks:        Marks,
+	url, method, headers: string,   // the Rust stack's (rust.odin): UTF-8, heap
 }
 
 Request :: struct {
 	job:      ^Job,
 	hconnect: HINTERNET,
 	hrequest: HINTERNET,
+	rid:      u64,         // the Rust stack's request (0: none)
 	on_event: Event_Proc,
 	user:     rawptr,
 	scope:    ^base.Scope,
@@ -157,15 +161,28 @@ Client :: struct {
 	drain_pending: bool,
 	live_jobs:     int,   // atomic
 	ws:            ^Ws_Manager,   // WebSockets of this client (websocket.odin), created on first use
+	rs:            rawptr,        // the Rust stack's client (rust.odin) when settings.backend == .Rust
 }
 
-// `settings` zero value = the defaults (what about:config shows).
+// `settings` zero value = the defaults (what about:config shows). The WREN_NET_BACKEND environment variable (winhttp,
+// rust) overrides the backend: a test suite runs on either stack unchanged.
 client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bool {
 	c.loop = loop
 	c.settings = settings.max_total == 0 ? settings_default(context.temp_allocator) : settings
 	c.settings.user_agent = strings.clone(c.settings.user_agent)   // the client owns its copy
+	c.settings.extra_ca_file = strings.clone(c.settings.extra_ca_file)
+	switch os.get_env("WREN_NET_BACKEND", context.temp_allocator) {
+	case "rust":    c.settings.backend = .Rust
+	case "winhttp": c.settings.backend = .Winhttp
+	case:
+		if c.settings.backend == .Rust && c.settings.proxy == .System && system_proxy_uses_pac() {
+			fmt.eprintln("net: the system proxy is configured by a script (PAC): network.backend = winhttp for this session")
+			c.settings.backend = .Winhttp
+		}
+	}
 	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
+	if c.settings.backend == .Rust { return rust_init(c) }
 	ua := win.utf8_to_wstring(c.settings.user_agent, context.temp_allocator)
 	access: win.DWORD = c.settings.proxy == .System ? WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY : WINHTTP_ACCESS_TYPE_NO_PROXY
 	c.session = WinHttpOpen(ua, access, nil, nil, WINHTTP_FLAG_ASYNC)
@@ -181,13 +198,11 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 		tls = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
 		WinHttpSetOption(c.session, WINHTTP_OPTION_SECURE_PROTOCOLS, &tls, size_of(tls))
 	}
+	// Never HTTP/3: for a site that announces it WinHTTP tries QUIC first and, where UDP does not get through, never falls
+	// back to TCP (odin-lang.org stayed on Connecting). network.http3.enabled is the built-in stack's, which races the two.
 	protocols: win.DWORD
 	if c.settings.http2 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP2 }
-	if c.settings.http3 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP3 }
-	if protocols != 0 && !WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) {
-		protocols &= ~win.DWORD(WINHTTP_PROTOCOL_FLAG_HTTP3)   // HTTP/3 needs a recent Windows
-		WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols))
-	}
+	if protocols != 0 { WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) }
 	// Policy belongs to the fetch layer: redirects are returned to it (each hop is re-checked), and the OS never sends
 	// ambient credentials on its own.
 	never: win.DWORD = WINHTTP_OPTION_REDIRECT_POLICY_NEVER
@@ -208,10 +223,12 @@ apply_timeouts :: proc(c: ^Client) {
 // Applies a changed configuration to the running client. Limits and timeouts take effect immediately (queued requests
 // are re-examined); the user agent, protocols and proxy mode need a new session, so they apply at the next start.
 client_apply :: proc(c: ^Client, s: Settings) {
-	agent := c.settings.user_agent   // the session was opened with it; a new value shows after a restart
+	// the session was opened with these; a new value shows after a restart
+	agent, ca, backend := c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend
 	c.settings = s
-	c.settings.user_agent = agent
+	c.settings.user_agent, c.settings.extra_ca_file, c.settings.backend = agent, ca, backend
 	if c.session != nil { apply_timeouts(c) }
+	if c.rs != nil { rust_apply(c) }
 	pump(c)
 }
 // Cancels everything, waits for WinHTTP to let go of every job, frees the rest.
@@ -226,6 +243,7 @@ client_destroy :: proc(c: ^Client) {
 	for h, _ in base.pool_next(&c.requests, &it) { append(&handles, h) }
 	for h in handles { release(c, h) }
 	if c.session != nil { WinHttpCloseHandle(c.session); c.session = nil }
+	rust_destroy(c)
 	start := time.tick_now()
 	for sync.atomic_load(&c.live_jobs) > 0 && time.duration_seconds(time.tick_since(start)) < 5 { time.sleep(time.Millisecond) }
 	for &ev in c.events { free_event(&ev) }
@@ -235,6 +253,7 @@ client_destroy :: proc(c: ^Client) {
 	for k in c.active { delete(k, heap()) }
 	delete(c.active)
 	delete(c.settings.user_agent)
+	delete(c.settings.extra_ca_file)
 	base.pool_destroy(&c.requests)
 }
 
@@ -300,7 +319,7 @@ activate :: proc(c: ^Client, h: base.Handle, r: ^Request) {
 			return
 		}
 	}
-	if code := begin(c, r); code != 0 {
+	if code := begin(c, h, r); code != 0 {
 		push_event(c, Event{kind = .Failed, req = h, error = code})
 	}
 }
@@ -327,7 +346,7 @@ throttle_fire :: proc(data: rawptr) {
 	r.timer_owner = nil
 	if r.begin_pending {
 		r.begin_pending = false
-		if code := begin(c, r); code != 0 { push_event(c, Event{kind = .Failed, req = h, error = code}) }
+		if code := begin(c, h, r); code != 0 { push_event(c, Event{kind = .Failed, req = h, error = code}) }
 		return
 	}
 	now := now_ms(c)
@@ -355,7 +374,9 @@ in_flight :: proc(c: ^Client) -> int { return c.requests.count }
 set_max_body :: proc(c: ^Client, h: base.Handle, max_body: int) {
 	r := base.pool_get(&c.requests, h)
 	if r == nil || r.job == nil { return }
-	sync.atomic_store(&r.job.max_body, max_body > 0 ? max_body : c.settings.max_body)
+	m := max_body > 0 ? max_body : c.settings.max_body
+	sync.atomic_store(&r.job.max_body, m)
+	if r.rid != 0 { wn_net_set_max_body(c.rs, r.rid, u64(max(m, 0))) }
 }
 
 ////////////////////////////////
@@ -397,6 +418,15 @@ prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key:
 	job.secure = u.scheme == "https"
 	job.max_body = d.max_body > 0 ? d.max_body : c.settings.max_body
 	method := d.method == "" ? "GET" : d.method
+	if len(d.body) > 0 { job.body = make([]byte, len(d.body), heap()); copy(job.body, d.body) }
+	sync.atomic_add(&c.live_jobs, 1)
+	key = fmt.aprintf("%s:%d", u.host, url.effective_port(u), allocator = heap())
+	if c.settings.backend == .Rust {
+		job.url = strings.clone(d.url, heap())
+		job.method = strings.clone(method, heap())
+		job.headers = strings.clone(d.headers, heap())
+		return job, key, 0
+	}
 	job.verb_w = to_wide(method)
 	host := u.host   // WinHTTP takes IPv6 literals without brackets
 	if strings.has_prefix(host, "[") { host = host[1:len(host) - 1] }
@@ -404,16 +434,13 @@ prepare :: proc(c: ^Client, h: base.Handle, d: Request_Desc) -> (job: ^Job, key:
 	target := url.request_target(u, context.temp_allocator)
 	job.target_w = to_wide(target)
 	if d.headers != "" { job.headers_w = to_wide(d.headers) }
-	if len(d.body) > 0 { job.body = make([]byte, len(d.body), heap()); copy(job.body, d.body) }
-	sync.atomic_add(&c.live_jobs, 1)
-
-	key = fmt.aprintf("%s:%d", u.host, url.effective_port(u), allocator = heap())
 	return job, key, 0
 }
 
 // Opens the connection and sends the request. On failure the caller still owns the job through `r`.
 @(private)
-begin :: proc(c: ^Client, r: ^Request) -> u32 {
+begin :: proc(c: ^Client, h: base.Handle, r: ^Request) -> u32 {
+	if c.rs != nil { return rust_begin(c, h, r) }
 	job := r.job
 	r.hconnect = WinHttpConnect(c.session, cstring16(raw_data(job.host_w)), job.port, 0)
 	if r.hconnect == nil { return u32(win.GetLastError()) }
@@ -447,6 +474,7 @@ free_job :: proc(job: ^Job) {
 	a := heap()
 	delete(job.verb_w, a); delete(job.host_w, a); delete(job.target_w, a); delete(job.headers_w, a)
 	delete(job.body, a); delete(job.cur, a)
+	delete(job.url, a); delete(job.method, a); delete(job.headers, a)
 	sync.atomic_sub(&job.client.live_jobs, 1)
 	free(job, a)
 }
@@ -465,7 +493,10 @@ free_event :: proc(ev: ^Event) {
 release :: proc(c: ^Client, h: base.Handle) -> bool {
 	r, ok := base.pool_remove(&c.requests, h)
 	if !ok { return false }
-	if r.hrequest != nil {
+	if r.rid != 0 {
+		wn_net_cancel(c.rs, r.rid)       // the library keeps nothing of the job: it is ours to free
+		free_job(r.job)
+	} else if r.hrequest != nil {
 		WinHttpCloseHandle(r.hrequest)   // the job is freed by its HANDLE_CLOSING callback
 	} else if r.job != nil {
 		free_job(r.job)                  // never reached WinHTTP (queued, or failed to open)
@@ -561,8 +592,9 @@ process_event :: proc(c: ^Client, ev: ^Event) {
 	case .Data:
 		n := len(ev.data)
 		job := r.job
-		q := sync.atomic_sub(&job.queued, n) - n
-		if q < c.settings.low_water {
+		if r.rid != 0 {
+			wn_net_consumed(c.rs, r.rid, u64(n))
+		} else if q := sync.atomic_sub(&job.queued, n) - n; q < c.settings.low_water {
 			if _, resumed := sync.atomic_compare_exchange_strong(&job.paused, true, false); resumed {
 				if !WinHttpQueryDataAvailable(r.hrequest, nil) {
 					push_event(c, Event{kind = .Failed, req = ev.req, error = u32(win.GetLastError())})
@@ -630,14 +662,15 @@ timing_of :: proc(m: ^Marks) -> Timing {
 	}
 }
 
-// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte).
+// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte; its
+// length is then in characters, not bytes: halving it cut "127.0.0.1" to "127.0").
 @(private)
 remember_address :: proc(m: ^Marks, info: rawptr, info_len: win.DWORD) {
 	b := ([^]u8)(info)
 	n := 0
 	if info_len >= 2 && b[1] == 0 && b[0] != 0 {
 		w := ([^]u16)(info)
-		for i in 0 ..< int(info_len) / 2 {
+		for i in 0 ..< int(info_len) {
 			if w[i] == 0 || n >= len(m.ip) - 8 { break }
 			if w[i] > 127 { n = 0; break }
 			m.ip[n] = u8(w[i])
@@ -800,6 +833,7 @@ error_text :: proc(code, secure_flags: u32, allocator := context.temp_allocator)
 	case 12157, 12175:
 		if t := secure_failure_text(secure_flags); t != "" { return fmt.aprintf("secure connection failed: %s", t, allocator = allocator) }
 		return "secure connection failed"
+	case 12037: return "secure connection failed: certificate expired or not yet valid"
 	case 12038: return "secure connection failed: certificate name does not match the host"
 	case 12045: return "secure connection failed: certificate issued by an untrusted authority"
 	}

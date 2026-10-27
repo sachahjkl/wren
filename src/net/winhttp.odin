@@ -81,4 +81,22 @@ foreign winhttp {
 	WinHttpQueryHeaders :: proc(req: HINTERNET, level: win.DWORD, name: win.LPCWSTR, buffer: rawptr, length: ^win.DWORD, index: ^win.DWORD) -> win.BOOL ---
 	WinHttpQueryDataAvailable :: proc(req: HINTERNET, available: ^win.DWORD) -> win.BOOL ---
 	WinHttpReadData :: proc(req: HINTERNET, buffer: rawptr, to_read: win.DWORD, read: ^win.DWORD) -> win.BOOL ---
+	WinHttpGetIEProxyConfigForCurrentUser :: proc(config: ^WINHTTP_CURRENT_USER_IE_PROXY_CONFIG) -> win.BOOL ---
+}
+
+WINHTTP_CURRENT_USER_IE_PROXY_CONFIG :: struct {
+	auto_detect:     win.BOOL,
+	auto_config_url: win.LPWSTR,
+	proxy:           win.LPWSTR,
+	proxy_bypass:    win.LPWSTR,
+}
+
+// The user's proxy settings name a proxy auto-configuration script (PAC). The built-in stack reads the static proxy and
+// its exceptions only; such a machine keeps WinHTTP, which runs the script.
+system_proxy_uses_pac :: proc() -> bool {
+	cfg: WINHTTP_CURRENT_USER_IE_PROXY_CONFIG
+	if !WinHttpGetIEProxyConfigForCurrentUser(&cfg) { return false }
+	pac := cfg.auto_config_url != nil && cfg.auto_config_url^ != 0
+	for p in ([]win.LPWSTR{cfg.auto_config_url, cfg.proxy, cfg.proxy_bypass}) { if p != nil { win.GlobalFree(win.HGLOBAL(p)) } }
+	return pac
 }

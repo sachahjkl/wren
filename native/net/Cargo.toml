@@ -1,0 +1,35 @@
+# Wren's network stack, a library of the native/ workspace: linked into wren.exe through the assembly crate
+# native/wren_native (tools\build_native.ps1 -> build\native\wren_native.lib), driven by package net (src/net/rust.odin).
+# HTTP/1.1 and HTTP/2 (hyper), HTTP/3 (quinn + h3) raced against TCP, WebSockets (tungstenite), TLS 1.2 / 1.3 (rustls
+# with the ring provider: no CMake, no NASM, a fraction of aws-lc's build time) verified against the operating system's
+# trust store (rustls-platform-verifier), the system resolver, the system proxy settings (hyper-util's matcher: the
+# environment, the Windows registry, macOS's configuration). Versions are pinned exactly here and by native/Cargo.lock;
+# the build runs with --locked.
+[package]
+name = "wren_net"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tokio = { version = "=1.54.1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "io-util"] }
+hyper = { version = "=1.12.0", default-features = false, features = ["client", "http1", "http2"] }
+hyper-util = { version = "=0.1.21", default-features = false, features = ["client-legacy", "client-proxy", "client-proxy-system", "http1", "http2", "tokio"] }
+http = "=1.5.0"
+http-body-util = "=0.1.5"
+bytes = "=1.12.1"
+futures-util = { version = "=0.3.34", default-features = false, features = ["std"] }
+tower-service = "=0.3.3"
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["ring", "tls12"] }
+rustls-platform-verifier = "=0.6.2"
+quinn = { version = "=0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+h3 = "=0.0.8"
+h3-quinn = "=0.0.10"
+tokio-tungstenite = { version = "=0.30.0", default-features = false, features = ["handshake"] }
+flate2 = { version = "=1.1.10", default-features = false, features = ["rust_backend"] }
+brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }

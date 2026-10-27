@@ -11,7 +11,7 @@ feature list, see the [README](../README.md).
 2. **Handles, never pointers, cross boundaries.** `Handle = generation << 32 | index`, 0 is invalid. A destroyed or
    recycled slot fails to resolve. Late network events, timers and listener callbacks for dead objects are dropped,
    not delivered to reused memory. Pool objects never move (chunked), so `^T` stays valid until removed.
-3. **Single UI thread, everything else posts.** WinHTTP's threads, the image decoders, the layout and style threads
+3. **Single UI thread, everything else posts.** The network stack's threads, the image decoders, the layout and style threads
    and the blocking pool only push events and `host.post` back to the loop; every user-visible callback runs on the
    loop thread. The DOM and the Wasm instances of a page live on the UI thread (workers have their own store).
 4. **Mechanism and policy are separate.** `net` moves bytes and never follows a redirect, stores a cookie or sends
@@ -115,12 +115,13 @@ by the same compiler define the same symbols. So all of Wren's Rust code is one 
 (`tools\build_native.ps1`, run by `build.bat`; nothing is done when `build\native\STAMP` matches the sources):
 
 - `native/media` (crate `wren_media`, a library): the image decoders and WOFF2 above (`src/images`, `src/webfont`).
+- `native/net` (crate `wren_net`): the network stack (`src/net/rust.odin`, see "Network" below).
 - The toolkit's crates, path dependencies that stay in the toolkit: `ext/gui_toolkit/native/text` (`gt_text`, the
   native text backend; feature `text`, left out of a `WREN_TEXT=dwrite` build) and `ext/gui_toolkit/native/a11y`
   (`gt_a11y`, AccessKit; feature `a11y`). The toolkit is built with `-define:FONT_NATIVE_LINK=false
   -define:A11Y_NATIVE_LINK=false`: it links nothing of its own.
 - `native/wren_native`, the assembly crate (a `staticlib` with no code): it picks the libraries, and their C functions
-  (`wm_*`, `gt_*`) are exported from it.
+  (`wm_*`, `wn_*`, `gt_*`) are exported from it.
 
 Two Cargo profiles, with the same code generation for each crate (`opt-level = 3`, one codegen unit, `panic =
 "unwind"`: every entry point catches panics):
@@ -144,6 +145,30 @@ Every crate is pinned by exact version in its `Cargo.toml` and by SHA-256 in `na
 `tools\rust_crates.ps1` writes the list `about:licenses` shows (`native\rust-crates.txt`). Wasmtime's library carries
 a standard library of another compiler: its mangled symbols differ, and the one unmangled symbol both define
 (`rust_eh_personality`, unused on MSVC) is renamed in ours with `llvm-objcopy`.
+
+## Network
+
+Package `net` is the transport: queues per priority, per-host and global limits, throttling (DevTools), generational
+handles, scopes, back-pressure, the `Headers` / `Data` / `Done` / `Failed` events, WebSockets' state machine. Under it,
+one of two stacks (`network.backend`, overridden by the `WREN_NET_BACKEND` environment variable):
+
+- `rust` (the default): `native/net`, the same on every platform. tokio threads of its own; hyper-util's pooled client
+  over our connector (the system resolver, TCP attempts staggered by 250 ms, the system proxy: environment, Windows
+  registry, macOS configuration, with a CONNECT tunnel for https and WebSockets), HTTP/1.1 and HTTP/2 by ALPN; rustls
+  (ring) with rustls-platform-verifier: the system's trust store and policy, plus `network.tls.extra_ca_file`; gzip,
+  deflate and Brotli decoded as the body streams; WebSockets on tungstenite over an HTTP/1.1 upgrade. HTTP/3 (quinn +
+  h3) for an origin that announced it (Alt-Svc): the request that opens the QUIC connection waits for it
+  `network.http3.race_ms` at most, then goes over TCP; the others use QUIC only once it is up; an origin where QUIC
+  failed is left to TCP for `network.http3.broken_host_ms`. Results wait in the library's queue; one notification per
+  burst posts `net`'s drain to the loop, which takes them one by one (`wn_net_poll`) and copies what it keeps: no
+  allocation of ours on a library thread, no memory of the library freed by us. Proxy auto-configuration scripts (PAC)
+  are not run: where the system proxy names one, the client uses WinHTTP.
+- `winhttp`: WinHTTP's asynchronous mode (Windows only). Never HTTP/3: WinHTTP does not fall back to TCP where QUIC does
+  not get through.
+
+Errors keep WinHTTP's numbers (12002 timeout, 12007 name, 12029 connect, 12030 lost, 12152 invalid answer, 12175 /
+12037 / 12038 / 12045 certificates with WinHTTP's secure flags) whichever stack ran the request. `src/tools/nettest`
+runs the transport on both; `tools\net_parity.ps1 -Backend rust|winhttp` runs every network end-to-end tool on one.
 
 ## Security model
 
