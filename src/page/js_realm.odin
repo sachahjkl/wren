@@ -228,12 +228,13 @@ js_checkpoint :: proc(p: ^Page) -> bool {
 // The wrapper interface of a node (index into the engine's table, js_interfaces_generated.odin).
 js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 	switch n.kind {
-	case .Text: return JS_IFACE_Text
-	case .Comment: return JS_IFACE_Comment
+	case .Text: return n.xml == .CDATA ? JS_IFACE_CDATASection : JS_IFACE_Text
+	case .Comment: return n.xml == .Processing_Instruction ? JS_IFACE_ProcessingInstruction : JS_IFACE_Comment
 	case .Document: return JS_IFACE_Document
 	case .Doctype: return JS_IFACE_DocumentType
 	case .Fragment:
 		if n.is_shadow { return JS_IFACE_ShadowRoot }
+		if dom.is_xml_document(n) { return JS_IFACE_XMLDocument }
 		return n.as_document ? JS_IFACE_Document : JS_IFACE_DocumentFragment
 	case .Element:
 	}

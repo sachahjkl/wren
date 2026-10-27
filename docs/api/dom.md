@@ -3271,6 +3271,42 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DOMParser_parseHTMLNode :: proc(c: ^Call, html: string) -> (u64, Api_Error)`
 
+### `DOMParser_parseXMLNode`
+
+```
+Node DOMParser_parseXMLNode(string text, string type) raises
+```
+
+parseFromString(text, type) for the XML types (text/xml, application/xml, application/xhtml+xml, image/svg+xml):
+a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
+type, Quota past dom.max_fragment_nodes.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `DOMParser_parseXMLNode :: proc(c: ^Call, text: string, type: string) -> (u64, Api_Error)`
+
+### `ProcessingInstruction_target`
+
+```
+string ProcessingInstruction_target(Node node)
+```
+
+processingInstruction.target
+
+Host: `ProcessingInstruction_target :: proc(c: ^Call, node: Api_Node) -> string`
+
+### `Document_xmlContentType`
+
+```
+string Document_xmlContentType(Node document) raises
+```
+
+document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Document_xmlContentType :: proc(c: ^Call, document: Api_Node) -> (string, Api_Error)`
+
 ### `DOMImplementation_createDocumentType`
 
 ```

@@ -155,7 +155,7 @@ Clone_Work :: struct { src, dst: base.Handle }
 @(private = "file")
 clone_one :: proc(d: ^Document, h: base.Handle, work: ^[dynamic]Clone_Work, roots: ^[dynamic]base.Handle) -> base.Handle {
 	n := get(d, h)
-	c := Node{kind = n.kind, ns = n.ns, name = heap_str(n.name), text = heap_str(n.text)}
+	c := Node{kind = n.kind, ns = n.ns, xml = n.xml, name = heap_str(n.name), text = heap_str(n.text)}
 	if len(n.attrs) > 0 {
 		c.attrs = make([dynamic]Attr, 0, len(n.attrs))
 		for a in n.attrs { append(&c.attrs, Attr{heap_str(a.name), heap_str(a.value)}) }

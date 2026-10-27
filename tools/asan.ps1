@@ -23,7 +23,7 @@ if (-not $Out) { $Out = Join-Path $root 'build\asan' }
 New-Item -ItemType Directory -Force $Out | Out-Null
 $env:TEMP = $env:TMP = (New-Item -ItemType Directory -Force (Join-Path $root 'build\tmp')).FullName
 
-$DefaultPackages = 'layout', 'page', 'browser', 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'forms', 'js', 'webauthn', 'wasm'
+$DefaultPackages = 'layout', 'page', 'browser', 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp', 'httpcache', 'fetch', 'config', 'css', 'style', 'webfont', 'images', 'forms', 'js', 'webauthn', 'wasm', 'xml'
 $packageList = @((($Packages -join ',') -split ',' | Where-Object { $_ }))
 # MSVC: the linker and the dynamic ASan runtime of the newest toolset
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

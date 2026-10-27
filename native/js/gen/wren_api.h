@@ -1695,6 +1695,14 @@ WR_IMPORT("dom", "DOMImplementation_createHTMLDocument") int32_t wr_DOMImplement
 // new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
 // the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
 WR_IMPORT("dom", "DOMParser_parseHTMLNode") int32_t wr_DOMParser_parseHTMLNode(const uint8_t *html, uint32_t html_len, uint64_t *_ret);
+// parseFromString(text, type) for the XML types (text/xml, application/xml, application/xhtml+xml, image/svg+xml):
+// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
+// type, Quota past dom.max_fragment_nodes.
+WR_IMPORT("dom", "DOMParser_parseXMLNode") int32_t wr_DOMParser_parseXMLNode(const uint8_t *text, uint32_t text_len, const uint8_t *type, uint32_t type_len, uint64_t *_ret);
+// processingInstruction.target
+WR_IMPORT("dom", "ProcessingInstruction_target") int32_t wr_ProcessingInstruction_target(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
+WR_IMPORT("dom", "Document_xmlContentType") int32_t wr_Document_xmlContentType(uint64_t document, uint8_t *_buf, uint32_t _cap);
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
 WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,

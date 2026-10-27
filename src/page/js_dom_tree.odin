@@ -134,8 +134,8 @@ Node_nodeName :: proc(c: ^Call, node: Api_Node) -> string {
 	n := node.data
 	switch n.kind {
 	case .Element: return jd_qualified_name(c.page.doc, H(node.handle), true)
-	case .Text: return "#text"
-	case .Comment: return "#comment"
+	case .Text: return n.xml == .CDATA ? "#cdata-section" : "#text"
+	case .Comment: return n.xml == .Processing_Instruction ? n.name : "#comment"
 	case .Document: return "#document"
 	case .Doctype: return n.name
 	case .Fragment: return n.as_document ? "#document" : "#document-fragment"

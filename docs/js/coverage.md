@@ -15,7 +15,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | interfaces, namespaces in the table | 581 |
 | exposed by default | 323 |
 | members | 5131 |
-| members implemented | 3527 (68.7 %) |
+| members implemented | 3528 (68.8 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
 | `cssom.idl` | 16 (5) | 37 / 149 |
-| `dom.idl` | 35 (31) | 584 / 699 |
+| `dom.idl` | 35 (31) | 585 / 699 |
 | `encoding.idl` | 4 (4) | 19 / 19 |
 | `entries-api.idl` | 5 (5) | 13 / 13 |
 | `event-timing.idl` | 2 (1) | 6 / 8 |
@@ -1591,10 +1591,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### ProcessingInstruction : CharacterData
 
-0 / 10 members.
+1 / 10 members.
 
 - `constructor()`: not supported
-- `readonly target`: not supported
+- `readonly target`: import `dom.ProcessingInstruction_target`
 - `hasAttributes()`: not supported
 - `getAttributeNames()`: not supported
 - `getAttribute()`: not supported
@@ -1641,7 +1641,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly characterSet`: import `dom.Document_characterSet`
 - `readonly charset`: import `dom.Document_charset`
 - `readonly inputEncoding`: import `dom.Document_inputEncoding`
-- `readonly contentType`: import `dom.Document_contentType`
+- `readonly contentType`: C `wjr_Document_get_contentType`
 - `readonly doctype`: C `wjr_Document_get_doctype`
 - `readonly documentElement`: C `wjr_Document_get_documentElement`
 - `getElementsByTagName()`: C `wjr_Document_getElementsByTagName`
