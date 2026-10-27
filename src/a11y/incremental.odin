@@ -550,7 +550,14 @@ live_patch :: proc(l: ^Live, v: ^View, out: ^platform.A11y_Update) -> string {
 			src := base.NIL_HANDLE
 			switch r.kind {
 			case .Element, .Run: if r.own_box { src = r.el }
-			case .Text:          src = r.pb_src
+			case .Text:
+				if r.own_box {
+					// (a text's own lines)
+					tb, tok := text_bounds(&p.w, r.el)
+					if !tok || tb != r.bounds { live_mark(l, id) }
+					continue
+				}
+				src = r.pb_src
 			case .Root:
 			}
 			if src == base.NIL_HANDLE { continue }
