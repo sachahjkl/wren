@@ -10,7 +10,7 @@ package host
 //
 // The watchdog wakes every 200 ms. After `warn_ms` it writes, once a second, the current step, how long it lasts, what
 // thread_join waits for, and every thread still running. After `force_ms` it writes that it ends the process and calls
-// ExitProcess: the last resort (what the profile keeps is saved before the teardown starts). The text goes to stderr
+// ends the process at once (ExitProcess, exit_group): the last resort (what the profile keeps is saved before the teardown starts). The text goes to stderr
 // and to `log_path` (rewritten as a whole, so the file holds the last slow shutdown only: a fast one writes nothing).
 
 import "core:fmt"
@@ -18,7 +18,6 @@ import "core:os"
 import "core:strings"
 import "core:sync"
 import "core:time"
-import win "core:sys/windows"
 
 @(private = "file")
 Shutdown :: struct {
@@ -54,16 +53,6 @@ SLOW_SUMMARY_MS :: 1000
 sd: Shutdown
 
 @(private = "file")
-ABOVE_NORMAL_PRIORITY_CLASS :: 0x00008000
-
-foreign import kernel32_sd "system:Kernel32.lib"
-
-@(default_calling_convention = "system", private = "file")
-foreign kernel32_sd {
-	SetPriorityClass :: proc(process: win.HANDLE, priority_class: win.DWORD) -> win.BOOL ---
-}
-
-@(private = "file")
 fixed_copy :: proc(dst: []u8, s: string) -> int {
 	n := min(len(dst), len(s))
 	copy(dst[:n], s[:n])
@@ -84,7 +73,7 @@ shutdown_begin :: proc(log_path: string, warn_ms := 2000, force_ms := 10_000) {
 	// (the ones it joins, the pipe's, the decoders', the compositor's helpers) is not made to queue behind other programs' busy
 	// loops. With every core saturated, each hand-over of the teardown cost up to several seconds (measured: 4 to 8 s in one step,
 	// 25 s in all with the forced exit); at this class none of them waits for a time slice.
-	SetPriorityClass(win.GetCurrentProcess(), ABOVE_NORMAL_PRIORITY_CLASS)
+	shutdown_raise_priority()
 	sd.watchdog = thread_start(shutdown_watchdog, nil, name = "wren-shutdown-watchdog")
 }
 
@@ -178,7 +167,7 @@ shutdown_watchdog :: proc(_: rawptr) {
 		shutdown_line(strings.to_string(b))
 		if sd.force_ms > 0 && int(time.duration_milliseconds(elapsed)) >= sd.force_ms {
 			shutdown_line(fmt.tprintf("shutdown: still in step %q after %d ms: ending the process (the profile was saved before the teardown)", step, sd.force_ms))
-			win.ExitProcess(0)
+			shutdown_force_exit()
 		}
 		free_all(context.temp_allocator)
 	}

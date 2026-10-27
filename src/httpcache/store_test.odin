@@ -5,7 +5,6 @@ import "core:os"
 import "core:strings"
 import "core:testing"
 import "core:time"
-import win "core:sys/windows"
 import "wb:host"
 import "wb:http"
 
@@ -25,8 +24,8 @@ temp_dir :: proc(name: string) -> string {
 
 @(private = "file")
 wipe :: proc(dir: string) {
-	for f in list_dir(dir) { delete_file(strings.concatenate({dir, "\\", f.name}, context.temp_allocator)) }
-	win.RemoveDirectoryW(wide(dir))
+	for f in list_dir(dir) { delete_file(strings.concatenate({dir, SEP, f.name}, context.temp_allocator)) }
+	_ = os.remove(dir)   // (empty now)
 }
 
 @(private = "file")
@@ -147,7 +146,7 @@ test_disk_round_trip :: proc(t: ^testing.T) {
 	testing.expect(t, pump_until(&l, writes_done, c))
 	// a new start: the index has both, not resident; reading gives the response back
 	destroy(c)
-	testing.expect(t, os.exists(strings.concatenate({dir, "\\", INDEX_NAME}, context.temp_allocator)))
+	testing.expect(t, os.exists(strings.concatenate({dir, SEP, INDEX_NAME}, context.temp_allocator)))
 	c = create(&l, s, dir)
 	testing.expect(t, pump_until(&l, is_ready_proc, c))
 	testing.expect_value(t, len(c.entries), 2)
@@ -160,7 +159,7 @@ test_disk_round_trip :: proc(t: ^testing.T) {
 	testing.expect_value(t, len(find(c, "two").body.data), 100_000)
 	// the index lost (a crash before it was written): rebuilt from the files
 	destroy(c)
-	delete_file(strings.concatenate({dir, "\\", INDEX_NAME}, context.temp_allocator))
+	delete_file(strings.concatenate({dir, SEP, INDEX_NAME}, context.temp_allocator))
 	c = create(&l, s, dir)
 	testing.expect(t, pump_until(&l, is_ready_proc, c))
 	testing.expect_value(t, len(c.entries), 2)
@@ -191,7 +190,7 @@ test_disk_damage :: proc(t: ^testing.T) {
 	if b, ok := read_file(trunc); ok { write_file(trunc, {b[:len(b) - 3]}, false); delete(b, heap()) }
 	if b, ok := read_file(flip); ok { b[len(b) - 1] ~= 0xFF; write_file(flip, {b}, false); delete(b, heap()) }
 	write_file(strings.concatenate({dir, "\\00000000000000ff.tmp"}, context.temp_allocator), {transmute([]byte)string("half")}, false)
-	idx := strings.concatenate({dir, "\\", INDEX_NAME}, context.temp_allocator)
+	idx := strings.concatenate({dir, SEP, INDEX_NAME}, context.temp_allocator)
 	if b, ok := read_file(idx); ok { b[10] ~= 0xFF; write_file(idx, {b}, false); delete(b, heap()) }
 	c = create(&l, s, dir)
 	testing.expect(t, pump_until(&l, is_ready_proc, c))
