@@ -1,0 +1,26 @@
+// https://wicg.github.io/video-rvfc/  HTMLVideoElement.requestVideoFrameCallback
+// Wren implements this natively: the callbacks fire at real presentation (src/page/media_rvfc.odin) and the metadata
+// is built by the engine (native/js/runtime/web_mediaobjects.c) from the numbers the browser snapshots.
+
+dictionary VideoFrameCallbackMetadata {
+  required DOMHighResTimeStamp presentationTime;
+  required DOMHighResTimeStamp expectedDisplayTime;
+
+  required unsigned long width;
+  required unsigned long height;
+  required double mediaTime;
+
+  required unsigned long presentedFrames;
+  required double processingDuration;
+
+  DOMHighResTimeStamp captureTime;
+  DOMHighResTimeStamp receiveTime;
+  unsigned long rtpTimestamp;
+};
+
+callback VideoFrameRequestCallback = undefined(DOMHighResTimeStamp now, VideoFrameCallbackMetadata metadata);
+
+partial interface HTMLVideoElement {
+  unsigned long requestVideoFrameCallback(VideoFrameRequestCallback callback);
+  undefined cancelVideoFrameCallback(unsigned long handle);
+};
