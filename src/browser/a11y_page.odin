@@ -66,7 +66,7 @@ page_a11y_frame :: proc(app: ^App) {
 	grafted := pa.grafted
 	pa.grafted = 0
 	t := current_tab(app)
-	if !ui.a11y_active(app.ui_state) || t == nil || grafted != t.id {
+	if !ui.a11y_active(active_window(app).ui) || t == nil || grafted != t.id {
 		// no graft this build (no reader, no page, another view): the adapter dropped the page's tree with it
 		pa.cur.sent = false
 		return
@@ -101,7 +101,7 @@ page_a11y_frame :: proc(app: ^App) {
 	pa.builds += 1
 	out := platform.a11y_diff(&st.diff, &st.full, all = !st.sent)
 	if len(out.nodes) == 0 && out.focus == st.focus { st.sig = sig; return }
-	switch platform.a11y_send(app.win, out, "gui_toolkit", ui.VERSION) {
+	switch platform.a11y_send(active_window(app).win, out, "gui_toolkit", ui.VERSION) {
 	case .Applied:
 		st.sent, st.sig, st.focus = true, sig, out.focus
 		pa.sends += 1

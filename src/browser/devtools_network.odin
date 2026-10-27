@@ -561,7 +561,7 @@ net_set_types :: proc(app: ^App, v: ^Dev_Network, mask: u32) {
 net_table :: proc(app: ^App, t: ^Tab, v: ^Dev_Network, menu_key: ui.Key) {
 	avail := dev_width()
 	if v.has_sel { avail = avail * f32(config_float(app, "browser.devtools.network.split")) }
-	if avail <= 0 { avail = f32(app.win.size.x) }
+	if avail <= 0 { avail = f32(active_window(app).win.size.x) }
 	scroll_w := dt_px(10)
 	net_layout(v, avail - scroll_w)
 	net_header(app, t, v)

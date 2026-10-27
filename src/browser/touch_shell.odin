@@ -196,7 +196,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 		// second set of pointer events)
 		for kind in ([]platform.Event_Kind{.Mouse_Move, .Mouse_Press, .Mouse_Release}) {
 			b := kind == .Mouse_Press ? platform.Mouse_Buttons{.Left} : platform.Mouse_Buttons{}
-			platform.inject_event(app.win, platform.Event{kind = kind, pos = ge.pos, button = .Left, buttons = b, emulated = true})
+			platform.inject_event(active_window(app).win, platform.Event{kind = kind, pos = ge.pos, button = .Left, buttons = b, emulated = true})
 		}
 		request_frames(app, 3)
 	case .Long_Press:

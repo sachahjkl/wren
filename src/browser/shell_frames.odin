@@ -253,7 +253,7 @@ shell_presented :: proc() { chrome_frames.last_present = time.tick_now() }
 // Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does.
 shell_before_draw :: proc(app: ^App) {
 	if active_window(app).presented && !pacer.slot_held {
-		if platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
+		if platform.wait_handle(active_window(app).win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
 	}
 }
 
@@ -264,7 +264,8 @@ shell_before_draw :: proc(app: ^App) {
 // pass waits for its threads: host.set_parallel_wait_hook) and the page thread's (a layout pass runs there).
 shell_preempt :: proc(user: rawptr) {
 	app := (^App)(user)
-	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !active_window(app).presented || platform.is_closed(app.win) { return }
+	wnd := active_window(app)
+	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !wnd.presented || platform.is_closed(wnd.win) { return }
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(chrome_frames.phase_start, now)) < chrome_frames.cfg.after_ms { return }
 	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
@@ -275,7 +276,7 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
 	unseen := (chrome_frames.phase == .Loop || chrome_frames.phase == .Anim) && !chrome_frames.outer_taken && len(chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !ui.needs_frame(app.ui_state) && !(ui.wake_ms(app.ui_state) > 0 && since >= f64(ui.wake_ms(app.ui_state))) { return }
+	if !unseen && !shell_input_pending() && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) { return }
 	shell_chrome_frame(app)
 }
 
@@ -322,15 +323,16 @@ foreign user32_shell {
 // thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	if !chrome_frames.nested {
 		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
 		frame(app)
 		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
 		return
 	}
-	resized := app.win.size != pacer.size
-	pacer.size = app.win.size
-	pacer.resizing = resized && active_window(app).presented && pacer.cfg.resize_immediate
+	resized := wnd.win.size != pacer.size
+	pacer.size = wnd.win.size
+	pacer.resizing = resized && wnd.presented && pacer.cfg.resize_immediate
 	pacer.resize_held = false
 	shell_chrome_frame(app)
 }
@@ -338,6 +340,7 @@ window_frame :: proc(app: ^App) {
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	// a Light frame of the gate (windows.odin): in a full frame's page phase, or in a chrome frame's poll
 	gate := platform.frame_gate()
 	gate_token, admitted := platform.frame_gate_begin(gate, .Light)
@@ -365,31 +368,31 @@ shell_chrome_frame :: proc(app: ^App) {
 	defer latency_probe_restore(saved_probe)
 
 	// (the gate's Polling: the poll may begin a loop of the system, whose frames are chrome frames: window_frame)
-	polled := platform.poll_events(app.win, false)   // (nil inside the system's resize loop: nothing new to read)
+	polled := platform.poll_events(wnd.win, false)   // (nil inside the system's resize loop: nothing new to read)
 	platform.frame_gate_stage(gate, .Building)
 	chrome := shell_split_input(app, polled)
 	pacer_begin_frame(app, chrome)
-	render.resize(&app.r, app.win.size)
-	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
+	render.resize(&app.r, wnd.win.size)
+	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)
-	ui.begin_build(app.ui_state, {
+	ui.begin_build(wnd.ui, {
 		window_size = size, events = chrome, dt = pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
-		disable_zoom = true, window = app.win, frame_ms = pacer.frame_ms,
+		disable_zoom = true, window = wnd.win, frame_ms = pacer.frame_ms,
 	})
 	build_ui(app)
 	ui.end_build()
 	// the chrome's cursor over the chrome; over the page, the page's as the last full frame set it (page_cursor.odin
 	// hit-tests the layout, which is not read here)
 	pos := ui.mouse_pos()
-	if !draw.rect_contains(active_window(app).page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
-		platform.set_cursor(app.win, ui.cursor(app.ui_state))
+	if !draw.rect_contains(wnd.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
+		platform.set_cursor(wnd.win, ui.cursor(wnd.ui))
 	}
 	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
-	ui.draw_tree(app.ui_state, &app.dc)
+	ui.draw_tree(wnd.ui, &app.dc)
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once

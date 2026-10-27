@@ -355,7 +355,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 		c := hud.cfg.comma
 		col := em * 17
 		gap := em * 0.6
-		ncols := clamp(int((f32(app.win.size.x) - em) / (col + gap)), 1, 3)
+		ncols := clamp(int((f32(active_window(app).win.size.x) - em) / (col + gap)), 1, 3)
 		w := col * f32(ncols) + gap * f32(ncols - 1)
 		layout: [][]Panel_Section
 		switch ncols {

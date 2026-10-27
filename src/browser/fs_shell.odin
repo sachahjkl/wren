@@ -52,7 +52,7 @@ fs_shell_pick :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Pick) {
 	j.app, j.req = app, req
 	j.test = strings.clone(config.string_of(&app.prefs, "browser.dialogs.test_answer"))
 	d := &j.dialog
-	d.owner = app.win
+	d.owner = active_window(app).win
 	d.multiple = req.multiple
 	d.all_files = req.all_files
 	d.suggested_name = req.suggested

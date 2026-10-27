@@ -262,12 +262,12 @@ tab_select :: proc(app: ^App, i: int) {
 page_area_focus :: proc(app: ^App, t: ^Tab, pb: ^ui.Box) {
 	if page_focus_leave_backward {
 		page_focus_leave_backward = false
-		ui.focus_step(app.ui_state, pb.key, -1)
+		ui.focus_step(active_window(app).ui, pb.key, -1)
 		return
 	}
 	if ui.focus_key() != pb.key { return }
 	ui.set_focus(0)
-	forms_focus_from_chrome(app, t, ui.tab_direction(app.ui_state) < 0 ? -1 : 1)
+	forms_focus_from_chrome(app, t, ui.tab_direction(active_window(app).ui) < 0 ? -1 : 1)
 }
 
 // (Window_Own.page_info_request, set by the page's context menu, opens the page information popup of the security chip;

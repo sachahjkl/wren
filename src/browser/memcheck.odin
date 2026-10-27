@@ -370,7 +370,7 @@ driver_step :: proc(app: ^App) {
 			memory_trim(app)
 		case .Quit:
 			driver.active = false
-			win.PostMessageW(app.win.hwnd, win.WM_CLOSE, 0, 0)
+			win.PostMessageW(active_window(app).win.hwnd, win.WM_CLOSE, 0, 0)
 			return
 		}
 		driver.next += 1

@@ -358,7 +358,7 @@ commands_build :: proc(r: ^Command_Registry) {
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(t).id == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
 	}	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(app.win) },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(active_window(app).win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return wchrome.cfg.integrated },

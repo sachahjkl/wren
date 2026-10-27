@@ -101,7 +101,7 @@ Dropped :: struct { paths: [dynamic]string }
 @(private = "file") drop_hwnd: win.HWND
 
 drop_files_init :: proc(app: ^App) {
-	hwnd := app.win.hwnd
+	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
 	dnd_init(app)   // dnd_shell.odin: the OLE drop target (drags with their events to the page); WM_DROPFILES stays for an elevated browser
 	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, 0)   // (core:sys/windows declares it without its result)
@@ -116,7 +116,7 @@ drop_files_init :: proc(app: ^App) {
 @(private = "file")
 drop_files_apply :: proc(app: ^App) {
 	// (with the OLE target, OLE takes the drops: WM_DROPFILES is not asked for)
-	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(app.win))) }
+	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
 }
 
 drop_files_destroy :: proc(app: ^App) {

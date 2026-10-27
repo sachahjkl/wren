@@ -251,7 +251,7 @@ find_paint_item :: proc(fs: ^Find_State, l: ^Layout, dc: ^draw.Context, it: ^lay
 		// through the shaped clusters: in a right-to-left item the match runs from its end's caret to its start's
 		ca, cb := lay.item_caret_x(l, it, a, api), lay.item_caret_x(l, it, b, api)
 		x0, x1 := min(ca, cb), max(ca, cb)
-		draw.rect(dc, {{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}, s.match == fs.active ? act : bg, 2 * the_app.ui_state.scale)
+		draw.rect(dc, {{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}, s.match == fs.active ? act : bg, 2 * active_window(the_app).ui.scale)
 	}
 }
 

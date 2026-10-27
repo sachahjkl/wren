@@ -49,7 +49,7 @@ dialog_work :: proc(data: rawptr) {
 	types := [2]win.COMDLG_FILTERSPEC{{win.utf8_to_wstring(i18n.tr("Text files"), context.temp_allocator), win.L("*.txt")}, {win.utf8_to_wstring(i18n.tr("All files"), context.temp_allocator), win.L("*.*")}}
 	dlg->SetFileTypes(2, &types[0])
 	dlg->SetDefaultExtension(win.L("txt"))
-	if dlg->Show(j.app.win.hwnd) < 0 { free_all(context.temp_allocator); return }
+	if dlg->Show(active_window(j.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
 	item: ^win.IShellItem
 	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
 	defer item->Release()

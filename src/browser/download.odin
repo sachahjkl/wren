@@ -633,7 +633,7 @@ download_dialog_work :: proc(data: rawptr) {
 		dlg->SetFileTypes(2, &types[0])
 		dlg->SetDefaultExtension(win.utf8_to_wstring(ext[1:], context.temp_allocator))
 	}
-	if dlg->Show(d.app.win.hwnd) < 0 { return }
+	if dlg->Show(active_window(d.app).win.hwnd) < 0 { return }
 	item: ^win.IShellItem
 	if dlg->GetResult(&item) < 0 || item == nil { return }
 	defer item->Release()

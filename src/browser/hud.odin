@@ -718,7 +718,7 @@ hud_title :: proc(app: ^App, now: f64) {
 	if text == h.title_text { return }
 	delete(h.title_text)
 	h.title_text = strings.clone(text)
-	platform.set_title(app.win, text)
+	platform.set_title(active_window(app).win, text)
 }
 
 ////////////////////////////////
@@ -729,5 +729,5 @@ hud_mono :: proc(app: ^App) {
 	if hud.mono_tried { return }
 	hud.mono_tried = true
 	id, ok, _ := font.load_system_or_embedded(&app.fonts, platform.system_font_path("consola.ttf"), font.FALLBACK_MONO_DATA)
-	if ok { hud.mono = id; app.ui_state.mono_font = id }
+	if ok { hud.mono = id; active_window(app).ui.mono_font = id }
 }

@@ -174,7 +174,7 @@ replay_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 }
 
 inject_raw :: proc(app: ^App, ev: platform.Event) {
-	platform.inject_event(app.win, ev)
+	platform.inject_event(active_window(app).win, ev)
 	the_remote.inputs += 1
 	request_frames(app, 4)
 }

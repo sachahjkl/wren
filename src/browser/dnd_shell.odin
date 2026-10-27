@@ -83,8 +83,8 @@ dnd_page_events :: proc(app: ^App) -> bool { return config.bool_of(&app.prefs, "
 
 // Start-up (local_paths.odin's drop_files_init): the window becomes a drop target, unless elevated.
 dnd_init :: proc(app: ^App) {
-	if instance.is_elevated() || app.win == nil { return }
-	dnd.ole = platform.drop_target_enable(app.win, true)
+	if instance.is_elevated() || active_window(app).win == nil { return }
+	dnd.ole = platform.drop_target_enable(active_window(app).win, true)
 }
 
 // Another window of the browser (windows.odin) is a drop target too, as the first one is.
@@ -93,7 +93,7 @@ dnd_window_detach :: proc(w: ^platform.Window) { if dnd.ole { platform.drop_targ
 
 dnd_destroy :: proc(app: ^App) {
 	dnd_image_end(app)
-	if dnd.ole && app.win != nil { platform.drop_target_enable(app.win, false) }
+	if dnd.ole && active_window(app).win != nil { platform.drop_target_enable(active_window(app).win, false) }
 	delete(dnd.cand_text)
 	dnd = {}
 }
@@ -267,6 +267,7 @@ end_page_drag :: proc(op: page.Drag_Op) {
 // before `dragend`, and dragend carries the effect of the drop, as the standard orders them.
 @(private = "file")
 hand_off :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	p := dnd.src_page
 	page.drag_leave_page(p)
 	set_caret(app, p, nil)
@@ -284,16 +285,16 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	// never runs the system's drag, which would follow the real mouse of the person at the computer
 	steps, scripted := remote_drag_steps(app)   // remote_methods.odin
 	if scripted {
-		platform.drag_script(app.win, steps)
-	} else if !win.IsWindowVisible(app.win.hwnd) {
+		platform.drag_script(wnd.win, steps)
+	} else if !win.IsWindowVisible(wnd.win.hwnd) {
 		end_page_drag(.None)
 		return
 	}
-	platform.drop_sync_set(app.win, dnd_sync, app)
-	defer platform.drop_sync_set(app.win, nil, nil)
+	platform.drop_sync_set(wnd.win, dnd_sync, app)
+	defer platform.drop_sync_set(wnd.win, nil, nil)
 	dnd.sync_tab, dnd.sync_over = t, false
 	dnd_image_system_shows(true)
-	effect, _ := platform.drag_start(app.win, data, effects_of(allowed), dnd_image_system())
+	effect, _ := platform.drag_start(wnd.win, data, effects_of(allowed), dnd_image_system())
 	dnd.sync_tab = nil
 	if t.page != p { dnd.src_page = nil }
 	end_page_drag(op_of(effect))
@@ -397,12 +398,13 @@ dnd_field_caret :: proc(node: base.Handle) -> (int, bool) {
 // The frame's events, while a press may become a drag or a drag from the page goes on (route_page_input, before any
 // other handler). True when the event was the drag's.
 dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
 	if dnd.candidate && !dnd.active {
 		#partial switch ev.kind {
 		case .Mouse_Move:
 			if .Left not_in ev.buttons || t.page != dnd.cand_page { dnd_clear_candidate(); return false }
 			d := ev.pos - dnd.cand_pos
-			th := platform.drag_threshold(app.win)
+			th := platform.drag_threshold(wnd.win)
 			if abs(d.x) < th.x && abs(d.y) < th.y { return true }
 			p := t.page
 			cx, cy := page_client_xy(t, dnd.cand_local, page_scale(app))
@@ -434,7 +436,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 	if t.page != p || p == nil { end_page_drag(.None); return false }
 	#partial switch ev.kind {
 	case .Mouse_Move:
-		size := [2]f32{f32(app.win.size.x), f32(app.win.size.y)}
+		size := [2]f32{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 		if ev.pos.x < 0 || ev.pos.y < 0 || ev.pos.x >= size.x || ev.pos.y >= size.y {
 			// the picture is read back from a frame or two after the drag started: the system's drag waits for it (a
 			// few frames at most: dnd_events)
@@ -449,7 +451,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		}
 		dnd.handoff_pending = false
 		dnd_image_move(ev.pos)
-		if draw.rect_contains(active_window(app).page_rect, ev.pos) {
+		if draw.rect_contains(wnd.page_rect, ev.pos) {
 			dnd.over_chrome = false
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(p, hit, cx, cy, dom_mods(ev.mods))
@@ -527,9 +529,10 @@ end_external :: proc() {
 
 @(private = "file")
 dnd_external :: proc(app: ^App, ev: platform.Event) {
-	data := platform.drop_data(app.win)
+	wnd := active_window(app)
+	data := platform.drop_data(wnd.win)
 	t := web_tab(app)
-	over_page := t != nil && draw.rect_contains(active_window(app).page_rect, ev.pos) && dnd_page_events(app)
+	over_page := t != nil && draw.rect_contains(wnd.page_rect, ev.pos) && dnd_page_events(app)
 	if t != nil && dnd.ext_page != nil && t.page != dnd.ext_page { end_external() }
 	#partial switch ev.kind {
 	case .Drop_Enter, .Drop_Over:
@@ -543,23 +546,23 @@ dnd_external :: proc(app: ^App, ev: platform.Event) {
 			hit, cx, cy := page_point(app, t, ev.pos)
 			op, ok := page.drag_update(t.page, hit, cx, cy, dom_mods(ev.mods))
 			s := page.drag_session(t.page)
-			if !ok { end_external(); platform.drop_set_effect(app.win, nil); return }
+			if !ok { end_external(); platform.drop_set_effect(wnd.win, nil); return }
 			follow_caret(app, t, t.page, ev.pos)
 			// a page that does not take the drop: the browser's default (open the file / follow the link) shows as a link
 			if op == .None && (s == nil || !s.zone) {
 				if _, has := dropped_address(data); has && default_drop_allowed(app, data) { op = .Link in ops_of(ev.drop_allowed) ? .Link : .Copy }
 			}
-			platform.drop_set_effect(app.win, effect_of(op))
+			platform.drop_set_effect(wnd.win, effect_of(op))
 		} else {
 			if dnd.ext_page != nil && !dnd.over_chrome { page.drag_leave_page(dnd.ext_page); set_caret(app, dnd.ext_page, nil); dnd_image_target(nil) }
 			dnd.over_chrome = true
 			_, has := dropped_address(data)
-			platform.drop_set_effect(app.win, has ? platform.drop_effect_for(ev.drop_allowed, ev.mods, .Link) : nil)
+			platform.drop_set_effect(wnd.win, has ? platform.drop_effect_for(ev.drop_allowed, ev.mods, .Link) : nil)
 		}
 	case .Drop_Leave:
 		if dnd.ext_page != nil { page.drag_leave_page(dnd.ext_page) }
 		end_external()
-		platform.drop_set_effect(app.win, nil)
+		platform.drop_set_effect(wnd.win, nil)
 	case .Drop:
 		handled := false
 		if over_page {
@@ -572,7 +575,7 @@ dnd_external :: proc(app: ^App, ev: platform.Event) {
 		}
 		end_external()
 		if !handled { default_drop(app, data, ev.pos, over_page) }
-		platform.drop_data_release(app.win)
+		platform.drop_data_release(wnd.win)
 		request_frames(app, 2)
 	}
 }
