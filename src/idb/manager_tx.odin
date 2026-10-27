@@ -463,7 +463,7 @@ manager_clear_origin :: proc(m: ^Manager, key: string) {
 				rest := n[len(name):]
 				_, is_j := generation_of(rest, ".widb")
 				_, is_c := generation_of(rest, ".widx")
-				if is_j || is_c || strings.has_suffix(rest, ".tmp") { file_delete(strings.concatenate({dir, "\\", n}, context.temp_allocator)) }
+				if is_j || is_c || strings.has_suffix(rest, ".tmp") { file_delete(strings.concatenate({dir, SEP, n}, context.temp_allocator)) }
 			}
 		}
 		return

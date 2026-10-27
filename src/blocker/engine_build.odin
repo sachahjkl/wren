@@ -5,7 +5,6 @@ import "core:fmt"
 import "core:os"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "wb:adblock"
 import "wb:base"
 import "wb:fetch"
@@ -56,37 +55,15 @@ Job :: struct {
 ////////////////////////////////
 // Files
 
-write_file_atomic :: proc(path: string, data: []byte) -> bool {
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	wtmp := win.utf8_to_wstring(tmp, context.temp_allocator)
-	h := win.CreateFileW(wtmp, win.GENERIC_WRITE, 0, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h == win.INVALID_HANDLE_VALUE { return false }
-	off := 0
-	for off < len(data) {
-		n := min(len(data) - off, 1 << 24)
-		written: win.DWORD
-		if !win.WriteFile(h, raw_data(data[off:]), win.DWORD(n), &written, nil) || written == 0 { win.CloseHandle(h); win.DeleteFileW(wtmp); return false }
-		off += int(written)
-	}
-	win.CloseHandle(h)
-	return bool(win.MoveFileExW(wtmp, win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING))
-}
+write_file_atomic :: proc(path: string, data: []byte) -> bool { return base.file_write_atomic(path, data) }
 
 // A whole file in memory aligned to 8 bytes (an index is read in place).
 read_aligned :: proc(path: string, allocator := context.allocator) -> []byte {
-	h := win.CreateFileW(win.utf8_to_wstring(path, context.temp_allocator), win.GENERIC_READ, win.FILE_SHARE_READ, nil, win.OPEN_EXISTING, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h == win.INVALID_HANDLE_VALUE { return nil }
-	defer win.CloseHandle(h)
-	size: win.LARGE_INTEGER
-	if !win.GetFileSizeEx(h, &size) || size <= 0 || size > 1 << 31 { return nil }
+	size, _, ok := base.file_stat(path)
+	if !ok || size <= 0 || size > 1 << 31 { return nil }
 	words := make([]u64, (int(size) + 7) / 8, allocator)
 	buf := ([^]byte)(raw_data(words))[:int(size)]
-	off := 0
-	for off < len(buf) {
-		got: win.DWORD
-		if !win.ReadFile(h, raw_data(buf[off:]), win.DWORD(min(len(buf) - off, 1 << 24)), &got, nil) || got == 0 { delete(words, allocator); return nil }
-		off += int(got)
-	}
+	if n, rok := base.file_read_at(path, 0, buf); !rok || n != len(buf) { delete(words, allocator); return nil }
 	return buf
 }
 
@@ -97,23 +74,14 @@ read_text :: proc(path: string, allocator := context.allocator) -> (text: []byte
 
 // `n` bytes of a file from `offset` (short at the end of the file).
 read_at :: proc(path: string, offset: i64, n: int, allocator := context.temp_allocator) -> []byte {
-	h := win.CreateFileW(win.utf8_to_wstring(path, context.temp_allocator), win.GENERIC_READ, win.FILE_SHARE_READ | win.FILE_SHARE_WRITE, nil, win.OPEN_EXISTING, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h == win.INVALID_HANDLE_VALUE { return nil }
-	defer win.CloseHandle(h)
-	if !win.SetFilePointerEx(h, win.LARGE_INTEGER(offset), nil, win.FILE_BEGIN) { return nil }
 	buf := make([]byte, n, allocator)
-	got: win.DWORD
-	if !win.ReadFile(h, raw_data(buf), win.DWORD(n), &got, nil) { return nil }
+	got, ok := base.file_read_at(path, offset, buf)
+	if !ok { return nil }
 	return buf[:got]
 }
 
-file_stat :: proc(path: string) -> (size: i64, mtime: i64, ok: bool) {
-	data: win.WIN32_FILE_ATTRIBUTE_DATA
-	if !win.GetFileAttributesExW(win.utf8_to_wstring(path, context.temp_allocator), win.GetFileExInfoStandard, &data) { return 0, 0, false }
-	size = i64(data.nFileSizeHigh) << 32 | i64(data.nFileSizeLow)
-	mtime = i64(data.ftLastWriteTime.dwHighDateTime) << 32 | i64(data.ftLastWriteTime.dwLowDateTime)
-	return size, mtime, true
-}
+// mtime: the system's stamp (only compared with another one).
+file_stat :: proc(path: string) -> (size: i64, mtime: i64, ok: bool) { return base.file_stat(path) }
 
 ////////////////////////////////
 // The text of a rule

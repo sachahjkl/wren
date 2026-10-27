@@ -128,3 +128,49 @@ jobs:
       - name: Unit tests under AddressSanitizer (tools\asan.ps1 -Jobs 3)
         shell: cmd
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tools\asan.ps1 -Jobs 3
+
+  # The packages that are portable already (docs/portability.md): odin check for Linux and their unit tests, without a
+  # window. Every download pinned as on Windows: Odin by SHA-256 here, Wasmtime in tools/fetch_wasmtime.sh, crates by
+  # Cargo.lock (--locked), Rust by version.
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Odin dev-2026-10, clang, NASM
+        env:
+          ODIN_TAG: dev-2026-10
+          ODIN_SHA256: c3c8b095621fd0c75f7f73e3a0829f1b4d45324225f20ba11ed8dc4da310a8ab
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang lld nasm
+          curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
+          echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
+          dirname "$(find "$RUNNER_TEMP/odin" -maxdepth 2 -name odin -type f | head -1)" >> "$GITHUB_PATH"
+
+      - name: Rust 1.99.1
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+
+      - name: Cache the Rust library and its compiled crates
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/native-linux
+            ~/.cargo/registry
+          key: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/**/*.rs', 'native/**/Cargo.toml', 'tools/build_native.sh') }}
+          restore-keys: native-linux-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
+
+      - name: Native libraries (Wasmtime, Lexbor, the Rust library)
+        run: |
+          tools/fetch_wasmtime.sh
+          CC=clang tools/build_lexbor.sh
+          tools/build_native.sh --profile quick
+
+      - name: odin check and unit tests (tools/linux_ci.sh)
+        run: tools/linux_ci.sh odin

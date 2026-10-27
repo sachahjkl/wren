@@ -28,11 +28,13 @@ cfg-if 1.0.5  [MIT OR Apache-2.0]  https://github.com/rust-lang/cfg-if
 color_quant 1.1.0  [MIT]  https://github.com/image-rs/color_quant.git
 core_maths 0.1.1  [MIT]  https://github.com/robertbastian/core_maths
 crc32fast 1.5.2  [MIT OR Apache-2.0]  https://github.com/srijs/rust-crc32fast
+crunchy 0.2.4  [MIT]  https://github.com/eira-fransham/crunchy
 data-url 0.3.2  [MIT OR Apache-2.0]  https://github.com/servo/rust-url
 displaydoc 0.2.7  [MIT OR Apache-2.0]  https://github.com/yaahc/displaydoc
 enough 0.4.5  [MIT OR Apache-2.0]  https://github.com/imazen/enough
 euclid 0.22.14  [MIT OR Apache-2.0]  https://github.com/servo/euclid
 fallible_collections 0.5.2  [MIT OR Apache-2.0]  https://github.com/vcombey/fallible_collections.git
+fax 0.2.7  [MIT]  https://github.com/pdf-rs/fax
 fdeflate 0.3.7  [MIT OR Apache-2.0]  https://github.com/image-rs/fdeflate
 find-msvc-tools 0.1.15  [MIT OR Apache-2.0]  https://github.com/rust-lang/cc-rs
 flate2 1.1.10  [MIT OR Apache-2.0]  https://github.com/rust-lang/flate2-rs
@@ -45,6 +47,7 @@ getrandom 0.4.3  [MIT OR Apache-2.0]  https://github.com/rust-random/getrandom
 gif 0.14.2  [MIT OR Apache-2.0]  https://github.com/image-rs/image-gif
 gt_a11y 0.1.0  [MIT]  https://crates.io/crates/gt_a11y
 gt_text 0.1.0  [MIT]  https://crates.io/crates/gt_text
+half 2.7.1  [MIT OR Apache-2.0]  https://github.com/VoidStarKat/half-rs
 harfrust 0.12.0  [MIT]  https://github.com/harfbuzz/harfrust
 harfrust 0.15.0  [MIT]  https://github.com/harfbuzz/harfrust
 hashbrown 0.17.1  [MIT OR Apache-2.0]  https://github.com/rust-lang/hashbrown
@@ -58,6 +61,7 @@ icu_properties_data 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 icu_provider 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 icu_segmenter 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 icu_segmenter_data 2.4.0  [Unicode-3.0]  https://github.com/unicode-org/icu4x
+image 0.25.10  [MIT OR Apache-2.0]  https://github.com/image-rs/image
 imagesize 0.15.0  [MIT]  https://github.com/Roughsketch/imagesize
 image-webp 0.2.4  [MIT OR Apache-2.0]  https://github.com/image-rs/image-webp
 jobserver 0.1.35  [MIT OR Apache-2.0]  https://github.com/rust-lang/jobserver-rs
@@ -72,6 +76,7 @@ memchr 2.8.3  [Unlicense OR MIT]  https://github.com/BurntSushi/memchr
 memmap2 0.9.8  [MIT OR Apache-2.0]  https://github.com/RazrFalcon/memmap2-rs
 miniz_oxide 0.8.9  [MIT OR Zlib OR Apache-2.0]  https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide
 miniz_oxide 0.9.1  [MIT OR Zlib OR Apache-2.0]  https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide
+moxcms 0.8.1  [BSD-3-Clause OR Apache-2.0]  https://github.com/awxkee/moxcms.git
 nasm-rs 0.3.2  [MIT OR Apache-2.0]  https://github.com/medek/nasm-rs
 num-traits 0.2.19  [MIT OR Apache-2.0]  https://github.com/rust-num/num-traits
 once_cell 1.21.4  [MIT OR Apache-2.0]  https://github.com/matklad/once_cell
@@ -83,6 +88,7 @@ png 0.18.1  [MIT OR Apache-2.0]  https://github.com/image-rs/image-png
 polycool 0.4.0  [MIT OR Apache-2.0]  https://github.com/linebender/kurbo
 potential_utf 0.1.6  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 proc-macro2 1.0.107  [MIT OR Apache-2.0]  https://github.com/dtolnay/proc-macro2
+pxfm 0.1.30  [BSD-3-Clause OR Apache-2.0]  https://github.com/awxkee/pxfm
 qcms 0.3.0  [MIT]  https://github.com/FirefoxGraphics/qcms
 quick-error 2.0.1  [MIT/Apache-2.0]  http://github.com/tailhook/quick-error
 quote 1.0.47  [MIT OR Apache-2.0]  https://github.com/dtolnay/quote
@@ -117,6 +123,7 @@ svgtypes 0.16.1  [Apache-2.0 OR MIT]  https://github.com/linebender/svgtypes
 syn 2.0.119  [MIT OR Apache-2.0]  https://github.com/dtolnay/syn
 syn 3.0.9  [MIT OR Apache-2.0]  https://github.com/dtolnay/syn
 synstructure 0.14.0  [MIT]  https://github.com/mystor/synstructure
+tiff 0.11.3  [MIT]  https://github.com/image-rs/image-tiff
 tiny-skia 0.12.0  [BSD-3-Clause]  https://github.com/linebender/tiny-skia
 tiny-skia-path 0.12.0  [BSD-3-Clause]  https://github.com/linebender/tiny-skia/tree/master/path
 tinystr 0.8.5  [Unicode-3.0]  https://github.com/unicode-org/icu4x
@@ -151,7 +158,9 @@ zenavif-parse 0.6.2  [MPL-2.0]  https://github.com/imazen/zenavif-parse
 zencodec 0.1.26  [Apache-2.0 OR MIT]  https://github.com/imazen/zencodec
 zenpixels 0.2.16  [Apache-2.0 OR MIT]  https://github.com/imazen/zenpixels
 zerocopy 0.7.35  [BSD-2-Clause OR Apache-2.0 OR MIT]  https://github.com/google/zerocopy
+zerocopy 0.8.63  [BSD-2-Clause OR Apache-2.0 OR MIT]  https://github.com/google/zerocopy
 zerocopy-derive 0.7.35  [BSD-2-Clause OR Apache-2.0 OR MIT]  https://github.com/google/zerocopy
+zerocopy-derive 0.8.63  [BSD-2-Clause OR Apache-2.0 OR MIT]  https://github.com/google/zerocopy
 zerofrom 0.1.8  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 zerofrom-derive 0.1.8  [Unicode-3.0]  https://github.com/unicode-org/icu4x
 zerotrie 0.2.5  [Unicode-3.0]  https://github.com/unicode-org/icu4x

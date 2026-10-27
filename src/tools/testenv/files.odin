@@ -1,7 +1,6 @@
 package testenv
 
 import "core:os"
-import win "core:sys/windows"
 
 // Deletes `path` and everything under it, file by file (core:os.remove_all goes through the shell's SHFileOperationW
 // for a folder: not thread-safe, which tests running side by side are not, and it crashes a shell thread under
@@ -9,11 +8,9 @@ import win "core:sys/windows"
 // returned; what could be deleted is.
 remove_tree :: proc(path: string) -> (err: os.Error) {
 	if path == "" { return nil }
-	attrs := win.GetFileAttributesW(win.utf8_to_wstring(path, context.temp_allocator))
-	if attrs == win.INVALID_FILE_ATTRIBUTES { return nil }   // gone already
-	if attrs & win.FILE_ATTRIBUTE_DIRECTORY == 0 || attrs & win.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-		return os.remove(path)
-	}
+	kind := path_kind(path)
+	if kind == .Absent { return nil }   // gone already
+	if kind != .Directory { return os.remove(path) }
 	infos, rerr := os.read_all_directory_by_path(path, context.temp_allocator)
 	if rerr != nil { return rerr }
 	for fi in infos {
@@ -22,3 +19,6 @@ remove_tree :: proc(path: string) -> (err: os.Error) {
 	if e := os.remove(path); e != nil && err == nil { err = e }
 	return
 }
+
+// What a path names, links never followed: a junction or a symbolic link to a directory is a Link (files_<os>.odin).
+Path_Kind :: enum { Absent, File, Directory, Link }

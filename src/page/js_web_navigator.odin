@@ -5,17 +5,10 @@ package page
 // pages see it, and beacons.
 
 import "core:strings"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:fetch"
+import "wb:host"
 import "wb:url"
-
-foreign import sensapi "system:Sensapi.lib"
-
-@(default_calling_convention = "system")
-foreign sensapi {
-	IsNetworkAlive :: proc(flags: ^u32) -> i32 ---
-}
 
 @(private)
 user_agent_of :: proc(p: ^Page) -> string {
@@ -55,20 +48,14 @@ Navigator_get :: proc(c: ^Call, field: Api_NavigatorField) -> string {
 Navigator_hardwareConcurrency :: proc(c: ^Call) -> i32 {
 	n := c.page.settings.js_web.hardware_concurrency
 	if n <= 0 {
-		// the logical processors (what browsers report)
-		info: win.SYSTEM_INFO
-		win.GetSystemInfo(&info)
-		n = int(info.dwNumberOfProcessors)
+		n = host.processor_count()   // the logical processors (what browsers report)
 	}
 	return i32(max(n, 1))
 }
 
 Navigator_maxTouchPoints :: proc(c: ^Call) -> i32 { return i32(max(c.page.settings.js.touch_points, 0)) }
 
-Navigator_onLine :: proc(c: ^Call) -> bool {
-	flags: u32
-	return IsNetworkAlive(&flags) != 0
-}
+Navigator_onLine :: proc(c: ^Call) -> bool { return network_alive() }
 
 Navigator_cookieEnabled :: proc(c: ^Call) -> bool {
 	_, ok := cookie_context(c.page)

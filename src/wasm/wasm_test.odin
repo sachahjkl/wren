@@ -426,8 +426,8 @@ instance_limit :: proc(t: ^testing.T) {
 
 @(private = "file")
 temp_dir :: proc(t: ^testing.T, name: string) -> string {
-	base := os.get_env("TEMP", context.temp_allocator)
-	dir, _ := filepath.join({base, fmt.tprintf("wren-wasm-test-%s-%d", name, time.now()._nsec)}, context.temp_allocator)
+	root := base.temp_dir(context.temp_allocator)
+	dir, _ := filepath.join({root, fmt.tprintf("wren-wasm-test-%s-%d", name, time.now()._nsec)}, context.temp_allocator)
 	_ = os.make_directory_all(dir)
 	return dir
 }

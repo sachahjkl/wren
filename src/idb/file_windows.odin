@@ -108,22 +108,3 @@ dir_files_with_prefix :: proc(dir, prefix: string) -> []string {
 	}
 	return out[:]
 }
-
-// Writes `parts` to a new file at `path` through a temporary file, flushed if asked, renamed over the old one.
-file_replace_parts :: proc(path: string, parts: [][]byte, flush: bool) -> bool {
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	f, ok := file_open(tmp, true, true)
-	if !ok { return false }
-	good := file_truncate(f, 0)
-	off: i64
-	for p in parts {
-		if !good { break }
-		good = file_write_at(f, off, p)
-		off += i64(len(p))
-	}
-	if good && flush { good = file_sync(f) }
-	file_close(&f)
-	if !good { file_delete(tmp); return false }
-	if !file_rename(tmp, path) { file_delete(tmp); return false }
-	return true
-}

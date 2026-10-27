@@ -3,10 +3,11 @@ package idb
 import "core:fmt"
 import "core:os"
 import "core:testing"
+import "wb:base"
 
 @(private)
 temp_path :: proc(name: string) -> string {
-	dir := fmt.tprintf("%s/wren_idb_test", os.get_env("TEMP", context.temp_allocator))
+	dir := fmt.tprintf("%s/wren_idb_test", base.temp_dir(context.temp_allocator))
 	os.make_directory_all(dir)
 	return fmt.tprintf("%s/%s", dir, name)
 }
