@@ -18,7 +18,7 @@
 # are marked -Light: they do not use one of the -Jobs slots, up to -LightJobs (2) of them run beside the others.
 # -Jobs 1: one step after the other, one server for all, as before.
 param([switch]$Quick, [switch]$CI, [int]$StepTimeoutSec = 900, [int]$Jobs = 0, [int]$BasePort = 0, [int]$LightJobs = 2, [switch]$NoAsan, [switch]$Perf, [switch]$Ui)
-if ($CI) { $Quick = $true }
+if ($CI) { $Quick = $true; if (-not $env:CI) { $env:CI = 'true' } }   # the tools that skip a check on the CI read the variable
 # -Ui (or WREN_UI_TESTS=1): the end-to-end steps marked -UiOnly (they drive real windows and processes, or decode heavy images under a time limit:
 # what they need is a desktop and a machine of known speed) run when asked; without it they are skipped with "ui: skipped, run with -Ui".
 # Never on a CI machine (-CI, or the CI variable): a shared runner failed them at random, and the logic they check has unit tests.
