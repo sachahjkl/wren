@@ -75,6 +75,12 @@ MEDIA_PREFS := [?]config.Def{
 		description = "Offer AV1 when a decoder is available (the system's, or the software one)."},
 	{name = "media.software.threads", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 64, unit = "threads",
 		description = "Threads of one video decoded in software (the built-in AV1 decoder). 0: half the processors, at least one."},
+	{name = "media.audio.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "null"},
+		description = "Where decoded audio is played where the system has no native output (Linux): auto uses the system's device through cpal (ALSA, which PipeWire and PulseAudio serve), falling back to silence when there is none; null plays silence at the pace of the clock. No effect on Windows (WASAPI)."},
+	{name = "media.h264.backend", kind = .String, default = {s = "auto"}, choices = {"auto", "vaapi", "openh264", "off"},
+		description = "Which H.264 decoder to use where the system has no native one (Linux): auto prefers the GPU (VA-API) and falls back to Cisco's openh264 binary; vaapi uses only the GPU; openh264 uses only the software binary; off refuses H.264. No effect on Windows (Media Foundation / DXVA)."},
+	{name = "media.h264.openh264_path", kind = .String, default = {s = ""},
+		description = "Full path to Cisco's openh264 shared library (libopenh264.so) when it is not where the loader finds it by its soname. Empty: search the usual library paths. The binary must be Cisco's own (tools/fetch_openh264.sh): the patent licence covers only their builds, never a library compiled from source."},
 	{name = "media.controls.enabled", kind = .Bool, default = {b = true},
 		description = "Draw the built-in controls (play, position, volume) of <video controls> and <audio controls>."},
 	{name = "media.controls.hide_ms", kind = .Float, default = {f = 2500}, bounded = true, min = 0, max = 60000, unit = "ms",
@@ -91,6 +97,8 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	}
 	ms :: proc(f: f64) -> Time { return Time(f * 1e6) }
 	set_software_threads(int(config.int_of(p, "media.software.threads")))
+	apply_audio_backend_pref(config.string_of(p, "media.audio.backend"))
+	apply_h264_prefs(config.string_of(p, "media.h264.backend"), config.string_of(p, "media.h264.openh264_path"))
 	return Settings{
 		enabled = config.bool_of(p, "media.enabled"),
 		player = Player_Settings{
