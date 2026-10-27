@@ -181,10 +181,35 @@ fn build_request(inner: &Inner, d: &Desc) -> Result<http::Request<Bytes>, NetErr
     Ok(req)
 }
 
-async fn timeout_at<T>(deadline: Option<Instant>, f: impl std::future::Future<Output = Result<T, NetError>>) -> Result<T, NetError> {
-    match deadline {
-        Some(t) => tokio::time::timeout_at(t.into(), f).await.unwrap_or(Err(NetError::new(error::TIMEOUT))),
-        None => f.await,
+/// Waits for the head: send + receive from the moment the request had a connection (WinHTTP's send and receive
+/// timeouts). The pooled client does not say which connection a request got: a connection to the origin still being
+/// opened holds the clock (it has its own resolve and connect timeouts), one that came up after the request started
+/// restarts it.
+async fn head_within<T>(
+    shared: &Shared,
+    key: &str,
+    start: Instant,
+    s: &crate::Settings,
+    f: impl std::future::Future<Output = Result<T, NetError>>,
+) -> Result<T, NetError> {
+    let (Some(send), Some(recv)) = (s.send, s.receive) else { return f.await };
+    let budget = send + recv;
+    let cap = start + budget + s.resolve.unwrap_or_default() + s.connect.unwrap_or_default();
+    let mut f = std::pin::pin!(f);
+    let mut deadline = start + budget;
+    loop {
+        match futures_util::future::select(f.as_mut(), Box::pin(tokio::time::sleep_until(deadline.into()))).await {
+            futures_util::future::Either::Left((r, _)) => return r,
+            futures_util::future::Either::Right(_) => {
+                let now = Instant::now();
+                let (connecting, ready) = shared.tracked(key);
+                deadline = match ready {
+                    Some(t) if t > start && t + budget > now => t + budget,
+                    _ if connecting > 0 && now < cap => now + Duration::from_millis(100),
+                    _ => return Err(NetError::new(error::TIMEOUT)),
+                };
+            }
+        }
     }
 }
 
@@ -193,11 +218,7 @@ async fn request(inner: &Arc<Inner>, id: u64, st: &Arc<ReqState>, d: Desc) -> Re
     let s = inner.shared.settings();
     let req = build_request(inner, &d)?;
     let idempotent = matches!(*req.method(), http::Method::GET | http::Method::HEAD | http::Method::OPTIONS);
-    // the head must come within the connection's own timeouts plus send + receive
-    let deadline = match (s.send, s.receive) {
-        (Some(a), Some(b)) => Some(start + a + b + s.resolve.unwrap_or_default() + s.connect.unwrap_or_default()),
-        _ => None,
-    };
+    let key = crate::origin_of(req.uri());
     let mut marks = Marks::default();
 
     // HTTP/3 when the origin announced it (Alt-Svc) and QUIC worked there: raced against TCP
@@ -220,7 +241,7 @@ async fn request(inner: &Arc<Inner>, id: u64, st: &Arc<ReqState>, d: Desc) -> Re
         None => {
             let (parts, body) = req.into_parts();
             let req = http::Request::from_parts(parts, Full::new(body));
-            let resp = timeout_at(deadline, async {
+            let resp = head_within(&inner.shared, &key, start, &s, async {
                 inner.http.request(req).await.map_err(|e| error::from_any(&e, error::CANNOT_CONNECT))
             })
             .await?;
@@ -238,6 +259,14 @@ async fn request(inner: &Arc<Inner>, id: u64, st: &Arc<ReqState>, d: Desc) -> Re
         }
     }
 
+    // a decoded body loses the coding's fields, as WinHTTP's decompression did: what the host reads is the decoded body
+    // (the HTTP cache, the downloads' progress)
+    let mut headers = headers;
+    let dec = Decoder::new(headers.get(http::header::CONTENT_ENCODING).and_then(|v| v.to_str().ok()));
+    if !dec.is_identity() {
+        headers.remove(http::header::CONTENT_ENCODING);
+        headers.remove(http::header::CONTENT_LENGTH);
+    }
     let mut ev = Ev {
         kind: EV_HEADERS,
         tag: st.tag,
@@ -252,8 +281,7 @@ async fn request(inner: &Arc<Inner>, id: u64, st: &Arc<ReqState>, d: Desc) -> Re
     ev.timing[0] = 0.0;
     inner.push(ev);
 
-    let encoding = headers.get(http::header::CONTENT_ENCODING).and_then(|v| v.to_str().ok());
-    let mut dec = Decoder::new(encoding);
+    let mut dec = dec;
     let mut total: u64 = 0;
     loop {
         let chunk = match s.receive {

@@ -1,5 +1,5 @@
-//! Content-Encoding, decoded as the body streams in (what WinHTTP's decompression did, with Brotli on top). The header
-//! stays in the response, as it did: the HTTP cache knows the body it stores is decoded.
+//! Content-Encoding, decoded as the body streams in (what WinHTTP's decompression did, with Brotli on top). As with
+//! WinHTTP, the head the host reads then has no Content-Encoding nor Content-Length (http.rs).
 
 use std::io::{self, Write};
 

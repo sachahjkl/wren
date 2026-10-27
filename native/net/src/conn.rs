@@ -137,7 +137,11 @@ impl tower_service::Service<Uri> for Connector {
         let shared = self.shared.clone();
         Box::pin(async move {
             let h2 = shared.settings().http2;
-            connect(&shared, &uri, if h2 { Alpn::H2 } else { Alpn::H1 }).await
+            let key = crate::origin_of(&uri);
+            shared.track_start(&key);
+            let r = connect(&shared, &uri, if h2 { Alpn::H2 } else { Alpn::H1 }).await;
+            shared.track_end(&key, r.is_ok());
+            r
         })
     }
 }

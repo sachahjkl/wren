@@ -160,10 +160,10 @@ impl H3 {
 
     /// The origin's connection: the one being made or made, else a new one (made in its own task: it goes on when the
     /// request that started it went over TCP).
-    fn connection(&self, key: &str, host: &str, port: u16) -> (u64, Connecting) {
+    fn connection(&self, key: &str, host: &str, port: u16) -> (u64, Connecting, bool) {
         let mut st = self.state.lock().unwrap_or_else(|e| e.into_inner());
         if let Some((id, c)) = st.conns.get(key) {
-            return (*id, c.clone());
+            return (*id, c.clone(), false);
         }
         let id = st.next;
         st.next += 1;
@@ -179,17 +179,27 @@ impl H3 {
             r
         });
         let fut: Connecting = async move { task.await.unwrap_or(Err(NetError::new(error::CANNOT_CONNECT))) }.boxed().shared();
+        tokio::spawn(fut.clone().map(|_| ())); // driven to its end whoever waits: `peek` then sees it
         st.conns.insert(key.to_string(), (id, fut.clone()));
-        (id, fut)
+        (id, fut, true)
     }
 
     pub async fn try_send(&self, req: &http::Request<Bytes>, port: u16, race: Duration, idempotent: bool) -> Outcome {
         let Some(key) = origin_key(req.uri()) else { return Outcome::UseTcp };
         let Some(host) = conn::bare_host(req.uri()).map(|h| h.to_string()) else { return Outcome::UseTcp };
-        let (id, connecting) = self.connection(&key, &host, port);
-        let made = match futures_util::future::select(connecting, Box::pin(tokio::time::sleep(race))).await {
-            futures_util::future::Either::Left((r, _)) => r,
-            futures_util::future::Either::Right(_) => return Outcome::UseTcp,
+        let (id, connecting, new) = self.connection(&key, &host, port);
+        // the request that starts the connection gives it the race time; the others take it only once it is up (a QUIC
+        // handshake that lost its race must not cost every request of the page that time again)
+        let made = if new {
+            match futures_util::future::select(connecting, Box::pin(tokio::time::sleep(race))).await {
+                futures_util::future::Either::Left((r, _)) => r,
+                futures_util::future::Either::Right(_) => return Outcome::UseTcp,
+            }
+        } else {
+            match connecting.peek() {
+                Some(r) => r.clone(),
+                None => return Outcome::UseTcp,
+            }
         };
         let Ok((mut sender, info)) = made else { return Outcome::UseTcp };
         match send(&mut sender, req).await {
