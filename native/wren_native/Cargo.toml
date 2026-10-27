@@ -15,6 +15,8 @@ path = "src/lib.rs"
 [dependencies]
 # the image decoders and WOFF2 (native/media): package images, package webfont
 wren_media = { path = "../media" }
+# the network stack (native/net): package net, network.backend = rust
+wren_net = { path = "../net" }
 # The toolkit's native text backend (Fontations, HarfRust, ICU4X): the toolkit is then built with
 # -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false. Left out of a WREN_TEXT=dwrite build.
 gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }

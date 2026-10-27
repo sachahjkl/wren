@@ -114,12 +114,15 @@ Ws_Job :: struct {
 	send_buf:     []byte,       // the message being sent (loop thread, or HANDLE_CLOSING once released)
 	close_reason: [WINHTTP_WEB_SOCKET_MAX_CLOSE_REASON]u8,
 	secure_flags: u32,
+	url, headers: string,       // the Rust stack's (rust.odin): UTF-8, heap
 }
 
 @(private)
 Socket :: struct {
 	job:        ^Ws_Job,
 	hconnect, hrequest, hws: HINTERNET,
+	rid:        u64,            // the Rust stack's socket (0: none)
+	upgraded:   bool,           // the Rust stack's socket is past its handshake (WinHTTP: hws != nil)
 	state:      Socket_State,
 	on_event:   Ws_Proc,
 	user:       rawptr,
@@ -260,11 +263,16 @@ websocket_open :: proc(c: ^Client, d: Ws_Desc) -> base.Handle {
 	job.sock = h
 	job.port = u16(url.effective_port(u))
 	job.secure = u.scheme == "wss"
-	host_name := u.host
-	if strings.has_prefix(host_name, "[") { host_name = host_name[1:len(host_name) - 1] }
-	job.host_w = to_wide(host_name)
-	job.target_w = to_wide(url.request_target(u, context.temp_allocator))
-	if d.headers != "" { job.headers_w = to_wide(d.headers) }
+	if c.rs != nil {
+		job.url = strings.clone(d.url, heap())
+		job.headers = strings.clone(d.headers, heap())
+	} else {
+		host_name := u.host
+		if strings.has_prefix(host_name, "[") { host_name = host_name[1:len(host_name) - 1] }
+		job.host_w = to_wide(host_name)
+		job.target_w = to_wide(url.request_target(u, context.temp_allocator))
+		if d.headers != "" { job.headers_w = to_wide(d.headers) }
+	}
 	job.high_water, job.low_water = sp.limits.high_water, sp.limits.low_water
 	sync.atomic_add(&m.live_jobs, 1)
 	sp.job = job
@@ -282,6 +290,18 @@ websocket_accept :: proc(c: ^Client, h: base.Handle) -> bool {
 	s := base.pool_get(&m.sockets, h)
 	if s == nil || s.state != .Handshake { return false }
 	job := s.job
+	if s.rid != 0 {
+		if wn_ws_accept(c.rs, s.rid) == 0 {
+			ws_push(m, Raw{kind = .Handshake_Failed, sock = h, error = ERROR_START_FAILED})
+			return false
+		}
+		s.upgraded = true
+		ws_clear_timer(m, s)
+		ws_leave_connecting(m, s)
+		s.state = .Open
+		ws_pump(m)
+		return true
+	}
 	hws := WinHttpWebSocketCompleteUpgrade(s.hrequest, win.DWORD_PTR(uintptr(job)))
 	if hws == nil {
 		ws_push(m, Raw{kind = .Handshake_Failed, sock = h, error = u32(win.GetLastError())})
@@ -396,14 +416,15 @@ ws_begin :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 		s.timer_data = new_clone(Ws_Owner{m, h})
 		s.timer = host.set_timer(m.client.loop, f64(s.limits.handshake_timeout_ms), 0, ws_timeout, s.timer_data)
 	}
-	if code := ws_send_handshake(m, s); code != 0 {
+	if code := ws_send_handshake(m, h, s); code != 0 {
 		ws_push(m, Raw{kind = .Handshake_Failed, sock = h, error = code})
 	}
 }
 
 @(private)
-ws_send_handshake :: proc(m: ^Ws_Manager, s: ^Socket) -> u32 {
+ws_send_handshake :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) -> u32 {
 	c := m.client
+	if c.rs != nil { return rust_ws_begin(m, h, s) }
 	job := s.job
 	s.hconnect = WinHttpConnect(c.session, cstring16(raw_data(job.host_w)), job.port, 0)
 	if s.hconnect == nil { return u32(win.GetLastError()) }
@@ -483,6 +504,7 @@ ws_free_job :: proc(job: ^Ws_Job) {
 	a := heap()
 	delete(job.host_w, a); delete(job.target_w, a); delete(job.headers_w, a)
 	delete(job.recv, a); delete(job.send_buf, a)
+	delete(job.url, a); delete(job.headers, a)
 	sync.atomic_sub(&job.mgr.live_jobs, 1)
 	free(job, a)
 }
@@ -498,6 +520,7 @@ ws_release :: proc(m: ^Ws_Manager, h: base.Handle) -> bool {
 		handed := sync.atomic_load(&s.job.refs) > 0
 		if !handed { ws_free_job(s.job) }
 	}
+	if s.rid != 0 { wn_net_cancel(m.client.rs, s.rid) }
 	if s.hws != nil { WinHttpCloseHandle(s.hws) }
 	if s.hrequest != nil { WinHttpCloseHandle(s.hrequest) }
 	if s.hconnect != nil { WinHttpCloseHandle(s.hconnect) }
@@ -542,7 +565,7 @@ ws_closed :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket, error: u32) {
 
 @(private)
 ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
-	if s.sending || s.hws == nil || !(s.state == .Open || s.state == .Closing) || s.close_issued { return }
+	if s.sending || !(s.hws != nil || s.upgraded) || !(s.state == .Open || s.state == .Closing) || s.close_issued { return }
 	job := s.job
 	if !s.has_cur {
 		if len(s.out) == 0 { return }
@@ -555,6 +578,16 @@ ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 	}
 	buf := job.send_buf
 	rest := len(buf) - s.send_off
+	if s.rid != 0 {
+		// the whole message, as one frame (the library copies it)
+		s.sending = true
+		s.send_len = rest
+		if wn_ws_send(m.client.rs, s.rid, u8(s.cur_binary), raw_data(buf), uint(rest)) == 0 {
+			s.sending = false
+			ws_push(m, Raw{kind = .Error, sock = h, error = ERROR_WINHTTP_OPERATION_CANCELLED, op = .Send})
+		}
+		return
+	}
 	n := min(rest, s.limits.send_fragment)
 	if n < rest && !s.cur_binary {
 		// keep each text frame a whole number of characters
@@ -578,7 +611,7 @@ ws_pump_send :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 // stays armed: it reads the peer's close frame. 1005 is WinHTTP's "no status": the frame goes out empty.
 @(private)
 ws_try_close :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
-	if s.close_issued || s.sending || s.hws == nil { return }
+	if s.close_issued || s.sending || !(s.hws != nil || s.upgraded) { return }
 	if s.close_wanted && (len(s.out) > 0 || s.has_cur) { return }
 	s.close_issued = true
 	if s.limits.close_timeout_ms > 0 {
@@ -587,6 +620,12 @@ ws_try_close :: proc(m: ^Ws_Manager, h: base.Handle, s: ^Socket) {
 		s.timer = host.set_timer(m.client.loop, f64(s.limits.close_timeout_ms), 0, ws_timeout, s.timer_data)
 	}
 	job := s.job
+	if s.rid != 0 {
+		if wn_ws_shutdown(m.client.rs, s.rid, s.close_code, &job.close_reason[0], uint(s.close_len)) == 0 {
+			ws_push(m, Raw{kind = .Error, sock = h, error = ERROR_WINHTTP_OPERATION_CANCELLED, op = .Shutdown})
+		}
+		return
+	}
 	reason: rawptr = s.close_len > 0 ? &job.close_reason[0] : nil
 	if err := WinHttpWebSocketShutdown(s.hws, s.close_code, reason, win.DWORD(s.close_len)); err != 0 && err != ERROR_IO_PENDING {
 		ws_push(m, Raw{kind = .Error, sock = h, error = err, op = .Shutdown})
@@ -665,8 +704,9 @@ ws_handle :: proc(m: ^Ws_Manager, r: ^Raw) {
 	case .Fragment:
 		job := s.job
 		n := len(r.data)
-		q := sync.atomic_sub(&job.queued, n) - n
-		if q < job.low_water && s.hws != nil {
+		if s.rid != 0 {
+			wn_net_consumed(m.client.rs, s.rid, u64(n))
+		} else if q := sync.atomic_sub(&job.queued, n) - n; q < job.low_water && s.hws != nil {
 			if _, resumed := sync.atomic_compare_exchange_strong(&job.paused, true, false); resumed {
 				if err := ws_receive(job, s.hws); err != 0 { ws_fail(m, h, s, err); return }
 			}
