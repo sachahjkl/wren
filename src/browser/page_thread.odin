@@ -54,7 +54,6 @@ Page_Thread :: struct {
 	go, done: sync.Sema,
 	job:      Layout_Job,
 	stop:     bool,
-	last_ms:  map[u64]f64,   // per tab id: its last layout pass
 	passes:   u64,           // passes run on the thread (statistics)
 }
 
@@ -64,10 +63,9 @@ pt: Page_Thread
 // The layout of `t` for this frame, on the page thread when it is expected to be long (see above), else here.
 page_layout :: proc(app: ^App, t: ^Tab, styled: ^style.Styled, size: draw.Vec2, scale: f32, fonts_gen: u64) {
 	t0 := time.tick_now()
-	defer pt.last_ms[t.id] = time.duration_milliseconds(time.tick_since(t0))
+	defer t.layout_ms, t.layout_ms_known = time.duration_milliseconds(time.tick_since(t0)), true
 	job := Layout_Job{&t.layout, t, styled, size, scale, fonts_gen}
-	last, known := pt.last_ms[t.id]
-	if !page_thread_wanted(app) || (known && last < config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")) {
+	if !page_thread_wanted(app) || (t.layout_ms_known && t.layout_ms < config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")) {
 		layout_job_run(&job)
 		return
 	}
@@ -101,8 +99,7 @@ pt_thread_id: int   // (the page thread's id: page_world_check)
 
 // The last layout pass of `t` was long enough for the page thread (and the preference allows it).
 page_layout_is_long :: proc(app: ^App, t: ^Tab) -> bool {
-	last, known := pt.last_ms[t.id]
-	return known && config.bool_of(&app.prefs, "browser.shell.page_thread") && chrome_frames.cfg.preempt && last >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
+	return t.layout_ms_known && config.bool_of(&app.prefs, "browser.shell.page_thread") && chrome_frames.cfg.preempt && t.layout_ms >= config.float_of(&app.prefs, "browser.shell.page_thread_min_ms")
 }
 
 // Chrome frames can be made now (the frame is in its page phase, not inside one), and the preference allows it.
@@ -136,6 +133,5 @@ page_thread_destroy :: proc() {
 		sync.sema_post(&pt.go)
 		host.thread_join(pt.thread)
 	}
-	delete(pt.last_ms)
 	pt = {}
 }

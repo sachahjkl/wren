@@ -60,7 +60,7 @@ Dev_Network :: struct {
 Net_Col_Pos :: struct { col: Net_Col, x, w: f32 }
 
 network_destroy :: proc() {
-	v := &dev.net
+	v := &dev().net
 	dt_list_destroy(&v.list)
 	delete(v.rows)
 	dt_filter_destroy(&v.filter)
@@ -69,11 +69,9 @@ network_destroy :: proc() {
 	for b in v.blocked { delete(b) }
 	delete(v.blocked)
 	net_detail_destroy(&v.detail)
-	net_media_release()
+	if net_media.owner == dev() { net_media_release() }
 	net_prof_edit_destroy(&v.prof)
-	net_profiles_destroy()
-	delete(net_prefs.profile)
-	net_destroy_owner()
+	if v.tick != base.NIL_HANDLE && the_app != nil { host.clear_timer(&the_app.loop, v.tick) }
 	v^ = {}
 }
 
@@ -154,7 +152,7 @@ network_reset_layout :: proc(app: ^App) {
 	dev_set_pref(app, "browser.devtools.network.sort", "")
 	dev_set_pref(app, "browser.devtools.network.types", "0")
 	dev_set_pref(app, "browser.devtools.network.split", "0.5")
-	dev.net.cols_ok = false
+	dev().net.cols_ok = false
 }
 
 // The pixel columns of this frame for `avail` physical px: fixed widths, the rest for the waterfall (or the name); the
@@ -389,7 +387,7 @@ head_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // The panel
 
 network_panel :: proc(app: ^App, t: ^Tab) {
-	v := &dev.net
+	v := &dev().net
 	if !v.cols_ok { net_cols_load(app, v) }
 	net_refresh(t, v)
 	net_tick(app, v)
@@ -455,11 +453,12 @@ net_entry_of_id :: proc(t: ^Tab, v: ^Dev_Network) -> ^Net_Entry {
 @(private = "file")
 net_tick :: proc(app: ^App, v: ^Dev_Network) {
 	if v.pending > 0 && v.tick == base.NIL_HANDLE {
-		v.tick = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {
-			a := (^App)(data)
-			dev.net.tick = base.NIL_HANDLE
-			if dev.visible && dev.panel == .Network && dev.net.pending > 0 { request_frames(a, 2) }
-		}, app, nil)
+		v.tick = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {   // (the window's id: it may close before)
+			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
+			if d == nil { return }
+			d.net.tick = base.NIL_HANDLE
+			if d.visible && d.panel == .Network && d.net.pending > 0 { window_request(the_app, w, 2) }
+		}, rawptr(uintptr(active_window(app).id)), nil)
 	}
 }
 
@@ -505,7 +504,7 @@ net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 // The switches of the Network tab, in the panel's menu and in its own.
 network_settings_items :: proc(app: ^App, t: ^Tab) {
 	ui.menu_heading("Network")
-	v := &dev.net
+	v := &dev().net
 	if ui.menu_item("Preserve log###dt_ns_preserve", checked = net_prefs.preserve, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.preserve") }
 	if ui.menu_item("Disable cache###dt_ns_cache", checked = net_prefs.disable_cache, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.disable_cache") }
 	if ui.menu_item("Show the waterfall###dt_ns_wf", checked = net_prefs.waterfall, keep_open = true).clicked { dev_toggle_pref(app, "browser.devtools.network.waterfall") }

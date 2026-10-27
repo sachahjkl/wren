@@ -2,9 +2,14 @@
 # shown): a page's element full screen in one window while a second window exists (each has its own), left with Escape, the
 # scroll given back; the tab moved between the windows. The process must answer and leave no crash report; the dev build
 # panics on a frame that moves where it may not (the frame gate).
-#   powershell -NoProfile -File tools\window_state_e2e.ps1 [-Exe build\wren.exe]
-param([string]$Exe = '')
+# Then the developer tools of each window (devtools.odin: Window_Own.devtools): opened in one window only, one docked and one in a
+# window of its own, going with the tab they show to a new window, closed with their window.
+#   powershell -NoProfile -File tools\window_state_e2e.ps1 [-Exe build\wren.exe] [-ShotDir <folder for the captures>]
+param([string]$Exe = '', [string]$ShotDir = '')
 $ErrorActionPreference = 'Stop'
+Add-Type -Namespace WrenE2E -Name WinState -MemberDefinition '[DllImport("user32.dll")] public static extern bool IsWindow(System.IntPtr h);'
+# the windows by id (wren ctl windows --json)
+function Get-WindowsById { $h = @{}; foreach ($x in @((Wren-Ctl windows --json | ConvertFrom-Json).windows)) { $h[[int]$x.windowId] = $x }; return $h }
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . "$PSScriptRoot\wrenctl.ps1"
@@ -40,6 +45,58 @@ try {
     Wren-Ctl wait frames 70 --win-id $first | Out-Null
     $t = Wren-Ctl eval 'document.title + "|" + (document.fullscreenElement ? "still" : "none") + "|" + Math.round(scrollY)' --win-id $first
     Check ($t -match '^fs off\|none\|120$') 'Escape in that window leaves it, and the scroll comes back' $t
+
+    # the developer tools: each window has its own, docked or in a window of their own; they go with the tab they show to another
+    # window, and close with their window
+    $second = @($wins | Where-Object { $_.windowId -ne $first })[0].windowId
+    Wren-Ctl nav $page --wait load --win-id $second | Out-Null
+    Wren-Ctl devtools console --win-id $first | Out-Null
+    $w = Get-WindowsById
+    Check ($w[$first].devtools.visible -and -not $w[$second].devtools.visible) 'the developer tools open in the window that asked for them, not in the other' ($w.Values | ConvertTo-Json -Compress -Depth 4)
+    Wren-Ctl devtools network --dock window --win-id $second | Out-Null
+    Wren-Ctl wait frames 6 --win-id $second | Out-Null
+    $w = Get-WindowsById
+    $dt2 = $w[$second].devtools
+    Check ($dt2.visible -and $dt2.detached -and [int64]$dt2.hwnd -ne 0 -and $dt2.panel -eq 'network' -and $w[$first].devtools.visible -and -not $w[$first].devtools.detached -and $w[$first].devtools.panel -eq 'console') 'the second window''s developer tools go to a window of their own on Network; the first window''s stay docked on Console' ($w.Values | ForEach-Object { $_.devtools } | ConvertTo-Json -Compress)
+    Check ([WrenE2E.WinState]::IsWindow([IntPtr][int64]$dt2.hwnd)) 'their window exists'
+    if ($ShotDir) { Wren-Ctl shot (Join-Path $ShotDir '01 - fenetre 1 outils ancres avant deplacement.png') --win-id $first | Out-Null }
+
+    # a tab of the first window with its developer tools on it goes to a window of its own: they go with it
+    $tid = Wren-Ctl tab new $page --wait load --win-id $first
+    Wren-Ctl wait frames 3 --win-id $first | Out-Null
+    $third = [int](Wren-Ctl tab move $tid --to new)
+    Wren-Ctl wait frames 6 --win-id $third | Out-Null
+    $w = Get-WindowsById
+    Check ($w.ContainsKey($third) -and $w[$third].devtools.visible -and $w[$third].devtools.panel -eq 'console' -and -not $w[$first].devtools.visible) 'the developer tools go with the tab they showed to its new window; the window it left has none open' ($w.Values | ForEach-Object { "$($_.windowId):$($_.devtools.visible)/$($_.devtools.panel)" } | Out-String)
+    if ($ShotDir) { Wren-Ctl shot (Join-Path $ShotDir '02 - fenetre 3 outils venus avec l''onglet.png') --win-id $third | Out-Null; Wren-Ctl shot (Join-Path $ShotDir '03 - fenetre 1 apres le depart de l''onglet.png') --win-id $first | Out-Null }
+
+    # the second window closes (its last tab): its developer tools' window closes with it
+    $tab2 = $w[$second].currentTabId
+    Wren-Ctl tab close $tab2 | Out-Null
+    Wren-Ctl wait frames 4 --win-id $first | Out-Null
+    $w = Get-WindowsById
+    Check (-not $w.ContainsKey($second) -and -not [WrenE2E.WinState]::IsWindow([IntPtr][int64]$dt2.hwnd)) 'closing a window closes its developer tools'' window' ($w.Keys -join ',')
+    $st = Wren-Ctl stats --json --win-id $third | ConvertFrom-Json
+    Check ($st.devtools -eq $true) 'the stats of a window name its own developer tools' "$($st.devtools)"
+
+    # the caret of a focused field of a page blinks only in the window the user is in, on a timer of that window
+    foreach ($id in $first, $third) { Wren-Ctl eval "document.body.insertAdjacentHTML('beforeend','<input id=fld style=position:fixed;left:200px;top:20px>'); fld.focus(); 'ok'" --win-id $id | Out-Null }
+    function Caret-Of([int]$id) { $s = Wren-Ctl stats --json --win-id $id | ConvertFrom-Json; return $s }
+    foreach ($front in $third, $first) {
+        $back = if ($front -eq $first) { $third } else { $first }
+        Wren-Ctl window --front --win-id $front | Out-Null
+        Wren-Ctl wait frames 3 --win-id $front | Out-Null
+        Wren-Ctl wait frames 2 --win-id $back | Out-Null
+        $blinks = 0; $backShown = 0; $backTimer = 0
+        for ($i = 0; $i -lt 6; $i++) {
+            $f = Caret-Of $front; $b = Caret-Of $back
+            if ($f.caretBlinking -and $f.frontWindow) { $blinks++ }
+            if ($b.caretShown) { $backShown++ }
+            if ($b.caretBlinking) { $backTimer++ }
+            Start-Sleep -Milliseconds 150
+        }
+        Check ($blinks -ge 5 -and $backShown -eq 0 -and $backTimer -eq 0) "window $front in front: its field's caret blinks, window $back shows none and keeps no timer" "front blinking $blinks/6, back shown $backShown, back timer $backTimer"
+    }
 
     $null = Wren-Ctl ping --timeout 10000
     $crashes = @(Get-ChildItem (Join-Path $prof 'crashes') -Filter 'crash *.txt' -ErrorAction SilentlyContinue)

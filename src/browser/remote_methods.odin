@@ -251,6 +251,10 @@ m_window_get :: proc(app: ^App) -> Reply {
 	j_str(&b, "windowState", window_state(app))
 	j_num(&b, "dpiScale", f64(wnd.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
 	j_bool(&b, "visible", bool(win.IsWindowVisible(wnd.win.hwnd)))
+	// the page area of its last frame and what was prepared for it (page_frame.odin)
+	j_rect(&b, "pageRect", wnd.page_rect)
+	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
+	j_str(&b, "pagePrep", PREP_NAMES[wnd.own.page_prep.state])
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -270,7 +274,25 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 	left, has_l := remote.param_int(c.params, "left")
 	top, has_t := remote.param_int(c.params, "top")
 	window_apply(app, state, has_state, w, h, left, top, has_w, has_h, has_l, has_t)
+	if dpi, has_dpi := remote.param_int(c.params, "dpi"); has_dpi {
+		if dpi < 48 || dpi > 960 { return fail(remote.ERR_PARAMS, "dpi: 48 to 960 (96 = 100 %)") }
+		window_simulate_dpi(app, active_window(app), dpi)
+	}
 	return m_window_get(app)
+}
+
+// The window as if it had moved to a monitor of `dpi`: the system's WM_DPICHANGED, with the rectangle the system suggests (the same
+// top left, the size in proportion), through the window procedure as the real one goes (wren ctl window --dpi n: a machine with
+// one monitor tests a window that changes monitors, and two windows on monitors of different scales).
+window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
+	hwnd := w.win.hwnd
+	rc: win.RECT
+	win.GetWindowRect(hwnd, &rc)
+	old := max(w.win.dpi_scale, 0.25) * 96
+	k := f32(dpi) / old
+	r := win.RECT{rc.left, rc.top, rc.left + i32(f32(rc.right - rc.left) * k + 0.5), rc.top + i32(f32(rc.bottom - rc.top) * k + 0.5)}
+	win.SendMessageW(hwnd, win.WM_DPICHANGED, win.WPARAM(uint(dpi) | uint(dpi) << 16), win.LPARAM(uintptr(&r)))
+	window_request(app, w, 4)
 }
 
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
@@ -378,6 +400,27 @@ m_windows :: proc(app: ^App) -> Reply {
 		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
 		j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top)); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
 		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
+		j_num(&b, "dpiScale", f64(w.win.dpi_scale))
+		co := platform.client_origin(w.win)
+		j_int(&b, "clientLeft", i64(co[0])); j_int(&b, "clientTop", i64(co[1]))   // (where its client area is on the screen)
+		// a tab carried over its tabs (tab_drag.odin): where it would go and where the mark is (client pixels, along the tabs)
+		if w.dropping {
+			z := w.zone
+			j_key(&b, "drop"); j_begin(&b)
+			j_int(&b, "index", i64(w.drop.index)); j_int(&b, "group", i64(w.drop.group)); j_bool(&b, "pinned", w.drop.pinned)
+			j_num(&b, "mark", f64((z.vertical ? z.rect.min.y : z.rect.min.x) + w.drop.mark - z.offset))
+			j_end(&b)
+		}
+		// its developer tools (devtools.odin: each window has its own)
+		d := &w.own.devtools
+		j_key(&b, "devtools"); j_begin(&b)
+		j_bool(&b, "visible", d.visible); j_str(&b, "dock", DEV_DOCK_NAMES[d.dock]); j_str(&b, "panel", DEV_PANEL_NAMES[d.panel])
+		j_bool(&b, "detached", d.win != nil || d.want_win)
+		if d.win != nil {
+			j_int(&b, "hwnd", i64(uintptr(d.win.win.hwnd))); j_str(&b, "title", d.win.title)
+			j_num(&b, "dpiScale", f64(d.win.win.dpi_scale))
+		}
+		j_end(&b)
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
@@ -388,6 +431,8 @@ m_windows :: proc(app: ^App) -> Reply {
 @(private = "file")
 m_window_activate :: proc(app: ^App) -> Reply {
 	window_focus(app, app.active)
+	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top
+	win.SetWindowPos(app.active.win.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE | win.SWP_NOACTIVATE)
 	return done()
 }
 
@@ -700,12 +745,14 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
 		if op.stage == -2 { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
+		if op.asked && rep.code != 0 { render.capture_cancel(&app.r) }   // (asked, not taken: the next capture may start)
+		if op.asked { the_remote.capture_window = 0 }
 		op_finish(op, rep)
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
 	if op.stage == -2 || op.stage == 0 {
 		request_frames(app, 2)
-		if r.frame_no < op.until || render.capture_pending(&app.r) {
+		if r.frame_no < op.until || render.capture_pending(&app.r) || r.capture_window != 0 {
 			if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out before the frame to capture was drawn (is the window hidden or minimized?)")) }
 			return
 		}
@@ -735,7 +782,10 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			if x1 <= x0 || y1 <= y0 { finish(app, op, fail(remote.ERR_FAILED, "the element is outside the page's visible area (scroll to it first)")); return }
 			rect = {int(math.floor(x0)), int(math.floor(y0)), int(math.ceil(x1 - x0)), int(math.ceil(y1 - y0))}
 		}
-		if !render.capture_request(&app.r, rect) { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
+		when render.USE_WGPU { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
+		// the renderer copies the next frame it ends, whichever window's: asked for in this window's own frame (remote_capture_arm)
+		r.capture_window, r.capture_rect = active_window(app).id, rect
+		op.asked = true
 		op.stage = op.stage == -2 ? 3 : 1
 		request_frames(app, 2)
 		return
@@ -747,7 +797,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	switch st {
 	case .None, .Pending:
 		if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out waiting for the frame's pixels")); return }
-		if op.stage == -2 && st == .Pending { op.stage = 3 }
+		if op.stage == -2 && (st == .Pending || r.capture_window != 0) { op.stage = 3 }   // (asked, its frame not drawn yet: remote_capture_arm)
 	case .Failed: finish(app, op, fail(remote.ERR_FAILED, "the frame could not be read back (device lost, or an empty area)"))
 	case .Ready:
 		defer delete(pixels)
@@ -1009,6 +1059,13 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 			append(&op.via, space == "window" ? p : active_window(app).page_rect.min + p * s)
 		}
 	}
+	// "hold": the button stays down at the end (a picture of the drag on its way: a tab carried over another window's bar);
+	// "resume": a drag held before goes on from here (no press), and ends as asked
+	op.hold, _ = remote.param_bool(c.params, "hold")
+	if resume, _ := remote.param_bool(c.params, "resume"); resume {
+		if op.button not_in inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
+		op.stage, op.idx = 1, 0
+	}
 	op.until = the_remote.frame_no
 	request_frames(app, 3)
 	return Reply{deferred = true}
@@ -1069,7 +1126,7 @@ drag_step :: proc(app: ^App, op: ^Remote_Op) {
 		if op.idx >= op.count * (len(pts) - 1) { op.stage = 2 }
 		op.until = r.frame_no + 1
 	case 2:
-		inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button})
+		if !op.hold { inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button}) }
 		op.stage = 3
 		op.until = r.frame_no + u64(max(r.cfg.settle_frames, 1))
 	case:
@@ -1348,14 +1405,17 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		j_int(&b, "a11yPageRefused", i64(ps.refused)); j_int(&b, "a11yPageNodes", i64(ps.nodes)); j_int(&b, "a11yPageWritten", i64(ps.written))
 		j_int(&b, "a11yPageFrames", i64(ps.frames)); j_int(&b, "a11yPageVerifyFailed", i64(ps.verify_failed)); j_str(&b, "a11yPageFallback", ps.fallback); j_str(&b, "a11yPageVerifyDiff", ps.verify_diff)
 	}
+	// the caret of a focused field of the page in this window: blinking (a timer of its own), and shown in this frame
+	fv := forms_view(app)
+	j_bool(&b, "caretBlinking", fv.blink_timer != base.NIL_HANDLE); j_bool(&b, "caretShown", fv.blink_on); j_bool(&b, "frontWindow", window_is_front(app))
 	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
 	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
 	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
 	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
-	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev.visible)
+	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev().visible)
 	j_int(&b, "pendingOps", i64(len(the_remote.ops)))   // the commands that wait (a wait, a navigation's load): a test sees one is registered before it acts on it
-	j_int(&b, "devtoolsRoomChecks", i64(dev.room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev.room_wrong))   // devtools.odin: dev_width
+	j_int(&b, "devtoolsRoomChecks", i64(dev().room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev().room_wrong))   // devtools.odin: dev_width
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -1522,11 +1582,15 @@ m_devtools :: proc(app: ^App, c: ^Call) -> Reply {
 	case "console":  devtools_open(app, .Console)
 	case "elements": devtools_open(app, .Elements)
 	case "network":  devtools_open(app, .Network)
-	case "none", "close": if dev.visible { devtools_toggle(app) }
+	case "none", "close": if dev().visible { devtools_toggle(app) }
 	case: return fail(remote.ERR_PARAMS, "panel: console, elements, network or none")
 	}
-	if dock, ok := remote.param_string(c.params, "dock"); ok {
-		for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { devtools_set_dock(app, d) } }
+	if dock, ok := remote.param_string(c.params, "dock"); ok && dock != "" {
+		if dock == "window" {   // a window of their own (devtools_window.odin)
+			devtools_detach(app)
+		} else {
+			for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) } }
+		}
 	}
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames + 1)
 }

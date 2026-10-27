@@ -102,9 +102,9 @@ rate_text :: proc(kbps: f64) -> string {
 // (or the panel is closed: the speed is a tool of the panel, as in the other browsers).
 net_link_for :: proc(user: rawptr, scope: ^base.Scope) -> ^net.Throttle_Link {
 	app := (^App)(user)
-	if !dev.visible { return nil }
 	t, _ := tab_of_scope(app, scope)
 	if t == nil { return nil }
+	if d, _ := devtools_of_tab(app, t); d == nil || !d.visible { return nil }   // (the developer tools of the tab's window)
 	p := net_profile_of(t)
 	if p.offline || !net_profile_active(p) { return nil }
 	l := &t.net.link
@@ -119,10 +119,12 @@ net_link_for :: proc(user: rawptr, scope: ^base.Scope) -> ^net.Throttle_Link {
 // fetch.Observer.block: whether the request for `url` is stopped (a pattern the user blocked, or this tab is offline).
 net_blocked :: proc(user: rawptr, scope: ^base.Scope, url: string) -> bool {
 	app := (^App)(user)
-	if dev.visible {
-		if t, _ := tab_of_scope(app, scope); t != nil && net_profile_of(t).offline { return true }
-	}
-	for p in dev.net.blocked { if net_glob(p, url) { return true } }
+	// the developer tools of the tab's window (a request of no tab: the front window's)
+	t, _ := tab_of_scope(app, scope)
+	d := dev()
+	if t != nil { if td, _ := devtools_of_tab(app, t); td != nil { d = td } }
+	if d.visible && t != nil && net_profile_of(t).offline { return true }
+	for p in d.net.blocked { if net_glob(p, url) { return true } }
 	return false
 }
 

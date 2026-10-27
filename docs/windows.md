@@ -38,13 +38,41 @@ window the user is in (the front one).
 * The loop (`windows_pass`) sleeps when no window has a cause, then makes a frame for each window (the front one first: it runs the
   tasks of the loop). A minimized window does not draw. The pacer (`pacing.odin`) is the window's (`Browser_Window.pacer`, read by `pacer_of(app)`: its monitor's rate, the cadence model's state, its frame clock); its preferences and timer are the process's (`App.pacing`). Nothing of it is exchanged by `window_activate`.
 * Moves (`tab_move`, `tab_detach`) and the choice of the drop target (`drop_index`, `pick_drop`, `detach_wanted`) are pure and tested in
-  `windows_test.odin` and `tab_drag_test.odin`.
+  `windows_test.odin` and `tab_drag_test.odin`. The window that gets a carried tab is the topmost one under the pointer
+  (`windows_by_z`: a window covering another's tabs there hides them); the place is computed from what that window laid out
+  (`window_drop_slot`: `drop_slot_row` for a row of tabs, `drop_slot_list` for the sidebar's list with its group headers and
+  collapsed groups): its index, the group it joins (between two tabs of a group, or under a group's header) and whether it is
+  pinned (a pinned tab among the pinned ones in a row; none in the sidebar's list), and the mark is drawn there, in the group's
+  colour. The release puts it exactly there (`tab_move(..., slot = ...)`). `tools\tab_drag_windows_e2e.ps1` drags with an
+  injected pointer (`platform.Event.injected`: positions of the event, not the system's cursor), holds the drag on its way
+  (`wren ctl drag --hold`, `--resume`), reads the mark (`wren ctl windows --json`: `drop`) and captures it.
+* Developer tools (`devtools.odin`, `devtools_window.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the
+  active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
+  A tab they show that moves to a window with none open takes them along (`devtools_follow_tab`: docked or in their window); a
+  window that closes closes its developer tools' window. Where they sit, their tab and their size are saved from the window that
+  changed them (`browser.devtools.*`) and are what a new window starts with; the text size and the density are every window's.
+  The network log's bodies and the pages' console descriptions are kept while any window shows its developer tools; a speed
+  limit or blocked addresses are those of the request's tab's window. A media preview of the Network tab plays in one window
+  at a time.
+* The caret of a focused field shows and blinks only in the front window (`window_is_front`; the chrome's fields through
+  `ui.Build_Params.inactive`); each window's caret and validation bubble have timers of their own (`Forms_View.blink_timer`,
+  naming the window by its id). `window_set_front` repaints the window that was in front and the new one.
+* Scale (DPI): each window has its monitor's (`platform.Window.dpi_scale`, changed by the system's `WM_DPICHANGED` when it moves
+  to a monitor of another scale, with the rectangle the system suggests). Its chrome is built at it (`ui_scale_of(app, w)`), its
+  page laid out at it (`page_scale` reads the window's scale, not the last build's: no frame at the old one), and its document
+  stays where it was scrolled to (`tab_scale_follow`: `Tab.scroll` is in device pixels, rescaled when the scale it was in
+  changed, also for a tab moved to a window of another scale). A developer tools' window has its own. Tab icons are decoded for
+  the largest scale of the windows and decoded again when a window's grows (`favicon_decode_px`). `wren ctl window --dpi n`
+  sends the window a `WM_DPICHANGED` (a machine with one monitor tests it: `tools\window_dpi_e2e.ps1`); what the screen shows
+  while a window straddles two monitors of different scales is the system's and is not tested.
+* Remote calls with `--win-id` (or a tab of that window) act on that window until they answer: their waits count its frames,
+  and a capture is of its frame (`remote_capture_arm`: the renderer copies the next frame it ends, so it is asked for in that
+  window's frame).
 * Session: `wren-session 3` lists the windows (`window left top width height state`, then their tabs); a one-window session is the old
   file. `browser.session.max_windows` caps what a restore reopens.
 
 ## Limits
 
-* The developer tools' detached window follows the front window's current tab; the docked panel belongs to one window.
 * Chrome frames while a page's script holds the thread (`shell_frames.odin`) exist for the window whose frame runs it; the others
   wait for it.
-* The caret blink and the validation bubble timers of forms are the process's: two windows with a focused field blink together.
+

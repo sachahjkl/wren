@@ -210,7 +210,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: 
 		if drag_item >= 0 {   // built last: it draws over the others and takes the clicks
 			if row(app, items[drag_item], rh, row_x, row_w, inset, open, total, limit, area, cc, &drag_y) { return true }
 		}
-		if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, true, f32(app.active.drop_hint - 1) * rh - area.view_off.y) }   // a tab carried over this list
+		if app.active != nil && app.active.dropping { drop_hint_mark(area, true, app.active.drop.mark - area.view_off.y, app.active.drop.group) }   // a tab carried over this list (tab_drag.odin)
 	}
 	// the dragged row's place moves its tab: in the list (and in or out of a group), or up to the pinned tabs
 	if dragged >= 0 && drag_y >= 0 && own.strip.drag.active {
