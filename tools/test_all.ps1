@@ -622,7 +622,7 @@ Step 'tab sidebar features (tools\sidebar_tabs_e2e.ps1, no window shown: opening
 Step 'splitters dragged at 1 kHz (tools\splitter_cadence.ps1, no window shown: the developer tools docked right and bottom, the tab sidebar''s handle; their frames are drags of the cadence model and, on a variable refresh screen, presented at once; the rates are printed, never checked)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\splitter_cadence.ps1
-}
+} -UiOnly   # (frames counted against the screen's refresh: on a loaded CI runner one frame in two came late; run with -Ui)
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
 } -UiOnly

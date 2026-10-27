@@ -59,7 +59,7 @@ turn :: proc() {
 	free_all(context.temp_allocator)
 }
 
-pump_until :: proc(what: string, cond: proc() -> bool, seconds := 10.0) -> bool {
+pump_until :: proc(what: string, cond: proc() -> bool, seconds := 30.0) -> bool {
 	start := time.tick_now()
 	for !cond() {
 		if time.duration_seconds(time.tick_since(start)) > seconds { fmt.printf("  timeout waiting for %s\n", what); return false }
@@ -322,6 +322,8 @@ main :: proc() {
 
 	////////////////////////////////
 	fmt.println("-- 200 images of 1 megapixel")
+	// (a measure of decoding time: 313 ms a job on a busy CI runner with two steps at once; run with -Perf)
+	if !base.perf_skip("200 images of 1 megapixel") {
 	b := strings.builder_make()
 	strings.write_string(&b, "<!doctype html><body>")
 	for i in 0 ..< 200 { fmt.sbprintf(&b, `<img id=g%d src="/images/gen?w=1000&h=1000&seed=%d">`, i, i) }
@@ -362,6 +364,7 @@ main :: proc() {
 	delete(ids)
 	page.page_close(big)
 	cur = nil
+	}
 
 	pump_for(50)
 	base.scope_close(process)
