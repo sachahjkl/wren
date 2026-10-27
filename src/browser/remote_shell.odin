@@ -81,6 +81,7 @@ Remote_Op :: struct {
 	speed:    f64,
 	scrolled: bool,       // Capture of an element: it was scrolled into view
 	asked:    bool,       // Capture: the frame to copy was asked for (Remote.capture_window)
+	hold:     bool,       // Drag: the button stays down at the end (a later drag with "resume" goes on)
 	snapshot: string,     // Capture: also write <snapshot>.html and .json (owned)
 }
 

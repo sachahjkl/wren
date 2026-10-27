@@ -38,7 +38,14 @@ window the user is in (the front one).
 * The loop (`windows_pass`) sleeps when no window has a cause, then makes a frame for each window (the front one first: it runs the
   tasks of the loop). A minimized window does not draw. The pacer (`pacing.odin`) is the window's (`Browser_Window.pacer`, read by `pacer_of(app)`: its monitor's rate, the cadence model's state, its frame clock); its preferences and timer are the process's (`App.pacing`). Nothing of it is exchanged by `window_activate`.
 * Moves (`tab_move`, `tab_detach`) and the choice of the drop target (`drop_index`, `pick_drop`, `detach_wanted`) are pure and tested in
-  `windows_test.odin` and `tab_drag_test.odin`.
+  `windows_test.odin` and `tab_drag_test.odin`. The window that gets a carried tab is the topmost one under the pointer
+  (`windows_by_z`: a window covering another's tabs there hides them); the place is computed from what that window laid out
+  (`window_drop_slot`: `drop_slot_row` for a row of tabs, `drop_slot_list` for the sidebar's list with its group headers and
+  collapsed groups): its index, the group it joins (between two tabs of a group, or under a group's header) and whether it is
+  pinned (a pinned tab among the pinned ones in a row; none in the sidebar's list), and the mark is drawn there, in the group's
+  colour. The release puts it exactly there (`tab_move(..., slot = ...)`). `tools\tab_drag_windows_e2e.ps1` drags with an
+  injected pointer (`platform.Event.injected`: positions of the event, not the system's cursor), holds the drag on its way
+  (`wren ctl drag --hold`, `--resume`), reads the mark (`wren ctl windows --json`: `drop`) and captures it.
 * Developer tools (`devtools.odin`, `devtools_window.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the
   active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
   A tab they show that moves to a window with none open takes them along (`devtools_follow_tab`: docked or in their window); a

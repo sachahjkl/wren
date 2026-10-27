@@ -58,7 +58,8 @@ Browser_Window :: struct {
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
 	closing_force: bool,          // ... with the tabs it still has (a remote call asked)
 	zone:      Drop_Zone,         // where its tabs were laid out (tab_drag.odin)
-	drop_hint: int,               // a tab is carried over its tab bar: the place it would take, plus one (0: none)
+	drop:      Drop_Slot,         // a tab is carried over its tabs (`dropping`): where it would go, and its mark (tab_drag.odin)
+	dropping:  bool,
 	title:   string,              // what its title was set to last (owned)
 	opened:  time.Tick,
 	own:     Window_Own,          // the chrome's state of this window, always here (not exchanged by window_activate)
@@ -533,8 +534,9 @@ tab_list_put :: proc(tabs: ^[dynamic]^Tab, current, at: int, t: ^Tab, select: bo
 
 // Moves `t` to window `dest` at `at` (negative: the end), where it becomes the current tab. In its own window: to that place.
 // The window that loses its last tab closes (at the end of the pass). The developer tools follow the tab they were showing.
-// false: nothing was done (the tab or the window is unknown).
-tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_follow := true) -> bool {
+// `slot` (a tab dropped on another window's tabs: tab_drag.odin): the group it joins there and whether it is pinned (else it
+// is in no group, pinned or not as it was). false: nothing was done (the tab or the window is unknown).
+tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_follow := true, slot: Maybe(Drop_Slot) = nil) -> bool {
 	src, si := window_of_tab(app, t)
 	if src == nil || dest == nil { return false }
 	st, dt := window_tabs(app, src), window_tabs(app, dest)
@@ -547,6 +549,7 @@ tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_f
 	}
 	showing := sc^ == si
 	t.group = 0   // (a group is its window's)
+	if s, ok := slot.?; ok { t.group, t.pinned = s.pinned ? 0 : s.group, s.pinned }
 	sc^ = tab_list_take(st, sc^, si)
 	dc := window_current(app, dest)
 	dc^, _ = tab_list_put(dt, dc^, at, t, true)
