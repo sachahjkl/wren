@@ -978,6 +978,10 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 	switch op.stage {
 	case 0:
+		// the scroll boxes it is in first (a button below the fold of a dialog that scrolls: a consent banner), then the page
+		if lay.reveal_in_scroll_containers(&t.layout, h) { op.until = r.frame_no + 2 }
+		op.stage = 1
+	case 1:
 		pr := wnd.page_rect
 		center_y := er[1] + er[3] / 2
 		if center_y < pr.min.y || center_y > pr.max.y {
@@ -986,12 +990,12 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			scroll_document_to(app, t, max(doc_y + er[3] / 2 - (pr.max.y - pr.min.y) / 2, 0), false)
 			op.until = r.frame_no + 2
 		}
-		op.stage = 1
-	case 1:
+		op.stage = 2
+	case 2:
 		pos := [2]f32{er[0] + er[2] / 2, er[1] + er[3] / 2}
 		click_at(app, pos, op.button, op.count, {})
 		op.pos = pos
-		op.stage = 2
+		op.stage = 3
 		op.until = r.frame_no + u64(max(r.cfg.settle_frames, 1))
 	case:
 		op_finish(op, done(fmt.tprintf(`{{"x":%.1f,"y":%.1f}}`, op.pos.x, op.pos.y)))

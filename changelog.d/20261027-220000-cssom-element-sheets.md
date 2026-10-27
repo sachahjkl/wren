@@ -1,0 +1,3 @@
+type: Added
+
+**The stylesheets of `<style>` and `<link>` elements for scripts** (`element.sheet`, `document.styleSheets`, `shadowRoot.styleSheets`): a `CSSStyleSheet` whose `insertRule`, `deleteRule`, `cssRules`, `disabled`, `ownerNode`, `href` and `title` work as on a constructed sheet, and change what the page shows. CSS-in-JS libraries (Emotion, which MUI and so many React sites use, styled-components, JSS) fill an empty `<style>` this way; without it their first render threw and the page stayed blank (https://www.speedtest.net/). An inserted rule is parsed alone, into its sheet, so a few thousand `insertRule` calls cost a few thousand small parses; a rule keeps its `CSSRule` object across insertions and deletions around it.
