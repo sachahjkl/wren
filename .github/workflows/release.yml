@@ -24,6 +24,8 @@ jobs:
           fetch-depth: 0   # the release notes are made from the history since the previous tag
 
       - uses: ./.github/actions/setup
+        with:
+          native-profile: release   # build.bat release: the Rust library with fat LTO
 
       - name: Check the version
         id: version

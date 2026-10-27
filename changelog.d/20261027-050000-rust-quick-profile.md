@@ -1,0 +1,3 @@
+type: Changed
+
+**Development builds link the Rust library without LTO** (`native/Cargo.toml` profile `quick`, `tools/build_native.ps1 -Profile`): `build.bat`, `debug` and `check` (and the CI) use it, so that a change in one crate rebuilds that crate only (the accessibility adapter: 7 s instead of 65 s; a first build 70 s instead of 120 s); `build.bat release` and `profile` keep fat LTO (the shipped exe is unchanged). The CI caches the compiled crates by profile and `Cargo.lock`, with the unpacked registry sources: a run whose `Cargo.lock` did not change compiles only the workspace's and the toolkit's crates, never the image decoders' dependencies.

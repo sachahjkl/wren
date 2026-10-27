@@ -2,7 +2,10 @@
 # into wren.exe (no DLL to ship): the image decoders and WOFF2 (native\media: resvg, image-webp, zenavif-parse, rav1d,
 # qcms, brotli), the toolkit's native text backend (ext\gui_toolkit\native\text) and its accessibility adapter
 # (ext\gui_toolkit\native\a11y), picked by the assembly crate native\wren_native. See native\Cargo.toml.
-#   powershell -NoProfile -File tools\build_native.ps1 [-Force]
+#   powershell -NoProfile -File tools\build_native.ps1 [-Profile release|quick] [-Force]
+# -Profile: Cargo's profile (native\Cargo.toml): `release` (default) is fat LTO, what is shipped (build.bat release and
+# profile); `quick` has no LTO, so that a change in one crate rebuilds that crate only (build.bat, debug, check, the CI).
+# Both are kept in the target directory: going from one to the other only copies the library.
 # Pinned inputs: every crate by exact version in the crates' Cargo.toml and by SHA-256 in native\Cargo.lock (the build
 # runs with --locked); NASM (rav1d's assembly kernels, the same as dav1d's) by version and SHA-256 below, fetched once
 # into build\tools. Rust: the stable toolchain of rustup (the CI pins its version).
@@ -10,7 +13,7 @@
 # target directory (build\native\target) keeps every crate built: a change in one crate rebuilds that crate and what
 # depends on it.
 # WREN_TEXT=dwrite: a build that shapes with DirectWrite, without the text backend (feature `text` left out).
-param([switch]$Force)
+param([ValidateSet('release', 'quick')][string]$Profile = 'release', [switch]$Force)
 $ErrorActionPreference = 'Stop'
 $NasmVersion = '2.16.03'
 $NasmSha256 = '3ee4782247bcb874378d02f7eab4e294a84d3d15f3f6ee2de2f47a46aa7226e6'
@@ -31,12 +34,12 @@ $inputs = @(Get-Item (Join-Path $ws 'Cargo.toml'), (Join-Path $ws 'Cargo.lock'),
 foreach ($c in $crates) { $inputs += @(Get-ChildItem (Join-Path $c 'src') -Recurse -File) + @(Get-Item (Join-Path $c 'Cargo.toml')) }
 $sha = [Security.Cryptography.SHA256]::Create()
 $all = New-Object IO.MemoryStream
-$tag = [Text.Encoding]::UTF8.GetBytes("features=$($features -join ',')`n")   # two feature sets, two stamps
+$tag = [Text.Encoding]::UTF8.GetBytes("profile=$Profile features=$($features -join ',')`n")   # each profile and feature set, its stamp
 $all.Write($tag, 0, $tag.Length)
 foreach ($f in ($inputs | Sort-Object FullName)) { $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length) }
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $lib) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
-    "wren_native up to date in $out"
+    "wren_native ($Profile) up to date in $out"
     exit 0
 }
 
@@ -83,15 +86,17 @@ if (-not $env:VCINSTALLDIR) {
 
 $target = Join-Path $out 'target'
 $t0 = Get-Date
-& cargo build --release --locked --manifest-path (Join-Path $ws 'Cargo.toml') --target-dir $target -p wren_native --features ($features -join ',')
+& cargo build --profile $Profile --locked --manifest-path (Join-Path $ws 'Cargo.toml') --target-dir $target -p wren_native --features ($features -join ',')
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed ($LASTEXITCODE)" }
 New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item (Join-Path $target 'release\wren_native.lib') $lib -Force
+if (Test-Path $stampFile) { Remove-Item $stampFile -Force }   # (a library half replaced is never taken for a built one)
+Copy-Item (Join-Path $target "$Profile\wren_native.lib") $lib -Force
 
 # Wasmtime's library carries its own Rust standard library (built by another compiler: its mangled symbols differ), and
 # both define the unmangled rust_eh_personality (a no-op on MSVC, where unwinding goes through __CxxFrameHandler3). Ours
-# is renamed in the object that defines it (with fat LTO, the assembly crate's single object) so that the two link
-# together. This is the only symbol renamed: the libraries of this workspace share one standard library.
+# is renamed in the object that defines it (with fat LTO, the assembly crate's single object; without, the standard
+# library's) so that the two link together. This is the only symbol renamed: the libraries of this workspace share one
+# standard library.
 $sysroot = (& rustc --print sysroot).Trim()
 $bin = Join-Path $sysroot 'lib\rustlib\x86_64-pc-windows-msvc\bin'
 if (-not (Test-Path (Join-Path $bin 'llvm-objcopy.exe'))) {
@@ -117,4 +122,4 @@ try {
 } finally { Pop-Location }
 [IO.Directory]::Delete($work, $true)
 [IO.File]::WriteAllText($stampFile, $stamp)
-"built $lib ($([math]::Round((Get-Item $lib).Length / 1MB, 1)) MB) in $([math]::Round(((Get-Date) - $t0).TotalSeconds)) s"
+"built $lib ($Profile, $([math]::Round((Get-Item $lib).Length / 1MB, 1)) MB) in $([math]::Round(((Get-Date) - $t0).TotalSeconds)) s"

@@ -258,7 +258,8 @@ What `build.bat` does, each step skipped when it is already up to date:
 3. `tools\build_native.ps1` builds the Cargo workspace `native/` with Cargo (`--locked`, every crate pinned by version
    and hash), downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component
    on first use, and produces `build\native\wren_native.lib`, the one Rust library of `wren.exe`: the image and font
-   decoders (`native/media`) and the toolkit's text backend and accessibility adapter (about 2 minutes the first time).
+   decoders (`native/media`) and the toolkit's text backend and accessibility adapter (about 1 minute the first time;
+   `build.bat release` and `profile` link it with fat LTO, 2 minutes; see `docs/architecture.md`, "The Rust library").
 4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl`, and the JavaScript bindings
    and their coverage from the Web IDL of `native/js/webref` (only what changed).
 5. `tools\build_js.ps1` downloads **Zig 0.15.2** and the **QuickJS-ng 0.17.0** source (both SHA-256 pinned), applies
