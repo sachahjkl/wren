@@ -27,6 +27,8 @@ title_of :: proc(d: Def, allocator := context.temp_allocator, keep_unit := false
 		rest = rest[len(cat) + 1:]
 	} else if i := strings.index_byte(rest, '.'); i >= 0 && i + 1 < len(rest) {
 		rest = rest[i + 1:]   // a category of its own ("testing"): the first segment still names the subsystem
+		// ... unless the category is the second segment ("browser.tabs.position" in "tabs"): the heading says it
+		if len(rest) > len(cat) && strings.has_prefix(rest, cat) && rest[len(cat)] == '.' { rest = rest[len(cat) + 1:] }
 	}
 	words := split_words(rest, context.temp_allocator)
 	if !keep_unit && len(words) > 1 && is_unit_word(words[len(words) - 1]) { words = words[:len(words) - 1] }

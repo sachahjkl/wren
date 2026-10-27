@@ -14,7 +14,9 @@ reordering are those of the row of tabs (`src/browser/tab_strip.odin`); `src/bro
 | `browser.tabs.sidebar_row_em` | 2.4 | 1.6 to 5 em: the height of a tab. |
 | `browser.tabs.sidebar_address_min_em` | 10 | 4 to 40 em: the narrowest address bar in the title bar (below it, parts of the toolbar make room). |
 
-Change them in about:config, with `wren ctl pref set browser.tabs.position left`, from the View menu, from the `Tab bar`
+Every `browser.tabs.*` preference (the row of tabs, the sidebar, pinned tabs, groups, sound, favicons, closed tabs) is in
+the **Tabs** category of about:config (`register_tab_prefs` registers them with the category `tabs`; their titles drop the
+`browser.tabs` the heading says: "Sidebar width"). Change them in about:config, with `wren ctl pref set browser.tabs.position left`, from the View menu, from the `Tab bar`
 submenu of a tab's context menu or from the command palette (`Tabs: in a sidebar at the left`, `Tabs: at the top`, ...).
 `Ctrl+Shift+Comma` (command `view.tabs_sidebar_collapse`) toggles the icons-only mode, as does the button at the top of the sidebar.
 
