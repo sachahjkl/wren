@@ -202,7 +202,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 	Item :: struct { cat, name: string, index: int }   // index -1: the desktop row
 	items := make([dynamic]Item, 0, len(prefs.entries) + 1, context.temp_allocator)
 	for e, i in prefs.entries { append(&items, Item{e.def.category, e.def.name, i}) }
-	if with_desktop { append(&items, Item{"browser", CONFIG_DESKTOP_ROW, -1}) }
+	if with_desktop { append(&items, Item{"browser", "", -1}) }   // (first of its category)
 	slice.sort_by(items[:], proc(a, b: Item) -> bool { return a.cat != b.cat ? a.cat < b.cat : a.name < b.name })
 
 	// titles two preferences of a category share once their unit word is dropped: those keep it
@@ -348,7 +348,7 @@ config_header :: proc(v: ^Config_View) {
 		}
 		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 		ui.a11y({name = i18n.tr("Search the preferences"), shortcut = "Ctrl+F"})
-		sres := ui.line_edit("###cfg_search", &v.search, i18n.tr("Search by title, name or description (Ctrl+F)"))
+		sres := ui.line_edit("###cfg_search", &v.search, v.narrow ? i18n.tr("Search (Ctrl+F)") : i18n.tr("Search by title, name or description (Ctrl+F)"))
 		if v.focus_search { v.focus_search = false; ui.set_focus(sres.box.key); ui.field_select_all(&v.search) }
 		if sres.focused && (ui.key_press(.Down) || sres.committed) { v.focus_list = true }
 		ui.spacer(ui.px(em * 0.8))
@@ -416,7 +416,7 @@ cat_item :: proc(v: ^Config_View, i: int, title: string, shown, modified: int, e
 		if empty { if ui.tags("weak") { ui.label(label) } } else { ui.label(label) }
 		if modified > 0 {
 			modified_badge(fmt.tprintf("%d###cm_%d", modified, i))
-			tip(row, fmt.tprintf(i18n.tr("%d not at their default"), modified))
+			tip(row, fmt.tprintf(i18n.tr(modified, "%d not at its default", "%d not at their default"), modified))
 			ui.spacer(ui.px(em * 0.4))
 		}
 		if ui.tags("weak") {
@@ -456,7 +456,20 @@ config_list :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 			ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 4))})
 			if ui.tags("weak") {
 				if ui.style({text_align = .Center}) {
-					ui.label(v.modified_only && v.model_query == "" ? i18n.tr("No preference is modified.###cfg_none") : i18n.tr("No preference matches.###cfg_none"))
+					text := v.modified_only && v.model_query == "" ? i18n.tr("No preference is modified.###cfg_none") : i18n.tr("No preference matches.###cfg_none")
+					if v.category != "" && v.shown > 0 {
+						text = fmt.tprintf(i18n.tr("Nothing in %s; %d in the other categories.###cfg_none"), config.category_title(v.category), v.shown)
+					}
+					ui.label(text)
+				}
+			}
+			if v.category != "" && v.shown > 0 {
+				ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.2))})
+				if ui.row(.Center) {
+					ui.spacer(ui.fill())
+					ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.9))})
+					if ui.button(i18n.tr("Show all categories###cfg_all")).clicked { config_set_category(v, "") }
+					ui.spacer(ui.fill())
 				}
 			}
 		}
