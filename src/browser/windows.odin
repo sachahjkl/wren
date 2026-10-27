@@ -51,6 +51,7 @@ Browser_Window :: struct {
 	win:     ^platform.Window,
 	surf:    render.Surface,      // the window's swap chain, when it is not the primary one
 	primary: bool,                // its swap chain is the renderer's own (render.init)
+	headless_shared: bool,        // a headless window with no Surface of its own: it renders into the primary offscreen target (window_activate resizes it to this window's size)
 	ui:      ^ui.State,
 	using ctx: Window_Ctx,
 	pacer:   Pacer,               // its pacing (pacing.odin; the preferences and the timer are the process's: App.pacing)
@@ -132,14 +133,19 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if w.pacer.latency == 0 { w.pacer.latency = 1 }   // (what a swap chain is made with)
 	app.active = w
 	ui.use(w.ui)
-	if !w.primary { render.surface_use(&app.r, &w.surf) }
+	if w.headless_shared {
+		// no Surface: the one offscreen target serves every headless window; size it to this one before its frame
+		render.resize(&app.r, w.win.size)
+	} else if !w.primary {
+		render.surface_use(&app.r, &w.surf)
+	}
 }
 
 // Back to no window: the renderer has its own swap chain again.
 window_deactivate :: proc(app: ^App) {
 	w := app.active
 	if w == nil { return }
-	if !w.primary { render.surface_use(&app.r, &w.surf) }
+	if !w.primary && !w.headless_shared { render.surface_use(&app.r, &w.surf) }
 	app.active = nil
 }
 
@@ -248,19 +254,27 @@ windows_spill :: proc(app: ^App, n: int) {
 	}
 }
 
-// The window's own wake-up for the loop: the message that ends the wait is posted to any window that still exists.
+// The window's own wake-up for the loop: a message posted to a real window that still exists, or the auto-reset event an
+// offscreen (headless) window waits on (it has no message queue). `wake_offscreen` is non-zero for a headless front
+// window: wake_window signals it instead of posting a message.
 @(private = "file") wake_target: uintptr
+@(private = "file") wake_offscreen: uintptr
 
 wake_window :: proc(user: rawptr) {
+	if ev := sync.atomic_load(&wake_offscreen); ev != 0 { win.SetEvent(win.HANDLE(ev)); return }
 	h := sync.atomic_load(&wake_target)
 	if h != 0 { win.PostMessageW(win.HWND(h), win.WM_NULL, 0, 0) }
 }
 
 @(private = "file")
 wake_retarget :: proc(app: ^App) {
-	h: uintptr
-	if front := window_front(app); front != nil && front.win != nil && front.win.hwnd != nil { h = uintptr(front.win.hwnd) }
+	h, ev: uintptr
+	if front := window_front(app); front != nil && front.win != nil {
+		if front.win.hwnd != nil { h = uintptr(front.win.hwnd) }
+		ev = uintptr(platform.wake_handle(front.win))   // non-zero only for an offscreen window
+	}
 	sync.atomic_store(&wake_target, h)
+	sync.atomic_store(&wake_offscreen, ev)
 }
 
 ////////////////////////////////
@@ -339,25 +353,36 @@ window_placement_set :: proc(w: ^Browser_Window, rect: [4]int, maximized: bool) 
 // (physical pixels), else the system centres it. nil when the system could not make the window or its swap chain.
 window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := true) -> ^Browser_Window {
 	fixed := config.bool_of(&app.prefs, "browser.window.fixed_surface")
-	nw := platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
-	if nw == nil { return nil }
-	platform.set_square_corners(nw, wchrome.cfg.square_corners)
-	dnd_window_attach(nw)   // dnd_shell.odin
-	app_commands_attach(nw.hwnd)   // app_commands.odin
-	if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
-	if nw.size.x <= 0 || nw.size.y <= 0 {
-		cr: win.RECT
-		win.GetClientRect(nw.hwnd, &cr)
-		nw.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
-	}
-	// straight into the window's record, never through a local: a render.Surface is kilobytes (its present ring), and a local of
-	// it is split by LLVM into thousands of scalars whose debug fragments kept `build.bat` (-o:speed -debug) codegen going for an hour
 	bw := new(Browser_Window)
-	ok := render.surface_init(&app.r, &bw.surf, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))   // (in place: see render.surface_create)
-	if !ok {
-		free(bw)
-		platform.destroy_window(nw)
-		return nil
+	nw: ^platform.Window
+	if app.headless {
+		// a headless second window: no HWND, and no per-window render Surface (the renderer is offscreen, one target for all;
+		// the active window's size is applied before its frame, see window_activate). The capture is one window at a time.
+		sc := ui_scale_of(app)
+		nw = platform.open_window_offscreen(APP_NAME, {int(f32(size.x) * sc + 0.5), int(f32(size.y) * sc + 0.5)}, dpi_scale = sc, on_frame = window_on_frame)
+		if nw == nil { free(bw); return nil }
+		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
+		bw.headless_shared = true   // renders into the primary offscreen target (no Surface of its own)
+	} else {
+		nw = platform.open_window(APP_NAME, size, on_frame = window_on_frame, transparent = fixed, integrated_title = wchrome.cfg.integrated)
+		if nw == nil { free(bw); return nil }
+		platform.set_square_corners(nw, wchrome.cfg.square_corners)
+		dnd_window_attach(nw)   // dnd_shell.odin
+		app_commands_attach(nw.hwnd)   // app_commands.odin
+		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
+		if nw.size.x <= 0 || nw.size.y <= 0 {
+			cr: win.RECT
+			win.GetClientRect(nw.hwnd, &cr)
+			nw.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
+		}
+		// straight into the window's record, never through a local: a render.Surface is kilobytes (its present ring), and a local of
+		// it is split by LLVM into thousands of scalars whose debug fragments kept `build.bat` (-o:speed -debug) codegen going for an hour
+		ok := render.surface_init(&app.r, &bw.surf, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))   // (in place: see render.surface_create)
+		if !ok {
+			free(bw)
+			platform.destroy_window(nw)
+			return nil
+		}
 	}
 	window_ids += 1
 	bw.id, bw.win, bw.ui = window_ids, nw, new(ui.State)
@@ -397,10 +422,15 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	ordered_remove(&app.windows, idx)
 	if w.primary {
 		heir := app.windows[0]
-		render.surface_use(&app.r, &heir.surf)      // the renderer has the heir's chain; the heir's record has the primary's
-		render.surface_destroy(&app.r, &heir.surf)  // ... which is released: the heir is the primary now
-		heir.primary = true
-	} else {
+		if heir.headless_shared {
+			// headless: no surfaces, one offscreen target. The heir simply becomes the primary and keeps rendering into it.
+			heir.headless_shared, heir.primary = false, true
+		} else {
+			render.surface_use(&app.r, &heir.surf)      // the renderer has the heir's chain; the heir's record has the primary's
+			render.surface_destroy(&app.r, &heir.surf)  // ... which is released: the heir is the primary now
+			heir.primary = true
+		}
+	} else if !w.headless_shared {
 		render.surface_destroy(&app.r, &w.surf)
 	}
 	ui.destroy(w.ui)
