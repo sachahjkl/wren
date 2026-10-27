@@ -890,32 +890,95 @@ JSValue wjr_CanvasDrawImage_drawImage(JSContext *ctx, JSValueConst this_val, int
 
 /* ---- createImageBitmap ---- */
 
-static bool bitmap_flip(JSContext *ctx, JSValueConst options, bool *flip)
+/* The ImageBitmapOptions a createImageBitmap call carries, as integers the native binding reads (see api/canvas.widl). */
+typedef struct bitmap_opts {
+    int32_t orient;      /* 0 from-image / none, 1 flipY */
+    int32_t premul;      /* 0 default, 1 premultiply, 2 none */
+    int32_t colorspace;  /* 0 default, 1 none */
+    int32_t resize_w;    /* 0: keep */
+    int32_t resize_h;
+    int32_t resize_q;    /* 0 pixelated, 1 low, 2 medium, 3 high */
+} bitmap_opts;
+
+/* reads one enum string of `options` into `*out` using a table of {name,value}; absent or undefined keeps `*out`. */
+static bool opt_enum(JSContext *ctx, JSValueConst options, const char *key, const char *const *names, const int32_t *vals, size_t n, int32_t *out)
 {
-    *flip = false;
-    if (!JS_IsObject(options)) { return true; }
-    JSValue v = JS_GetPropertyStr(ctx, options, "imageOrientation");
+    JSValue v = JS_GetPropertyStr(ctx, options, key);
     if (JS_IsException(v)) { return false; }
     if (!JS_IsUndefined(v)) {
         wj_str s;
-        bool ok = wj_to_str(ctx, v, &s, 0, "from-image");
-        if (ok) { *flip = s.len == 5 && memcmp(s.ptr, "flipY", 5) == 0; wj_str_free(ctx, &s); }
+        bool ok = wj_to_str(ctx, v, &s, 0, "");
+        if (ok) {
+            for (size_t i = 0; i < n; i++) {
+                if (s.len == strlen(names[i]) && memcmp(s.ptr, names[i], s.len) == 0) { *out = vals[i]; break; }
+            }
+            wj_str_free(ctx, &s);
+        }
         JS_FreeValue(ctx, v);
-        return ok;
+        if (!ok) { return false; }
     }
     return true;
 }
 
-/* a decoded Blob (RGBA pixels, "WxH") becomes an ImageBitmap */
+static bool opt_long(JSContext *ctx, JSValueConst options, const char *key, int32_t *out)
+{
+    JSValue v = JS_GetPropertyStr(ctx, options, key);
+    if (JS_IsException(v)) { return false; }
+    if (!JS_IsUndefined(v)) {
+        int32_t n = 0;
+        if (JS_ToInt32(ctx, &n, v) < 0) { JS_FreeValue(ctx, v); return false; }
+        *out = n < 0 ? 0 : n;
+    }
+    JS_FreeValue(ctx, v);
+    return true;
+}
+
+static bool bitmap_options(JSContext *ctx, JSValueConst options, bitmap_opts *o)
+{
+    static const char *const orient_names[] = { "from-image", "flipY", "none" };
+    static const int32_t orient_vals[] = { 0, 1, 0 };
+    static const char *const premul_names[] = { "default", "premultiply", "none" };
+    static const int32_t premul_vals[] = { 0, 1, 2 };
+    static const char *const cs_names[] = { "default", "none" };
+    static const int32_t cs_vals[] = { 0, 1 };
+    static const char *const q_names[] = { "pixelated", "low", "medium", "high" };
+    static const int32_t q_vals[] = { 0, 1, 2, 3 };
+    o->orient = 0; o->premul = 0; o->colorspace = 0; o->resize_w = 0; o->resize_h = 0; o->resize_q = 1;
+    if (!JS_IsObject(options)) { return true; }
+    return opt_enum(ctx, options, "imageOrientation", orient_names, orient_vals, 3, &o->orient)
+        && opt_enum(ctx, options, "premultiplyAlpha", premul_names, premul_vals, 3, &o->premul)
+        && opt_enum(ctx, options, "colorSpaceConversion", cs_names, cs_vals, 2, &o->colorspace)
+        && opt_long(ctx, options, "resizeWidth", &o->resize_w)
+        && opt_long(ctx, options, "resizeHeight", &o->resize_h)
+        && opt_enum(ctx, options, "resizeQuality", q_names, q_vals, 4, &o->resize_q);
+}
+
+/* reads the six options back from the array stashed as the promise's data payload */
+static void opts_from_array(JSContext *ctx, JSValueConst a, bitmap_opts *o)
+{
+    o->orient = 0; o->premul = 0; o->colorspace = 0; o->resize_w = 0; o->resize_h = 0; o->resize_q = 1;
+    if (!JS_IsArray(ctx, a)) { return; }
+    int32_t *f[] = { &o->orient, &o->premul, &o->colorspace, &o->resize_w, &o->resize_h, &o->resize_q };
+    for (uint32_t i = 0; i < 6; i++) {
+        JSValue v = JS_GetPropertyUint32(ctx, a, i);
+        int32_t n = 0;
+        JS_ToInt32(ctx, &n, v);
+        JS_FreeValue(ctx, v);
+        *f[i] = n;
+    }
+}
+
+/* a decoded Blob (RGBA pixels, "WxH") becomes an ImageBitmap; `data` carries the ImageBitmapOptions as an array */
 static wj_val bitmap_from_decoded(wj_ctx *ctx, int state, uint64_t host, int64_t value, wj_val data, bool *reject)
 {
-    WJ_UNUSED(data);
     if (state != 1) {
         int32_t n;
         WJ_FETCH_STRING(n, wr_Promise_text(host, wj_scratch.data, wj_scratch.cap));
         *reject = true;
         return web_error_value(ctx, (int32_t)value, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
     }
+    bitmap_opts o;
+    opts_from_array(ctx, data, &o);
     JSValue text = wj_host_promise_text(ctx, host);
     const char *t = JS_ToCString(ctx, text);
     JS_FreeValue(ctx, text);
@@ -927,10 +990,22 @@ static wj_val bitmap_from_decoded(wj_ctx *ctx, int state, uint64_t host, int64_t
     size_t got = 0;
     uint8_t *p = JS_GetArrayBuffer(ctx, &got, ab);
     uint64_t bm = 0;
-    int32_t st = p && w && h && got >= (size_t)w * h * 4 ? wr_Canvas_bitmapFromPixels(p, (uint32_t)got, (int32_t)w, (int32_t)h, 0, (void *)&bm) : -4;
+    int32_t st = p && w && h && got >= (size_t)w * h * 4
+        ? wr_Canvas_bitmapFromPixels(p, (uint32_t)got, (int32_t)w, (int32_t)h, o.orient, o.premul, o.colorspace, o.resize_w, o.resize_h, o.resize_q, (void *)&bm)
+        : -4;
     JS_FreeValue(ctx, ab);
     if (st < 0) { wj_throw_status(ctx, st, "createImageBitmap"); *reject = true; return JS_UNDEFINED; }
     return wj_wrap_owned(ctx, bm, WJ_IFACE_ImageBitmap, JS_UNDEFINED);
+}
+
+/* a JS array [orient,premul,colorspace,resize_w,resize_h,resize_q] for the promise data payload */
+static JSValue opts_to_array(JSContext *ctx, const bitmap_opts *o)
+{
+    JSValue a = JS_NewArray(ctx);
+    if (JS_IsException(a)) { return a; }
+    const int32_t v[6] = { o->orient, o->premul, o->colorspace, o->resize_w, o->resize_h, o->resize_q };
+    for (uint32_t i = 0; i < 6; i++) { JS_SetPropertyUint32(ctx, a, i, JS_NewInt32(ctx, v[i])); }
+    return a;
 }
 
 JSValue wjr_WindowOrWorkerGlobalScope_createImageBitmap(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -944,8 +1019,8 @@ JSValue wjr_WindowOrWorkerGlobalScope_createImageBitmap(JSContext *ctx, JSValueC
     if (rect) {
         if (!nums(ctx, "createImageBitmap", argc, argv, 1, 4, r)) { return web_promise_reject_pending(ctx); }
     }
-    bool flip;
-    if (!bitmap_flip(ctx, wj_arg(argc, (JSValue *)argv, rect ? 5 : 1), &flip)) { return web_promise_reject_pending(ctx); }
+    bitmap_opts o;
+    if (!bitmap_options(ctx, wj_arg(argc, (JSValue *)argv, rect ? 5 : 1), &o)) { return web_promise_reject_pending(ctx); }
 
     /* a Blob: decoded on the decoding threads */
     const uint8_t *bytes;
@@ -956,7 +1031,11 @@ JSValue wjr_WindowOrWorkerGlobalScope_createImageBitmap(JSContext *ctx, JSValueC
         if (!buf) { return web_promise_reject_pending(ctx); }
         uint64_t pr = wr_Image_decode(buf);
         wr_Object_release(buf);
-        return wj_promise_from_host(ctx, pr, WJ_HOST_UNDEFINED, bitmap_from_decoded, JS_UNDEFINED);
+        JSValue payload = opts_to_array(ctx, &o);
+        if (JS_IsException(payload)) { return web_promise_reject_pending(ctx); }
+        JSValue p = wj_promise_from_host(ctx, pr, WJ_HOST_UNDEFINED, bitmap_from_decoded, payload);
+        JS_FreeValue(ctx, payload);
+        return p;
     }
     /* ImageData: its pixels */
     image_data *d = image_data_of(image);
@@ -966,11 +1045,11 @@ JSValue wjr_WindowOrWorkerGlobalScope_createImageBitmap(JSContext *ctx, JSValueC
         uint8_t *p;
         size_t n;
         if (!wj_to_buffer_source(ctx, d->data, &p, &n, 0, "ImageData")) { return web_promise_reject_pending(ctx); }
-        st = wr_Canvas_bitmapFromPixels(p, (uint32_t)n, (int32_t)d->w, (int32_t)d->h, flip, (void *)&bm);
+        st = wr_Canvas_bitmapFromPixels(p, (uint32_t)n, (int32_t)d->w, (int32_t)d->h, o.orient, o.premul, o.colorspace, o.resize_w, o.resize_h, o.resize_q, (void *)&bm);
     } else {
         uint64_t src = image_source(ctx, image, "createImageBitmap on 'Window'");
         if (!src) { return web_promise_reject_pending(ctx); }
-        st = wr_Canvas_createBitmap(src, rect ? 4 : 0, r[0], r[1], r[2], r[3], flip, (void *)&bm);
+        st = wr_Canvas_createBitmap(src, rect ? 4 : 0, r[0], r[1], r[2], r[3], o.orient, o.premul, o.colorspace, o.resize_w, o.resize_h, o.resize_q, (void *)&bm);
     }
     if (st < 0) {
         const char *name = st == wr_Error_Index_Size ? "IndexSizeError" : (st == wr_Error_Not_Found ? "InvalidStateError" : NULL);
