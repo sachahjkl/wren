@@ -1,0 +1,77 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>CSS animations and transitions in getAnimations(), keyframe composite, the popover top layer</title>
+<style>
+  @keyframes spin { from { opacity: 0 } to { opacity: 1 } }
+  @keyframes grow { from { width: 0px } to { width: 100px } }
+  #c { animation: spin 10s linear, grow 10s linear 2; }
+  #tr { width: 10px; transition: width 10s linear; }
+  #w { width: 10px; }
+  #holder { transform: translateX(5px); opacity: 0.5; position: relative; z-index: 3; overflow: hidden; width: 20px; height: 20px; }
+</style>
+<body>
+<div id="c"></div><div id="tr"></div><div id="w"></div>
+<div id="holder"><div id="pop" popover>menu</div></div>
+<script>
+const $ = (id) => document.getElementById(id);
+const width = (el) => parseFloat(getComputedStyle(el).width);
+(async () => {
+  section("CSS animations in getAnimations()", () => {
+    getComputedStyle($("c")).opacity;   // styled: the animations start
+    const list = $("c").getAnimations();
+    eq("two CSS animations", list.length, 2);
+    t("CSSAnimation objects", list.every((a) => a instanceof CSSAnimation && a instanceof Animation), list.map(String).join());
+    eq("their names, in animation-name order", list.map((a) => a.animationName).join(), "spin,grow");
+    eq("running", list[0].playState, "running");
+    eq("the effect's target", list[0].effect.target, $("c"));
+    eq("its duration", list[0].effect.getTiming().duration, 10000);
+    eq("the same object at every call", $("c").getAnimations()[0], list[0]);
+    t("document.getAnimations lists them", document.getAnimations().includes(list[1]));
+    list[0].pause();
+    eq("pause(): paused", list[0].playState, "paused");
+    list[0].currentTime = 5000;
+    t("currentTime seeks", Math.abs(list[0].currentTime - 5000) < 1, list[0].currentTime);
+    t("and the value follows", Math.abs(Number(getComputedStyle($("c")).opacity) - 0.5) < 0.02, getComputedStyle($("c")).opacity);
+    list[0].play();
+    eq("play(): running again", list[0].playState, "running");
+    list[1].cancel();
+    eq("cancel(): idle", list[1].playState, "idle");
+    eq("and no longer listed", $("c").getAnimations().map((a) => a.animationName).join(), "spin");
+    eq("the name stays", list[1].animationName, "grow");
+  });
+  section("CSS transitions in getAnimations()", () => {
+    getComputedStyle($("tr")).width;
+    $("tr").style.width = "110px";
+    getComputedStyle($("tr")).width;
+    const list = $("tr").getAnimations();
+    eq("one CSS transition", list.length, 1);
+    t("a CSSTransition", list[0] instanceof CSSTransition, String(list[0]));
+    eq("its property", list[0].transitionProperty, "width");
+    list[0].currentTime = 5000;
+    t("seeking moves the value", Math.abs(width($("tr")) - 60) < 1, width($("tr")));
+    list[0].cancel();
+    eq("cancel(): gone", $("tr").getAnimations().length, 0);
+    eq("the end value at once", width($("tr")), 110);
+  });
+  section("a keyframe's composite operation", () => {
+    const a = $("w").animate([{ width: "100px", composite: "add" }, { width: "100px" }], { duration: 1000, fill: "both" });
+    a.pause();
+    a.currentTime = 0;
+    t("0% adds to the underlying 10px", Math.abs(width($("w")) - 110) < 1, width($("w")));
+    a.currentTime = 1000;
+    t("100% replaces", Math.abs(width($("w")) - 100) < 1, width($("w")));
+    eq("getKeyframes keeps it", a.effect.getKeyframes()[0].composite, "add");
+    a.cancel();
+  });
+  section("the popover top layer", () => {
+    $("pop").showPopover();
+    const h = getComputedStyle($("holder"));
+    eq("an ancestor of a showing popover: no transform", h.transform, "none");
+    eq("no opacity of its own", h.opacity, "1");
+    eq("no stacking context", h.zIndex, "auto");
+    $("pop").hidePopover();
+    t("hidden: the ancestor's style comes back", getComputedStyle($("holder")).transform !== "none", getComputedStyle($("holder")).transform);
+  });
+  done();
+})().catch((e) => { t("async section", false, e && e.name + ": " + e.message + "\n" + e.stack); done(); });
+</script>

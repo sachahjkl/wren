@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Popover in the top layer</title>
+<style>
+  body { margin: 0; background: white; }
+  #holder { position: relative; z-index: 1; transform: translateX(0); overflow: hidden; width: 10px; height: 10px; }
+  #cover { position: fixed; inset: 0; z-index: 1000; background: rgb(255, 0, 0); }
+  #pop { width: 200px; height: 100px; border: 0; padding: 0; background: rgb(0, 128, 0); }
+</style>
+<div id="holder"><div id="pop" popover>in the top layer</div></div>
+<div id="cover"></div>
+<script>document.getElementById("pop").showPopover();</script>

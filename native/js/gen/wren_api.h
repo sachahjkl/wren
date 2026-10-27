@@ -25,6 +25,14 @@ enum wr_AnimationReplaceState {
     wr_AnimationReplaceState_Removed = 1,
     wr_AnimationReplaceState_Persisted = 2,
 };
+// A CSS animation or transition among Animation_relevant's handles (src/page/web_animations_css.odin).
+typedef struct wr_CssAnimationInfo {
+    int32_t kind;
+    uint64_t target;
+    double delay;
+    double duration;
+    double iterations;
+} wr_CssAnimationInfo;
 
 /* module async: types */
 // Any host object (not a node). Released with Object_release; freed with the page in any case.
@@ -734,6 +742,10 @@ WR_IMPORT("animations", "Animation_computedTiming") double wr_Animation_computed
 // The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of it and its descendants), or of the
 // whole document when `root` is 0, in composite order: 8 bytes per handle.
 WR_IMPORT("animations", "Animation_relevant") int32_t wr_Animation_relevant(uint64_t root, int32_t subtree, uint8_t *_buf, uint32_t _cap);
+// What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
+WR_IMPORT("animations", "Animation_cssBind") void wr_Animation_cssBind(uint64_t animation, uint32_t notify, int32_t user, wr_CssAnimationInfo *_ret);
+// CSSAnimation.animationName / CSSTransition.transitionProperty ("" once it is gone).
+WR_IMPORT("animations", "Animation_cssName") int32_t wr_Animation_cssName(uint64_t animation, uint8_t *_buf, uint32_t _cap);
 // document.timeline.currentTime (NaN: null)
 WR_IMPORT("animations", "DocumentTimeline_currentTime") double wr_DocumentTimeline_currentTime(void);
 // Whether `easing` is an easing function (CSS Easing 2).

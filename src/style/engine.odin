@@ -95,6 +95,7 @@ Sheet :: struct {
 Engine :: struct {
 	settings:  Settings,               // owned copy
 	forced_hidden: map[base.Handle]struct{},   // elements the embedder hides (engine_set_hidden)
+	top_layer:     [dynamic]base.Handle,       // the embedder's top layer, the fullscreen element aside (engine_set_top_layer)
 	sheets:    [dynamic]^Sheet,        // browser, user, then document sheets
 	arena:     virtual.Arena,          // compiled rules and index entries
 	alloc:     runtime.Allocator,
@@ -178,6 +179,7 @@ engine_destroy :: proc(e: ^Engine) {
 	for s in e.sheets { sheet_free(s) }
 	delete(e.sheets)
 	delete(e.forced_hidden)
+	delete(e.top_layer)
 	rule_set_clear(&e.rules)
 	shadow_styles_destroy(e)
 	virtual.arena_destroy(&e.arena)
@@ -358,6 +360,17 @@ engine_set_hidden :: proc(e: ^Engine, h: base.Handle, hidden: bool) {
 		if h not_in e.forced_hidden { return }
 		delete_key(&e.forced_hidden, h)
 	}
+	e.restyle_needed = true
+}
+
+// The top layer besides the fullscreen element (HTML: the showing popovers, in the order shown): their ancestors lose
+// what would hold them inside the page (fullscreen_ancestor_reset: stacking contexts, transforms, filters, clips of
+// containment), so the UA sheet's fixed position and highest z-index put them above everything, at the viewport.
+// Takes effect at the next style computation.
+engine_set_top_layer :: proc(e: ^Engine, elements: []base.Handle) {
+	if slice.equal(e.top_layer[:], elements) { return }
+	clear(&e.top_layer)
+	append(&e.top_layer, ..elements)
 	e.restyle_needed = true
 }
 

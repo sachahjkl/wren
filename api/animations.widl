@@ -74,6 +74,19 @@ module animations {
   /// The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of it and its descendants), or of the
   /// whole document when `root` is 0, in composite order: 8 bytes per handle.
   bytes Animation_relevant(optional Node root, bool subtree);
+  /// A CSS animation or transition among Animation_relevant's handles (src/page/web_animations_css.odin).
+  struct CssAnimationInfo {
+    /// 0 not a CSS one (a script's), 1 CSSAnimation, 2 CSSTransition
+    i32 kind;
+    u64 target;
+    f64 delay;
+    f64 duration;
+    f64 iterations;
+  }
+  /// What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
+  CssAnimationInfo Animation_cssBind(Animation animation, MicrotaskCallback notify, i32 user);
+  /// CSSAnimation.animationName / CSSTransition.transitionProperty ("" once it is gone).
+  string Animation_cssName(Animation animation);
   /// document.timeline.currentTime (NaN: null)
   f64 DocumentTimeline_currentTime();
   /// Whether `easing` is an easing function (CSS Easing 2).

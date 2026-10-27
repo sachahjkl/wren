@@ -246,6 +246,19 @@ function Test-WebApis($server) {
     $null = Wren-Ctl click --selector 'h1'   # (the menu is centred in the viewport: the heading is outside it)
     $null = Wren-Ctl wait function '!document.getElementById("menu").matches(":popover-open")' --timeout 5000
     Check 'a click outside closes the menu' ((Wren-Eval 'document.getElementById("menu").matches(":popover-open")') -eq 'false')
+    # examples/site/remote/popover-clip.htm: a popover inside a 10 px box that clips and makes a stacking context, under a
+    # fixed red cover of z-index 1000: in the top layer it is painted whole, at the centre of the viewport, above the cover
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/popover-clip.htm" --wait idle
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'popover-top.png'
+    $null = Wren-Shot $png -Tab
+    if (Test-Path $png) {
+        Add-Type -AssemblyName System.Drawing
+        $bmp = [System.Drawing.Bitmap]::FromFile($png); $cx = [int]($bmp.Width / 2); $cy = [int]($bmp.Height / 2); $bmp.Dispose()
+        $px = Pixel $png $cx $cy
+        Check "a popover is in the top layer: above a z-index 1000 cover, not clipped by its 10 px ancestor ($($px -join ','))" (Near $px @(0, 128, 0) 24)
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the page was captured' $false $global:WrenErr }
 
     # examples/site/navigation.html: a real click on a link is intercepted by the page's navigate listener (the document
     # stays: its marker too), a navigation to another page carries its state there, the browser's Back brings the demo

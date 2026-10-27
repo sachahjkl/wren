@@ -513,6 +513,17 @@ static bool keyframes_pack(JSContext *ctx, JSValueConst frames, web_buf *b)
         const char *s = JS_ToCStringLen(ctx, &len, ez);
         if (s) { buf_put_clean(b, s, len); JS_FreeCString(ctx, s); }
         JS_FreeValue(ctx, ez);
+        /* the keyframe's own composite operation ("auto": the effect's) */
+        JSValue co = JS_GetPropertyStr(ctx, f, "composite");
+        if (JS_IsString(co)) {
+            const char *c = JS_ToCStringLen(ctx, &len, co);
+            if (c && (strcmp(c, "replace") == 0 || strcmp(c, "add") == 0 || strcmp(c, "accumulate") == 0)) {
+                web_buf_puts(b, "\x1f" "composite" "\x1f");
+                web_buf_puts(b, c);
+            }
+            if (c) { JS_FreeCString(ctx, c); }
+        }
+        JS_FreeValue(ctx, co);
         pack_state ps = { b };
         bool ok = web_for_record(ctx, f, pack_member, &ps);
         JS_FreeValue(ctx, f);
@@ -1252,6 +1263,55 @@ JSValue wjr_Animatable_animate(JSContext *ctx, JSValueConst this_val, int argc, 
     return obj;
 }
 
+/* The wrapper of a CSS animation or transition the browser listed (CSSAnimation / CSSTransition): an Animation whose
+ * effect is a KeyframeEffect on its target with its timing (no keyframes of its own: the style timeline runs it).
+ * Undefined when the handle is not a CSS one. */
+static JSValue css_wrap(JSContext *ctx, uint64_t host)
+{
+    an_impl *a = calloc(1, sizeof *a);
+    if (!a) { return JS_ThrowOutOfMemory(ctx); }
+    a->effect = JS_NULL;
+    a->timeline = JS_UNDEFINED;
+    a->id = JS_NewString(ctx, "");
+    a->ready = a->finished = JS_UNDEFINED;
+    a->ready_fn[0] = a->ready_fn[1] = a->finished_fn[0] = a->finished_fn[1] = JS_UNDEFINED;
+    a->slot = slot_alloc(JS_NULL);
+    wr_CssAnimationInfo info = { 0 };
+    wr_Animation_cssBind(host, (uint32_t)(uintptr_t)&wj_cb_animation, (int32_t)a->slot, &info);
+    if (info.kind != 1 && info.kind != 2) { an_free(a); return JS_UNDEFINED; }
+    a->host = host;
+    JSValue obj = wj_wrap_owned(ctx, host, info.kind == 1 ? WJ_IFACE_CSSAnimation : WJ_IFACE_CSSTransition, JS_UNDEFINED);
+    if (JS_IsException(obj)) { an_free(a); return obj; }
+    web_set_impl(obj, a, an_free, an_mark);
+    if (a->slot) { an_slots[a->slot] = obj; }
+    a->timeline = document_timeline(ctx);
+    a->ready = web_promise_resolved(ctx, obj);
+    a->finished = web_promise_new(ctx, a->finished_fn);
+    JSValue target = wj_wrap_node(ctx, info.target);
+    if (JS_IsException(target)) { JS_FreeValue(ctx, JS_GetException(ctx)); target = JS_NULL; }
+    JSValue fx = fx_new(ctx, JS_UNDEFINED, target, JS_NULL, JS_UNDEFINED);
+    JS_FreeValue(ctx, target);
+    if (JS_IsException(fx)) { JS_FreeValue(ctx, JS_GetException(ctx)); return obj; }
+    fx_impl *e = fx_of(fx);
+    e->t.delay = info.delay;
+    e->t.duration = info.duration;
+    e->t.iterations = info.iterations;
+    a->effect = fx;   /* (not pushed: e->anim stays 0, the browser keeps no script effect for it) */
+    return obj;
+}
+
+static JSValue css_name(JSContext *ctx, JSValueConst this_val, int iface)
+{
+    wj_obj *o = wj_this(ctx, this_val, iface);
+    if (!o) { return JS_EXCEPTION; }
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Animation_cssName(o->handle, wj_scratch.data, wj_scratch.cap));
+    return JS_NewStringLen(ctx, (const char *)wj_scratch.data, n > 0 ? (size_t)n : 0);
+}
+
+JSValue wjr_CSSAnimation_get_animationName(JSContext *ctx, JSValueConst this_val) { return css_name(ctx, this_val, WJ_IFACE_CSSAnimation); }
+JSValue wjr_CSSTransition_get_transitionProperty(JSContext *ctx, JSValueConst this_val) { return css_name(ctx, this_val, WJ_IFACE_CSSTransition); }
+
 static JSValue relevant_list(JSContext *ctx, uint64_t root, bool subtree)
 {
     int32_t n;
@@ -1269,7 +1329,10 @@ static JSValue relevant_list(JSContext *ctx, uint64_t root, bool subtree)
     uint32_t at = 0;
     for (uint32_t i = 0; i < count && !JS_IsException(out); i++) {
         JSValue w = wj_cached(ctx, hs[i]);
-        if (JS_IsObject(w)) { wj_array_set(ctx, out, at++, JS_DupValue(ctx, w)); }
+        if (JS_IsObject(w)) { wj_array_set(ctx, out, at++, JS_DupValue(ctx, w)); continue; }
+        w = css_wrap(ctx, hs[i]);   /* a CSS animation or transition seen for the first time */
+        if (JS_IsException(w)) { JS_FreeValue(ctx, out); out = JS_EXCEPTION; break; }
+        if (JS_IsObject(w)) { wj_array_set(ctx, out, at++, w); }
     }
     free(hs);
     return out;
