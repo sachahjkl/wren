@@ -338,6 +338,51 @@ touch_scroll :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	return node
 }
 
+// The scroller under `p` (page-area px) that can move by `d` device px (chained to the parent, as the wheel does): a
+// container with room that way, else the document (NIL). For middle-click autoscroll (page_autoscroll.odin).
+scroller_under :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
+	return wheel_scroller(app, t, p, d)
+}
+
+// For middle-click autoscroll: the scroller under `p` (page-area px) and which axes it can move, so the marker and the
+// velocity use only the directions that scroll. `found` is false when nothing under the pointer (nor the document) can
+// scroll. `is_doc` tells the document (NIL node) from a NIL that is no scroller.
+scroller_axes_under :: proc(app: ^App, t: ^Tab, p: draw.Vec2) -> (node: base.Handle, can_x, can_y, is_doc, found: bool) {
+	can_axis :: proc(app: ^App, t: ^Tab, node: base.Handle, d: draw.Vec2) -> bool {
+		_, limit, ok := scroller_state(app, t, node)
+		if !ok { return false }
+		pend := smooth_pending(app, t, node)
+		nx, ny := clamp(pend.x + d.x, 0, limit.x), clamp(pend.y + d.y, 0, limit.y)
+		return abs(nx - pend.x) >= 0.01 || abs(ny - pend.y) >= 0.01
+	}
+	l := &t.layout
+	h := lay.hit_test(l, p, draw.rect_size(active_window(app).page_rect), t.scroll)
+	// walk the hit element's box and its scroll spaces, as wheel_scroller does, taking the first that can move anywhere
+	consider :: proc(app: ^App, t: ^Tab, node: base.Handle) -> (bool, bool, bool) {
+		x := can_axis(app, t, node, {1, 0}) || can_axis(app, t, node, {-1, 0})
+		y := can_axis(app, t, node, {0, 1}) || can_axis(app, t, node, {0, -1})
+		return x, y, x || y
+	}
+	if h.item != lay.NONE {
+		if b := &l.boxes[h.box]; b.scroll_space != lay.NONE {
+			if x, y, any := consider(app, t, b.node); any { return b.node, x, y, false, true }
+		}
+		for s := l.items[h.item].space; s != lay.NONE; s = l.spaces[s].parent {
+			if l.spaces[s].kind != .Scroll { continue }
+			sn := l.boxes[l.spaces[s].box].node
+			if x, y, any := consider(app, t, sn); any { return sn, x, y, false, true }
+		}
+	}
+	// the document: Y only
+	if x, y, any := consider(app, t, base.NIL_HANDLE); any || y {
+		return base.NIL_HANDLE, x, y, true, (x || y)
+	}
+	// nothing moves yet, but allow a document Y session when the page can grow taller than the view
+	_, limit, ok := scroller_state(app, t, base.NIL_HANDLE)
+	if ok && limit.y > 0.5 { return base.NIL_HANDLE, false, true, true, true }
+	return base.NIL_HANDLE, false, false, true, false
+}
+
 @(private = "file")
 wheel_scroller :: proc(app: ^App, t: ^Tab, p, d: draw.Vec2) -> base.Handle {
 	l := &t.layout
