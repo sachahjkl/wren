@@ -59,6 +59,19 @@ DEVTOOLS_PREFS := [?]config.Def{
 		description = "Size of the text of the developer tools (CSS pixels). Ctrl and the plus, minus or zero keys change it while the panel has the pointer."},
 	{name = "browser.devtools.density", kind = .String, default = {s = "compact"}, choices = {"compact", "comfortable"},
 		description = "How tightly the developer tools' rows and toolbars are spaced."},
+	// The detached window's outer rectangle on the screen, remembered between sessions like the browser window's (session.odin).
+	// A width or height of 0 means "not saved yet": the window opens at its default size and the system places it. The rectangle
+	// is in physical screen pixels (platform.Placement), fitted to a monitor that is there when it is restored (set_placement).
+	{name = "browser.devtools.window.x", kind = .Int, default = {i = 0}, bounded = true, min = -1_000_000, max = 1_000_000, unit = "px",
+		description = "Left edge of the detached developer tools window on the screen, in physical pixels (remembered between sessions)."},
+	{name = "browser.devtools.window.y", kind = .Int, default = {i = 0}, bounded = true, min = -1_000_000, max = 1_000_000, unit = "px",
+		description = "Top edge of the detached developer tools window on the screen, in physical pixels (remembered between sessions)."},
+	{name = "browser.devtools.window.width", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 100_000, unit = "px",
+		description = "Width of the detached developer tools window, in physical pixels (0: open at the default size)."},
+	{name = "browser.devtools.window.height", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 100_000, unit = "px",
+		description = "Height of the detached developer tools window, in physical pixels (0: open at the default size)."},
+	{name = "browser.devtools.window.maximized", kind = .Bool, default = {b = false},
+		description = "Whether the detached developer tools window was maximized when it last closed (restored maximized)."},
 }
 
 register_devtools_prefs :: proc(p: ^config.Prefs) {

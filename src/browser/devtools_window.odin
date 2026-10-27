@@ -55,9 +55,15 @@ devtools_window_make :: proc(app: ^App) {
 	// cannot dangle)
 	w := platform.open_window("Wren Developer Tools", {1100, 760}, user = rawptr(uintptr(owner.id)), on_frame = proc(user: rawptr) { devtools_window_loop_frame(the_app, int(uintptr(user))) }, transparent = fixed)
 	if w == nil { ui.toast(.Warn, "The window could not be opened"); return }
+	// where it was when it last closed (physical screen pixels), fitted to a monitor that is there now (set_placement), before it
+	// is shown: a size of 0 means it was never saved, and the system places it at its default size next to the browser window
+	placed := devtools_window_restore_placement(app, w)
 	if !app.headless {   // (a headless browser shows no window: the panel's is drawn all the same, for wren ctl)
 		platform.show_window(w)
-		win.SetWindowPos(w.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE)   // above the browser window it came from
+		// above the browser window it came from; a saved placement keeps its own position (SWP_NOMOVE), an unsaved one is left where
+		// the system opened it near the browser window
+		flags := win.SWP_NOSIZE | (placed ? win.UINT(0) : win.SWP_NOMOVE)
+		win.SetWindowPos(w.hwnd, win.HWND_TOP, 0, 0, 0, 0, flags)
 	}
 	if w.size.x <= 0 || w.size.y <= 0 {
 		// (the size comes with the first WM_SIZE, still to be handled)
@@ -71,7 +77,7 @@ devtools_window_make :: proc(app: ^App) {
 	if !ok {
 		free(dw)
 		platform.destroy_window(w)
-		ui.toast(.Warn, "The window could not be drawn (this needs the Direct3D 11 renderer)")
+		ui.toast(.Warn, "The developer tools window could not be drawn (its render surface could not be created)")
 		return
 	}
 	dw.win, dw.latency, dw.size_seen, dw.owner = w, 1, w.size, owner.id
@@ -95,6 +101,10 @@ devtools_attach :: proc(app: ^App) {
 	d.want_win = false
 	dw := d.win
 	if dw == nil { return }
+	// remember where the window is, so it comes back there next session; not for a headless window (never shown, no placement to keep).
+	// The window may already have had WM_CLOSE (closed by its X: is_closed is true), but its HWND is alive until destroy_window below,
+	// so GetWindowPlacement still reads the rectangle it had.
+	if !app.headless { devtools_window_save_placement(app, dw.win) }
 	d.win = nil
 	ui.destroy(&dw.ui)
 	ui.use(active_window(app).ui)
@@ -103,6 +113,34 @@ devtools_attach :: proc(app: ^App) {
 	delete(dw.title)
 	free(dw)
 	request_frames(app, 4)
+}
+
+// The detached window's placement read from the preferences and applied (physical screen pixels, platform.set_placement fits it
+// to a present monitor and to the DPI it lands on). False when none is saved (a zero width or height): the window keeps the size
+// and position the system gave it. Saved and restored exactly as the browser window's placement is (session.odin, windows.odin).
+@(private = "file")
+devtools_window_restore_placement :: proc(app: ^App, w: ^platform.Window) -> bool {
+	wd := int(config.int_of(&app.prefs, "browser.devtools.window.width"))
+	ht := int(config.int_of(&app.prefs, "browser.devtools.window.height"))
+	if wd <= 0 || ht <= 0 { return false }
+	x := int(config.int_of(&app.prefs, "browser.devtools.window.x"))
+	y := int(config.int_of(&app.prefs, "browser.devtools.window.y"))
+	maxed := config.bool_of(&app.prefs, "browser.devtools.window.maximized")
+	platform.set_placement(w, platform.Placement{{x, y, wd, ht}, maxed})
+	return true
+}
+
+// Writes the window's restored rectangle and maximized state to the preferences (its normal rectangle even when maximized, so a
+// restore gives both the size to un-maximize to and the maximized state: platform.get_placement).
+@(private = "file")
+devtools_window_save_placement :: proc(app: ^App, w: ^platform.Window) {
+	p := platform.get_placement(w)
+	if p.rect[2] <= 0 || p.rect[3] <= 0 { return }   // a minimized or odd state: keep the last good rectangle
+	set_pref_int(app, "browser.devtools.window.x", p.rect[0])
+	set_pref_int(app, "browser.devtools.window.y", p.rect[1])
+	set_pref_int(app, "browser.devtools.window.width", p.rect[2])
+	set_pref_int(app, "browser.devtools.window.height", p.rect[3])
+	set_pref_bool(app, "browser.devtools.window.maximized", p.maximized)
 }
 
 devtools_window_destroy :: proc(app: ^App) { devtools_attach(app) }
