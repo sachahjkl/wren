@@ -2286,6 +2286,20 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Range_contents :: proc(c: ^Call, start: Api_Node, start_offset: u32, end: Api_Node, end_offset: u32, mode: i32) -> (u64, Api_Error)`
 
+### `Range_createContextualFragment`
+
+```
+Node Range_createContextualFragment(Node start, string markup) raises
+```
+
+range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+"already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `Range_createContextualFragment :: proc(c: ^Call, start: Api_Node, markup: string) -> (u64, Api_Error)`
+
 ### `Selection_state`
 
 ```

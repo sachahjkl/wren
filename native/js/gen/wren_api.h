@@ -1502,6 +1502,10 @@ WR_IMPORT("dom", "Range_text") int32_t wr_Range_text(uint64_t start, uint32_t st
 // The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
 // removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
 WR_IMPORT("dom", "Range_contents") int32_t wr_Range_contents(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, int32_t mode, uint64_t *_ret);
+// range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+// Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+// "already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+WR_IMPORT("dom", "Range_createContextualFragment") int32_t wr_Range_createContextualFragment(uint64_t start, const uint8_t *markup, uint32_t markup_len, uint64_t *_ret);
 // The selection (offsets in UTF-16 code units for Text nodes).
 WR_IMPORT("dom", "Selection_state") void wr_Selection_state(wr_SelectionState *_ret);
 // setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.

@@ -247,6 +247,7 @@ foreign _m_dom {
 	@(link_name = "Range_comparePoints") _Range_comparePoints :: proc(first: u64, first_offset: u32, second: u64, second_offset: u32) -> i32 ---
 	@(link_name = "Range_text") _Range_text :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Range_contents") _Range_contents :: proc(start: u64, start_offset: u32, end: u64, end_offset: u32, mode: i32, _ret: ^Node) -> Error ---
+	@(link_name = "Range_createContextualFragment") _Range_createContextualFragment :: proc(start: u64, markup: [^]u8, markup_len: u32, _ret: ^Node) -> Error ---
 	@(link_name = "Selection_state") _Selection_state :: proc(_ret: ^SelectionState) ---
 	@(link_name = "Selection_setRange") _Selection_setRange :: proc(anchor: u64, anchor_offset: u32, focus: u64, focus_offset: u32) -> Error ---
 	@(link_name = "Selection_clear") _Selection_clear :: proc() ---
@@ -2643,6 +2644,14 @@ Range_text_alloc :: proc(start: $T_start, start_offset: u32, end: $T_end, end_of
 // removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
 Range_contents :: proc "contextless" (start: $T_start, start_offset: u32, end: $T_end, end_offset: u32, mode: i32) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 && intrinsics.type_is_integer(intrinsics.type_core_type(T_end)) && size_of(T_end) == 8 {
 	err = _Range_contents(u64(start), start_offset, u64(end), end_offset, mode, &result)
+	return
+}
+
+// range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+// Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+// "already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+Range_createContextualFragment :: proc "contextless" (start: $T_start, markup: string) -> (result: Node, err: Error) where intrinsics.type_is_integer(intrinsics.type_core_type(T_start)) && size_of(T_start) == 8 {
+	err = _Range_createContextualFragment(u64(start), raw_data(markup), u32(len(markup)), &result)
 	return
 }
 
