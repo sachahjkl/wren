@@ -275,8 +275,17 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		sep(&groups)
 		if ui.menu_item("Copy", "Ctrl+C").clicked { copy_selection(app, t) }
 		words := strings.trim_space(r.selection)
-		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(&ix), short(words, 28))).clicked {
-			open_in_new_tab(app, search_url(&ix, words), origin = .User)
+		if ui.menu_item(fmt.tprintf("Search %s for “%s”###ctx_search", search_engine_name(), short(words, 28))).clicked {
+			open_in_new_tab(app, search_url(words), origin = .User)
+		}
+		if len(sengines.list) > 1 {
+			if ui.menu_submenu(fmt.tprintf("%s###ctx_search_with", i18n.tr("Search with"))) {
+				def := search_default_index()
+				for e, i in sengines.list {
+					if i == def { continue }
+					if ui.menu_item(fmt.tprintf("%s###ctx_sw_%d", e.name, i)).clicked { open_in_new_tab(app, search_url(words, i), origin = .User) }
+				}
+			}
 		}
 	}
 	if groups == 0 {
@@ -367,15 +376,32 @@ address_menu_items :: proc(app: ^App) {
 
 // What the address bar does with words that are not an address: a search.
 address_or_search :: proc(input: string) -> string {
+	target, _ := address_target(input)
+	return target
+}
+
+// What the address bar opens for `input`, and the search it is (engine: an index of sengines.list; words: what is
+// searched) when it is one: a keyword first ("@g cats": "cats" with that engine), else words that are no address
+// (with the default engine).
+Address_Search :: struct { engine: int, words: string }
+
+address_target :: proc(input: string) -> (target: string, search: Maybe(Address_Search)) {
+	return address_target_in(&sengines, ix.search_engine, input)
+}
+
+// The same with the engines `se`, `default_id` naming the default one.
+address_target_in :: proc(se: ^Search_Engines, default_id, input: string) -> (target: string, search: Maybe(Address_Search)) {
 	s := strings.trim_space(input)
-	if u, ok := local_path_url(s); ok { return u }   // C:\..., \\server\share, ~ (local_paths.odin)
+	if i, words, ok := engines_keyword(se, s); ok { return engine_url(engine_at(se, i), words), Address_Search{i, words} }
+	if u, ok := local_path_url(s); ok { return u, nil }   // C:\..., \\server\share, ~ (local_paths.odin)
 	looks_like_url := strings.contains(s, "://") || strings.has_prefix(s, "about:") || strings.has_prefix(s, "data:") ||
 		strings.has_prefix(s, "view-source:") || strings.has_prefix(s, "file:")
 	// a relative path (docs\a.html) names no folder for sure: words to search for
 	if !looks_like_url && (strings.contains(s, " ") || !strings.contains(s, ".") || strings.contains(s, "\\")) && !strings.has_prefix(s, "localhost") {
-		return search_url(&ix, s)
+		i := engines_default(se, default_id)
+		return engine_url(engine_at(se, i), s), Address_Search{i, s}
 	}
-	return s
+	return s, nil
 }
 
 ////////////////////////////////

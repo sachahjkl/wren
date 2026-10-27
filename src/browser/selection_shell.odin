@@ -61,6 +61,7 @@ ix: Interaction_Settings
 // Start-up: the preferences of this part of the shell, then follows them.
 interaction_init :: proc(app: ^App) {
 	ix = interaction_settings_from_prefs(&app.prefs)
+	search_engines_init(app)
 	ix_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		interaction_settings_destroy(&ix)
 		ix = interaction_settings_from_prefs(p)
@@ -71,6 +72,7 @@ interaction_init :: proc(app: ^App) {
 interaction_destroy :: proc(app: ^App) {
 	config.unwatch(&app.prefs, ix_watch)
 	interaction_settings_destroy(&ix)
+	search_engines_destroy()
 	find_destroy(find_state(app))
 	closed_tabs_destroy()
 	context_menu_destroy(app)

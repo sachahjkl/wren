@@ -140,6 +140,24 @@ values_set_before_registration_apply_later :: proc(t: ^testing.T) {
 }
 
 @(test)
+user_text_of_registered_and_unregistered :: proc(t: ^testing.T) {
+	p := prefs_make()
+	defer prefs_destroy(&p)
+	set_from_string(&p, "old.gone", "https://x.test/?q=%s", .User)   // no longer registered: read once to migrate it
+	register(&p, DEFS[:])
+	s, ok := user_text(&p, "old.gone")
+	testing.expect(t, ok && s == "https://x.test/?q=%s", "an unregistered user value")
+	_, ok = user_text(&p, "net.agent")
+	testing.expect(t, !ok, "a default is no user value")
+	set_from_string(&p, "net.agent", "mine", .User)
+	set_from_string(&p, "net.agent", "cli", .Command_Line)
+	s, ok = user_text(&p, "net.agent")
+	testing.expect(t, ok && s == "mine", "the user's value under a command line one")
+	_, ok = user_text(&p, "never.seen")
+	testing.expect(t, !ok)
+}
+
+@(test)
 persistence :: proc(t: ^testing.T) {
 	path := "build/prefs_test.txt"
 	defer os.remove(path)
