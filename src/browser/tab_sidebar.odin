@@ -45,6 +45,8 @@ SIDEBAR_PREFS := [?]config.Def{
 		description = i18n.tr("The tab sidebar shows only the icons of the tabs (the button at the top of the sidebar, or Ctrl+Shift+Comma, toggles it).")},
 	{name = "browser.tabs.sidebar_collapsed_width", kind = .Int, default = {i = 48}, bounded = true, min = 32, max = 96, unit = "px",
 		description = i18n.tr("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
+	{name = "browser.tabs.sidebar_animation_ms", kind = .Int, default = {i = 180}, bounded = true, min = 0, max = 2000, unit = "ms",
+		description = i18n.tr("How long the tab sidebar takes to open or close to its icons (the titles fade in or out while its width changes). 0: at once. The system's setting to reduce animations turns it off too.")},
 	{name = "browser.tabs.sidebar_row_em", kind = .Float, default = {f = 2.4}, bounded = true, min = 1.6, max = 5, unit = "em",
 		description = i18n.tr("Height of a tab in the sidebar.")},
 	{name = "browser.tabs.sidebar_address_min_em", kind = .Float, default = {f = 10}, bounded = true, min = 4, max = 40, unit = "em",
@@ -111,6 +113,36 @@ sidebar_split :: proc(body: draw.Rect, pos: Tabs_Position, extent: f32) -> (bar,
 	case .Top:
 		page = body
 	}
+	return
+}
+
+// The rate of ui.anim (halvings per second) that goes 95 % of the way in `ms`; 0 ms: at once.
+sidebar_open_rate :: proc(ms: f32) -> f32 { return ms <= 0 ? 1e9 : 4321 / ms }
+
+// The sidebar's width while it opens or closes: from its icons-only width (`open` 0) to its own (1).
+sidebar_open_extent :: proc(closed, opened, open: f32) -> f32 { return math.round(math.lerp(closed, opened, clamp(open, 0, 1))) }
+
+// How much the titles show at `open`: nothing while the rows are too narrow for any of a title, all of it when open.
+side_title_alpha :: proc(open: f32) -> f32 { return clamp((open - 0.25) / 0.75, 0, 1) }
+
+// Where a row's icon starts: centred in the row when closed, at the row's padding when open, and between while it moves.
+side_icon_x :: proc(row_w, icon, pad, open: f32) -> f32 {
+	return math.round(math.lerp(max((row_w - icon) * 0.5, 0), pad, clamp(open, 0, 1)))
+}
+
+// The header's two buttons (`bw` x `bh`): one above the other in the narrow column, side by side when open (the toggle at the
+// start, the new-tab button at the end), each going in a straight line from one place to the other while the sidebar moves.
+Side_Header_Layout :: struct {
+	h:           f32,
+	toggle, add: [2]f32,   // top-left corners in the header
+}
+
+side_header_layout :: proc(extent, bw, bh, inset, open: f32) -> (l: Side_Header_Layout) {
+	o := clamp(open, 0, 1)
+	mid := (extent - bw) * 0.5
+	l.h = math.round(math.lerp(inset * 3 + bh * 2, bh + inset * 2, o))
+	l.toggle = {math.round(math.lerp(mid, inset * 2, o)), inset}
+	l.add = {math.round(math.lerp(mid, extent - inset * 2 - bw, o)), math.round(math.lerp(inset * 2 + bh, inset, o))}
 	return
 }
 
@@ -279,14 +311,23 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	own := window_own(app)
 	dpi := ui_scale_of(app)
-	collapsed := favs.cfg.side_collapsed
 	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
 	// the width the pointer asks for now, not at the one of the frame before (the handle's signal comes after them)
 	if own.sidebar.resizing && own.sidebar.handle != 0 && ui.active_key() == own.sidebar.handle {
 		own.sidebar.live_w = sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
 	}
 	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
-	extent := sidebar_extent(f32(active_window(app).win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
+	win_w := f32(active_window(app).win.size.x)
+	closed_e := sidebar_extent(win_w, width_css, dpi, true, favs.cfg.side_collapsed_w)
+	opened_e := sidebar_extent(win_w, width_css, dpi, false, favs.cfg.side_collapsed_w)
+	// 0: icons only, 1: the titles; eased between when the preference changes (the toolkit's animation: it asks for the
+	// frames while it moves, and none after), and done once the width is within half a pixel of its end (the ease's tail
+	// would ask for frames that change nothing)
+	akey := ui.key_from_string(0, "###side_open")
+	target: f32 = favs.cfg.side_collapsed ? 0 : 1
+	open := ui.anim(akey, target, sidebar_open_rate(favs.cfg.side_anim_ms))
+	if abs(open - target) * abs(opened_e - closed_e) < 0.5 { open = ui.anim(akey, target, sidebar_open_rate(0)) }
+	extent := sidebar_open_extent(closed_e, opened_e, open)
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
@@ -305,10 +346,10 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 		bar.custom, bar.custom_user = classic_side_panel_draw, panel
 	}
 	if ui.parent(bar) {
-		sidebar_header(app, pos, collapsed)
-		if sidebar_list(app, pos, collapsed, extent, cc) { return true }
+		sidebar_header(app, pos, open, extent)
+		if sidebar_list(app, pos, open, extent, cc) { return true }
 	}
-	if !collapsed { sidebar_handle(app, pos, bar, extent, dpi) }
+	if open >= 1 { sidebar_handle(app, pos, bar, extent, dpi) }
 	return false
 }
 
@@ -336,14 +377,17 @@ side_toggle_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, {{px0, frame.min.y}, {px0 + panel_w, frame.max.y}}, col, h * 0.18)
 }
 
+// The header: the toggle and the new-tab button, placed by side_header_layout (no jump while the sidebar opens or closes).
 @(private = "file")
-sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
+sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent: f32) {
 	em := ui.font_size()
 	bw := math.round(em * 2.4)
 	bh := ui.dense(em * 2.2)
 	inset := math.round(em * 0.35)
-	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32) {
-		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
+	collapsed := favs.cfg.side_collapsed
+	l := side_header_layout(extent, bw, bh, inset, open)
+	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32, at: [2]f32) {
+		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		tb: ^ui.Box
 		if ui.tags("icon_button") {
 			tb = ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects}, "###side_toggle")
@@ -357,40 +401,24 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
 		if sig.clicked { set_pref_bool(app, "browser.tabs.sidebar_collapsed", !collapsed) }
 	}
 	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
-	add := proc(app: ^App, bw, bh, em: f32) {
-		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
+	add := proc(app: ^App, bw, bh, em: f32, at: [2]f32) {
+		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		sig := ui.icon_button("###newtab", GLYPH_ADD)
 		tip(sig, i18n.tr("New tab (Ctrl+T)"))
 		if sig.clicked { tab_open_new(app) }
 	}
-
-	if collapsed {
-		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y, cross = .Center})
-		hdr := ui.build_box({}, "###side_head")
-		if ui.parent(hdr) {
-			ui.spacer(ui.px(inset))
-			toggle(app, pos, collapsed, bw, bh, em)
-			ui.spacer(ui.px(inset))
-			add(app, bw, bh, em)
-			ui.spacer(ui.px(inset))
-		}
-		return
-	}
-	ui.next({width = ui.fill(), height = ui.px(bh + inset * 2), axis = .X, cross = .Center})
+	ui.next({width = ui.fill(), height = ui.px(l.h), axis = .Y})
 	hdr := ui.build_box({}, "###side_head")
 	if ui.parent(hdr) {
-		ui.spacer(ui.px(inset * 2))
-		toggle(app, pos, collapsed, bw, bh, em)
-		ui.spacer(ui.fill())
-		add(app, bw, bh, em)
-		ui.spacer(ui.px(inset * 2))
+		toggle(app, pos, collapsed, bw, bh, em, l.toggle)
+		add(app, bw, bh, em, l.add)
 	}
 }
 
 // The list of tabs: a vertical scroll box, `rh` high per tab, whose rows are floating boxes placed by slot. Returns true
 // when a tab closed.
 @(private = "file")
-sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
+sidebar_list :: proc(app: ^App, pos: Tabs_Position, open: f32, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
 	wnd := active_window(app)
 	own := &wnd.own
 	em := ui.font_size()
@@ -440,17 +468,17 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 		ui.spacer(ui.px(f32(n) * rh), exact = true)   // the content's height: the scroll range
 		for i in first ..< last {
 			if i == dragged || i == late { continue }
-			if sidebar_row(app, i, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
+			if sidebar_row(app, i, rh, row_x, row_w, inset, open, area, limit, cc, &move_from, &move_to) { return true }
 		}
 		if late >= first && late < last {
-			if sidebar_row(app, late, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
+			if sidebar_row(app, late, rh, row_x, row_w, inset, open, area, limit, cc, &move_from, &move_to) { return true }
 		}
 		// a row that has the keyboard stays built when it scrolls out of view
 		if focused >= 0 && (focused < first || focused >= last) && focused != dragged {
-			if sidebar_row(app, focused, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
+			if sidebar_row(app, focused, rh, row_x, row_w, inset, open, area, limit, cc, &move_from, &move_to) { return true }
 		}
 		if dragged >= 0 {   // built last: it draws over the others and takes the clicks
-			if sidebar_row(app, dragged, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
+			if sidebar_row(app, dragged, rh, row_x, row_w, inset, open, area, limit, cc, &move_from, &move_to) { return true }
 		}
 		if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, true, f32(app.active.drop_hint - 1) * rh - area.view_off.y) }   // a tab carried over this list
 	}
@@ -480,7 +508,7 @@ Side_Look :: struct {
 
 // One tab's row. Its place is its slot's, animated when tabs move; a dragged row follows the pointer.
 @(private = "file")
-sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: bool, area: ^ui.Box, limit: f32, cc: ^Classic_Colors, move_from, move_to: ^int) -> (closed: bool) {
+sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, open: f32, area: ^ui.Box, limit: f32, cc: ^Classic_Colors, move_from, move_to: ^int) -> (closed: bool) {
 	wnd := active_window(app)
 	own := &wnd.own
 	t := wnd.tabs[i]
@@ -510,7 +538,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
 		look.hover = ui.anim(ui.key_from_string(b.key, "hov"), (inside || dragging) && !on ? 1 : 0, 40)
 		// an engraved line under it, between two tabs that are neither current nor under the pointer
-		if !collapsed && !on && !inside && !dragging && i + 1 < n && i + 1 != wnd.current {
+		if open > 0 && !on && !inside && !dragging && i + 1 < n && i + 1 != wnd.current {
 			nb := ui.prev_box(fmt.tprintf("###tab_%d", wnd.tabs[i + 1].id))
 			look.rule = !(nb != nil && ui.box_contains(nb, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos()))
 		}
@@ -529,16 +557,16 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 
 	if ui.parent(b) {
 		isz := f32(tab_icon_px(app))
-		if collapsed {
-			ui.spacer(ui.fill())
-			ui.next({width = ui.px(isz), height = ui.pct(1)})
-			ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
-			ui.spacer(ui.fill())
-		} else {
-			ui.spacer(ui.px(math.round(em * 0.65)))
-			ui.next({width = ui.px(isz), height = ui.pct(1)})
-			ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		// (one layout whatever `open` is: the icon slides from the middle of the narrow row to its place, the title and the
+		// close button fade in behind it, clipped by the row while it widens)
+		ui.spacer(ui.px(side_icon_x(row_w, isz, math.round(em * 0.65), open)))
+		ui.next({width = ui.px(isz), height = ui.pct(1)})
+		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		if open > 0 {
 			ui.spacer(ui.px(math.round(em * 0.5)))
+			ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center, transparency = 1 - side_title_alpha(open)})
+			ui.push_parent(ui.build_box({}, "###titles"))
+			defer ui.pop_parent()
 			title := t.title
 			if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
