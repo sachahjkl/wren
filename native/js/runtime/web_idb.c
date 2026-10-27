@@ -1,16 +1,17 @@
 /* web_idb.c: IndexedDB's glue. The interfaces (IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex,
- * IDBCursor, IDBRequest, IDBKeyRange...) are JavaScript (native/js/lazy/idb.js); the data, the transactions' scheduling and
- * the journal are the browser's (src/idb, reached through one import, Idb_call). That JavaScript is NOT in the image every
- * realm starts from: the realm has the names of the interfaces as properties that the engine makes on their first use
- * (JS_DefineHostAutoInitProperty: a script cannot tell them from data properties) and the accessor `indexedDB`. The first
- * use asks the browser for the source (Idb_call operation 14), runs it with the object below and keeps what it returns.
- * A page that never touches IndexedDB pays for the names only. The object the prelude gets, `host`:
+ * IDBCursor, IDBRequest, IDBKeyRange...) are native (runtime/web_idb_prelude.c), built on their first use in place of the
+ * JavaScript that used to be fetched from the browser (native/js/lazy/idb.js, now gone); the data, the transactions'
+ * scheduling and the journal are the browser's (src/idb, reached through one import, Idb_call). Nothing of that model is
+ * in the image every realm starts from: the realm has the names of the interfaces as properties the engine makes on
+ * their first use (JS_DefineHostAutoInitProperty: a script cannot tell them from data properties) and the accessor
+ * `indexedDB`. The first use builds the model (web_idb_prelude_build) with the object below and keeps what it returns.
+ * A page that never touches IndexedDB pays for the names only. The object the model gets, `host`:
  *   call(op, bytes)        Idb_call: the reply as a Uint8Array (its first byte is the status)
  *   serialize(value)       the structured serialization of a value (runtime/clone.c) as a Uint8Array; DataCloneError
  *   deserialize(bytes)     the value back
  *   report(exception)      report an exception thrown by a handler, as an uncaught one
  *   utf8, utf8d, key, keyValue, cmp, validPath, pathKey, indexKeys, canInject, inject, execGet...: web_idb_native.c
- * and the prelude returns { classes, factory, hooks: { event, cleanup }, start }: wj_idb_event is the browser telling the
+ * and the model returns { classes, factory, hooks: { event, cleanup }, start }: wj_idb_event is the browser telling the
  * realm that its next event is ready to take with call(11); wj_idb_cleanup, that a microtask checkpoint ended and
  * transactions that were active become inactive. Windows and dedicated workers alike. */
 #include <stdlib.h>
@@ -131,52 +132,28 @@ static JSValue host_object(JSContext *ctx)
     return o;
 }
 
-/* ---- the lazy loading ---------------------------------------------------------------------------------------------- */
+/* ---- the lazy building --------------------------------------------------------------------------------------------- */
 
-/* the prelude's source from the browser (operation 14), compiled without keeping its source (its functions then stand in
- * for built-ins: toString gives "function name() { [native code] }") and run: its exports are kept */
+/* The object model (IDBFactory, IDBDatabase, ..., StorageBucket) is native (runtime/web_idb_prelude.c), built on the
+ * first use of an interface or of `indexedDB`, in place of the JavaScript the browser used to hand over (operation 14).
+ * It returns the same { classes, factory, storage, buckets, hooks: { event, cleanup }, start } the JavaScript did. */
+JSValue web_idb_prelude_build(JSContext *ctx, JSValueConst host);   /* web_idb_prelude.c */
+
 static bool load_prelude(JSContext *ctx)
 {
     if (loaded) { return true; }
     if (loading) { JS_ThrowInternalError(ctx, "IndexedDB is being loaded"); return false; }
     loading = true;
-    int32_t n = wr_Idb_call(14, NULL, 0, wj_scratch.data, wj_scratch.cap);
-    if (n > 0 && (uint32_t)n > wj_scratch.cap) {
-        if (!wj_scratch_grow((uint32_t)n)) { loading = false; JS_ThrowOutOfMemory(ctx); return false; }
-        n = wr_Idb_call(14 | 0x4000, NULL, 0, wj_scratch.data, wj_scratch.cap);
-    }
-    if (n <= 0) { loading = false; JS_ThrowInternalError(ctx, "IndexedDB: the browser has no prelude"); return false; }
-    /* (JS_Eval wants its input zero-terminated) */
-    char *src = js_malloc(ctx, (size_t)n + 1);
-    if (!src) { loading = false; JS_ThrowOutOfMemory(ctx); return false; }
-    memcpy(src, wj_scratch.data, (size_t)n);
-    src[n] = 0;
-    JSValue r = JS_Eval(ctx, src, (size_t)n, "prelude/idb.js", JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
-    js_free(ctx, src);
-    if (!JS_IsException(r)) {
-        size_t len = 0;
-        uint8_t *bc = JS_WriteObject(ctx, &len, r, JS_WRITE_OBJ_BYTECODE | JS_WRITE_OBJ_STRIP_SOURCE);
-        JS_FreeValue(ctx, r);
-        if (!bc) {
-            r = JS_EXCEPTION;
-        } else {
-            r = JS_ReadObject(ctx, bc, len, JS_READ_OBJ_BYTECODE);
-            js_free(ctx, bc);
-            if (!JS_IsException(r)) { r = JS_EvalFunction(ctx, r); }
-        }
-    }
-    if (JS_IsException(r)) { loading = false; return false; }
     JSValue host = host_object(ctx);
-    JSValue ex = JS_Call(ctx, r, JS_UNDEFINED, 1, &host);
+    JSValue ex = web_idb_prelude_build(ctx, host);
     JS_FreeValue(ctx, host);
-    JS_FreeValue(ctx, r);
     if (JS_IsException(ex)) { loading = false; return false; }
     exports_obj = ex;
     hooks = JS_GetPropertyStr(ctx, ex, "hooks");
     hooks_set = true;
     loaded = true;
     loading = false;
-    /* the realm's interfaces exist: the prelude's are linked to them */
+    /* the realm's interfaces exist: the native ones are linked to them (EventTarget, Event, DOMStringList) */
     JSValue start = JS_GetPropertyStr(ctx, ex, "start");
     JSValue sr = JS_Call(ctx, start, JS_UNDEFINED, 0, NULL);
     JS_FreeValue(ctx, start);
