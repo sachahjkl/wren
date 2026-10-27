@@ -89,6 +89,7 @@ Window_Own :: struct {
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
 	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
+	devtools:            Devtools,            // devtools.odin: the window's developer tools, docked or in a window of their own (dev())
 	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
@@ -103,8 +104,11 @@ active_window :: proc(app: ^App) -> ^Browser_Window {
 // The chrome's state of the active window.
 window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 
-// What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
-window_own_destroy :: proc(own: ^Window_Own) {
+// What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last). The
+// window is the active one (its developer tools are read as dev()).
+window_own_destroy :: proc(app: ^App, own: ^Window_Own) {
+	assert(own == window_own(app))
+	devtools_view_destroy(app)   // devtools.odin: their window closes with this one
 	page_cursor_view_destroy(&own.cursor)
 	urlbar_view_destroy(&own.urlbar)
 	find_destroy(&own.find)
@@ -348,6 +352,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	bw.ui.mono_font = active_window(app).ui.mono_font
 	ui.use(active_window(app).ui)
 	bw.frames_requested = 4
+	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)
 	append(&app.windows, bw)
 	if show && !app.headless { window_show(bw) }
 	return bw
@@ -364,7 +369,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 		t := pop(&w.tabs)
 		tab_discard(app, t)
 	}
-	window_own_destroy(&w.own)
+	window_own_destroy(app, &w.own)
 	window_deactivate(app)
 	delete(w.tabs)
 	tab_groups_destroy(&w.groups)
@@ -420,7 +425,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	for w in app.windows { if w != front { append(&pass_order, w) } }
 	for _ in pass_order { append(&pass_causes, false) }
 	order, causes := pass_order[:], pass_causes[:]
-	any_cause := devtools_window_busy()
+	any_cause := devtools_windows_busy(app)
 	wake := 0
 	for w, i in order {
 		window_activate(app, w)
@@ -431,7 +436,7 @@ windows_pass :: proc(app: ^App) -> bool {
 	}
 	idled := false
 	if !any_cause {
-		timeout := devtools_window_timeout(wake)
+		timeout := devtools_windows_timeout(app, wake)
 		if t := host.next_timeout_ms(&app.loop); t >= 0 && (timeout <= 0 || t < timeout) { timeout = max(t, 1) }
 		prof_begin(.Idle)
 		platform.wait_event(order[0].win, memcheck_wake(memory_trim_wake(timeout)))
@@ -444,11 +449,13 @@ windows_pass :: proc(app: ^App) -> bool {
 			window_activate(app, w)
 			platform.poll_events(w.win, false)
 			for tab in w.tabs { if tab.page != nil { page.set_page_visible(tab.page, false) } }
+			devtools_window_tick(app)   // (its developer tools' window, when it has one, is not minimized with it)
 			continue
 		}
 		window_activate(app, w)
 		frame(app, idled || !causes[i])
-		if front != nil && w == front { devtools_window_tick(app) }
+		window_activate(app, w)
+		devtools_window_tick(app)   // devtools_window.odin: this window's developer tools' window
 		if w.frames_requested > 0 { w.frames_requested -= 1 }
 	}
 	app.pass_first = false
@@ -531,7 +538,7 @@ tab_move :: proc(app: ^App, t: ^Tab, dest: ^Browser_Window, at := -1, devtools_f
 	dc^, _ = tab_list_put(dt, dc^, at, t, true)
 	if len(st) > 0 { ui.field_set(window_address(app, src), st[sc^].url) } else { src.closing = true }
 	ui.field_set(window_address(app, dest), t.url)
-	if devtools_follow && showing && dev.visible && dev.window == src.id { dev.window = dest.id }
+	if devtools_follow && showing { devtools_follow_tab(app, src, dest) }   // devtools.odin
 	if len(st) > 0 { tabs_fix(app, src) }
 	tabs_fix(app, dest)
 	window_request(app, src, 3)
@@ -592,7 +599,8 @@ windows_shutdown_begin :: proc(app: ^App) {
 	front := window_front(app)
 	for w in app.windows {
 		if w == front { continue }
-		window_own_destroy(&w.own)
+		window_activate(app, w)
+		window_own_destroy(app, &w.own)
 	}
 	window_activate(app, front)
 	sync.atomic_store(&wake_target, 0)

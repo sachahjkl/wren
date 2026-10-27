@@ -29,6 +29,7 @@ Net_Media :: struct {
 	id:       u64,
 	err:      string,           // owned
 	seen:     bool,             // the preview was built this frame
+	owner:    ^Devtools,        // the developer tools (of a window: Window_Own.devtools) whose preview it is
 	// the player
 	vs, as:   ^media.Track_Store,
 	player:   ^media.Player,
@@ -315,13 +316,16 @@ video_stage_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	m := &net_media
-	if m.mode == .None && m.id != e.id {
-		net_media_release()
-		net_media_open(app, e)
-	} else if m.id != e.id {
+	if m.mode != .None && m.owner != nil && m.owner != dev() {
+		// (one media at a time: another window's developer tools play theirs)
+		dt_empty("###dt_pm_err", .File_Media, "Playing in another window", "The developer tools of another window are playing a media; one plays at a time.")
+		return
+	}
+	if m.id != e.id || m.owner != dev() {
 		net_media_release()
 		net_media_open(app, e)
 	}
+	m.owner = dev()
 	m.seen = true
 	if m.mode == .None {
 		dt_empty("###dt_pm_err", .File_Media, "No player for this media", m.err != "" ? m.err : "Press the request's address in a tab to play it.")
@@ -371,7 +375,7 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 // Called every frame by devtools_panel after its tabs: a media whose preview was not built is closed (the tab was changed,
 // the request is no longer chosen).
 net_media_frame_end :: proc() {
-	if net_media.mode == .None { return }
+	if net_media.mode == .None || net_media.owner != dev() { return }   // (another window's panel builds its own frames)
 	if !net_media.seen { net_media_release() }
 	net_media.seen = false
 }

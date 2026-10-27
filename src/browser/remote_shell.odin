@@ -20,8 +20,10 @@ package browser
 import "core:encoding/json"
 import "core:fmt"
 import "core:os"
+import "core:slice"
 import "core:strings"
 import "toolkit:platform"
+import "toolkit:render"
 import "wb:base"
 import "wb:desktop"
 import "wb:fetch"
@@ -40,6 +42,7 @@ Remote_Op :: struct {
 	conn:     u64,
 	id:       string,     // the request's id as JSON text (owned)
 	tab:      u64,
+	window:   int,        // the window the call was about (remote_dispatch): active while the op is looked at (gone: the front one)
 	deadline: i64,        // loop clock, ns
 	what:     string,     // for the timeout message (owned)
 	result:   string,     // JSON merged into the answer of a wait that follows a navigation (owned)
@@ -77,6 +80,7 @@ Remote_Op :: struct {
 	t0:       i64,
 	speed:    f64,
 	scrolled: bool,       // Capture of an element: it was scrolled into view
+	asked:    bool,       // Capture: the frame to copy was asked for (Remote.capture_window)
 	snapshot: string,     // Capture: also write <snapshot>.html and .json (owned)
 }
 
@@ -108,6 +112,17 @@ Remote :: struct {
 	queued:     [dynamic]Remote_Queued,   // requests that came while a page held the thread (a chrome frame ran): taken after the frame
 	baseline:   ^Checkpoint,              // what `reset` returns to (remote_state.odin)
 	checkpoints: map[string]^Checkpoint,  // the named ones (keys are the checkpoints' own names)
+	capture_window: int,                  // a capture waits for this window's next frame (0: none): remote_capture_arm
+	capture_rect:   [4]int,
+}
+
+// Before a frame of the active window ends (main.odin frame, shell_frames.odin): the capture a remote call waits for is asked of
+// the renderer when this is the window it is about (the renderer copies the next frame it ends, whichever window's).
+remote_capture_arm :: proc(app: ^App) {
+	r := &the_remote
+	if r.capture_window == 0 || r.capture_window != active_window(app).id { return }
+	r.capture_window = 0
+	_ = render.capture_request(&app.r, r.capture_rect)
 }
 
 Remote_Queued :: struct {
@@ -285,6 +300,7 @@ op_new :: proc(app: ^App, c: ^Call, kind: Remote_Op_Kind, timeout_ms: int, what:
 	op.conn = c.conn
 	op.id = strings.clone(c.id)
 	op.what = strings.clone(what)
+	op.window = active_window(app).id
 	ms := timeout_ms > 0 ? timeout_ms : the_remote.cfg.timeout_ms
 	op.deadline = host.now_ns(&app.loop) + i64(ms) * 1_000_000
 	append(&the_remote.ops, op)
@@ -562,6 +578,10 @@ op_tab :: proc(app: ^App, id: u64) -> ^Tab {
 @(private = "file")
 op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	r := &the_remote
+	// the op's window is the active one while it is looked at (its frames, its page area, its capture), then the one that was
+	prev := app.active
+	if w := window_by_id(app, op.window); w != nil { window_activate(app, w) }
+	defer if prev != nil && prev != app.active && slice.contains(app.windows[:], prev) { window_activate(app, prev) }
 	t := op_tab(app, op.tab)
 	if t == nil && op.kind != .Eval && op.kind != .Frames && op.kind != .Replay && op.kind != .Drag {
 		op_finish(op, fail(remote.ERR_FAILED, "the tab was closed"))

@@ -37,7 +37,7 @@ Dev_Application :: struct {
 }
 
 application_destroy :: proc() {
-	a := &dev.app
+	a := &dev().app
 	dt_list_destroy(&a.list)
 	dt_list_destroy(&a.value_list)
 	dt_filter_destroy(&a.filter)
@@ -103,7 +103,7 @@ count_of :: proc(app: ^App, t: ^Tab, a: App_Area) -> int {
 Side_Draw :: struct { label, count: string, on, hot: bool, icon: Dt_Icon }
 
 application_panel :: proc(app: ^App, t: ^Tab) {
-	a := &dev.app
+	a := &dev().app
 	if t.page == nil || t.page.closed {
 		dt_empty("###dt_app_none", .Tab_Application, "No page", "Storage of a web page appears here.")
 		return
@@ -142,7 +142,7 @@ application_panel :: proc(app: ^App, t: ^Tab) {
 			ui.next({width = ui.fill(), height = ui.px(dtm.row + dt_px(2))})
 			ui.custom("###dt_app_h2", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 				dt_text(dc, dtm.ui_font, dtm.fs * 0.92, b.rect.min.x + dt_px(10), (b.rect.min.y + b.rect.max.y) * 0.5 + dt_px(2), dtc.weak, "THIS ORIGIN")
-				host := dev.app.menu_dom
+				host := dev().app.menu_dom
 				_ = host
 			}, nil)
 			ui.next({width = ui.fill(), height = ui.px(dtm.row * 3)})

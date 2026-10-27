@@ -56,7 +56,8 @@ devtools.odin DEV_DOCK_TITLES process  # a table
 devtools.odin DEV_DOCK_COMMANDS process  # a table
 devtools.odin DEV_DOCK_ICONS process  # a table
 devtools.odin DEVTOOLS_PREFS process  # a table
-devtools.odin dev page  # the developer tools' state (the tab they show, the docking)
+devtools.odin dev_none test  # the developer tools of an App that is not the_app (a unit test's); a window's are Window_Own.devtools
+devtools.odin dev_watch process  # preferences read once and on change
 devtools_console_log.odin CONSOLE_PREFS process  # a table
 devtools_console_log.odin con_prefs process  # preferences read once and on change
 devtools_elements.odin VOID_ELEMENTS process  # a table
@@ -85,8 +86,6 @@ devtools_styles.odin SIDE_TABS process  # a table
 devtools_styles.odin SIDE_PREFS process  # a table
 devtools_syntax.odin JS_KEYWORDS process  # a table
 devtools_syntax.odin JS_ATOMS process  # a table
-devtools_window.odin dev_win process  # the developer tools' own window (one per process, whichever browser window it inspects)
-devtools_window.odin dev_want process
 dnd_image.odin DND_IMAGE_PREFS process  # a table
 dnd_image.odin dimg page  # the picture of the page's drag
 dnd_image.odin dnd_last_picture page  # the picture of the page's drag

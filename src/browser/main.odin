@@ -936,7 +936,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
-		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
+		if dev().picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, wnd.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
@@ -1236,6 +1236,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Submit)
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
+	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)

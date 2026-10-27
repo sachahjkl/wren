@@ -20,6 +20,31 @@ console_lines_carry_their_level :: proc(t: ^testing.T) {
 	testing.expect_value(t, text, "> 1 + 1")
 }
 
+// Each window has its own developer tools: those showing a tab that moves go with it to a window that has none open; when the
+// window it goes to has its own open, each keeps its own.
+@(test)
+devtools_go_with_their_tab_to_a_window_without_them :: proc(t: ^testing.T) {
+	app := new(App)
+	defer free(app)
+	a, b := new(Browser_Window), new(Browser_Window)
+	defer { free(a); free(b) }
+	a.id, b.id = 1, 2
+	a.own.devtools.visible, a.own.devtools.panel, a.own.devtools.dock = true, .Network, .Right
+	devtools_follow_tab(app, a, b)
+	testing.expect(t, b.own.devtools.visible && b.own.devtools.panel == .Network && b.own.devtools.dock == .Right, "they went with the tab")
+	testing.expect(t, !a.own.devtools.visible, "the window it left has none open")
+	testing.expect_value(t, b.frames_requested, 3)
+
+	a.own.devtools.visible, a.own.devtools.panel = true, .Console
+	devtools_follow_tab(app, a, b)
+	testing.expect(t, a.own.devtools.visible && a.own.devtools.panel == .Console, "both open: each keeps its own")
+	testing.expect(t, b.own.devtools.visible && b.own.devtools.panel == .Network, "both open: each keeps its own")
+
+	b.own.devtools.visible = false
+	devtools_follow_tab(app, b, a)   // (closed ones go nowhere)
+	testing.expect(t, a.own.devtools.panel == .Console && a.own.devtools.visible, "closed developer tools do not move")
+}
+
 @(test)
 console_line_numbers_do_not_move_when_old_lines_go :: proc(t: ^testing.T) {
 	tab := Tab{console_added = 10}

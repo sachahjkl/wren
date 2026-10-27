@@ -392,6 +392,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	ui.draw_tree(wnd.ui, &app.dc)
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
+	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
 	pacer_end_frame(app)

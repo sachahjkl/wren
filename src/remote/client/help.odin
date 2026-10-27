@@ -44,7 +44,7 @@ HELP := [?]Help_Entry{
 	{"window", "window [--size WxH] [--pos x,y] [--state normal|minimized|maximized|fullscreen]", "Reads or changes the window (size is the client area in pixels)."},
 	{"cmds", "cmds [filter]", "The browser's commands (the registry the menu, the palette and the shortcuts use), with their shortcuts."},
 	{"cmd", "cmd <name>", "Runs any of those commands: tab.new, devtools.toggle, zoom.in... as the interface would."},
-	{"devtools", "devtools [console|elements|network|none] [--dock bottom|right|floating]", "Opens the developer tools."},
+	{"devtools", "devtools [console|elements|network|none] [--dock bottom|right|left|floating|window]", "Opens the developer tools of the window (each window has its own; window: in a window of their own)."},
 	{"setup", "setup", "Opens the Setup dialog."},
 	{"html", "html [selector]", "The document's (or an element's) outer HTML."},
 	{"query", "query <selector> [--limit n]", "The elements a selector matches (count, markup, box)."},

@@ -167,8 +167,9 @@ network_apply_prefs :: proc(p: ^config.Prefs) {
 // The loader passes on pieces of bodies only while the panel is open and keeps are allowed.
 network_sync_observer :: proc() {
 	if the_app != nil {
-		the_app.loader.observer.body_limit = dev.visible && net_prefs.max_body > 0 ? net_prefs.max_body : 0
-		the_app.loader.observer.no_cache = dev.visible && net_prefs.disable_cache
+		shown := devtools_any_visible(the_app)
+		the_app.loader.observer.body_limit = shown && net_prefs.max_body > 0 ? net_prefs.max_body : 0
+		the_app.loader.observer.no_cache = shown && net_prefs.disable_cache
 	}
 }
 
@@ -387,7 +388,9 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 	}
 	// whatever the event was, the rows of that tab are made again, and a frame shows it
 	if touched != nil { touched.net.version += 1 }
-	if (dev.visible && (dev.panel == .Network || dev.panel == .Performance)) || (touched != nil && touched == current_tab(app)) { request_frames(app, 2) }
+	if touched != nil && touched == current_tab(app) { request_frames(app, 2) }
+	devtools_request_showing(app, touched, .Network)
+	devtools_request_showing(app, nil, .Performance)
 }
 
 // A message of a socket, or an event of a stream, into the entry's list.
