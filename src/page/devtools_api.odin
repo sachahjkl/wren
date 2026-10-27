@@ -202,20 +202,25 @@ dev_console_complete :: proc(p: ^Page, path: string) {
 // Forced element states
 
 // What the developer tools force on one element: it matches :hover (and so do its ancestors, as with a real pointer), :active,
-// :focus (and :focus-visible) or :visited whatever the pointer, the focus and the history say.
+// :focus (and :focus-visible), :focus-within (the element and its ancestors, as the browser's own :hov checkboxes do) or
+// :visited whatever the pointer, the focus and the history say.
 Forced_State :: struct {
-	el:                            base.Handle,
-	hover, active, focus, visited: bool,
+	el:                                          base.Handle,
+	hover, active, focus, focus_within, visited: bool,
 }
 
 // The state the styles are computed from: the shell's own (pointer, focus, fragment) with the forced states over it.
 effective_state :: proc(p: ^Page) -> style.State {
 	s := p.style_state
 	f := p.forced
+	// :focus-within normally follows the focused element; while nothing forces it, mirror the shell's focus so the match is
+	// unchanged. A forced :focus-within then overrides just this, without touching :focus / :focus-visible.
+	s.focus_within = s.focus
 	if f.el == base.NIL_HANDLE || dom.get(p.doc, f.el) == nil { return s }
 	if f.hover { s.hover = f.el }
 	if f.active { s.active = f.el }
-	if f.focus { s.focus, s.focus_visible = f.el, true }
+	if f.focus { s.focus, s.focus_visible, s.focus_within = f.el, true, f.el }
+	if f.focus_within { s.focus_within = f.el }
 	if f.visited { s.visited = f.el }
 	return s
 }
@@ -223,10 +228,12 @@ effective_state :: proc(p: ^Page) -> style.State {
 dev_forced :: proc(p: ^Page) -> Forced_State { return p == nil ? {} : p.forced }
 
 // Forces (or stops forcing) the states of `el`; the element that had some loses them. Restyled by the next styles pass.
-dev_force_state :: proc(p: ^Page, el: base.Handle, hover, active, focus, visited: bool) {
+dev_force_state :: proc(p: ^Page, el: base.Handle, hover, active, focus, focus_within, visited: bool) {
 	if p == nil || p.closed { return }
 	p.forced = {}
-	if hover || active || focus || visited { p.forced = Forced_State{el = el, hover = hover, active = active, focus = focus, visited = visited} }
+	if hover || active || focus || focus_within || visited {
+		p.forced = Forced_State{el = el, hover = hover, active = active, focus = focus, focus_within = focus_within, visited = visited}
+	}
 }
 
 // The objects of console messages (kept by the realm under the id their description carries): stored under a global name
