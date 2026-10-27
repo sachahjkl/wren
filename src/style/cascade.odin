@@ -123,7 +123,7 @@ Style_Change :: struct {
 styled_destroy :: proc(s: ^Styled) {
 	if s == nil { return }
 	delete(s.by_node)
-	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
+	for a in s.thread_arenas { virtual.arena_destroy(a); free(a, base.process_allocator()) }   // (made on style threads: thread_arena_make)
 	delete(s.thread_arenas)
 	delete(s.overlaid)
 	delete(s.changes)
@@ -155,7 +155,7 @@ styled_recycle :: proc(e: ^Engine, s: ^Styled) {
 	delete(s.scheme_metas)
 	inline_cache_destroy(s)
 	journal_destroy(s)
-	for a in s.thread_arenas { virtual.arena_destroy(a); free(a) }
+	for a in s.thread_arenas { virtual.arena_destroy(a); free(a, base.process_allocator()) }
 	delete(s.thread_arenas)
 	virtual.arena_free_all(&s.arena)
 	e.spare = s.arena
@@ -354,6 +354,7 @@ Pass :: struct {
 	ctx_cache: map[base.Handle]Elem_Ctx,
 	host_ctx:  map[base.Handle]Elem_Ctx,
 	fs_chain:  map[base.Handle]struct{},   // the ancestors of the fullscreen element (host-including), when there is one
+	made_with: runtime.Allocator,          // what allocated the Pass: a style thread's (the process heap), freed by the caller
 }
 
 @(private)
@@ -795,6 +796,7 @@ compute_element :: proc(p: ^Pass, h: base.Handle, n: ^dom.Node, parent: ^Compute
 @(private)
 pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^Pass {
 	p := new(Pass)
+	p.made_with = context.allocator
 	p.e, p.s, p.opt = e, s, parse_options(&e.settings)
 	p.alloc = s.alloc
 	match_ctx_init(&p.mc, doc, state)
@@ -826,7 +828,7 @@ pass_destroy :: proc(p: ^Pass) {
 	delete(p.cust_map); delete(p.res_map); delete(p.state_map)
 	for i in 0 ..< 4 { delete(p.lists[i]) }
 	virtual.arena_destroy(&p.scratch)
-	free(p)
+	free(p, p.made_with)
 }
 
 // Styles `root` and everything below it. `parent` is the computed style of root's parent (nil for the document element);

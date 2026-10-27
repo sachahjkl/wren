@@ -1118,8 +1118,7 @@ run_deferred :: proc(w: ^Walker, pool: ^host.Thread_Pool) {
 	host.parallel_for(pool, count, proc(data: rawptr, i: int) {
 		job := (^Par_Tasks)(data)
 		t := &job.tasks[i]
-		t.arena = new(virtual.Arena)
-		_ = virtual.arena_init_growing(t.arena)
+		t.arena = thread_arena_make()
 		t.w.p = pass_make(t.w.e, t.w.s, t.w.doc, t.w.s.state)
 		t.w.p.alloc = virtual.arena_allocator(t.arena)
 		t.w.arena = t.arena
