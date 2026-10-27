@@ -236,6 +236,9 @@ Computed :: struct {
 	font_variant_numeric:    Font_Variant_Numeric,
 	font_variant_east_asian: Font_Variant_East_Asian,
 	font_variant_position:   Font_Variant_Position,
+	font_optical_sizing:     Font_Optical_Sizing,     // `opsz` axis follows font-size (CSS Fonts 4 §11.5)
+	text_rendering:          Text_Rendering,          // optimizeSpeed turns off kerning and optional ligatures
+	content_language:        string,                  // `lang` / `xml:lang` of the element (inherited), for `locl`; "" none
 	unicode_bidi:            Unicode_Bidi,
 	// --- backgrounds: every layer (the singular fields above are the first layer). See `background_layers`. ---
 	background_images:      []Image,
@@ -350,7 +353,7 @@ Prop :: enum u8 {
 	Text_Transform, Text_Indent, Text_Overflow, White_Space_Collapse, Text_Wrap_Mode, Text_Wrap_Style, Word_Break,
 	Overflow_Wrap, Hyphens, Tab_Size, Direction, Text_Shadow,
 	Font_Feature_Settings, Font_Variation_Settings, Font_Kerning, Font_Variant_Ligatures, Font_Variant_Numeric,
-	Font_Variant_East_Asian, Font_Variant_Position, Unicode_Bidi,
+	Font_Variant_East_Asian, Font_Variant_Position, Font_Optical_Sizing, Text_Rendering, Unicode_Bidi,
 	Display, Position, Float, Clear, Top, Right, Bottom, Left, Z_Index, Box_Sizing,
 	Width, Height, Min_Width, Min_Height, Max_Width, Max_Height,
 	Margin_Top, Margin_Right, Margin_Bottom, Margin_Left,
@@ -396,7 +399,7 @@ INHERITED_PROPS :: [?]Prop{
 	.Visibility, .List_Style_Type, .List_Style_Position, .Cursor, .Pointer_Events, .Border_Collapse, .Border_Spacing,
 	.Quotes, .Caret_Color, .Accent_Color, .Scrollbar_Color,
 	.Font_Feature_Settings, .Font_Variation_Settings, .Font_Kerning, .Font_Variant_Ligatures, .Font_Variant_Numeric,
-	.Font_Variant_East_Asian, .Font_Variant_Position, .Text_Fill_Color,
+	.Font_Variant_East_Asian, .Font_Variant_Position, .Font_Optical_Sizing, .Text_Rendering, .Text_Fill_Color,
 	.Fill, .Stroke, .Stroke_Width, .Stroke_Linecap, .Stroke_Linejoin,
 }
 
