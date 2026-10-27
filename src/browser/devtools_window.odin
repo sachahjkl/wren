@@ -245,10 +245,13 @@ devtools_window_frame :: proc(app: ^App) {
 	// the main window with it, for a refresh at every step
 	resizing := w.size != dw.size_seen && active_window(app).presented   // (a Resize_Step of the cadence model: platform/pacing.odin)
 	dw.size_seen = w.size
-	pacer_latency(app, &dw.latency, resizing)   // (pacing.odin: two frames may queue during a resize step, as for the main window)
+	// so is a drag inside it (one of its splitters) on a variable refresh screen, as a Drag of the model is: its refresh would
+	// wait at the rate the screen rests at (its frames are paced by the browser window's)
+	at_once := resizing || (ui.active_key() != 0 && pacer_of(app).cadence.variable)
+	pacer_latency(app, &dw.latency, at_once)   // (pacing.odin: two frames may queue when shown at once, as for the main window)
 	present_start := qpc()
 	platform.frame_gate_stage(gate, .Presenting)
-	render.frame_end(&app.r, !resizing)
+	render.frame_end(&app.r, !at_once)
 	prof_window_frame(frame_start, present_start)   // prof.odin: the window's frames of a profile run
 	ui.use(active_window(app).ui)
 }

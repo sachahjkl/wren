@@ -192,7 +192,7 @@ pacer_update :: proc(app: ^App) {
 	pacer.tearing = app.pacing.cfg.mode == .Tearing && render.tearing_supported(&app.r)
 	plan := platform.cadence_plan(d, pacer_choices(app.pacing.cfg, pacer.tearing))
 	pacer.variable, pacer.hz, pacer.period_ms, pacer.interval, pacer.timed = plan.variable, plan.hz, plan.period_ms, plan.interval, plan.timed
-	pacer.cadence.slots = plan.slots
+	platform.cadence_adopt(&pacer.cadence, plan)   // (its slots, and a variable screen: a drag is shown at once there)
 	render.set_present_mode(&app.r, pacer.tearing ? .Tearing : .Vsync)
 	render.set_sync_interval(&app.r, pacer.interval)
 	// missed refreshes of timed frames (a variable screen has no fixed refresh to miss)
@@ -242,7 +242,8 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 	return true
 }
 
-// Present without waiting for a refresh: the resize step, a frame of the burst after it, the frame that answers input.
+// Present without waiting for a refresh: the resize step, a frame of the burst after it, the frame that answers input, a
+// drag's frame on a variable refresh screen.
 pacer_at_once :: proc(app: ^App) -> bool { return platform.cadence_at_once(&pacer_of(app).cadence) }
 
 // The frame is a step of a resize: made at once, whatever the screen and the cadence (chrome frames too).
@@ -284,7 +285,8 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 		now_ns = time.tick_now()._nsec, idled = idled,
 		// (the user's input, not other threads' wake-ups: shell_user_input_pending)
 		input = shell_user_input_pending(), presented = wnd.presented, resized = resized,
-		// a splitter, the sidebar's handle, a tab: paced one frame per slot, never as a resize step
+		// a splitter, the sidebar's handle, a tab: paced one frame per slot, never as a resize step (and shown at once on a
+		// variable refresh screen, whose refresh waits at the rate it rests at)
 		dragging = ui.active_key() != 0 || tab_dragging(),
 		slot_held = pacer.slot_held,
 	})

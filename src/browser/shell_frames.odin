@@ -394,7 +394,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	platform.frame_gate_stage(gate, .Presenting)
 	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
-	frame_log_presented()
+	frame_log_presented(pacer_at_once(app))
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too

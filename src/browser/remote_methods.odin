@@ -1333,7 +1333,8 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "workingSetBytes", i64(n.working_set)); j_int(&b, "privateBytes", i64(n.private_bytes))
 	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(wnd.frames_requested))
 	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
-	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
+	// (framesAtOnce: of them, presented without waiting for a refresh: a resize, an answer to input, a drag on a variable screen)
+	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "framesAtOnce", i64(frame_log.at_once)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
 	j_int(&b, "paintFrames", i64(loops.paint_frames)); j_int(&b, "modalLoops", i64(loops.modal_loops)); j_int(&b, "ignoredSizeMoves", i64(loops.ignored_size_moves))
 	// the frames of the thread through the frame gate (windows.odin): admitted, of which inside another, asked for where none
