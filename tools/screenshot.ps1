@@ -95,6 +95,13 @@ $args2 = @($Extra | Where-Object { $_ }) + $(if ($Url) { @($Url) } else { @() })
 $exePath = if ($Exe) { $Exe } else { Join-Path $root 'build\wren.exe' }
 . (Join-Path $PSScriptRoot 'test_env.ps1')
 $desktop = Enter-WrenLock desktop "screenshot.ps1 $Url" $LockTimeoutSec
+# a throwaway profile, never the user's (their theme, chrome style, tabs and settings would be in the picture): the default look, nothing
+# restored, and a Wren of its own, not handed to the one that may be running (-Extra "--profile","dir" keeps a profile of one's own)
+$tmpProfile = $null
+if ($args2 -notcontains '--profile') {
+    $tmpProfile = Join-Path ([IO.Path]::GetTempPath()) ('wren-shot-' + [Guid]::NewGuid().ToString('N').Substring(0, 8))
+    $args2 = @('--profile', $tmpProfile, '--no-single-instance', '--pref', 'blocker.update.enabled=false', '--pref', 'blocker.welcome_toast=false') + $args2
+}
 $p = $null
 try {
     $p = if ($args2.Count) { Start-Process $exePath -ArgumentList $args2 -PassThru } else { Start-Process $exePath -PassThru }
@@ -289,5 +296,9 @@ try {
         Start-Sleep -Milliseconds $SettleMs
         Grab $h $(if ($Out2) { $Out2 } else { $Out -replace '\.png$', '_after.png' })
     }
-} finally { if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }; Exit-WrenLock $desktop }
+} finally {
+    if ($p -and -not $p.HasExited) { $p.Kill(); $p.WaitForExit(5000) | Out-Null }
+    if ($tmpProfile) { Remove-Item -Recurse -Force $tmpProfile -ErrorAction SilentlyContinue }
+    Exit-WrenLock $desktop
+}
 if ($null -ne $script:quitCode) { exit $script:quitCode }
