@@ -41,3 +41,8 @@ css/cssom only=.
 html/semantics/embedded-content/media-elements only=.,crashtests,error-codes,interfaces,loading-the-media-resource,location-of-the-media-resource,media-playback-while-not-visible-permission-policy,mime-types,offsets-into-the-media-resource,playing-the-media-resource,ready-states,seeking,user-interface
 media-source
 IndexedDB
+paint-timing
+largest-contentful-paint
+layout-instability
+element-timing
+performance-timeline
