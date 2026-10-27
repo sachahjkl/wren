@@ -49,7 +49,7 @@ http_cache_clear :: proc(app: ^App) {
 	if app.profile.cache == nil { return }
 	httpcache.clear_all(app.profile.cache)
 	if t := current_tab(app); t != nil { set_status(t, "the HTTP cache was cleared") }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The cache mode of a history traversal (back, forward): a stale document is shown as it was, without asking.
@@ -272,7 +272,7 @@ show_cache_page :: proc(app: ^App, t: ^Tab, target: string, acts: bool) {
 			for tab in tabs_all(the_app) {
 				if tab.id == id && is_cache_address(tab.url) { show_cache_page(the_app, tab, strings.clone(tab.url, context.temp_allocator), false); break }
 			}
-			the_app.frames_requested = max(the_app.frames_requested, 2)
+			request_frames(the_app, 2)
 		}, rawptr(uintptr(t.id)))
 	}
 	delete(t.url); t.url = strings.clone(shown)

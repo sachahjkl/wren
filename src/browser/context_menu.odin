@@ -71,7 +71,7 @@ request :: proc(app: ^App, r: Context_Request) {
 	request_free(&cm.req)
 	cm.req = r
 	cm.pending = true
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -247,7 +247,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Delete", "Del", enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
 		ui.menu_separator()
 		if ui.menu_item("Select all", "Ctrl+A", enabled = forms.edit_text(f, h) != "").clicked { forms.select_all(f, h) }
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if r.link != "" {
 		sep(&groups)
@@ -549,7 +549,7 @@ save_dialog_done :: proc(data: rawptr) {
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
 			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
-			j.app.frames_requested = max(j.app.frames_requested, 3)
+			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
 		return
@@ -576,14 +576,14 @@ save_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
 			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
-			j.app.frames_requested = max(j.app.frames_requested, 3)
+			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
 	case .Failed:
 		ui.toast(.Bad, "Download failed: %s", ev.detail)
 		save_job_free(job)
 	}
-	the_app.frames_requested = max(the_app.frames_requested, 3)
+	request_frames(the_app, 3)
 }
 
 @(private = "file")

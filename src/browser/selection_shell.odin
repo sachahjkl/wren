@@ -64,7 +64,7 @@ interaction_init :: proc(app: ^App) {
 	ix_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		interaction_settings_destroy(&ix)
 		ix = interaction_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 }
 
@@ -295,7 +295,7 @@ selection_shell_frame :: proc(app: ^App) {
 	// keep selecting under the pointer, clamped into the view (what is scrolled in gets selected)
 	inside := [2]f32{clamp(m.x, port.min.x + 1, port.max.x - 1), clamp(m.y, port.min.y + 1, port.max.y - 1)}
 	extend_to(app, t, inside)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	_ = moved
 }
 

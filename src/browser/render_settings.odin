@@ -72,7 +72,7 @@ render_settings_init :: proc(app: ^App) {
 	render_watch = config.watch(&app.prefs, "render.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		a := (^App)(user)
 		render_settings_apply(a, render_settings_from_prefs(p))
-		a.frames_requested = max(a.frames_requested, 2)
+		request_frames(a, 2)
 	}, app)
 }
 

@@ -96,5 +96,5 @@ dialog_done :: proc(data: rawptr) {
 			dash_add_filter(app, strings.trim_space(string(data)))
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }

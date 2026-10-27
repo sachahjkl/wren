@@ -657,7 +657,7 @@ palette_show :: proc(app: ^App, text := "") {
 	cpal.focus_pending = true
 	cpal.opened = time.tick_now()
 	cpal.last_mouse = ui.mouse_pos()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Closes it; the keyboard goes back to what had it (when that is still there).
@@ -668,7 +668,7 @@ palette_close :: proc(app: ^App) {
 	ui.set_focus(k != 0 && ui.box_from_key(k) != nil ? k : 0)
 	clear(&cpal.rows)
 	cpal.cache_valid = false
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
@@ -897,7 +897,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		palette_close(app)
 		if src.activate != nil { src.activate(src.user, app, key, new_tab) }
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -945,7 +945,7 @@ palette_build :: proc(app: ^App) {
 	k: f32 = 1
 	if cpal.cfg.open_ms > 0 && os_animations_enabled(app) {
 		k = f32(clamp(time.duration_milliseconds(time.tick_since(cpal.opened)) / cpal.cfg.open_ms, 0, 1))
-		if k < 1 { app.frames_requested = max(app.frames_requested, 2) }
+		if k < 1 { request_frames(app, 2) }
 	}
 	ease := 1 - (1 - k) * (1 - k) * (1 - k)
 

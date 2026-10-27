@@ -212,7 +212,7 @@ pacer_init :: proc(app: ^App) {
 		pacer.cfg = pacer_settings_from_prefs(p)
 		render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
 		pacer.display.serial = 0   // plan again
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, app)
 	pacer_update(app)
 }
@@ -322,7 +322,7 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 		}
 		return false
 	}
-	app.frames_requested = 0
+	active_window(app).frames_requested = 0
 	platform.take_paint_request(app.win)
 	pacer.echoes_skipped += 1
 	return true
@@ -398,7 +398,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	if active_window(app).presented && !pacer.slot_held && !pacer.input_frame {   // (the timer's wait above takes messages)
 		ok := platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
-		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), app.frames_requested) }
+		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), active_window(app).frames_requested) }
 	}
 }
 

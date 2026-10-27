@@ -94,7 +94,7 @@ video_shell_after_paint :: proc(app: ^App) {
 			a := (^App)(data)
 			// exactly the frame this picture needs: the timer is the one that asked, the loop does not add its own two
 			host.quiet_note(&a.loop)
-			a.frames_requested = max(a.frames_requested, 1)
+			request_frames(a, 1)
 		}, app)
 	}
 	for k, t in vshell.targets {

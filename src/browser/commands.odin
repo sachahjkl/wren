@@ -79,7 +79,7 @@ command_run :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 	// during a chrome frame (shell_frames.odin) once the page holding the thread is done
 	if shell_nested() { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
 	c.run(app, t, c)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 
@@ -414,7 +414,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bl.started && bl.b.cfg.enabled }
 	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && bl.started }
 	add(r, {name = "blocker.panel", title = i18n.tr("Blocker: open the panel"), category = "Blocker", keywords = "ads adblock shield tracker matrix",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).blocker_panel_request = true; app.frames_requested = max(app.frames_requested, 3) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).blocker_panel_request = true; request_frames(app, 3) }})
 	add(r, {name = "blocker.picker", title = i18n.tr("Blocker: block an element\u2026"), category = "Blocker", keywords = "ads element picker zapper hide",
 		keys = keys(&r.arena, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
 	add(r, {name = "blocker.dashboard", title = i18n.tr("Blocker: dashboard"), category = "Blocker", keywords = "lists filters rules whitelist statistics", url = "about:blocker",

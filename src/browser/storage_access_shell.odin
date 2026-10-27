@@ -32,7 +32,7 @@ storage_access_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Storage
 	case "cancel": page.storage_access_done(req, false)
 	case: page.storage_access_done(req, true)
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The prompt over the page (the first request waiting), each frame while one waits.
@@ -58,6 +58,6 @@ storage_access_shell_build :: proc(app: ^App) {
 	if answered {
 		ordered_remove(&sa_queue, 0)
 		page.storage_access_done(req, granted)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 }

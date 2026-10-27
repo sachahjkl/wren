@@ -135,7 +135,7 @@ restore_begin :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry, kind: Restore_
 	clear(&r.done)
 	for _ in e.persisted.containers { append(&r.done, e.scroll_manual) }
 	restore_arm(app, t, hcfg.restore_max_ms)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 restore_stop :: proc(app: ^App, t: ^Tab) {
@@ -151,7 +151,7 @@ restore_arm :: proc(app: ^App, t: ^Tab, ms: f64) {
 	r.timer = host.set_timer(&app.loop, max(ms, 1), 0, proc(data: rawptr) {
 		t := (^Tab)(data)
 		t.nav_state.restore.timer = base.NIL_HANDLE
-		the_app.frames_requested = max(the_app.frames_requested, 2)
+		request_frames(the_app, 2)
 	}, t, t.scope)
 }
 

@@ -322,7 +322,7 @@ driver_parse :: proc(lines: []string, i: ^int, times: int) {
 driver_step :: proc(app: ^App) {
 	if !driver.started { driver_start() }
 	if !driver.active { return }
-	if !driver.idling { app.frames_requested = max(app.frames_requested, 1) }   // the loop keeps turning while the script runs
+	if !driver.idling { request_frames(app, 1) }   // the loop keeps turning while the script runs
 	for driver.next < len(driver.steps) {
 		s := &driver.steps[driver.next]
 		t := current_tab(app)

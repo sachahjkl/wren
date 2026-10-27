@@ -172,7 +172,7 @@ chrome_open :: proc(app: ^App, address: string, pos: [2]f32) {
 	} else {
 		tab_open(app, address, origin = .User)
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private = "file")
@@ -297,7 +297,7 @@ hand_off :: proc(app: ^App, t: ^Tab) {
 	dnd.sync_tab = nil
 	if t.page != p { dnd.src_page = nil }
 	end_page_drag(op_of(effect))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The window's drop target while the system's drag of a page's drag runs (hand_off): the drag came back over the
@@ -382,7 +382,7 @@ set_caret :: proc(app: ^App, p: ^page.Page, c: Maybe(page.Drop_Caret)) {
 		if had && old.field && dom.get(p.doc, old.node) != nil { forms.changed(f, old.node) }
 		if has && now.field { forms.changed(f, now.node) }
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The drop caret in text field `node` (forms_shell.odin paints it), when text is dragged over it.
@@ -440,7 +440,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			// few frames at most: dnd_events)
 			if dnd_image_waiting() && dnd.handoff_frames < HANDOFF_WAIT_FRAMES {
 				dnd.handoff_pending = true
-				app.frames_requested = max(app.frames_requested, 2)
+				request_frames(app, 2)
 				return true
 			}
 			dnd.handoff_pending = false
@@ -462,7 +462,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			pl, _ := page.drag_session_payload(p)
 			dnd.op = pl.url != "" ? .Link : .None
 		}
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		return true
 	case .Mouse_Leave:
 		hand_off(app, t)
@@ -479,7 +479,7 @@ dnd_route :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		}
 		if t.page != p { dnd.src_page = nil }
 		end_page_drag(op)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		return true
 	case .Key_Press:
 		if ev.key == .Escape {
@@ -505,7 +505,7 @@ dnd_events :: proc(app: ^App, events: []platform.Event) {
 		dnd.handoff_frames += 1
 		if t := current_tab(app); t != nil && dnd.active && t.page == dnd.src_page {
 			if !dnd_image_waiting() || dnd.handoff_frames >= HANDOFF_WAIT_FRAMES { dnd.handoff_pending = false; hand_off(app, t) }
-			else { app.frames_requested = max(app.frames_requested, 2) }
+			else { request_frames(app, 2) }
 		} else {
 			dnd.handoff_pending = false
 		}
@@ -573,7 +573,7 @@ dnd_external :: proc(app: ^App, ev: platform.Event) {
 		end_external()
 		if !handled { default_drop(app, data, ev.pos, over_page) }
 		platform.drop_data_release(app.win)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 }
 
@@ -602,6 +602,6 @@ default_drop :: proc(app: ^App, d: ^platform.Drag_Data, pos: [2]f32, over_page: 
 	if a, ok := dropped_address(d); ok && current_tab(app) != nil {
 		navigate(app, current_tab(app), a, origin = .User)
 		ui.field_set(&active_window(app).address, current_tab(app).url)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	}
 }

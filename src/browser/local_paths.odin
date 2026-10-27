@@ -188,5 +188,5 @@ open_dropped_paths :: proc(app: ^App, paths: []string) {
 		wnd.current = first
 		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }

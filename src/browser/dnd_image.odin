@@ -159,7 +159,7 @@ start_paint :: proc(app: ^App, mode: Picture_Of, el: base.Handle, bounds: draw.R
 	dimg.mode, dimg.el, dimg.bounds, dimg.fade = mode, el, b, fade
 	dimg.hot = hot - (b.min - bounds.min)
 	dimg.waiting = true
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // The page's items that make the picture, painted into an offscreen target, its corner at dimg.bounds.min: those of
@@ -234,14 +234,14 @@ set_picture :: proc(app: ^App, img: platform.Drag_Image, fade: f32, limit: int) 
 		render.update_texture_rgba(&app.r, dimg.tex, 0, 0, fit.size.x, fit.size.y, fit.rgba)
 		dimg.tex_ok = true
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Every frame (drawing): the picture is painted offscreen once, then its pixels read when the GPU has them.
 @(private = "file")
 dnd_image_poll :: proc(app: ^App, dc: ^draw.Context) {
 	if !dimg.active || !dimg.waiting { return }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if !dimg.asked {
 		dimg.readback = paint_picture(app, dc)
 		dimg.asked = true

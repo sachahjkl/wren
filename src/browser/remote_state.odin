@@ -255,7 +255,7 @@ tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
 	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
 	ui.field_set(&wnd.address, fresh.url)
 	closed_tabs_destroy()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return fresh
 }
 
@@ -310,7 +310,7 @@ m_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	if .Window not_in keep && r.baseline != nil { sum.window = window_restore(app, r.baseline.window) }
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, tab, what, reset_summary_json(sum, tab != nil ? fmt.tprintf(`,"tabId":%d`, tab.id) : ""))
 }
@@ -408,7 +408,7 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	r := &the_remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, cur, what, reset_summary_json(sum, fmt.tprintf(`,"tabs":%d`, len(cp.tabs))))
 }
@@ -421,7 +421,7 @@ m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	if all, _ := remote.param_bool(c.params, "all"); all {
 		n := config.restore(&app.prefs, r.baseline.prefs)
 		remote_reload_settings(app)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return done(fmt.tprintf(`{{"restored":%d}}`, n))
 	}
 	name, bad := need_string(c, "name")
@@ -430,7 +430,7 @@ m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
 		if st.name != name { continue }
 		config.restore(&app.prefs, r.baseline.prefs[i:i + 1])
 		remote_reload_settings(app)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		s, _ := pref_json(app, name)
 		return done(s)
 	}

@@ -116,10 +116,9 @@ Tab :: struct {
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
 
-// The browser has several windows (windows.odin). The fields marked [window] are the active window's: window_activate
-// exchanges them with the ones a window keeps, so the code that reads `app.win` stays the one of a single window.
-// What is no longer exchanged is read in the window itself: active_window(app).tabs, .current, .address, .page_rect, .presented,
-// window_own(app).
+// The browser has several windows (windows.odin). The fields marked [window] name the active window's (window_activate sets
+// them). What is a window's is read in the window itself: active_window(app).tabs, .current, .address, .page_rect,
+// .frames_requested (request_frames), .presented; window_own(app).
 App :: struct {
 	win:      ^platform.Window,   // [window]
 	r:        render.Renderer,
@@ -148,11 +147,10 @@ App :: struct {
 	measure:  Measure,        // text measurement cache of the layout
 	show_console:  bool,
 
-	frames_requested: int,  // [window]
 	last_tick:        time.Tick,
 
 	windows:  [dynamic]^Browser_Window,   // windows.odin
-	active:   ^Browser_Window,            // the one whose [window] fields the app holds now
+	active:   ^Browser_Window,            // the one the frame is for (its [window] fields); nil: none (active_window: App.bare)
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
 	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
@@ -454,7 +452,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		same_document_url(app, t, req.url)
 		global_history_visit(app, t, req.url, t.title)
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Connects a document to its tab: navigation hook, session history, storage.
@@ -527,7 +525,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	load := (^Doc_Load)(user)
 	t := load.tab
 	app := the_app
-	defer { app.frames_requested = max(app.frames_requested, 3) }
+	defer { request_frames(app, 3) }
 	switch ev.kind {
 	case .Response:
 		r := ev.response
@@ -615,7 +613,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 	load := (^Doc_Load)(user)
 	t := load.tab
 	app := the_app
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	if !d.decoded {
 		show_error_page(app, load, {kind = .Content, headline = "This page can't be shown", explain = "Its text could not be decoded.", detail = fmt.tprintf("encoding %q", load.charset)})
 		return
@@ -686,7 +684,7 @@ script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		}
 	}
 	run_ready_scripts(load)
-	the_app.frames_requested = max(the_app.frames_requested, 3)
+	request_frames(the_app, 3)
 }
 
 // Runs modules in order: a later module waits for an earlier one that is still loading.
@@ -1054,7 +1052,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	if .Downloads in groups { downloads_apply(app); prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
@@ -1108,7 +1106,7 @@ frame :: proc(app: ^App, idled := false) {
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
-	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
+	if len(events) > 0 { request_frames(app, 4) }
 	prof_end(.Events)
 
 	// network completions, timers and posted tasks run here, on the UI thread
@@ -1118,12 +1116,12 @@ frame :: proc(app: ^App, idled := false) {
 	ran := 0
 	if app.pass_first {
 		app.pass_first = false
-		asked := app.frames_requested
+		asked := wnd.frames_requested
 		ran = host.run_ready(&app.loop)
 		ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
-		if ran > 0 { app.frames_requested = max(app.frames_requested, 2) }
+		if ran > 0 { request_frames(app, 2) }
 		images_shell_frame(app)
-		if app.frames_requested > asked { windows_spill(app, app.frames_requested) }
+		if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
 	}
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
 	// a window whose last tab just left (a move: the window closes at the end of the pass) has nothing to build
@@ -1141,7 +1139,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil {
 		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
 	}
-	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(app.ui_state) && !ui.wake_due(app.ui_state) && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
+	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && wnd.frames_requested == 0 && !ui.needs_frame(app.ui_state) && !ui.wake_due(app.ui_state) && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1165,15 +1163,15 @@ frame :: proc(app: ^App, idled := false) {
 	for tab, i in wnd.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == wnd.current && tab.kind == .Web) } }
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
-	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
+	if smooth_tick(app, current_tab(app)) { request_frames(app, 2) }   // smooth_scroll.odin
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
 		page.run_animation_frames(t.page, pacer.frame_ms)
 		prof_end(.Animation)
 		// (the loop counts this frame off after it: 2 = this one and the next)
-		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
-		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
+		if page.wants_animation_frame(t.page) { request_frames(app, 2) }
+		if frames_tick(app, t, pacer.frame_ms) { request_frames(app, 2) }   // (frames_shell.odin)
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
@@ -1209,9 +1207,9 @@ frame :: proc(app: ^App, idled := false) {
 	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
-	if ui.needs_frame(app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
+	if ui.needs_frame(app.ui_state) { request_frames(app, 2) }
+	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { request_frames(app, 2) }
+	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { request_frames(app, 2) }   // CSS animations: later changes wake the loop by timer
 
 	shell_before_draw(app)   // (a chrome frame used the screen's slot)
 	platform.frame_gate_stage(gate, .Drawing)
@@ -1418,7 +1416,7 @@ main :: proc() {
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
-	app.frames_requested = 4
+	active_window(app).frames_requested = 4
 	app.win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if !headless_mode { window_show(app.active) }
 	session_open_other_windows(app)   // session.odin: the other windows of a restored session

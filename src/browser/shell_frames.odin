@@ -235,14 +235,14 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0)), false)
 		}
 		chrome_frames.pending_scroll = 0
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if len(chrome_frames.actions) > 0 {
 		todo := make([]Shell_Action, len(chrome_frames.actions), context.temp_allocator)
 		copy(todo, chrome_frames.actions[:])
 		clear(&chrome_frames.actions)
 		for a in todo { shell_run_action(app, a); delete(a.text) }
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	}
 	return out
 }
@@ -397,7 +397,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The input of a chrome frame: what is the chrome's goes to its build; what is the page's waits (`deferred`). The

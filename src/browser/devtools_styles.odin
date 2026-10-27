@@ -305,7 +305,7 @@ apply_block :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles, bi: int) {
 	case .Section:
 	}
 	s.key_mut = 0   // the page changed: the next frame builds the blocks again (what the editor holds stays)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 ////////////////////////////////
@@ -757,7 +757,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			for x in active { if x != c { append(&rest, x) } }
 			append(&s.off_classes, strings.clone(c))
 			page.dev_set_attribute(t.page, e.selected, "class", strings.join(rest[:], " ", context.temp_allocator))
-			app.frames_requested = max(app.frames_requested, 3)
+			request_frames(app, 3)
 		}
 	}
 	for c, i in s.off_classes {
@@ -765,7 +765,7 @@ class_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			page.dev_set_attribute(t.page, e.selected, "class", strings.concatenate({cur, cur == "" ? "" : " ", c}, context.temp_allocator))
 			delete(c)
 			ordered_remove(&s.off_classes, i)
-			app.frames_requested = max(app.frames_requested, 3)
+			request_frames(app, 3)
 			break
 		}
 	}

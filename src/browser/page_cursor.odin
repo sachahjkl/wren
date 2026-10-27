@@ -105,7 +105,7 @@ page_cursor_init :: proc(app: ^App) {
 	ccfg = cursor_settings_from_prefs(&app.prefs)
 	pcs.watch = config.watch(&app.prefs, "browser.cursor.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		ccfg = cursor_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 	pcs.log_path = strings.clone(os.get_env("WREN_CURSOR_LOG", context.temp_allocator))
 }

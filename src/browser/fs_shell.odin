@@ -108,7 +108,7 @@ pick_done :: proc(data: rawptr) {
 		free(j)
 	}
 	page.fs_pick_done(j.req, j.result.status == .Chosen ? j.result.paths : nil)
-	j.app.frames_requested = max(j.app.frames_requested, 2)
+	request_frames(j.app, 2)
 }
 
 @(private = "file")
@@ -119,7 +119,7 @@ fs_shell_ask :: proc(user: rawptr, p: ^page.Page, req: ^page.Fs_Ask) {
 	case "cancel": page.fs_ask_done(req, false)
 	case: page.fs_ask_done(req, true)
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The permission prompt over the page (the first request waiting), each frame while one waits.
@@ -146,7 +146,7 @@ fs_shell_build :: proc(app: ^App) {
 	if answered {
 		ordered_remove(&ask_state.queue, 0)
 		page.fs_ask_done(req, granted)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 }
 

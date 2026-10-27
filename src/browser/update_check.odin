@@ -146,7 +146,7 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		case upd.forced:
 			ui.toast(.Good, "%s is up to date (v%s)", APP_NAME, APP_VERSION)
 		}
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	case .Failed:
 		upd.checking = false
 		update_failed(app, ev.detail)
@@ -156,7 +156,7 @@ update_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 @(private = "file")
 update_failed :: proc(app: ^App, why: string) {
 	if upd.forced { ui.toast(.Warn, "Could not check for updates: %s", why) }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // tag_name and html_url of a "latest release" document (a draft or a prerelease is not offered).

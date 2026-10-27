@@ -46,7 +46,7 @@ js_layout_update :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	if layout_stale(&t.layout, p.doc, styled, size, scale, t.image_sizes, fonts_gen) {
 		page_layout(app, t, styled, size, scale, fonts_gen)   // page_thread.odin: a long one on the page thread, the chrome drawing meanwhile
 	}
-	app.frames_requested = max(app.frames_requested, 2)   // what the script changed is to be painted
+	request_frames(app, 2)   // what the script changed is to be painted
 	return &t.layout
 }
 
@@ -69,8 +69,8 @@ js_layout_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	size := page_area(app)
 	limit := math.max(0, f64(t.layout.height) - f64(size.y))
 	scroll_document_to(app, t, f32(clamp(y * scale, 0, limit)), smooth)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
-js_layout_repaint :: proc(user: rawptr, p: ^page.Page) { the_app.frames_requested = max(the_app.frames_requested, 2) }
+js_layout_repaint :: proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }

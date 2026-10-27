@@ -103,5 +103,5 @@ cmd_run :: proc(data: rawptr) {
 	case .Home: navigate(app, t, app.cfg.homepage, origin = .User)
 	case .None:
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }

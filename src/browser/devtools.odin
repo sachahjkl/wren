@@ -168,7 +168,7 @@ devtools_toggle :: proc(app: ^App) {
 	dev.visible = !dev.visible
 	if !dev.visible { dev.picking = false } else { devtools_claim(app) }
 	set_pref_bool(app, "browser.devtools.visible", dev.visible)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 devtools_open :: proc(app: ^App, panel: Dev_Panel) {
@@ -176,7 +176,7 @@ devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	if !dev.visible { devtools_claim(app) }
 	dev.visible, dev.panel = true, panel
 	if changed { devtools_save(app) }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // The panel closes if it is open on `panel`, else opens on it (Ctrl+Shift+J).
@@ -189,21 +189,21 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	if !dev.visible { devtools_claim(app) }
 	dev.visible = true
 	devtools_save(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Ctrl+Shift+C: opens the Elements tab and starts (or stops) picking an element in the page.
 devtools_pick :: proc(app: ^App) {
 	if !dev.visible || dev.panel != .Elements { devtools_open(app, .Elements) }
 	dev.picking = !dev.picking
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Ctrl and + / - / 0: the text of the panel larger, smaller, as it was.
 devtools_zoom :: proc(app: ^App, step: f32) {
 	pt := step == 0 ? 12 : clamp(dev.font_pt + step, 8, 24)
 	dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Whether the panel is shown for `t` (a web page), and where.
@@ -430,7 +430,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 				dev.panel = p
 				if p != .Elements { dev.picking = false }
 				devtools_save(app)
-				app.frames_requested = max(app.frames_requested, 2)
+				request_frames(app, 2)
 			}
 			dt_tip(sig, DEV_PANEL_TITLES[p])
 		}
@@ -524,7 +524,7 @@ devtools_reset_layout :: proc(app: ^App) {
 	dev_set_pref(app, "browser.devtools.density", "compact")
 	network_reset_layout(app)
 	elements_reset_layout(app)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -544,7 +544,7 @@ devtools_splitter :: proc(app: ^App, vertical: bool) {
 		{after = dev.dock != .Left, thickness = dt_px(5), no_keyboard = true})
 	if r.dragging {
 		dev.drag = .Size
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if !r.dragging && dev.drag == .Size {
 		dev.drag = .None
@@ -568,7 +568,7 @@ devtools_float_drag :: proc(app: ^App, sig: ui.Signal, what: Dev_Drag) {
 		} else {
 			dev.float_size = {clamp(dev.drag_from[0] + d.x, 260, math.max(win.x - dev.float_pos[0], 260)), clamp(dev.drag_from[1] + d.y, 160, math.max(win.y - dev.float_pos[1], 160))}
 		}
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if !sig.dragging && dev.drag == what { dev.drag = .None }
 }

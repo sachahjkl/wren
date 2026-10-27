@@ -239,7 +239,7 @@ smooth_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, target: [2]f32, 
 	to := [2]f32{clamp(target.x, 0, limit.x), clamp(target.y, 0, limit.y)}
 	s := smooth_of(t)
 	a := find_anim(s, node)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if !smooth_allowed(app) || dur_ms <= 0 {
 		if a != nil { a.axis = {} }
 		if to == cur { return false }
@@ -464,7 +464,7 @@ scrollbar_event :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 		cur[ax] = f * dr.limit
 		scroller_set(t, dr.node, cur)
 		when PACING_DEBUG { fmt.eprintln("scrollbar drag", p, f, cur) }
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		return true
 	case .Mouse_Release:
 		if !s.drag.active || ev.button != .Left { return false }
