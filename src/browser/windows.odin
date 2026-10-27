@@ -87,6 +87,7 @@ Window_Own :: struct {
 	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused, pressed
 	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
 	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
+	autoscroll:          Page_Autoscroll,     // page_autoscroll.odin: the middle-click autoscroll session of the page
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
 	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
@@ -365,6 +366,7 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	ui.init(bw.ui, &app.fonts, &app.theme)
 	bw.ui.icon_font = app.icons
 	bw.ui.mono_font = active_window(app).ui.mono_font
+	autoscroll_toolkit_setup(bw.ui)   // page_autoscroll.odin: middle-click autoscroll for this window's toolkit regions
 	ui.use(active_window(app).ui)
 	bw.frames_requested = 4
 	devtools_view_init(app, &bw.own.devtools, false)   // devtools.odin: closed until asked for in this window (or a tab brings its own)

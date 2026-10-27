@@ -937,6 +937,9 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 	}
 	for ev, index in events {
 		inside := draw.rect_contains(wnd.page_rect, ev.pos)
+		// Escape or the pointer leaving the window ends a middle-click autoscroll session (page_autoscroll.odin)
+		if ev.kind == .Key_Press && ev.key == .Escape && autoscroll_running_page(app) { autoscroll_page_cancel(app); consume(app, index); continue }
+		if ev.kind == .Mouse_Leave && autoscroll_running_page(app) { autoscroll_page_cancel(app) }
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
@@ -956,6 +959,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			last_move, have_move = ev, true   // only the last position of the frame matters: hit test once, after the loop
 			selection_pointer_move(app, t, ev.pos)
 		case .Scroll:
+			autoscroll_page_cancel(app)   // a wheel notch ends an autoscroll session (page_autoscroll.odin)
 			if inside && .Ctrl in ev.mods {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
@@ -964,6 +968,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				smooth_wheel(app, t, ev.pos - wnd.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
+			// a press of any button ends a latched autoscroll session, and only that (page_autoscroll.odin)
+			if autoscroll_page_click(app) { continue }
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
 			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
@@ -971,11 +977,14 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
+			// the middle button starts autoscroll when the page did not cancel the mousedown and it is not a link
+			if ev.button == .Middle && autoscroll_page_press(app, t, ev, pressed, allowed) { continue }
 			if ev.button == .Left { page_set_active(t.page, pressed) }   // :active while the button is held
 			draggable := ev.button == .Left && allowed && dnd_press(app, t, ev, pressed)   // dnd_shell.odin: a press that may become a drag selects nothing
 			if ev.button == .Left && !draggable { selection_pointer_down(app, t, ev, pressed, allowed) }
 			if ev.button == .Right { page_context_press(app, t, ev.pos) }
 		case .Mouse_Release:
+			if autoscroll_page_release(app, ev) { continue }   // the middle button up: hold mode ends, a tap latches (page_autoscroll.odin)
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
@@ -983,6 +992,16 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if t.page == nil { return }
+			// a middle release on a link opens it in a new tab (Chrome: autoscroll bailed on the link at the press);
+			// forms_pointer_up only reports `clicked` for the left button, so the middle case is handled here
+			if ev.button == .Middle && inside && released != base.NIL_HANDLE {
+				if href, ok := anchor_href(t.page.doc, released); ok {
+					if resolved, rok := url.parse(href, &t.page.env.location, context.temp_allocator); rok {
+						open_in_new_tab(app, resolved.href, t.page, origin = .Page)
+						continue
+					}
+				}
+			}
 			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }
 			if !clicked || t.page == nil || dragged { continue }
 			not_prevented := forms_click(app, t, target, ev, local)
@@ -1180,6 +1199,7 @@ frame :: proc(app: ^App, idled := false) {
 	for tab, i in wnd.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == wnd.current && tab.kind == .Web) } }
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
+	if autoscroll_tick(app, current_tab(app)) { request_frames(app, 2) }   // page_autoscroll.odin: drives the scroller before smooth_tick samples it
 	if smooth_tick(app, current_tab(app)) { request_frames(app, 2) }   // smooth_scroll.odin
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
@@ -1236,6 +1256,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.UI_Draw)
 	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
+	autoscroll_paint(app, &app.dc)   // page_autoscroll.odin: the autoscroll anchor marker, over everything
 	prof_end(.UI_Draw)
 	prof_begin(.Submit)
 	draw.end_frame(&app.dc)   // GPU time: the renderer's timestamp queries around its submit (hud.odin, prof.odin)
@@ -1421,6 +1442,8 @@ main :: proc() {
 	pacer_init(app)
 	shell_frames_init(app)   // shell_frames.odin: chrome frames while a page holds the thread
 	smooth_init(app)
+	autoscroll_init(app)   // page_autoscroll.odin (syncs every window's toolkit regions)
+	autoscroll_toolkit_setup(active_window(app).ui)
 	page_cursor_init(app)
 	window_chrome_init(app)
 	chrome_style_init(app)   // chrome_style.odin
@@ -1544,6 +1567,7 @@ main :: proc() {
 	hud_destroy(app)
 	host.shutdown_step("smooth_shutdown")
 	smooth_shutdown(app)
+	autoscroll_shutdown(app)   // page_autoscroll.odin
 	host.shutdown_step("page_cursor_shutdown")
 	page_cursor_shutdown(app)
 	host.shutdown_step("drop_files_destroy")
