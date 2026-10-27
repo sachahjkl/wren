@@ -709,7 +709,7 @@ static void dt_show(JSContext *ctx, JSValueConst state, JSValueConst val, bool e
     } else if (JS_IsFunction(ctx, val)) {
         web_buf fb = {0}; dt_fdesc(ctx, val, &fb);
         /* dt_fdesc produced a JSON string; parse it back to the plain text */
-        text = JS_JSONParse(ctx, (const char *)(fb.p ? fb.p : (uint8_t *)"\"\""), fb.len ? fb.len : 2, "<dt>");
+        text = JS_ParseJSON(ctx, (const char *)(fb.p ? fb.p : (uint8_t *)"\"\""), fb.len ? fb.len : 2, "<dt>");
         if (JS_IsException(text)) { JS_FreeValue(ctx, JS_GetException(ctx)); text = JS_ToString(ctx, val); }
         web_buf_free(&fb);
     } else {
