@@ -16,6 +16,15 @@ A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 
 Checked by the browser on every call (`lookup_HTMLMediaElement`).
 
+### callback `VideoFrameRequestCallback`
+
+```
+void VideoFrameRequestCallback(i32 user, f64 now)
+```
+
+requestVideoFrameCallback's callback: `now` is the current time on the page's performance timeline (the callback
+reads the rest of the metadata back with HTMLVideoElement_videoFrameMetadata, keyed by the id this call made).
+
 ## Functions
 
 ### `HTMLMediaElement_currentSrc`
@@ -301,4 +310,79 @@ video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, tot
 totalFrameDelay in seconds).
 
 Host: `HTMLVideoElement_playbackQuality :: proc(c: ^Call, element: Api_HTMLMediaElement) -> []u8`
+
+### `HTMLVideoElement_requestVideoFrameCallback`
+
+```
+u64 HTMLVideoElement_requestVideoFrameCallback(HTMLMediaElement element, VideoFrameRequestCallback callback, i32 user = 0)
+```
+
+video.requestVideoFrameCallback(callback): the callback runs once, when a new video frame is presented (the same
+moment the playback-quality counters advance). Returns an id for cancelVideoFrameCallback (0: too many waiting,
+media.max_video_frame_callbacks).
+
+Host: `HTMLVideoElement_requestVideoFrameCallback :: proc(c: ^Call, element: Api_HTMLMediaElement, callback: u32, user: i32) -> u64`
+
+### `HTMLVideoElement_cancelVideoFrameCallback`
+
+```
+void HTMLVideoElement_cancelVideoFrameCallback(HTMLMediaElement element, u64 id)
+```
+
+video.cancelVideoFrameCallback(id).
+
+Host: `HTMLVideoElement_cancelVideoFrameCallback :: proc(c: ^Call, element: Api_HTMLMediaElement, id: u64)`
+
+### `HTMLVideoElement_videoFrameMetadata`
+
+```
+bytes HTMLVideoElement_videoFrameMetadata(HTMLMediaElement element, u64 id)
+```
+
+The VideoFrameCallbackMetadata of the frame that fired callback `id`, snapshotted at presentation: eight f64
+(presentationTime, expectedDisplayTime, width, height, mediaTime, presentedFrames, processingDuration, and a
+bitmask of which of the optional fields are present; here always 0 — captureTime/receiveTime/rtpTimestamp absent).
+Empty when the id is unknown.
+
+Host: `HTMLVideoElement_videoFrameMetadata :: proc(c: ^Call, element: Api_HTMLMediaElement, id: u64) -> []u8`
+
+### `HTMLMediaElement_audioTracks`
+
+```
+u64 HTMLMediaElement_audioTracks(HTMLMediaElement element)
+```
+
+element.audioTracks / videoTracks / textTracks: the handle of the list object (an AudioTrackList / VideoTrackList /
+TextTrackList of the mediatracks module; the engine wraps it). 0 when media.tracks.enabled is off. The same object
+each time (SameObject).
+
+Host: `HTMLMediaElement_audioTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
+
+### `HTMLMediaElement_videoTracks`
+
+```
+u64 HTMLMediaElement_videoTracks(HTMLMediaElement element)
+```
+
+Host: `HTMLMediaElement_videoTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
+
+### `HTMLMediaElement_textTracks`
+
+```
+u64 HTMLMediaElement_textTracks(HTMLMediaElement element)
+```
+
+Host: `HTMLMediaElement_textTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64`
+
+### `HTMLMediaElement_addTextTrack`
+
+```
+u64 HTMLMediaElement_addTextTrack(HTMLMediaElement element, string kind, string label = "", string language = "") raises
+```
+
+element.addTextTrack(kind, label, language): the handle of a new (hidden) TextTrack. NotSupported when off.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLMediaElement_addTextTrack :: proc(c: ^Call, element: Api_HTMLMediaElement, kind: string, label: string, language: string) -> (u64, Api_Error)`
 

@@ -60,6 +60,16 @@ JSValue wjr_Attr_get_prefix(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Attr_get_specified(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Attr_get_value(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Attr_set_value(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_AudioTrackList_getTrackById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_AudioTrackList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrackList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_AudioTrackList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_AudioTrack_get_enabled(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrack_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrack_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrack_get_label(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrack_get_language(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_AudioTrack_set_enabled(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_AuthenticatorAssertionResponse_get_authenticatorData(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_AuthenticatorAssertionResponse_get_signature(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_AuthenticatorAssertionResponse_get_userHandle(JSContext *ctx, JSValueConst this_val);
@@ -91,6 +101,9 @@ JSValue wjr_BroadcastChannel_close(JSContext *ctx, JSValueConst this_val, int ar
 JSValue wjr_BroadcastChannel_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_BroadcastChannel_get_name(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_BroadcastChannel_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_BufferedChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_BufferedChangeEvent_get_addedRanges(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_BufferedChangeEvent_get_removedRanges(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ByteLengthQueuingStrategy_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_ByteLengthQueuingStrategy_get_highWaterMark(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ByteLengthQueuingStrategy_get_size(JSContext *ctx, JSValueConst this_val);
@@ -757,6 +770,8 @@ JSValue wjr_HTMLLinkElement_set_crossOrigin(JSContext *ctx, JSValueConst this_va
 JSValue wjr_HTMLLinkElement_set_fetchPriority(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLLinkElement_set_referrerPolicy(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMapElement_get_areas(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_addTextTrack(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLMediaElement_get_audioTracks(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_buffered(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_crossOrigin(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_error(JSContext *ctx, JSValueConst this_val);
@@ -764,6 +779,8 @@ JSValue wjr_HTMLMediaElement_get_played(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_preload(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_seekable(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_get_srcObject(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_textTracks(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLMediaElement_get_videoTracks(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLMediaElement_set_crossOrigin(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMediaElement_set_preload(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLMediaElement_set_srcObject(JSContext *ctx, JSValueConst this_val, JSValueConst v);
@@ -853,8 +870,12 @@ JSValue wjr_HTMLTextAreaElement_set_selectionDirection(JSContext *ctx, JSValueCo
 JSValue wjr_HTMLTextAreaElement_set_selectionEnd(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTextAreaElement_set_selectionStart(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_HTMLTrackElement_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTrackElement_get_readyState(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_HTMLTrackElement_get_track(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HTMLTrackElement_set_kind(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_HTMLVideoElement_cancelVideoFrameCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HTMLVideoElement_getVideoPlaybackQuality(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_HTMLVideoElement_requestVideoFrameCallback(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HashChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_HashChangeEvent_get_newURL(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_HashChangeEvent_get_oldURL(JSContext *ctx, JSValueConst this_val);
@@ -975,6 +996,8 @@ JSValue wjr_Location_set_pathname(JSContext *ctx, JSValueConst this_val, JSValue
 JSValue wjr_Location_set_port(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Location_set_protocol(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Location_set_search(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_ManagedMediaSource_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_ManagedMediaSource_get_streaming(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaError_get_code(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaError_get_message(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_MediaQueryListEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -1538,6 +1561,34 @@ JSValue wjr_TextEncoder_constructor(JSContext *ctx, JSValueConst this_val, int a
 JSValue wjr_TextEncoder_encode(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextEncoder_encodeInto(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TextEncoder_get_encoding(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCueList_getCueById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextTrackCueList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCueList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_TextTrackCueList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_TextTrackCue_get_endTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCue_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCue_get_pauseOnExit(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCue_get_startTime(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCue_get_track(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackCue_set_endTime(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_TextTrackCue_set_id(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_TextTrackCue_set_pauseOnExit(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_TextTrackCue_set_startTime(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_TextTrackList_getTrackById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextTrackList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrackList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_TextTrackList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_TextTrack_addCue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextTrack_get_activeCues(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_cues(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_inBandMetadataTrackDispatchType(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_label(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_language(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_get_mode(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_TextTrack_removeCue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_TextTrack_set_mode(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_Text_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TimeRanges_end(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_TimeRanges_get_length(JSContext *ctx, JSValueConst this_val);
@@ -1638,6 +1689,9 @@ JSValue wjr_URL_static_createObjectURL(JSContext *ctx, JSValueConst this_val, in
 JSValue wjr_URL_static_parse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_URL_static_revokeObjectURL(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_URL_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_VTTCue_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_VTTCue_get_text(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VTTCue_set_text(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_ValidityState_get_badInput(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ValidityState_get_customError(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ValidityState_get_patternMismatch(JSContext *ctx, JSValueConst this_val);
@@ -1654,6 +1708,17 @@ JSValue wjr_VideoPlaybackQuality_get_creationTime(JSContext *ctx, JSValueConst t
 JSValue wjr_VideoPlaybackQuality_get_droppedVideoFrames(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VideoPlaybackQuality_get_totalFrameDelay(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VideoPlaybackQuality_get_totalVideoFrames(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrackList_getTrackById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_VideoTrackList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrackList_get_selectedIndex(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrackList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+uint32_t wjr_VideoTrackList_length_hook(JSContext *ctx, JSValueConst obj);
+JSValue wjr_VideoTrack_get_id(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrack_get_kind(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrack_get_label(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrack_get_language(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrack_get_selected(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_VideoTrack_set_selected(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_VisibilityStateEntry_get_duration(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VisibilityStateEntry_get_entryType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_VisibilityStateEntry_get_name(JSContext *ctx, JSValueConst this_val);
@@ -2318,7 +2383,7 @@ static JSValue wjg_CanvasRenderingContext2D_measureText(JSContext *ctx, JSValueC
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     uint64_t r = wr_CanvasText_measureText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
     wj_str_free(ctx, &a0);
-    return wj_wrap_owned(ctx, r, 551, JS_UNDEFINED);
+    return wj_wrap_owned(ctx, r, 552, JS_UNDEFINED);
 }
 
 /* CanvasRenderingContext2D.lineWidth -> canvas.CanvasPathDrawingStyles_lineWidth */
@@ -3378,7 +3443,7 @@ static JSValue wjg_MediaSource_get_handle(JSContext *ctx, JSValueConst this_val)
     uint64_t r = 0;
     int32_t st = wr_MediaSource_handle(self->handle, (void *)&r);
     if (st < 0) { return wj_throw_status(ctx, st, "MediaSource.handle"); }
-    return wj_wrap_host(ctx, r, 448);
+    return wj_wrap_host(ctx, r, 449);
 }
 
 /* MediaSource.readyState -> mse.MediaSource_readyState */
@@ -9867,7 +9932,7 @@ static JSValue wjg_OffscreenCanvas_transferToImageBitmap(JSContext *ctx, JSValue
     uint64_t r = 0;
     int32_t st = wr_OffscreenCanvas_transferToImageBitmap(self->handle, (void *)&r);
     if (st < 0) { return wj_throw_status(ctx, st, "OffscreenCanvas.transferToImageBitmap"); }
-    return wj_wrap_owned(ctx, r, 433, JS_UNDEFINED);
+    return wj_wrap_owned(ctx, r, 434, JS_UNDEFINED);
 }
 
 static JSValue wjg_OffscreenCanvas_get_oncontextlost(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 362, "contextlost"); }
@@ -10124,28 +10189,28 @@ static JSValue wjg_TextTrackCue_get_onenter(JSContext *ctx, JSValueConst this_va
 static JSValue wjg_TextTrackCue_set_onenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 377, "enter", v, 0); }
 static JSValue wjg_TextTrackCue_get_onexit(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 377, "exit"); }
 static JSValue wjg_TextTrackCue_set_onexit(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 377, "exit", v, 0); }
-static JSValue wjg_TextTrackList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 378, "change"); }
-static JSValue wjg_TextTrackList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 378, "change", v, 0); }
-static JSValue wjg_TextTrackList_get_onaddtrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 378, "addtrack"); }
-static JSValue wjg_TextTrackList_set_onaddtrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 378, "addtrack", v, 0); }
-static JSValue wjg_TextTrackList_get_onremovetrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 378, "removetrack"); }
-static JSValue wjg_TextTrackList_set_onremovetrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 378, "removetrack", v, 0); }
-static JSValue wjg_VideoTrackList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "change"); }
-static JSValue wjg_VideoTrackList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "change", v, 0); }
-static JSValue wjg_VideoTrackList_get_onaddtrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "addtrack"); }
-static JSValue wjg_VideoTrackList_set_onaddtrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "addtrack", v, 0); }
-static JSValue wjg_VideoTrackList_get_onremovetrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "removetrack"); }
-static JSValue wjg_VideoTrackList_set_onremovetrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "removetrack", v, 0); }
-static JSValue wjg_VisualViewport_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "resize"); }
-static JSValue wjg_VisualViewport_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "resize", v, 0); }
-static JSValue wjg_VisualViewport_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "scroll"); }
-static JSValue wjg_VisualViewport_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "scroll", v, 0); }
-static JSValue wjg_VisualViewport_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "scrollend"); }
-static JSValue wjg_VisualViewport_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "scrollend", v, 0); }
+static JSValue wjg_TextTrackList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "change"); }
+static JSValue wjg_TextTrackList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "change", v, 0); }
+static JSValue wjg_TextTrackList_get_onaddtrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "addtrack"); }
+static JSValue wjg_TextTrackList_set_onaddtrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "addtrack", v, 0); }
+static JSValue wjg_TextTrackList_get_onremovetrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 379, "removetrack"); }
+static JSValue wjg_TextTrackList_set_onremovetrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 379, "removetrack", v, 0); }
+static JSValue wjg_VideoTrackList_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "change"); }
+static JSValue wjg_VideoTrackList_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "change", v, 0); }
+static JSValue wjg_VideoTrackList_get_onaddtrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "addtrack"); }
+static JSValue wjg_VideoTrackList_set_onaddtrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "addtrack", v, 0); }
+static JSValue wjg_VideoTrackList_get_onremovetrack(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 380, "removetrack"); }
+static JSValue wjg_VideoTrackList_set_onremovetrack(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 380, "removetrack", v, 0); }
+static JSValue wjg_VisualViewport_get_onresize(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "resize"); }
+static JSValue wjg_VisualViewport_set_onresize(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "resize", v, 0); }
+static JSValue wjg_VisualViewport_get_onscroll(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "scroll"); }
+static JSValue wjg_VisualViewport_set_onscroll(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "scroll", v, 0); }
+static JSValue wjg_VisualViewport_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "scrollend"); }
+static JSValue wjg_VisualViewport_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "scrollend", v, 0); }
 /* WebSocket.url -> websocket.WebSocket_url */
 static JSValue wjg_WebSocket_get_url(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 381);
+    wj_obj *self = wj_this(ctx, this_val, 382);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_WebSocket_url(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -10156,7 +10221,7 @@ static JSValue wjg_WebSocket_get_url(JSContext *ctx, JSValueConst this_val)
 /* WebSocket.readyState -> websocket.WebSocket_readyState */
 static JSValue wjg_WebSocket_get_readyState(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 381);
+    wj_obj *self = wj_this(ctx, this_val, 382);
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_WebSocket_readyState(self->handle);
     return JS_NewUint32(ctx, r);
@@ -10165,22 +10230,22 @@ static JSValue wjg_WebSocket_get_readyState(JSContext *ctx, JSValueConst this_va
 /* WebSocket.bufferedAmount -> websocket.WebSocket_bufferedAmount */
 static JSValue wjg_WebSocket_get_bufferedAmount(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 381);
+    wj_obj *self = wj_this(ctx, this_val, 382);
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_WebSocket_bufferedAmount(self->handle);
     return JS_NewFloat64(ctx, (double)r);
 }
 
-static JSValue wjg_WebSocket_get_onopen(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "open"); }
-static JSValue wjg_WebSocket_set_onopen(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "open", v, 0); }
-static JSValue wjg_WebSocket_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "error"); }
-static JSValue wjg_WebSocket_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "error", v, 0); }
-static JSValue wjg_WebSocket_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "close"); }
-static JSValue wjg_WebSocket_set_onclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "close", v, 0); }
+static JSValue wjg_WebSocket_get_onopen(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "open"); }
+static JSValue wjg_WebSocket_set_onopen(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "open", v, 0); }
+static JSValue wjg_WebSocket_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "error"); }
+static JSValue wjg_WebSocket_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "error", v, 0); }
+static JSValue wjg_WebSocket_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "close"); }
+static JSValue wjg_WebSocket_set_onclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "close", v, 0); }
 /* WebSocket.extensions -> websocket.WebSocket_extensions */
 static JSValue wjg_WebSocket_get_extensions(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 381);
+    wj_obj *self = wj_this(ctx, this_val, 382);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_WebSocket_extensions(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -10191,7 +10256,7 @@ static JSValue wjg_WebSocket_get_extensions(JSContext *ctx, JSValueConst this_va
 /* WebSocket.protocol -> websocket.WebSocket_protocol */
 static JSValue wjg_WebSocket_get_protocol(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 381);
+    wj_obj *self = wj_this(ctx, this_val, 382);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_WebSocket_protocol(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -10199,12 +10264,12 @@ static JSValue wjg_WebSocket_get_protocol(JSContext *ctx, JSValueConst this_val)
     return JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n);
 }
 
-static JSValue wjg_WebSocket_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 381, "message"); }
-static JSValue wjg_WebSocket_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 381, "message", v, 0); }
+static JSValue wjg_WebSocket_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "message"); }
+static JSValue wjg_WebSocket_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "message", v, 0); }
 /* Window.innerWidth -> dom.Window_innerWidth */
 static JSValue wjg_Window_get_innerWidth(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_innerWidth();
     return JS_NewInt32(ctx, r);
@@ -10213,7 +10278,7 @@ static JSValue wjg_Window_get_innerWidth(JSContext *ctx, JSValueConst this_val)
 /* Window.innerHeight -> dom.Window_innerHeight */
 static JSValue wjg_Window_get_innerHeight(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_innerHeight();
     return JS_NewInt32(ctx, r);
@@ -10222,7 +10287,7 @@ static JSValue wjg_Window_get_innerHeight(JSContext *ctx, JSValueConst this_val)
 /* Window.scrollX -> dom.Window_scrollX */
 static JSValue wjg_Window_get_scrollX(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_Window_scrollX();
     return JS_NewFloat64(ctx, (double)r);
@@ -10231,7 +10296,7 @@ static JSValue wjg_Window_get_scrollX(JSContext *ctx, JSValueConst this_val)
 /* Window.pageXOffset -> dom.Window_pageXOffset */
 static JSValue wjg_Window_get_pageXOffset(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_Window_pageXOffset();
     return JS_NewFloat64(ctx, (double)r);
@@ -10240,7 +10305,7 @@ static JSValue wjg_Window_get_pageXOffset(JSContext *ctx, JSValueConst this_val)
 /* Window.scrollY -> dom.Window_scrollY */
 static JSValue wjg_Window_get_scrollY(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_Window_scrollY();
     return JS_NewFloat64(ctx, (double)r);
@@ -10249,7 +10314,7 @@ static JSValue wjg_Window_get_scrollY(JSContext *ctx, JSValueConst this_val)
 /* Window.pageYOffset -> dom.Window_pageYOffset */
 static JSValue wjg_Window_get_pageYOffset(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_Window_pageYOffset();
     return JS_NewFloat64(ctx, (double)r);
@@ -10258,7 +10323,7 @@ static JSValue wjg_Window_get_pageYOffset(JSContext *ctx, JSValueConst this_val)
 /* Window.screenX -> dom.Window_screenX */
 static JSValue wjg_Window_get_screenX(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_screenX();
     return JS_NewInt32(ctx, r);
@@ -10267,7 +10332,7 @@ static JSValue wjg_Window_get_screenX(JSContext *ctx, JSValueConst this_val)
 /* Window.screenLeft -> dom.Window_screenLeft */
 static JSValue wjg_Window_get_screenLeft(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_screenLeft();
     return JS_NewInt32(ctx, r);
@@ -10276,7 +10341,7 @@ static JSValue wjg_Window_get_screenLeft(JSContext *ctx, JSValueConst this_val)
 /* Window.screenY -> dom.Window_screenY */
 static JSValue wjg_Window_get_screenY(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_screenY();
     return JS_NewInt32(ctx, r);
@@ -10285,7 +10350,7 @@ static JSValue wjg_Window_get_screenY(JSContext *ctx, JSValueConst this_val)
 /* Window.screenTop -> dom.Window_screenTop */
 static JSValue wjg_Window_get_screenTop(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_screenTop();
     return JS_NewInt32(ctx, r);
@@ -10294,7 +10359,7 @@ static JSValue wjg_Window_get_screenTop(JSContext *ctx, JSValueConst this_val)
 /* Window.outerWidth -> dom.Window_outerWidth */
 static JSValue wjg_Window_get_outerWidth(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_outerWidth();
     return JS_NewInt32(ctx, r);
@@ -10303,7 +10368,7 @@ static JSValue wjg_Window_get_outerWidth(JSContext *ctx, JSValueConst this_val)
 /* Window.outerHeight -> dom.Window_outerHeight */
 static JSValue wjg_Window_get_outerHeight(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_Window_outerHeight();
     return JS_NewInt32(ctx, r);
@@ -10312,7 +10377,7 @@ static JSValue wjg_Window_get_outerHeight(JSContext *ctx, JSValueConst this_val)
 /* Window.devicePixelRatio -> dom.Window_devicePixelRatio */
 static JSValue wjg_Window_get_devicePixelRatio(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_Window_devicePixelRatio();
     return JS_NewFloat64(ctx, (double)r);
@@ -10321,7 +10386,7 @@ static JSValue wjg_Window_get_devicePixelRatio(JSContext *ctx, JSValueConst this
 /* Window.document -> dom.Window_document */
 static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_Window_document();
     return wj_wrap_node(ctx, r);
@@ -10330,7 +10395,7 @@ static JSValue wjg_Window_get_document(JSContext *ctx, JSValueConst this_val)
 /* Window.name -> frames.Window_get_name */
 static JSValue wjg_Window_get_name(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_Window_get_name(wj_scratch.data, wj_scratch.cap));
@@ -10343,7 +10408,7 @@ static JSValue wjg_Window_set_name(JSContext *ctx, JSValueConst this_val, JSValu
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -10356,228 +10421,228 @@ static JSValue wjg_Window_set_location(JSContext *ctx, JSValueConst this_val, JS
 /* Window.print() -> dom.Window_print */
 static JSValue wjg_Window_print(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 382);
+    wj_obj *self = wj_this(ctx, this_val, 383);
     if (!self) { return JS_EXCEPTION; }
     wr_Window_print();
     return JS_UNDEFINED;
 }
 
-static JSValue wjg_Window_get_onanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "animationstart"); }
-static JSValue wjg_Window_set_onanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "animationstart", v, 0); }
-static JSValue wjg_Window_get_onanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "animationiteration"); }
-static JSValue wjg_Window_set_onanimationiteration(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "animationiteration", v, 0); }
-static JSValue wjg_Window_get_onanimationend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "animationend"); }
-static JSValue wjg_Window_set_onanimationend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "animationend", v, 0); }
-static JSValue wjg_Window_get_onanimationcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "animationcancel"); }
-static JSValue wjg_Window_set_onanimationcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "animationcancel", v, 0); }
-static JSValue wjg_Window_get_ontransitionrun(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "transitionrun"); }
-static JSValue wjg_Window_set_ontransitionrun(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "transitionrun", v, 0); }
-static JSValue wjg_Window_get_ontransitionstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "transitionstart"); }
-static JSValue wjg_Window_set_ontransitionstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "transitionstart", v, 0); }
-static JSValue wjg_Window_get_ontransitionend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "transitionend"); }
-static JSValue wjg_Window_set_ontransitionend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "transitionend", v, 0); }
-static JSValue wjg_Window_get_ontransitioncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "transitioncancel"); }
-static JSValue wjg_Window_set_ontransitioncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "transitioncancel", v, 0); }
-static JSValue wjg_Window_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "abort"); }
-static JSValue wjg_Window_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "abort", v, 0); }
-static JSValue wjg_Window_get_onauxclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "auxclick"); }
-static JSValue wjg_Window_set_onauxclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "auxclick", v, 0); }
-static JSValue wjg_Window_get_onbeforeinput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "beforeinput"); }
-static JSValue wjg_Window_set_onbeforeinput(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "beforeinput", v, 0); }
-static JSValue wjg_Window_get_onbeforematch(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "beforematch"); }
-static JSValue wjg_Window_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "beforematch", v, 0); }
-static JSValue wjg_Window_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "beforetoggle"); }
-static JSValue wjg_Window_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "beforetoggle", v, 0); }
-static JSValue wjg_Window_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "cancel"); }
-static JSValue wjg_Window_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "cancel", v, 0); }
-static JSValue wjg_Window_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "canplay"); }
-static JSValue wjg_Window_set_oncanplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "canplay", v, 0); }
-static JSValue wjg_Window_get_oncanplaythrough(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "canplaythrough"); }
-static JSValue wjg_Window_set_oncanplaythrough(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "canplaythrough", v, 0); }
-static JSValue wjg_Window_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "change"); }
-static JSValue wjg_Window_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "change", v, 0); }
-static JSValue wjg_Window_get_onclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "click"); }
-static JSValue wjg_Window_set_onclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "click", v, 0); }
-static JSValue wjg_Window_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "close"); }
-static JSValue wjg_Window_set_onclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "close", v, 0); }
-static JSValue wjg_Window_get_oncommand(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "command"); }
-static JSValue wjg_Window_set_oncommand(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "command", v, 0); }
-static JSValue wjg_Window_get_oncontextlost(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "contextlost"); }
-static JSValue wjg_Window_set_oncontextlost(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "contextlost", v, 0); }
-static JSValue wjg_Window_get_oncontextmenu(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "contextmenu"); }
-static JSValue wjg_Window_set_oncontextmenu(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "contextmenu", v, 0); }
-static JSValue wjg_Window_get_oncontextrestored(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "contextrestored"); }
-static JSValue wjg_Window_set_oncontextrestored(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "contextrestored", v, 0); }
-static JSValue wjg_Window_get_oncopy(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "copy"); }
-static JSValue wjg_Window_set_oncopy(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "copy", v, 0); }
-static JSValue wjg_Window_get_oncuechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "cuechange"); }
-static JSValue wjg_Window_set_oncuechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "cuechange", v, 0); }
-static JSValue wjg_Window_get_oncut(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "cut"); }
-static JSValue wjg_Window_set_oncut(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "cut", v, 0); }
-static JSValue wjg_Window_get_ondblclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dblclick"); }
-static JSValue wjg_Window_set_ondblclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dblclick", v, 0); }
-static JSValue wjg_Window_get_ondrag(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "drag"); }
-static JSValue wjg_Window_set_ondrag(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "drag", v, 0); }
-static JSValue wjg_Window_get_ondragend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dragend"); }
-static JSValue wjg_Window_set_ondragend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dragend", v, 0); }
-static JSValue wjg_Window_get_ondragenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dragenter"); }
-static JSValue wjg_Window_set_ondragenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dragenter", v, 0); }
-static JSValue wjg_Window_get_ondragleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dragleave"); }
-static JSValue wjg_Window_set_ondragleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dragleave", v, 0); }
-static JSValue wjg_Window_get_ondragover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dragover"); }
-static JSValue wjg_Window_set_ondragover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dragover", v, 0); }
-static JSValue wjg_Window_get_ondragstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "dragstart"); }
-static JSValue wjg_Window_set_ondragstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "dragstart", v, 0); }
-static JSValue wjg_Window_get_ondrop(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "drop"); }
-static JSValue wjg_Window_set_ondrop(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "drop", v, 0); }
-static JSValue wjg_Window_get_ondurationchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "durationchange"); }
-static JSValue wjg_Window_set_ondurationchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "durationchange", v, 0); }
-static JSValue wjg_Window_get_onemptied(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "emptied"); }
-static JSValue wjg_Window_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "emptied", v, 0); }
-static JSValue wjg_Window_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "ended"); }
-static JSValue wjg_Window_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "ended", v, 0); }
-static JSValue wjg_Window_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "formdata"); }
-static JSValue wjg_Window_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "formdata", v, 0); }
-static JSValue wjg_Window_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "input"); }
-static JSValue wjg_Window_set_oninput(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "input", v, 0); }
-static JSValue wjg_Window_get_oninvalid(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "invalid"); }
-static JSValue wjg_Window_set_oninvalid(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "invalid", v, 0); }
-static JSValue wjg_Window_get_onkeydown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "keydown"); }
-static JSValue wjg_Window_set_onkeydown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "keydown", v, 0); }
-static JSValue wjg_Window_get_onkeypress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "keypress"); }
-static JSValue wjg_Window_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "keypress", v, 0); }
-static JSValue wjg_Window_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "keyup"); }
-static JSValue wjg_Window_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "keyup", v, 0); }
-static JSValue wjg_Window_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "loadeddata"); }
-static JSValue wjg_Window_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "loadeddata", v, 0); }
-static JSValue wjg_Window_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "loadedmetadata"); }
-static JSValue wjg_Window_set_onloadedmetadata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "loadedmetadata", v, 0); }
-static JSValue wjg_Window_get_onloadstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "loadstart"); }
-static JSValue wjg_Window_set_onloadstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "loadstart", v, 0); }
-static JSValue wjg_Window_get_onmousedown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mousedown"); }
-static JSValue wjg_Window_set_onmousedown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mousedown", v, 0); }
-static JSValue wjg_Window_get_onmouseenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mouseenter"); }
-static JSValue wjg_Window_set_onmouseenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mouseenter", v, 0); }
-static JSValue wjg_Window_get_onmouseleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mouseleave"); }
-static JSValue wjg_Window_set_onmouseleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mouseleave", v, 0); }
-static JSValue wjg_Window_get_onmousemove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mousemove"); }
-static JSValue wjg_Window_set_onmousemove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mousemove", v, 0); }
-static JSValue wjg_Window_get_onmouseout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mouseout"); }
-static JSValue wjg_Window_set_onmouseout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mouseout", v, 0); }
-static JSValue wjg_Window_get_onmouseover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mouseover"); }
-static JSValue wjg_Window_set_onmouseover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mouseover", v, 0); }
-static JSValue wjg_Window_get_onmouseup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "mouseup"); }
-static JSValue wjg_Window_set_onmouseup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "mouseup", v, 0); }
-static JSValue wjg_Window_get_onpaste(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "paste"); }
-static JSValue wjg_Window_set_onpaste(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "paste", v, 0); }
-static JSValue wjg_Window_get_onpause(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pause"); }
-static JSValue wjg_Window_set_onpause(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pause", v, 0); }
-static JSValue wjg_Window_get_onplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "play"); }
-static JSValue wjg_Window_set_onplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "play", v, 0); }
-static JSValue wjg_Window_get_onplaying(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "playing"); }
-static JSValue wjg_Window_set_onplaying(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "playing", v, 0); }
-static JSValue wjg_Window_get_onprogress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "progress"); }
-static JSValue wjg_Window_set_onprogress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "progress", v, 0); }
-static JSValue wjg_Window_get_onratechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "ratechange"); }
-static JSValue wjg_Window_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "ratechange", v, 0); }
-static JSValue wjg_Window_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "reset"); }
-static JSValue wjg_Window_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "reset", v, 0); }
-static JSValue wjg_Window_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "scrollend"); }
-static JSValue wjg_Window_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "scrollend", v, 0); }
-static JSValue wjg_Window_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "securitypolicyviolation"); }
-static JSValue wjg_Window_set_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "securitypolicyviolation", v, 0); }
-static JSValue wjg_Window_get_onseeked(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "seeked"); }
-static JSValue wjg_Window_set_onseeked(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "seeked", v, 0); }
-static JSValue wjg_Window_get_onseeking(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "seeking"); }
-static JSValue wjg_Window_set_onseeking(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "seeking", v, 0); }
-static JSValue wjg_Window_get_onselect(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "select"); }
-static JSValue wjg_Window_set_onselect(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "select", v, 0); }
-static JSValue wjg_Window_get_onslotchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "slotchange"); }
-static JSValue wjg_Window_set_onslotchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "slotchange", v, 0); }
-static JSValue wjg_Window_get_onstalled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "stalled"); }
-static JSValue wjg_Window_set_onstalled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "stalled", v, 0); }
-static JSValue wjg_Window_get_onsubmit(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "submit"); }
-static JSValue wjg_Window_set_onsubmit(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "submit", v, 0); }
-static JSValue wjg_Window_get_onsuspend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "suspend"); }
-static JSValue wjg_Window_set_onsuspend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "suspend", v, 0); }
-static JSValue wjg_Window_get_ontimeupdate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "timeupdate"); }
-static JSValue wjg_Window_set_ontimeupdate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "timeupdate", v, 0); }
-static JSValue wjg_Window_get_ontoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "toggle"); }
-static JSValue wjg_Window_set_ontoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "toggle", v, 0); }
-static JSValue wjg_Window_get_onvolumechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "volumechange"); }
-static JSValue wjg_Window_set_onvolumechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "volumechange", v, 0); }
-static JSValue wjg_Window_get_onwaiting(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "waiting"); }
-static JSValue wjg_Window_set_onwaiting(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "waiting", v, 0); }
-static JSValue wjg_Window_get_onwebkitanimationend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "webkitanimationend"); }
-static JSValue wjg_Window_set_onwebkitanimationend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "webkitanimationend", v, 0); }
-static JSValue wjg_Window_get_onwebkitanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "webkitanimationiteration"); }
-static JSValue wjg_Window_set_onwebkitanimationiteration(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "webkitanimationiteration", v, 0); }
-static JSValue wjg_Window_get_onwebkitanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "webkitanimationstart"); }
-static JSValue wjg_Window_set_onwebkitanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "webkitanimationstart", v, 0); }
-static JSValue wjg_Window_get_onwebkittransitionend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "webkittransitionend"); }
-static JSValue wjg_Window_set_onwebkittransitionend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "webkittransitionend", v, 0); }
-static JSValue wjg_Window_get_onwheel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "wheel"); }
-static JSValue wjg_Window_set_onwheel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "wheel", v, 0); }
-static JSValue wjg_Window_get_onpointerover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerover"); }
-static JSValue wjg_Window_set_onpointerover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerover", v, 0); }
-static JSValue wjg_Window_get_onpointerenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerenter"); }
-static JSValue wjg_Window_set_onpointerenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerenter", v, 0); }
-static JSValue wjg_Window_get_onpointerdown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerdown"); }
-static JSValue wjg_Window_set_onpointerdown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerdown", v, 0); }
-static JSValue wjg_Window_get_onpointermove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointermove"); }
-static JSValue wjg_Window_set_onpointermove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointermove", v, 0); }
-static JSValue wjg_Window_get_onpointerrawupdate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerrawupdate"); }
-static JSValue wjg_Window_set_onpointerrawupdate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerrawupdate", v, 0); }
-static JSValue wjg_Window_get_onpointerup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerup"); }
-static JSValue wjg_Window_set_onpointerup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerup", v, 0); }
-static JSValue wjg_Window_get_onpointercancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointercancel"); }
-static JSValue wjg_Window_set_onpointercancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointercancel", v, 0); }
-static JSValue wjg_Window_get_onpointerout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerout"); }
-static JSValue wjg_Window_set_onpointerout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerout", v, 0); }
-static JSValue wjg_Window_get_onpointerleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "pointerleave"); }
-static JSValue wjg_Window_set_onpointerleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "pointerleave", v, 0); }
-static JSValue wjg_Window_get_ongotpointercapture(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "gotpointercapture"); }
-static JSValue wjg_Window_set_ongotpointercapture(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "gotpointercapture", v, 0); }
-static JSValue wjg_Window_get_onlostpointercapture(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "lostpointercapture"); }
-static JSValue wjg_Window_set_onlostpointercapture(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "lostpointercapture", v, 0); }
-static JSValue wjg_Window_get_onselectstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "selectstart"); }
-static JSValue wjg_Window_set_onselectstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "selectstart", v, 0); }
-static JSValue wjg_Window_get_onselectionchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "selectionchange"); }
-static JSValue wjg_Window_set_onselectionchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "selectionchange", v, 0); }
-static JSValue wjg_Window_get_ontouchstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "touchstart"); }
-static JSValue wjg_Window_set_ontouchstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "touchstart", v, 0); }
-static JSValue wjg_Window_get_ontouchend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "touchend"); }
-static JSValue wjg_Window_set_ontouchend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "touchend", v, 0); }
-static JSValue wjg_Window_get_ontouchmove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "touchmove"); }
-static JSValue wjg_Window_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "touchmove", v, 0); }
-static JSValue wjg_Window_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "touchcancel"); }
-static JSValue wjg_Window_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "touchcancel", v, 0); }
-static JSValue wjg_Window_get_ongamepadconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "gamepadconnected"); }
-static JSValue wjg_Window_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "gamepadconnected", v, 0); }
-static JSValue wjg_Window_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 382, "gamepaddisconnected"); }
-static JSValue wjg_Window_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 382, "gamepaddisconnected", v, 0); }
-static JSValue wjg_Worker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "error"); }
-static JSValue wjg_Worker_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "error", v, 0); }
-static JSValue wjg_Worker_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "message"); }
-static JSValue wjg_Worker_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "message", v, 0); }
-static JSValue wjg_Worker_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "messageerror"); }
-static JSValue wjg_Worker_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "messageerror", v, 0); }
-static JSValue wjg_WorkerGlobalScope_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "error"); }
-static JSValue wjg_WorkerGlobalScope_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "error", v, 1); }
-static JSValue wjg_WorkerGlobalScope_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "languagechange"); }
-static JSValue wjg_WorkerGlobalScope_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "languagechange", v, 0); }
-static JSValue wjg_WorkerGlobalScope_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "offline"); }
-static JSValue wjg_WorkerGlobalScope_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "offline", v, 0); }
-static JSValue wjg_WorkerGlobalScope_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "online"); }
-static JSValue wjg_WorkerGlobalScope_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "online", v, 0); }
-static JSValue wjg_WorkerGlobalScope_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "rejectionhandled"); }
-static JSValue wjg_WorkerGlobalScope_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "rejectionhandled", v, 0); }
-static JSValue wjg_WorkerGlobalScope_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "unhandledrejection"); }
-static JSValue wjg_WorkerGlobalScope_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "unhandledrejection", v, 0); }
+static JSValue wjg_Window_get_onanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "animationstart"); }
+static JSValue wjg_Window_set_onanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "animationstart", v, 0); }
+static JSValue wjg_Window_get_onanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "animationiteration"); }
+static JSValue wjg_Window_set_onanimationiteration(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "animationiteration", v, 0); }
+static JSValue wjg_Window_get_onanimationend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "animationend"); }
+static JSValue wjg_Window_set_onanimationend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "animationend", v, 0); }
+static JSValue wjg_Window_get_onanimationcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "animationcancel"); }
+static JSValue wjg_Window_set_onanimationcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "animationcancel", v, 0); }
+static JSValue wjg_Window_get_ontransitionrun(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "transitionrun"); }
+static JSValue wjg_Window_set_ontransitionrun(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "transitionrun", v, 0); }
+static JSValue wjg_Window_get_ontransitionstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "transitionstart"); }
+static JSValue wjg_Window_set_ontransitionstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "transitionstart", v, 0); }
+static JSValue wjg_Window_get_ontransitionend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "transitionend"); }
+static JSValue wjg_Window_set_ontransitionend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "transitionend", v, 0); }
+static JSValue wjg_Window_get_ontransitioncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "transitioncancel"); }
+static JSValue wjg_Window_set_ontransitioncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "transitioncancel", v, 0); }
+static JSValue wjg_Window_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "abort"); }
+static JSValue wjg_Window_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "abort", v, 0); }
+static JSValue wjg_Window_get_onauxclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "auxclick"); }
+static JSValue wjg_Window_set_onauxclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "auxclick", v, 0); }
+static JSValue wjg_Window_get_onbeforeinput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "beforeinput"); }
+static JSValue wjg_Window_set_onbeforeinput(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "beforeinput", v, 0); }
+static JSValue wjg_Window_get_onbeforematch(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "beforematch"); }
+static JSValue wjg_Window_set_onbeforematch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "beforematch", v, 0); }
+static JSValue wjg_Window_get_onbeforetoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "beforetoggle"); }
+static JSValue wjg_Window_set_onbeforetoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "beforetoggle", v, 0); }
+static JSValue wjg_Window_get_oncancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "cancel"); }
+static JSValue wjg_Window_set_oncancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "cancel", v, 0); }
+static JSValue wjg_Window_get_oncanplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "canplay"); }
+static JSValue wjg_Window_set_oncanplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "canplay", v, 0); }
+static JSValue wjg_Window_get_oncanplaythrough(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "canplaythrough"); }
+static JSValue wjg_Window_set_oncanplaythrough(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "canplaythrough", v, 0); }
+static JSValue wjg_Window_get_onchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "change"); }
+static JSValue wjg_Window_set_onchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "change", v, 0); }
+static JSValue wjg_Window_get_onclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "click"); }
+static JSValue wjg_Window_set_onclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "click", v, 0); }
+static JSValue wjg_Window_get_onclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "close"); }
+static JSValue wjg_Window_set_onclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "close", v, 0); }
+static JSValue wjg_Window_get_oncommand(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "command"); }
+static JSValue wjg_Window_set_oncommand(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "command", v, 0); }
+static JSValue wjg_Window_get_oncontextlost(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "contextlost"); }
+static JSValue wjg_Window_set_oncontextlost(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "contextlost", v, 0); }
+static JSValue wjg_Window_get_oncontextmenu(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "contextmenu"); }
+static JSValue wjg_Window_set_oncontextmenu(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "contextmenu", v, 0); }
+static JSValue wjg_Window_get_oncontextrestored(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "contextrestored"); }
+static JSValue wjg_Window_set_oncontextrestored(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "contextrestored", v, 0); }
+static JSValue wjg_Window_get_oncopy(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "copy"); }
+static JSValue wjg_Window_set_oncopy(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "copy", v, 0); }
+static JSValue wjg_Window_get_oncuechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "cuechange"); }
+static JSValue wjg_Window_set_oncuechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "cuechange", v, 0); }
+static JSValue wjg_Window_get_oncut(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "cut"); }
+static JSValue wjg_Window_set_oncut(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "cut", v, 0); }
+static JSValue wjg_Window_get_ondblclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dblclick"); }
+static JSValue wjg_Window_set_ondblclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dblclick", v, 0); }
+static JSValue wjg_Window_get_ondrag(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "drag"); }
+static JSValue wjg_Window_set_ondrag(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "drag", v, 0); }
+static JSValue wjg_Window_get_ondragend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dragend"); }
+static JSValue wjg_Window_set_ondragend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dragend", v, 0); }
+static JSValue wjg_Window_get_ondragenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dragenter"); }
+static JSValue wjg_Window_set_ondragenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dragenter", v, 0); }
+static JSValue wjg_Window_get_ondragleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dragleave"); }
+static JSValue wjg_Window_set_ondragleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dragleave", v, 0); }
+static JSValue wjg_Window_get_ondragover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dragover"); }
+static JSValue wjg_Window_set_ondragover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dragover", v, 0); }
+static JSValue wjg_Window_get_ondragstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "dragstart"); }
+static JSValue wjg_Window_set_ondragstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "dragstart", v, 0); }
+static JSValue wjg_Window_get_ondrop(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "drop"); }
+static JSValue wjg_Window_set_ondrop(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "drop", v, 0); }
+static JSValue wjg_Window_get_ondurationchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "durationchange"); }
+static JSValue wjg_Window_set_ondurationchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "durationchange", v, 0); }
+static JSValue wjg_Window_get_onemptied(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "emptied"); }
+static JSValue wjg_Window_set_onemptied(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "emptied", v, 0); }
+static JSValue wjg_Window_get_onended(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "ended"); }
+static JSValue wjg_Window_set_onended(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "ended", v, 0); }
+static JSValue wjg_Window_get_onformdata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "formdata"); }
+static JSValue wjg_Window_set_onformdata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "formdata", v, 0); }
+static JSValue wjg_Window_get_oninput(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "input"); }
+static JSValue wjg_Window_set_oninput(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "input", v, 0); }
+static JSValue wjg_Window_get_oninvalid(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "invalid"); }
+static JSValue wjg_Window_set_oninvalid(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "invalid", v, 0); }
+static JSValue wjg_Window_get_onkeydown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "keydown"); }
+static JSValue wjg_Window_set_onkeydown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "keydown", v, 0); }
+static JSValue wjg_Window_get_onkeypress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "keypress"); }
+static JSValue wjg_Window_set_onkeypress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "keypress", v, 0); }
+static JSValue wjg_Window_get_onkeyup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "keyup"); }
+static JSValue wjg_Window_set_onkeyup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "keyup", v, 0); }
+static JSValue wjg_Window_get_onloadeddata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "loadeddata"); }
+static JSValue wjg_Window_set_onloadeddata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "loadeddata", v, 0); }
+static JSValue wjg_Window_get_onloadedmetadata(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "loadedmetadata"); }
+static JSValue wjg_Window_set_onloadedmetadata(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "loadedmetadata", v, 0); }
+static JSValue wjg_Window_get_onloadstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "loadstart"); }
+static JSValue wjg_Window_set_onloadstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "loadstart", v, 0); }
+static JSValue wjg_Window_get_onmousedown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mousedown"); }
+static JSValue wjg_Window_set_onmousedown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mousedown", v, 0); }
+static JSValue wjg_Window_get_onmouseenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mouseenter"); }
+static JSValue wjg_Window_set_onmouseenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mouseenter", v, 0); }
+static JSValue wjg_Window_get_onmouseleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mouseleave"); }
+static JSValue wjg_Window_set_onmouseleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mouseleave", v, 0); }
+static JSValue wjg_Window_get_onmousemove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mousemove"); }
+static JSValue wjg_Window_set_onmousemove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mousemove", v, 0); }
+static JSValue wjg_Window_get_onmouseout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mouseout"); }
+static JSValue wjg_Window_set_onmouseout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mouseout", v, 0); }
+static JSValue wjg_Window_get_onmouseover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mouseover"); }
+static JSValue wjg_Window_set_onmouseover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mouseover", v, 0); }
+static JSValue wjg_Window_get_onmouseup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "mouseup"); }
+static JSValue wjg_Window_set_onmouseup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "mouseup", v, 0); }
+static JSValue wjg_Window_get_onpaste(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "paste"); }
+static JSValue wjg_Window_set_onpaste(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "paste", v, 0); }
+static JSValue wjg_Window_get_onpause(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pause"); }
+static JSValue wjg_Window_set_onpause(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pause", v, 0); }
+static JSValue wjg_Window_get_onplay(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "play"); }
+static JSValue wjg_Window_set_onplay(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "play", v, 0); }
+static JSValue wjg_Window_get_onplaying(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "playing"); }
+static JSValue wjg_Window_set_onplaying(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "playing", v, 0); }
+static JSValue wjg_Window_get_onprogress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "progress"); }
+static JSValue wjg_Window_set_onprogress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "progress", v, 0); }
+static JSValue wjg_Window_get_onratechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "ratechange"); }
+static JSValue wjg_Window_set_onratechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "ratechange", v, 0); }
+static JSValue wjg_Window_get_onreset(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "reset"); }
+static JSValue wjg_Window_set_onreset(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "reset", v, 0); }
+static JSValue wjg_Window_get_onscrollend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "scrollend"); }
+static JSValue wjg_Window_set_onscrollend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "scrollend", v, 0); }
+static JSValue wjg_Window_get_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "securitypolicyviolation"); }
+static JSValue wjg_Window_set_onsecuritypolicyviolation(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "securitypolicyviolation", v, 0); }
+static JSValue wjg_Window_get_onseeked(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "seeked"); }
+static JSValue wjg_Window_set_onseeked(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "seeked", v, 0); }
+static JSValue wjg_Window_get_onseeking(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "seeking"); }
+static JSValue wjg_Window_set_onseeking(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "seeking", v, 0); }
+static JSValue wjg_Window_get_onselect(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "select"); }
+static JSValue wjg_Window_set_onselect(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "select", v, 0); }
+static JSValue wjg_Window_get_onslotchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "slotchange"); }
+static JSValue wjg_Window_set_onslotchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "slotchange", v, 0); }
+static JSValue wjg_Window_get_onstalled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "stalled"); }
+static JSValue wjg_Window_set_onstalled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "stalled", v, 0); }
+static JSValue wjg_Window_get_onsubmit(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "submit"); }
+static JSValue wjg_Window_set_onsubmit(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "submit", v, 0); }
+static JSValue wjg_Window_get_onsuspend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "suspend"); }
+static JSValue wjg_Window_set_onsuspend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "suspend", v, 0); }
+static JSValue wjg_Window_get_ontimeupdate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "timeupdate"); }
+static JSValue wjg_Window_set_ontimeupdate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "timeupdate", v, 0); }
+static JSValue wjg_Window_get_ontoggle(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "toggle"); }
+static JSValue wjg_Window_set_ontoggle(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "toggle", v, 0); }
+static JSValue wjg_Window_get_onvolumechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "volumechange"); }
+static JSValue wjg_Window_set_onvolumechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "volumechange", v, 0); }
+static JSValue wjg_Window_get_onwaiting(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "waiting"); }
+static JSValue wjg_Window_set_onwaiting(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "waiting", v, 0); }
+static JSValue wjg_Window_get_onwebkitanimationend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "webkitanimationend"); }
+static JSValue wjg_Window_set_onwebkitanimationend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "webkitanimationend", v, 0); }
+static JSValue wjg_Window_get_onwebkitanimationiteration(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "webkitanimationiteration"); }
+static JSValue wjg_Window_set_onwebkitanimationiteration(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "webkitanimationiteration", v, 0); }
+static JSValue wjg_Window_get_onwebkitanimationstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "webkitanimationstart"); }
+static JSValue wjg_Window_set_onwebkitanimationstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "webkitanimationstart", v, 0); }
+static JSValue wjg_Window_get_onwebkittransitionend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "webkittransitionend"); }
+static JSValue wjg_Window_set_onwebkittransitionend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "webkittransitionend", v, 0); }
+static JSValue wjg_Window_get_onwheel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "wheel"); }
+static JSValue wjg_Window_set_onwheel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "wheel", v, 0); }
+static JSValue wjg_Window_get_onpointerover(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerover"); }
+static JSValue wjg_Window_set_onpointerover(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerover", v, 0); }
+static JSValue wjg_Window_get_onpointerenter(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerenter"); }
+static JSValue wjg_Window_set_onpointerenter(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerenter", v, 0); }
+static JSValue wjg_Window_get_onpointerdown(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerdown"); }
+static JSValue wjg_Window_set_onpointerdown(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerdown", v, 0); }
+static JSValue wjg_Window_get_onpointermove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointermove"); }
+static JSValue wjg_Window_set_onpointermove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointermove", v, 0); }
+static JSValue wjg_Window_get_onpointerrawupdate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerrawupdate"); }
+static JSValue wjg_Window_set_onpointerrawupdate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerrawupdate", v, 0); }
+static JSValue wjg_Window_get_onpointerup(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerup"); }
+static JSValue wjg_Window_set_onpointerup(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerup", v, 0); }
+static JSValue wjg_Window_get_onpointercancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointercancel"); }
+static JSValue wjg_Window_set_onpointercancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointercancel", v, 0); }
+static JSValue wjg_Window_get_onpointerout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerout"); }
+static JSValue wjg_Window_set_onpointerout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerout", v, 0); }
+static JSValue wjg_Window_get_onpointerleave(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "pointerleave"); }
+static JSValue wjg_Window_set_onpointerleave(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "pointerleave", v, 0); }
+static JSValue wjg_Window_get_ongotpointercapture(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "gotpointercapture"); }
+static JSValue wjg_Window_set_ongotpointercapture(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "gotpointercapture", v, 0); }
+static JSValue wjg_Window_get_onlostpointercapture(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "lostpointercapture"); }
+static JSValue wjg_Window_set_onlostpointercapture(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "lostpointercapture", v, 0); }
+static JSValue wjg_Window_get_onselectstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "selectstart"); }
+static JSValue wjg_Window_set_onselectstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "selectstart", v, 0); }
+static JSValue wjg_Window_get_onselectionchange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "selectionchange"); }
+static JSValue wjg_Window_set_onselectionchange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "selectionchange", v, 0); }
+static JSValue wjg_Window_get_ontouchstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "touchstart"); }
+static JSValue wjg_Window_set_ontouchstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "touchstart", v, 0); }
+static JSValue wjg_Window_get_ontouchend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "touchend"); }
+static JSValue wjg_Window_set_ontouchend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "touchend", v, 0); }
+static JSValue wjg_Window_get_ontouchmove(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "touchmove"); }
+static JSValue wjg_Window_set_ontouchmove(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "touchmove", v, 0); }
+static JSValue wjg_Window_get_ontouchcancel(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "touchcancel"); }
+static JSValue wjg_Window_set_ontouchcancel(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "touchcancel", v, 0); }
+static JSValue wjg_Window_get_ongamepadconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "gamepadconnected"); }
+static JSValue wjg_Window_set_ongamepadconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "gamepadconnected", v, 0); }
+static JSValue wjg_Window_get_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 383, "gamepaddisconnected"); }
+static JSValue wjg_Window_set_ongamepaddisconnected(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 383, "gamepaddisconnected", v, 0); }
+static JSValue wjg_Worker_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "error"); }
+static JSValue wjg_Worker_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "error", v, 0); }
+static JSValue wjg_Worker_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "message"); }
+static JSValue wjg_Worker_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "message", v, 0); }
+static JSValue wjg_Worker_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 384, "messageerror"); }
+static JSValue wjg_Worker_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 384, "messageerror", v, 0); }
+static JSValue wjg_WorkerGlobalScope_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "error"); }
+static JSValue wjg_WorkerGlobalScope_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "error", v, 1); }
+static JSValue wjg_WorkerGlobalScope_get_onlanguagechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "languagechange"); }
+static JSValue wjg_WorkerGlobalScope_set_onlanguagechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "languagechange", v, 0); }
+static JSValue wjg_WorkerGlobalScope_get_onoffline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "offline"); }
+static JSValue wjg_WorkerGlobalScope_set_onoffline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "offline", v, 0); }
+static JSValue wjg_WorkerGlobalScope_get_ononline(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "online"); }
+static JSValue wjg_WorkerGlobalScope_set_ononline(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "online", v, 0); }
+static JSValue wjg_WorkerGlobalScope_get_onrejectionhandled(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "rejectionhandled"); }
+static JSValue wjg_WorkerGlobalScope_set_onrejectionhandled(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "rejectionhandled", v, 0); }
+static JSValue wjg_WorkerGlobalScope_get_onunhandledrejection(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "unhandledrejection"); }
+static JSValue wjg_WorkerGlobalScope_set_onunhandledrejection(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "unhandledrejection", v, 0); }
 /* DedicatedWorkerGlobalScope.name -> workers.DedicatedWorkerGlobalScope_name */
 static JSValue wjg_DedicatedWorkerGlobalScope_get_name(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 385);
+    wj_obj *self = wj_this(ctx, this_val, 386);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_DedicatedWorkerGlobalScope_name(wj_scratch.data, wj_scratch.cap));
@@ -10588,37 +10653,37 @@ static JSValue wjg_DedicatedWorkerGlobalScope_get_name(JSContext *ctx, JSValueCo
 /* DedicatedWorkerGlobalScope.close() -> workers.DedicatedWorkerGlobalScope_close */
 static JSValue wjg_DedicatedWorkerGlobalScope_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 385);
+    wj_obj *self = wj_this(ctx, this_val, 386);
     if (!self) { return JS_EXCEPTION; }
     int32_t st = wr_DedicatedWorkerGlobalScope_close();
     if (st < 0) { return wj_throw_status(ctx, st, "DedicatedWorkerGlobalScope.close"); }
     return JS_UNDEFINED;
 }
 
-static JSValue wjg_DedicatedWorkerGlobalScope_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "message"); }
-static JSValue wjg_DedicatedWorkerGlobalScope_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "message", v, 0); }
-static JSValue wjg_DedicatedWorkerGlobalScope_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 385, "messageerror"); }
-static JSValue wjg_DedicatedWorkerGlobalScope_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 385, "messageerror", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_oncookiechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "cookiechange"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_oncookiechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "cookiechange", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onnotificationclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "notificationclick"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onnotificationclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "notificationclick", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onnotificationclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "notificationclose"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onnotificationclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "notificationclose", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_oninstall(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "install"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_oninstall(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "install", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onactivate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "activate"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onactivate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "activate", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onfetch(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "fetch"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onfetch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "fetch", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "message"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "message", v, 0); }
-static JSValue wjg_ServiceWorkerGlobalScope_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "messageerror"); }
-static JSValue wjg_ServiceWorkerGlobalScope_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "messageerror", v, 0); }
+static JSValue wjg_DedicatedWorkerGlobalScope_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "message"); }
+static JSValue wjg_DedicatedWorkerGlobalScope_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "message", v, 0); }
+static JSValue wjg_DedicatedWorkerGlobalScope_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 386, "messageerror"); }
+static JSValue wjg_DedicatedWorkerGlobalScope_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 386, "messageerror", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_oncookiechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "cookiechange"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_oncookiechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "cookiechange", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onnotificationclick(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "notificationclick"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onnotificationclick(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "notificationclick", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onnotificationclose(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "notificationclose"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onnotificationclose(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "notificationclose", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_oninstall(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "install"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_oninstall(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "install", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onactivate(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "activate"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onactivate(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "activate", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onfetch(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "fetch"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onfetch(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "fetch", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onmessage(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "message"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onmessage(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "message", v, 0); }
+static JSValue wjg_ServiceWorkerGlobalScope_get_onmessageerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "messageerror"); }
+static JSValue wjg_ServiceWorkerGlobalScope_set_onmessageerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "messageerror", v, 0); }
 /* SharedWorkerGlobalScope.name -> workers.SharedWorkerGlobalScope_name */
 static JSValue wjg_SharedWorkerGlobalScope_get_name(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 387);
+    wj_obj *self = wj_this(ctx, this_val, 388);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_SharedWorkerGlobalScope_name(wj_scratch.data, wj_scratch.cap));
@@ -10629,35 +10694,35 @@ static JSValue wjg_SharedWorkerGlobalScope_get_name(JSContext *ctx, JSValueConst
 /* SharedWorkerGlobalScope.close() -> workers.SharedWorkerGlobalScope_close */
 static JSValue wjg_SharedWorkerGlobalScope_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 387);
+    wj_obj *self = wj_this(ctx, this_val, 388);
     if (!self) { return JS_EXCEPTION; }
     int32_t st = wr_SharedWorkerGlobalScope_close();
     if (st < 0) { return wj_throw_status(ctx, st, "SharedWorkerGlobalScope.close"); }
     return JS_UNDEFINED;
 }
 
-static JSValue wjg_SharedWorkerGlobalScope_get_onconnect(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 387, "connect"); }
-static JSValue wjg_SharedWorkerGlobalScope_set_onconnect(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 387, "connect", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onloadstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "loadstart"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onloadstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "loadstart", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onprogress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "progress"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onprogress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "progress", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "abort"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "abort", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "error"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "error", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "load"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "load", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_ontimeout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "timeout"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_ontimeout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "timeout", v, 0); }
-static JSValue wjg_XMLHttpRequestEventTarget_get_onloadend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "loadend"); }
-static JSValue wjg_XMLHttpRequestEventTarget_set_onloadend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "loadend", v, 0); }
-static JSValue wjg_XMLHttpRequest_get_onreadystatechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "readystatechange"); }
-static JSValue wjg_XMLHttpRequest_set_onreadystatechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "readystatechange", v, 0); }
+static JSValue wjg_SharedWorkerGlobalScope_get_onconnect(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 388, "connect"); }
+static JSValue wjg_SharedWorkerGlobalScope_set_onconnect(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 388, "connect", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onloadstart(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "loadstart"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onloadstart(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "loadstart", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onprogress(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "progress"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onprogress(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "progress", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onabort(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "abort"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onabort(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "abort", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onerror(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "error"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onerror(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "error", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onload(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "load"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onload(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "load", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_ontimeout(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "timeout"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_ontimeout(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "timeout", v, 0); }
+static JSValue wjg_XMLHttpRequestEventTarget_get_onloadend(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 389, "loadend"); }
+static JSValue wjg_XMLHttpRequestEventTarget_set_onloadend(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 389, "loadend", v, 0); }
+static JSValue wjg_XMLHttpRequest_get_onreadystatechange(JSContext *ctx, JSValueConst this_val) { return wj_event_handler_get(ctx, this_val, 390, "readystatechange"); }
+static JSValue wjg_XMLHttpRequest_set_onreadystatechange(JSContext *ctx, JSValueConst this_val, JSValueConst v) { return wj_event_handler_set(ctx, this_val, 390, "readystatechange", v, 0); }
 /* FormData.delete() -> forms.FormData_delete */
 static JSValue wjg_FormData_delete(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 410);
+    wj_obj *self = wj_this(ctx, this_val, 411);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "FormData.delete", 1, argc); }
     wj_str a0;
@@ -10670,7 +10735,7 @@ static JSValue wjg_FormData_delete(JSContext *ctx, JSValueConst this_val, int ar
 /* FormData.has() -> forms.FormData_has */
 static JSValue wjg_FormData_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 410);
+    wj_obj *self = wj_this(ctx, this_val, 411);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "FormData.has", 1, argc); }
     wj_str a0;
@@ -10683,7 +10748,7 @@ static JSValue wjg_FormData_has(JSContext *ctx, JSValueConst this_val, int argc,
 /* History.length -> history.History_length */
 static JSValue wjg_History_get_length(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 424);
+    wj_obj *self = wj_this(ctx, this_val, 425);
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_History_length();
     return JS_NewUint32(ctx, r);
@@ -10692,7 +10757,7 @@ static JSValue wjg_History_get_length(JSContext *ctx, JSValueConst this_val)
 /* History.go() -> history.History_go */
 static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 424);
+    wj_obj *self = wj_this(ctx, this_val, 425);
     if (!self) { return JS_EXCEPTION; }
     int32_t a0 = 0;
     if (!JS_IsUndefined(wj_arg(argc, argv, 0)) && !wj_to_int32(ctx, wj_arg(argc, argv, 0), &a0, 32, 0)) { return JS_EXCEPTION; }
@@ -10703,7 +10768,7 @@ static JSValue wjg_History_go(JSContext *ctx, JSValueConst this_val, int argc, J
 /* ImageBitmap.width -> canvas.ImageBitmap_width */
 static JSValue wjg_ImageBitmap_get_width(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 433);
+    wj_obj *self = wj_this(ctx, this_val, 434);
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_ImageBitmap_width(self->handle);
     return JS_NewUint32(ctx, r);
@@ -10712,7 +10777,7 @@ static JSValue wjg_ImageBitmap_get_width(JSContext *ctx, JSValueConst this_val)
 /* ImageBitmap.height -> canvas.ImageBitmap_height */
 static JSValue wjg_ImageBitmap_get_height(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 433);
+    wj_obj *self = wj_this(ctx, this_val, 434);
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_ImageBitmap_height(self->handle);
     return JS_NewUint32(ctx, r);
@@ -10721,7 +10786,7 @@ static JSValue wjg_ImageBitmap_get_height(JSContext *ctx, JSValueConst this_val)
 /* ImageBitmap.close() -> canvas.ImageBitmap_close */
 static JSValue wjg_ImageBitmap_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 433);
+    wj_obj *self = wj_this(ctx, this_val, 434);
     if (!self) { return JS_EXCEPTION; }
     wr_ImageBitmap_close(self->handle);
     return JS_UNDEFINED;
@@ -10730,7 +10795,7 @@ static JSValue wjg_ImageBitmap_close(JSContext *ctx, JSValueConst this_val, int 
 /* OffscreenCanvasRenderingContext2D.canvas -> canvas.OffscreenCanvasRenderingContext2D_canvas */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_canvas(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     uint64_t r = wr_OffscreenCanvasRenderingContext2D_canvas(self->handle);
     return wj_wrap_host(ctx, r, 362);
@@ -10739,7 +10804,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_get_canvas(JSContext *ctx, 
 /* OffscreenCanvasRenderingContext2D.save() -> canvas.CanvasState_save */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_save(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasState_save(self->handle);
     return JS_UNDEFINED;
@@ -10748,7 +10813,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_save(JSContext *ctx, JSValu
 /* OffscreenCanvasRenderingContext2D.restore() -> canvas.CanvasState_restore */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_restore(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasState_restore(self->handle);
     return JS_UNDEFINED;
@@ -10757,7 +10822,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_restore(JSContext *ctx, JSV
 /* OffscreenCanvasRenderingContext2D.reset() -> canvas.CanvasState_reset */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_reset(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasState_reset(self->handle);
     return JS_UNDEFINED;
@@ -10766,7 +10831,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_reset(JSContext *ctx, JSVal
 /* OffscreenCanvasRenderingContext2D.isContextLost() -> canvas.CanvasState_isContextLost */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_isContextLost(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_CanvasState_isContextLost(self->handle);
     return JS_NewBool(ctx, r != 0);
@@ -10775,7 +10840,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_isContextLost(JSContext *ct
 /* OffscreenCanvasRenderingContext2D.scale() -> canvas.CanvasTransform_scale */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_scale(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.scale", 2, argc); }
     double a0 = 0;
@@ -10789,7 +10854,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_scale(JSContext *ctx, JSVal
 /* OffscreenCanvasRenderingContext2D.rotate() -> canvas.CanvasTransform_rotate */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_rotate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.rotate", 1, argc); }
     double a0 = 0;
@@ -10801,7 +10866,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_rotate(JSContext *ctx, JSVa
 /* OffscreenCanvasRenderingContext2D.translate() -> canvas.CanvasTransform_translate */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_translate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.translate", 2, argc); }
     double a0 = 0;
@@ -10815,7 +10880,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_translate(JSContext *ctx, J
 /* OffscreenCanvasRenderingContext2D.transform() -> canvas.CanvasTransform_transform */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_transform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.transform", 6, argc); }
     double a0 = 0;
@@ -10837,7 +10902,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_transform(JSContext *ctx, J
 /* OffscreenCanvasRenderingContext2D.resetTransform() -> canvas.CanvasTransform_resetTransform */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_resetTransform(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasTransform_resetTransform(self->handle);
     return JS_UNDEFINED;
@@ -10846,7 +10911,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_resetTransform(JSContext *c
 /* OffscreenCanvasRenderingContext2D.globalAlpha -> canvas.CanvasCompositing_globalAlpha */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_globalAlpha(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasCompositing_globalAlpha(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -10857,7 +10922,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalAlpha(JSContext *
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -10868,7 +10933,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalAlpha(JSContext *
 /* OffscreenCanvasRenderingContext2D.globalCompositeOperation -> canvas.CanvasCompositing_globalCompositeOperation */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_globalCompositeOperation(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasCompositing_globalCompositeOperation(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -10881,7 +10946,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalCompositeOperatio
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -10893,7 +10958,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_globalCompositeOperatio
 /* OffscreenCanvasRenderingContext2D.imageSmoothingEnabled -> canvas.CanvasImageSmoothing_imageSmoothingEnabled */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingEnabled(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t r = wr_CanvasImageSmoothing_imageSmoothingEnabled(self->handle);
     return JS_NewBool(ctx, r != 0);
@@ -10904,7 +10969,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingEnabled(J
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     bool a0 = false;
     if (true || !JS_IsUndefined(argv[0])) { a0 = JS_ToBool(ctx, argv[0]); }
@@ -10915,7 +10980,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingEnabled(J
 /* OffscreenCanvasRenderingContext2D.imageSmoothingQuality -> canvas.CanvasImageSmoothing_imageSmoothingQuality */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_imageSmoothingQuality(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasImageSmoothing_imageSmoothingQuality(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -10928,7 +10993,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingQuality(J
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -10940,7 +11005,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_imageSmoothingQuality(J
 /* OffscreenCanvasRenderingContext2D.createLinearGradient() -> canvas.CanvasFillStrokeStyles_createLinearGradient */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_createLinearGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createLinearGradient", 4, argc); }
     double a0 = 0;
@@ -10958,7 +11023,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_createLinearGradient(JSCont
 /* OffscreenCanvasRenderingContext2D.createRadialGradient() -> canvas.CanvasFillStrokeStyles_createRadialGradient */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_createRadialGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createRadialGradient", 6, argc); }
     double a0 = 0;
@@ -10982,7 +11047,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_createRadialGradient(JSCont
 /* OffscreenCanvasRenderingContext2D.createConicGradient() -> canvas.CanvasFillStrokeStyles_createConicGradient */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_createConicGradient(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 3) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.createConicGradient", 3, argc); }
     double a0 = 0;
@@ -10998,7 +11063,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_createConicGradient(JSConte
 /* OffscreenCanvasRenderingContext2D.shadowOffsetX -> canvas.CanvasShadowStyles_shadowOffsetX */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetX(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasShadowStyles_shadowOffsetX(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11009,7 +11074,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetX(JSContext
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11020,7 +11085,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetX(JSContext
 /* OffscreenCanvasRenderingContext2D.shadowOffsetY -> canvas.CanvasShadowStyles_shadowOffsetY */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowOffsetY(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasShadowStyles_shadowOffsetY(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11031,7 +11096,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetY(JSContext
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11042,7 +11107,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowOffsetY(JSContext
 /* OffscreenCanvasRenderingContext2D.shadowBlur -> canvas.CanvasShadowStyles_shadowBlur */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowBlur(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasShadowStyles_shadowBlur(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11053,7 +11118,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowBlur(JSContext *c
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11064,7 +11129,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowBlur(JSContext *c
 /* OffscreenCanvasRenderingContext2D.shadowColor -> canvas.CanvasShadowStyles_shadowColor */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_shadowColor(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasShadowStyles_shadowColor(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11077,7 +11142,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowColor(JSContext *
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11089,7 +11154,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_shadowColor(JSContext *
 /* OffscreenCanvasRenderingContext2D.filter -> canvas.CanvasFilters_filter */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_filter(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasFilters_filter(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11102,7 +11167,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_filter(JSContext *ctx, 
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11114,7 +11179,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_filter(JSContext *ctx, 
 /* OffscreenCanvasRenderingContext2D.clearRect() -> canvas.CanvasRect_clearRect */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_clearRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.clearRect", 4, argc); }
     double a0 = 0;
@@ -11132,7 +11197,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_clearRect(JSContext *ctx, J
 /* OffscreenCanvasRenderingContext2D.fillRect() -> canvas.CanvasRect_fillRect */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_fillRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.fillRect", 4, argc); }
     double a0 = 0;
@@ -11150,7 +11215,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_fillRect(JSContext *ctx, JS
 /* OffscreenCanvasRenderingContext2D.strokeRect() -> canvas.CanvasRect_strokeRect */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_strokeRect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.strokeRect", 4, argc); }
     double a0 = 0;
@@ -11168,7 +11233,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_strokeRect(JSContext *ctx, 
 /* OffscreenCanvasRenderingContext2D.beginPath() -> canvas.CanvasDrawPath_beginPath */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_beginPath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasDrawPath_beginPath(self->handle);
     return JS_UNDEFINED;
@@ -11177,20 +11242,20 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_beginPath(JSContext *ctx, J
 /* OffscreenCanvasRenderingContext2D.measureText() -> canvas.CanvasText_measureText */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_measureText(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.measureText", 1, argc); }
     wj_str a0;
     if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
     uint64_t r = wr_CanvasText_measureText(self->handle, (const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
     wj_str_free(ctx, &a0);
-    return wj_wrap_owned(ctx, r, 551, JS_UNDEFINED);
+    return wj_wrap_owned(ctx, r, 552, JS_UNDEFINED);
 }
 
 /* OffscreenCanvasRenderingContext2D.lineWidth -> canvas.CanvasPathDrawingStyles_lineWidth */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineWidth(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasPathDrawingStyles_lineWidth(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11201,7 +11266,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineWidth(JSContext *ct
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11212,7 +11277,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineWidth(JSContext *ct
 /* OffscreenCanvasRenderingContext2D.lineCap -> canvas.CanvasPathDrawingStyles_lineCap */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineCap(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineCap(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11225,7 +11290,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineCap(JSContext *ctx,
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11237,7 +11302,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineCap(JSContext *ctx,
 /* OffscreenCanvasRenderingContext2D.lineJoin -> canvas.CanvasPathDrawingStyles_lineJoin */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineJoin(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasPathDrawingStyles_lineJoin(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11250,7 +11315,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineJoin(JSContext *ctx
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11262,7 +11327,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineJoin(JSContext *ctx
 /* OffscreenCanvasRenderingContext2D.miterLimit -> canvas.CanvasPathDrawingStyles_miterLimit */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_miterLimit(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasPathDrawingStyles_miterLimit(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11273,7 +11338,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_miterLimit(JSContext *c
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11284,7 +11349,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_miterLimit(JSContext *c
 /* OffscreenCanvasRenderingContext2D.lineDashOffset -> canvas.CanvasPathDrawingStyles_lineDashOffset */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lineDashOffset(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_CanvasPathDrawingStyles_lineDashOffset(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11295,7 +11360,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineDashOffset(JSContex
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     double a0 = 0;
     if (!wj_to_double(ctx, argv[0], &a0, false)) { return JS_EXCEPTION; }
@@ -11306,7 +11371,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lineDashOffset(JSContex
 /* OffscreenCanvasRenderingContext2D.lang -> canvas.CanvasTextDrawingStyles_lang */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_lang(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_lang(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11319,7 +11384,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lang(JSContext *ctx, JS
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11331,7 +11396,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_lang(JSContext *ctx, JS
 /* OffscreenCanvasRenderingContext2D.font -> canvas.CanvasTextDrawingStyles_font */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_font(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_font(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11344,7 +11409,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_font(JSContext *ctx, JS
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11356,7 +11421,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_font(JSContext *ctx, JS
 /* OffscreenCanvasRenderingContext2D.textAlign -> canvas.CanvasTextDrawingStyles_textAlign */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textAlign(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textAlign(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11369,7 +11434,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textAlign(JSContext *ct
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11381,7 +11446,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textAlign(JSContext *ct
 /* OffscreenCanvasRenderingContext2D.textBaseline -> canvas.CanvasTextDrawingStyles_textBaseline */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textBaseline(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textBaseline(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11394,7 +11459,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textBaseline(JSContext 
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11406,7 +11471,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textBaseline(JSContext 
 /* OffscreenCanvasRenderingContext2D.direction -> canvas.CanvasTextDrawingStyles_direction */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_direction(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_direction(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11419,7 +11484,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_direction(JSContext *ct
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11431,7 +11496,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_direction(JSContext *ct
 /* OffscreenCanvasRenderingContext2D.letterSpacing -> canvas.CanvasTextDrawingStyles_letterSpacing */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_letterSpacing(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_letterSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11444,7 +11509,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_letterSpacing(JSContext
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11456,7 +11521,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_letterSpacing(JSContext
 /* OffscreenCanvasRenderingContext2D.fontKerning -> canvas.CanvasTextDrawingStyles_fontKerning */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontKerning(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontKerning(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11469,7 +11534,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontKerning(JSContext *
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11481,7 +11546,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontKerning(JSContext *
 /* OffscreenCanvasRenderingContext2D.fontStretch -> canvas.CanvasTextDrawingStyles_fontStretch */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontStretch(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontStretch(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11494,7 +11559,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontStretch(JSContext *
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11506,7 +11571,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontStretch(JSContext *
 /* OffscreenCanvasRenderingContext2D.fontVariantCaps -> canvas.CanvasTextDrawingStyles_fontVariantCaps */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_fontVariantCaps(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_fontVariantCaps(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11519,7 +11584,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontVariantCaps(JSConte
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11531,7 +11596,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_fontVariantCaps(JSConte
 /* OffscreenCanvasRenderingContext2D.textRendering -> canvas.CanvasTextDrawingStyles_textRendering */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_textRendering(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_textRendering(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11544,7 +11609,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textRendering(JSContext
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11556,7 +11621,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_textRendering(JSContext
 /* OffscreenCanvasRenderingContext2D.wordSpacing -> canvas.CanvasTextDrawingStyles_wordSpacing */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_get_wordSpacing(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_CanvasTextDrawingStyles_wordSpacing(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11569,7 +11634,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_wordSpacing(JSContext *
 {
     JSValueConst argv[1] = {v};
     int argc = 1;
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wj_str a0;
     if (!wj_to_str(ctx, argv[0], &a0, 0, "")) { return JS_EXCEPTION; }
@@ -11581,7 +11646,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_set_wordSpacing(JSContext *
 /* OffscreenCanvasRenderingContext2D.closePath() -> canvas.CanvasPath_closePath */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_closePath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasPath_closePath(self->handle);
     return JS_UNDEFINED;
@@ -11590,7 +11655,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_closePath(JSContext *ctx, J
 /* OffscreenCanvasRenderingContext2D.moveTo() -> canvas.CanvasPath_moveTo */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.moveTo", 2, argc); }
     double a0 = 0;
@@ -11604,7 +11669,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_moveTo(JSContext *ctx, JSVa
 /* OffscreenCanvasRenderingContext2D.lineTo() -> canvas.CanvasPath_lineTo */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.lineTo", 2, argc); }
     double a0 = 0;
@@ -11618,7 +11683,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_lineTo(JSContext *ctx, JSVa
 /* OffscreenCanvasRenderingContext2D.quadraticCurveTo() -> canvas.CanvasPath_quadraticCurveTo */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.quadraticCurveTo", 4, argc); }
     double a0 = 0;
@@ -11636,7 +11701,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_quadraticCurveTo(JSContext 
 /* OffscreenCanvasRenderingContext2D.bezierCurveTo() -> canvas.CanvasPath_bezierCurveTo */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 6) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.bezierCurveTo", 6, argc); }
     double a0 = 0;
@@ -11658,7 +11723,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_bezierCurveTo(JSContext *ct
 /* OffscreenCanvasRenderingContext2D.arcTo() -> canvas.CanvasPath_arcTo */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 5) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.arcTo", 5, argc); }
     double a0 = 0;
@@ -11679,7 +11744,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_arcTo(JSContext *ctx, JSVal
 /* OffscreenCanvasRenderingContext2D.rect() -> canvas.CanvasPath_rect */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_rect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.rect", 4, argc); }
     double a0 = 0;
@@ -11697,7 +11762,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_rect(JSContext *ctx, JSValu
 /* OffscreenCanvasRenderingContext2D.arc() -> canvas.CanvasPath_arc */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 5) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.arc", 5, argc); }
     double a0 = 0;
@@ -11720,7 +11785,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_arc(JSContext *ctx, JSValue
 /* OffscreenCanvasRenderingContext2D.ellipse() -> canvas.CanvasPath_ellipse */
 static JSValue wjg_OffscreenCanvasRenderingContext2D_ellipse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 468);
+    wj_obj *self = wj_this(ctx, this_val, 469);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 7) { return wj_throw_arity(ctx, "OffscreenCanvasRenderingContext2D.ellipse", 7, argc); }
     double a0 = 0;
@@ -11747,7 +11812,7 @@ static JSValue wjg_OffscreenCanvasRenderingContext2D_ellipse(JSContext *ctx, JSV
 /* Path2D.closePath() -> canvas.CanvasPath_closePath */
 static JSValue wjg_Path2D_closePath(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     wr_CanvasPath_closePath(self->handle);
     return JS_UNDEFINED;
@@ -11756,7 +11821,7 @@ static JSValue wjg_Path2D_closePath(JSContext *ctx, JSValueConst this_val, int a
 /* Path2D.moveTo() -> canvas.CanvasPath_moveTo */
 static JSValue wjg_Path2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "Path2D.moveTo", 2, argc); }
     double a0 = 0;
@@ -11770,7 +11835,7 @@ static JSValue wjg_Path2D_moveTo(JSContext *ctx, JSValueConst this_val, int argc
 /* Path2D.lineTo() -> canvas.CanvasPath_lineTo */
 static JSValue wjg_Path2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "Path2D.lineTo", 2, argc); }
     double a0 = 0;
@@ -11784,7 +11849,7 @@ static JSValue wjg_Path2D_lineTo(JSContext *ctx, JSValueConst this_val, int argc
 /* Path2D.quadraticCurveTo() -> canvas.CanvasPath_quadraticCurveTo */
 static JSValue wjg_Path2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "Path2D.quadraticCurveTo", 4, argc); }
     double a0 = 0;
@@ -11802,7 +11867,7 @@ static JSValue wjg_Path2D_quadraticCurveTo(JSContext *ctx, JSValueConst this_val
 /* Path2D.bezierCurveTo() -> canvas.CanvasPath_bezierCurveTo */
 static JSValue wjg_Path2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 6) { return wj_throw_arity(ctx, "Path2D.bezierCurveTo", 6, argc); }
     double a0 = 0;
@@ -11824,7 +11889,7 @@ static JSValue wjg_Path2D_bezierCurveTo(JSContext *ctx, JSValueConst this_val, i
 /* Path2D.arcTo() -> canvas.CanvasPath_arcTo */
 static JSValue wjg_Path2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 5) { return wj_throw_arity(ctx, "Path2D.arcTo", 5, argc); }
     double a0 = 0;
@@ -11845,7 +11910,7 @@ static JSValue wjg_Path2D_arcTo(JSContext *ctx, JSValueConst this_val, int argc,
 /* Path2D.rect() -> canvas.CanvasPath_rect */
 static JSValue wjg_Path2D_rect(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 4) { return wj_throw_arity(ctx, "Path2D.rect", 4, argc); }
     double a0 = 0;
@@ -11863,7 +11928,7 @@ static JSValue wjg_Path2D_rect(JSContext *ctx, JSValueConst this_val, int argc, 
 /* Path2D.arc() -> canvas.CanvasPath_arc */
 static JSValue wjg_Path2D_arc(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 5) { return wj_throw_arity(ctx, "Path2D.arc", 5, argc); }
     double a0 = 0;
@@ -11886,7 +11951,7 @@ static JSValue wjg_Path2D_arc(JSContext *ctx, JSValueConst this_val, int argc, J
 /* Path2D.ellipse() -> canvas.CanvasPath_ellipse */
 static JSValue wjg_Path2D_ellipse(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 470);
+    wj_obj *self = wj_this(ctx, this_val, 471);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 7) { return wj_throw_arity(ctx, "Path2D.ellipse", 7, argc); }
     double a0 = 0;
@@ -11914,7 +11979,7 @@ static JSValue wjg_StyleSheet_set_media(JSContext *ctx, JSValueConst this_val, J
 /* TextDecoder.encoding -> encoding.TextDecoder_encoding */
 static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 547);
+    wj_obj *self = wj_this(ctx, this_val, 548);
     if (!self) { return JS_EXCEPTION; }
     int32_t n;
     WJ_FETCH_STRING(n, wr_TextDecoder_encoding(self->handle, wj_scratch.data, wj_scratch.cap));
@@ -11925,7 +11990,7 @@ static JSValue wjg_TextDecoder_get_encoding(JSContext *ctx, JSValueConst this_va
 /* TextMetrics.width -> canvas.TextMetrics_width */
 static JSValue wjg_TextMetrics_get_width(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_width(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11934,7 +11999,7 @@ static JSValue wjg_TextMetrics_get_width(JSContext *ctx, JSValueConst this_val)
 /* TextMetrics.actualBoundingBoxLeft -> canvas.TextMetrics_actualBoundingBoxLeft */
 static JSValue wjg_TextMetrics_get_actualBoundingBoxLeft(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_actualBoundingBoxLeft(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11943,7 +12008,7 @@ static JSValue wjg_TextMetrics_get_actualBoundingBoxLeft(JSContext *ctx, JSValue
 /* TextMetrics.actualBoundingBoxRight -> canvas.TextMetrics_actualBoundingBoxRight */
 static JSValue wjg_TextMetrics_get_actualBoundingBoxRight(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_actualBoundingBoxRight(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11952,7 +12017,7 @@ static JSValue wjg_TextMetrics_get_actualBoundingBoxRight(JSContext *ctx, JSValu
 /* TextMetrics.fontBoundingBoxAscent -> canvas.TextMetrics_fontBoundingBoxAscent */
 static JSValue wjg_TextMetrics_get_fontBoundingBoxAscent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_fontBoundingBoxAscent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11961,7 +12026,7 @@ static JSValue wjg_TextMetrics_get_fontBoundingBoxAscent(JSContext *ctx, JSValue
 /* TextMetrics.fontBoundingBoxDescent -> canvas.TextMetrics_fontBoundingBoxDescent */
 static JSValue wjg_TextMetrics_get_fontBoundingBoxDescent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_fontBoundingBoxDescent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11970,7 +12035,7 @@ static JSValue wjg_TextMetrics_get_fontBoundingBoxDescent(JSContext *ctx, JSValu
 /* TextMetrics.actualBoundingBoxAscent -> canvas.TextMetrics_actualBoundingBoxAscent */
 static JSValue wjg_TextMetrics_get_actualBoundingBoxAscent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_actualBoundingBoxAscent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11979,7 +12044,7 @@ static JSValue wjg_TextMetrics_get_actualBoundingBoxAscent(JSContext *ctx, JSVal
 /* TextMetrics.actualBoundingBoxDescent -> canvas.TextMetrics_actualBoundingBoxDescent */
 static JSValue wjg_TextMetrics_get_actualBoundingBoxDescent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_actualBoundingBoxDescent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11988,7 +12053,7 @@ static JSValue wjg_TextMetrics_get_actualBoundingBoxDescent(JSContext *ctx, JSVa
 /* TextMetrics.emHeightAscent -> canvas.TextMetrics_emHeightAscent */
 static JSValue wjg_TextMetrics_get_emHeightAscent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_emHeightAscent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -11997,7 +12062,7 @@ static JSValue wjg_TextMetrics_get_emHeightAscent(JSContext *ctx, JSValueConst t
 /* TextMetrics.emHeightDescent -> canvas.TextMetrics_emHeightDescent */
 static JSValue wjg_TextMetrics_get_emHeightDescent(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_emHeightDescent(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -12006,7 +12071,7 @@ static JSValue wjg_TextMetrics_get_emHeightDescent(JSContext *ctx, JSValueConst 
 /* TextMetrics.hangingBaseline -> canvas.TextMetrics_hangingBaseline */
 static JSValue wjg_TextMetrics_get_hangingBaseline(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_hangingBaseline(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -12015,7 +12080,7 @@ static JSValue wjg_TextMetrics_get_hangingBaseline(JSContext *ctx, JSValueConst 
 /* TextMetrics.alphabeticBaseline -> canvas.TextMetrics_alphabeticBaseline */
 static JSValue wjg_TextMetrics_get_alphabeticBaseline(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_alphabeticBaseline(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -12024,7 +12089,7 @@ static JSValue wjg_TextMetrics_get_alphabeticBaseline(JSContext *ctx, JSValueCon
 /* TextMetrics.ideographicBaseline -> canvas.TextMetrics_ideographicBaseline */
 static JSValue wjg_TextMetrics_get_ideographicBaseline(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 551);
+    wj_obj *self = wj_this(ctx, this_val, 552);
     if (!self) { return JS_EXCEPTION; }
     double r = wr_TextMetrics_ideographicBaseline(self->handle);
     return JS_NewFloat64(ctx, (double)r);
@@ -12033,7 +12098,7 @@ static JSValue wjg_TextMetrics_get_ideographicBaseline(JSContext *ctx, JSValueCo
 /* URLSearchParams.size -> url.URLSearchParams_size */
 static JSValue wjg_URLSearchParams_get_size(JSContext *ctx, JSValueConst this_val)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     uint32_t r = wr_URLSearchParams_size(self->handle);
     return JS_NewUint32(ctx, r);
@@ -12042,7 +12107,7 @@ static JSValue wjg_URLSearchParams_get_size(JSContext *ctx, JSValueConst this_va
 /* URLSearchParams.append() -> url.URLSearchParams_append */
 static JSValue wjg_URLSearchParams_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "URLSearchParams.append", 2, argc); }
     wj_str a0;
@@ -12058,7 +12123,7 @@ static JSValue wjg_URLSearchParams_append(JSContext *ctx, JSValueConst this_val,
 /* URLSearchParams.delete() -> url.URLSearchParams_delete */
 static JSValue wjg_URLSearchParams_delete(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "URLSearchParams.delete", 1, argc); }
     wj_str a0;
@@ -12074,7 +12139,7 @@ static JSValue wjg_URLSearchParams_delete(JSContext *ctx, JSValueConst this_val,
 /* URLSearchParams.get() -> url.URLSearchParams_get */
 static JSValue wjg_URLSearchParams_get(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "URLSearchParams.get", 1, argc); }
     wj_str a0;
@@ -12090,7 +12155,7 @@ static JSValue wjg_URLSearchParams_get(JSContext *ctx, JSValueConst this_val, in
 /* URLSearchParams.has() -> url.URLSearchParams_has */
 static JSValue wjg_URLSearchParams_has(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 1) { return wj_throw_arity(ctx, "URLSearchParams.has", 1, argc); }
     wj_str a0;
@@ -12106,7 +12171,7 @@ static JSValue wjg_URLSearchParams_has(JSContext *ctx, JSValueConst this_val, in
 /* URLSearchParams.set() -> url.URLSearchParams_set */
 static JSValue wjg_URLSearchParams_set(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     if (argc < 2) { return wj_throw_arity(ctx, "URLSearchParams.set", 2, argc); }
     wj_str a0;
@@ -12122,7 +12187,7 @@ static JSValue wjg_URLSearchParams_set(JSContext *ctx, JSValueConst this_val, in
 /* URLSearchParams.sort() -> url.URLSearchParams_sort */
 static JSValue wjg_URLSearchParams_sort(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    wj_obj *self = wj_this(ctx, this_val, 566);
+    wj_obj *self = wj_this(ctx, this_val, 567);
     if (!self) { return JS_EXCEPTION; }
     wr_URLSearchParams_sort(self->handle);
     return JS_UNDEFINED;
@@ -12262,11 +12327,11 @@ static const wj_member wj_m_AudioSinkInfo[] = {
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_AudioTrack[] = {
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "enabled", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrack_get_id, NULL, 0 },
+    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrack_get_kind, NULL, 0 },
+    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrack_get_label, NULL, 0 },
+    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrack_get_language, NULL, 0 },
+    { "enabled", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrack_get_enabled, wjr_AudioTrack_set_enabled, 0 },
     { "sourceBuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_AuthenticatorResponse[] = {
@@ -13197,8 +13262,8 @@ static const wj_member wj_m_BeforeUnloadEvent[] = {
     { "returnValue", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_BufferedChangeEvent[] = {
-    { "addedRanges", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 27, NULL, NULL, NULL, 0 },
-    { "removedRanges", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 28, NULL, NULL, NULL, 0 },
+    { "addedRanges", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 27, NULL, wjr_BufferedChangeEvent_get_addedRanges, NULL, 0 },
+    { "removedRanges", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 28, NULL, wjr_BufferedChangeEvent_get_removedRanges, NULL, 0 },
 };
 static const wj_member wj_m_ClipboardChangeEvent[] = {
     { "types", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
@@ -13680,8 +13745,8 @@ static const wj_member wj_m_WaveShaperNode[] = {
     { "oversample", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_AudioTrackList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getTrackById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_AudioTrackList_get_length, NULL, 0 },
+    { "getTrackById", WJ_M_METHOD, 0, 1, wjr_AudioTrackList_getTrackById, NULL, NULL, 0 },
     { "onchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AudioTrackList_get_onchange, wjg_AudioTrackList_set_onchange, 0 },
     { "onaddtrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AudioTrackList_get_onaddtrack, wjg_AudioTrackList_set_onaddtrack, 0 },
     { "onremovetrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_AudioTrackList_get_onremovetrack, wjg_AudioTrackList_set_onremovetrack, 0 },
@@ -13889,7 +13954,7 @@ static const wj_member wj_m_MediaSource[] = {
     { "isTypeSupported", WJ_M_STATIC_METHOD, 0, 1, wjg_MediaSource_static_isTypeSupported, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ManagedMediaSource[] = {
-    { "streaming", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "streaming", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ManagedMediaSource_get_streaming, NULL, 0 },
     { "onstartstreaming", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ManagedMediaSource_get_onstartstreaming, wjg_ManagedMediaSource_set_onstartstreaming, 0 },
     { "onendstreaming", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ManagedMediaSource_get_onendstreaming, wjg_ManagedMediaSource_set_onendstreaming, 0 },
 };
@@ -15103,10 +15168,10 @@ static const wj_member wj_m_HTMLMediaElement[] = {
     { "muted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_muted, wjg_HTMLMediaElement_set_muted, 0 },
     { "defaultMuted", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMediaElement_get_defaultMuted, wjg_HTMLMediaElement_set_defaultMuted, 0 },
     { "loading", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "audioTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 81, NULL, NULL, NULL, 0 },
-    { "videoTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 82, NULL, NULL, NULL, 0 },
-    { "textTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 83, NULL, NULL, NULL, 0 },
-    { "addTextTrack", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "audioTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 81, NULL, wjr_HTMLMediaElement_get_audioTracks, NULL, 0 },
+    { "videoTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 82, NULL, wjr_HTMLMediaElement_get_videoTracks, NULL, 0 },
+    { "textTracks", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 83, NULL, wjr_HTMLMediaElement_get_textTracks, NULL, 0 },
+    { "addTextTrack", WJ_M_METHOD, 0, 1, wjr_HTMLMediaElement_addTextTrack, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLAudioElement[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -15119,6 +15184,8 @@ static const wj_member wj_m_HTMLVideoElement[] = {
     { "poster", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_poster, wjg_HTMLVideoElement_set_poster, 0 },
     { "playsInline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLVideoElement_get_playsInline, wjg_HTMLVideoElement_set_playsInline, 0 },
     { "getVideoPlaybackQuality", WJ_M_METHOD, 0, 0, wjr_HTMLVideoElement_getVideoPlaybackQuality, NULL, NULL, 0 },
+    { "requestVideoFrameCallback", WJ_M_METHOD, 0, 1, wjr_HTMLVideoElement_requestVideoFrameCallback, NULL, NULL, 0 },
+    { "cancelVideoFrameCallback", WJ_M_METHOD, 0, 1, wjr_HTMLVideoElement_cancelVideoFrameCallback, NULL, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMenuElement[] = {
     { "compact", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMenuElement_get_compact, wjg_HTMLMenuElement_set_compact, 0 },
@@ -15436,8 +15503,8 @@ static const wj_member wj_m_HTMLTrackElement[] = {
     { "LOADING", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 1 },
     { "LOADED", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 2 },
     { "ERROR", WJ_M_CONSTANT, 0, 0, NULL, NULL, NULL, 3 },
-    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "track", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "readyState", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTrackElement_get_readyState, NULL, 0 },
+    { "track", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_HTMLTrackElement_get_track, NULL, 0 },
 };
 static const wj_member wj_m_HTMLUListElement[] = {
     { "compact", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLUListElement_get_compact, wjg_HTMLUListElement_set_compact, 0 },
@@ -16152,39 +16219,42 @@ static const wj_member wj_m_SpeechSynthesisUtterance[] = {
     { "onboundary", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SpeechSynthesisUtterance_get_onboundary, wjg_SpeechSynthesisUtterance_set_onboundary, 0 },
 };
 static const wj_member wj_m_TextTrack[] = {
-    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "inBandMetadataTrackDispatchType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "mode", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "cues", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "activeCues", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "addCue", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "removeCue", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_kind, NULL, 0 },
+    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_label, NULL, 0 },
+    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_language, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_id, NULL, 0 },
+    { "inBandMetadataTrackDispatchType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_inBandMetadataTrackDispatchType, NULL, 0 },
+    { "mode", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_mode, wjr_TextTrack_set_mode, 0 },
+    { "cues", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_cues, NULL, 0 },
+    { "activeCues", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrack_get_activeCues, NULL, 0 },
+    { "addCue", WJ_M_METHOD, 0, 1, wjr_TextTrack_addCue, NULL, NULL, 0 },
+    { "removeCue", WJ_M_METHOD, 0, 1, wjr_TextTrack_removeCue, NULL, NULL, 0 },
     { "oncuechange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrack_get_oncuechange, wjg_TextTrack_set_oncuechange, 0 },
     { "sourceBuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TextTrackCue[] = {
-    { "track", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "id", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "startTime", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "endTime", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "pauseOnExit", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "track", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCue_get_track, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCue_get_id, wjr_TextTrackCue_set_id, 0 },
+    { "startTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCue_get_startTime, wjr_TextTrackCue_set_startTime, 0 },
+    { "endTime", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCue_get_endTime, wjr_TextTrackCue_set_endTime, 0 },
+    { "pauseOnExit", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCue_get_pauseOnExit, wjr_TextTrackCue_set_pauseOnExit, 0 },
     { "onenter", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrackCue_get_onenter, wjg_TextTrackCue_set_onenter, 0 },
     { "onexit", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrackCue_get_onexit, wjg_TextTrackCue_set_onexit, 0 },
 };
+static const wj_member wj_m_VTTCue[] = {
+    { "text", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VTTCue_get_text, wjr_VTTCue_set_text, 0 },
+};
 static const wj_member wj_m_TextTrackList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getTrackById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackList_get_length, NULL, 0 },
+    { "getTrackById", WJ_M_METHOD, 0, 1, wjr_TextTrackList_getTrackById, NULL, NULL, 0 },
     { "onchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrackList_get_onchange, wjg_TextTrackList_set_onchange, 0 },
     { "onaddtrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrackList_get_onaddtrack, wjg_TextTrackList_set_onaddtrack, 0 },
     { "onremovetrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextTrackList_get_onremovetrack, wjg_TextTrackList_set_onremovetrack, 0 },
 };
 static const wj_member wj_m_VideoTrackList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getTrackById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "selectedIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrackList_get_length, NULL, 0 },
+    { "getTrackById", WJ_M_METHOD, 0, 1, wjr_VideoTrackList_getTrackById, NULL, NULL, 0 },
+    { "selectedIndex", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrackList_get_selectedIndex, NULL, 0 },
     { "onchange", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_VideoTrackList_get_onchange, wjg_VideoTrackList_set_onchange, 0 },
     { "onaddtrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_VideoTrackList_get_onaddtrack, wjg_VideoTrackList_set_onaddtrack, 0 },
     { "onremovetrack", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_VideoTrackList_get_onremovetrack, wjg_VideoTrackList_set_onremovetrack, 0 },
@@ -17886,8 +17956,8 @@ static const wj_member wj_m_TextMetrics[] = {
     { "ideographicBaseline", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_TextMetrics_get_ideographicBaseline, NULL, 0 },
 };
 static const wj_member wj_m_TextTrackCueList[] = {
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "getCueById", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TextTrackCueList_get_length, NULL, 0 },
+    { "getCueById", WJ_M_METHOD, 0, 1, wjr_TextTrackCueList_getCueById, NULL, NULL, 0 },
 };
 static const wj_member wj_m_TimeRanges[] = {
     { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_TimeRanges_get_length, NULL, 0 },
@@ -18031,11 +18101,11 @@ static const wj_member wj_m_VideoPlaybackQuality[] = {
     { "totalFrameDelay", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoPlaybackQuality_get_totalFrameDelay, NULL, 0 },
 };
 static const wj_member wj_m_VideoTrack[] = {
-    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "selected", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
+    { "id", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrack_get_id, NULL, 0 },
+    { "kind", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrack_get_kind, NULL, 0 },
+    { "label", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrack_get_label, NULL, 0 },
+    { "language", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrack_get_language, NULL, 0 },
+    { "selected", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_VideoTrack_get_selected, wjr_VideoTrack_set_selected, 0 },
     { "sourceBuffer", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_ViewTransition[] = {
@@ -18182,7 +18252,7 @@ static const wj_member wj_m_console[] = {
     { "timeEnd", WJ_M_METHOD, 0, 0, wjr_console_timeEnd, NULL, NULL, 0 },
 };
 
-const int wj_interface_count = 587;
+const int wj_interface_count = 588;
 const int wj_same_object_count = 275;
 
 const wj_interface wj_interfaces[] = {
@@ -18250,7 +18320,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_AudioSinkInfo, .n_members = 1, .subtree_end = 16,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "AudioTrack", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "AudioTrack", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_AudioTrack, .n_members = 6, .subtree_end = 17,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18698,7 +18768,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_BeforeUnloadEvent, .n_members = 1, .subtree_end = 128,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "BufferedChangeEvent", .parent = 123, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+    { .name = "BufferedChangeEvent", .parent = 123, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_BufferedChangeEvent_constructor,
       .members = wj_m_BufferedChangeEvent, .n_members = 2, .subtree_end = 129,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -18915,7 +18985,7 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "EventTarget", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_EventTarget_constructor,
-      .members = wj_m_EventTarget, .n_members = 3, .subtree_end = 391,
+      .members = wj_m_EventTarget, .n_members = 3, .subtree_end = 392,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "AbortSignal", .parent = 182, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -19038,9 +19108,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_WaveShaperNode, .n_members = 2, .subtree_end = 213,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "AudioTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "AudioTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_AudioTrackList, .n_members = 5, .subtree_end = 214,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_AudioTrackList_index_get, .length_get = wjr_AudioTrackList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "BaseAudioContext", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_BaseAudioContext, .n_members = 27, .subtree_end = 217,
@@ -19110,7 +19180,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_MediaSource, .n_members = 15, .subtree_end = 232,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ManagedMediaSource", .parent = 230, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "ManagedMediaSource", .parent = 230, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_ManagedMediaSource_constructor,
       .members = wj_m_ManagedMediaSource, .n_members = 3, .subtree_end = 232,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
@@ -19339,7 +19409,7 @@ const wj_interface wj_interfaces[] = {
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = "Audio", .factory = wjr_HTMLAudioElement_factory, .factory_length = 0 },
     { .name = "HTMLVideoElement", .parent = 286, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLVideoElement, .n_members = 7, .subtree_end = 289,
+      .members = wj_m_HTMLVideoElement, .n_members = 9, .subtree_end = 289,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLMenuElement", .parent = 252, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
@@ -19690,848 +19760,852 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_SpeechSynthesisUtterance, .n_members = 13, .subtree_end = 376,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextTrack", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "TextTrack", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_TextTrack, .n_members = 12, .subtree_end = 377,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextTrackCue", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TextTrackCue, .n_members = 7, .subtree_end = 378,
+    { .name = "TextTrackCue", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_TextTrackCue, .n_members = 7, .subtree_end = 379,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TextTrackList, .n_members = 5, .subtree_end = 379,
+    { .name = "VTTCue", .parent = 377, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 3, .ctor = wjr_VTTCue_constructor,
+      .members = wj_m_VTTCue, .n_members = 1, .subtree_end = 379,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "VideoTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VideoTrackList, .n_members = 6, .subtree_end = 380,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+    { .name = "TextTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_TextTrackList, .n_members = 5, .subtree_end = 380,
+      .index_get = wjr_TextTrackList_index_get, .length_get = wjr_TextTrackList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
+    { .name = "VideoTrackList", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_VideoTrackList, .n_members = 6, .subtree_end = 381,
+      .index_get = wjr_VideoTrackList_index_get, .length_get = wjr_VideoTrackList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "VisualViewport", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VisualViewport, .n_members = 10, .subtree_end = 381,
+      .members = wj_m_VisualViewport, .n_members = 10, .subtree_end = 382,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WebSocket", .parent = 182, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_WebSocket_constructor,
-      .members = wj_m_WebSocket, .n_members = 16, .subtree_end = 382,
+      .members = wj_m_WebSocket, .n_members = 16, .subtree_end = 383,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Window", .parent = 182, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_GLOBAL | WJ_I_UNENUMERABLE_NAMED | WJ_I_HAS_UNFORGEABLE, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Window, .n_members = 217, .subtree_end = 383,
+      .members = wj_m_Window, .n_members = 217, .subtree_end = 384,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Worker", .parent = 182, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Worker_constructor,
-      .members = wj_m_Worker, .n_members = 5, .subtree_end = 384,
+      .members = wj_m_Worker, .n_members = 5, .subtree_end = 385,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerGlobalScope", .parent = 182, .exposed = WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerGlobalScope, .n_members = 31, .subtree_end = 388,
+      .members = wj_m_WorkerGlobalScope, .n_members = 31, .subtree_end = 389,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "DedicatedWorkerGlobalScope", .parent = 384, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_GLOBAL, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_DedicatedWorkerGlobalScope, .n_members = 7, .subtree_end = 386,
+    { .name = "DedicatedWorkerGlobalScope", .parent = 385, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_GLOBAL, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_DedicatedWorkerGlobalScope, .n_members = 7, .subtree_end = 387,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "ServiceWorkerGlobalScope", .parent = 384, .exposed = WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_GLOBAL | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ServiceWorkerGlobalScope, .n_members = 13, .subtree_end = 387,
+    { .name = "ServiceWorkerGlobalScope", .parent = 385, .exposed = WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_GLOBAL | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_ServiceWorkerGlobalScope, .n_members = 13, .subtree_end = 388,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "SharedWorkerGlobalScope", .parent = 384, .exposed = WJ_EXPOSE_SHARED_WORKER, .flags = WJ_I_GLOBAL, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SharedWorkerGlobalScope, .n_members = 3, .subtree_end = 388,
+    { .name = "SharedWorkerGlobalScope", .parent = 385, .exposed = WJ_EXPOSE_SHARED_WORKER, .flags = WJ_I_GLOBAL, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_SharedWorkerGlobalScope, .n_members = 3, .subtree_end = 389,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XMLHttpRequestEventTarget", .parent = 182, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XMLHttpRequestEventTarget, .n_members = 7, .subtree_end = 391,
+      .members = wj_m_XMLHttpRequestEventTarget, .n_members = 7, .subtree_end = 392,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "XMLHttpRequest", .parent = 388, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_XMLHttpRequest_constructor,
-      .members = wj_m_XMLHttpRequest, .n_members = 24, .subtree_end = 390,
+    { .name = "XMLHttpRequest", .parent = 389, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_XMLHttpRequest_constructor,
+      .members = wj_m_XMLHttpRequest, .n_members = 24, .subtree_end = 391,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "XMLHttpRequestUpload", .parent = 388, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XMLHttpRequestUpload, .n_members = 0, .subtree_end = 391,
+    { .name = "XMLHttpRequestUpload", .parent = 389, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_XMLHttpRequestUpload, .n_members = 0, .subtree_end = 392,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "External", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_External, .n_members = 2, .subtree_end = 392,
+      .members = wj_m_External, .n_members = 2, .subtree_end = 393,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FetchLaterResult", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FetchLaterResult, .n_members = 1, .subtree_end = 393,
+      .members = wj_m_FetchLaterResult, .n_members = 1, .subtree_end = 394,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileList, .n_members = 2, .subtree_end = 394,
+      .members = wj_m_FileList, .n_members = 2, .subtree_end = 395,
       .index_get = wjr_FileList_index_get, .length_get = wjr_FileList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileReaderSync", .parent = -1, .exposed = WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileReaderSync, .n_members = 4, .subtree_end = 395,
+      .members = wj_m_FileReaderSync, .n_members = 4, .subtree_end = 396,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileSystem", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystem, .n_members = 2, .subtree_end = 396,
+      .members = wj_m_FileSystem, .n_members = 2, .subtree_end = 397,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileSystemDirectoryReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemDirectoryReader, .n_members = 1, .subtree_end = 397,
+      .members = wj_m_FileSystemDirectoryReader, .n_members = 1, .subtree_end = 398,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileSystemEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemEntry, .n_members = 6, .subtree_end = 400,
+      .members = wj_m_FileSystemEntry, .n_members = 6, .subtree_end = 401,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemDirectoryEntry", .parent = 397, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemDirectoryEntry, .n_members = 3, .subtree_end = 399,
+    { .name = "FileSystemDirectoryEntry", .parent = 398, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_FileSystemDirectoryEntry, .n_members = 3, .subtree_end = 400,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemFileEntry", .parent = 397, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemFileEntry, .n_members = 1, .subtree_end = 400,
+    { .name = "FileSystemFileEntry", .parent = 398, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_FileSystemFileEntry, .n_members = 1, .subtree_end = 401,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileSystemHandle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemHandle, .n_members = 5, .subtree_end = 403,
+      .members = wj_m_FileSystemHandle, .n_members = 5, .subtree_end = 404,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemDirectoryHandle", .parent = 400, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemDirectoryHandle, .n_members = 7, .subtree_end = 402,
+    { .name = "FileSystemDirectoryHandle", .parent = 401, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_FileSystemDirectoryHandle, .n_members = 7, .subtree_end = 403,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemFileHandle", .parent = 400, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemFileHandle, .n_members = 3, .subtree_end = 403,
+    { .name = "FileSystemFileHandle", .parent = 401, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_FileSystemFileHandle, .n_members = 3, .subtree_end = 404,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FileSystemSyncAccessHandle", .parent = -1, .exposed = WJ_EXPOSE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemSyncAccessHandle, .n_members = 6, .subtree_end = 404,
+      .members = wj_m_FileSystemSyncAccessHandle, .n_members = 6, .subtree_end = 405,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFace", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = NULL,
-      .members = wj_m_FontFace, .n_members = 17, .subtree_end = 405,
+      .members = wj_m_FontFace, .n_members = 17, .subtree_end = 406,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFaceFeatures", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FontFaceFeatures, .n_members = 0, .subtree_end = 406,
+      .members = wj_m_FontFaceFeatures, .n_members = 0, .subtree_end = 407,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFacePalette", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FontFacePalette, .n_members = 3, .subtree_end = 407,
+      .members = wj_m_FontFacePalette, .n_members = 3, .subtree_end = 408,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFacePalettes", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FontFacePalettes, .n_members = 1, .subtree_end = 408,
+      .members = wj_m_FontFacePalettes, .n_members = 1, .subtree_end = 409,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFaceVariationAxis", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FontFaceVariationAxis, .n_members = 5, .subtree_end = 409,
+      .members = wj_m_FontFaceVariationAxis, .n_members = 5, .subtree_end = 410,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FontFaceVariations", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FontFaceVariations, .n_members = 0, .subtree_end = 410,
+      .members = wj_m_FontFaceVariations, .n_members = 0, .subtree_end = 411,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FormData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_FormData_constructor,
-      .members = wj_m_FormData, .n_members = 10, .subtree_end = 411,
+      .members = wj_m_FormData, .n_members = 10, .subtree_end = 412,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "FragmentDirective", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FragmentDirective, .n_members = 0, .subtree_end = 412,
+      .members = wj_m_FragmentDirective, .n_members = 0, .subtree_end = 413,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Gamepad", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Gamepad, .n_members = 9, .subtree_end = 413,
+      .members = wj_m_Gamepad, .n_members = 9, .subtree_end = 414,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "GamepadButton", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_GamepadButton, .n_members = 3, .subtree_end = 414,
+      .members = wj_m_GamepadButton, .n_members = 3, .subtree_end = 415,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "GamepadHapticActuator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_GamepadHapticActuator, .n_members = 3, .subtree_end = 415,
+      .members = wj_m_GamepadHapticActuator, .n_members = 3, .subtree_end = 416,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "GroupEffect", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_GroupEffect, .n_members = 6, .subtree_end = 417,
+      .members = wj_m_GroupEffect, .n_members = 6, .subtree_end = 418,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "SequenceEffect", .parent = 415, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_SequenceEffect, .n_members = 1, .subtree_end = 417,
+    { .name = "SequenceEffect", .parent = 416, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
+      .members = wj_m_SequenceEffect, .n_members = 1, .subtree_end = 418,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLAllCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLAllCollection, .n_members = 3, .subtree_end = 418,
+      .members = wj_m_HTMLAllCollection, .n_members = 3, .subtree_end = 419,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HTMLCollection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLCollection, .n_members = 3, .subtree_end = 421,
+      .members = wj_m_HTMLCollection, .n_members = 3, .subtree_end = 422,
       .index_get = wjr_HTMLCollection_index_get, .length_get = wjr_HTMLCollection_length_hook, .named_get = wjr_HTMLCollection_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLFormControlsCollection", .parent = 418, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLFormControlsCollection, .n_members = 1, .subtree_end = 420,
+    { .name = "HTMLFormControlsCollection", .parent = 419, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_HTMLFormControlsCollection, .n_members = 1, .subtree_end = 421,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "HTMLOptionsCollection", .parent = 418, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HTMLOptionsCollection, .n_members = 4, .subtree_end = 421,
+    { .name = "HTMLOptionsCollection", .parent = 419, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_HTMLOptionsCollection, .n_members = 4, .subtree_end = 422,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Headers", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Headers_constructor,
-      .members = wj_m_Headers, .n_members = 10, .subtree_end = 422,
+      .members = wj_m_Headers, .n_members = 10, .subtree_end = 423,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Highlight", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Highlight, .n_members = 2, .subtree_end = 423,
+      .members = wj_m_Highlight, .n_members = 2, .subtree_end = 424,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "HighlightRegistry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_HighlightRegistry, .n_members = 1, .subtree_end = 424,
+      .members = wj_m_HighlightRegistry, .n_members = 1, .subtree_end = 425,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "History", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_History, .n_members = 8, .subtree_end = 425,
+      .members = wj_m_History, .n_members = 8, .subtree_end = 426,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBCursor", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBCursor, .n_members = 10, .subtree_end = 427,
+      .members = wj_m_IDBCursor, .n_members = 10, .subtree_end = 428,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "IDBCursorWithValue", .parent = 425, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBCursorWithValue, .n_members = 1, .subtree_end = 427,
+    { .name = "IDBCursorWithValue", .parent = 426, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_IDBCursorWithValue, .n_members = 1, .subtree_end = 428,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBFactory", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBFactory, .n_members = 4, .subtree_end = 428,
+      .members = wj_m_IDBFactory, .n_members = 4, .subtree_end = 429,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBIndex", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBIndex, .n_members = 13, .subtree_end = 429,
+      .members = wj_m_IDBIndex, .n_members = 13, .subtree_end = 430,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBKeyRange", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBKeyRange, .n_members = 9, .subtree_end = 430,
+      .members = wj_m_IDBKeyRange, .n_members = 9, .subtree_end = 431,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBObjectStore", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBObjectStore, .n_members = 20, .subtree_end = 431,
+      .members = wj_m_IDBObjectStore, .n_members = 20, .subtree_end = 432,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IDBRecord", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IDBRecord, .n_members = 3, .subtree_end = 432,
+      .members = wj_m_IDBRecord, .n_members = 3, .subtree_end = 433,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IdleDeadline", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_IdleDeadline, .n_members = 2, .subtree_end = 433,
+      .members = wj_m_IdleDeadline, .n_members = 2, .subtree_end = 434,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ImageBitmap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ImageBitmap, .n_members = 3, .subtree_end = 434,
+      .members = wj_m_ImageBitmap, .n_members = 3, .subtree_end = 435,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ImageBitmapRenderingContext", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ImageBitmapRenderingContext, .n_members = 2, .subtree_end = 435,
+      .members = wj_m_ImageBitmapRenderingContext, .n_members = 2, .subtree_end = 436,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ImageData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 2, .ctor = wjr_ImageData_constructor,
-      .members = wj_m_ImageData, .n_members = 5, .subtree_end = 436,
+      .members = wj_m_ImageData, .n_members = 5, .subtree_end = 437,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IntersectionObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_IntersectionObserver_constructor,
-      .members = wj_m_IntersectionObserver, .n_members = 10, .subtree_end = 437,
+      .members = wj_m_IntersectionObserver, .n_members = 10, .subtree_end = 438,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "IntersectionObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_IntersectionObserverEntry_constructor,
-      .members = wj_m_IntersectionObserverEntry, .n_members = 8, .subtree_end = 438,
+      .members = wj_m_IntersectionObserverEntry, .n_members = 8, .subtree_end = 439,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "LayoutShiftAttribution", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_LayoutShiftAttribution, .n_members = 3, .subtree_end = 439,
+      .members = wj_m_LayoutShiftAttribution, .n_members = 3, .subtree_end = 440,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Location", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_HAS_UNFORGEABLE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Location, .n_members = 14, .subtree_end = 440,
+      .members = wj_m_Location, .n_members = 14, .subtree_end = 441,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Lock", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Lock, .n_members = 2, .subtree_end = 441,
+      .members = wj_m_Lock, .n_members = 2, .subtree_end = 442,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "LockManager", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_LockManager, .n_members = 2, .subtree_end = 442,
+      .members = wj_m_LockManager, .n_members = 2, .subtree_end = 443,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaDeviceInfo", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaDeviceInfo, .n_members = 5, .subtree_end = 444,
+      .members = wj_m_MediaDeviceInfo, .n_members = 5, .subtree_end = 445,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "InputDeviceInfo", .parent = 442, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_InputDeviceInfo, .n_members = 1, .subtree_end = 444,
+    { .name = "InputDeviceInfo", .parent = 443, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_InputDeviceInfo, .n_members = 1, .subtree_end = 445,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaError", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaError, .n_members = 6, .subtree_end = 445,
+      .members = wj_m_MediaError, .n_members = 6, .subtree_end = 446,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaList, .n_members = 6, .subtree_end = 446,
+      .members = wj_m_MediaList, .n_members = 6, .subtree_end = 447,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaMetadata", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaMetadata, .n_members = 5, .subtree_end = 447,
+      .members = wj_m_MediaMetadata, .n_members = 5, .subtree_end = 448,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaSession", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaSession, .n_members = 7, .subtree_end = 448,
+      .members = wj_m_MediaSession, .n_members = 7, .subtree_end = 449,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MediaSourceHandle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MediaSourceHandle, .n_members = 0, .subtree_end = 449,
+      .members = wj_m_MediaSourceHandle, .n_members = 0, .subtree_end = 450,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MessageChannel", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_MessageChannel_constructor,
-      .members = wj_m_MessageChannel, .n_members = 2, .subtree_end = 450,
+      .members = wj_m_MessageChannel, .n_members = 2, .subtree_end = 451,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MimeType", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MimeType, .n_members = 4, .subtree_end = 451,
+      .members = wj_m_MimeType, .n_members = 4, .subtree_end = 452,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MimeTypeArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MimeTypeArray, .n_members = 3, .subtree_end = 452,
+      .members = wj_m_MimeTypeArray, .n_members = 3, .subtree_end = 453,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MutationObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_MutationObserver_constructor,
-      .members = wj_m_MutationObserver, .n_members = 3, .subtree_end = 453,
+      .members = wj_m_MutationObserver, .n_members = 3, .subtree_end = 454,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "MutationRecord", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_MutationRecord, .n_members = 9, .subtree_end = 454,
+      .members = wj_m_MutationRecord, .n_members = 9, .subtree_end = 455,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NamedNodeMap", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NamedNodeMap, .n_members = 8, .subtree_end = 455,
+      .members = wj_m_NamedNodeMap, .n_members = 8, .subtree_end = 456,
       .index_get = wjr_NamedNodeMap_index_get, .length_get = wjr_NamedNodeMap_length_hook, .named_get = wjr_NamedNodeMap_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = wjr_NamedNodeMap_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 456,
+      .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 457,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationDestination", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigationDestination, .n_members = 6, .subtree_end = 457,
+      .members = wj_m_NavigationDestination, .n_members = 6, .subtree_end = 458,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationPrecommitController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigationPrecommitController, .n_members = 2, .subtree_end = 458,
+      .members = wj_m_NavigationPrecommitController, .n_members = 2, .subtree_end = 459,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationPreloadManager", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigationPreloadManager, .n_members = 4, .subtree_end = 459,
+      .members = wj_m_NavigationPreloadManager, .n_members = 4, .subtree_end = 460,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigationTransition", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigationTransition, .n_members = 5, .subtree_end = 460,
+      .members = wj_m_NavigationTransition, .n_members = 5, .subtree_end = 461,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Navigator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Navigator, .n_members = 43, .subtree_end = 461,
+      .members = wj_m_Navigator, .n_members = 43, .subtree_end = 462,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NavigatorUAData", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NavigatorUAData, .n_members = 5, .subtree_end = 462,
+      .members = wj_m_NavigatorUAData, .n_members = 5, .subtree_end = 463,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NodeFilter", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_CALLBACK, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NodeFilter, .n_members = 17, .subtree_end = 463,
+      .members = wj_m_NodeFilter, .n_members = 17, .subtree_end = 464,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NodeIterator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NodeIterator, .n_members = 8, .subtree_end = 464,
+      .members = wj_m_NodeIterator, .n_members = 8, .subtree_end = 465,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NodeList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_ARRAY_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NodeList, .n_members = 2, .subtree_end = 466,
+      .members = wj_m_NodeList, .n_members = 2, .subtree_end = 467,
       .index_get = wjr_NodeList_index_get, .length_get = wjr_NodeList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "RadioNodeList", .parent = 464, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_RadioNodeList, .n_members = 1, .subtree_end = 466,
+    { .name = "RadioNodeList", .parent = 465, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_RadioNodeList, .n_members = 1, .subtree_end = 467,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NotRestoredReasonDetails", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NotRestoredReasonDetails, .n_members = 2, .subtree_end = 467,
+      .members = wj_m_NotRestoredReasonDetails, .n_members = 2, .subtree_end = 468,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "NotRestoredReasons", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_NotRestoredReasons, .n_members = 7, .subtree_end = 468,
+      .members = wj_m_NotRestoredReasons, .n_members = 7, .subtree_end = 469,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "OffscreenCanvasRenderingContext2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_OffscreenCanvasRenderingContext2D, .n_members = 72, .subtree_end = 469,
+      .members = wj_m_OffscreenCanvasRenderingContext2D, .n_members = 72, .subtree_end = 470,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Origin", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Origin, .n_members = 4, .subtree_end = 470,
+      .members = wj_m_Origin, .n_members = 4, .subtree_end = 471,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Path2D", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Path2D_constructor,
-      .members = wj_m_Path2D, .n_members = 11, .subtree_end = 471,
+      .members = wj_m_Path2D, .n_members = 11, .subtree_end = 472,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceEntry, .n_members = 7, .subtree_end = 484,
+      .members = wj_m_PerformanceEntry, .n_members = 7, .subtree_end = 485,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "LargestContentfulPaint", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_LargestContentfulPaint, .n_members = 9, .subtree_end = 473,
+    { .name = "LargestContentfulPaint", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_LargestContentfulPaint, .n_members = 9, .subtree_end = 474,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "LayoutShift", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_LayoutShift, .n_members = 5, .subtree_end = 474,
+    { .name = "LayoutShift", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_LayoutShift, .n_members = 5, .subtree_end = 475,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceElementTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceElementTiming, .n_members = 12, .subtree_end = 475,
+    { .name = "PerformanceElementTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceElementTiming, .n_members = 12, .subtree_end = 476,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceEventTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceEventTiming, .n_members = 7, .subtree_end = 476,
+    { .name = "PerformanceEventTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceEventTiming, .n_members = 7, .subtree_end = 477,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceLongTaskTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceLongTaskTiming, .n_members = 6, .subtree_end = 477,
+    { .name = "PerformanceLongTaskTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceLongTaskTiming, .n_members = 6, .subtree_end = 478,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceMark", .parent = 471, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PerformanceMark_constructor,
-      .members = wj_m_PerformanceMark, .n_members = 1, .subtree_end = 478,
+    { .name = "PerformanceMark", .parent = 472, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PerformanceMark_constructor,
+      .members = wj_m_PerformanceMark, .n_members = 1, .subtree_end = 479,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceMeasure", .parent = 471, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceMeasure, .n_members = 1, .subtree_end = 479,
+    { .name = "PerformanceMeasure", .parent = 472, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceMeasure, .n_members = 1, .subtree_end = 480,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformancePaintTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformancePaintTiming, .n_members = 3, .subtree_end = 480,
+    { .name = "PerformancePaintTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformancePaintTiming, .n_members = 3, .subtree_end = 481,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceResourceTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceResourceTiming, .n_members = 29, .subtree_end = 482,
+    { .name = "PerformanceResourceTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceResourceTiming, .n_members = 29, .subtree_end = 483,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "PerformanceNavigationTiming", .parent = 480, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceNavigationTiming, .n_members = 14, .subtree_end = 482,
+    { .name = "PerformanceNavigationTiming", .parent = 481, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_PerformanceNavigationTiming, .n_members = 14, .subtree_end = 483,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TaskAttributionTiming", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TaskAttributionTiming, .n_members = 9, .subtree_end = 483,
+    { .name = "TaskAttributionTiming", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_TaskAttributionTiming, .n_members = 9, .subtree_end = 484,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "VisibilityStateEntry", .parent = 471, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VisibilityStateEntry, .n_members = 4, .subtree_end = 484,
+    { .name = "VisibilityStateEntry", .parent = 472, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_VisibilityStateEntry, .n_members = 4, .subtree_end = 485,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceNavigation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceNavigation, .n_members = 7, .subtree_end = 485,
+      .members = wj_m_PerformanceNavigation, .n_members = 7, .subtree_end = 486,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_PerformanceObserver_constructor,
-      .members = wj_m_PerformanceObserver, .n_members = 4, .subtree_end = 486,
+      .members = wj_m_PerformanceObserver, .n_members = 4, .subtree_end = 487,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceObserverEntryList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceObserverEntryList, .n_members = 3, .subtree_end = 487,
+      .members = wj_m_PerformanceObserverEntryList, .n_members = 3, .subtree_end = 488,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceTiming", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceTiming, .n_members = 22, .subtree_end = 488,
+      .members = wj_m_PerformanceTiming, .n_members = 22, .subtree_end = 489,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PerformanceTimingConfidence", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PerformanceTimingConfidence, .n_members = 3, .subtree_end = 489,
+      .members = wj_m_PerformanceTimingConfidence, .n_members = 3, .subtree_end = 490,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PeriodicWave", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_PeriodicWave, .n_members = 0, .subtree_end = 490,
+      .members = wj_m_PeriodicWave, .n_members = 0, .subtree_end = 491,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Permissions", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Permissions, .n_members = 1, .subtree_end = 491,
+      .members = wj_m_Permissions, .n_members = 1, .subtree_end = 492,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Plugin", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Plugin, .n_members = 6, .subtree_end = 492,
+      .members = wj_m_Plugin, .n_members = 6, .subtree_end = 493,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "PluginArray", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_UNENUMERABLE_NAMED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_PluginArray, .n_members = 4, .subtree_end = 493,
+      .members = wj_m_PluginArray, .n_members = 4, .subtree_end = 494,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableByteStreamController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ReadableByteStreamController, .n_members = 5, .subtree_end = 494,
+      .members = wj_m_ReadableByteStreamController, .n_members = 5, .subtree_end = 495,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_ReadableStream_constructor,
-      .members = wj_m_ReadableStream, .n_members = 8, .subtree_end = 495,
+      .members = wj_m_ReadableStream, .n_members = 8, .subtree_end = 496,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStreamBYOBReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_ReadableStreamBYOBReader, .n_members = 4, .subtree_end = 496,
+      .members = wj_m_ReadableStreamBYOBReader, .n_members = 4, .subtree_end = 497,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStreamBYOBRequest", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ReadableStreamBYOBRequest, .n_members = 3, .subtree_end = 497,
+      .members = wj_m_ReadableStreamBYOBRequest, .n_members = 3, .subtree_end = 498,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ReadableStreamDefaultController, .n_members = 4, .subtree_end = 498,
+      .members = wj_m_ReadableStreamDefaultController, .n_members = 4, .subtree_end = 499,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ReadableStreamDefaultReader", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ReadableStreamDefaultReader_constructor,
-      .members = wj_m_ReadableStreamDefaultReader, .n_members = 4, .subtree_end = 499,
+      .members = wj_m_ReadableStreamDefaultReader, .n_members = 4, .subtree_end = 500,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Request", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Request_constructor,
-      .members = wj_m_Request, .n_members = 26, .subtree_end = 500,
+      .members = wj_m_Request, .n_members = 26, .subtree_end = 501,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ResizeObserver", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_ResizeObserver_constructor,
-      .members = wj_m_ResizeObserver, .n_members = 3, .subtree_end = 501,
+      .members = wj_m_ResizeObserver, .n_members = 3, .subtree_end = 502,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ResizeObserverEntry", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ResizeObserverEntry, .n_members = 5, .subtree_end = 502,
+      .members = wj_m_ResizeObserverEntry, .n_members = 5, .subtree_end = 503,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ResizeObserverSize", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ResizeObserverSize, .n_members = 2, .subtree_end = 503,
+      .members = wj_m_ResizeObserverSize, .n_members = 2, .subtree_end = 504,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Response", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_Response_constructor,
-      .members = wj_m_Response, .n_members = 20, .subtree_end = 504,
+      .members = wj_m_Response, .n_members = 20, .subtree_end = 505,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAngle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAngle, .n_members = 11, .subtree_end = 505,
+      .members = wj_m_SVGAngle, .n_members = 11, .subtree_end = 506,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedAngle", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedAngle, .n_members = 2, .subtree_end = 506,
+      .members = wj_m_SVGAnimatedAngle, .n_members = 2, .subtree_end = 507,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedBoolean", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedBoolean, .n_members = 2, .subtree_end = 507,
+      .members = wj_m_SVGAnimatedBoolean, .n_members = 2, .subtree_end = 508,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedEnumeration", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedEnumeration, .n_members = 2, .subtree_end = 508,
+      .members = wj_m_SVGAnimatedEnumeration, .n_members = 2, .subtree_end = 509,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedInteger", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedInteger, .n_members = 2, .subtree_end = 509,
+      .members = wj_m_SVGAnimatedInteger, .n_members = 2, .subtree_end = 510,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedLength", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedLength, .n_members = 2, .subtree_end = 510,
+      .members = wj_m_SVGAnimatedLength, .n_members = 2, .subtree_end = 511,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedLengthList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedLengthList, .n_members = 2, .subtree_end = 511,
+      .members = wj_m_SVGAnimatedLengthList, .n_members = 2, .subtree_end = 512,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedNumber", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedNumber, .n_members = 2, .subtree_end = 512,
+      .members = wj_m_SVGAnimatedNumber, .n_members = 2, .subtree_end = 513,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedNumberList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedNumberList, .n_members = 2, .subtree_end = 513,
+      .members = wj_m_SVGAnimatedNumberList, .n_members = 2, .subtree_end = 514,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedPreserveAspectRatio", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedPreserveAspectRatio, .n_members = 2, .subtree_end = 514,
+      .members = wj_m_SVGAnimatedPreserveAspectRatio, .n_members = 2, .subtree_end = 515,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedRect", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedRect, .n_members = 2, .subtree_end = 515,
+      .members = wj_m_SVGAnimatedRect, .n_members = 2, .subtree_end = 516,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedString", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedString, .n_members = 2, .subtree_end = 516,
+      .members = wj_m_SVGAnimatedString, .n_members = 2, .subtree_end = 517,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGAnimatedTransformList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGAnimatedTransformList, .n_members = 2, .subtree_end = 517,
+      .members = wj_m_SVGAnimatedTransformList, .n_members = 2, .subtree_end = 518,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGLength", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGLength, .n_members = 17, .subtree_end = 518,
+      .members = wj_m_SVGLength, .n_members = 17, .subtree_end = 519,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGLengthList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGLengthList, .n_members = 9, .subtree_end = 519,
+      .members = wj_m_SVGLengthList, .n_members = 9, .subtree_end = 520,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGNumber", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGNumber, .n_members = 1, .subtree_end = 520,
+      .members = wj_m_SVGNumber, .n_members = 1, .subtree_end = 521,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGNumberList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGNumberList, .n_members = 9, .subtree_end = 521,
+      .members = wj_m_SVGNumberList, .n_members = 9, .subtree_end = 522,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGPointList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGPointList, .n_members = 9, .subtree_end = 522,
+      .members = wj_m_SVGPointList, .n_members = 9, .subtree_end = 523,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGPreserveAspectRatio", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGPreserveAspectRatio, .n_members = 16, .subtree_end = 523,
+      .members = wj_m_SVGPreserveAspectRatio, .n_members = 16, .subtree_end = 524,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGStringList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGStringList, .n_members = 9, .subtree_end = 524,
+      .members = wj_m_SVGStringList, .n_members = 9, .subtree_end = 525,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGTransform", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGTransform, .n_members = 16, .subtree_end = 525,
+      .members = wj_m_SVGTransform, .n_members = 16, .subtree_end = 526,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGTransformList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGTransformList, .n_members = 11, .subtree_end = 526,
+      .members = wj_m_SVGTransformList, .n_members = 11, .subtree_end = 527,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SVGUnitTypes", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SVGUnitTypes, .n_members = 3, .subtree_end = 527,
+      .members = wj_m_SVGUnitTypes, .n_members = 3, .subtree_end = 528,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Sanitizer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Sanitizer, .n_members = 12, .subtree_end = 528,
+      .members = wj_m_Sanitizer, .n_members = 12, .subtree_end = 529,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Scheduler", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Scheduler, .n_members = 2, .subtree_end = 529,
+      .members = wj_m_Scheduler, .n_members = 2, .subtree_end = 530,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Scheduling", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Scheduling, .n_members = 1, .subtree_end = 530,
+      .members = wj_m_Scheduling, .n_members = 1, .subtree_end = 531,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Screen", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Screen, .n_members = 7, .subtree_end = 531,
+      .members = wj_m_Screen, .n_members = 7, .subtree_end = 532,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Selection", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Selection, .n_members = 25, .subtree_end = 532,
+      .members = wj_m_Selection, .n_members = 25, .subtree_end = 533,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechGrammar", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechGrammar, .n_members = 2, .subtree_end = 533,
+      .members = wj_m_SpeechGrammar, .n_members = 2, .subtree_end = 534,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechGrammarList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechGrammarList, .n_members = 4, .subtree_end = 534,
+      .members = wj_m_SpeechGrammarList, .n_members = 4, .subtree_end = 535,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechRecognitionAlternative", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechRecognitionAlternative, .n_members = 2, .subtree_end = 535,
+      .members = wj_m_SpeechRecognitionAlternative, .n_members = 2, .subtree_end = 536,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechRecognitionPhrase", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = NULL,
-      .members = wj_m_SpeechRecognitionPhrase, .n_members = 2, .subtree_end = 536,
+      .members = wj_m_SpeechRecognitionPhrase, .n_members = 2, .subtree_end = 537,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechRecognitionResult", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechRecognitionResult, .n_members = 3, .subtree_end = 537,
+      .members = wj_m_SpeechRecognitionResult, .n_members = 3, .subtree_end = 538,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechRecognitionResultList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechRecognitionResultList, .n_members = 2, .subtree_end = 538,
+      .members = wj_m_SpeechRecognitionResultList, .n_members = 2, .subtree_end = 539,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SpeechSynthesisVoice", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SpeechSynthesisVoice, .n_members = 5, .subtree_end = 539,
+      .members = wj_m_SpeechSynthesisVoice, .n_members = 5, .subtree_end = 540,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Storage", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_NAMED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Storage, .n_members = 6, .subtree_end = 540,
+      .members = wj_m_Storage, .n_members = 6, .subtree_end = 541,
       .index_get = NULL, .length_get = NULL, .named_get = wjr_Storage_named_get, .named_set = wjr_Storage_named_set, .named_delete = wjr_Storage_named_delete, .named_keys = wjr_Storage_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "StorageManager", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_StorageManager, .n_members = 4, .subtree_end = 541,
+      .members = wj_m_StorageManager, .n_members = 4, .subtree_end = 542,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "StylePropertyMapReadOnly", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_StylePropertyMapReadOnly, .n_members = 4, .subtree_end = 543,
+      .members = wj_m_StylePropertyMapReadOnly, .n_members = 4, .subtree_end = 544,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "StylePropertyMap", .parent = 541, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_StylePropertyMap, .n_members = 4, .subtree_end = 543,
+    { .name = "StylePropertyMap", .parent = 542, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_StylePropertyMap, .n_members = 4, .subtree_end = 544,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "StyleSheet", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_StyleSheet, .n_members = 7, .subtree_end = 545,
+      .members = wj_m_StyleSheet, .n_members = 7, .subtree_end = 546,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CSSStyleSheet", .parent = 543, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_CSSStyleSheet_constructor,
-      .members = wj_m_CSSStyleSheet, .n_members = 9, .subtree_end = 545,
+    { .name = "CSSStyleSheet", .parent = 544, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_CSSStyleSheet_constructor,
+      .members = wj_m_CSSStyleSheet, .n_members = 9, .subtree_end = 546,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "StyleSheetList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_StyleSheetList, .n_members = 2, .subtree_end = 546,
+      .members = wj_m_StyleSheetList, .n_members = 2, .subtree_end = 547,
       .index_get = wjr_StyleSheetList_index_get, .length_get = wjr_StyleSheetList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SubtleCrypto", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_SubtleCrypto, .n_members = 12, .subtree_end = 547,
+      .members = wj_m_SubtleCrypto, .n_members = 12, .subtree_end = 548,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TextDecoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextDecoder_constructor,
-      .members = wj_m_TextDecoder, .n_members = 4, .subtree_end = 548,
+      .members = wj_m_TextDecoder, .n_members = 4, .subtree_end = 549,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TextDecoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextDecoderStream_constructor,
-      .members = wj_m_TextDecoderStream, .n_members = 5, .subtree_end = 549,
+      .members = wj_m_TextDecoderStream, .n_members = 5, .subtree_end = 550,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TextEncoder", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextEncoder_constructor,
-      .members = wj_m_TextEncoder, .n_members = 3, .subtree_end = 550,
+      .members = wj_m_TextEncoder, .n_members = 3, .subtree_end = 551,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TextEncoderStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TextEncoderStream_constructor,
-      .members = wj_m_TextEncoderStream, .n_members = 3, .subtree_end = 551,
+      .members = wj_m_TextEncoderStream, .n_members = 3, .subtree_end = 552,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TextMetrics", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TextMetrics, .n_members = 12, .subtree_end = 552,
+      .members = wj_m_TextMetrics, .n_members = 12, .subtree_end = 553,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "TextTrackCueList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TextTrackCueList, .n_members = 2, .subtree_end = 553,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+    { .name = "TextTrackCueList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_TextTrackCueList, .n_members = 2, .subtree_end = 554,
+      .index_get = wjr_TextTrackCueList_index_get, .length_get = wjr_TextTrackCueList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TimeRanges", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TimeRanges, .n_members = 3, .subtree_end = 554,
+      .members = wj_m_TimeRanges, .n_members = 3, .subtree_end = 555,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Touch", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_Touch_constructor,
-      .members = wj_m_Touch, .n_members = 15, .subtree_end = 555,
+      .members = wj_m_Touch, .n_members = 15, .subtree_end = 556,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TouchList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TouchList, .n_members = 2, .subtree_end = 556,
+      .members = wj_m_TouchList, .n_members = 2, .subtree_end = 557,
       .index_get = wjr_TouchList_index_get, .length_get = wjr_TouchList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TransformStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_TransformStream_constructor,
-      .members = wj_m_TransformStream, .n_members = 2, .subtree_end = 557,
+      .members = wj_m_TransformStream, .n_members = 2, .subtree_end = 558,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TransformStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TransformStreamDefaultController, .n_members = 4, .subtree_end = 558,
+      .members = wj_m_TransformStreamDefaultController, .n_members = 4, .subtree_end = 559,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TreeWalker", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TreeWalker, .n_members = 11, .subtree_end = 559,
+      .members = wj_m_TreeWalker, .n_members = 11, .subtree_end = 560,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedHTML", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedHTML, .n_members = 2, .subtree_end = 560,
+      .members = wj_m_TrustedHTML, .n_members = 2, .subtree_end = 561,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedHTMLParserOptions", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedHTMLParserOptions, .n_members = 0, .subtree_end = 561,
+      .members = wj_m_TrustedHTMLParserOptions, .n_members = 0, .subtree_end = 562,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedScript", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedScript, .n_members = 2, .subtree_end = 562,
+      .members = wj_m_TrustedScript, .n_members = 2, .subtree_end = 563,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedScriptURL", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedScriptURL, .n_members = 2, .subtree_end = 563,
+      .members = wj_m_TrustedScriptURL, .n_members = 2, .subtree_end = 564,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedTypePolicy", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedTypePolicy, .n_members = 5, .subtree_end = 564,
+      .members = wj_m_TrustedTypePolicy, .n_members = 5, .subtree_end = 565,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "TrustedTypePolicyFactory", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_TrustedTypePolicyFactory, .n_members = 9, .subtree_end = 565,
+      .members = wj_m_TrustedTypePolicyFactory, .n_members = 9, .subtree_end = 566,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "URL", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_URL_constructor,
-      .members = wj_m_URL, .n_members = 18, .subtree_end = 566,
+      .members = wj_m_URL, .n_members = 18, .subtree_end = 567,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = "webkitURL", .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "URLSearchParams", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_URLSearchParams_constructor,
-      .members = wj_m_URLSearchParams, .n_members = 13, .subtree_end = 567,
+      .members = wj_m_URLSearchParams, .n_members = 13, .subtree_end = 568,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "UserActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_UserActivation, .n_members = 2, .subtree_end = 568,
+      .members = wj_m_UserActivation, .n_members = 2, .subtree_end = 569,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ValidityState", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ValidityState, .n_members = 11, .subtree_end = 569,
+      .members = wj_m_ValidityState, .n_members = 11, .subtree_end = 570,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "VideoPlaybackQuality", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VideoPlaybackQuality, .n_members = 5, .subtree_end = 570,
+      .members = wj_m_VideoPlaybackQuality, .n_members = 5, .subtree_end = 571,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "VideoTrack", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_VideoTrack, .n_members = 6, .subtree_end = 571,
+    { .name = "VideoTrack", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_VideoTrack, .n_members = 6, .subtree_end = 572,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ViewTransition", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ViewTransition, .n_members = 7, .subtree_end = 572,
+      .members = wj_m_ViewTransition, .n_members = 7, .subtree_end = 573,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "ViewTransitionTypeSet", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_ViewTransitionTypeSet, .n_members = 0, .subtree_end = 573,
+      .members = wj_m_ViewTransitionTypeSet, .n_members = 0, .subtree_end = 574,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerLocation", .parent = -1, .exposed = WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerLocation, .n_members = 10, .subtree_end = 574,
+      .members = wj_m_WorkerLocation, .n_members = 10, .subtree_end = 575,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WorkerNavigator", .parent = -1, .exposed = WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WorkerNavigator, .n_members = 24, .subtree_end = 575,
+      .members = wj_m_WorkerNavigator, .n_members = 24, .subtree_end = 576,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "Worklet", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_Worklet, .n_members = 1, .subtree_end = 577,
+      .members = wj_m_Worklet, .n_members = 1, .subtree_end = 578,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "AudioWorklet", .parent = 575, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_AudioWorklet, .n_members = 1, .subtree_end = 577,
+    { .name = "AudioWorklet", .parent = 576, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_AudioWorklet, .n_members = 1, .subtree_end = 578,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStream", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_WritableStream_constructor,
-      .members = wj_m_WritableStream, .n_members = 4, .subtree_end = 579,
+      .members = wj_m_WritableStream, .n_members = 4, .subtree_end = 580,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "FileSystemWritableFileStream", .parent = 577, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_FileSystemWritableFileStream, .n_members = 3, .subtree_end = 579,
+    { .name = "FileSystemWritableFileStream", .parent = 578, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+      .members = wj_m_FileSystemWritableFileStream, .n_members = 3, .subtree_end = 580,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStreamDefaultController", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_WritableStreamDefaultController, .n_members = 2, .subtree_end = 580,
+      .members = wj_m_WritableStreamDefaultController, .n_members = 2, .subtree_end = 581,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "WritableStreamDefaultWriter", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 1, .ctor = wjr_WritableStreamDefaultWriter_constructor,
-      .members = wj_m_WritableStreamDefaultWriter, .n_members = 7, .subtree_end = 581,
+      .members = wj_m_WritableStreamDefaultWriter, .n_members = 7, .subtree_end = 582,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XMLSerializer", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = wjr_XMLSerializer_constructor,
-      .members = wj_m_XMLSerializer, .n_members = 1, .subtree_end = 582,
+      .members = wj_m_XMLSerializer, .n_members = 1, .subtree_end = 583,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathEvaluator", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathEvaluator, .n_members = 3, .subtree_end = 583,
+      .members = wj_m_XPathEvaluator, .n_members = 3, .subtree_end = 584,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathExpression", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathExpression, .n_members = 1, .subtree_end = 584,
+      .members = wj_m_XPathExpression, .n_members = 1, .subtree_end = 585,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XPathResult", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XPathResult, .n_members = 19, .subtree_end = 585,
+      .members = wj_m_XPathResult, .n_members = 19, .subtree_end = 586,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "XSLTProcessor", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_CTOR_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_XSLTProcessor, .n_members = 8, .subtree_end = 586,
+      .members = wj_m_XSLTProcessor, .n_members = 8, .subtree_end = 587,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "console", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_NAMESPACE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
-      .members = wj_m_console, .n_members = 19, .subtree_end = 587,
+      .members = wj_m_console, .n_members = 19, .subtree_end = 588,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
 };

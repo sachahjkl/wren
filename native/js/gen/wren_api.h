@@ -423,12 +423,26 @@ enum wr_ScreenField {
 /* module htmlmedia: types */
 // A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 typedef uint64_t wr_HTMLMediaElement;
+// requestVideoFrameCallback's callback: `now` is the current time on the page's performance timeline (the callback
+// reads the rest of the metadata back with HTMLVideoElement_videoFrameMetadata, keyed by the id this call made).
+typedef void (*wr_VideoFrameRequestCallback)(int32_t user, double now);
 
 /* module mse: types */
 typedef uint64_t wr_MediaSource;
 typedef uint64_t wr_SourceBuffer;
 typedef uint64_t wr_SourceBufferList;
 typedef uint64_t wr_MediaSourceHandle;
+
+/* module mediatracks: types */
+typedef uint64_t wr_AudioTrackList;
+typedef uint64_t wr_VideoTrackList;
+typedef uint64_t wr_TextTrackList;
+typedef uint64_t wr_AudioTrack;
+typedef uint64_t wr_VideoTrack;
+typedef uint64_t wr_TextTrack;
+typedef uint64_t wr_TextTrackCue;
+typedef uint64_t wr_TextTrackCueList;
+typedef uint64_t wr_HTMLTrackElement;
 
 /* module navigation: types */
 // What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
@@ -2726,10 +2740,33 @@ WR_IMPORT("htmlmedia", "HTMLVideoElement_videoHeight") uint32_t wr_HTMLVideoElem
 // video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
 // totalFrameDelay in seconds).
 WR_IMPORT("htmlmedia", "HTMLVideoElement_playbackQuality") int32_t wr_HTMLVideoElement_playbackQuality(uint64_t element, uint8_t *_buf, uint32_t _cap);
+// video.requestVideoFrameCallback(callback): the callback runs once, when a new video frame is presented (the same
+// moment the playback-quality counters advance). Returns an id for cancelVideoFrameCallback (0: too many waiting,
+// media.max_video_frame_callbacks).
+WR_IMPORT("htmlmedia", "HTMLVideoElement_requestVideoFrameCallback") uint64_t wr_HTMLVideoElement_requestVideoFrameCallback(uint64_t element, uint32_t callback, int32_t user);
+// video.cancelVideoFrameCallback(id).
+WR_IMPORT("htmlmedia", "HTMLVideoElement_cancelVideoFrameCallback") void wr_HTMLVideoElement_cancelVideoFrameCallback(uint64_t element, uint64_t id);
+// The VideoFrameCallbackMetadata of the frame that fired callback `id`, snapshotted at presentation: eight f64
+// (presentationTime, expectedDisplayTime, width, height, mediaTime, presentedFrames, processingDuration, and a
+// bitmask of which of the optional fields are present; here always 0 — captureTime/receiveTime/rtpTimestamp absent).
+// Empty when the id is unknown.
+WR_IMPORT("htmlmedia", "HTMLVideoElement_videoFrameMetadata") int32_t wr_HTMLVideoElement_videoFrameMetadata(uint64_t element, uint64_t id, uint8_t *_buf, uint32_t _cap);
+// element.audioTracks / videoTracks / textTracks: the handle of the list object (an AudioTrackList / VideoTrackList /
+// TextTrackList of the mediatracks module; the engine wraps it). 0 when media.tracks.enabled is off. The same object
+// each time (SameObject).
+WR_IMPORT("htmlmedia", "HTMLMediaElement_audioTracks") uint64_t wr_HTMLMediaElement_audioTracks(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_videoTracks") uint64_t wr_HTMLMediaElement_videoTracks(uint64_t element);
+WR_IMPORT("htmlmedia", "HTMLMediaElement_textTracks") uint64_t wr_HTMLMediaElement_textTracks(uint64_t element);
+// element.addTextTrack(kind, label, language): the handle of a new (hidden) TextTrack. NotSupported when off.
+WR_IMPORT("htmlmedia", "HTMLMediaElement_addTextTrack") int32_t wr_HTMLMediaElement_addTextTrack(uint64_t element, const uint8_t *kind, uint32_t kind_len, const uint8_t *label, uint32_t label_len, const uint8_t *language, uint32_t language_len, uint64_t *_ret);
 
 /* module mse */
 // new MediaSource(): closed until an element attaches it (in a dedicated worker too; not in other workers).
 WR_IMPORT("mse", "MediaSource_create") int32_t wr_MediaSource_create(uint64_t *_ret);
+// new ManagedMediaSource(): a MediaSource whose user agent says when to stream (startstreaming / endstreaming).
+WR_IMPORT("mse", "ManagedMediaSource_create") int32_t wr_ManagedMediaSource_create(uint64_t *_ret);
+// managedMediaSource.streaming: whether the user agent currently wants the page to append data.
+WR_IMPORT("mse", "ManagedMediaSource_streaming") int32_t wr_ManagedMediaSource_streaming(uint64_t source);
 // URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is
 // that URL plays this source. Called by the engine with the URL it made. NotSupported for a worker's MediaSource.
 WR_IMPORT("mse", "MediaSource_registerObjectURL") int32_t wr_MediaSource_registerObjectURL(uint64_t source, const uint8_t *url, uint32_t url_len);
@@ -2779,6 +2816,69 @@ WR_IMPORT("mse", "SourceBuffer_appendBuffer") int32_t wr_SourceBuffer_appendBuff
 WR_IMPORT("mse", "SourceBuffer_abort") int32_t wr_SourceBuffer_abort(uint64_t buffer);
 WR_IMPORT("mse", "SourceBuffer_changeType") int32_t wr_SourceBuffer_changeType(uint64_t buffer, const uint8_t *type, uint32_t type_len);
 WR_IMPORT("mse", "SourceBuffer_remove") int32_t wr_SourceBuffer_remove(uint64_t buffer, double start, double end);
+
+/* module mediatracks */
+WR_IMPORT("mediatracks", "AudioTrackList_length") uint32_t wr_AudioTrackList_length(uint64_t list);
+// list[index]: Not_Found past the end.
+WR_IMPORT("mediatracks", "AudioTrackList_item") int32_t wr_AudioTrackList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+// list.getTrackById(id): 0 (null) when none matches.
+WR_IMPORT("mediatracks", "AudioTrackList_getTrackById") uint64_t wr_AudioTrackList_getTrackById(uint64_t list, const uint8_t *id, uint32_t id_len);
+WR_IMPORT("mediatracks", "VideoTrackList_length") uint32_t wr_VideoTrackList_length(uint64_t list);
+WR_IMPORT("mediatracks", "VideoTrackList_item") int32_t wr_VideoTrackList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+WR_IMPORT("mediatracks", "VideoTrackList_getTrackById") uint64_t wr_VideoTrackList_getTrackById(uint64_t list, const uint8_t *id, uint32_t id_len);
+// videoTrackList.selectedIndex: the index of the selected track, -1 when none.
+WR_IMPORT("mediatracks", "VideoTrackList_selectedIndex") int32_t wr_VideoTrackList_selectedIndex(uint64_t list);
+WR_IMPORT("mediatracks", "TextTrackList_length") uint32_t wr_TextTrackList_length(uint64_t list);
+WR_IMPORT("mediatracks", "TextTrackList_item") int32_t wr_TextTrackList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+WR_IMPORT("mediatracks", "TextTrackList_getTrackById") uint64_t wr_TextTrackList_getTrackById(uint64_t list, const uint8_t *id, uint32_t id_len);
+WR_IMPORT("mediatracks", "AudioTrack_id") int32_t wr_AudioTrack_id(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "AudioTrack_kind") int32_t wr_AudioTrack_kind(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "AudioTrack_label") int32_t wr_AudioTrack_label(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "AudioTrack_language") int32_t wr_AudioTrack_language(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "AudioTrack_enabled") int32_t wr_AudioTrack_enabled(uint64_t track);
+WR_IMPORT("mediatracks", "AudioTrack_set_enabled") void wr_AudioTrack_set_enabled(uint64_t track, int32_t value);
+WR_IMPORT("mediatracks", "VideoTrack_id") int32_t wr_VideoTrack_id(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "VideoTrack_kind") int32_t wr_VideoTrack_kind(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "VideoTrack_label") int32_t wr_VideoTrack_label(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "VideoTrack_language") int32_t wr_VideoTrack_language(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "VideoTrack_selected") int32_t wr_VideoTrack_selected(uint64_t track);
+WR_IMPORT("mediatracks", "VideoTrack_set_selected") void wr_VideoTrack_set_selected(uint64_t track, int32_t value);
+// track.kind / label / language / id (TextTrack).
+WR_IMPORT("mediatracks", "TextTrack_kind") int32_t wr_TextTrack_kind(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "TextTrack_label") int32_t wr_TextTrack_label(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "TextTrack_language") int32_t wr_TextTrack_language(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "TextTrack_id") int32_t wr_TextTrack_id(uint64_t track, uint8_t *_buf, uint32_t _cap);
+// track.mode: "disabled", "hidden" or "showing".
+WR_IMPORT("mediatracks", "TextTrack_mode") int32_t wr_TextTrack_mode(uint64_t track, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "TextTrack_set_mode") void wr_TextTrack_set_mode(uint64_t track, const uint8_t *value, uint32_t value_len);
+// track.cues / activeCues: a TextTrackCueList (0: the track is disabled).
+WR_IMPORT("mediatracks", "TextTrack_cues") uint64_t wr_TextTrack_cues(uint64_t track);
+WR_IMPORT("mediatracks", "TextTrack_activeCues") uint64_t wr_TextTrack_activeCues(uint64_t track);
+// track.addCue(cue) / removeCue(cue).
+WR_IMPORT("mediatracks", "TextTrack_addCue") int32_t wr_TextTrack_addCue(uint64_t track, uint64_t cue);
+WR_IMPORT("mediatracks", "TextTrack_removeCue") int32_t wr_TextTrack_removeCue(uint64_t track, uint64_t cue);
+WR_IMPORT("mediatracks", "TextTrackCue_id") int32_t wr_TextTrackCue_id(uint64_t cue, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "TextTrackCue_set_id") void wr_TextTrackCue_set_id(uint64_t cue, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("mediatracks", "TextTrackCue_startTime") double wr_TextTrackCue_startTime(uint64_t cue);
+WR_IMPORT("mediatracks", "TextTrackCue_set_startTime") void wr_TextTrackCue_set_startTime(uint64_t cue, double value);
+WR_IMPORT("mediatracks", "TextTrackCue_endTime") double wr_TextTrackCue_endTime(uint64_t cue);
+WR_IMPORT("mediatracks", "TextTrackCue_set_endTime") void wr_TextTrackCue_set_endTime(uint64_t cue, double value);
+WR_IMPORT("mediatracks", "TextTrackCue_pauseOnExit") int32_t wr_TextTrackCue_pauseOnExit(uint64_t cue);
+WR_IMPORT("mediatracks", "TextTrackCue_set_pauseOnExit") void wr_TextTrackCue_set_pauseOnExit(uint64_t cue, int32_t value);
+// cue.track: the TextTrack it is in (0: none).
+WR_IMPORT("mediatracks", "TextTrackCue_track") uint64_t wr_TextTrackCue_track(uint64_t cue);
+// new VTTCue(startTime, endTime, text): a script-made cue.
+WR_IMPORT("mediatracks", "VTTCue_create") int32_t wr_VTTCue_create(double start, double end, const uint8_t *text, uint32_t text_len, uint64_t *_ret);
+// vttCue.text (the cue payload).
+WR_IMPORT("mediatracks", "VTTCue_text") int32_t wr_VTTCue_text(uint64_t cue, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("mediatracks", "VTTCue_set_text") void wr_VTTCue_set_text(uint64_t cue, const uint8_t *value, uint32_t value_len);
+WR_IMPORT("mediatracks", "TextTrackCueList_length") uint32_t wr_TextTrackCueList_length(uint64_t list);
+WR_IMPORT("mediatracks", "TextTrackCueList_item") int32_t wr_TextTrackCueList_item(uint64_t list, uint32_t index, uint64_t *_ret);
+WR_IMPORT("mediatracks", "TextTrackCueList_getCueById") uint64_t wr_TextTrackCueList_getCueById(uint64_t list, const uint8_t *id, uint32_t id_len);
+// track.track: the <track> element's TextTrack (0: not attached to a media element).
+WR_IMPORT("mediatracks", "HTMLTrackElement_track") uint64_t wr_HTMLTrackElement_track(uint64_t track);
+// track.readyState: 0 NONE, 1 LOADING, 2 LOADED, 3 ERROR.
+WR_IMPORT("mediatracks", "HTMLTrackElement_readyState") int32_t wr_HTMLTrackElement_readyState(uint64_t track);
 
 /* module navigation */
 // navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin

@@ -9,6 +9,10 @@ import "base:runtime"
 // A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 HTMLMediaElement :: distinct Element
 
+// requestVideoFrameCallback's callback: `now` is the current time on the page's performance timeline (the callback
+// reads the rest of the metadata back with HTMLVideoElement_videoFrameMetadata, keyed by the id this call made).
+VideoFrameRequestCallback :: #type proc "contextless" (user: i32, now: f64)
+
 foreign import _m_htmlmedia "htmlmedia"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -43,6 +47,13 @@ foreign _m_htmlmedia {
 	@(link_name = "HTMLVideoElement_videoWidth") _HTMLVideoElement_videoWidth :: proc(element: HTMLMediaElement) -> u32 ---
 	@(link_name = "HTMLVideoElement_videoHeight") _HTMLVideoElement_videoHeight :: proc(element: HTMLMediaElement) -> u32 ---
 	@(link_name = "HTMLVideoElement_playbackQuality") _HTMLVideoElement_playbackQuality :: proc(element: HTMLMediaElement, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLVideoElement_requestVideoFrameCallback") _HTMLVideoElement_requestVideoFrameCallback :: proc(element: HTMLMediaElement, callback: VideoFrameRequestCallback, user: i32) -> u64 ---
+	@(link_name = "HTMLVideoElement_cancelVideoFrameCallback") _HTMLVideoElement_cancelVideoFrameCallback :: proc(element: HTMLMediaElement, id: u64) ---
+	@(link_name = "HTMLVideoElement_videoFrameMetadata") _HTMLVideoElement_videoFrameMetadata :: proc(element: HTMLMediaElement, id: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "HTMLMediaElement_audioTracks") _HTMLMediaElement_audioTracks :: proc(element: HTMLMediaElement) -> u64 ---
+	@(link_name = "HTMLMediaElement_videoTracks") _HTMLMediaElement_videoTracks :: proc(element: HTMLMediaElement) -> u64 ---
+	@(link_name = "HTMLMediaElement_textTracks") _HTMLMediaElement_textTracks :: proc(element: HTMLMediaElement) -> u64 ---
+	@(link_name = "HTMLMediaElement_addTextTrack") _HTMLMediaElement_addTextTrack :: proc(element: HTMLMediaElement, kind: [^]u8, kind_len: u32, label: [^]u8, label_len: u32, language: [^]u8, language_len: u32, _ret: ^u64) -> Error ---
 }
 
 // element.currentSrc: the absolute URL of the resource being played ("" when none).
@@ -305,5 +316,70 @@ HTMLVideoElement_playbackQuality_alloc :: proc(element: HTMLMediaElement, alloca
 		cap = int(n)
 	}
 	return {}, .Truncated
+}
+
+// video.requestVideoFrameCallback(callback): the callback runs once, when a new video frame is presented (the same
+// moment the playback-quality counters advance). Returns an id for cancelVideoFrameCallback (0: too many waiting,
+// media.max_video_frame_callbacks).
+HTMLVideoElement_requestVideoFrameCallback :: proc "contextless" (element: HTMLMediaElement, callback: VideoFrameRequestCallback, user: i32 = 0) -> u64 {
+	return _HTMLVideoElement_requestVideoFrameCallback(element, callback, user)
+}
+
+// video.cancelVideoFrameCallback(id).
+HTMLVideoElement_cancelVideoFrameCallback :: proc "contextless" (element: HTMLMediaElement, id: u64) {
+	_HTMLVideoElement_cancelVideoFrameCallback(element, id)
+}
+
+// The VideoFrameCallbackMetadata of the frame that fired callback `id`, snapshotted at presentation: eight f64
+// (presentationTime, expectedDisplayTime, width, height, mediaTime, presentedFrames, processingDuration, and a
+// bitmask of which of the optional fields are present; here always 0 — captureTime/receiveTime/rtpTimestamp absent).
+// Empty when the id is unknown.
+HTMLVideoElement_videoFrameMetadata :: proc "contextless" (element: HTMLMediaElement, id: u64, buf: []u8) -> ([]u8, Error) {
+	n := _HTMLVideoElement_videoFrameMetadata(element, id, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return (buf), .Truncated }
+	return (buf[:n]), .None
+}
+
+// The full length of HTMLVideoElement_videoFrameMetadata's result.
+HTMLVideoElement_videoFrameMetadata_len :: proc "contextless" (element: HTMLMediaElement, id: u64) -> (int, Error) {
+	n := _HTMLVideoElement_videoFrameMetadata(element, id, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// HTMLVideoElement_videoFrameMetadata's result in a buffer allocated to fit.
+HTMLVideoElement_videoFrameMetadata_alloc :: proc(element: HTMLMediaElement, id: u64, allocator: runtime.Allocator) -> ([]u8, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _HTMLVideoElement_videoFrameMetadata(element, id, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// element.audioTracks / videoTracks / textTracks: the handle of the list object (an AudioTrackList / VideoTrackList /
+// TextTrackList of the mediatracks module; the engine wraps it). 0 when media.tracks.enabled is off. The same object
+// each time (SameObject).
+HTMLMediaElement_audioTracks :: proc "contextless" (element: HTMLMediaElement) -> u64 {
+	return _HTMLMediaElement_audioTracks(element)
+}
+
+HTMLMediaElement_videoTracks :: proc "contextless" (element: HTMLMediaElement) -> u64 {
+	return _HTMLMediaElement_videoTracks(element)
+}
+
+HTMLMediaElement_textTracks :: proc "contextless" (element: HTMLMediaElement) -> u64 {
+	return _HTMLMediaElement_textTracks(element)
+}
+
+// element.addTextTrack(kind, label, language): the handle of a new (hidden) TextTrack. NotSupported when off.
+HTMLMediaElement_addTextTrack :: proc "contextless" (element: HTMLMediaElement, kind: string, label: string = "", language: string = "") -> (result: u64, err: Error) {
+	err = _HTMLMediaElement_addTextTrack(element, raw_data(kind), u32(len(kind)), raw_data(label), u32(len(label)), raw_data(language), u32(len(language)), &result)
+	return
 }
 

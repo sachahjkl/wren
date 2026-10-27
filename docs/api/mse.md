@@ -43,6 +43,28 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)`
 
+### `ManagedMediaSource_create`
+
+```
+MediaSource ManagedMediaSource_create() raises
+```
+
+new ManagedMediaSource(): a MediaSource whose user agent says when to stream (startstreaming / endstreaming).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ManagedMediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)`
+
+### `ManagedMediaSource_streaming`
+
+```
+bool ManagedMediaSource_streaming(MediaSource source)
+```
+
+managedMediaSource.streaming: whether the user agent currently wants the page to append data.
+
+Host: `ManagedMediaSource_streaming :: proc(c: ^Call, source: Api_MediaSource) -> bool`
+
 ### `MediaSource_registerObjectURL`
 
 ```

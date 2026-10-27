@@ -12,10 +12,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 | | count |
 |---|---:|
-| interfaces, namespaces in the table | 587 |
-| exposed by default | 333 |
-| members | 5156 |
-| members implemented | 3577 (69.4 %) |
+| interfaces, namespaces in the table | 588 |
+| exposed by default | 344 |
+| members | 5160 |
+| members implemented | 3626 (70.3 %) |
 
 ## By specification
 
@@ -51,7 +51,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (126) | 1523 / 1827 |
+| `html.idl` | 161 (134) | 1565 / 1829 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
@@ -59,7 +59,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `longtasks.idl` | 2 (2) | 15 / 15 |
 | `mathml-core.idl` | 2 (2) | 120 / 123 |
 | `media-playback-quality.idl` | 1 (1) | 5 / 5 |
-| `media-source.idl` | 7 (4) | 37 / 45 |
+| `media-source.idl` | 7 (6) | 42 / 45 |
 | `mediacapture-streams.idl` | 8 (0) | 6 / 46 |
 | `mediasession.idl` | 3 (0) | 0 / 16 |
 | `navigation-timing.idl` | 4 (3) | 40 / 46 |
@@ -94,6 +94,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `webcrypto.idl` | 3 (2) | 15 / 19 |
 | `webidl.idl` | 2 (1) | 29 / 32 |
 | `websockets.idl` | 2 (2) | 21 / 21 |
+| `webvtt.idl` | 1 (1) | 2 / 2 |
 | `xhr.idl` | 5 (4) | 47 / 47 |
 
 ## By interface
@@ -198,6 +199,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 1 / 1 members.
 
 - `constructor()`: C `wjr_DocumentTimeline_constructor`
+
+### AudioTrack
+
+5 / 6 members.
+
+- `readonly id`: C `wjr_AudioTrack_get_id`
+- `readonly kind`: C `wjr_AudioTrack_get_kind`
+- `readonly label`: C `wjr_AudioTrack_get_label`
+- `readonly language`: C `wjr_AudioTrack_get_language`
+- `enabled`: C `wjr_AudioTrack_get_enabled`
+- `readonly sourceBuffer`: not supported
 
 ### AuthenticatorResponse
 
@@ -981,6 +993,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly currentTime`: C `wjr_AnimationPlaybackEvent_get_currentTime`
 - `readonly timelineTime`: C `wjr_AnimationPlaybackEvent_get_timelineTime`
 
+### BufferedChangeEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_BufferedChangeEvent_constructor`
+- `readonly addedRanges`: C `wjr_BufferedChangeEvent_get_addedRanges`
+- `readonly removedRanges`: C `wjr_BufferedChangeEvent_get_removedRanges`
+
 ### CloseEvent : Event
 
 4 / 4 members.
@@ -1370,6 +1390,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 - `readonly transitionProperty`: C `wjr_CSSTransition_get_transitionProperty`
 
+### AudioTrackList : EventTarget
+
+5 / 5 members.
+
+- `readonly length`: C `wjr_AudioTrackList_get_length`
+- `getTrackById()`: C `wjr_AudioTrackList_getTrackById`
+- `onchange`: generic (event handler)
+- `onaddtrack`: generic (event handler)
+- `onremovetrack`: generic (event handler)
+
 ### BroadcastChannel : EventTarget
 
 6 / 6 members.
@@ -1475,6 +1505,15 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `setLiveSeekableRange()`: import `mse.MediaSource_setLiveSeekableRange`
 - `clearLiveSeekableRange()`: import `mse.MediaSource_clearLiveSeekableRange`
 - `static isTypeSupported()`: import `mse.MediaSource_isTypeSupported`
+
+### ManagedMediaSource : MediaSource
+
+4 / 4 members.
+
+- `constructor()`: C `wjr_ManagedMediaSource_constructor`
+- `readonly streaming`: C `wjr_ManagedMediaSource_get_streaming`
+- `onstartstreaming`: generic (event handler)
+- `onendstreaming`: generic (event handler)
 
 ### MessagePort : EventTarget
 
@@ -2794,7 +2833,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLMediaElement : HTMLElement
 
-38 / 45 members.
+42 / 45 members.
 
 - `readonly error`: C `wjr_HTMLMediaElement_get_error`
 - `src`: generic (reflects a content attribute)
@@ -2837,10 +2876,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `muted`: import `htmlmedia.HTMLMediaElement_muted`
 - `defaultMuted`: generic (reflects a content attribute)
 - `loading`: not supported
-- `readonly audioTracks`: not supported
-- `readonly videoTracks`: not supported
-- `readonly textTracks`: not supported
-- `addTextTrack()`: not supported
+- `readonly audioTracks`: C `wjr_HTMLMediaElement_get_audioTracks`
+- `readonly videoTracks`: C `wjr_HTMLMediaElement_get_videoTracks`
+- `readonly textTracks`: C `wjr_HTMLMediaElement_get_textTracks`
+- `addTextTrack()`: C `wjr_HTMLMediaElement_addTextTrack`
 
 ### HTMLAudioElement : HTMLMediaElement
 
@@ -2850,7 +2889,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLVideoElement : HTMLMediaElement
 
-7 / 8 members.
+9 / 10 members.
 
 - `constructor()`: not supported
 - `width`: generic (reflects a content attribute)
@@ -2860,6 +2899,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `poster`: generic (reflects a content attribute)
 - `playsInline`: generic (reflects a content attribute)
 - `getVideoPlaybackQuality()`: C `wjr_HTMLVideoElement_getVideoPlaybackQuality`
+- `requestVideoFrameCallback()`: C `wjr_HTMLVideoElement_requestVideoFrameCallback`
+- `cancelVideoFrameCallback()`: C `wjr_HTMLVideoElement_cancelVideoFrameCallback`
 
 ### HTMLMenuElement : HTMLElement
 
@@ -3290,7 +3331,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### HTMLTrackElement : HTMLElement
 
-9 / 12 members.
+11 / 12 members.
 
 - `constructor()`: not supported
 - `kind`: C `wjr_HTMLTrackElement_get_kind`
@@ -3302,8 +3343,8 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `const LOADING`: generic (constant)
 - `const LOADED`: generic (constant)
 - `const ERROR`: generic (constant)
-- `readonly readyState`: not supported
-- `readonly track`: not supported
+- `readonly readyState`: C `wjr_HTMLTrackElement_get_readyState`
+- `readonly track`: C `wjr_HTMLTrackElement_get_track`
 
 ### HTMLUListElement : HTMLElement
 
@@ -4067,6 +4108,63 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly length`: import `mse.SourceBufferList_length`
 - `onaddsourcebuffer`: generic (event handler)
 - `onremovesourcebuffer`: generic (event handler)
+
+### TextTrack : EventTarget
+
+11 / 12 members.
+
+- `readonly kind`: C `wjr_TextTrack_get_kind`
+- `readonly label`: C `wjr_TextTrack_get_label`
+- `readonly language`: C `wjr_TextTrack_get_language`
+- `readonly id`: C `wjr_TextTrack_get_id`
+- `readonly inBandMetadataTrackDispatchType`: C `wjr_TextTrack_get_inBandMetadataTrackDispatchType`
+- `mode`: C `wjr_TextTrack_get_mode`
+- `readonly cues`: C `wjr_TextTrack_get_cues`
+- `readonly activeCues`: C `wjr_TextTrack_get_activeCues`
+- `addCue()`: C `wjr_TextTrack_addCue`
+- `removeCue()`: C `wjr_TextTrack_removeCue`
+- `oncuechange`: generic (event handler)
+- `readonly sourceBuffer`: not supported
+
+### TextTrackCue : EventTarget
+
+7 / 7 members.
+
+- `readonly track`: C `wjr_TextTrackCue_get_track`
+- `id`: C `wjr_TextTrackCue_get_id`
+- `startTime`: C `wjr_TextTrackCue_get_startTime`
+- `endTime`: C `wjr_TextTrackCue_get_endTime`
+- `pauseOnExit`: C `wjr_TextTrackCue_get_pauseOnExit`
+- `onenter`: generic (event handler)
+- `onexit`: generic (event handler)
+
+### VTTCue : TextTrackCue
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_VTTCue_constructor`
+- `text`: C `wjr_VTTCue_get_text`
+
+### TextTrackList : EventTarget
+
+5 / 5 members.
+
+- `readonly length`: C `wjr_TextTrackList_get_length`
+- `getTrackById()`: C `wjr_TextTrackList_getTrackById`
+- `onchange`: generic (event handler)
+- `onaddtrack`: generic (event handler)
+- `onremovetrack`: generic (event handler)
+
+### VideoTrackList : EventTarget
+
+6 / 6 members.
+
+- `readonly length`: C `wjr_VideoTrackList_get_length`
+- `getTrackById()`: C `wjr_VideoTrackList_getTrackById`
+- `readonly selectedIndex`: C `wjr_VideoTrackList_get_selectedIndex`
+- `onchange`: generic (event handler)
+- `onaddtrack`: generic (event handler)
+- `onremovetrack`: generic (event handler)
 
 ### VisualViewport : EventTarget
 
@@ -5501,6 +5599,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly alphabeticBaseline`: import `canvas.TextMetrics_alphabeticBaseline`
 - `readonly ideographicBaseline`: import `canvas.TextMetrics_ideographicBaseline`
 
+### TextTrackCueList
+
+2 / 2 members.
+
+- `readonly length`: C `wjr_TextTrackCueList_get_length`
+- `getCueById()`: C `wjr_TextTrackCueList_getCueById`
+
 ### TimeRanges
 
 3 / 3 members.
@@ -5635,6 +5740,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly corruptedVideoFrames`: C `wjr_VideoPlaybackQuality_get_corruptedVideoFrames`
 - `readonly totalFrameDelay`: C `wjr_VideoPlaybackQuality_get_totalFrameDelay`
 
+### VideoTrack
+
+5 / 6 members.
+
+- `readonly id`: C `wjr_VideoTrack_get_id`
+- `readonly kind`: C `wjr_VideoTrack_get_kind`
+- `readonly label`: C `wjr_VideoTrack_get_label`
+- `readonly language`: C `wjr_VideoTrack_get_language`
+- `selected`: C `wjr_VideoTrack_get_selected`
+- `readonly sourceBuffer`: not supported
+
 ### WorkerNavigator
 
 15 / 24 members.
@@ -5735,5 +5851,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, TrackEvent, TextEvent, EventCounts, TaskSignal, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TextTrackCueList, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, TrackEvent, TextEvent, EventCounts, TaskSignal, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 
