@@ -205,7 +205,7 @@ install_is_inside :: proc(t: ^testing.T) {
 	testing.expect(t, is_inside(`C:\Windows\System32`, `C:\Windows`), "inside")
 	testing.expect(t, !is_inside(`C:\Windows`, `C:\Windows`), "not itself")
 	testing.expect(t, !is_inside(`C:\WindowsApps`, `C:\Windows`), "a longer name is not inside")
-	testing.expect(t, is_inside(`c:/windows/x`, `C:\Windows\`), "slash direction and case (Windows)")
+	when ODIN_OS == .Windows { testing.expect(t, is_inside(`c:/windows/x`, `C:\Windows\`), "slash direction and case (Windows)") }
 }
 
 @(test)
