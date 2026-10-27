@@ -3,7 +3,8 @@ package page
 // Elements for JavaScript (api/js_dom_elements.widl): names and namespaces, attributes, the members of HTMLElement and
 // of the hyperlink elements.
 //
-// Attributes are kept by their qualified name, lower case (package dom): an attribute's namespace is that of its
+// Attributes are kept by their qualified name, lower case (package dom; as given on an element of an XML document,
+// dom.is_xml_element): an attribute's namespace is that of its
 // prefix (xlink:, xml:, xmlns:), and the *NS methods match on the local name and that implied namespace.
 
 import "core:fmt"
@@ -21,7 +22,7 @@ jd_qualified_name :: proc(d: ^dom.Document, h: base.Handle, upper: bool) -> stri
 	n := dom.get(d, h)
 	if n == nil { return "" }
 	local := jd_local_name(n)
-	if n.ns == .HTML && upper { local = strings.to_upper(local, context.temp_allocator) }
+	if n.ns == .HTML && upper && n.xml != .Element { local = strings.to_upper(local, context.temp_allocator) }
 	prefix := dom.ns_prefix(d, h)
 	if prefix == "" { return local }
 	return strings.concatenate({prefix, ":", local}, context.temp_allocator)
@@ -101,7 +102,7 @@ attr_namespace :: proc(name: string) -> string {
 @(private)
 find_attr_ns :: proc(n: ^dom.Node, namespace: Maybe(string), local_name: string) -> string {
 	ns, _ := namespace.?
-	local := strings.to_lower(local_name, context.temp_allocator)
+	local := n.xml == .Element ? local_name : strings.to_lower(local_name, context.temp_allocator)
 	if n.name == "xmlns" && ns == dom.NS_XMLNS && local == "xmlns" { return "xmlns" }
 	for a in n.attrs {
 		a_ns := attr_namespace(a.name)
@@ -157,7 +158,7 @@ Element_toggleAttributeChecked :: proc(c: ^Call, element: Api_Element, name: str
 }
 
 Element_hasAttribute :: proc(c: ^Call, element: Api_Element, name: string) -> bool {
-	_, ok := dom.get_attribute(c.page.doc, H(element.handle), name)
+	_, ok := dom.get_attribute_exact(c.page.doc, H(element.handle), name)
 	return ok
 }
 

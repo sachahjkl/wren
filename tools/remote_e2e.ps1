@@ -273,6 +273,21 @@ function Test-WebApis($server) {
     $null = Wren-Ctl wait function 'location.search === "" && window.lastNav === "traverse:true"' --timeout 10000
     $second = Wren-Eval ('[window.lastNav, navigation.currentEntry.index, String(window.marker) === "' + $marker + '"].join()')
     Check "a second Back: a same-document traversal the page intercepts ($second)" ($second -eq "traverse:true,$base,true")
+
+    # examples/site/remote/xhtml.xhtml, served as application/xhtml+xml: parsed as XML (a self-closed <div/> is empty, names
+    # keep their case), its CDATA script runs, its style applies (the box painted blue)
+    Section '7d web APIs in the browser: an XHTML page'
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/xhtml.xhtml" --wait idle
+    $x = Wren-Eval 'String(window.xhtml)'
+    Check "parsed as XML, its script ran ($x)" ($x -eq 'application/xhtml+xml,p,id dataName,0,myElement')
+    $null = Wren-Ctl wait stable
+    $png = Join-Path $env:TEMP 'xhtml-box.png'
+    $null = Wren-Shot $png -Selector '#box'
+    if (Test-Path $png) {
+        $px = Pixel $png 10 10
+        Check "its style applies ($($px -join ','))" (Near $px @(0, 0, 255) 24)
+        Remove-Item $png -ErrorAction SilentlyContinue
+    } else { Check 'the box was captured' $false $global:WrenErr }
 }
 
 # ---- the checks of `reset` and the checkpoints: what they say they put back is back ------------------------------------------------

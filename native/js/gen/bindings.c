@@ -428,6 +428,7 @@ JSValue wjr_Document_createNodeIterator(JSContext *ctx, JSValueConst this_val, i
 JSValue wjr_Document_createRange(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createTreeWalker(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_elementsFromPoint(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_Document_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByClassName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_getElementsByTagName(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -4213,19 +4214,6 @@ static JSValue wjg_Document_requestStorageAccess(JSContext *ctx, JSValueConst th
 {
     JSValue r = wjg_Document_requestStorageAccess_body(ctx, this_val, argc, argv);
     return JS_IsException(r) ? wj_promise_reject_pending(ctx) : r;
-}
-
-/* Document.getElementById() -> dom.Document_getElementById */
-static JSValue wjg_Document_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    wj_obj *self = wj_this(ctx, this_val, 242);
-    if (!self) { return JS_EXCEPTION; }
-    if (argc < 1) { return wj_throw_arity(ctx, "Document.getElementById", 1, argc); }
-    wj_str a0;
-    if (!wj_to_str(ctx, wj_arg(argc, argv, 0), &a0, 0, "")) { return JS_EXCEPTION; }
-    uint64_t r = wr_Document_getElementById((const uint8_t *)(a0.ptr ? a0.ptr : ""), (uint32_t)a0.len);
-    wj_str_free(ctx, &a0);
-    return wj_wrap_node(ctx, r);
 }
 
 /* Document.fullscreenElement -> fullscreen.Document_fullscreenElement */
@@ -14123,7 +14111,7 @@ static const wj_member wj_m_Document[] = {
     { "convertQuadFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertRectFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertPointFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
-    { "getElementById", WJ_M_METHOD, 0, 1, wjg_Document_getElementById, NULL, NULL, 0 },
+    { "getElementById", WJ_M_METHOD, 0, 1, wjr_Document_getElementById, NULL, NULL, 0 },
     { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 59, NULL, NULL, NULL, 0 },
     { "adoptedStyleSheets", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_adoptedStyleSheets, wjr_Document_set_adoptedStyleSheets, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },

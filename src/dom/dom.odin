@@ -23,13 +23,18 @@ Node_Kind :: enum u8 { Document, Element, Text, Comment, Doctype, Fragment }
 Namespace :: enum u8 { HTML, SVG, MathML, None, Other }
 
 // Node types of XML on the kinds above: a CDATASection is a Text (its data is text everywhere), a
-// ProcessingInstruction a Comment whose `name` is its target (never rendered), an XML document a Fragment with
-// as_document (an XMLDocument: its element names keep their case), by its content type (application/xml, text/xml,
-// application/xhtml+xml, image/svg+xml).
-Xml_Kind :: enum u8 { None, CDATA, Processing_Instruction, Document, Document_Text_XML, Document_XHTML, Document_SVG }
+// ProcessingInstruction a Comment whose `name` is its target (never rendered), an Element made for an XML document
+// (its names and its attributes' names keep their case, tagName is not upper-cased), an XML document a Fragment with
+// as_document (the page's own Document node when the page was XML), by its content type (application/xml, text/xml,
+// application/xhtml+xml, image/svg+xml); the Created_* ones are those of DOMImplementation.createDocument (an
+// XMLDocument object, whose content type follows its element's namespace).
+Xml_Kind :: enum u8 { None, CDATA, Processing_Instruction, Element, Document, Document_Text_XML, Document_XHTML, Document_SVG, Created, Created_XHTML, Created_SVG }
 
-// A Fragment that stands for an XML document.
-is_xml_document :: proc(n: ^Node) -> bool { return n != nil && n.kind == .Fragment && n.xml >= .Document }
+// A document node (the page's, or a Fragment that stands for one) that is an XML document.
+is_xml_document :: proc(n: ^Node) -> bool { return n != nil && (n.kind == .Fragment || n.kind == .Document) && n.xml >= .Document }
+
+// An element made for an XML document: names as given (DOM: no ASCII lower-casing of HTML documents).
+is_xml_element :: #force_inline proc(n: ^Node) -> bool { return n != nil && n.kind == .Element && n.xml == .Element }
 
 Attr :: struct {
 	name:  string,
@@ -396,8 +401,10 @@ set_attribute :: proc(d: ^Document, h: base.Handle, name, value: string) -> Erro
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element || name == "" { return .Invalid_Argument }
 	lname := name
-	for i in 0 ..< len(name) {
-		if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+	if n.xml != .Element {
+		for i in 0 ..< len(name) {
+			if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+		}
 	}
 	for &a in n.attrs {
 		if a.name == lname {
@@ -435,6 +442,13 @@ lower_name :: proc(name: string) -> string {
 get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
 	n := get(d, h)
 	if n == nil || n.kind != .Element { return "", false }
+	// an element of an XML document: names as given; the browser's own readers ask in lower case (an SVG viewBox),
+	// so ASCII case is ignored on both sides after an exact match (scripts: get_attribute_exact)
+	if n.xml == .Element {
+		for a in n.attrs { if a.name == name { return a.value, true } }
+		for a in n.attrs { if strings.equal_fold(a.name, name) { return a.value, true } }
+		return "", false
+	}
 	// names are stored in lower case: compare folding the query's ASCII letters, without allocating (a hot path of
 	// scripts: getAttribute, reflected IDL attributes)
 	outer: for a in n.attrs {
@@ -449,13 +463,25 @@ get_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> (value: str
 	return "", false
 }
 
+// DOM "get an attribute by name" for scripts: in lower case on an element of an HTML document, exactly as given on one
+// of an XML document (is_xml_element).
+get_attribute_exact :: proc(d: ^Document, h: base.Handle, name: string) -> (value: string, ok: bool) {
+	n := get(d, h)
+	if n == nil || n.kind != .Element { return "", false }
+	if n.xml != .Element { return get_attribute(d, h, name) }
+	for a in n.attrs { if a.name == name { return a.value, true } }
+	return "", false
+}
+
 remove_attribute :: proc(d: ^Document, h: base.Handle, name: string) -> Error {
 	n := get(d, h)
 	if n == nil { return .Invalid_Handle }
 	if n.kind != .Element { return .None }
 	lname := name
-	for i in 0 ..< len(name) {
-		if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+	if n.xml != .Element {
+		for i in 0 ..< len(name) {
+			if name[i] >= 'A' && name[i] <= 'Z' { lname = strings.to_lower(name, context.temp_allocator); break }
+		}
 	}
 	for a, i in n.attrs {
 		if a.name == lname {

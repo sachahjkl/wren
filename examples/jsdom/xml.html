@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>XML documents: elements, attributes, createDocument, getElementById</title>
+<body>
+<div id="host"></div>
+<script>
+section("elements of an XML document", () => {
+  const doc = new DOMParser().parseFromString('<root xmlns:x="urn:x"><Item id="a" camelCase="1"/></root>', "application/xml");
+  eq("DOMParser's XML document is a Document, not an XMLDocument", doc instanceof XMLDocument, false);
+  const el = doc.createElement("FooBar");
+  eq("createElement keeps the case", el.localName, "FooBar");
+  eq("tagName is not upper-cased", el.tagName, "FooBar");
+  eq("no namespace in application/xml", el.namespaceURI, null);
+  eq("an element, not an HTMLElement", el instanceof HTMLElement, false);
+  el.setAttribute("myAttr", "v");
+  eq("setAttribute keeps the case", el.getAttributeNames().join(), "myAttr");
+  eq("getAttribute with the same case", el.getAttribute("myAttr"), "v");
+  eq("getAttribute with another case: none", el.getAttribute("myattr"), null);
+  el.setAttribute("myattr", "w");
+  eq("names differing by case are two attributes", el.attributes.length, 2);
+  el.removeAttribute("myAttr");
+  eq("removeAttribute matches the case", el.getAttributeNames().join(), "myattr");
+  const item = doc.getElementById("a");
+  t("getElementById in a DOMParser document", item !== null && item.localName === "Item", item);
+  eq("a parsed attribute keeps its case", item.getAttribute("camelCase"), "1");
+  eq("getElementById does not reach the page's", doc.getElementById("host"), null);
+  eq("the page's does not reach the XML document's", document.getElementById("a"), null);
+  const ns = doc.createElementNS("urn:y", "y:Thing");
+  eq("createElementNS keeps the case", ns.tagName, "y:Thing");
+  const x = new DOMParser().parseFromString('<html xmlns="http://www.w3.org/1999/xhtml"><body/></html>', "application/xhtml+xml");
+  const div = x.createElement("div");
+  eq("application/xhtml+xml: createElement gives the XHTML namespace", div.namespaceURI, "http://www.w3.org/1999/xhtml");
+  eq("and tagName as written", div.tagName, "div");
+  const h = document.createElement("div");
+  h.setAttribute("dataFoo", "1");
+  eq("the page's own elements still lower-case", h.getAttributeNames().join(), "datafoo");
+  eq("and upper-case their tagName", h.tagName, "DIV");
+  const hd = document.implementation.createHTMLDocument("t");
+  hd.body.innerHTML = "<p id=q>q</p>";
+  t("getElementById in createHTMLDocument's document", hd.getElementById("q") !== null && hd.getElementById("q").textContent === "q");
+  eq("an HTML document of its own upper-cases", hd.createElement("span").tagName, "SPAN");
+});
+section("DOMImplementation.createDocument", () => {
+  const doc = document.implementation.createDocument("urn:ns", "p:Root", null);
+  t("an XMLDocument", doc instanceof XMLDocument);
+  eq("its element", doc.documentElement.tagName, "p:Root");
+  eq("its element's namespace", doc.documentElement.namespaceURI, "urn:ns");
+  eq("contentType application/xml", doc.contentType, "application/xml");
+  eq("no location", doc.location, null);
+  const empty = document.implementation.createDocument(null, "", null);
+  eq("an empty name: no element", empty.documentElement, null);
+  eq("null name: no element", document.implementation.createDocument(null, null).documentElement, null);
+  const dt = document.implementation.createDocumentType("svg", "-//W3C//DTD SVG 1.1//EN", "");
+  const svg = document.implementation.createDocument("http://www.w3.org/2000/svg", "svg", dt);
+  eq("the doctype first", svg.firstChild, dt);
+  eq("then the element", svg.documentElement.localName, "svg");
+  eq("contentType image/svg+xml", svg.contentType, "image/svg+xml");
+  eq("XHTML namespace: application/xhtml+xml", document.implementation.createDocument("http://www.w3.org/1999/xhtml", "html").contentType, "application/xhtml+xml");
+  throws("an invalid name", () => document.implementation.createDocument(null, "1a"), "InvalidCharacterError");
+  throws("a prefix without namespace", () => document.implementation.createDocument(null, "a:b"), "NamespaceError");
+  throws("a doctype that is not one", () => document.implementation.createDocument(null, "a", document.body), "TypeError");
+  const e = doc.createElement("child");
+  doc.documentElement.appendChild(e);
+  e.setAttribute("Id", "z");
+  eq("its elements keep their case", doc.documentElement.firstChild.getAttributeNames().join(), "Id");
+  e.setAttribute("id", "k");
+  eq("getElementById", doc.getElementById("k"), e);
+  eq("XMLSerializer", new XMLSerializer().serializeToString(doc), '<p:Root xmlns:p="urn:ns"><child Id="z" id="k"/></p:Root>');
+});
+done();
+</script>

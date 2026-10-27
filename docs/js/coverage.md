@@ -1729,7 +1729,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `convertQuadFromNode()` (GeometryUtils): not supported
 - `convertRectFromNode()` (GeometryUtils): not supported
 - `convertPointFromNode()` (GeometryUtils): not supported
-- `getElementById()` (NonElementParentNode): import `dom.Document_getElementById`
+- `getElementById()` (NonElementParentNode): C `wjr_Document_getElementById`
 - `readonly styleSheets` (DocumentOrShadowRoot): not supported
 - `adoptedStyleSheets` (DocumentOrShadowRoot): C `wjr_Document_get_adoptedStyleSheets`
 - `readonly customElementRegistry` (DocumentOrShadowRoot): not supported

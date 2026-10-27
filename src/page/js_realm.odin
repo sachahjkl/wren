@@ -234,7 +234,7 @@ js_node_interface :: proc(p: ^Page, n: ^dom.Node) -> u32 {
 	case .Doctype: return JS_IFACE_DocumentType
 	case .Fragment:
 		if n.is_shadow { return JS_IFACE_ShadowRoot }
-		if dom.is_xml_document(n) { return JS_IFACE_XMLDocument }
+		if n.xml >= .Created { return JS_IFACE_XMLDocument }   // createDocument's (DOMParser's XML documents are Documents)
 		return n.as_document ? JS_IFACE_Document : JS_IFACE_DocumentFragment
 	case .Element:
 	}

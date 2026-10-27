@@ -172,6 +172,15 @@ partial module dom {
   string ProcessingInstruction_target(Node node);
   /// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
   string Document_xmlContentType(Node document) raises;
+  /// createElement(localName) (`with_namespace` false) or createElementNS(namespace, qualifiedName) of an XML document
+  /// (DOMParser's XML types, createDocument): an element of that document, whose names keep their case (tagName as
+  /// written, attribute names as given); createElement gives it the HTML namespace only in an application/xhtml+xml
+  /// document. Invalid_Character, Namespace as the others; Not_Found when `document` is not an XML document.
+  Element Document_createXMLElement(Node document, optional string namespace, string qualified_name, bool with_namespace) raises;
+  /// document.implementation.createDocument(namespace, qualifiedName, doctype): a new inert XMLDocument, with the
+  /// doctype (a node made by createDocumentType, not in a tree) and its element when the name is not empty; its
+  /// contentType follows the namespace (application/xhtml+xml, image/svg+xml, else application/xml).
+  Node DOMImplementation_createDocument(optional string namespace, string qualified_name, optional Node doctype) raises;
   /// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
   Node DOMImplementation_createDocumentType(string name, string public_id, string system_id) raises;
   /// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,

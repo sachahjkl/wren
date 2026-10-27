@@ -811,7 +811,13 @@ Document_createElementChecked :: proc(c: ^Call, local_name: string) -> (u64, Api
 	d := jd_doc(c)
 	if d == nil { return 0, no_document(c) }
 	if !valid_element_name(local_name) { return 0, fail(c, .Invalid_Character, "The tag name provided is not a valid name.") }
-	h := dom.create_element(d, local_name)
+	h: base.Handle
+	if root := dom.get(d, d.root); dom.is_xml_document(root) {
+		// a page loaded as XML: its elements keep their names' case (application/xhtml+xml: in the HTML namespace)
+		h = xml_create_element(d, root.xml == .Document_XHTML ? dom.NS_HTML : "", "", local_name)
+	} else {
+		h = dom.create_element(d, local_name)
+	}
 	custom_elements_created(c.page, h)   // a defined name: constructed before createElement returns
 	return u64(h), .None
 }
@@ -848,6 +854,7 @@ Document_createElementNSChecked :: proc(c: ^Call, namespace: Maybe(string), qual
 	if d == nil { return 0, no_document(c) }
 	ns, prefix, local, err := validate_and_extract(c, namespace, qualified_name, true)
 	if err != .None { return 0, err }
+	if dom.is_xml_document(dom.get(d, d.root)) { return u64(xml_create_element(d, ns, prefix, local)), .None }
 	return u64(dom.create_element_ns(d, local, dom.namespace_of(ns), ns, prefix)), .None
 }
 
@@ -890,7 +897,10 @@ Document_inputEncoding :: proc(c: ^Call) -> string { return document_encoding(c.
 @(private)
 document_encoding :: proc(p: ^Page) -> string { return "UTF-8" }
 
-Document_contentType :: proc(c: ^Call) -> string { return "text/html" }
+Document_contentType :: proc(c: ^Call) -> string {
+	if d := jd_doc(c); d != nil && dom.get(d, d.root).xml == .Document_XHTML { return "application/xhtml+xml" }
+	return "text/html"
+}
 
 Document_doctype :: proc(c: ^Call) -> u64 {
 	d := jd_doc(c)

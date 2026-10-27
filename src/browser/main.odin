@@ -611,7 +611,7 @@ document_loaded :: proc(app: ^App, load: ^Doc_Load, data: []byte) {
 	// decoded and parsed off the UI thread (page.threads.*); the page closing first cancels the callback
 	load.bytes = len(data)
 	page.navigation_response_end(p, host.now_ns(&app.loop), len(data))
-	page.parse_document(p, data, load.charset, document_parsed, load)
+	page.parse_document(p, data, load.charset, document_parsed, load, load.mime)
 }
 
 document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {

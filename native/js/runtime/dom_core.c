@@ -551,11 +551,33 @@ JSValue wjr_Document_createElement(JSContext *ctx, JSValueConst this_val, int ar
     uint64_t h = 0, doc = this_handle(ctx, this_val, WJ_IFACE_Document);
     if (!doc) { wj_str_free(ctx, &name); return JS_EXCEPTION; }
     const uint8_t *np = (const uint8_t *)(name.ptr ? name.ptr : "");
-    int32_t st = doc == wr_Window_document() ? wr_Document_createElementChecked(np, (uint32_t)name.len, &h)
-                                             : wr_Document_createElementInert(np, (uint32_t)name.len, &h);
+    int32_t st;
+    if (doc == wr_Window_document()) {
+        st = wr_Document_createElementChecked(np, (uint32_t)name.len, &h);
+    } else {
+        /* an XML document's element keeps its name's case; Not_Found: an HTML document of its own */
+        st = wr_Document_createXMLElement(doc, NULL, WR_ABSENT, np, (uint32_t)name.len, 0, &h);
+        if (st == wr_Error_Not_Found) { st = wr_Document_createElementInert(np, (uint32_t)name.len, &h); }
+    }
     wj_str_free(ctx, &name);
     if (st < 0) { return wj_throw_status(ctx, st, "Document.createElement"); }
     return wj_wrap_node(ctx, h);
+}
+
+/* getElementById(id): the page's document by the browser's id index; a document of its own (createHTMLDocument's,
+ * DOMParser's, createDocument's) in its own tree */
+JSValue wjr_Document_getElementById(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    uint64_t doc = this_handle(ctx, this_val, WJ_IFACE_Document);
+    if (!doc) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "Document.getElementById", 1, argc); }
+    wj_str id;
+    if (!wj_to_str(ctx, argv[0], &id, 0, "")) { return JS_EXCEPTION; }
+    const uint8_t *ip = (const uint8_t *)(id.ptr ? id.ptr : "");
+    uint64_t r = doc == wr_Window_document() ? wr_Document_getElementById(ip, (uint32_t)id.len)
+                                             : wr_NonElementParentNode_getElementById(doc, ip, (uint32_t)id.len);
+    wj_str_free(ctx, &id);
+    return wj_wrap_node(ctx, r);
 }
 
 JSValue wjr_Document_createElementNS(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -566,8 +588,16 @@ JSValue wjr_Document_createElementNS(JSContext *ctx, JSValueConst this_val, int 
     if (!wj_to_str(ctx, argv[0], &ns, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
     if (!wj_to_str(ctx, argv[1], &name, 0, "")) { wj_str_free(ctx, &ns); return JS_EXCEPTION; }
     uint64_t h = 0;
-    int32_t st = wr_Document_createElementNSChecked((const uint8_t *)ns.ptr, ns.ptr && ns.len ? (uint32_t)ns.len : WR_ABSENT,
-                                                    (const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, &h);
+    uint64_t doc = this_handle(ctx, this_val, WJ_IFACE_Document);
+    int32_t st = wr_Error_Not_Found;
+    if (doc && doc != wr_Window_document()) {
+        st = wr_Document_createXMLElement(doc, (const uint8_t *)ns.ptr, ns.ptr && ns.len ? (uint32_t)ns.len : WR_ABSENT,
+                                          (const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, 1, &h);
+    }
+    if (st == wr_Error_Not_Found) {
+        st = wr_Document_createElementNSChecked((const uint8_t *)ns.ptr, ns.ptr && ns.len ? (uint32_t)ns.len : WR_ABSENT,
+                                                (const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, &h);
+    }
     wj_str_free(ctx, &ns);
     wj_str_free(ctx, &name);
     if (st < 0) { return wj_throw_status(ctx, st, "Document.createElementNS"); }
@@ -664,12 +694,28 @@ JSValue wjr_DOMImplementation_createDocumentType(JSContext *ctx, JSValueConst th
     return wrap_new_node(ctx, st, h, "DOMImplementation.createDocumentType");
 }
 
-/* createDocument (an XML document): one document per page here */
+/* createDocument(namespace, qualifiedName [LegacyNullToEmptyString], doctype): a new XMLDocument (src/page/js_xml_parse.odin) */
 JSValue wjr_DOMImplementation_createDocument(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    WJ_UNUSED(argc); WJ_UNUSED(argv);
     if (!dom_impl_of(ctx, this_val, WJ_IFACE_DOMImplementation)) { return JS_EXCEPTION; }
-    return wj_throw_dom(ctx, "NotSupportedError", "XML documents are not supported by this browser.");
+    if (argc < 2) { return wj_throw_arity(ctx, "DOMImplementation.createDocument", 2, argc); }
+    JSValueConst dtv = wj_arg(argc, (JSValue *)argv, 2);
+    uint64_t dt = 0;
+    if (!JS_IsUndefined(dtv) && !JS_IsNull(dtv)) {
+        wj_obj *o = wj_unwrap(dtv, WJ_IFACE_DocumentType);
+        if (!o) { return JS_ThrowTypeError(ctx, "Failed to execute 'createDocument' on 'DOMImplementation': parameter 3 is not of type 'DocumentType'."); }
+        dt = o->handle;
+    }
+    wj_str ns, name;
+    if (!wj_to_str(ctx, argv[0], &ns, WJ_STR_NULLABLE, "")) { return JS_EXCEPTION; }
+    if (JS_IsNull(argv[1])) { name.ptr = NULL; name.len = 0; name.owned = false; }
+    else if (!wj_to_str(ctx, argv[1], &name, 0, "")) { wj_str_free(ctx, &ns); return JS_EXCEPTION; }
+    uint64_t h = 0;
+    int32_t st = wr_DOMImplementation_createDocument((const uint8_t *)ns.ptr, ns.ptr && ns.len ? (uint32_t)ns.len : WR_ABSENT,
+                                                     (const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len, dt, &h);
+    wj_str_free(ctx, &ns);
+    wj_str_free(ctx, &name);
+    return wrap_new_node(ctx, st, h, "DOMImplementation.createDocument");
 }
 
 /* ---- DOMParser ---- */
