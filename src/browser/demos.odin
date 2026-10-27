@@ -62,6 +62,8 @@ DEMOS := [?]Demo{
 		"What sites write today: a variable WOFF2 web font, Color 4 and 5 (<code>oklch</code>, relative colors, <code>color-mix</code>), container queries, <code>@property</code> animations, <code>:has()</code> and <code>revert-layer</code>, <code>@supports</code>, math functions and units, <code>&lt;details&gt;</code>. Each section says what to expect.", false, "", false},
 	{.Css, "Transitions and animations", "animations.html",
 		"CSS only: hover transitions that reverse halfway, endless keyframe animations (spin, pulse, alternate, steps), nested <code>counters()</code>, quotes by depth, gradients, and a web font with <code>font-display: swap</code>. <code>style.animations.mode</code> turns motion down.", false, "", false},
+	{.Layout, "Autoscroll (middle click)", "autoscroll.html",
+		"A tall page for the middle-click scroll: press the wheel and move the pointer up or down (the farther, the faster), or click it once and move; a click, Escape or the wheel ends it. A middle click on the link opens it in a new tab.", false, "", false},
 	{.Css, "Cursors", "cursors.html",
 		"Every value of <code>cursor</code> in a grid (Windows' own cursors, and those it lacks drawn in the same style), images as cursors (PNG and SVG with their hotspot, <code>image-set()</code>, fallbacks of an image too large or missing), <code>cursor: none</code>, and what <code>auto</code> shows over text, links, fields, <code>contenteditable</code>, <code>user-select: none</code> and scroll bars.", false, "", false},
 	{.Css, "Color schemes", "firstpaint.html",

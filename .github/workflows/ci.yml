@@ -146,7 +146,7 @@ jobs:
           ODIN_SHA256: c3c8b095621fd0c75f7f73e3a0829f1b4d45324225f20ba11ed8dc4da310a8ab
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq clang lld nasm
+          sudo apt-get install -y -qq clang lld nasm pkg-config libasound2-dev
           curl -fsSL -o "$RUNNER_TEMP/odin.tar.gz" "https://github.com/odin-lang/Odin/releases/download/$ODIN_TAG/odin-linux-amd64-$ODIN_TAG.tar.gz"
           echo "$ODIN_SHA256  $RUNNER_TEMP/odin.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/odin" && tar -xzf "$RUNNER_TEMP/odin.tar.gz" -C "$RUNNER_TEMP/odin"
