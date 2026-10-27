@@ -1,0 +1,14 @@
+// https://www.w3.org/TR/webvtt1/  the WebVTT API surface. Wren parses WebVTT natively (media.vtt_parse) and fills a
+// TextTrack from it (src/page/media_texttracks.odin); VTTCue is the cue type scripts construct and read.
+
+enum AutoKeyword { "auto" };
+enum DirectionSetting { "" /* horizontal */, "rl", "lr" };
+enum LineAlignSetting { "start", "center", "end" };
+enum PositionAlignSetting { "line-left", "center", "line-right", "auto" };
+enum AlignSetting { "start", "center", "end", "left", "right" };
+
+[Exposed=Window]
+interface VTTCue : TextTrackCue {
+  constructor(double startTime, unrestricted double endTime, DOMString text);
+  attribute DOMString text;
+};
