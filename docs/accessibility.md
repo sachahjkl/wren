@@ -64,21 +64,46 @@ tree id from the tab's id: `page_tree_id`) and sent after the chrome's tree (`sr
   AccessKit raises a live region event when it changes.
 - **Focus**: the page's focused element (the forms' focus) while the page has the keyboard (`ui.a11y_focus_on` the
   page area).
-- **Text fields**: their text as a text run (reading by character); no caret position yet.
+- **Text fields**: their text as a text run (reading by character and word: `Word_Starts`), their caret and selection
+  (`Text_Selection`, from the forms' selection, in characters of the run); a selection made by the reader
+  (`Set_Text_Selection`) moves the field's (`forms.set_selection`).
+- **Frames**: the document of an `iframe` is a tree of its own (tree id from its stand-in tab), grafted under the
+  frame element's node (`View.frame_tree`) and sent after its parent's, only when the parent's tree has that graft
+  node; its transform places it in the frame's content box. Requests for its nodes act in the frame's document; the
+  focus follows the frame that has the keyboard (the graft node, then the frame's own focus). Frames of frames too.
+  `accessibility.page.frames` turns them off.
 - **Shadow trees**: the composed tree (a host's shadow root, a slot's assigned nodes).
 - **Bounds**: from the layout (`layout.box_of_view`, document coordinates; the document node's transform is the
-  page area's place and the scroll: scrolling changes one node).
+  page area's place and the scroll: scrolling changes one node). A text node has the union of the display items that
+  show it (its lines, `layout.item_rect`).
 - **Actions** of screen readers: click (a synthetic click, as `HTMLElement.click()`: `page.click_element`), focus
   (`forms.focus`), set value (`forms.set_value`, as typed: input events), increment / decrement (`forms.step`, as the
   arrow keys), scroll into view, scroll up / down.
-- **Updates**: the tree is made again only when what it reads changed (the document's mutation counters, the forms'
-  serial, the layout, the focus, the scroll, the page area, the title), and only the nodes that changed go to the
-  adapter. A document of more than 50 000 nodes is cut there.
+- **Updates, node by node** (`incremental.odin`, `a11y.live_update`): after a document's first whole tree, an update
+  holds only the nodes a change reaches, written whole and handed to `platform.a11y_diff_patch`. What changed comes
+  from what the engine records already: the mutation journal (`dom.journal_since`), the style journal's Box-level
+  changes (`style.journal_since`: display, visibility), a hash of each form control's value, checkedness,
+  selectedness and selection, `Document.listener_changes` (what a click acts on), the geometry (the layout's passes,
+  the viewport; on a scroll alone, only the boxes fixed to the viewport), the title, the address and the focus. A
+  change is handled at the nearest node above it, walked again with the unchanged nodes below it taken as they are;
+  what may depend on it is written again one by one: the ancestors (names from content, live regions), list items
+  (their place in the set), the rows and cells of a table, the nodes pointing at an id (`aria-labelledby`,
+  `-describedby`, `-controls`, `-activedescendant`...), the controls of a `<label for>`. What the journals cannot say
+  (a journal that forgot, more than `accessibility.page.max_nodes`, a box gone, `visibility` or `display` animated)
+  makes a whole tree (then diffed). Nothing is built or sent while nothing changes. `accessibility.page.verify`
+  compares every update with a whole tree (`a11y.live_verify`; `wren ctl stats`: `a11yPageVerifyFailed`,
+  `a11yPageVerifyDiff`); `accessibility.page.incremental` off makes every update a whole tree.
+- **Windows**: each window keeps its page's trees (`Window_Own.a11y`): two windows show two pages.
+- Preferences: `accessibility.page.enabled`, `.incremental`, `.verify`, `.max_nodes` (50 000), `.frames`.
 
-Not done yet (next steps): iframes as subtrees of their own (an `iframe` is a node named by its `title`, without its
-document), caret and selection inside text fields and page text (text runs with character positions), static text
-bounds (a text node has its element's bounds), a tree updated from the DOM's mutations node by node (it is made
-again whole, then diffed), several windows (the page tree follows the main window's current tab).
+Not done yet (next steps):
+- Static text read character by character, and the page's own text selection: text nodes are `Label` nodes with a
+  value, without text runs (AccessKit reads character by character only inside text runs); a document-level text
+  selection (the page's Selection mapped to runs) needs runs for static text and, in the toolkit's adapter,
+  selections whose positions are runs deeper than the node's children (`gt_a11y` only accepts runs that are its
+  direct children, AccessKit panics on a position that is not a run).
+- Character positions and widths of the runs of text fields (`Character_Positions`): ranges have the field's bounds.
+- A text in a box fixed to the viewport keeps its bounds at scroll 0 (its lines are measured at scroll 0).
 
 ## Testing
 
@@ -89,6 +114,15 @@ again whole, then diffed), several windows (the page tree follows the main windo
   by the toolkit's `uia_probe` (built into `build\uia_probe.exe` when stale): the chrome's roles, names and states, then
   invoke New tab, set the address bar's value, select a tab, expand and collapse the menu; then
   `examples/a11y/page.html`: its document, controls, states, what is left out, and setting a field, toggling a check
-  box, focusing a field and invoking a button act on the page (checked with `wren ctl eval`).
+  box, focusing a field and invoking a button act on the page (checked with `wren ctl eval`); then
+  `examples/a11y/dynamic.html` with `accessibility.page.verify` on: nodes the page inserts, renames, adds and removes
+  are read, as patches (no whole tree) equal to whole trees; nothing is built or sent at rest; a text's bounds are its
+  line's; the frame's button is read and invoked in the frame; a field's text and selection are read and set through
+  the text pattern (`uia_probe text`, `select-text`); a second window reads its own page (`uia_probe --hwnd`, the
+  `hwnd` of `Browser.getWindows`), no update refused or different in either.
+- `src/a11y` incremental tests: every patch applied as an adapter would (refusing a node no parent reaches, a missing
+  child, a node twice) and compared with a whole tree, for scripted changes (text, attributes, list items, a wrapper
+  at the top, `aria-hidden`, roles, `aria-labelledby` targets, `<label for>`, a table row, title, focus, a listener)
+  and 60 pseudo-random ones.
 - By hand: `build\uia_probe.exe dump --pid <pid of wren.exe>` prints every element as a screen reader sees it.
 - With a person: NVDA and Narrator (what they say, browse and focus modes): see the session note of 2026-10-26.
