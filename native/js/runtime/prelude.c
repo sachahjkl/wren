@@ -10,8 +10,10 @@
 int wj_run_preludes(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
-    extern JSValue wj_ce_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_ce_host", wj_ce_host_object(ctx));
+    /* custom elements: the registry, definitions, upgrades and reactions are native (runtime/custom_elements.c),
+     * built into the image here in place of the old prelude/customelements.js */
+    extern void wj_install_custom_elements(JSContext *ctx);
+    wj_install_custom_elements(ctx);
     extern JSValue wj_shadow_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
     extern JSValue wj_frames_host_object(JSContext *ctx);
