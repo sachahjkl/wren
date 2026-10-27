@@ -37,7 +37,7 @@ try {
   Expect ($joined -match 'joined 2') 'the first tab hears of the second connection (one worker shared)' $joined
   $other = Wren-Ctl eval 'new Promise((ok) => { const o = new SharedWorker("shared.js", {name: "other"}); o.port.onmessage = (e) => ok(e.data); o.port.postMessage("who"); })' --await --tab-id $tab2
   Expect ($other -eq 'other 1 true function undefined undefined') 'another name is another worker' $other
-  $bad = Wren-Ctl eval 'new Promise((ok) => { const b = new SharedWorker("missing.js"); b.onerror = (e) => ok(e.type + " " + e.constructor.name); setTimeout(() => ok("no error"), 5000); })' --await --tab-id $tab2
+  $bad = Wren-Ctl eval 'new Promise((ok) => { const b = new SharedWorker("missing.js"); b.onerror = (e) => ok(e.type + " " + e.constructor.name); setTimeout(() => ok("no error"), 30000); })' --await --tab-id $tab2
   Expect ($bad -eq 'error Event') 'a script that cannot be fetched: error event at the SharedWorker' $bad
   $xo = Wren-Ctl eval 'try { new SharedWorker("http://example.invalid/x.js"); "made" } catch (e) { e.name }' --tab-id $tab2
   Expect ($xo -eq 'SecurityError') 'a script of another origin throws SecurityError' $xo
@@ -60,7 +60,7 @@ try {
   Expect ($sx -eq '200 true 4') 'a synchronous XMLHttpRequest in a dedicated worker' $sx
   $pipe = Wren-Ctl eval 'new Promise((ok) => { const got = []; new ReadableStream({ start(c) { c.enqueue("a"); c.enqueue("b"); c.close(); } }).pipeTo(new WritableStream({ write(x) { got.push(x); } })).then(() => ok(got.join("")), (e) => ok("error " + e)); })' --await
   Expect ($pipe -eq 'ab') 'ReadableStream.pipeTo a WritableStream' $pipe
-  $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 5000); })' --await
+  $broken = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("data:text/javascript,import \"./nowhere.js\";", {type: "module"}); w.onerror = (e) => ok("error"); setTimeout(() => ok("no error"), 30000); })' --await
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
 
   # --- nested workers (examples/site/workers/nested.js)

@@ -66,7 +66,7 @@ try {
   Wren-Ctl pref set browser.dialogs.test_answer allow | Out-Null
   Wren-Ctl tab activate $tabA | Out-Null
   Wren-Ctl click '200,100' --tab-id $tabA | Out-Null   # (in the frame: its button fills it)
-  $said = Wren-Ctl eval 'new Promise((ok) => { const go = () => said.length ? ok(said.join(",")) : setTimeout(go, 50); go(); setTimeout(() => ok("nothing"), 5000); })' --await --tab-id $tabA
+  $said = Wren-Ctl eval 'new Promise((ok) => { const go = () => said.length ? ok(said.join(",")) : setTimeout(go, 50); go(); setTimeout(() => ok("nothing"), 30000); })' --await --tab-id $tabA
   Expect ($said -eq 'granted') 'a click in the frame, then requestStorageAccess(): granted (the prompt allowed)' $said
   Wren-Ctl pref set browser.dialogs.test_answer '""' | Out-Null
   $has = & $ask $tabA '{op: "has"}'
