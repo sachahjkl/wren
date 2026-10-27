@@ -114,6 +114,13 @@ Media_Element :: struct {
 	blob_href:     string,     // ... and the URL it did so by (owned)
 	timer_tok:     ^Media_Notice,   // the data of `timer` until it fires (freed with the element when it never does)
 	src_channel:   ^Mse_Channel,    // srcObject: a worker's MediaSource (its handle's channel, a reference; mse_worker.odin)
+	// requestVideoFrameCallback (media_rvfc.odin): callbacks waiting for the next presented picture, and the id counter
+	rvfc:          [dynamic]Rvfc_Callback,
+	rvfc_next_id:  u64,
+	rvfc_meta:     Rvfc_Metadata,   // the metadata of the frame whose callbacks are running (videoFrameMetadata reads it)
+	rvfc_meta_id:  u64,             // the callback id videoFrameMetadata is being asked about (0: none running)
+	// track lists (media_tracks.odin / media_texttracks.odin): the host objects, made on first access and cached.
+	tracks:        ^Media_Tracks,
 }
 
 Page_Media :: struct {
@@ -227,10 +234,12 @@ media_element_free :: proc(p: ^Page, el: ^Media_Element, page_closing: bool) {
 	for pr in el.pending_play { if !page_closing { promise_reject(p, pr, i64(Api_Error.Abort), "AbortError: the media element was removed") } }
 	delete(el.pending_play)
 	delete(el.played)
+	delete(el.rvfc)
 	delete(el.current_src)
 	delete(el.blob_href)
 	delete(el.err_message)
 	if el.src_channel != nil { mse_channel_release(el.src_channel) }
+	if el.tracks != nil { media_tracks_free(p, el, page_closing) }
 	if el.timer != base.NIL_HANDLE { host.clear_timer(p.loop, el.timer); free(el.timer_tok) }   // (a timer cleared before it fires does not free its data)
 	free(el)
 }
@@ -267,6 +276,12 @@ media_note_inserted :: proc(p: ^Page, node: base.Handle) {
 		if _, ok := is_media_node(parent); ok {
 			if el := media_element(p, n.parent); el != nil && el.network_state == NETWORK_EMPTY && !media_has_attr(p.doc, n.parent, "src") { media_schedule_load(el) }
 		}
+		return
+	}
+	// a <track> inserted into a media element: its text track is made and its src loaded (media_texttracks.odin)
+	if n.name == "track" {
+		parent := dom.get(p.doc, n.parent)
+		if _, ok := is_media_node(parent); ok { media_track_element_added(p, n.parent, node) }
 		return
 	}
 	stack := make([dynamic]base.Handle, 0, 16, context.temp_allocator)
@@ -637,6 +652,8 @@ media_sink_tracks :: proc(user: rawptr, tracks: []media.Track, duration: media.T
 	}
 	if duration > 0 { el.duration = media.time_seconds(duration) }
 	media_make_player(el)
+	// the audio/video track lists: every track the container announced, the chosen ones enabled/selected (media_tracks.odin)
+	if p.settings.media.tracks { media_tracks_from_container(el, tracks, el.vtrack, el.atrack) }
 	images_init(p)
 	p.images.sizes = next_serial()   // (layout reads the natural size of the video again)
 	el.network_state = NETWORK_LOADING
@@ -826,6 +843,11 @@ media_update :: proc(el: ^Media_Element) {
 			media_fire(el, "ended")
 		}
 	}
+	// text track cues: which are active at the current time (enter / exit / cuechange), and a repaint when a showing
+	// track changed (media_texttracks.odin)
+	if el.tracks != nil && len(el.tracks.text) > 0 {
+		if media_text_cues_update(el, t) { host.quiet_note(p.loop) }
+	}
 	// autoplay
 	if el.paused && el.autoplay_ok && el.ready_state == HAVE_ENOUGH_DATA && media_has_attr(p.doc, el.node, "autoplay") && !el.ended_flag {
 		el.autoplay_ok = false
@@ -838,6 +860,8 @@ media_update :: proc(el: ^Media_Element) {
 		}
 	}
 	el.frames_total = media.player_stats(el.player).decoded
+	// a ManagedMediaSource decides whether to stream from how much is buffered ahead (media_managed.odin)
+	if el.ms != nil && el.ms.ms != nil && el.ms.ms.managed { ms_managed_update(el.ms.ms, media_buffered_ahead(el, t)) }
 }
 
 @(private)
@@ -1224,7 +1248,11 @@ media_view :: proc(p: ^Page, node: base.Handle, present := true, ahead_ns: i64 =
 	if due, has := media.player_next_due(el.player, ahead_ns); has { v.next_due_ns = due }
 	s := media.player_stats(el.player)
 	v.hardware, v.decoder, v.dropped, v.decoded = s.hardware, s.decoder, s.dropped, s.decoded
-	if v.frame != nil && v.changed { el.paint_gen += 1 }
+	if v.frame != nil && v.changed {
+		el.paint_gen += 1
+		// a new picture is on screen: the frame's callbacks fire with it (media_rvfc.odin)
+		if len(el.rvfc) > 0 { media_rvfc_present(el, v.frame, s, ahead_ns) }
+	}
 	return v, true
 }
 

@@ -58,4 +58,28 @@ module htmlmedia {
   /// video.getVideoPlaybackQuality(): five f64 (creationTime, droppedVideoFrames, totalVideoFrames, corruptedVideoFrames,
   /// totalFrameDelay in seconds).
   bytes HTMLVideoElement_playbackQuality(HTMLMediaElement element);
+
+  /// requestVideoFrameCallback's callback: `now` is the current time on the page's performance timeline (the callback
+  /// reads the rest of the metadata back with HTMLVideoElement_videoFrameMetadata, keyed by the id this call made).
+  callback VideoFrameRequestCallback(i32 user, f64 now);
+  /// video.requestVideoFrameCallback(callback): the callback runs once, when a new video frame is presented (the same
+  /// moment the playback-quality counters advance). Returns an id for cancelVideoFrameCallback (0: too many waiting,
+  /// media.max_video_frame_callbacks).
+  u64 HTMLVideoElement_requestVideoFrameCallback(HTMLMediaElement element, VideoFrameRequestCallback callback, i32 user = 0);
+  /// video.cancelVideoFrameCallback(id).
+  void HTMLVideoElement_cancelVideoFrameCallback(HTMLMediaElement element, u64 id);
+  /// The VideoFrameCallbackMetadata of the frame that fired callback `id`, snapshotted at presentation: eight f64
+  /// (presentationTime, expectedDisplayTime, width, height, mediaTime, presentedFrames, processingDuration, and a
+  /// bitmask of which of the optional fields are present; here always 0 — captureTime/receiveTime/rtpTimestamp absent).
+  /// Empty when the id is unknown.
+  bytes HTMLVideoElement_videoFrameMetadata(HTMLMediaElement element, u64 id);
+
+  /// element.audioTracks / videoTracks / textTracks: the handle of the list object (an AudioTrackList / VideoTrackList /
+  /// TextTrackList of the mediatracks module; the engine wraps it). 0 when media.tracks.enabled is off. The same object
+  /// each time (SameObject).
+  u64 HTMLMediaElement_audioTracks(HTMLMediaElement element);
+  u64 HTMLMediaElement_videoTracks(HTMLMediaElement element);
+  u64 HTMLMediaElement_textTracks(HTMLMediaElement element);
+  /// element.addTextTrack(kind, label, language): the handle of a new (hidden) TextTrack. NotSupported when off.
+  u64 HTMLMediaElement_addTextTrack(HTMLMediaElement element, string kind, string label = "", string language = "") raises;
 }
