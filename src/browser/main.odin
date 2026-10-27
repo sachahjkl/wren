@@ -114,6 +114,8 @@ Tab :: struct {
 	frame:    ^Frame_View,       // non-nil: the stand-in tab of a frame's document, not a tab (frames_shell.odin)
 	pinned:   bool,              // tab_groups.odin: at the start of the window's tabs, its icon alone
 	group:    u64,               // tab_groups.odin: the id of its group in its window (0: none)
+	muted:    bool,              // tab_sound.odin: its pages make no sound (they are not told)
+	sound:    Tab_Sound,         // tab_sound.odin: whether it plays sound, as the last frame saw
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)

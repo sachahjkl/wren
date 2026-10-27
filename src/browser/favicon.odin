@@ -66,6 +66,7 @@ register_tab_prefs :: proc(p: ^config.Prefs) {
 	config.register(p, TAB_PREFS[:])
 	config.register(p, SIDEBAR_PREFS[:])   // tab_sidebar.odin
 	config.register(p, TAB_GROUP_PREFS[:])   // tab_groups.odin
+	config.register(p, TAB_SOUND_PREFS[:])   // tab_sound.odin
 }
 
 Tab_Settings :: struct {

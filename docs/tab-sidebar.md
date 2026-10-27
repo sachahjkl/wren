@@ -133,6 +133,20 @@ drawn for the sidebar otherwise.
 | `browser.tabs.restore_pinned` | on | The pinned tabs come back without the session. |
 | `browser.tabs.group_name_max` | 64 | 1 to 1024 characters. |
 
+## Sound
+
+`src/browser/tab_sound.odin`. A tab that plays sound (a media element of its page or of one of its frames, playing, with an
+audio track, not muted, at a volume above 0) shows a speaker; a muted tab a crossed-out one.
+
+* In the open sidebar and the row of tabs the speaker is a button before the close button: a click mutes or unmutes the tab.
+  In the narrow sidebar and on a pinned tab it is a badge over the icon's corner (the tab's menu mutes it). Also the tab's
+  menu (`Mute tab` / `Unmute tab`) and the command `tab.mute` (current tab).
+* Muting silences the tab's players from the browser's side (`media.player_set_host_muted`): the page's `volume` and
+  `muted` are untouched and it is not told. A player that appears later in a muted tab is silenced as it appears.
+* The speaker stays `browser.tabs.audio_hold_ms` (2000) after the sound stops, so a pause between two sounds does not make it
+  blink; a timer brings the frame that removes it. `browser.tabs.audio_indicator` off: no speaker.
+* `wren ctl tabs --json`: `playing` (a media element plays sound now), `audible` (the speaker shows sound), `muted`.
+
 ## Tests
 
 `src/browser/tab_sidebar_test.odin`: the position names and preferences (the three values, a refused value, the bounds), the

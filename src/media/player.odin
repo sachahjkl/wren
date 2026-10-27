@@ -53,6 +53,7 @@ Player :: struct {
 	rate:     f64,
 	gain:     f32,
 	muted:    bool,
+	host_muted: bool,              // the application silences it (a tab muted): the element's own volume and muted are kept
 	seek_gen: u32,                 // bumps with every seek
 	seek_to:  Time,
 	source_ended: bool,            // no more data will come into the stores
@@ -166,9 +167,25 @@ player_set_volume :: proc(p: ^Player, volume: f32, muted: bool) {
 	sync.mutex_lock(&p.mu)
 	p.gain, p.muted = volume, muted
 	out := p.out
-	g := muted ? 0 : volume
+	g := muted || p.host_muted ? 0 : volume
 	sync.mutex_unlock(&p.mu)
 	if out != nil { out.set_gain(out, g * g) }   // (perceptual: the slider is a power curve)
+}
+
+// Silences the player whatever its own volume and muted say (the browser's mute of a tab: the page does not see it).
+player_set_host_muted :: proc(p: ^Player, on: bool) {
+	sync.mutex_lock(&p.mu)
+	p.host_muted = on
+	out := p.out
+	g := p.muted || on ? 0 : p.gain
+	sync.mutex_unlock(&p.mu)
+	if out != nil { out.set_gain(out, g * g) }
+}
+
+player_host_muted :: proc(p: ^Player) -> bool {
+	sync.mutex_lock(&p.mu)
+	defer sync.mutex_unlock(&p.mu)
+	return p.host_muted
 }
 
 // A new rate. The audio is resampled by it (the pitch follows: a time stretch is not done) and the clock runs by it.
@@ -701,7 +718,7 @@ audio_write_block :: proc(p: ^Player, b: ^Audio_Block, stereo: ^[dynamic]f32, tr
 		if out == nil { set_error(p, .Audio_Lost); sync.mutex_lock(&p.mu); p.a_active = false; sync.mutex_unlock(&p.mu); return false }
 		sync.mutex_lock(&p.mu)
 		p.out, p.a_rate = out, b.rate
-		g := p.muted ? 0 : p.gain
+		g := p.muted || p.host_muted ? 0 : p.gain
 		sync.mutex_unlock(&p.mu)
 		out.set_gain(out, g * g)
 		have_expect^ = false

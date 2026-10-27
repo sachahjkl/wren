@@ -246,6 +246,7 @@ tabs_frame :: proc(app: ^App, first, last: int, items: []Side_Item) {
 		for k in first ..< last { if items[k].kind == .Tab { shown_lo = min(shown_lo, items[k].index); shown_hi = max(shown_hi, items[k].index) } }
 	}
 	np := pinned_count(wnd.tabs[:])
+	tab_sound_frame(app)   // tab_sound.odin
 	any_turning := false
 	for t, i in wnd.tabs {
 		tab_refresh(app, t, tab_icon_px(app))
@@ -319,6 +320,8 @@ sidebar_pins :: proc(app: ^App, pos: Tabs_Position, open, extent: f32, cc: ^Clas
 				ui.next({width = ui.px(isz), height = ui.pct(1)})
 				ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
 				ui.spacer(ui.fill())
+				side := cell - gap * 2
+				tab_speaker_badge(tab_speaker(app, t), {math.round((side - isz) * 0.5 + isz * 0.45), math.round((side - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge")
 			}
 			if !on { ui.pop_tags() }
 			sig := ui.signal(b)
@@ -420,9 +423,13 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 		isz := f32(tab_icon_px(app))
 		// (one layout whatever `open` is: the icon slides from the middle of the narrow row to its place, the title and the
 		// close button fade in behind it, clipped by the row while it widens)
-		ui.spacer(ui.px(side_icon_x(row_w, isz, math.round(em * 0.65), open)))
+		ix := side_icon_x(row_w, isz, math.round(em * 0.65), open)
+		ui.spacer(ui.px(ix))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		speaker := tab_speaker(app, t)
+		// the narrow column: the speaker over the icon's corner (the tab's menu mutes it); open: a button of its own
+		if open < 0.5 { tab_speaker_badge(speaker, {ix + isz * 0.45, math.round((rh - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
 		if open > 0 {
 			ui.spacer(ui.px(math.round(em * 0.5)))
 			ui.next({width = ui.fill(), height = ui.pct(1), axis = .X, cross = .Center, transparency = 1 - side_title_alpha(open)})
@@ -433,6 +440,9 @@ sidebar_row :: proc(app: ^App, i: int, slot, rh, row_x, row_w, inset: f32, open:
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+			if speaker != .None && open >= 0.5 {
+				if ui.tab_stops(false) { _ = tab_speaker_button(app, t, speaker, math.round(em * 1.45), "###speaker") }
+			}
 			if on || inside {
 				cs := math.round(em * 1.45)
 				if ui.tab_stops(false) {

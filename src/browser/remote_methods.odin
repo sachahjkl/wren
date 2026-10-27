@@ -322,6 +322,7 @@ m_targets :: proc(app: ^App) -> Reply {
 			j_bool(&b, "active", i == window_current(app, w)^); j_bool(&b, "loading", !tab_loaded(app, t)); j_bool(&b, "attached", true)
 			// the sidebar's state of the tab (tab_groups.odin), and where the last frame drew it in the tab bar
 			j_bool(&b, "pinned", t.pinned); j_int(&b, "group", i64(t.group))
+			j_bool(&b, "playing", t.sound.playing); j_bool(&b, "audible", tab_speaker(app, t) == .Sound); j_bool(&b, "muted", t.muted)   // tab_sound.odin
 			if gi := group_index(w.groups[:], t.group); gi >= 0 {
 				g := w.groups[gi]
 				j_str(&b, "groupName", g.name); j_str(&b, "groupColor", GROUP_COLOR_NAMES[g.color]); j_bool(&b, "groupCollapsed", g.collapsed)
