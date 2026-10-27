@@ -3,17 +3,13 @@ package remote
 import "core:fmt"
 import "core:strings"
 
-// Where a Wren listens. The pipe is \\.\pipe\wren-remote-<name>. The name is given (`--remote=<name>`, WREN_REMOTE,
+// Where a Wren listens. On Windows the named pipe \\.\pipe\wren-remote-<name>; elsewhere the Unix socket
+// <runtime dir>/remote-<name>.sock (pipe_path, names_<os>.odin). The name is given (`--remote=<name>`, WREN_REMOTE,
 // browser.remote.name) or, by default, derived from the profile folder: the same folder always gives the same name (so
 // `wren ctl --profile <folder> ...` finds the instance without being told) and two instances with different profiles never
 // meet. The name is written with the pid in <profile>\remote.json when the channel starts and removed when it ends.
 
 PROTOCOL_VERSION :: 1
-PIPE_PREFIX :: `\\.\pipe\wren-remote-`
-
-pipe_path :: proc(name: string, allocator := context.temp_allocator) -> string {
-	return strings.concatenate({PIPE_PREFIX, name}, allocator)
-}
 
 // A name made of letters, digits, '-', '_' and '.', short enough for a pipe name. Anything else would be a path.
 valid_name :: proc(name: string) -> bool {
