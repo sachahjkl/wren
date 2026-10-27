@@ -63,6 +63,7 @@ clear_site :: proc(app: ^App, host: string, kinds: Clear_Kinds) -> string {
 			entries = httpcache.delete_for_host(app.profile.cache, host)
 		}
 	}
+	if .Cache in kinds && host == "*" { art_clear_cache() }   // newtab_art.odin: the cached paintings are temporary like the HTTP cache
 	request_frames(app, 2)
 	names := make([dynamic]string, context.temp_allocator)
 	if .Local in kinds { append(&names, i18n.tr("local storage")) }
