@@ -174,6 +174,28 @@ bool wj_error_event_args(JSContext *ctx, JSValueConst ev, JSValue out[5])
     return true;
 }
 
+/* An ErrorEvent of `type` for the exception `exc` as an uncaught one gives it (message "Uncaught ...", the place in its
+ * stack), not cancelable: navigateerror (web_navigation.c). Does not take `exc`. */
+JSValue wj_error_event_for(JSContext *ctx, const char *type_name, JSValueConst exc)
+{
+    JSValue message = error_message(ctx, exc);
+    const char *url = ""; size_t url_len = 0; int line = 0, col = 0;
+    JSValue st = JS_IsError(exc) ? JS_GetPropertyStr(ctx, exc, "stack") : JS_UNDEFINED;
+    size_t stack_len = 0;
+    const char *stack = JS_IsString(st) ? JS_ToCStringLen(ctx, &stack_len, st) : NULL;
+    if (JS_HasException(ctx)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+    stack_position(stack, stack_len, &url, &url_len, &line, &col);
+    JSValue filename = JS_NewStringLen(ctx, url, url_len);
+    if (stack) { JS_FreeCString(ctx, stack); }
+    JS_FreeValue(ctx, st);
+    JSValue type = JS_NewString(ctx, type_name);
+    JSValue ev = new_error_event(ctx, type, message, filename, line, col, exc, false);
+    JS_FreeValue(ctx, type);
+    JS_FreeValue(ctx, message);
+    JS_FreeValue(ctx, filename);
+    return ev;
+}
+
 /* ---- report the exception ---- */
 
 static bool in_error_event;

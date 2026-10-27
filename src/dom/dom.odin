@@ -22,6 +22,15 @@ Node_Kind :: enum u8 { Document, Element, Text, Comment, Doctype, Fragment }
 // give any: an Other namespace's URI (and any element's prefix) is kept in Document.ns_extra.
 Namespace :: enum u8 { HTML, SVG, MathML, None, Other }
 
+// Node types of XML on the kinds above: a CDATASection is a Text (its data is text everywhere), a
+// ProcessingInstruction a Comment whose `name` is its target (never rendered), an XML document a Fragment with
+// as_document (an XMLDocument: its element names keep their case), by its content type (application/xml, text/xml,
+// application/xhtml+xml, image/svg+xml).
+Xml_Kind :: enum u8 { None, CDATA, Processing_Instruction, Document, Document_Text_XML, Document_XHTML, Document_SVG }
+
+// A Fragment that stands for an XML document.
+is_xml_document :: proc(n: ^Node) -> bool { return n != nil && n.kind == .Fragment && n.xml >= .Document }
+
 Attr :: struct {
 	name:  string,
 	value: string,
@@ -47,6 +56,7 @@ Node :: struct {
 	held:        bool,       // a detached tree its owner keeps (a template's contents): not freed when nothing pins it
 	as_document: bool,       // a Fragment that stands for a document of its own (DOMImplementation.createHTMLDocument)
 	is_shadow:   bool,       // a Fragment that is a shadow root (shadow.odin)
+	xml:         Xml_Kind,   // what XML adds to a kind (DOMParser's XML documents)
 	parent:      base.Handle,
 	first_child: base.Handle,
 	last_child:  base.Handle,

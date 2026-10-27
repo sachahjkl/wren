@@ -28,6 +28,7 @@ shadow-dom
 css/css-shadow
 custom-elements
 html/browsers/history only=the-history-interface,joint-session-history
+navigation-api
 fetch/http-cache
 html/semantics/document-metadata/the-link-element
 css/css-ui only=parsing

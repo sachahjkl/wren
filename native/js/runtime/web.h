@@ -298,6 +298,12 @@ JSValue web_transfer_list(JSContext *ctx, JSValueConst opt_or_seq, bool is_optio
 /* the transferred ArrayBuffers are detached (after a successful serialization) */
 void web_transfer_detach(JSContext *ctx, JSValueConst list);
 
+/* ---- session history states (web_location.c): a value as the text the browser keeps per entry, and back ---- */
+
+/* malloc'ed text, NULL with a DataCloneError pending */
+char *web_state_encode(JSContext *ctx, JSValueConst v, size_t *out_len);
+JSValue web_state_decode(JSContext *ctx, const char *s, size_t n);
+
 /* ---- AbortSignal (web_abort.c) ---- */
 
 uint64_t web_signal_handle(JSValueConst v);
