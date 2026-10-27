@@ -100,6 +100,8 @@ Tab :: struct {
 	layout:   Layout,
 	scroll:   f32,
 	scroll_dpi: f32,            // the window scale `scroll` was in (zoom.odin tab_scale_follow; 0: not known yet)
+	layout_ms: f64,             // page_thread.odin: how long its last layout pass took (whether the next goes to the page thread)
+	layout_ms_known: bool,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
 	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
