@@ -10,6 +10,9 @@ import "wb:dom"
 
 State :: struct {
 	hover, active, focus: base.Handle,
+	// where the focus is for :focus-within only (the element and its flat ancestors match): normally the same as `focus`, but the
+	// developer tools can force :focus-within on an element without forcing :focus / :focus-visible on it (Chrome's :hov panel).
+	focus_within:         base.Handle,
 	visited:              base.Handle,   // an element the developer tools force to :visited (no history is kept: nothing else is)
 	focus_visible:        bool,         // the focus should be visible (:focus-visible): it came from the keyboard, or is in a text field
 	target_id:            string,       // the fragment of the document URL, for :target
@@ -491,7 +494,11 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 	case .Active: return m.state.active != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, m.state.active)
 	case .Focus: return focus_matches(m, el, n)
 	case .Focus_Visible: return m.state.focus_visible && focus_matches(m, el, n)
-	case .Focus_Within: return m.state.focus != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, m.state.focus)
+	case .Focus_Within:
+		// the element the focus (or a forced :focus-within, which `effective_state` puts here) is on; :focus-within matches it and
+		// its flat ancestors. When nothing is forced, focus_within is the focused element, so the behaviour is unchanged.
+		fw := m.state.focus_within != base.NIL_HANDLE ? m.state.focus_within : m.state.focus
+		return fw != base.NIL_HANDLE && dom.flat_ancestor_or_self(m.doc, el, fw)
 	case .Host:
 		if el != m.featureless { return false }
 		return s.list == nil || matches_compound_plain(m, el, s.list^[0].compounds[0])

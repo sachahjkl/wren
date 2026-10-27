@@ -838,19 +838,21 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 			case 0: g.active = !g.active
 			case 1: g.hover = !g.hover
 			case 2: g.focus = !g.focus
-			case 3: g.visited = !g.visited
+			case 3: g.focus_within = !g.focus_within
+			case 4: g.visited = !g.visited
 			}
-			page.dev_force_state(t.page, h, g.hover, g.active, g.focus, g.visited)
+			page.dev_force_state(t.page, h, g.hover, g.active, g.focus, g.focus_within, g.visited)
 			e.version += 1
 			request_frames(app, 3)
 		}
 		if ui.menu_item(":active###dt_em_s_a", checked = f.active, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 0) }
 		if ui.menu_item(":hover###dt_em_s_h", checked = f.hover, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 1) }
 		if ui.menu_item(":focus###dt_em_s_f", checked = f.focus, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 2) }
-		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
+		if ui.menu_item(":focus-within###dt_em_s_fw", checked = f.focus_within, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 3) }
+		if ui.menu_item(":visited###dt_em_s_v", checked = f.visited, enabled = is_el, keep_open = true).clicked { toggle(app, t, e, h, f, 4) }
 		ui.menu_separator()
 		if ui.menu_item("Clear forced states###dt_em_s_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE).clicked {
-			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false)
+			page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
 			e.version += 1
 			request_frames(app, 3)
 		}
