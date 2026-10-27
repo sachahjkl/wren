@@ -1,3 +1,0 @@
-type: Fixed
-
-**A `<summary>` opens and closes its `<details>`** (`src/forms/activation.odin`: `details_of_summary`, `toggle_details`): clicking the text, the marker or anything inside the first `<summary>` of a `<details>` did nothing, whatever the page (sacha.house's "Open navigation" included), because the click had no default action for it and `summary.click()` neither. The click now toggles `open` and fires `toggle`; Enter and Space on a focused summary click it as they click a button; a link inside the summary keeps its own action; a summary that is not the first one of its details, or that is outside a details, does nothing. Checked in the engine with `wren ctl` (click, `summary.click()`, Enter, Space) and by unit tests.

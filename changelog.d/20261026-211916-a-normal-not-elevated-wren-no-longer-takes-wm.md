@@ -1,3 +1,0 @@
-type: Fixed
-
-**A normal (not elevated) Wren no longer takes `WM_DROPFILES` / `WM_COPYDATA` from processes of a lower integrity** (`local_paths.odin`, security review of 2026-10-25, finding 11): the window let those three messages through the Windows message filter whether or not the browser ran as administrator, though the reason (an elevated browser must still take drops from Explorer) only holds for an elevated one; a sandboxed process could then send a forged drop and have any path opened. The filter is now set only when the process is elevated (`instance.is_elevated`, as for the single-instance window). Not verified with a real low-integrity sender.

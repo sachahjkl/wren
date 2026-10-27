@@ -1,3 +1,0 @@
-type: Fixed
-
-**`wren ctl drag` drags, and `click --selector` hits fixed and transformed elements on a scrolled page** (`remote_methods.odin`, `remote_shell.odin`): the drag injected press, moves and release into one frame, so the page got its `mousemove` (once per frame, after the loop) only after `mouseup`, and a press waiting for a fresh layout never saw its moves: no text selected, no card turned. Now press, then one move per frame, then the release at the last point. The element's point now takes the scroll off `position: fixed` boxes too and uses the drawn box of a transformed one. The help says explicit points are in the visible page area (like `clientX`), not the document.

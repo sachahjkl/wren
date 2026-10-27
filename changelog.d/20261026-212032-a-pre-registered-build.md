@@ -1,3 +1,0 @@
-type: Added
-
-**A pre-registered build** (`build.bat` with `WREN_EMBEDDED_LICENSE=<the one line of a .wrenlicense>`, which needs `WREN_VERSION_LABEL`: a build with a licence inside is not a release): the first time the profile holds no licence, this one is put there, and from then on it is the profile's like any other (`Remove the licence` removes it for good: a `<licence file>.seeded` marker keeps it from coming back; another licence replaces it; a profile that already holds one keeps its own; a text the build cannot check is put nowhere). `tools\experimental.ps1` uses it, so that an experimental build shows the licence card at once. A release has none.

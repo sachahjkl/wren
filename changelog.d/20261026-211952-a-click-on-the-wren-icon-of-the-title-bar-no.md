@@ -1,3 +1,0 @@
-type: Fixed
-
-**A click on the Wren icon of the title bar no longer crashes the browser when the menu closes** (crash of the 2026-10-26 experimental build, `window_chrome.odin`, `windows.odin` (the frame gate), toolkit 0.40.1 `ui.building`): the system menu was opened during the build, its loop painted the window from `WM_PAINT` and that frame was built inside the one being built, which went on with an empty parent stack (bounds check in `ui.spacer`). The menu opens after the frame now, and no window frame begins inside a frame's page phase, build or drawing. Test: `tools\system_menu_e2e.ps1`, toolkit `tests/ui_robust` nested_build_test.

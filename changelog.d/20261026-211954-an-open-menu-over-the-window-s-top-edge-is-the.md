@@ -1,3 +1,0 @@
-type: Fixed
-
-**An open menu over the window's top edge is the menu's, not a resize band, and it is above the notices** (toolkit 0.40.2 `Chrome_Regions.overlays`, `menus_raise`): a main menu taller than the window starts at its top, over the integrated title bar's resize band; there the pointer showed the band's double arrow (diagonal at the top right corner) and a press resized the window. And a notice built after the menu (the content blocker's) was drawn over its first rows and took their pointer. Test: `tools\menu_edge_e2e.ps1` (the system's hit test sent to a window nobody sees). The page under a menu still ignores the pointer, and is hovered as before beside it (checked).

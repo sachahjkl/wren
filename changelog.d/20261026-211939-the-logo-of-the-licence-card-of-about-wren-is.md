@@ -1,3 +1,0 @@
-type: Fixed
-
-**The logo of the licence card of `about:wren` is part of the card** (`about_card.odin`): it was drawn in the lettering's layer, 18 px over the card with a parallax that followed the pointer and no transition, so it floated apart from the card while it tilted or turned and snapped into place on release. It is now a print in the base's own plane (1 px over it, no parallax, hidden from behind), so it moves, turns and eases back with the card and nothing else. The layers that still slide on the pointer (the fallback lettering of a narrow card or without the shader, the seal's cast shadow) ease with the card too, instead of jumping where it is still on its way.

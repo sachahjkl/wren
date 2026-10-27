@@ -1,3 +1,0 @@
-type: Changed
-
-**The text of the licence card is engraved in the metal** (`about_card_engrave.odin`, `card_foil.wgsl`): the name, the e-mail, the edition, the dates and the order number are rasterized natively with the toolkit's glyph rasterizer into a texture (bevel normals from a blurred coverage) that the card's shader lights as gold letters cut into the foil, with the same two lights; the page's own text stays in the document (selection, copy, accessibility) but is not drawn while the shader engraves, and is drawn as before on a narrow card, with reduced motion, or where the shader cannot be had.

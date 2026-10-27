@@ -1,3 +1,0 @@
-type: Changed
-
-Toolkit 0.41.0: Copy writes the clipboard through the toolkit (`platform.clipboard_set`): text, HTML with the page's address, and a copied image as PNG, a bitmap with alpha and a bitmap over white (programs that read the alpha bitmap now get the image's transparency); the CF_HTML and PNG code of the shell is gone. The bar between the page and the docked developer tools is the toolkit's `ui.splitter` (same limits and look; the resize cursor now stays while the pointer runs ahead of the bar), and the tab strip and the tab sidebar drag their tabs with the toolkit's `ui/reorder.odin` (the geometry moved there unchanged).
