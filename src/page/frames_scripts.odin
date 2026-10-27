@@ -127,6 +127,15 @@ Frame_open :: proc(c: ^Call, u: string, target: string) -> (u64, Api_Error) {
 		log(p, .Error, "Blocked opening a new window in a sandboxed frame without allow-popups.")
 		return 0, .None
 	}
+	// the content blocker's `$popup` filters: a popup a script opens without a recent click of the user is stopped. A
+	// popup the user asked for (a gesture) is let through unless a filter explicitly names it.
+	if check := embedder.popup_check; check != nil {
+		gesture := popup_has_gesture(p)
+		if check(embedder.user, p, href, gesture) {
+			log(p, .Log, strings.concatenate({"window.open blocked by the content blocker ($popup): ", href}, context.temp_allocator))
+			return 0, .None
+		}
+	}
 	top := page_top(p)
 	if open := top.web.embedder.open; open != nil {
 		open(top.web.embedder.user, p, href)
