@@ -401,13 +401,19 @@ config_sidebar :: proc(v: ^Config_View) {
 	want := 0
 	for c, i in v.cats { if c.name == v.category { want = i + 1 } }
 	if !v.cat_list.focused || v.cat_list.sel < 0 { v.cat_list.sel = want }
-	ui.next({width = ui.px(em * SIDEBAR_EM), height = ui.fill()})
-	ui.a11y({name = i18n.tr("Categories")})
-	if ui.list("###cfg_cats", &v.cat_list) {
-		ui.spacer(ui.px(em * 0.4))
-		cat_item(v, 0, i18n.tr("All"), v.shown, v.modified, false)
-		for c, i in v.cats { cat_item(v, i + 1, config.category_title(c.name), c.shown, c.modified, c.shown == 0) }
-		ui.spacer(ui.px(em * 0.4))
+	// a margin on the left (the lit row does not touch the window's edge) and, in the list, one on the right for the scroll bar
+	// (the lit row does not go under it)
+	ui.next({width = ui.px(em * SIDEBAR_EM), height = ui.fill(), axis = .X})
+	if ui.row(.Start, {}, "###cfg_cats_box") {
+		ui.spacer(ui.px(em * SIDEBAR_MARGIN_EM))
+		ui.next({width = ui.fill(), height = ui.fill()})
+		ui.a11y({name = i18n.tr("Categories")})
+		if ui.list("###cfg_cats", &v.cat_list) {
+			ui.spacer(ui.px(em * 0.4))
+			cat_item(v, 0, i18n.tr("All"), v.shown, v.modified, false)
+			for c, i in v.cats { cat_item(v, i + 1, config.category_title(c.name), c.shown, c.modified, c.shown == 0) }
+			ui.spacer(ui.px(em * 0.4))
+		}
 	}
 	if v.cat_list.changed && v.cat_list.sel >= 0 {
 		config_set_category(v, v.cat_list.sel == 0 ? "" : v.cats[v.cat_list.sel - 1].name)
@@ -422,33 +428,39 @@ config_sidebar :: proc(v: ^Config_View) {
 @(private = "file")
 cat_item :: proc(v: ^Config_View, i: int, title: string, shown, modified: int, empty: bool) {
 	em := ui.font_size()
-	ui.next({height = ui.px(ui.dense(em * 2)), radius = em * 0.35})
+	// the row stops short of the scroll bar; what it holds is centred across its height, and its two counts are columns of a
+	// width of their own (the pills and the totals line up whatever their digits)
+	ui.next({width = ui.px(em * (SIDEBAR_EM - SIDEBAR_MARGIN_EM - SIDEBAR_GUTTER_EM)), height = ui.px(ui.dense(em * 2)), radius = em * 0.35, cross = .Center})
 	row := ui.list_row(&v.cat_list, i, title)
 	if ui.parent(row.box) {
 		ui.spacer(ui.px(em * 0.8))
 		label := fmt.tprintf("%s###cn_%d", title, i)
 		ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 		if empty { if ui.tags("weak") { ui.label(label) } } else { ui.label(label) }
+		// the pill column: empty when nothing is modified, so the totals do not move
 		if modified > 0 {
 			modified_badge(fmt.tprintf("%d###cm_%d", modified, i))
 			tip(row, fmt.tprintf(i18n.tr(modified, "%d not at its default", "%d not at their default"), modified))
-			ui.spacer(ui.px(em * 0.4))
+		} else {
+			ui.spacer(ui.px(em * CAT_PILL_EM))
 		}
+		ui.spacer(ui.px(em * 0.3))
 		if ui.tags("weak") {
-			ui.next({width = ui.text_size(0), height = ui.pct(1), text_pad = 0, font_size = em * 0.85})
+			ui.next({width = ui.px(em * CAT_COUNT_EM), height = ui.pct(1), text_pad = 0, font_size = em * 0.85, text_align = .Right})
 			ui.label(fmt.tprintf("%d###cc_%d", shown, i))
 		}
-		ui.spacer(ui.px(em * 1.3))   // (clear of the scroll bar)
+		ui.spacer(ui.px(em * 0.6))
 	}
 }
 
-// A count of modified preferences: the accent's tint behind the accent's colour, like the rows' dot.
+// A count of modified preferences: the accent's tint behind the accent's colour, like the rows' dot. Every pill has the
+// same width (CAT_PILL_EM), its number centred.
 @(private = "file")
 modified_badge :: proc(text: string) {
 	em := ui.font_size()
 	accent := ui.color("accent")
-	ui.next({width = ui.text_size(em * 0.3), height = ui.px(ui.dense(em * 1.25)), font_size = em * 0.78, radius = em * 0.62,
-		fg = accent, bg = ui.tuned(draw.Color{accent.r, accent.g, accent.b, 0.20})})
+	ui.next({width = ui.px(em * CAT_PILL_EM), height = ui.px(ui.dense(em * 1.25)), font_size = em * 0.78, radius = em * 0.62,
+		text_pad = 0, text_align = .Center, fg = accent, bg = ui.tuned(draw.Color{accent.r, accent.g, accent.b, 0.20})})
 	ui.build_box({.Draw_Text, .Draw_Background, .No_Text_Trunc}, text)
 }
 
@@ -641,7 +653,17 @@ pill :: proc(text, tag, id: string) {
 
 // The sidebar's width, the page width from which it shows, and the list width under which editors go under their text.
 @(private = "file")
-SIDEBAR_EM :: 13.0
+SIDEBAR_EM :: 14.5
+// ... of which the margin on its left, the gutter of the scroll bar on its right, and the columns of a category's row: the
+// pill of the modified preferences and the total.
+@(private = "file")
+SIDEBAR_MARGIN_EM :: 0.5
+@(private = "file")
+SIDEBAR_GUTTER_EM :: 1.0
+@(private = "file")
+CAT_PILL_EM :: 1.9
+@(private = "file")
+CAT_COUNT_EM :: 2.4
 @(private = "file")
 SIDEBAR_FROM_EM :: 50.0
 @(private = "file")

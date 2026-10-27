@@ -1,0 +1,3 @@
+type: Fixed
+
+**The address bar's focus ring is one width all round, and the categories of `about:config` line up** (`src/browser/chrome.odin`, `config_ui.odin`): the security chip, which sat one border in, repainted the inner half of the 1.5-unit focus ring where it covers, so the ring went from two pixels to one and back at the chip's divider (a double border); it starts where the ring ends while the bar is focused. In the category list, the pills of modified preferences and the totals are columns of their own (the pills were placed by the width of the digits after them, and sat above the row's middle), the rows have a margin on the left (the lit row touched the window's edge) and stop short of the scroll bar.
