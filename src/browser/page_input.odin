@@ -180,7 +180,7 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			if t.page == p { touch_pointer(app, t, ev, hit, ok) }
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 

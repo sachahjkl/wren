@@ -176,5 +176,5 @@ page_a11y_request :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, r:
 		amount := (r.data == .Scroll_Unit && r.num == 1) ? page_h * 0.9 : 60
 		t.scroll = max(t.scroll + (r.action == .Scroll_Down ? amount : -amount), 0)
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }

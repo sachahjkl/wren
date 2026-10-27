@@ -165,7 +165,7 @@ urlbar_index_start :: proc(app: ^App, now: i64) {
 		app := ub.app
 		uv := urlbar_view(app)
 		if uv.open { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, j)
 }
 
@@ -397,7 +397,7 @@ urlbar_remove_row :: proc(app: ^App, i: int) {
 	next := was_sel
 	if i < was_sel { next = was_sel - 1 }
 	urlbar_choose(app, clamp(next, 0, len(uv.rows) - 1))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Enter (new_tab: Alt / Ctrl+Enter) on row `i`, or on what was typed when the list is closed. True when done.
@@ -503,7 +503,7 @@ urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool
 		grew := strings.has_prefix(text, uv.typed) && len(text) > len(uv.typed) && f.cursor == len(f.buf) && f.mark == f.cursor
 		set_owned(&uv.typed, text)
 		urlbar_refresh(app, grew ? .New : .None)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if res.committed && t != nil && uv.open {
 		// the inline completion was kept (Right / End) or is still selected: it is what Enter opens

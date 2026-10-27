@@ -87,8 +87,8 @@ frames_attached :: proc(user: rawptr, child: ^page.Page) {
 	frame_views[child] = fv
 	base.on_close(child.scope, frame_view_closed, child)
 	page.set_layout_embedder(child, {user = fv, update = frame_js_layout, viewport = frame_js_viewport, scroll_to = frame_js_scroll,
-		repaint = proc(user: rawptr, p: ^page.Page) { the_app.frames_requested = max(the_app.frames_requested, 2) }})
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }})
+	request_frames(the_app, 2)
 }
 
 @(private = "file")
@@ -193,7 +193,7 @@ frame_js_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	fv := (^Frame_View)(user)
 	if fv.tab.page != p || fv.size.x <= 0 || fv.size.y <= 0 { return nil }
 	frame_prepare(the_app, fv, fv.size, fv.scale)
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+	request_frames(the_app, 2)
 	return &fv.tab.layout
 }
 
@@ -210,7 +210,7 @@ frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	if fv.tab.page != p { return }
 	limit := max(0, f64(fv.tab.layout.height) - f64(fv.size.y))
 	fv.tab.scroll = f32(clamp(y * f64(fv.scale), 0, limit))
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+	request_frames(the_app, 2)
 }
 
 ////////////////////////////////
@@ -336,13 +336,13 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 		if .Ctrl in ev.mods { return false }   // zoom is the tab's
 		d := ev.delta * app.cfg.scroll_step * page_scale(app)
 		if page_wheel(&t.layout, ev.pos - rect.min, d, size, t.scroll) {
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			return true
 		}
 		next := clamp(t.scroll + d.y, 0, max(0, t.layout.height - size.y))
 		if next == t.scroll { return false }
 		t.scroll = next
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	case .Mouse_Press:
 		local := ev.pos - rect.min + {0, t.scroll}
 		pressed := hit_test(&t.layout, ev.pos - rect.min, size, t.scroll)
@@ -360,7 +360,7 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 		if t.page == nil || !not_prevented || ev.button != .Left { return true }
 		if a, href, ok := frame_anchor(t.page.doc, target); ok { frames_follow_link(app, fv, a, href) }
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 
@@ -457,7 +457,7 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 		if c.formctl != nil && c.formctl.embedder.navigate == nil {
 			page.set_forms_embedder(c, page.Forms_Embedder{
 				user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
-				changed = proc(user: rawptr, p: ^page.Page) { (^App)(user).frames_requested = max((^App)(user).frames_requested, 2) },
+				changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user), 2) },
 			})
 		}
 		shown := fv.painted + 2 >= chrome_frames.frame_no

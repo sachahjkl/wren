@@ -140,9 +140,6 @@ current_page :: proc(app: ^App) -> (^Tab, ^page.Page, ^forms.Forms) {
 }
 
 @(private = "file")
-request_frames :: proc(app: ^App, n := 2) { app.frames_requested = max(app.frames_requested, n) }
-
-@(private = "file")
 caret_reset :: proc(fv: ^Forms_View) { fv.caret_epoch = time.tick_now() }
 
 @(private = "file")
@@ -1590,7 +1587,7 @@ post_done :: proc(job: ^Post_Job) {
 	if job.cancelled { return }
 	if !job.ok { tab_log(job.tab, .Error, job.message); set_status(job.tab, "form not sent"); return }
 	submit_navigate(job.app, job.tab, job.from, job.sub)
-	job.app.frames_requested = max(job.app.frames_requested, 3)
+	request_frames(job.app, 3)
 }
 
 @(private = "file")
@@ -1839,7 +1836,7 @@ picker_done :: proc(data: rawptr) {
 		forms.set_files(f, job.input, list)
 		delete(list)
 	}
-	job.app.frames_requested = max(job.app.frames_requested, 3)
+	request_frames(job.app, 3)
 }
 
 _ :: runtime

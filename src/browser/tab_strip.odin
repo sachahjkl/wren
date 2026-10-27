@@ -144,7 +144,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
 			own.strip.offset = strip_offset(own.strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, wnd.current, false)
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 		}
 		move_from, move_to := -1, -1
 		if ui.parent(area) {
@@ -183,7 +183,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if move_from >= 0 {
 			wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
 			own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			recovery_touch(app)
 		}
 		any_turning := false
@@ -347,7 +347,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		if ui.reorder_dragging(&own.strip.drag, t.id) {
 			to := drag_slot(x + own.strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, favs.cfg.detach_distance_em * em) {
 				own.strip.drag.active = false

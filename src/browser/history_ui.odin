@@ -144,7 +144,7 @@ nav_history_button :: proc(app: ^App, t: ^Tab, id, glyph, tooltip: string, enabl
 			nav_press.opened = true
 			open = true
 		} else {
-			app.frames_requested = max(app.frames_requested, 2)   // (to see the press last)
+			request_frames(app, 2)   // (to see the press last)
 		}
 	}
 	if sig.right_clicked && enabled { open = true }

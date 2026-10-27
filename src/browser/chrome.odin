@@ -253,7 +253,7 @@ tab_select :: proc(app: ^App, i: int) {
 	if i < 0 || i >= len(wnd.tabs) || i == wnd.current { return }
 	wnd.current = i
 	ui.field_set(&wnd.address, wnd.tabs[i].url)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	recovery_touch(app)
 }
 
@@ -283,7 +283,7 @@ tab_move_current :: proc(app: ^App, delta: int) {
 	to := wnd.current + delta
 	if to < 0 || to >= len(wnd.tabs) { return }
 	wnd.current = list_move(wnd.tabs[:], wnd.current, to, wnd.current)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	recovery_touch(app)
 }
 
@@ -665,5 +665,5 @@ stop_loading :: proc(app: ^App, t: ^Tab) {
 	for s in load.slots { if s.state == .Pending { s.state = .Failed; stopped = true } }
 	if stopped { set_status(t, "Stopped"); load.stopped = true }
 	if load.page == nil { t.load = nil }   // nothing arrived: the tab is no longer loading (the scope still owns the load)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }

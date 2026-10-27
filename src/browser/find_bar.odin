@@ -83,7 +83,7 @@ find_close :: proc(app: ^App) {
 	delete(fs.query)
 	fs.query = ""
 	fs.page = nil
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Case folding with a map from each folded byte back to the byte of the text it comes from.
@@ -118,7 +118,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	if same_query && fs.page == p && fs.mutations == p.doc.mutations && fs.styled == styled_serial { return }
 	// content that keeps changing is searched again at most a few times a second
 	now := ui.now_ms()
-	if same_query && fs.page == p && now - fs.searched_ms < 250 { app.frames_requested = max(app.frames_requested, 2); return }
+	if same_query && fs.page == p && now - fs.searched_ms < 250 { request_frames(app, 2); return }
 	keep := same_query && fs.page == p ? fs.active : -1
 	find_clear_matches(fs)
 	delete(fs.query)
@@ -179,7 +179,7 @@ find_step :: proc(app: ^App, dir: int) {
 	if n == 0 { return }
 	fs.active = ((fs.active < 0 ? (dir > 0 ? -1 : 0) : fs.active) + dir + n) % n
 	fs.reveal = true
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The bar (built under the address row while open).
@@ -284,7 +284,7 @@ find_reveal :: proc(app: ^App, fs: ^Find_State, t: ^Tab) {
 			rect = {rect.min - got, rect.max - got}
 		case .Document:
 			if rect.min.y < t.scroll || rect.max.y > t.scroll + view.y { t.scroll = max(rect.min.y - margin, 0) }
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			return
 		case .Fixed:
 			return

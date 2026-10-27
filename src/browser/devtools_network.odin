@@ -440,7 +440,7 @@ net_split_apply :: proc(app: ^App, v: ^Dev_Network, delta, total, from: f32) {
 	nv := clamp(from + delta / total, 0.15, 0.85)
 	// (the preference is set at the end of the drag: during it, only the value in memory moves, through the pref's own watcher)
 	set_pref_quiet(app, "browser.devtools.network.split", nv)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -458,7 +458,7 @@ net_tick :: proc(app: ^App, v: ^Dev_Network) {
 		v.tick = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {
 			a := (^App)(data)
 			dev.net.tick = base.NIL_HANDLE
-			if dev.visible && dev.panel == .Network && dev.net.pending > 0 { a.frames_requested = max(a.frames_requested, 2) }
+			if dev.visible && dev.panel == .Network && dev.net.pending > 0 { request_frames(a, 2) }
 		}, app, nil)
 	}
 }
@@ -470,7 +470,7 @@ net_tick :: proc(app: ^App, v: ^Dev_Network) {
 net_toolbar :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 	if dt_bar("###dt_net_bar") {
 		dt_gap(3)
-		if dt_btn("###dt_net_clear", .Clear, tooltip = "Clear", shortcut = "Ctrl+L", enabled = len(t.net.entries) > 0).clicked { net_clear(&t.net); v.has_sel = false; app.frames_requested = max(app.frames_requested, 2) }
+		if dt_btn("###dt_net_clear", .Clear, tooltip = "Clear", shortcut = "Ctrl+L", enabled = len(t.net.entries) > 0).clicked { net_clear(&t.net); v.has_sel = false; request_frames(app, 2) }
 		rec := dt_btn("###dt_net_rec", .Record, tooltip = v.paused ? "Start recording network log" : "Stop recording network log", tone = v.paused ? dtc.weak : dtc.bad)
 		if rec.clicked { v.paused = !v.paused }
 		dt_vsep("###dt_nb0")
@@ -751,7 +751,7 @@ net_header :: proc(app: ^App, t: ^Tab, v: ^Dev_Network) {
 			if gs.dragging && v.resizing == int(p.col) {
 				w := clamp(v.resize_from + gs.drag_delta.x / dtm.sc, 36, 1200)
 				for &c in v.cols { if c.col == p.col { c.w = math.round(w) } }
-				app.frames_requested = max(app.frames_requested, 2)
+				request_frames(app, 2)
 			}
 			if !gs.dragging && v.resizing == int(p.col) { v.resizing = -1; net_cols_save(app, v) }
 		}

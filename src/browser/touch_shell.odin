@@ -155,7 +155,7 @@ touch_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, hit: base.Handle, 
 	case .Pointer_Cancel: ge = platform.touch_gesture_cancel(&tsh.g)
 	}
 	touch_apply(app, t, ge)
-	if platform.touch_gesture_active(&tsh.g) { app.frames_requested = max(app.frames_requested, 2) }
+	if platform.touch_gesture_active(&tsh.g) { request_frames(app, 2) }
 }
 
 // Every frame (dnd_events): a finger held still becomes a long press.
@@ -164,7 +164,7 @@ touch_frame :: proc(app: ^App) {
 	t := tsh.tab
 	if t != current_tab(app) || t.page != tsh.page { platform.touch_gesture_cancel(&tsh.g); return }
 	touch_apply(app, t, platform.touch_gesture_tick(&tsh.g, now_ms()))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -198,7 +198,7 @@ touch_apply :: proc(app: ^App, t: ^Tab, ge: platform.Touch_Gesture_Event) {
 			b := kind == .Mouse_Press ? platform.Mouse_Buttons{.Left} : platform.Mouse_Buttons{}
 			platform.inject_event(app.win, platform.Event{kind = kind, pos = ge.pos, button = .Left, buttons = b, emulated = true})
 		}
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	case .Long_Press:
 		if tsh.cancelled { return }
 		local := ge.pos - wnd.page_rect.min + {0, t.scroll}

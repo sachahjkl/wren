@@ -181,7 +181,7 @@ frames_op :: proc(app: ^App, c: ^Call, t: ^Tab, n: int, result := "") -> Reply {
 	op.tab = t != nil ? t.id : 0
 	op.until = the_remote.frame_no + u64(max(n, 1))
 	op.result = strings.clone(result)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
@@ -288,7 +288,7 @@ window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top:
 		if !(has_l || has_t) { flags |= win.SWP_NOMOVE }
 		win.SetWindowPos(hwnd, nil, i32(has_l ? left : int(rc.left)), i32(has_t ? top : int(rc.top)), frame.right - frame.left, frame.bottom - frame.top, flags)
 	}
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 ////////////////////////////////
@@ -396,7 +396,7 @@ m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 	if t := tab_by_id(app, u64(id)); t != nil {
 		tab_reveal(app, t)
 		windows_spill(app, 3)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return done()
 	}
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
@@ -445,7 +445,7 @@ m_navigate :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	navigate(app, t, address, origin = .User)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url)))
 }
@@ -657,7 +657,7 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 		win.ShowWindow(app.win.hwnd, win.SW_SHOWNOACTIVATE)
 		op.stage = -1
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
@@ -669,7 +669,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
 	if op.stage == -2 || op.stage == 0 {
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		if r.frame_no < op.until || render.capture_pending(&app.r) {
 			if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out before the frame to capture was drawn (is the window hidden or minimized?)")) }
 			return
@@ -702,11 +702,11 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 		}
 		if !render.capture_request(&app.r, rect) { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
 		op.stage = op.stage == -2 ? 3 : 1
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		return
 	}
 	// 1 (or 3: to be minimized again): the copy is made when the frame ends; the GPU reads it a moment later
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	pixels, size, st := render.capture_poll(&app.r, context.allocator)
 	if op.stage == 3 { op.stage = -2 }   // (finish() looks for -2)
 	switch st {
@@ -791,7 +791,7 @@ inject :: proc(app: ^App, ev: platform.Event) {
 	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
 	platform.inject_event(app.win, ev)
 	the_remote.inputs += 1
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 // A point given in the page's CSS pixels (from its top-left corner), or in window pixels (`"space": "window"`).
@@ -857,7 +857,7 @@ m_click :: proc(app: ^App, c: ^Call) -> Reply {
 		op := op_new(app, c, .Click, timeout_of(c), fmt.tprintf("the element %s", sel))
 		op.tab, op.arg, op.button, op.count = t.id, strings.clone(sel), button_of(c), max(count, 1)
 		op.until = the_remote.frame_no
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return Reply{deferred = true}
 	}
 	pos, ok := point_of(app, c, "x", "y")
@@ -880,7 +880,7 @@ click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: i
 click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	wnd := active_window(app)
 	r := &the_remote
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	h, valid := page.query_first(t.page, op.arg)
 	if !valid { op_finish(op, fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", op.arg))); return }
@@ -935,7 +935,7 @@ m_drop :: proc(app: ^App, c: ^Call) -> Reply {
 	platform.drop_inject(app.win, .Drop_Over, pos, mods = mods)
 	platform.drop_inject(app.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
 	the_remote.inputs += 1
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
 }
 
@@ -974,7 +974,7 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 		}
 	}
 	op.until = the_remote.frame_no
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
@@ -1018,7 +1018,7 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 // Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
 drag_step :: proc(app: ^App, op: ^Remote_Op) {
 	r := &the_remote
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	switch op.stage {
 	case 0:
@@ -1237,7 +1237,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_num(&b, "cpuMs", f64(n.cpu_mean)); j_num(&b, "cpuP95Ms", f64(n.cpu_p95)); j_num(&b, "cpuP99Ms", f64(n.cpu_p99)); j_num(&b, "cpuMaxMs", f64(n.cpu_max))
 	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
 	j_int(&b, "workingSetBytes", i64(n.working_set)); j_int(&b, "privateBytes", i64(n.private_bytes))
-	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(app.frames_requested))
+	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(active_window(app).frames_requested))
 	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
 	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
@@ -1421,7 +1421,7 @@ m_pref_set :: proc(app: ^App, c: ^Call) -> Reply {
 		return fail(remote.ERR_FAILED, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 	remote_reload_settings(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	s, _ := pref_json(app, name)
 	return done(s)
 }

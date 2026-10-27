@@ -147,7 +147,7 @@ instance_open :: proc(data: rawptr) {
 	}
 	if d.setup { setup_open(app, .Command) }
 	instance.focus(app.win.hwnd)
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 _ :: win

@@ -35,7 +35,7 @@ devtools_detached :: proc() -> bool { return dev_win != nil || dev_want }
 devtools_detach :: proc(app: ^App) {
 	if dev_win != nil || dev_want { return }
 	dev_want = true   // made after the frame that asked: the toolkit's state must not change under a build
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -73,7 +73,7 @@ devtools_window_make :: proc(app: ^App) {
 	dev_win = dw
 	dev.visible = true
 	platform.show_window(w)
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 	dw.busy = true
 }
 
@@ -89,7 +89,7 @@ devtools_attach :: proc(app: ^App) {
 	platform.destroy_window(dw.win)
 	delete(dw.title)
 	free(dw)
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 devtools_window_destroy :: proc(app: ^App) { devtools_attach(app) }
@@ -114,7 +114,7 @@ devtools_window_timeout :: proc(timeout: int) -> int {
 devtools_window_tick :: proc(app: ^App) {
 	if dev_want { devtools_window_make(app) }
 	if dev_win == nil { return }
-	if app.frames_requested > 0 || devtools_window_busy() { devtools_window_frame(app) }
+	if active_window(app).frames_requested > 0 || devtools_window_busy() { devtools_window_frame(app) }
 }
 
 // The window's own on_frame, called while Windows owns the loop for it (a resize by its edges, a move, its menu): the main window
@@ -133,7 +133,7 @@ devtools_window_loop_frame :: proc(app: ^App) {
 	if chrome_frames.nested || platform.is_closed(app.win) { return }
 	app.pass_first = true
 	frame(app, true)   // (idled: it returns at once when there is nothing to draw nor to run)
-	if app.frames_requested > 0 { app.frames_requested -= 1 }
+	if active_window(app).frames_requested > 0 { active_window(app).frames_requested -= 1 }
 }
 
 devtools_window_frame :: proc(app: ^App) {

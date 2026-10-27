@@ -112,7 +112,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 			// window is dragged (the tab sidebar's edge, the developer tools' splitter): the page beside it is laid out
 			// at the width the pointer gives it in the frame that draws the panel there, never shown at another one.
 			paint_size = p.size
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 		} else {
 			page_prepare(app, t, size)
 		}

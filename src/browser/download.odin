@@ -396,7 +396,7 @@ download_from_navigation :: proc(app: ^App, load: ^Doc_Load, task: base.Handle, 
 		}
 	}
 	download_restore_tab(app, load)   // `load` is gone after this
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -480,7 +480,7 @@ download_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		return
 	}
 	download_advance(d)
-	d.app.frames_requested = max(d.app.frames_requested, 2)
+	request_frames(d.app, 2)
 }
 
 Write_Job :: struct {
@@ -548,7 +548,7 @@ write_done :: proc(data: rawptr) {
 	if !j.ok && d.state == .Receiving { download_fail(d, fmt.tprintf("cannot write %s (error %d)", d.temp, j.err)) }
 	if d.state == .Failed || d.state == .Cancelled { download_discard(d); return }
 	download_advance(d)
-	d.app.frames_requested = max(d.app.frames_requested, 2)
+	request_frames(d.app, 2)
 }
 
 // Complete, and its place known: the temporary file becomes the file.
@@ -575,7 +575,7 @@ download_finish :: proc(d: ^Download) {
 			dl.state = .Done
 			ui.toast(.Good, "Saved %s", filepath.base(dl.path))
 		}
-		dl.app.frames_requested = max(dl.app.frames_requested, 3)
+		request_frames(dl.app, 3)
 	}, d)
 }
 
@@ -596,7 +596,7 @@ download_cancel :: proc(d: ^Download) {
 	d.state = .Cancelled
 	if d.task != base.NIL_HANDLE { fetch.cancel(&d.app.loader, d.task); d.task = base.NIL_HANDLE }
 	if !d.writing { download_discard(d) }
-	d.app.frames_requested = max(d.app.frames_requested, 2)
+	request_frames(d.app, 2)
 }
 
 // A download that will not complete: its temporary file goes.
@@ -652,7 +652,7 @@ download_dialog_done :: proc(data: rawptr) {
 	d.asking = false
 	if d.path == "" { download_cancel(d); return }   // the dialog was cancelled
 	if d.state == .Receiving { download_advance(d) } else if !d.writing { download_discard(d) }
-	d.app.frames_requested = max(d.app.frames_requested, 2)
+	request_frames(d.app, 2)
 }
 
 ////////////////////////////////

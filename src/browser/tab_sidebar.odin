@@ -13,7 +13,7 @@ package browser
 //   * Each tab is one row: icon (or the loading indicator), title cut with an ellipsis, a close button on the current tab and
 //     under the pointer; the current tab is lit with an accent bar. A press selects, a middle click closes, right click: the
 //     tab's menu, hover: a tip beside the row with the title and the address, a drag along Y reorders (the other rows slide
-//     out of the way, the order is the strip's: app.tabs).
+//     out of the way, the order is the strip's: the window's tabs).
 //   * The list is a scroll box of the toolkit (wheel with the page's smooth curve, scroll bar, thumb drag) whose rows are
 //     placed by their slot; only the rows in view, and a margin around it, are built, whatever the number of tabs.
 //   * A header holds the collapse button (icons only, browser.tabs.sidebar_collapsed_width) and the new-tab button. The
@@ -457,7 +457,7 @@ sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32
 	if move_from >= 0 {
 		wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
 		own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		recovery_touch(app)
 	}
 	any_turning := false
@@ -579,7 +579,7 @@ sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: 
 			if to != i { move_from^, move_to^ = i, to }
 			// the list follows the pointer to its ends: a row held past the edge scrolls it
 			area.view_target.y = ui.reorder_edge_scroll(y, rh, area.view_off.y, area.size.y, limit, area.view_target.y)
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, favs.cfg.detach_distance_em * em) {
 				own.strip.drag.active = false
@@ -645,7 +645,7 @@ sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi:
 		if w != own.sidebar.live_w {
 			// (the press frame: the pointer moved since it was built)
 			own.sidebar.live_w = w
-			app.frames_requested = max(app.frames_requested, 1)
+			request_frames(app, 1)
 		}
 		// the edge this frame draws, against the pointer it was built from (browser.frame.drag_probe)
 		drag_probe_note(ui.mouse_pos().x, pos == .Left ? bar.rect.min.x + extent : bar.rect.max.x - extent)

@@ -255,7 +255,7 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		if ui.disabled(!can_remove) {
 			if ui.tags(stp.confirm_uninstall ? "danger_button" : "button") {
 				if ui.button(fmt.aprintf("%s###setup_uninstall", stp.confirm_uninstall ? "Confirm uninstall" : "Uninstall", allocator = ui.frame_allocator())).clicked {
-					if stp.confirm_uninstall { setup_uninstall(app) } else { stp.confirm_uninstall = true; app.frames_requested = max(app.frames_requested, 3) }
+					if stp.confirm_uninstall { setup_uninstall(app) } else { stp.confirm_uninstall = true; request_frames(app, 3) }
 				}
 			}
 		}
@@ -291,7 +291,7 @@ setup_body :: proc(app: ^App, width, inner, pad, win_h: f32) {
 		gb.cursor = .Resize_NWSE
 		sig := ui.signal(gb)
 		if sig.pressed { stp.grip_width = stp.width_em }
-		if sig.dragging && em > 0 { stp.width_em = clamp(stp.grip_width + 2 * sig.drag_delta.x / em, 36, 90); app.frames_requested = max(app.frames_requested, 2) }
+		if sig.dragging && em > 0 { stp.width_em = clamp(stp.grip_width + 2 * sig.drag_delta.x / em, 36, 90); request_frames(app, 2) }
 	}
 }
 
@@ -388,7 +388,7 @@ setup_middle :: proc(app: ^App, width, inner, pad: f32, f: ^Setup_Facts, known, 
 				if v, link := update_available(); v != "" && !busy {
 					ui.spacer(ui.px(em * 0.6))
 					ui.next({width = ui.text_size(em * 1.2), height = ui.px(ui.dense(em * 1.9))})
-					if ui.tags("ghost_button") { if ui.button(fmt.aprintf("v%s is available###setup_update", v, allocator = ui.frame_allocator())).clicked { tab_open(app, link); app.frames_requested = max(app.frames_requested, 3) } }
+					if ui.tags("ghost_button") { if ui.button(fmt.aprintf("v%s is available###setup_update", v, allocator = ui.frame_allocator())).clicked { tab_open(app, link); request_frames(app, 3) } }
 				}
 				ui.spacer(ui.px(em * 0.9))
 			}

@@ -80,10 +80,10 @@ fullscreen_shell_settle :: proc(app: ^App, w: ^Browser_Window) {
 	}
 	settle.frames += 1
 	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(active_window(app).page_rect) != settle.area : settle.frames >= 2)
-	if !ready { app.frames_requested = max(app.frames_requested, 2); return }
+	if !ready { request_frames(app, 2); return }
 	settle.armed = false
 	page.fullscreen_settled(tab_of.page)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // An element of the document shown in the window `w` is in full screen.
@@ -115,7 +115,7 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 	fs.shell.page_id = 0
 	if !fs.shell.window_was { window_fullscreen(app, false) }
 	app.active.own.full.revealed = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return true
 }
 
@@ -134,13 +134,13 @@ fullscreen_scroll_tick :: proc(app: ^App, fs: ^Window_Fullscreen) {
 	if tab_of == nil || tab_of.page == nil || page.page_id(tab_of.page) != sback.page_id || sback.frames > 60 { sback.active = false; return }
 	// (the page is laid out at the window's size of the frame before: one frame after the window changed)
 	if sback.resized && sback.frames < 30 {
-		if int(app.win.size.x) == sback.w && int(app.win.size.y) == sback.h { app.frames_requested = max(app.frames_requested, 2); return }
-		if !sback.laid_out { sback.laid_out = true; app.frames_requested = max(app.frames_requested, 2); return }
+		if int(app.win.size.x) == sback.w && int(app.win.size.y) == sback.h { request_frames(app, 2); return }
+		if !sback.laid_out { sback.laid_out = true; request_frames(app, 2); return }
 	}
 	smooth_stop(tab_of)
 	tab_of.scroll = sback.scroll
 	sback.active = false
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -150,7 +150,7 @@ window_fullscreen :: proc(app: ^App, on: bool) {
 		render.resize(&app.r, app.win.size)
 	}
 	window_own(app).full.revealed = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Leaves element full screen on the user's behalf (Escape, F11) in the active window. False when the shown tab has none.

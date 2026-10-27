@@ -20,7 +20,7 @@ webauthn_shell_init :: proc(app: ^App) {
 		},
 		// the chip appears or goes: the next frame draws it (an idle window draws nothing otherwise)
 		changed = proc(p: ^page.Page) {
-			if the_app != nil { the_app.frames_requested = max(the_app.frames_requested, 2) }
+			if the_app != nil { request_frames(the_app, 2) }
 		},
 	}
 }

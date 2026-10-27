@@ -15,7 +15,7 @@ sw_shell_destroy :: proc(app: ^App) { page.sw_embedder = {} }
 sw_shell_open :: proc(user: rawptr, url: string) -> bool {
 	app := (^App)(user)
 	tab_open(app, url, origin = .Page)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 

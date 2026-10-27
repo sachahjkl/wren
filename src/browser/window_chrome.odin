@@ -92,7 +92,7 @@ window_chrome_init :: proc(app: ^App) {
 		app := (^App)(user)
 		wchrome.cfg = window_settings_from_prefs(p)
 		platform.set_square_corners(app.win, wchrome.cfg.square_corners)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, app)
 }
 
@@ -122,7 +122,7 @@ toggle_fullscreen :: proc(app: ^App) {
 	platform.set_fullscreen(app.win, on)
 	window_own(app).full.revealed = false
 	render.resize(&app.r, app.win.size)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private = "file")
@@ -189,7 +189,7 @@ fullscreen_bars :: proc(app: ^App, t: ^Tab) {
 		toolbar_row(app, t)   // chrome_style.odin
 	}
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)
-	if col.rect != fw.overlay { app.frames_requested = max(app.frames_requested, 2) }
+	if col.rect != fw.overlay { request_frames(app, 2) }
 	fw.overlay = col.rect
 }
 
