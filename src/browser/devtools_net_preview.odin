@@ -45,10 +45,15 @@ Preview_State :: struct {
 	font_index: int,            // the chosen face, 0..font_faces-1 (0 for a single face)
 	// an HTML page
 	html:    Html_Reader,
-	source:  bool,            // the markup as text instead
+	render:  Preview_Render,  // the real, isolated render (devtools_net_render.odin)
+	html_mode: Html_View,     // rendered, reader or source
 	list:    Dt_List,
 	scroll:  ui.Key,
 }
+
+// How an HTML response is shown in the Preview pane: a real render in an isolated, script-free, network-free document
+// (the default, what the browser would draw minus scripts and sub-resources), a reader view of its text, or the markup.
+Html_View :: enum u8 { Rendered, Reader, Source }
 
 preview_kind_of :: proc(e: ^Net_Entry) -> Pv_Kind {
 	m := net_mime_base(e.mime)
@@ -74,6 +79,7 @@ preview_release :: proc(pv: ^Preview_State) {
 	// The sfnt bytes are not freed here: font.load_from_memory takes ownership of them (it keeps its own copy and
 	// frees the one we pass, whether it loaded or not), and font.unload above frees the face's copy.
 	html_reader_free(&pv.html)
+	preview_render_free(&pv.render)
 	dt_list_destroy(&pv.list)
 	delete(pv.err)
 	net_media_release()
@@ -781,16 +787,22 @@ preview_html :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	hr := &pv.html
 	if dt_bar("###dt_ph_bar", dtm.bar - dt_px(4)) {
 		dt_gap(5)
-		if dt_chip("###dt_ph_read", "Rendered", !pv.source, "The page as a reader sees it: titles, text, lists, links").clicked { pv.source = false }
-		if dt_chip("###dt_ph_src", "Source", pv.source, "The markup").clicked { pv.source = true }
+		if dt_chip("###dt_ph_rnd", "Rendered", pv.html_mode == .Rendered, "A real render of the response in an isolated page: no scripts, no network (so a <link>, an <img> or a web font stays unloaded)").clicked { pv.html_mode = .Rendered }
+		if dt_chip("###dt_ph_read", "Reader", pv.html_mode == .Reader, "The page as a reader sees it: titles, text, lists, links").clicked { pv.html_mode = .Reader }
+		if dt_chip("###dt_ph_src", "Source", pv.html_mode == .Source, "The markup").clicked { pv.html_mode = .Source }
 		ui.next({width = ui.fill(), height = ui.pct(1)})
+		title := pv.render.title != "" ? pv.render.title : (hr.title != "" ? hr.title : net_name_of(e.url))
 		ui.custom("###dt_ph_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			dt_text_r(dc, dtm.ui_font, dtm.fs, b.rect.max.x - dt_px(8), (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(120))
-		}, new_clone(dt_frame_str(hr.title != "" ? hr.title : net_name_of(e.url)), ui.frame_allocator()))
+		}, new_clone(dt_frame_str(title), ui.frame_allocator()))
 		if dt_btn("###dt_ph_open", .Detach, tooltip = "Open the page in a new tab (as the browser renders it)").clicked { open_in_new_tab(app, strings.clone(e.url, context.temp_allocator), inspected_page(app)) }
 		dt_gap(3)
 	}
-	if pv.source {
+	if pv.html_mode == .Rendered {
+		preview_html_rendered(app, d, e)
+		return
+	}
+	if pv.html_mode == .Source {
 		n := len(hr.raw)
 		if lst, ok := dt_list("###dt_ph_src_list", &pv.list, n, dtm.row, nil, ui.fill(), ui.fill()); ok {
 			for k in lst.first ..< lst.last {
