@@ -62,9 +62,12 @@ JSValue wjr_WindowOrWorkerGlobalScope_get_performance(JSContext *ctx, JSValueCon
 typedef struct perf_entry { JSValue name, detail, data; int type; double start, duration; } perf_entry;
 
 /* the values of PerformanceEntryType (api/performance.widl) */
-enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_LONG_TASK, KIND_END };
-#define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT) | (1u << KIND_LONG_TASK))
-static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input", "longtask" };
+enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_LONG_TASK,
+       KIND_LCP, KIND_LAYOUT_SHIFT, KIND_ELEMENT, KIND_VISIBILITY_STATE, KIND_END };
+#define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT) | (1u << KIND_LONG_TASK) | \
+                        (1u << KIND_LCP) | (1u << KIND_LAYOUT_SHIFT) | (1u << KIND_ELEMENT) | (1u << KIND_VISIBILITY_STATE))
+static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input", "longtask",
+    "largest-contentful-paint", "layout-shift", "element", "visibility-state" };
 
 static void entry_free(void *p)
 {
@@ -147,7 +150,8 @@ JSValue wjr_PerformanceEntry_toJSON(JSContext *ctx, JSValueConst this_val, int a
 static JSValue timeline_entry_new(JSContext *ctx, int kind, JSValue data)
 {
     static const int ifaces[KIND_END] = { 0, 0, 0, WJ_IFACE_PerformanceNavigationTiming, WJ_IFACE_PerformanceResourceTiming,
-        WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceLongTaskTiming };
+        WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceLongTaskTiming,
+        WJ_IFACE_LargestContentfulPaint, WJ_IFACE_LayoutShift, WJ_IFACE_PerformanceElementTiming, WJ_IFACE_VisibilityStateEntry };
     perf_entry *e = malloc(sizeof *e);
     if (!e) { JS_FreeValue(ctx, data); return JS_ThrowOutOfMemory(ctx); }
     JSValue nm = JS_GetPropertyStr(ctx, data, "name");
@@ -351,6 +355,156 @@ JSValue wjr_PerformanceEventTiming_toJSON(JSContext *ctx, JSValueConst this_val,
 JSValue wjr_PerformancePaintTiming_get_paintTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "startTime"); }
 JSValue wjr_PerformancePaintTiming_get_presentationTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "startTime"); }
 JSValue wjr_PerformancePaintTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+/* ---- Largest Contentful Paint, Element Timing, Layout Instability, visibility-state (src/page/timeline_lcp.odin) ----
+ * The browser gives the plain members as JSON (renderTime, loadTime, size, id, url...); the live element (and a layout
+ * shift's source nodes) comes from Performance_timelineNode, which wraps a node that is still in the document or returns 0.
+ * The entry's sequence number is kept in its data as "seq". */
+
+JSValue dom_rect_new(JSContext *ctx, double x, double y, double w, double h, bool read_only);   /* dom_layout.c */
+
+static uint64_t entry_seq(JSContext *ctx, perf_entry *e)
+{
+    if (JS_IsUndefined(e->data)) { return 0; }
+    JSValue s = JS_GetPropertyStr(ctx, e->data, "seq");
+    double d = 0;
+    if (JS_IsNumber(s)) { JS_ToFloat64(ctx, &d, s); }
+    JS_FreeValue(ctx, s);
+    return (uint64_t)d;
+}
+
+/* the DOM node of member `index` of this entry (0 = the entry's own element), wrapped, or null when there is none */
+static JSValue entry_node(JSContext *ctx, JSValueConst this_val, int iface, int kind, uint32_t index)
+{
+    perf_entry *e = web_this_impl(ctx, this_val, iface);
+    if (!e) { return JS_EXCEPTION; }
+    uint64_t node = wr_Performance_timelineNode(kind, entry_seq(ctx, e), index);
+    return node ? wj_wrap_node(ctx, node) : JS_NULL;
+}
+
+/* an f64 member read from the JSON by `key`, as an unsigned long (size, naturalWidth, naturalHeight) */
+static JSValue tl_ulong(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    JSValue v = tl_num(ctx, this_val, key);
+    if (!JS_IsNumber(v)) { return v; }
+    double d = 0;
+    JS_ToFloat64(ctx, &d, v);
+    JS_FreeValue(ctx, v);
+    if (d < 0) { d = 0; }
+    return JS_NewInt64(ctx, (int64_t)d);
+}
+
+/* a DOMRectReadOnly from the four numbers "<key>" packs (x, y, width, height); a zero rect when absent */
+static JSValue tl_rect(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    perf_entry *e = entry_this(ctx, this_val);
+    if (!e) { return JS_EXCEPTION; }
+    double v[4] = { 0, 0, 0, 0 };
+    if (!JS_IsUndefined(e->data)) {
+        JSValue arr = JS_GetPropertyStr(ctx, e->data, key);
+        if (JS_IsArray(arr)) {
+            for (int i = 0; i < 4; i++) {
+                JSValue n = JS_GetPropertyUint32(ctx, arr, (uint32_t)i);
+                if (JS_IsNumber(n)) { JS_ToFloat64(ctx, &v[i], n); }
+                JS_FreeValue(ctx, n);
+            }
+        }
+        JS_FreeValue(ctx, arr);
+    }
+    return dom_rect_new(ctx, v[0], v[1], v[2], v[3], true);
+}
+
+JSValue wjr_LargestContentfulPaint_get_renderTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_LargestContentfulPaint_get_loadTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "loadTime"); }
+JSValue wjr_LargestContentfulPaint_get_size(JSContext *ctx, JSValueConst this_val) { return tl_ulong(ctx, this_val, "size"); }
+JSValue wjr_LargestContentfulPaint_get_id(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "id"); }
+JSValue wjr_LargestContentfulPaint_get_url(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "url"); }
+JSValue wjr_LargestContentfulPaint_get_paintTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_LargestContentfulPaint_get_presentationTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_LargestContentfulPaint_get_element(JSContext *ctx, JSValueConst this_val) { return entry_node(ctx, this_val, WJ_IFACE_LargestContentfulPaint, KIND_LCP, 0); }
+JSValue wjr_LargestContentfulPaint_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformanceElementTiming_get_renderTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_PerformanceElementTiming_get_loadTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "loadTime"); }
+JSValue wjr_PerformanceElementTiming_get_intersectionRect(JSContext *ctx, JSValueConst this_val) { return tl_rect(ctx, this_val, "intersectRect"); }
+JSValue wjr_PerformanceElementTiming_get_identifier(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "identifier"); }
+JSValue wjr_PerformanceElementTiming_get_naturalWidth(JSContext *ctx, JSValueConst this_val) { return tl_ulong(ctx, this_val, "naturalWidth"); }
+JSValue wjr_PerformanceElementTiming_get_naturalHeight(JSContext *ctx, JSValueConst this_val) { return tl_ulong(ctx, this_val, "naturalHeight"); }
+JSValue wjr_PerformanceElementTiming_get_id(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "id"); }
+JSValue wjr_PerformanceElementTiming_get_url(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "url"); }
+JSValue wjr_PerformanceElementTiming_get_paintTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_PerformanceElementTiming_get_presentationTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderTime"); }
+JSValue wjr_PerformanceElementTiming_get_element(JSContext *ctx, JSValueConst this_val) { return entry_node(ctx, this_val, WJ_IFACE_PerformanceElementTiming, KIND_ELEMENT, 0); }
+JSValue wjr_PerformanceElementTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_LayoutShift_get_value(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "value"); }
+JSValue wjr_LayoutShift_get_hadRecentInput(JSContext *ctx, JSValueConst this_val) { return tl_bool(ctx, this_val, "hadRecentInput"); }
+JSValue wjr_LayoutShift_get_lastInputTime(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "lastInputTime"); }
+JSValue wjr_LayoutShift_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+/* LayoutShift.sources: a FrozenArray of LayoutShiftAttribution, made from the entry's "sources" (an array of {node (a
+ * handle string), previousRect, currentRect}); the node is wrapped live (null when it left the document). Kept in the
+ * entry's `detail` once made, like PerformanceLongTaskTiming.attribution. */
+JSValue wjr_LayoutShift_get_sources(JSContext *ctx, JSValueConst this_val)
+{
+    perf_entry *e = web_this_impl(ctx, this_val, WJ_IFACE_LayoutShift);
+    if (!e) { return JS_EXCEPTION; }
+    if (JS_IsArray(e->detail)) { return JS_DupValue(ctx, e->detail); }
+    uint64_t seq = entry_seq(ctx, e);
+    JSValue arr = JS_NewArray(ctx);
+    if (JS_IsException(arr)) { return arr; }
+    int64_t n = 0;
+    JSValue src = JS_IsUndefined(e->data) ? JS_UNDEFINED : JS_GetPropertyStr(ctx, e->data, "sources");
+    if (JS_IsArray(src)) { JS_GetLength(ctx, src, &n); }
+    uint32_t k = 0;
+    for (int64_t i = 0; i < n; i++) {
+        JSValue s = JS_GetPropertyInt64(ctx, src, i);
+        JSValue a = wj_new_object(ctx, WJ_IFACE_LayoutShiftAttribution, NULL, NULL);
+        if (JS_IsException(a)) { JS_FreeValue(ctx, s); JS_FreeValue(ctx, src); JS_FreeValue(ctx, arr); return a; }
+        /* the node and the two rects are kept on the attribution object as extras (read by its getters) */
+        uint64_t node = wr_Performance_timelineNode(KIND_LAYOUT_SHIFT, seq, (uint32_t)i);
+        JSValue prev = JS_GetPropertyStr(ctx, s, "previousRect");
+        JSValue cur = JS_GetPropertyStr(ctx, s, "currentRect");
+        web_extra_set(ctx, a, "node", node ? wj_wrap_node(ctx, node) : JS_NULL);
+        web_extra_set(ctx, a, "prev", JS_IsArray(prev) ? JS_DupValue(ctx, prev) : JS_NULL);
+        web_extra_set(ctx, a, "cur", JS_IsArray(cur) ? JS_DupValue(ctx, cur) : JS_NULL);
+        JS_FreeValue(ctx, prev);
+        JS_FreeValue(ctx, cur);
+        JS_FreeValue(ctx, s);
+        wj_array_set(ctx, arr, k++, a);
+    }
+    JS_FreeValue(ctx, src);
+    if (!web_freeze(ctx, arr)) { JS_FreeValue(ctx, arr); return JS_EXCEPTION; }
+    JS_FreeValue(ctx, e->detail);
+    e->detail = JS_DupValue(ctx, arr);
+    return arr;
+}
+
+static bool attr_this(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_LayoutShiftAttribution) != NULL; }
+static JSValue attr_rect(JSContext *ctx, JSValueConst this_val, const char *key)
+{
+    if (!attr_this(ctx, this_val)) { return JS_EXCEPTION; }
+    JSValue a = web_extra_get(ctx, this_val, key);
+    double v[4] = { 0, 0, 0, 0 };
+    if (JS_IsArray(a)) {
+        for (int i = 0; i < 4; i++) { JSValue n = JS_GetPropertyUint32(ctx, a, (uint32_t)i); if (JS_IsNumber(n)) { JS_ToFloat64(ctx, &v[i], n); } JS_FreeValue(ctx, n); }
+    }
+    JS_FreeValue(ctx, a);
+    return dom_rect_new(ctx, v[0], v[1], v[2], v[3], true);
+}
+JSValue wjr_LayoutShiftAttribution_get_node(JSContext *ctx, JSValueConst this_val)
+{
+    if (!attr_this(ctx, this_val)) { return JS_EXCEPTION; }
+    JSValue n = web_extra_get(ctx, this_val, "node");
+    return JS_IsObject(n) ? n : (JS_FreeValue(ctx, n), JS_NULL);
+}
+JSValue wjr_LayoutShiftAttribution_get_previousRect(JSContext *ctx, JSValueConst this_val) { return attr_rect(ctx, this_val, "prev"); }
+JSValue wjr_LayoutShiftAttribution_get_currentRect(JSContext *ctx, JSValueConst this_val) { return attr_rect(ctx, this_val, "cur"); }
+
+JSValue wjr_VisibilityStateEntry_get_name(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_name(ctx, this_val); }
+JSValue wjr_VisibilityStateEntry_get_entryType(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_entryType(ctx, this_val); }
+JSValue wjr_VisibilityStateEntry_get_startTime(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_startTime(ctx, this_val); }
+JSValue wjr_VisibilityStateEntry_get_duration(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_duration(ctx, this_val); }
 
 /* the structured clone of a detail (null when absent) */
 static bool clone_detail(JSContext *ctx, JSValueConst opt, JSValue *out)
@@ -653,7 +807,14 @@ static void sort_by_start(JSContext *ctx, JSValue arr)
  * entries from its timeline; slow-event entries are only for observers (as in Chromium) */
 static JSValue buffered_entries(JSContext *ctx, int type)
 {
-    if (type == KIND_EVENT || type == KIND_FIRST_INPUT || type == KIND_LONG_TASK) { return JS_NewArray(ctx); }
+    /* event, first-input, longtask, largest-contentful-paint, layout-shift and element are delivered to observers only
+     * (as in Chromium): performance.getEntriesByType returns nothing for them; a PerformanceObserver with buffered: true
+     * sees the ones already recorded. visibility-state is likewise observer-only. */
+    switch (type) {
+    case KIND_EVENT: case KIND_FIRST_INPUT: case KIND_LONG_TASK:
+    case KIND_LCP: case KIND_LAYOUT_SHIFT: case KIND_ELEMENT: case KIND_VISIBILITY_STATE:
+        return JS_NewArray(ctx);
+    }
     if (type >= KIND_NAVIGATION) { return timeline_entries(ctx, type, 0, NULL); }
     return entries(ctx, "", 0, type);
 }
@@ -1179,7 +1340,7 @@ JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, J
 {
     WJ_UNUSED(this_val);
     if (!supported_made) {
-        static const char src[] = "Object.freeze(['event', 'first-input', 'longtask', 'mark', 'measure', 'navigation', 'paint', 'resource'])";
+        static const char src[] = "Object.freeze(['element', 'event', 'first-input', 'largest-contentful-paint', 'layout-shift', 'longtask', 'mark', 'measure', 'navigation', 'paint', 'resource', 'visibility-state'])";
         JSValue v = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
         if (JS_IsException(v)) { return v; }
         supported_types = v;

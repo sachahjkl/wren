@@ -139,7 +139,9 @@ Tl_Entry :: struct {
 	value:          f64     `json:"value,omitempty"`,
 	had_input:      bool    `json:"hadRecentInput,omitempty"`,
 	last_input_ms:  f64     `json:"lastInputTime,omitempty"`,
-	sources:        []Tl_Source `json:"-"`,   // owned; LayoutShiftAttribution, previousRect / currentRect
+	// LayoutShiftAttribution: the rects go through the JSON (previousRect / currentRect); each source's node handle stays
+	// here only (json:"-" below) and is wrapped live by Performance_timelineNode at the index of the source.
+	sources:        []Tl_Source `json:"sources,omitempty"`,
 	// The element the entry refers to (LCP, Element Timing), kept out of the JSON: a handle cannot be put in JSON and stay
 	// valid. Performance_timelineNode wraps it live, or nothing when it left the document (the attribute goes null).
 	node:           base.Handle `json:"-"`,
@@ -149,9 +151,9 @@ Tl_Entry :: struct {
 // viewport coordinates, CSS px. The node handle is resolved live when the script reads it (Performance_timelineNode).
 @(private)
 Tl_Source :: struct {
-	node: base.Handle,
-	prev: [4]f64,   // x, y, width, height
-	cur:  [4]f64,
+	node: base.Handle `json:"-"`,   // resolved live by Performance_timelineNode (a handle cannot be put in JSON and stay valid)
+	prev: [4]f64      `json:"previousRect"`,   // x, y, width, height, CSS px, viewport coordinates
+	cur:  [4]f64      `json:"currentRect"`,
 }
 
 @(private)
