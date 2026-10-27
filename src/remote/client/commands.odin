@@ -493,6 +493,9 @@ cmd_tab :: proc(ctx: ^Context, args: []string) -> int {
 
 @(private)
 cmd_window :: proc(ctx: ^Context) -> int {
+	// (the window: --win-id, else the front one)
+	if flag(&ctx.o, "front") { return simple(ctx, "Browser.activateWindow", "{}") }
+	if flag(&ctx.o, "close") { return simple(ctx, "Browser.closeWindow", "{}") }
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '{')
 	sep := ""

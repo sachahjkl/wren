@@ -79,6 +79,25 @@ try {
     $st = Wren-Ctl stats --json --win-id $third | ConvertFrom-Json
     Check ($st.devtools -eq $true) 'the stats of a window name its own developer tools' "$($st.devtools)"
 
+    # the caret of a focused field of a page blinks only in the window the user is in, on a timer of that window
+    foreach ($id in $first, $third) { Wren-Ctl eval "document.body.insertAdjacentHTML('beforeend','<input id=fld style=position:fixed;left:200px;top:20px>'); fld.focus(); 'ok'" --win-id $id | Out-Null }
+    function Caret-Of([int]$id) { $s = Wren-Ctl stats --json --win-id $id | ConvertFrom-Json; return $s }
+    foreach ($front in $third, $first) {
+        $back = if ($front -eq $first) { $third } else { $first }
+        Wren-Ctl window --front --win-id $front | Out-Null
+        Wren-Ctl wait frames 3 --win-id $front | Out-Null
+        Wren-Ctl wait frames 2 --win-id $back | Out-Null
+        $blinks = 0; $backShown = 0; $backTimer = 0
+        for ($i = 0; $i -lt 6; $i++) {
+            $f = Caret-Of $front; $b = Caret-Of $back
+            if ($f.caretBlinking -and $f.frontWindow) { $blinks++ }
+            if ($b.caretShown) { $backShown++ }
+            if ($b.caretBlinking) { $backTimer++ }
+            Start-Sleep -Milliseconds 150
+        }
+        Check ($blinks -ge 5 -and $backShown -eq 0 -and $backTimer -eq 0) "window $front in front: its field's caret blinks, window $back shows none and keeps no timer" "front blinking $blinks/6, back shown $backShown, back timer $backTimer"
+    }
+
     $null = Wren-Ctl ping --timeout 10000
     $crashes = @(Get-ChildItem (Join-Path $prof 'crashes') -Filter 'crash *.txt' -ErrorAction SilentlyContinue)
     $st = Wren-Ctl stats --json | ConvertFrom-Json

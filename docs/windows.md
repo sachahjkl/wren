@@ -47,6 +47,9 @@ window the user is in (the front one).
   The network log's bodies and the pages' console descriptions are kept while any window shows its developer tools; a speed
   limit or blocked addresses are those of the request's tab's window. A media preview of the Network tab plays in one window
   at a time.
+* The caret of a focused field shows and blinks only in the front window (`window_is_front`; the chrome's fields through
+  `ui.Build_Params.inactive`); each window's caret and validation bubble have timers of their own (`Forms_View.blink_timer`,
+  naming the window by its id). `window_set_front` repaints the window that was in front and the new one.
 * Remote calls with `--win-id` (or a tab of that window) act on that window until they answer: their waits count its frames,
   and a capture is of its frame (`remote_capture_arm`: the renderer copies the next frame it ends, so it is asked for in that
   window's frame).
@@ -57,4 +60,4 @@ window the user is in (the front one).
 
 * Chrome frames while a page's script holds the thread (`shell_frames.odin`) exist for the window whose frame runs it; the others
   wait for it.
-* The caret blink and the validation bubble timers of forms are the process's: two windows with a focused field blink together.
+

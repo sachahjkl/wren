@@ -111,6 +111,8 @@ Forms_View :: struct {
 	popup:        Popup,
 	caret_epoch:  time.Tick,
 	blink_on:     bool,
+	blink_timer:  base.Handle,   // wakes this window at the caret's next toggle (each window blinks in its own phase)
+	report_timer: base.Handle,   // ... while the validation bubble is shown
 	last_serial:  u64,
 	autofocus_page: u64,
 	// a press inside the selection of a text field: it may drag the selected text (dnd_shell.odin); a release without a
@@ -118,9 +120,6 @@ Forms_View :: struct {
 	sel_press:    base.Handle,
 	sel_press_at: int,
 }
-
-// (the timers are the process's: their callbacks do not say which window they were set for)
-fview_blink_timer, fview_report_timer: base.Handle
 
 // The form controls' view of the window being framed (each window has its own: Window_Own.forms).
 forms_view :: proc(app: ^App) -> ^Forms_View { return &window_own(app).forms }
@@ -196,15 +195,19 @@ forms_shell_frame :: proc(app: ^App) {
 	}
 	if fv.popup.open && (fv.popup.page_id != f.id || dom.get(p.doc, fv.popup.sel) == nil || forms.is_disabled(f, fv.popup.sel)) { fv.popup.open = false }
 
-	// caret blinking: wake the loop at the next toggle while a text field has the focus
-	if fv.page_focus && forms.is_text_field(f, f.focus) {
+	// caret blinking: wake this window at the next toggle while a text field has the focus. Only in the window the user is in (as
+	// other browsers: a window in the back shows no caret); each window's timer is its own, in its own phase (its caret_epoch)
+	wid := rawptr(uintptr(active_window(app).id))   // (the timers name the window: it may close before they fire)
+	if fv.page_focus && forms.is_text_field(f, f.focus) && window_is_front(app) {
 		period := blink_ms(app)
 		if period > 0 {
 			elapsed := time.duration_milliseconds(time.tick_since(fv.caret_epoch))
 			fv.blink_on = int(elapsed / f64(period)) % 2 == 0
-			if fview_blink_timer == base.NIL_HANDLE {
+			if fv.blink_timer == base.NIL_HANDLE {
 				next := f64(period) - math.mod(elapsed, f64(period))
-				fview_blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) { fview_blink_timer = base.NIL_HANDLE }, nil)
+				fv.blink_timer = host.set_timer(&app.loop, max(next, 1), 0, proc(data: rawptr) {
+					if w := forms_timer_window(data); w != nil { w.own.forms.blink_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
+				}, wid)
 			}
 		} else {
 			fv.blink_on = true
@@ -212,9 +215,20 @@ forms_shell_frame :: proc(app: ^App) {
 	} else {
 		fv.blink_on = false
 	}
-	if _, _, shown := forms.current_report(f); shown && fview_report_timer == base.NIL_HANDLE {
-		fview_report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) { fview_report_timer = base.NIL_HANDLE }, nil)
+	if _, _, shown := forms.current_report(f); shown && fv.report_timer == base.NIL_HANDLE {
+		fv.report_timer = host.set_timer(&app.loop, 250, 0, proc(data: rawptr) {
+			if w := forms_timer_window(data); w != nil { w.own.forms.report_timer = base.NIL_HANDLE; window_request(the_app, w, 1) }
+		}, wid)
 	}
+}
+
+// The window a timer of the form controls was set for (nil: it closed). An App with no window (a test's) has its bare one.
+@(private = "file")
+forms_timer_window :: proc(data: rawptr) -> ^Browser_Window {
+	app := the_app
+	if app == nil { return nil }
+	if len(app.windows) == 0 { return &app.bare }
+	return window_by_id(app, int(uintptr(data)))
 }
 
 // The events the page did not consume (the chrome's UI gets these).
