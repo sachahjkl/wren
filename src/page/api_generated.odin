@@ -527,6 +527,60 @@ Api_MediaSourceHandle :: struct {
 	data:   ^Mse_Handle_Object,
 }
 
+// A live AudioTrackList: its handle and what lookup_AudioTrackList found.
+Api_AudioTrackList :: struct {
+	handle: u64,
+	data:   ^Track_List_Object,
+}
+
+// A live VideoTrackList: its handle and what lookup_VideoTrackList found.
+Api_VideoTrackList :: struct {
+	handle: u64,
+	data:   ^Track_List_Object,
+}
+
+// A live TextTrackList: its handle and what lookup_TextTrackList found.
+Api_TextTrackList :: struct {
+	handle: u64,
+	data:   ^Track_List_Object,
+}
+
+// A live AudioTrack: its handle and what lookup_AudioTrack found.
+Api_AudioTrack :: struct {
+	handle: u64,
+	data:   ^Track_Entry,
+}
+
+// A live VideoTrack: its handle and what lookup_VideoTrack found.
+Api_VideoTrack :: struct {
+	handle: u64,
+	data:   ^Track_Entry,
+}
+
+// A live TextTrack: its handle and what lookup_TextTrack found.
+Api_TextTrack :: struct {
+	handle: u64,
+	data:   ^Text_Track_Object,
+}
+
+// A live TextTrackCue: its handle and what lookup_TextTrackCue found.
+Api_TextTrackCue :: struct {
+	handle: u64,
+	data:   ^Text_Cue_Object,
+}
+
+// A live TextTrackCueList: its handle and what lookup_TextTrackCueList found.
+Api_TextTrackCueList :: struct {
+	handle: u64,
+	data:   ^Text_Cue_List_Object,
+}
+
+// A live HTMLTrackElement: its handle and what lookup_HTMLTrackElement found.
+Api_HTMLTrackElement :: struct {
+	handle: u64,
+	data:   ^dom.Node,
+}
+
 // What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
 // submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
 Api_NavigationSource :: struct {
@@ -899,6 +953,14 @@ invoke_PromiseReaction :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: 
 // Calls a guest's EventListener (a function of its table) as a task of the realm; false when it trapped.
 invoke_EventListener :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, event: u64) -> bool {
 	argv := [3]u32{u32(user), u32(u64(event)), u32(u64(event) >> 32)}
+	return call_guest(ctx, inst, fn, argv[:3])
+}
+
+// requestVideoFrameCallback's callback: `now` is the current time on the page's performance timeline (the callback
+// reads the rest of the metadata back with HTMLVideoElement_videoFrameMetadata, keyed by the id this call made).
+// Calls a guest's VideoFrameRequestCallback (a function of its table) as a task of the realm; false when it trapped.
+invoke_VideoFrameRequestCallback :: proc(ctx: ^Page, inst: ^wasm.Instance, fn: u32, user: i32, now: f64) -> bool {
+	argv := [3]u32{u32(user), u32(transmute(u64)now), u32(transmute(u64)now >> 32)}
 	return call_guest(ctx, inst, fn, argv[:3])
 }
 
@@ -23213,6 +23275,177 @@ _t_htmlmedia_HTMLVideoElement_playbackQuality :: proc "c" (env: rawptr, caller: 
 	return nil
 }
 
+// HTMLVideoElement_requestVideoFrameCallback :: proc(c: ^Call, element: Api_HTMLMediaElement, callback: u32, user: i32) -> u64
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_requestVideoFrameCallback: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_requestVideoFrameCallback: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := u32(a[1].i32)
+	_p2 := a[2].i32
+	_r := HTMLVideoElement_requestVideoFrameCallback(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLVideoElement_cancelVideoFrameCallback :: proc(c: ^Call, element: Api_HTMLMediaElement, id: u64)
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_cancelVideoFrameCallback: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_cancelVideoFrameCallback: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := u64(a[1].i64)
+	HTMLVideoElement_cancelVideoFrameCallback(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// HTMLVideoElement_videoFrameMetadata :: proc(c: ^Call, element: Api_HTMLMediaElement, id: u64) -> []u8
+@(private = "file")
+_t_htmlmedia_HTMLVideoElement_videoFrameMetadata :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "htmlmedia.HTMLVideoElement_videoFrameMetadata", "result buffer") }
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLVideoElement_videoFrameMetadata: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLVideoElement_videoFrameMetadata: argument element is not a live HTMLMediaElement")
+	}
+	_p1 := u64(a[1].i64)
+	_r := HTMLVideoElement_videoFrameMetadata(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], _r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// HTMLMediaElement_audioTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_audioTracks :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_audioTracks: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_audioTracks: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_audioTracks(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLMediaElement_videoTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_videoTracks :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_videoTracks: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_videoTracks: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_videoTracks(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLMediaElement_textTracks :: proc(c: ^Call, element: Api_HTMLMediaElement) -> u64
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_textTracks :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_textTracks: argument element is not a live HTMLMediaElement") }
+		return wasm.trap_new("htmlmedia.HTMLMediaElement_textTracks: argument element is not a live HTMLMediaElement")
+	}
+	_r := HTMLMediaElement_textTracks(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLMediaElement_addTextTrack :: proc(c: ^Call, element: Api_HTMLMediaElement, kind: string, label: string, language: string) -> (u64, Api_Error)
+@(private = "file")
+_t_htmlmedia_HTMLMediaElement_addTextTrack :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_addTextTrack", "kind") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_addTextTrack", "label") }
+	_n3 := wasm.addr(&f, a[6])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[5]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_addTextTrack", "language") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "htmlmedia.HTMLMediaElement_addTextTrack", "result pointer") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "htmlmedia.HTMLMediaElement_addTextTrack: argument kind is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "htmlmedia.HTMLMediaElement_addTextTrack: argument label is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		return _fail_status(&c, a, .Type, "htmlmedia.HTMLMediaElement_addTextTrack: argument language is not valid UTF-8")
+	}
+	_p0 := Api_HTMLMediaElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLMediaElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "htmlmedia.HTMLMediaElement_addTextTrack: argument element is not a live HTMLMediaElement")
+	}
+	_r, _err := HTMLMediaElement_addTextTrack(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), _r)
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
 // MediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)
 @(private = "file")
 _t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -23230,6 +23463,46 @@ _t_mse_MediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]w
 	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// ManagedMediaSource_create :: proc(c: ^Call) -> (u64, Api_Error)
+@(private = "file")
+_t_mse_ManagedMediaSource_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mse.ManagedMediaSource_create", "result pointer") }
+	_r, _err := ManagedMediaSource_create(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ManagedMediaSource_streaming :: proc(c: ^Call, source: Api_MediaSource) -> bool
+@(private = "file")
+_t_mse_ManagedMediaSource_streaming :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_MediaSource{handle = u64(a[0].i64)}
+	_p0.data = lookup_MediaSource(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mse.ManagedMediaSource_streaming: argument source is not a live MediaSource") }
+		return wasm.trap_new("mse.ManagedMediaSource_streaming: argument source is not a live MediaSource")
+	}
+	_r := ManagedMediaSource_streaming(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
 	return nil
 }
 
@@ -23985,6 +24258,1123 @@ _t_mse_SourceBuffer_remove :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]
 	}
 	a[0] = {}
 	a[0].i32 = 0
+	return nil
+}
+
+// AudioTrackList_length :: proc(c: ^Call, list: Api_AudioTrackList) -> u32
+@(private = "file")
+_t_mediatracks_AudioTrackList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrackList_length: argument list is not a live AudioTrackList") }
+		return wasm.trap_new("mediatracks.AudioTrackList_length: argument list is not a live AudioTrackList")
+	}
+	_r := AudioTrackList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// AudioTrackList_item :: proc(c: ^Call, list: Api_AudioTrackList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_mediatracks_AudioTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mediatracks.AudioTrackList_item", "result pointer") }
+	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.AudioTrackList_item: argument list is not a live AudioTrackList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := AudioTrackList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// AudioTrackList_getTrackById :: proc(c: ^Call, list: Api_AudioTrackList, id: string) -> u64
+@(private = "file")
+_t_mediatracks_AudioTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.AudioTrackList_getTrackById", "id") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.AudioTrackList_getTrackById: argument id is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.AudioTrackList_getTrackById: argument id is not valid UTF-8")
+	}
+	_p0 := Api_AudioTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrackList_getTrackById: argument list is not a live AudioTrackList") }
+		return wasm.trap_new("mediatracks.AudioTrackList_getTrackById: argument list is not a live AudioTrackList")
+	}
+	_r := AudioTrackList_getTrackById(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// VideoTrackList_length :: proc(c: ^Call, list: Api_VideoTrackList) -> u32
+@(private = "file")
+_t_mediatracks_VideoTrackList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrackList_length: argument list is not a live VideoTrackList") }
+		return wasm.trap_new("mediatracks.VideoTrackList_length: argument list is not a live VideoTrackList")
+	}
+	_r := VideoTrackList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// VideoTrackList_item :: proc(c: ^Call, list: Api_VideoTrackList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_mediatracks_VideoTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mediatracks.VideoTrackList_item", "result pointer") }
+	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.VideoTrackList_item: argument list is not a live VideoTrackList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := VideoTrackList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VideoTrackList_getTrackById :: proc(c: ^Call, list: Api_VideoTrackList, id: string) -> u64
+@(private = "file")
+_t_mediatracks_VideoTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.VideoTrackList_getTrackById", "id") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.VideoTrackList_getTrackById: argument id is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.VideoTrackList_getTrackById: argument id is not valid UTF-8")
+	}
+	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrackList_getTrackById: argument list is not a live VideoTrackList") }
+		return wasm.trap_new("mediatracks.VideoTrackList_getTrackById: argument list is not a live VideoTrackList")
+	}
+	_r := VideoTrackList_getTrackById(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// VideoTrackList_selectedIndex :: proc(c: ^Call, list: Api_VideoTrackList) -> i32
+@(private = "file")
+_t_mediatracks_VideoTrackList_selectedIndex :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrackList_selectedIndex: argument list is not a live VideoTrackList") }
+		return wasm.trap_new("mediatracks.VideoTrackList_selectedIndex: argument list is not a live VideoTrackList")
+	}
+	_r := VideoTrackList_selectedIndex(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// TextTrackList_length :: proc(c: ^Call, list: Api_TextTrackList) -> u32
+@(private = "file")
+_t_mediatracks_TextTrackList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackList_length: argument list is not a live TextTrackList") }
+		return wasm.trap_new("mediatracks.TextTrackList_length: argument list is not a live TextTrackList")
+	}
+	_r := TextTrackList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// TextTrackList_item :: proc(c: ^Call, list: Api_TextTrackList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_mediatracks_TextTrackList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mediatracks.TextTrackList_item", "result pointer") }
+	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrackList_item: argument list is not a live TextTrackList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := TextTrackList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TextTrackList_getTrackById :: proc(c: ^Call, list: Api_TextTrackList, id: string) -> u64
+@(private = "file")
+_t_mediatracks_TextTrackList_getTrackById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackList_getTrackById", "id") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackList_getTrackById: argument id is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.TextTrackList_getTrackById: argument id is not valid UTF-8")
+	}
+	_p0 := Api_TextTrackList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackList_getTrackById: argument list is not a live TextTrackList") }
+		return wasm.trap_new("mediatracks.TextTrackList_getTrackById: argument list is not a live TextTrackList")
+	}
+	_r := TextTrackList_getTrackById(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// AudioTrack_id :: proc(c: ^Call, track: Api_AudioTrack) -> string
+@(private = "file")
+_t_mediatracks_AudioTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_id", "result buffer") }
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_id: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_id: argument track is not a live AudioTrack")
+	}
+	_r := AudioTrack_id(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// AudioTrack_kind :: proc(c: ^Call, track: Api_AudioTrack) -> string
+@(private = "file")
+_t_mediatracks_AudioTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_kind", "result buffer") }
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_kind: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_kind: argument track is not a live AudioTrack")
+	}
+	_r := AudioTrack_kind(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// AudioTrack_label :: proc(c: ^Call, track: Api_AudioTrack) -> string
+@(private = "file")
+_t_mediatracks_AudioTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_label", "result buffer") }
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_label: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_label: argument track is not a live AudioTrack")
+	}
+	_r := AudioTrack_label(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// AudioTrack_language :: proc(c: ^Call, track: Api_AudioTrack) -> string
+@(private = "file")
+_t_mediatracks_AudioTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.AudioTrack_language", "result buffer") }
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_language: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_language: argument track is not a live AudioTrack")
+	}
+	_r := AudioTrack_language(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// AudioTrack_enabled :: proc(c: ^Call, track: Api_AudioTrack) -> bool
+@(private = "file")
+_t_mediatracks_AudioTrack_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_enabled: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_enabled: argument track is not a live AudioTrack")
+	}
+	_r := AudioTrack_enabled(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// AudioTrack_set_enabled :: proc(c: ^Call, track: Api_AudioTrack, value: bool)
+@(private = "file")
+_t_mediatracks_AudioTrack_set_enabled :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_AudioTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_AudioTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.AudioTrack_set_enabled: argument track is not a live AudioTrack") }
+		return wasm.trap_new("mediatracks.AudioTrack_set_enabled: argument track is not a live AudioTrack")
+	}
+	_p1 := a[1].i32 != 0
+	AudioTrack_set_enabled(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// VideoTrack_id :: proc(c: ^Call, track: Api_VideoTrack) -> string
+@(private = "file")
+_t_mediatracks_VideoTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_id", "result buffer") }
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_id: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_id: argument track is not a live VideoTrack")
+	}
+	_r := VideoTrack_id(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// VideoTrack_kind :: proc(c: ^Call, track: Api_VideoTrack) -> string
+@(private = "file")
+_t_mediatracks_VideoTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_kind", "result buffer") }
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_kind: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_kind: argument track is not a live VideoTrack")
+	}
+	_r := VideoTrack_kind(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// VideoTrack_label :: proc(c: ^Call, track: Api_VideoTrack) -> string
+@(private = "file")
+_t_mediatracks_VideoTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_label", "result buffer") }
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_label: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_label: argument track is not a live VideoTrack")
+	}
+	_r := VideoTrack_label(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// VideoTrack_language :: proc(c: ^Call, track: Api_VideoTrack) -> string
+@(private = "file")
+_t_mediatracks_VideoTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VideoTrack_language", "result buffer") }
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_language: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_language: argument track is not a live VideoTrack")
+	}
+	_r := VideoTrack_language(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// VideoTrack_selected :: proc(c: ^Call, track: Api_VideoTrack) -> bool
+@(private = "file")
+_t_mediatracks_VideoTrack_selected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_selected: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_selected: argument track is not a live VideoTrack")
+	}
+	_r := VideoTrack_selected(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// VideoTrack_set_selected :: proc(c: ^Call, track: Api_VideoTrack, value: bool)
+@(private = "file")
+_t_mediatracks_VideoTrack_set_selected :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_VideoTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_VideoTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VideoTrack_set_selected: argument track is not a live VideoTrack") }
+		return wasm.trap_new("mediatracks.VideoTrack_set_selected: argument track is not a live VideoTrack")
+	}
+	_p1 := a[1].i32 != 0
+	VideoTrack_set_selected(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrack_kind :: proc(c: ^Call, track: Api_TextTrack) -> string
+@(private = "file")
+_t_mediatracks_TextTrack_kind :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_kind", "result buffer") }
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_kind: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_kind: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_kind(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrack_label :: proc(c: ^Call, track: Api_TextTrack) -> string
+@(private = "file")
+_t_mediatracks_TextTrack_label :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_label", "result buffer") }
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_label: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_label: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_label(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrack_language :: proc(c: ^Call, track: Api_TextTrack) -> string
+@(private = "file")
+_t_mediatracks_TextTrack_language :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_language", "result buffer") }
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_language: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_language: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_language(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrack_id :: proc(c: ^Call, track: Api_TextTrack) -> string
+@(private = "file")
+_t_mediatracks_TextTrack_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_id", "result buffer") }
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_id: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_id: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_id(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrack_mode :: proc(c: ^Call, track: Api_TextTrack) -> string
+@(private = "file")
+_t_mediatracks_TextTrack_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrack_mode", "result buffer") }
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_mode: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_mode: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_mode(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrack_set_mode :: proc(c: ^Call, track: Api_TextTrack, value: string)
+@(private = "file")
+_t_mediatracks_TextTrack_set_mode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrack_set_mode", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrack_set_mode: argument value is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.TextTrack_set_mode: argument value is not valid UTF-8")
+	}
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_set_mode: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_set_mode: argument track is not a live TextTrack")
+	}
+	TextTrack_set_mode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrack_cues :: proc(c: ^Call, track: Api_TextTrack) -> u64
+@(private = "file")
+_t_mediatracks_TextTrack_cues :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_cues: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_cues: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_cues(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// TextTrack_activeCues :: proc(c: ^Call, track: Api_TextTrack) -> u64
+@(private = "file")
+_t_mediatracks_TextTrack_activeCues :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrack_activeCues: argument track is not a live TextTrack") }
+		return wasm.trap_new("mediatracks.TextTrack_activeCues: argument track is not a live TextTrack")
+	}
+	_r := TextTrack_activeCues(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// TextTrack_addCue :: proc(c: ^Call, track: Api_TextTrack, cue: Api_TextTrackCue) -> Api_Error
+@(private = "file")
+_t_mediatracks_TextTrack_addCue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_addCue: argument track is not a live TextTrack")
+	}
+	_p1 := Api_TextTrackCue{handle = u64(a[1].i64)}
+	_p1.data = lookup_TextTrackCue(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_addCue: argument cue is not a live TextTrackCue")
+	}
+	_err := TextTrack_addCue(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TextTrack_removeCue :: proc(c: ^Call, track: Api_TextTrack, cue: Api_TextTrackCue) -> Api_Error
+@(private = "file")
+_t_mediatracks_TextTrack_removeCue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrack{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrack(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_removeCue: argument track is not a live TextTrack")
+	}
+	_p1 := Api_TextTrackCue{handle = u64(a[1].i64)}
+	_p1.data = lookup_TextTrackCue(&c, _p1.handle)
+	if _p1.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrack_removeCue: argument cue is not a live TextTrackCue")
+	}
+	_err := TextTrack_removeCue(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TextTrackCue_id :: proc(c: ^Call, cue: Api_TextTrackCue) -> string
+@(private = "file")
+_t_mediatracks_TextTrackCue_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.TextTrackCue_id", "result buffer") }
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_id: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_id: argument cue is not a live TextTrackCue")
+	}
+	_r := TextTrackCue_id(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// TextTrackCue_set_id :: proc(c: ^Call, cue: Api_TextTrackCue, value: string)
+@(private = "file")
+_t_mediatracks_TextTrackCue_set_id :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackCue_set_id", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackCue_set_id: argument value is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.TextTrackCue_set_id: argument value is not valid UTF-8")
+	}
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_set_id: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_set_id: argument cue is not a live TextTrackCue")
+	}
+	TextTrackCue_set_id(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrackCue_startTime :: proc(c: ^Call, cue: Api_TextTrackCue) -> f64
+@(private = "file")
+_t_mediatracks_TextTrackCue_startTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_startTime: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_startTime: argument cue is not a live TextTrackCue")
+	}
+	_r := TextTrackCue_startTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextTrackCue_set_startTime :: proc(c: ^Call, cue: Api_TextTrackCue, value: f64)
+@(private = "file")
+_t_mediatracks_TextTrackCue_set_startTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_set_startTime: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_set_startTime: argument cue is not a live TextTrackCue")
+	}
+	_p1 := a[1].f64
+	TextTrackCue_set_startTime(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrackCue_endTime :: proc(c: ^Call, cue: Api_TextTrackCue) -> f64
+@(private = "file")
+_t_mediatracks_TextTrackCue_endTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_endTime: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_endTime: argument cue is not a live TextTrackCue")
+	}
+	_r := TextTrackCue_endTime(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].f64 = _r
+	return nil
+}
+
+// TextTrackCue_set_endTime :: proc(c: ^Call, cue: Api_TextTrackCue, value: f64)
+@(private = "file")
+_t_mediatracks_TextTrackCue_set_endTime :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_set_endTime: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_set_endTime: argument cue is not a live TextTrackCue")
+	}
+	_p1 := a[1].f64
+	TextTrackCue_set_endTime(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrackCue_pauseOnExit :: proc(c: ^Call, cue: Api_TextTrackCue) -> bool
+@(private = "file")
+_t_mediatracks_TextTrackCue_pauseOnExit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_pauseOnExit: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_pauseOnExit: argument cue is not a live TextTrackCue")
+	}
+	_r := TextTrackCue_pauseOnExit(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// TextTrackCue_set_pauseOnExit :: proc(c: ^Call, cue: Api_TextTrackCue, value: bool)
+@(private = "file")
+_t_mediatracks_TextTrackCue_set_pauseOnExit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_set_pauseOnExit: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_set_pauseOnExit: argument cue is not a live TextTrackCue")
+	}
+	_p1 := a[1].i32 != 0
+	TextTrackCue_set_pauseOnExit(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrackCue_track :: proc(c: ^Call, cue: Api_TextTrackCue) -> u64
+@(private = "file")
+_t_mediatracks_TextTrackCue_track :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCue_track: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.TextTrackCue_track: argument cue is not a live TextTrackCue")
+	}
+	_r := TextTrackCue_track(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// VTTCue_create :: proc(c: ^Call, start: f64, end: f64, text: string) -> (u64, Api_Error)
+@(private = "file")
+_t_mediatracks_VTTCue_create :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n2 := wasm.addr(&f, a[3])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[2]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "mediatracks.VTTCue_create", "text") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[4]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mediatracks.VTTCue_create", "result pointer") }
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "mediatracks.VTTCue_create: argument text is not valid UTF-8")
+	}
+	_p0 := a[0].f64
+	_p1 := a[1].f64
+	_r, _err := VTTCue_create(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// VTTCue_text :: proc(c: ^Call, cue: Api_TextTrackCue) -> string
+@(private = "file")
+_t_mediatracks_VTTCue_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "mediatracks.VTTCue_text", "result buffer") }
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VTTCue_text: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.VTTCue_text: argument cue is not a live TextTrackCue")
+	}
+	_r := VTTCue_text(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// VTTCue_set_text :: proc(c: ^Call, cue: Api_TextTrackCue, value: string)
+@(private = "file")
+_t_mediatracks_VTTCue_set_text :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.VTTCue_set_text", "value") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.VTTCue_set_text: argument value is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.VTTCue_set_text: argument value is not valid UTF-8")
+	}
+	_p0 := Api_TextTrackCue{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCue(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.VTTCue_set_text: argument cue is not a live TextTrackCue") }
+		return wasm.trap_new("mediatracks.VTTCue_set_text: argument cue is not a live TextTrackCue")
+	}
+	VTTCue_set_text(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// TextTrackCueList_length :: proc(c: ^Call, list: Api_TextTrackCueList) -> u32
+@(private = "file")
+_t_mediatracks_TextTrackCueList_length :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCueList_length: argument list is not a live TextTrackCueList") }
+		return wasm.trap_new("mediatracks.TextTrackCueList_length: argument list is not a live TextTrackCueList")
+	}
+	_r := TextTrackCueList_length(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// TextTrackCueList_item :: proc(c: ^Call, list: Api_TextTrackCueList, index: u32) -> (u64, Api_Error)
+@(private = "file")
+_t_mediatracks_TextTrackCueList_item :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "mediatracks.TextTrackCueList_item", "result pointer") }
+	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "mediatracks.TextTrackCueList_item: argument list is not a live TextTrackCueList")
+	}
+	_p1 := u32(a[1].i32)
+	_r, _err := TextTrackCueList_item(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// TextTrackCueList_getCueById :: proc(c: ^Call, list: Api_TextTrackCueList, id: string) -> u64
+@(private = "file")
+_t_mediatracks_TextTrackCueList_getCueById :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "mediatracks.TextTrackCueList_getCueById", "id") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "mediatracks.TextTrackCueList_getCueById: argument id is not valid UTF-8") }
+		return wasm.trap_new("mediatracks.TextTrackCueList_getCueById: argument id is not valid UTF-8")
+	}
+	_p0 := Api_TextTrackCueList{handle = u64(a[0].i64)}
+	_p0.data = lookup_TextTrackCueList(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.TextTrackCueList_getCueById: argument list is not a live TextTrackCueList") }
+		return wasm.trap_new("mediatracks.TextTrackCueList_getCueById: argument list is not a live TextTrackCueList")
+	}
+	_r := TextTrackCueList_getCueById(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTrackElement_track :: proc(c: ^Call, track: Api_HTMLTrackElement) -> u64
+@(private = "file")
+_t_mediatracks_HTMLTrackElement_track :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLTrackElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLTrackElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.HTMLTrackElement_track: argument track is not a live HTMLTrackElement") }
+		return wasm.trap_new("mediatracks.HTMLTrackElement_track: argument track is not a live HTMLTrackElement")
+	}
+	_r := HTMLTrackElement_track(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// HTMLTrackElement_readyState :: proc(c: ^Call, track: Api_HTMLTrackElement) -> i32
+@(private = "file")
+_t_mediatracks_HTMLTrackElement_readyState :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_HTMLTrackElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLTrackElement(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "mediatracks.HTMLTrackElement_readyState: argument track is not a live HTMLTrackElement") }
+		return wasm.trap_new("mediatracks.HTMLTrackElement_readyState: argument track is not a live HTMLTrackElement")
+	}
+	_r := HTMLTrackElement_readyState(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
 	return nil
 }
 
@@ -28265,7 +29655,16 @@ api_imports := [?]wasm.Import{
 	{module = "htmlmedia", name = "HTMLVideoElement_videoWidth", fn = _t_htmlmedia_HTMLVideoElement_videoWidth, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLVideoElement_videoHeight", fn = _t_htmlmedia_HTMLVideoElement_videoHeight, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLVideoElement_playbackQuality", fn = _t_htmlmedia_HTMLVideoElement_playbackQuality, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLVideoElement_requestVideoFrameCallback", fn = _t_htmlmedia_HTMLVideoElement_requestVideoFrameCallback, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLVideoElement_cancelVideoFrameCallback", fn = _t_htmlmedia_HTMLVideoElement_cancelVideoFrameCallback, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{}},
+	{module = "htmlmedia", name = "HTMLVideoElement_videoFrameMetadata", fn = _t_htmlmedia_HTMLVideoElement_videoFrameMetadata, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_audioTracks", fn = _t_htmlmedia_HTMLMediaElement_audioTracks, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_videoTracks", fn = _t_htmlmedia_HTMLMediaElement_videoTracks, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_textTracks", fn = _t_htmlmedia_HTMLMediaElement_textTracks, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "htmlmedia", name = "HTMLMediaElement_addTextTrack", fn = _t_htmlmedia_HTMLMediaElement_addTextTrack, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "MediaSource_create", fn = _t_mse_MediaSource_create, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "ManagedMediaSource_create", fn = _t_mse_ManagedMediaSource_create, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mse", name = "ManagedMediaSource_streaming", fn = _t_mse_ManagedMediaSource_streaming, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "MediaSource_registerObjectURL", fn = _t_mse_MediaSource_registerObjectURL, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "MediaSource_handle", fn = _t_mse_MediaSource_handle, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "MediaSourceHandle_take", fn = _t_mse_MediaSourceHandle_take, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
@@ -28298,6 +29697,55 @@ api_imports := [?]wasm.Import{
 	{module = "mse", name = "SourceBuffer_abort", fn = _t_mse_SourceBuffer_abort, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "SourceBuffer_changeType", fn = _t_mse_SourceBuffer_changeType, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "mse", name = "SourceBuffer_remove", fn = _t_mse_SourceBuffer_remove, realms = 3, params = []wasm.Val_Kind{.I64, .F64, .F64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "AudioTrackList_length", fn = _t_mediatracks_AudioTrackList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "AudioTrackList_item", fn = _t_mediatracks_AudioTrackList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "AudioTrackList_getTrackById", fn = _t_mediatracks_AudioTrackList_getTrackById, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrackList_length", fn = _t_mediatracks_VideoTrackList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "VideoTrackList_item", fn = _t_mediatracks_VideoTrackList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "VideoTrackList_getTrackById", fn = _t_mediatracks_VideoTrackList_getTrackById, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrackList_selectedIndex", fn = _t_mediatracks_VideoTrackList_selectedIndex, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackList_length", fn = _t_mediatracks_TextTrackList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackList_item", fn = _t_mediatracks_TextTrackList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackList_getTrackById", fn = _t_mediatracks_TextTrackList_getTrackById, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "AudioTrack_id", fn = _t_mediatracks_AudioTrack_id, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "AudioTrack_kind", fn = _t_mediatracks_AudioTrack_kind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "AudioTrack_label", fn = _t_mediatracks_AudioTrack_label, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "AudioTrack_language", fn = _t_mediatracks_AudioTrack_language, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "AudioTrack_enabled", fn = _t_mediatracks_AudioTrack_enabled, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "AudioTrack_set_enabled", fn = _t_mediatracks_AudioTrack_set_enabled, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "VideoTrack_id", fn = _t_mediatracks_VideoTrack_id, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrack_kind", fn = _t_mediatracks_VideoTrack_kind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrack_label", fn = _t_mediatracks_VideoTrack_label, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrack_language", fn = _t_mediatracks_VideoTrack_language, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VideoTrack_selected", fn = _t_mediatracks_VideoTrack_selected, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "VideoTrack_set_selected", fn = _t_mediatracks_VideoTrack_set_selected, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrack_kind", fn = _t_mediatracks_TextTrack_kind, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_label", fn = _t_mediatracks_TextTrack_label, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_language", fn = _t_mediatracks_TextTrack_language, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_id", fn = _t_mediatracks_TextTrack_id, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_mode", fn = _t_mediatracks_TextTrack_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_set_mode", fn = _t_mediatracks_TextTrack_set_mode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrack_cues", fn = _t_mediatracks_TextTrack_cues, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_activeCues", fn = _t_mediatracks_TextTrack_activeCues, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrack_addCue", fn = _t_mediatracks_TextTrack_addCue, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrack_removeCue", fn = _t_mediatracks_TextTrack_removeCue, realms = 1, params = []wasm.Val_Kind{.I64, .I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackCue_id", fn = _t_mediatracks_TextTrackCue_id, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "TextTrackCue_set_id", fn = _t_mediatracks_TextTrackCue_set_id, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrackCue_startTime", fn = _t_mediatracks_TextTrackCue_startTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mediatracks", name = "TextTrackCue_set_startTime", fn = _t_mediatracks_TextTrackCue_set_startTime, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrackCue_endTime", fn = _t_mediatracks_TextTrackCue_endTime, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.F64}},
+	{module = "mediatracks", name = "TextTrackCue_set_endTime", fn = _t_mediatracks_TextTrackCue_set_endTime, realms = 1, params = []wasm.Val_Kind{.I64, .F64}, results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrackCue_pauseOnExit", fn = _t_mediatracks_TextTrackCue_pauseOnExit, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackCue_set_pauseOnExit", fn = _t_mediatracks_TextTrackCue_set_pauseOnExit, realms = 1, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrackCue_track", fn = _t_mediatracks_TextTrackCue_track, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VTTCue_create", fn = _t_mediatracks_VTTCue_create, realms = 1, params = []wasm.Val_Kind{.F64, .F64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.F64, .F64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "VTTCue_text", fn = _t_mediatracks_VTTCue_text, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "VTTCue_set_text", fn = _t_mediatracks_VTTCue_set_text, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "mediatracks", name = "TextTrackCueList_length", fn = _t_mediatracks_TextTrackCueList_length, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackCueList_item", fn = _t_mediatracks_TextTrackCueList_item, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "mediatracks", name = "TextTrackCueList_getCueById", fn = _t_mediatracks_TextTrackCueList_getCueById, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "HTMLTrackElement_track", fn = _t_mediatracks_HTMLTrackElement_track, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "mediatracks", name = "HTMLTrackElement_readyState", fn = _t_mediatracks_HTMLTrackElement_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigation", name = "Navigation_entries", fn = _t_navigation_Navigation_entries, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigation", name = "Navigation_serial", fn = _t_navigation_Navigation_serial, realms = 1, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "navigation", name = "Navigation_getState", fn = _t_navigation_Navigation_getState, realms = 1, params = []wasm.Val_Kind{.I64, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

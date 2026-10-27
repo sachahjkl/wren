@@ -22,6 +22,8 @@ foreign import _m_mse "mse"
 @(private = "file", default_calling_convention = "contextless")
 foreign _m_mse {
 	@(link_name = "MediaSource_create") _MediaSource_create :: proc(_ret: ^MediaSource) -> Error ---
+	@(link_name = "ManagedMediaSource_create") _ManagedMediaSource_create :: proc(_ret: ^MediaSource) -> Error ---
+	@(link_name = "ManagedMediaSource_streaming") _ManagedMediaSource_streaming :: proc(source: MediaSource) -> i32 ---
 	@(link_name = "MediaSource_registerObjectURL") _MediaSource_registerObjectURL :: proc(source: MediaSource, url: [^]u8, url_len: u32) -> Error ---
 	@(link_name = "MediaSource_handle") _MediaSource_handle :: proc(source: MediaSource, _ret: ^MediaSourceHandle) -> Error ---
 	@(link_name = "MediaSourceHandle_take") _MediaSourceHandle_take :: proc(h: MediaSourceHandle, _ret: ^u64) -> Error ---
@@ -60,6 +62,17 @@ foreign _m_mse {
 MediaSource_create :: proc "contextless" () -> (result: MediaSource, err: Error) {
 	err = _MediaSource_create(&result)
 	return
+}
+
+// new ManagedMediaSource(): a MediaSource whose user agent says when to stream (startstreaming / endstreaming).
+ManagedMediaSource_create :: proc "contextless" () -> (result: MediaSource, err: Error) {
+	err = _ManagedMediaSource_create(&result)
+	return
+}
+
+// managedMediaSource.streaming: whether the user agent currently wants the page to append data.
+ManagedMediaSource_streaming :: proc "contextless" (source: MediaSource) -> bool {
+	return _ManagedMediaSource_streaming(source) != 0
 }
 
 // URL.createObjectURL(mediaSource): the URL (of the page's origin) is registered, so that a media element whose src is

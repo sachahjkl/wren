@@ -523,7 +523,6 @@ shell_run_action :: proc(app: ^App, a: Shell_Action) {
 ////////////////////////////////
 // Snapshots of pages
 
-@(private = "file")
 shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	for &s in chrome_frames.snaps { if s.tab == tab { return &s } }
 	return nil
