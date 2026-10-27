@@ -624,6 +624,19 @@ pub unsafe extern "C" fn wn_ws_shutdown(c: *mut Client, id: u64, code: u16, reas
     ws_cmd(c, id, ws::Cmd::Shutdown { code, reason: bytes(reason, len).to_vec() })
 }
 
+/// The sizes of the structures shared with package net (its unit test compares them with its own).
+#[no_mangle]
+pub extern "C" fn wn_net_abi(out: *mut [u64; 4]) {
+    if out.is_null() { return; }
+    let sizes = [
+        std::mem::size_of::<WnConfig>() as u64,
+        std::mem::size_of::<WnRequest>() as u64,
+        std::mem::size_of::<WnEvent>() as u64,
+        std::mem::size_of::<WnWsOpen>() as u64,
+    ];
+    unsafe { *out = sizes; }
+}
+
 /// ms since `start` (-1 for none).
 pub(crate) fn since(start: Instant, t: Option<Instant>) -> f32 {
     match t {
