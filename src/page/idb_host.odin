@@ -62,7 +62,7 @@ IDB_OP_TASK       :: 10
 IDB_OP_EVENT      :: 11
 IDB_OP_CLEANUP    :: 12
 IDB_OP_LIMITS     :: 13
-IDB_OP_PRELUDE    :: 14
+IDB_OP_PRELUDE    :: 14   // retired: the object model is native (runtime/web_idb_prelude.c); no source is served
 IDB_OP_ESTIMATE   :: 15   // bucket -> usage, quota
 IDB_OP_PERSIST    :: 16   // bucket, request -> persisted
 IDB_OP_BUCKETS    :: 17   // 0 open (name, persisted, durability, expires), 1 names, 2 delete (name), 3 set expires (name, ms)
@@ -286,16 +286,14 @@ idb_clear_origin :: proc(sm: ^Storage_Manager, origin: string) {
 	}
 }
 
-// IndexedDB's JavaScript, run by a realm when a script first needs it (runtime/web_idb.c). Not in the engine's image: a realm that
-// never uses IndexedDB does not carry it.
-IDB_PRELUDE_SOURCE :: #load("../../native/js/lazy/idb.js", string)
+// IndexedDB's object model is native now (runtime/web_idb_prelude.c, built by the realm on first use). The browser no
+// longer serves a JavaScript source: IDB_OP_PRELUDE is gone.
 
 @(private)
 idb_pick :: proc(a, b: ^idb.Client) -> ^idb.Client { return a if a != nil else b }
 
 Idb_call :: proc(c: ^Call, op: i32, args: []u8) -> ([]u8, Api_Error) {
 	p := c.page
-	if op & ~i32(IDB_OP_AGAIN) == IDB_OP_PRELUDE { return transmute([]u8)string(IDB_PRELUDE_SOURCE), .None }
 	ip, err := idb_page_of(p)
 	if ip == nil { return nil, err }
 	cl := ip.client
