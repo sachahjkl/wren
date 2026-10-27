@@ -67,7 +67,7 @@ Browser_Window :: struct {
 // the window (or read window_own(app), the active window's, at the frame's entry points). No global of the chrome is a
 // window's (tools\lint_globals.ps1: a new one fails); a window starts with this zeroed.
 Window_Own :: struct {
-	security_chip_width: f32,                 // chrome.odin: the security chip's width at the last layout
+	security_chip_width: f32,                 // chrome.odin: the security chip's width in the address bar (measured while building)
 	status_left_width:   f32,                 // status_bar.odin: the left part's width in the frame before
 	fullscreen:          Window_Fullscreen,   // fullscreen_shell.odin: a page's element full screen
 	full:                Window_Full,         // window_chrome.odin: the bars shown over the page in the window's full screen

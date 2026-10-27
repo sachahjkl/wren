@@ -171,10 +171,11 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	wnd := active_window(app)
 	em := ui.font_size()
 	// One bar: the field fills it, the security chip sits inside on its left (the field's text starts after it, and its
-	// focus ring goes around the whole bar). The chip's width is last frame's: it changes only with its label.
+	// focus ring goes around the whole bar). The chip's width is measured from its parts now (security_chip_measure).
 	h := ui.dense(em * 2)
 	inset := max(math.round(ui.scale()), 1)   // the field's border: the chip is the bar's left segment, inside it
-	chip_w := security_of(t).label != "" ? window_own(app).security_chip_width : 0
+	chip_w := security_chip_measure(app, t)
+	window_own(app).security_chip_width = chip_w
 	res: ui.Edit_Result
 	ui.next({width = ui.fill(), height = ui.px(h)})
 	if ui.row(.Center, {}, "###address_bar") {
@@ -290,8 +291,8 @@ tab_move_current :: proc(app: ^App, delta: int) {
 ////////////////////////////////
 // Security chip and page information
 
-// (The width of the security chip at the last layout, which the address field leaves it, is the window's:
-// Window_Own.security_chip_width.)
+// (The width of the security chip, which the address field leaves it, is the window's: Window_Own.security_chip_width,
+// set by address_bar from security_chip_measure.)
 
 // `inset` >= 0: placed inside the address field, `inset` from its top-left corner, `height` tall.
 Chip_Segment :: struct { color, divider, under: draw.Color, radius: f32, state: string }
@@ -328,7 +329,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	flags := ui.Box_Flags{.Clickable, .Draw_Background, .Draw_Border, .Draw_Hot_Effects}
 	if embedded {
 		// the bar's left segment: no frame of its own, its tint is drawn by chip_segment_draw (left corners only)
-		next.fixed_x, next.fixed_y, next.height = inset, inset, ui.px(height)
+		next.fixed_x, next.fixed_y, next.height, next.width = inset, inset, ui.px(height), ui.px(own.security_chip_width)
 		flags = {.Clickable}
 		base := sec.tone != .Weak ? var_tone : ui.color("text")
 		a: f32 = sec.tone != .Weak ? 0.14 : 0
@@ -356,7 +357,6 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 	b: ^ui.Box
 	if ui.row(.Center, flags, "###sec_chip") {
 		b = ui.parent_box()
-		own.security_chip_width = b.rect.max.x - b.rect.min.x
 		sig := ui.signal(b)
 		// under the pointer / pressed: the theme's step over the segment's tint, as on the chrome's other buttons (the
 		// segment is drawn after the build: this frame's state)
@@ -367,7 +367,7 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 			chip_icon.color = sec.tone != .Weak ? var_tone : ui.color("text")
 			// the icon box is exactly the glyph's ink, centred on the label's capitals (chip_icon_draw); the label has
 			// no side padding: the gap between them is the spacer alone
-			ink := chip_icon_ink(app, ui.font_size())
+			ink := chip_icon_ink(app, ui.font_size(), sec.glyph)
 			ui.next({width = ui.px(ink), height = ui.pct(1)})
 			ui.custom("###sec_icon", chip_icon_draw, app)
 			ui.spacer(ui.px(em * 0.4))
@@ -389,11 +389,21 @@ security_chip :: proc(app: ^App, t: ^Tab, inset: f32 = -1, height: f32 = 0, radi
 
 // Width of the ink of the chip's icon glyph at this text size (physical pixels).
 @(private = "file")
-chip_icon_ink :: proc(app: ^App, size: f32) -> f32 {
-	chip_icon := &window_own(app).chip_icon
-	if chip_icon.glyph == "" { return 0 }
-	g := font.glyph(&app.fonts, app.icons, size, rune(chip_icon.glyph[0]))
+chip_icon_ink :: proc(app: ^App, size: f32, glyph: string) -> f32 {
+	if glyph == "" { return 0 }
+	g := font.glyph(&app.fonts, app.icons, size, rune(glyph[0]))
 	return g.size.x > 0 ? g.size.x : g.advance
+}
+
+// The chip's width worked out from its glyph and label while building (the same parts as security_chip), not read back
+// from the last layout: on the frame a chip appears (about:config opened from a page without one) the field's text would
+// start at 0, under the chip, and with nothing else to draw that frame stays on screen.
+@(private = "file")
+security_chip_measure :: proc(app: ^App, t: ^Tab) -> f32 {
+	sec := security_of(t)
+	if sec.label == "" { return 0 }
+	em := ui.font_size()
+	return em * (0.5 + 0.4 + 0.65) + chip_icon_ink(app, em, sec.glyph) + ui.text_width(ui.top_style().font, em, sec.label)
 }
 
 // The icon font's metrics are not the text font's: centring both boxes by their own metrics leaves the glyph off the
