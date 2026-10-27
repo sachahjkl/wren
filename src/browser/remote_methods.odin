@@ -251,6 +251,10 @@ m_window_get :: proc(app: ^App) -> Reply {
 	j_str(&b, "windowState", window_state(app))
 	j_num(&b, "dpiScale", f64(wnd.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
 	j_bool(&b, "visible", bool(win.IsWindowVisible(wnd.win.hwnd)))
+	// the page area of its last frame and what was prepared for it (page_frame.odin)
+	j_rect(&b, "pageRect", wnd.page_rect)
+	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
+	j_str(&b, "pagePrep", PREP_NAMES[wnd.own.page_prep.state])
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -397,6 +401,16 @@ m_windows :: proc(app: ^App) -> Reply {
 		j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top)); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
 		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
 		j_num(&b, "dpiScale", f64(w.win.dpi_scale))
+		co := platform.client_origin(w.win)
+		j_int(&b, "clientLeft", i64(co[0])); j_int(&b, "clientTop", i64(co[1]))   // (where its client area is on the screen)
+		// a tab carried over its tabs (tab_drag.odin): where it would go and where the mark is (client pixels, along the tabs)
+		if w.dropping {
+			z := w.zone
+			j_key(&b, "drop"); j_begin(&b)
+			j_int(&b, "index", i64(w.drop.index)); j_int(&b, "group", i64(w.drop.group)); j_bool(&b, "pinned", w.drop.pinned)
+			j_num(&b, "mark", f64((z.vertical ? z.rect.min.y : z.rect.min.x) + w.drop.mark - z.offset))
+			j_end(&b)
+		}
 		// its developer tools (devtools.odin: each window has its own)
 		d := &w.own.devtools
 		j_key(&b, "devtools"); j_begin(&b)
@@ -417,6 +431,8 @@ m_windows :: proc(app: ^App) -> Reply {
 @(private = "file")
 m_window_activate :: proc(app: ^App) -> Reply {
 	window_focus(app, app.active)
+	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top
+	win.SetWindowPos(app.active.win.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE | win.SWP_NOACTIVATE)
 	return done()
 }
 
@@ -1043,6 +1059,13 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 			append(&op.via, space == "window" ? p : active_window(app).page_rect.min + p * s)
 		}
 	}
+	// "hold": the button stays down at the end (a picture of the drag on its way: a tab carried over another window's bar);
+	// "resume": a drag held before goes on from here (no press), and ends as asked
+	op.hold, _ = remote.param_bool(c.params, "hold")
+	if resume, _ := remote.param_bool(c.params, "resume"); resume {
+		if op.button not_in inject_held { op_finish(op, fail(remote.ERR_FAILED, "no drag is held (drag --hold first)")); return Reply{deferred = true} }
+		op.stage, op.idx = 1, 0
+	}
 	op.until = the_remote.frame_no
 	request_frames(app, 3)
 	return Reply{deferred = true}
@@ -1103,7 +1126,7 @@ drag_step :: proc(app: ^App, op: ^Remote_Op) {
 		if op.idx >= op.count * (len(pts) - 1) { op.stage = 2 }
 		op.until = r.frame_no + 1
 	case 2:
-		inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button})
+		if !op.hold { inject(app, {kind = .Mouse_Release, pos = op.to, button = op.button}) }
 		op.stage = 3
 		op.until = r.frame_no + u64(max(r.cfg.settle_frames, 1))
 	case:

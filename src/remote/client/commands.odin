@@ -294,7 +294,7 @@ cmd_drag :: proc(ctx: ^Context, args: []string) -> int {
 		if strings.builder_len(via) > 0 { strings.write_byte(&via, ',') }
 		fmt.sbprintf(&via, "[%v,%v]", v[0], v[1])
 	}
-	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page")))
+	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s,"hold":%v,"resume":%v}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page"), flag(&ctx.o, "hold"), flag(&ctx.o, "resume")))
 }
 
 // scroll <notches> [x,y]: the wheel; positive goes down. Without a point, the middle of the page area.

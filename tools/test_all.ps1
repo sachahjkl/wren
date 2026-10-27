@@ -249,6 +249,10 @@ Step 'a window''s own state of the chrome end to end (tools\window_state_e2e.ps1
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_state_e2e.ps1
 } -Weight 10
+Step 'a tab dragged onto another window''s tabs (tools\tab_drag_windows_e2e.ps1: the insertion mark among pinned tabs and groups, in a row and in the sidebar, where the release puts the tab; injected pointer, no window shown)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\tab_drag_windows_e2e.ps1
+} -Weight 10
 Step 'windows on monitors of different scales (tools\window_dpi_e2e.ps1: WM_DPICHANGED for one window of two: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_dpi_e2e.ps1

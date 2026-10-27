@@ -42,7 +42,7 @@ Context :: struct {
 	"shot", "name", "out", "tolerance", "code", "button", "steps", "since", "dock", "state", "pos", "max-percent", "eval", "repeat", "speed",
 	"panel", "limit", "settle-ms", "html", "pref", "cwd", "idle-ms", "quiet-ms", "max-cpu", "count", "interval", "keep", "url", "at", "text", "win-id", "to", "index"}
 @(private) BOOL_OPTIONS := [?]string{"json", "await", "tab", "window", "clear", "right", "double", "visible", "bytes", "help", "quiet", "override",
-	"headless", "middle", "all", "timing", "reset-latency", "reset-frames", "leave", "front", "close"}
+	"headless", "middle", "all", "timing", "reset-latency", "reset-frames", "leave", "front", "close", "hold", "resume"}
 
 out :: proc(s: string) { desktop.console_write(s) }
 outln :: proc(s: string) { desktop.console_write(strings.concatenate({s, "\n"}, context.temp_allocator)) }
