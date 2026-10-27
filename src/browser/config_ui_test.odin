@@ -92,6 +92,34 @@ config_model_groups_searches_and_filters :: proc(t: ^testing.T) {
 	testing.expect(t, v.ids[1] != before)
 }
 
+// The tabs' preferences (browser.tabs.*: the row of tabs, the sidebar, pinned tabs, groups, sound) are the Tabs category of
+// about:config, titled without their "browser.tabs" ("Sidebar width"), and nothing else is in it.
+@(test)
+tab_preferences_make_the_tabs_category :: proc(t: ^testing.T) {
+	p := config.prefs_make()
+	defer config.prefs_destroy(&p)
+	register_all_prefs(&p)
+	v: Config_View
+	defer config_view_destroy(&v)
+	v.category = strings.clone("tabs")
+	config_model(&v, &p, "", false)
+	n := 0
+	for e in p.entries { if strings.has_prefix(e.def.name, "browser.tabs.") { n += 1; testing.expect_value(t, e.def.category, "tabs") } }
+	testing.expect(t, n >= 25)
+	rows := 0
+	for r in v.model { if r.kind == .Pref { rows += 1 } }
+	testing.expect_value(t, rows, n)
+	found := false
+	for r, i in v.model {
+		testing.expect(t, strings.has_prefix(r.name, "browser.tabs."), r.name)
+		if r.name == "browser.tabs.sidebar_width" { found = true; testing.expect_value(t, v.labels[i], "Sidebar width") }
+	}
+	testing.expect(t, found)
+	cat := false
+	for c in v.cats { if c.name == "tabs" { cat = true; testing.expect_value(t, config.category_title(c.name), "Tabs") } }
+	testing.expect(t, cat)
+}
+
 // Every preference the browser ships gets a title, and no two of a category read the same (two that differ by their unit
 // only keep it: "max body KB", "max body MB").
 @(test)
