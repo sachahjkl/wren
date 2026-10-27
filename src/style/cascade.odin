@@ -804,6 +804,14 @@ pass_make :: proc(e: ^Engine, s: ^Styled, doc: ^dom.Document, state: State) -> ^
 		p.fs_chain = make(map[base.Handle]struct{})
 		for cur := dom.parent_or_host(doc, state.fullscreen); cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) { p.fs_chain[cur] = {} }
 	}
+	// the rest of the top layer (showing popovers: engine_set_top_layer) likewise
+	for el in e.top_layer {
+		if dom.get(doc, el) == nil { continue }
+		if p.fs_chain == nil { p.fs_chain = make(map[base.Handle]struct{}) }
+		for cur := dom.parent_or_host(doc, el); cur != base.NIL_HANDLE; cur = dom.parent_or_host(doc, cur) { p.fs_chain[cur] = {} }
+	}
+	// a popover nested in another one stays in the top layer itself (its own z-index, its own box)
+	for el in e.top_layer { delete_key(&p.fs_chain, el) }
 	p.touched = make([dynamic]Prop)
 	for i in 0 ..< 4 { p.lists[i] = make([dynamic]Entry) }
 	return p

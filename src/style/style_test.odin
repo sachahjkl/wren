@@ -444,6 +444,24 @@ fullscreen_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
 }
 
 @(test)
+popover_top_layer_frees_the_ancestors :: proc(t: ^testing.T) {
+	f := load(`<style>
+		#a { transform: translateX(10px); z-index: 3; position: relative; opacity: .5 }
+		#outer { transform: scale(2) }
+	</style><div id=a><div id=outer><div id=inner>x</div></div></div>`)
+	defer unload(&f)
+	outer, inner := dom.find_by_id(f.doc, "outer"), dom.find_by_id(f.doc, "inner")
+	engine_set_top_layer(f.eng, {outer, inner})
+	restyle(&f)
+	a := at(&f, "a")
+	testing.expect(t, a.transform == nil && a.z_auto && near(a.opacity, 1), "an ancestor of a top layer element: no transform, stacking context or opacity")
+	testing.expect(t, len(at(&f, "outer").transform) == 1, "a top layer element keeps its own style, an ancestor of another one too")
+	engine_set_top_layer(f.eng, nil)
+	restyle(&f)
+	testing.expect(t, len(at(&f, "a").transform) == 1 && !at(&f, "a").z_auto, "out of the top layer: the style comes back")
+}
+
+@(test)
 media_and_supports :: proc(t: ^testing.T) {
 	f := load(`<style>
 		#a { margin-top: 1px }

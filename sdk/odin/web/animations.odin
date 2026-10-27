@@ -26,6 +26,16 @@ AnimationReplaceState :: enum i32 {
 	Persisted = 2,
 }
 
+// A CSS animation or transition among Animation_relevant's handles (src/page/web_animations_css.odin).
+CssAnimationInfo :: struct {
+	// 0 not a CSS one (a script's), 1 CSSAnimation, 2 CSSTransition
+	kind: i32,
+	target: u64,
+	delay: f64,
+	duration: f64,
+	iterations: f64,
+}
+
 foreign import _m_animations "animations"
 
 @(private = "file", default_calling_convention = "contextless")
@@ -56,6 +66,8 @@ foreign _m_animations {
 	@(link_name = "AnimationPlaybackEvent_time") _AnimationPlaybackEvent_time :: proc(event: Event, which: i32) -> f64 ---
 	@(link_name = "Animation_computedTiming") _Animation_computedTiming :: proc(animation: Animation, which: i32) -> f64 ---
 	@(link_name = "Animation_relevant") _Animation_relevant :: proc(root: u64, subtree: i32, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "Animation_cssBind") _Animation_cssBind :: proc(animation: Animation, notify: MicrotaskCallback, user: i32, _ret: ^CssAnimationInfo) ---
+	@(link_name = "Animation_cssName") _Animation_cssName :: proc(animation: Animation, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "DocumentTimeline_currentTime") _DocumentTimeline_currentTime :: proc() -> f64 ---
 	@(link_name = "Animation_validEasing") _Animation_validEasing :: proc(easing: [^]u8, easing_len: u32) -> i32 ---
 }
@@ -242,6 +254,41 @@ Animation_relevant_alloc :: proc(root: $T_root, subtree: bool, allocator: runtim
 		n := _Animation_relevant(u64(root), i32(1 if subtree else 0), raw_data(buf), u32(len(buf)))
 		if n < 0 { delete(buf, allocator); return {}, Error(n) }
 		if int(n) <= cap { return (buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
+Animation_cssBind :: proc "contextless" (animation: Animation, notify: MicrotaskCallback, user: i32) -> (result: CssAnimationInfo) {
+	_Animation_cssBind(animation, notify, user, &result)
+	return
+}
+
+// CSSAnimation.animationName / CSSTransition.transitionProperty ("" once it is gone).
+Animation_cssName :: proc "contextless" (animation: Animation, buf: []u8) -> (string, Error) {
+	n := _Animation_cssName(animation, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of Animation_cssName's result.
+Animation_cssName_len :: proc "contextless" (animation: Animation) -> (int, Error) {
+	n := _Animation_cssName(animation, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// Animation_cssName's result in a buffer allocated to fit.
+Animation_cssName_alloc :: proc(animation: Animation, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _Animation_cssName(animation, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
 		delete(buf, allocator)
 		cap = int(n)
 	}
