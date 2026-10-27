@@ -297,6 +297,7 @@ art_stop :: proc() {
 
 // Does one thing and returns: start a listing, download the next candidate, or wait. The network is only ever touched
 // here, guarded by the option and the loader's offline hold.
+
 @(private = "file")
 art_pump :: proc() {
 	app := art.app
@@ -322,6 +323,13 @@ art_pump :: proc() {
 
 	// no candidates: fetch a listing from the next source
 	art_list_next_source()
+}
+
+// Continues the state machine from an answer (a listing, a probe): the request that just ended is no longer in flight.
+@(private = "file")
+art_continue :: proc() {
+	art.phase = .Idle
+	art_pump()
 }
 
 @(private = "file")
@@ -385,7 +393,7 @@ art_list_next_source :: proc() {
 art_get :: proc(url: string, max_body: int, on_event: fetch.Event_Proc) {
 	art.task = fetch.start(&art.app.loader, {
 		request = {
-			url = url, mode = .Cors, credentials = .Omit, redirect = .Follow, destination = .Empty,
+			url = url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty,   // the browser's own request: no page, so no CORS
 			headers = {{"Accept", "application/json"}}, max_body = max_body,
 		},
 		on_event = on_event, scope = art.app.process, collect = true,
@@ -416,7 +424,7 @@ art_cleveland_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		n := art_cleveland_parse(ev.data)
 		if n == 0 { art_fail(); return }
 		art_ok()
-		art_pump()
+		art_continue()
 	case .Failed:
 		art_fail()
 	}
@@ -516,7 +524,7 @@ art_commons_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		n := art_commons_parse(ev.data)
 		if n == 0 { art_fail(); return }
 		art_ok()
-		art_pump()
+		art_continue()
 	case .Failed:
 		art_fail()
 	}
@@ -627,7 +635,7 @@ art_download :: proc(c: Art_Candidate) {
 	clear(&art.dl_bytes)
 	art.task = fetch.start(&art.app.loader, {
 		request = {
-			url = c.image_url, mode = .No_Cors, credentials = .Omit, redirect = .Follow, destination = .Image,
+			url = c.image_url, mode = .Navigate, credentials = .Omit, redirect = .Follow, destination = .Empty,   // the browser's own request (a no-cors answer is opaque: its bytes are not ours to read)
 			max_body = art.cfg.max_image_bytes,
 		},
 		on_event = art_download_event, scope = art.app.process, collect = true,
@@ -673,7 +681,7 @@ art_validate :: proc(data: []byte) {
 		images.decoder_start(n, s.decode_stack_bytes > 0 ? s.decode_stack_bytes : images.DECODER_STACK_DEFAULT, s.decode_idle_ms)
 	}
 	if art.port == 0 { art.port = images.port_open(&app.loop, art_validated, nil) }
-	if art.port == 0 { art_pump(); return }
+	if art.port == 0 { art_continue(); return }
 	bytes := make([]byte, len(data))
 	copy(bytes, data)
 	art.blob = images.blob_make(bytes)
@@ -682,7 +690,7 @@ art_validate :: proc(data: []byte) {
 	opts := images.Decode_Options{limits = lim}
 	art.phase = .Validating
 	art.job = images.submit(art.port, images.job_make(.Probe, art.blob, opts))
-	if art.job == 0 { images.blob_release(art.blob); art.blob = nil; art_pump() }
+	if art.job == 0 { images.blob_release(art.blob); art.blob = nil; art_continue() }
 }
 
 @(private = "file")
@@ -693,12 +701,12 @@ art_validated :: proc(user: rawptr, j: ^images.Job) {
 	ok := j.err == .None && art_dimensions_ok(j.info.width, j.info.height)
 	if !ok {
 		art_candidate_destroy(&art.dl)   // drop this one, do not keep the file
-		art_pump()
+		art_continue()
 		return
 	}
 	art_keep(art.dl, j.info.width, j.info.height)
 	art.dl = {}   // ownership moved into the Art_Item
-	art_pump()
+	art_continue()
 }
 
 // A painting is kept only if it is large enough and not an extreme sliver: a minimum width for full screen, and a ratio
