@@ -42,7 +42,7 @@ blocker_picker_active :: proc() -> bool { return pick.active }
 blocker_picker_begin :: proc(app: ^App, t: ^Tab) {
 	picker_reset()
 	pick.active, pick.stage, pick.tab = true, 0, t.id
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // The element is already chosen (the page's context menu).
@@ -63,7 +63,7 @@ picker_reset :: proc() {
 blocker_picker_cancel :: proc(app: ^App) {
 	if !pick.active { return }
 	picker_reset()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private = "file")
@@ -207,7 +207,7 @@ Pick_Draw :: struct { app: ^App, t: ^Tab, outline: draw.Color, fill: draw.Color 
 outline_node :: proc(dc: ^draw.Context, d: ^Pick_Draw, h: base.Handle, fill, line: draw.Color) {
 	t := d.t
 	if t.page == nil || !t.layout.valid { return }
-	area := d.app.page_rect
+	area := active_window(d.app).page_rect
 	r, ok := lay.box_of(&t.layout, h, draw.rect_size(area), t.scroll)
 	if !ok || !r.visible { return }
 	shift := draw.Vec2{area.min.x, area.min.y - t.scroll}   // (box_of: document coordinates, position: fixed boxes included)
@@ -235,7 +235,7 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 	if !pick.active { return }
 	if t == nil || t.id != pick.tab || t.kind != .Web || t.page == nil { blocker_picker_cancel(app); return }
 	em := ui.font_size()
-	area := app.page_rect
+	area := active_window(app).page_rect
 	d := ui.frame_new(Pick_Draw)
 	d.app, d.t = app, t
 	if pick.stage == 0 {
@@ -244,9 +244,9 @@ blocker_picker_frame :: proc(app: ^App, t: ^Tab) {
 		sig := ui.signal(box)
 		if sig.hovering {
 			pick.hover = hit_test(&t.layout, ui.mouse_pos() - area.min, draw.rect_size(area), t.scroll)
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 		}
-		if sig.clicked && pick.hover != base.NIL_HANDLE { picker_choose(t, pick.hover); app.frames_requested = max(app.frames_requested, 3) }
+		if sig.clicked && pick.hover != base.NIL_HANDLE { picker_choose(t, pick.hover); request_frames(app, 3) }
 		if sig.right_clicked || ui.key_press(.Escape) { blocker_picker_cancel(app); return }
 		// a hint
 		ui.next({fixed_x = area.min.x + em * 0.8, fixed_y = area.min.y + em * 0.8, width = ui.px(em * 30), height = ui.px(ui.dense(em * 2.2)), radius = em * 0.4})
@@ -335,7 +335,7 @@ picker_create :: proc(app: ^App, t: ^Tab, site: string) {
 	if t.page != nil && t.page.engine != nil { style.engine_add_injected_sheet(t.page.engine, fmt.tprintf("%s{{display:none!important}}", sel)) }
 	dash_add_filter(app, fmt.tprintf("%s##%s", site, sel))
 	picker_reset_keep_sheet()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private = "file")

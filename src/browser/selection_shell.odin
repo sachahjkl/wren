@@ -64,7 +64,7 @@ interaction_init :: proc(app: ^App) {
 	ix_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		interaction_settings_destroy(&ix)
 		ix = interaction_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 }
 
@@ -73,11 +73,11 @@ interaction_destroy :: proc(app: ^App) {
 	interaction_settings_destroy(&ix)
 	find_destroy(find_state(app))
 	closed_tabs_destroy()
-	context_menu_destroy()
+	context_menu_destroy(app)
 }
 
 @(private = "file")
-page_viewport :: proc(app: ^App) -> [2]f32 { return draw.rect_size(app.page_rect) }
+page_viewport :: proc(app: ^App) -> [2]f32 { return draw.rect_size(active_window(app).page_rect) }
 
 @(private = "file")
 text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&page_render.fonts, &app.measure, &app.page_settings.style) }
@@ -85,7 +85,7 @@ text_api :: proc(app: ^App) -> lay.Text_Api { return page_text_api(&page_render.
 // The text position under a window point (ok = false: no text, or a layout older than the document).
 position_of :: proc(app: ^App, t: ^Tab, pos: [2]f32) -> (lay.Text_Pos, bool) {
 	if t.page == nil || !t.layout.valid { return {}, false }
-	return lay.position_at(&t.layout, t.page.doc, t.page.styled, pos - app.page_rect.min, page_viewport(app), t.scroll, text_api(app))
+	return lay.position_at(&t.layout, t.page.doc, t.page.styled, pos - active_window(app).page_rect.min, page_viewport(app), t.scroll, text_api(app))
 }
 
 @(private = "file")
@@ -165,7 +165,7 @@ start_gesture :: proc(app: ^App, t: ^Tab, ev: platform.Event) {
 	pos, ok := position_of(app, t, ev.pos)
 	when DEBUG_INPUT {
 		n := dom.get(p.doc, pos.node)
-		debug_log(fmt.tprintf("press %v page_rect %v scroll %v -> %v %q", ev.pos, app.page_rect, t.scroll, pos, n != nil ? n.text : ""))
+		debug_log(fmt.tprintf("press %v page_rect %v scroll %v -> %v %q", ev.pos, active_window(app).page_rect, t.scroll, pos, n != nil ? n.text : ""))
 	}
 	if !ok { page.selection_clear(p); return }
 	ss.down = true
@@ -253,6 +253,7 @@ scroller_of :: proc(t: ^Tab, node: base.Handle) -> base.Handle {
 
 // Each frame: selectionchange, a press that waited for a fresh layout, automatic scrolling while dragging past an edge.
 selection_shell_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	ss := &window_own(app).selection
 	now := time.tick_now()
 	dt := f32(clamp(time.duration_seconds(time.tick_diff(ss.last_tick, now)), 0, 0.1))
@@ -265,12 +266,12 @@ selection_shell_frame :: proc(app: ^App) {
 		start_gesture(app, t, ss.pending_ev)
 	}
 	if !ss.down || t.page != ss.page || !ss.moved || ss.cancelled || ix.autoscroll_speed <= 0 { return }
-	port := app.page_rect
+	port := wnd.page_rect
 	if ss.scroller != base.NIL_HANDLE {
 		if r, ok := lay.box_of(&t.layout, ss.scroller, page_viewport(app), t.scroll); ok {
-			off := app.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
+			off := wnd.page_rect.min - {0, t.scroll}   // (document coordinates, position: fixed boxes included)
 			port = draw.Rect{r.padding.min + off, r.padding.max + off}
-			port = {{max(port.min.x, app.page_rect.min.x), max(port.min.y, app.page_rect.min.y)}, {min(port.max.x, app.page_rect.max.x), min(port.max.y, app.page_rect.max.y)}}
+			port = {{max(port.min.x, wnd.page_rect.min.x), max(port.min.y, wnd.page_rect.min.y)}, {min(port.max.x, wnd.page_rect.max.x), min(port.max.y, wnd.page_rect.max.y)}}
 		}
 	}
 	past :: proc(v, lo, hi: f32) -> f32 { return v < lo ? v - lo : (v > hi ? v - hi : 0) }
@@ -294,7 +295,7 @@ selection_shell_frame :: proc(app: ^App) {
 	// keep selecting under the pointer, clamped into the view (what is scrolled in gets selected)
 	inside := [2]f32{clamp(m.x, port.min.x + 1, port.max.x - 1), clamp(m.y, port.min.y + 1, port.max.y - 1)}
 	extend_to(app, t, inside)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	_ = moved
 }
 
@@ -421,7 +422,7 @@ selection_paint_begin :: proc(app: ^App, t: ^Tab) {
 		spaint.on = true
 		spaint.start, spaint.end = a, b
 	}
-	active := app.win.focused
+	active := active_window(app).win.focused
 	if c, ok := parse_pref_color(active ? ix.sel_bg : ix.sel_inactive_bg); ok { spaint.bg = c } else if active { spaint.bg = sys_color(win.COLOR_HIGHLIGHT) } else {
 		spaint.bg = draw.srgb(0.78, 0.78, 0.78, 1)
 		if c2, ok2 := parse_pref_color(ix.sel_bg); ok2 { spaint.bg = c2; spaint.bg.a *= 0.5 }

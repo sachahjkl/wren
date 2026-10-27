@@ -70,14 +70,11 @@ page_pointer_target :: proc(t: ^Tab, hit: base.Handle) -> base.Handle {
 	return page.pointer_target(t.page, page.MOUSE_POINTER_ID, hit)
 }
 
-@(private = "file")
+// A window's fingers and pens over its page (Window_Own.devices).
 Device_Input :: struct {
 	over:          map[u32]base.Handle,   // what each finger / pen is over (for out / leave)
 	drop_emulated: bool,                  // a cancelled touchstart: the system's mouse emulation of it is dropped
 }
-
-@(private = "file")
-din: Device_Input
 
 // The page's pointer id of a finger or a pen (the mouse is 1).
 @(private = "file")
@@ -94,8 +91,9 @@ device_details :: proc(ev: platform.Event, scale: f32) -> dom.Pointer_Details {
 }
 
 // A mouse event of the system's emulation that must not reach the page (its touchstart was cancelled).
-page_drop_emulated :: proc(ev: platform.Event) -> bool {
+page_drop_emulated :: proc(app: ^App, ev: platform.Event) -> bool {
 	if touch_drop_emulated(ev) { return true }   // touch_shell.odin: a finger pans; its tap is clicked by the shell
+	din := &window_own(app).devices
 	if !ev.emulated || !din.drop_emulated { return false }
 	if ev.kind == .Mouse_Release && ev.buttons == {} { din.drop_emulated = false }
 	return ev.kind == .Mouse_Press || ev.kind == .Mouse_Release || ev.kind == .Mouse_Move
@@ -103,16 +101,18 @@ page_drop_emulated :: proc(ev: platform.Event) -> bool {
 
 // A finger or a pen (Pointer_* events of the toolkit) over the page. True when the event was the page's.
 route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
+	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Pointer_Down, .Pointer_Move, .Pointer_Up, .Pointer_Cancel:
 	case: return false
 	}
 	p := t.page
 	if p == nil || !t.layout.valid { return true }
+	din := &window_own(app).devices
 	scale := page_scale(app)
-	inside := draw.rect_contains(app.page_rect, ev.pos)
-	hit := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
-	cx, cy := f64((ev.pos.x - app.page_rect.min.x) / max(scale, 0.01)), f64((ev.pos.y - app.page_rect.min.y) / max(scale, 0.01))
+	inside := draw.rect_contains(wnd.page_rect, ev.pos)
+	hit := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
+	cx, cy := f64((ev.pos.x - wnd.page_rect.min.x) / max(scale, 0.01)), f64((ev.pos.y - wnd.page_rect.min.y) / max(scale, 0.01))
 	pd := device_details(ev, scale)
 	id := pd.id
 	contact := ev.kind == .Pointer_Down || (ev.kind == .Pointer_Move && ev.pointer.pressure > 0)
@@ -180,8 +180,10 @@ route_device_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event) -> bool {
 			if t.page == p { touch_pointer(app, t, ev, hit, ok) }
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 
-page_input_destroy :: proc() { delete(din.over); din = {} }
+device_input_destroy :: proc(din: ^Device_Input) { delete(din.over); din^ = {} }
+
+page_input_destroy :: proc(app: ^App) { device_input_destroy(&window_own(app).devices) }

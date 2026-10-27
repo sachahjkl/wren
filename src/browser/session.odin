@@ -283,6 +283,7 @@ session_tab_of :: proc(t: ^Tab) -> Session_Tab {
 
 // The text of the session as the tabs are now (temporary allocator): where each tab was left is captured first.
 session_text :: proc(app: ^App) -> string {
+	wnd := active_window(app)
 	if len(app.windows) > 0 {
 		windows := make([]Session_Window, len(app.windows), context.temp_allocator)
 		for w, wi in app.windows {
@@ -297,12 +298,12 @@ session_text :: proc(app: ^App) -> string {
 		}
 		return session_serialize_windows(windows, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 	}
-	tabs := make([]Session_Tab, len(app.tabs), context.temp_allocator)
-	for t, i in app.tabs {
+	tabs := make([]Session_Tab, len(wnd.tabs), context.temp_allocator)
+	for t, i in wnd.tabs {
 		entry_capture_current(app, t)
 		tabs[i] = session_tab_of(t)
 	}
-	return session_serialize_tabs(tabs, app.current, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+	return session_serialize_tabs(tabs, wnd.current, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 }
 
 // Writes the session when it changed (profile_save: autosave and exit).
@@ -379,7 +380,8 @@ session_open_other_windows :: proc(app: ^App) {
 // Adds a tab for each saved one after the tabs there are (crash_recovery.odin uses it for a snapshot too); `current` is
 // the index, among `tabs`, of the one to show. Returns the index of the first tab added.
 session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int) -> (first: int) {
-	first = len(app.tabs)
+	wnd := active_window(app)
+	first = len(wnd.tabs)
 	w := &app.page_settings.web
 	for st in tabs {
 		t := tab_new(app)
@@ -396,7 +398,7 @@ session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int) -> (firs
 		}
 		if page.session_current(&t.session) == nil { history_push(t, st.url) }
 	}
-	app.current = first + clamp(current, 0, max(len(tabs) - 1, 0))
+	wnd.current = first + clamp(current, 0, max(len(tabs) - 1, 0))
 	session_lazy_load(app)
 	return
 }

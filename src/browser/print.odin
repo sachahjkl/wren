@@ -26,7 +26,7 @@ print_request :: proc(app: ^App) {
 	if print_last != {} && time.duration_milliseconds(time.tick_since(print_last)) < interval { return }
 	print_last = time.tick_now()
 	ui.toast(.Info, "Printing is not available in %s", APP_NAME)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The page's window.print() (Embedder.print).

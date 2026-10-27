@@ -45,12 +45,13 @@ frame_views: map[^page.Page]^Frame_View
 frame_tab_ids: u64 = 1 << 40
 @(private = "file")
 paint_stack: [dynamic]^page.Page   // the documents being painted, innermost last
-@(private = "file")
-hover_frame: ^page.Page           // the frame document whose :hover is set
-@(private = "file")
-focus_frame: ^page.Page           // the frame document that got the last press (keyboard goes there)
-@(private = "file")
-press_frame: ^page.Page           // where the button went down (its release goes there too)
+
+// A window's pointer and keyboard among the frames of its page (Window_Own.frames).
+Frames_Input :: struct {
+	hover: ^page.Page,   // the frame document whose :hover is set
+	focus: ^page.Page,   // the frame document that got the last press (keyboard goes there)
+	press: ^page.Page,   // where the button went down (its release goes there too)
+}
 
 // Shell start-up: the page package tells us about each document a frame gets.
 frames_shell_init :: proc(app: ^App) {
@@ -86,8 +87,8 @@ frames_attached :: proc(user: rawptr, child: ^page.Page) {
 	frame_views[child] = fv
 	base.on_close(child.scope, frame_view_closed, child)
 	page.set_layout_embedder(child, {user = fv, update = frame_js_layout, viewport = frame_js_viewport, scroll_to = frame_js_scroll,
-		repaint = proc(user: rawptr, p: ^page.Page) { the_app.frames_requested = max(the_app.frames_requested, 2) }})
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+		repaint = proc(user: rawptr, p: ^page.Page) { request_frames(the_app, 2) }})
+	request_frames(the_app, 2)
 }
 
 @(private = "file")
@@ -96,9 +97,15 @@ frame_view_closed :: proc(data: rawptr) {
 	fv, ok := frame_views[p]
 	if !ok { return }
 	delete_key(&frame_views, p)
-	if hover_frame == p { hover_frame = nil }
-	if focus_frame == p { focus_frame = nil }
-	if press_frame == p { press_frame = nil }
+	forget :: proc(fi: ^Frames_Input, p: ^page.Page) {
+		if fi.hover == p { fi.hover = nil }
+		if fi.focus == p { fi.focus = nil }
+		if fi.press == p { fi.press = nil }
+	}
+	if the_app != nil {
+		for w in the_app.windows { forget(&w.own.frames, p) }
+		forget(&the_app.bare.own.frames, p)
+	}
 	page_fonts_drop(&page_render.fonts, &fv.tab)
 	layout_destroy(&fv.tab.layout)
 	smooth_destroy(&fv.tab.smooth)
@@ -186,7 +193,7 @@ frame_js_layout :: proc(user: rawptr, p: ^page.Page) -> ^lay.Layout {
 	fv := (^Frame_View)(user)
 	if fv.tab.page != p || fv.size.x <= 0 || fv.size.y <= 0 { return nil }
 	frame_prepare(the_app, fv, fv.size, fv.scale)
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+	request_frames(the_app, 2)
 	return &fv.tab.layout
 }
 
@@ -203,7 +210,7 @@ frame_js_scroll :: proc(user: rawptr, p: ^page.Page, x, y: f64, smooth: bool) {
 	if fv.tab.page != p { return }
 	limit := max(0, f64(fv.tab.layout.height) - f64(fv.size.y))
 	fv.tab.scroll = f32(clamp(y * f64(fv.scale), 0, limit))
-	the_app.frames_requested = max(the_app.frames_requested, 2)
+	request_frames(the_app, 2)
 }
 
 ////////////////////////////////
@@ -269,38 +276,40 @@ frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Fra
 // A pointer event of the page area over a frame: handled as the page's own input on the frame's stand-in tab, with
 // the page area moved to the frame's content box. True when it was a frame's.
 frames_route_pointer :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) -> bool {
+	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Mouse_Move, .Mouse_Press, .Mouse_Release, .Scroll:
 	case: return false
 	}
-	fv := frame_under(app, t, ev.pos, app.page_rect)
+	fi := &window_own(app).frames
+	fv := frame_under(app, t, ev.pos, wnd.page_rect)
 	// hover leaves a frame the pointer left
 	if ev.kind == .Mouse_Move {
 		now: ^page.Page = fv != nil ? fv.tab.page : nil
-		if hover_frame != nil && hover_frame != now {
-			if hv := frame_view_of(hover_frame); hv != nil {
-				st := hover_frame.style_state
+		if fi.hover != nil && fi.hover != now {
+			if hv := frame_view_of(fi.hover); hv != nil {
+				st := fi.hover.style_state
 				st.hover = base.NIL_HANDLE
-				page.set_style_state(hover_frame, st)
+				page.set_style_state(fi.hover, st)
 			}
 		}
-		hover_frame = now
+		fi.hover = now
 	}
 	// a release goes where the press went (the click is the press target's), a frame or the tab's document
 	if ev.kind == .Mouse_Release {
-		pf := press_frame
-		press_frame = nil
+		pf := fi.press
+		fi.press = nil
 		fv = frame_view_of(pf)
 		if pf != nil && fv == nil { return true }   // that frame is gone
 	}
 	if ev.kind == .Mouse_Press {
-		focus_frame = fv != nil ? fv.tab.page : nil
-		press_frame = focus_frame
+		fi.focus = fv != nil ? fv.tab.page : nil
+		fi.press = fi.focus
 	}
 	if fv == nil { return false }
-	saved := app.page_rect
-	app.page_rect = fv.rect
-	defer app.page_rect = saved
+	saved := wnd.page_rect
+	wnd.page_rect = fv.rect
+	defer wnd.page_rect = saved
 	used := frame_pointer_event(app, fv, ev, index)
 	if ev.kind == .Mouse_Move {
 		hovered := hit_test(&fv.tab.layout, ev.pos - fv.rect.min, draw.rect_size(fv.rect), fv.tab.scroll)
@@ -320,20 +329,20 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 	t := &fv.tab
 	if forms_route_event(app, t, ev, index) { return true }
 	if t.page == nil { return true }
-	rect := app.page_rect
+	rect := active_window(app).page_rect
 	size := draw.rect_size(rect)
 	#partial switch ev.kind {
 	case .Scroll:
 		if .Ctrl in ev.mods { return false }   // zoom is the tab's
 		d := ev.delta * app.cfg.scroll_step * page_scale(app)
 		if page_wheel(&t.layout, ev.pos - rect.min, d, size, t.scroll) {
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			return true
 		}
 		next := clamp(t.scroll + d.y, 0, max(0, t.layout.height - size.y))
 		if next == t.scroll { return false }
 		t.scroll = next
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	case .Mouse_Press:
 		local := ev.pos - rect.min + {0, t.scroll}
 		pressed := hit_test(&t.layout, ev.pos - rect.min, size, t.scroll)
@@ -351,7 +360,7 @@ frame_pointer_event :: proc(app: ^App, fv: ^Frame_View, ev: platform.Event, inde
 		if t.page == nil || !not_prevented || ev.button != .Left { return true }
 		if a, href, ok := frame_anchor(t.page.doc, target); ok { frames_follow_link(app, fv, a, href) }
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 
@@ -372,23 +381,25 @@ frame_anchor :: proc(d: ^dom.Document, h: base.Handle) -> (el: base.Handle, href
 // Keyboard and text events while a frame has the keyboard (the last press was in it): its document's. True when the
 // event was a key or text event the frame took.
 frames_route_keys :: proc(app: ^App, ev: platform.Event, index: int) -> bool {
+	wnd := active_window(app)
 	#partial switch ev.kind {
 	case .Key_Press, .Key_Release, .Text:
 	case: return false
 	}
-	fv := frames_focused()
+	fv := frames_focused(app)
 	if fv == nil { return false }
-	saved := app.page_rect
-	app.page_rect = fv.rect
-	defer app.page_rect = saved
+	saved := wnd.page_rect
+	wnd.page_rect = fv.rect
+	defer wnd.page_rect = saved
 	forms_route_event(app, &fv.tab, ev, index)
 	return true
 }
 
 // The frame document that has the keyboard (the last press went into it), its stand-in tab; nil: the tab's document.
-frames_focused :: proc() -> ^Frame_View {
-	if focus_frame == nil { return nil }
-	return frame_view_of(focus_frame)
+frames_focused :: proc(app: ^App) -> ^Frame_View {
+	focus := window_own(app).frames.focus
+	if focus == nil { return nil }
+	return frame_view_of(focus)
 }
 
 // A link followed in a frame's document (its default action): the frame navigates, or the navigable the link's target
@@ -446,7 +457,7 @@ frames_tick_doc :: proc(app: ^App, p: ^page.Page, frame_ms: f64) -> bool {
 		if c.formctl != nil && c.formctl.embedder.navigate == nil {
 			page.set_forms_embedder(c, page.Forms_Embedder{
 				user = app, navigate = shell_navigate_submission, pick_files = shell_pick_files, pick_color = shell_pick_color,
-				changed = proc(user: rawptr, p: ^page.Page) { (^App)(user).frames_requested = max((^App)(user).frames_requested, 2) },
+				changed = proc(user: rawptr, p: ^page.Page) { request_frames((^App)(user), 2) },
 			})
 		}
 		shown := fv.painted + 2 >= chrome_frames.frame_no

@@ -116,14 +116,13 @@ Tab :: struct {
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
 
-// The browser has several windows (windows.odin). The fields marked [window] are the active window's: window_activate
-// exchanges them with the ones a window keeps, so the code that reads `app.tabs` or `app.win` stays the one of a single window.
+// The browser has several windows (windows.odin). What is a window's is read in the window itself, the active one being
+// active_window(app): .win, .ui (its toolkit state), .tabs, .current, .address, .page_rect, .frames_requested
+// (request_frames), .presented; window_own(app) for the chrome's state.
 App :: struct {
-	win:      ^platform.Window,   // [window]
 	r:        render.Renderer,
 	fonts:    font.State,
 	dc:       draw.Context,
-	ui_state: ^ui.State,          // [window] (one toolkit state per window)
 	theme:    ui.Theme,
 	ui_font:  font.Font_Id,
 	icons:    font.Font_Id,
@@ -143,22 +142,15 @@ App :: struct {
 	portable: bool,           // wren.portable beside the executable: the profile is <executable folder>\data (setup.odin)
 	process:  ^base.Scope,
 
-	tabs:     [dynamic]^Tab,  // [window]
-	current:  int,            // [window]
-	address:  ui.Text_Field,  // [window]
 	measure:  Measure,        // text measurement cache of the layout
-	focus_address: bool,      // [window] Ctrl+L: focus the address field in the next build
 	show_console:  bool,
 
-	page_rect: draw.Rect,   // [window] where the page was painted last frame (physical pixels)
-	frames_requested: int,  // [window]
 	last_tick:        time.Tick,
-	presented:        bool,   // [window] a frame went to the swap chain: from then on each frame waits for it to take the next
 
 	windows:  [dynamic]^Browser_Window,   // windows.odin
-	active:   ^Browser_Window,            // the one whose [window] fields the app holds now
+	active:   ^Browser_Window,            // the one the frame is for; nil: none (active_window is then App.bare)
 	front:    ^Browser_Window,            // the one commands, remote calls and the tasks of the loop act on (the last used)
-	bare_own: Window_Own,             // window_own of an App with no window (the tests')
+	bare:     Browser_Window,             // active_window of an App with no window (the tests'), or between two
 	pass_first: bool,                     // the next frame of this pass of the loop is the first: it runs the tasks of the loop
 	headless:   bool,                     // the windows are never shown (`--headless`)
 	quitting:   bool,                     // the browser ends (a remote Browser.close): every window goes, none is closed on its own first
@@ -166,10 +158,13 @@ App :: struct {
 
 the_app: ^App
 
-clip_get :: proc() -> string { return platform.get_clipboard(the_app.win, context.temp_allocator) }
-clip_set :: proc(text: string) { platform.set_clipboard(the_app.win, text) }
+clip_get :: proc() -> string { return platform.get_clipboard(active_window(the_app).win, context.temp_allocator) }
+clip_set :: proc(text: string) { platform.set_clipboard(active_window(the_app).win, text) }
 
-current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app.current] : nil }
+current_tab :: proc(app: ^App) -> ^Tab {
+	w := active_window(app)
+	return len(w.tabs) > 0 ? w.tabs[w.current] : nil
+}
 
 ////////////////////////////////
 // Tabs
@@ -177,9 +172,10 @@ current_tab :: proc(app: ^App) -> ^Tab { return len(app.tabs) > 0 ? app.tabs[app
 @(private = "file") tab_ids: u64
 
 tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav_Origin.Page) -> ^Tab {
+	wnd := active_window(app)
 	t := tab_new(app)
-	app.current = len(app.tabs) - 1
-	ui.field_set(&app.address, address)
+	wnd.current = len(wnd.tabs) - 1
+	ui.field_set(&wnd.address, address)
 	// an empty address opens the homepage; one that is refused (nav_trust.odin) leaves the homepage too, not an empty tab
 	if !navigate(app, t, address, from, origin = origin) { navigate(app, t, "") }
 	return t
@@ -189,7 +185,7 @@ tab_open :: proc(app: ^App, address := "", from: ^page.Page = nil, origin := Nav
 // to type in, as in Chromium.
 tab_open_new :: proc(app: ^App) -> ^Tab {
 	t := tab_open(app)
-	app.focus_address = true
+	active_window(app).focus_address = true
 	return t
 }
 
@@ -202,7 +198,7 @@ tab_new :: proc(app: ^App) -> ^Tab {
 	t.zoom = 1
 	t.scope = base.scope_make("tab", app.process)
 	t.title = strings.clone("New tab")
-	append(&app.tabs, t)
+	append(&active_window(app).tabs, t)
 	tab_history_limits(app, t)
 	blocker_tab_new(app, t)   // blocker_shell.odin
 	recovery_touch(app)   // crash_recovery.odin
@@ -454,7 +450,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		same_document_url(app, t, req.url)
 		global_history_visit(app, t, req.url, t.title)
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Connects a document to its tab: navigation hook, session history, storage.
@@ -527,7 +523,7 @@ document_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 	load := (^Doc_Load)(user)
 	t := load.tab
 	app := the_app
-	defer { app.frames_requested = max(app.frames_requested, 3) }
+	defer { request_frames(app, 3) }
 	switch ev.kind {
 	case .Response:
 		r := ev.response
@@ -615,7 +611,7 @@ document_parsed :: proc(p: ^page.Page, user: rawptr, d: ^page.Parsed_Document) {
 	load := (^Doc_Load)(user)
 	t := load.tab
 	app := the_app
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	if !d.decoded {
 		show_error_page(app, load, {kind = .Content, headline = "This page can't be shown", explain = "Its text could not be decoded.", detail = fmt.tprintf("encoding %q", load.charset)})
 		return
@@ -686,7 +682,7 @@ script_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		}
 	}
 	run_ready_scripts(load)
-	the_app.frames_requested = max(the_app.frames_requested, 3)
+	request_frames(the_app, 3)
 }
 
 // Runs modules in order: a later module waits for an earlier one that is still loading.
@@ -711,14 +707,15 @@ run_ready_scripts :: proc(load: ^Doc_Load) {
 
 page_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	app := the_app
-	app.page_rect = b.rect
+	wnd := active_window(app)
+	wnd.page_rect = b.rect
 	t := current_tab(app)
 	if shell_nested() {
 		// a chrome frame (shell_frames.odin): the page holds the thread; its last frame, nothing of it runs
 		if t == nil || t.kind != .Web || !shell_paint_page(app, t, dc, b.rect) { draw.rect(dc, b.rect, to_draw(expected_canvas(app))) }
 		return
 	}
-	for other in app.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
+	for other in wnd.tabs { if other != t { hold_release(other) } }   // a frame held in a tab not shown is of no use
 	if t == nil || t.kind != .Web {
 		draw.rect(dc, b.rect, to_draw(expected_canvas(app)))
 		return
@@ -832,7 +829,7 @@ page_column :: proc(app: ^App, t: ^Tab, elem_fs: bool) {
 	case dev_on && dock == .Bottom:
 		page_view(app, t)
 		devtools_splitter(app, false)
-		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(app.win.size.x), 0})
+		devtools_panel(app, t, false, {width = ui.fill(), height = ui.px(devtools_extent(app, false))}, fill = {f32(active_window(app).win.size.x), 0})
 	case:
 		page_view(app, t)
 	}
@@ -850,11 +847,11 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 			// the tabs in a sidebar (tab_sidebar.odin): the toolbar is the title bar (integrated; else its own row under
 			// the system's), and the sidebar and the page share what is below it
 			side := tabs_in_sidebar(app)
-			if !platform.is_fullscreen(app.win) {
-				if side && platform.is_integrated_title(app.win) {
+			if !platform.is_fullscreen(active_window(app).win) {
+				if side && platform.is_integrated_title(active_window(app).win) {
 					sidebar_titlebar(app, t)
 				} else {
-					if !side && tab_strip(app, platform.is_integrated_title(app.win)) { return }
+					if !side && tab_strip(app, platform.is_integrated_title(active_window(app).win)) { return }
 					toolbar_row(app, t)   // chrome_style.odin
 				}
 			}
@@ -884,7 +881,7 @@ build_ui :: proc(app: ^App) {	session_lazy_load(app)   // session.odin: a restor
 	fs_shell_build(app)   // fs_shell.odin: a page's file permission prompt (nothing while none waits)
 	storage_access_shell_build(app)   // storage_access_shell.odin: a frame's storage access prompt
 	// notices go over the page, not over the title bar's window buttons
-	if app.page_rect.max.y > app.page_rect.min.y { ui.set_toast_area(app.page_rect) }
+	if pr := active_window(app).page_rect; pr.max.y > pr.min.y { ui.set_toast_area(pr) }
 	ui.toasts_build()
 }
 
@@ -903,6 +900,7 @@ anchor_href :: proc(d: ^dom.Document, h: base.Handle) -> (string, bool) {
 
 // Mouse and wheel events that land on the page become DOM events / scrolling.
 route_page_input :: proc(app: ^App, events: []platform.Event) {
+	wnd := active_window(app)
 	t := current_tab(app)
 	if t == nil || t.page == nil || t.kind != .Web { return }
 	page_world_check("route_page_input: page input in a chrome frame, or during a page thread pass")
@@ -914,7 +912,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// (the pointer over a menu, a chrome widget that overlaps the page or the statistics panel is not over the page: its hover state and
 		// its pointer events stay where they were: the card under a menu used to light up as the pointer crossed the menu)
 		over_chrome := ui.ctx_menu_any_open() || ui.hot_key() != 0 || hud_captures(app, last_move.pos)
-		if !over_chrome && draw.rect_contains(app.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) }
+		if !over_chrome && draw.rect_contains(wnd.page_rect, last_move.pos) && t.layout.valid { hovered = hit_test(&t.layout, last_move.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
 		st := t.page.style_state
 		was := st.hover
 		st.hover = hovered
@@ -922,12 +920,12 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		page_pointer_events(app, t, was, hovered, last_move.pos, dom_buttons(last_move.buttons), last_move.emulated)   // page_pointer.odin
 	}
 	for ev, index in events {
-		inside := draw.rect_contains(app.page_rect, ev.pos)
+		inside := draw.rect_contains(wnd.page_rect, ev.pos)
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
-		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(ev) { if t.page == nil { return }; continue }
+		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
 		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
-		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, app.page_rect)) }
+		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, wnd.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
 		// pointer events over a frame, and the keyboard of a frame that has it, are its document's (frames_shell.odin)
@@ -946,14 +944,14 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 				// Ctrl+wheel zooms the page (wheel up = delta.y < 0 = bigger)
 				if ev.delta.y != 0 { zoom_step(app, t, ev.delta.y < 0 ? 1 : -1) }
 			} else if inside {
-				d := ev.delta * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
-				smooth_wheel(app, t, ev.pos - app.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
+				d := ev.delta * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(scale, 0.01)) * scale   // platform convention: +y = towards the end of the content
+				smooth_wheel(app, t, ev.pos - wnd.page_rect.min, d, wheel_is_precise(ev.delta))   // smooth_scroll.odin
 			}
 		case .Mouse_Press:
 			if !inside || !t.layout.valid { continue }
 			if ui.ctx_menu_any_open() { continue }   // the press closes the menu (the toolkit's)
-			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			pressed := hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll)
+			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			pressed := hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
 			t.scroll_target = pressed
 			allowed := forms_pointer_down(app, t, ev, pressed, local)
 			if t.page == nil { return }
@@ -965,8 +963,8 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 			if ev.button == .Left { page_set_active(t.page, base.NIL_HANDLE) }
 			dragged := selection_pointer_up(app, t, ev)   // before anything that may skip the release: a gesture left open selects text under a button that is no longer held
 			if !t.layout.valid { continue }
-			local := ev.pos - app.page_rect.min + {0, t.scroll}
-			released := inside ? hit_test(&t.layout, ev.pos - app.page_rect.min, draw.rect_size(app.page_rect), t.scroll) : base.NIL_HANDLE
+			local := ev.pos - wnd.page_rect.min + {0, t.scroll}
+			released := inside ? hit_test(&t.layout, ev.pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) : base.NIL_HANDLE
 			target, clicked := forms_pointer_up(app, t, ev, released, local)
 			if t.page == nil { return }
 			if ev.button == .Right && inside { page_context_menu(app, t, released, ev.pos, local, .Shift in ev.mods) }
@@ -1052,7 +1050,7 @@ apply_prefs :: proc(app: ^App, changed := "") {
 	if .Downloads in groups { downloads_apply(app); prefs_apply_counts[.Downloads] += 1 }
 	app.loop.timer_slice_ns = i64(app.cfg.timer_slice_ms * 1e6)
 	arm_autosave(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
@@ -1064,12 +1062,13 @@ on_pref_change :: proc(user: rawptr, name: string, p: ^config.Prefs) {
 
 // The chrome's palette (browser.ui.theme) applied, and the base style of its boxes: every frame, full or chrome only.
 chrome_frame_style :: proc(app: ^App) -> ui.Style {
+	wnd := active_window(app)
 	pal, pal_ok := ui.palette_named(app.cfg.ui_theme)   // browser.ui.theme
 	if !pal_ok { pal = ui.PALETTE_GRAPHITE }
 	ui.apply_palette(&app.theme, pal, render.blend_space(&app.r))
-	platform.set_dark_title(app.win, pal.dark)
+	platform.set_dark_title(wnd.win, pal.dark)
 	// the system's frame line is half transparent along the top of an integrated title bar: the palette's, opaque
-	platform.set_border_color(app.win, platform.is_integrated_title(app.win) ? Maybe(u32)(pal.border >> 8) : nil)
+	platform.set_border_color(wnd.win, platform.is_integrated_title(wnd.win) ? Maybe(u32)(pal.border >> 8) : nil)
 	return ui.Style{
 		pref = {.X = ui.text_size(), .Y = ui.px(36)},
 		font = app.ui_font, font_size = app.cfg.ui_font_size, text_pad = 7,
@@ -1082,7 +1081,8 @@ frame :: proc(app: ^App, idled := false) {
 	// stage. The callers ask the gate first: a refusal here would be a frame asked for where none may begin.)
 	gate := platform.frame_gate()
 	gate_token, admitted := platform.frame_gate_begin(gate, .Full)
-	if !admitted { app.win.paint_requested = true; return }
+	if !admitted { active_window(app).win.paint_requested = true; return }
+	wnd := active_window(app)   // (the window the frame is for, all along: a loop of the system's frame puts it back)
 	defer {
 		platform.frame_gate_end(gate, gate_token)
 		window_chrome_after_frame(app)   // the system menu, outside the frame (its loop paints the window)
@@ -1093,19 +1093,19 @@ frame :: proc(app: ^App, idled := false) {
 	pacer_wait(app, idled)   // pacing.odin: the frame's time slot, then the swap chain (input is taken meanwhile)
 	prof_end(.Wait)
 	prof_begin(.Events)
-	events := platform.poll_events(app.win, false)
+	events := platform.poll_events(active_window(app).win, false)
 	platform.frame_gate_stage(gate, .Work)   // the page phase (chrome frames may be made in it: shell_frames.odin)
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events {
 		if e.kind == .Activate { desktop_note_activate() }
 		// the window the user is in is the one the process acts on outside a frame (windows.odin)
-		if (e.kind == .Activate && app.win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { app.front = app.active }
+		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { app.front = app.active }
 	}
 	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
 	events = shell_frame_begin(app, events)   // shell_frames.odin: input held back by chrome frames first; the page phase
 	pacer_begin_frame(app, events)
-	if len(events) > 0 { app.frames_requested = max(app.frames_requested, 4) }
+	if len(events) > 0 { request_frames(app, 4) }
 	prof_end(.Events)
 
 	// network completions, timers and posted tasks run here, on the UI thread
@@ -1115,16 +1115,16 @@ frame :: proc(app: ^App, idled := false) {
 	ran := 0
 	if app.pass_first {
 		app.pass_first = false
-		asked := app.frames_requested
+		asked := wnd.frames_requested
 		ran = host.run_ready(&app.loop)
 		ran -= host.quiet_take(&app.loop)   // (a media player's notices draw nothing: its pictures come on their own timer)
-		if ran > 0 { app.frames_requested = max(app.frames_requested, 2) }
+		if ran > 0 { request_frames(app, 2) }
 		images_shell_frame(app)
-		if app.frames_requested > asked { windows_spill(app, app.frames_requested) }
+		if wnd.frames_requested > asked { windows_spill(app, wnd.frames_requested) }
 	}
 	events = shell_after_loop(app, events)   // (chrome frames made under the loop's scripts took the chrome's input)
 	// a window whose last tab just left (a move: the window closes at the end of the pass) has nothing to build
-	if len(app.tabs) == 0 && len(app.windows) > 1 {
+	if len(wnd.tabs) == 0 && len(app.windows) > 1 {
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1138,7 +1138,7 @@ frame :: proc(app: ^App, idled := false) {
 	if t := current_tab(app); t != nil && t.page != nil {
 		page_wants_frame = t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page)
 	}
-	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && app.frames_requested == 0 && !ui.needs_frame(app.ui_state) && !ui.wake_due(app.ui_state) && !app.win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
+	if (idled && len(events) == 0 && ran == 0 && !page_wants_frame && wnd.frames_requested == 0 && !ui.needs_frame(active_window(app).ui) && !ui.wake_due(active_window(app).ui) && !active_window(app).win.paint_requested) || resize_echo_frame(app, events, ran, page_wants_frame) {   // (pacing.odin: a copy of a resize step's picture is not presented)
 		shell_page_phase_end(app, nil)
 		free_all(context.temp_allocator)
 		return
@@ -1158,45 +1158,46 @@ frame :: proc(app: ^App, idled := false) {
 
 	fullscreen_shell_settle(app, app.active)   // the events of a change of full screen, before the frame's resize event (fullscreen_shell.odin)
 	// page visibility, then the animation frame callbacks of the page about to be painted
-	shown := app.win.size.x > 0 && app.win.size.y > 0
-	for tab, i in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == app.current && tab.kind == .Web) } }
+	shown := active_window(app).win.size.x > 0 && active_window(app).win.size.y > 0
+	for tab, i in wnd.tabs { if tab.page != nil { page.set_page_visible(tab.page, shown && i == wnd.current && tab.kind == .Web) } }
 	// smooth scrolling moves the scrollers first: the scroll events of this frame (run_animation_frames) see where they
 	// are painted
-	if smooth_tick(app, current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }   // smooth_scroll.odin
+	if smooth_tick(app, current_tab(app)) { request_frames(app, 2) }   // smooth_scroll.odin
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
 		page.run_animation_frames(t.page, pacer.frame_ms)
 		prof_end(.Animation)
 		// (the loop counts this frame off after it: 2 = this one and the next)
-		if page.wants_animation_frame(t.page) { app.frames_requested = max(app.frames_requested, 2) }
-		if frames_tick(app, t, pacer.frame_ms) { app.frames_requested = max(app.frames_requested, 2) }   // (frames_shell.odin)
+		if page.wants_animation_frame(t.page) { request_frames(app, 2) }
+		if frames_tick(app, t, pacer.frame_ms) { request_frames(app, 2) }   // (frames_shell.odin)
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
 	// the page's pixels are worth keeping for chrome frames (shell_capture) only when it may run a long pass this frame
-	page_snapshot_wanted = ran > 0
+	own := &wnd.own
+	own.page_snapshot_wanted = ran > 0
 	if t := current_tab(app); t != nil && t.page != nil {
 		if t.layout.mutations != t.page.doc.mutations || page.wants_animation_frame(t.page) || page.animations_active(t.page) {
-			page_snapshot_wanted = true
+			own.page_snapshot_wanted = true
 		}
 	}
 	events = shell_page_phase_end(app, events)   // shell_frames.odin: the scroll and the actions of chrome frames, before the build
 	platform.frame_gate_stage(gate, .Building)
 	shell_snapshots_frame(app)
 
-	render.resize(&app.r, app.win.size)
-	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
+	render.resize(&app.r, active_window(app).win.size)
+	size := draw.Vec2{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)}
 	dt := pacer.dt
 
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
 	prof_begin(.Build_UI)
-	ui.begin_build(app.ui_state, {
+	ui.begin_build(active_window(app).ui, {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
-		window = app.win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
+		window = active_window(app).win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
 	build_ui(app)
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
@@ -1205,16 +1206,16 @@ frame :: proc(app: ^App, idled := false) {
 	page_a11y_frame(app)   // a11y_page.odin: the page's tree, after the chrome's that grafts it
 	prof_end(.Build_UI)
 	window_cursor_apply(app)   // page_cursor.odin: the page's cursor over the page, else the chrome's
-	if ui.needs_frame(app.ui_state) { app.frames_requested = max(app.frames_requested, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { app.frames_requested = max(app.frames_requested, 2) }
-	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { app.frames_requested = max(app.frames_requested, 2) }   // CSS animations: later changes wake the loop by timer
+	if ui.needs_frame(active_window(app).ui) { request_frames(app, 2) }
+	if t := current_tab(app); t != nil && t.page != nil && t.layout.mutations != t.page.doc.mutations { request_frames(app, 2) }
+	if t := current_tab(app); t != nil && t.page != nil && page.animations_active(t.page) { request_frames(app, 2) }   // CSS animations: later changes wake the loop by timer
 
 	shell_before_draw(app)   // (a chrome frame used the screen's slot)
 	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
 	prof_begin(.UI_Draw)
-	ui.draw_tree(app.ui_state, &app.dc)
+	ui.draw_tree(active_window(app).ui, &app.dc)
 	dnd_paint(app, &app.dc)   // dnd_image.odin: the picture of a drag from the page, over everything
 	prof_end(.UI_Draw)
 	prof_begin(.Submit)
@@ -1223,7 +1224,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
-	app.presented = true
+	wnd.presented = true
 	prof_end(.Present)
 	frame_log_presented()
 	pacer_end_frame(app)
@@ -1355,7 +1356,8 @@ main :: proc() {
 		if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
 		if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
 			for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
-			app.current = len(app.tabs) - len(rest)
+			wnd := active_window(app)
+			wnd.current = len(wnd.tabs) - len(rest)
 		}
 	}
 	for e in arg_errors { tab_log(current_tab(app), .Warn, e) }
@@ -1366,8 +1368,8 @@ main :: proc() {
 
 	app.r.swap_buffers = int(config.int_of(&app.prefs, "browser.frame.swap_buffers"))   // pacing.odin
 	fixed_surface := config.bool_of(&app.prefs, "browser.window.fixed_surface")
-	if !render.init(&app.r, app.win.hwnd, app.win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
-	if fixed_size := fixed_surface_size(app, app.win.hwnd); fixed_size.x > 0 {
+	if !render.init(&app.r, active_window(app).win.hwnd, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+	if fixed_size := fixed_surface_size(app, active_window(app).win.hwnd); fixed_size.x > 0 {
 		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
 		// (browser.window.fixed_surface; render.set_fixed_surface; the developer tools' window does the same)
 		render.set_fixed_surface(&app.r, fixed_size)
@@ -1377,9 +1379,9 @@ main :: proc() {
 	if !fonts_preload_finish(app, preload) { fmt.eprintln("cannot load the UI or icon font"); return }
 	prof_mark(.UI_Fonts)
 	draw.init(&app.dc, &app.r, &app.fonts)
-	ui.init(app.ui_state, &app.fonts, &app.theme)
+	ui.init(active_window(app).ui, &app.fonts, &app.theme)
 	chrome_a11y_init()   // (what screen readers call the caption buttons: a11y_chrome.odin)
-	app.ui_state.icon_font = app.icons
+	active_window(app).ui.icon_font = app.icons
 	page_render_init(app)
 	first_paint_init(app)
 	interaction_init(app)
@@ -1413,8 +1415,8 @@ main :: proc() {
 	devtools_init(app)   // devtools.odin
 	urlbar_init(app)   // urlbar.odin: the address bar's suggestions
 	app.last_tick = time.tick_now()
-	app.frames_requested = 4
-	app.win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
+	active_window(app).frames_requested = 4
+	active_window(app).win.on_frame = window_on_frame   // (shell_frames.odin: a chrome frame when the page holds the thread)
 	if !headless_mode { window_show(app.active) }
 	session_open_other_windows(app)   // session.odin: the other windows of a restored session
 	prof_mark(.Loop)
@@ -1553,7 +1555,7 @@ main :: proc() {
 	host.shutdown_step("interaction_destroy")
 	interaction_destroy(app)
 	host.shutdown_step("ui.field_destroy")
-	ui.field_destroy(&app.address)
+	ui.field_destroy(&app.bare.address)   // (the windows' with their toolkit states: windows_destroy_ui)
 	host.shutdown_step("console_eval_destroy")
 	console_eval_destroy()
 	host.shutdown_step("session_destroy")
@@ -1580,7 +1582,7 @@ main :: proc() {
 	config.prefs_destroy(&app.prefs)
 	profile_dir := strings.clone(app.profile_dir, context.temp_allocator)
 	delete(app.profile_dir)
-	delete(app.tabs)
+	delete(app.bare.tabs)
 	free(app)
 	the_app = nil
 	host.shutdown_step("instance_release")

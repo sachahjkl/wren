@@ -166,7 +166,7 @@ app_table :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 	rows, ok, why := rows_of(app, t, a)
 	if dt_bar("###dt_app_bar") {
 		dt_gap(3)
-		if dt_btn("###dt_app_refresh", .Refresh, tooltip = "Refresh").clicked { app.frames_requested = max(app.frames_requested, 2) }
+		if dt_btn("###dt_app_refresh", .Refresh, tooltip = "Refresh").clicked { request_frames(app, 2) }
 		if dt_btn("###dt_app_add", .Plus, tooltip = "Add an item", enabled = ok && a.area != .Cookies).clicked { begin_new_item(a) }
 		if dt_btn("###dt_app_del", .Trash, tooltip = "Delete the chosen item", shortcut = "Del", enabled = a.has_sel).clicked { delete_selected(app, t, a, rows) }
 		if dt_btn("###dt_app_clear", .Clear, tooltip = fmt.tprintf("Clear all %s", area_title(a.area)), enabled = len(rows) > 0).clicked { clear_area(app, t, a) }
@@ -390,7 +390,7 @@ app_edit_row :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row, widths
 
 @(private = "file")
 commit_app_edit :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, r: App_Row) {
-	defer { a.editing = false; app.frames_requested = max(app.frames_requested, 3) }
+	defer { a.editing = false; request_frames(app, 3) }
 	text := strings.clone(ui.field_string(&a.field), context.temp_allocator)
 	if t.page == nil { return }
 	switch a.area {
@@ -423,7 +423,7 @@ delete_by_key :: proc(app: ^App, t: ^Tab, a: ^Dev_Application, id, name, domain,
 	case .Cookies: cookies.remove(&app.profile.jar, name, domain, path)
 	}
 	a.has_sel = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private = "file")
@@ -436,5 +436,5 @@ clear_area :: proc(app: ^App, t: ^Tab, a: ^Dev_Application) {
 		cookies.delete_for_host(&app.profile.jar, host)
 	}
 	a.has_sel = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }

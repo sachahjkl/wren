@@ -36,7 +36,7 @@ zoom_set :: proc(app: ^App, t: ^Tab, z: f32) {
 	old := t.zoom > 0 ? t.zoom : 1
 	t.scroll *= nz / old
 	t.zoom = nz
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // "110 %" (for the address bar's zoom indicator).

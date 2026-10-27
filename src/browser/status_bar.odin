@@ -85,7 +85,7 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 			avail = b.size.x
 			// (the window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
 			ws := window_own(app)
-			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; app.frames_requested = max(app.frames_requested, 2) }
+			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; request_frames(app, 2) }
 		}
 		if ui.status_fill("###sb_left") {
 			link := hud.cfg.link_preview ? hovered_link(t) : ""
@@ -355,7 +355,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 		c := hud.cfg.comma
 		col := em * 17
 		gap := em * 0.6
-		ncols := clamp(int((f32(app.win.size.x) - em) / (col + gap)), 1, 3)
+		ncols := clamp(int((f32(active_window(app).win.size.x) - em) / (col + gap)), 1, 3)
 		w := col * f32(ncols) + gap * f32(ncols - 1)
 		layout: [][]Panel_Section
 		switch ncols {
@@ -509,7 +509,7 @@ toggle_status_bar :: proc(app: ^App) {
 toggle_frame_stats :: proc(app: ^App) {
 	hud.panel_open = !hud.panel_open || !hud.cfg.bar_visible
 	if hud.panel_open && !hud.cfg.bar_visible { set_pref_bool(app, "browser.status_bar.visible", true) }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 set_pref_bool :: proc(app: ^App, name: string, v: bool) {

@@ -236,15 +236,15 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 		delete(ghist.path)
 		url_index_destroy(&ub.idx)
 		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
-		delete(app.address.buf)
+		delete(active_window(app).address.buf)
 	}
 
 	// "git" typed: completed to github.com/, the completion's row first, gitlab and gitea after it, a search last
 	uv.typed = strings.clone("git")
 	urlbar_refresh(app, .New)
 	testing.expect(t, uv.open, "open")
-	testing.expect_value(t, string(app.address.buf[:]), "github.com/")
-	testing.expect(t, app.address.mark == 3 && app.address.cursor == len("github.com/"), "the completed part is selected")
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")
+	testing.expect(t, active_window(app).address.mark == 3 && active_window(app).address.cursor == len("github.com/"), "the completed part is selected")
 	kinds := make([dynamic]Urlbar_Row_Kind, context.temp_allocator)
 	for r in uv.rows { append(&kinds, r.kind) }
 	testing.expectf(t, len(uv.rows) == 3 && uv.rows[0].fill && kinds[1] == .History && kinds[2] == .History, "%v", kinds)
@@ -262,12 +262,12 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	// the cross on gitlab's row (chosen with Down): removed from the history, the next row chosen, the text kept
 	delete(uv.typed); uv.typed = strings.clone("git")
 	urlbar_refresh(app, .None)   // (no completion: Backspace removed it)
-	testing.expect_value(t, string(app.address.buf[:]), "github.com/")   // (the field is the app's: left as it was)
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")   // (the field is the app's: left as it was)
 	at := -1
 	for r, i in uv.rows { if r.kind == .History && ub.idx.entries[r.entry].url == "https://gitlab.com/" { at = i } }
 	testing.expect(t, at > 0, "gitlab is listed")
 	urlbar_choose(app, at)
-	testing.expect_value(t, string(app.address.buf[:]), "https://gitlab.com/")
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "https://gitlab.com/")
 	n := len(uv.rows)
 	urlbar_remove_row(app, at)
 	testing.expect(t, uv.open, "the list stays open")
@@ -313,7 +313,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	defer {
 		visits_destroy(&ghist.visits)
 		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
-		delete(app.address.buf)
+		delete(active_window(app).address.buf)
 	}
 	uv.typed = strings.clone("site12")
 	urlbar_refresh(app, .None)

@@ -35,7 +35,7 @@ devtools_detached :: proc() -> bool { return dev_win != nil || dev_want }
 devtools_detach :: proc(app: ^App) {
 	if dev_win != nil || dev_want { return }
 	dev_want = true   // made after the frame that asked: the toolkit's state must not change under a build
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
@@ -69,11 +69,11 @@ devtools_window_make :: proc(app: ^App) {
 	platform.set_dark_title(w, pal_ok ? pal.dark : true)
 	ui.init(&dw.ui, &app.fonts, &app.theme)
 	dw.ui.icon_font = app.icons
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 	dev_win = dw
 	dev.visible = true
 	platform.show_window(w)
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 	dw.busy = true
 }
 
@@ -84,12 +84,12 @@ devtools_attach :: proc(app: ^App) {
 	if dw == nil { return }
 	dev_win = nil
 	ui.destroy(&dw.ui)
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 	render.surface_destroy(&app.r, &dw.surf)
 	platform.destroy_window(dw.win)
 	delete(dw.title)
 	free(dw)
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 devtools_window_destroy :: proc(app: ^App) { devtools_attach(app) }
@@ -114,13 +114,14 @@ devtools_window_timeout :: proc(timeout: int) -> int {
 devtools_window_tick :: proc(app: ^App) {
 	if dev_want { devtools_window_make(app) }
 	if dev_win == nil { return }
-	if app.frames_requested > 0 || devtools_window_busy() { devtools_window_frame(app) }
+	if active_window(app).frames_requested > 0 || devtools_window_busy() { devtools_window_frame(app) }
 }
 
 // The window's own on_frame, called while Windows owns the loop for it (a resize by its edges, a move, its menu): the main window
 // goes on as well, so the page, its timers and its loads do not stop while the panel's window is dragged. Not from a chrome frame:
 // nothing of the page may run there (shell_frames.odin).
 devtools_window_loop_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	// (not inside a frame's page phase, build or drawing: windows.odin, the frame gate. Its frame is a Light one, but not in the
 	// page phase either: the panel's input (the console) may run the page's scripts)
 	g := platform.frame_gate()
@@ -130,10 +131,10 @@ devtools_window_loop_frame :: proc(app: ^App) {
 		return
 	}
 	devtools_window_frame(app)
-	if chrome_frames.nested || platform.is_closed(app.win) { return }
+	if chrome_frames.nested || platform.is_closed(wnd.win) { return }
 	app.pass_first = true
 	frame(app, true)   // (idled: it returns at once when there is nothing to draw nor to run)
-	if app.frames_requested > 0 { app.frames_requested -= 1 }
+	if wnd.frames_requested > 0 { wnd.frames_requested -= 1 }
 }
 
 devtools_window_frame :: proc(app: ^App) {
@@ -184,14 +185,14 @@ devtools_window_frame :: proc(app: ^App) {
 	draw.end_frame(&app.dc)
 	// a step of a resize is shown at once, as the main window's is (pacing.odin): waiting for the screen would hold the thread, and
 	// the main window with it, for a refresh at every step
-	resizing := w.size != dw.size_seen && pacer.cfg.resize_immediate && app.presented   // (browser.frame.resize_immediate)
+	resizing := w.size != dw.size_seen && pacer.cfg.resize_immediate && active_window(app).presented   // (browser.frame.resize_immediate)
 	dw.size_seen = w.size
 	pacer_latency(app, &dw.latency, resizing)   // (pacing.odin: two frames may queue during a resize step, as for the main window)
 	present_start := qpc()
 	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !resizing)
 	prof_window_frame(frame_start, present_start)   // prof.odin: the window's frames of a profile run
-	ui.use(app.ui_state)
+	ui.use(active_window(app).ui)
 }
 
 
