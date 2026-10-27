@@ -2,12 +2,18 @@ package desktop
 
 // The command line of the integration, for an uninstall script and for tests:
 //
-//     wren --desktop-integration=install|remove|status        (also: --desktop-integration install)
+//     wren --desktop-integration=install|remove|status|uninstall    (also: --desktop-integration install)
 //
 // The program does its job and exits without opening a window. Exit codes:
-//     install, remove   0 done, 1 failed (the message says what)
-//     status            0 installed, 1 absent, 2 to repair (incomplete, or it runs another executable), 3 unreadable
+//     install, remove     0 done, 1 failed (the message says what)
+//     status              0 installed, 1 absent, 2 to repair (incomplete, or it runs another executable), 3 unreadable
+//     uninstall           0 done, 1 failed, 5 done but some files are in use and were scheduled for later (the caller
+//                         keeps going; the shell's --uninstall does this, see desktop_shell.odin)
 // The word on the first output line is the state (installed, absent, "to repair: ..."), one line per part follows.
+//
+// `remove` takes away only the integration (shortcuts, the PATH entry, the browser registration); `uninstall` is the
+// whole installed copy: the integration, the PATH entry, the entry in the system's list of installed programs (Windows:
+// Settings > Apps) and the files Setup placed. It never touches the user's profile (the shell adds --purge for that).
 //
 // A program built for the Windows GUI subsystem has no console of its own: the output goes to the standard output when
 // it is redirected or piped (the Windows way to read it from a script), else to the console of the parent.
@@ -15,26 +21,31 @@ package desktop
 import "core:fmt"
 import "core:strings"
 
-Cli_Mode :: enum u8 { None, Install, Remove, Status }
+Cli_Mode :: enum u8 { None, Install, Remove, Status, Uninstall }
 
 CLI_FLAG :: "--desktop-integration"
 
-// Takes the flag out of the arguments. `bad` is the value when it names no mode (the caller says so and exits).
+// Takes the flag out of the arguments (its own form `--desktop-integration=mode` or the two-word form, and the
+// shorthands `--uninstall` / `--install` for the two actions a user runs by hand). `bad` is the value when it names no
+// mode (the caller says so and exits).
 parse_cli :: proc(args: []string, allocator := context.temp_allocator) -> (mode: Cli_Mode, rest: [dynamic]string, bad: string) {
 	rest = make([dynamic]string, allocator)
 	for i := 0; i < len(args); i += 1 {
 		a := args[i]
 		value := ""
 		switch {
+		case a == "--uninstall": mode = .Uninstall; continue
+		case a == "--install":   mode = .Install; continue
 		case a == CLI_FLAG && i + 1 < len(args): value = args[i + 1]; i += 1
 		case strings.has_prefix(a, CLI_FLAG + "="): value = a[len(CLI_FLAG) + 1:]
 		case: append(&rest, a); continue
 		}
 		switch value {
-		case "install": mode = .Install
-		case "remove":  mode = .Remove
-		case "status":  mode = .Status
-		case:           bad = value
+		case "install":   mode = .Install
+		case "remove":    mode = .Remove
+		case "status":    mode = .Status
+		case "uninstall": mode = .Uninstall
+		case:             bad = value
 		}
 	}
 	return
@@ -76,6 +87,25 @@ cli_run :: proc(mode: Cli_Mode, o: ^Options, out: proc(text: string)) -> int {
 			return 1
 		}
 		out("removed\n")
+		return 0
+	case .Uninstall:
+		ur := uninstall(o, executable_path(), context.temp_allocator)
+		defer uninstall_result_destroy(&ur)
+		if ur.result.error != .None {
+			out(fmt.tprintf("uninstall failed: %s (%s)\n", error_text(ur.result.error), ur.result.detail))
+			return 1
+		}
+		if len(ur.leftovers) > 0 {
+			// the copy being uninstalled is the one running: its own files cannot be deleted now. Schedule their deletion
+			// (and the folder's) for after this process ends, and tell the caller with exit code 5 (done, finishing later).
+			files := make([dynamic]string, context.temp_allocator)
+			for l in ur.leftovers { append(&files, l) }
+			if ur.folder != "" { append(&files, join_path(ur.folder, MANIFEST_NAME)) }
+			cleanup_later(files[:], ur.folder, current_process_id())
+			out("uninstalled (some files are in use and will be removed when this copy closes)\n")
+			return 5
+		}
+		out("uninstalled\n")
 		return 0
 	case .Status:
 		s := status(o, context.temp_allocator)

@@ -24,6 +24,7 @@ import "core:strings"
 import "core:sync"
 import "core:time"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 import "wb:desktop"
 import "wb:host"
@@ -85,10 +86,25 @@ desktop_options :: proc(app: ^App) -> desktop.Options {
 	return o
 }
 
-// `--desktop-integration=...`: runs it and returns the exit code.
-desktop_cli :: proc(app: ^App, mode: desktop.Cli_Mode) -> int {
+// `--desktop-integration=...`, `--uninstall [--purge]`: runs it without a window and returns the exit code.
+// With `--purge` on an uninstall the profile folder is deleted too (preferences, history, cookies, session, crashes,
+// licence); without it the profile is kept, so a reinstall finds everything as it was.
+desktop_cli :: proc(app: ^App, mode: desktop.Cli_Mode, purge := false) -> int {
 	o := desktop_options(app)
-	return desktop.cli_run(mode, &o, desktop.console_write)
+	code := desktop.cli_run(mode, &o, desktop.console_write)
+	if mode == .Uninstall && purge && (code == 0 || code == 5) {
+		// delete the profile after the files (the profile is the browser's, not the desktop package's concern). A profile
+		// given with --profile or a portable one is still removed when asked for, since --purge is an explicit request.
+		if app.profile_dir != "" && os.is_dir(app.profile_dir) {
+			if base.remove_tree(app.profile_dir) {
+				desktop.console_write(fmt.tprintf("profile deleted: %s\n", app.profile_dir))
+			} else {
+				desktop.console_write(fmt.tprintf("the profile could not be fully deleted: %s\n", app.profile_dir))
+				if code == 0 { code = 1 }
+			}
+		}
+	}
+	return code
 }
 
 ////////////////////////////////
@@ -223,7 +239,10 @@ desktop_changed_on_loop :: proc(_: rawptr) {
 desktop_watch_begin :: proc(app: ^App, profile_explicit: bool) {
 	if !desktop.supported() || dsk.watcher != nil { return }
 	if v, ok := os.lookup_env("WREN_DESKTOP_INTEGRATION", context.temp_allocator); ok && v == "off" { return }   // tools\test_env.ps1: every script's runs
-	if desktop_profile_is_disposable(app, profile_explicit) { return }
+	// The watcher now runs for --profile and for disposable profiles too (the temporary folder): the Setup state and the
+	// menu's "installed" badge stay live in those runs as well, and the install folder is followed so an uninstall or a
+	// reinstall by another Wren is seen at once. It only reads the shared desktop (registry keys, folders) and never
+	// changes it, so it is safe for a throwaway profile; WREN_DESKTOP_INTEGRATION=off (the tests) still turns it off.
 	desktop_watch_ensure(app)
 }
 

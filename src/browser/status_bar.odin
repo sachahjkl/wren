@@ -596,6 +596,12 @@ set_pref_bool :: proc(app: ^App, name: string, v: bool) {
 	}
 }
 
+set_pref_int :: proc(app: ^App, name: string, v: int) {
+	if err := config.set_int(&app.prefs, config.ref_of(&app.prefs, name), i64(v)); err != .None {
+		ui.toast(.Warn, "%s: %s", name, config.set_error_text(err))
+	}
+}
+
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
 hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
 	if fullscreen_bars_capture(app, pos) { return true }   // and so do the bars of full screen (window_chrome.odin)

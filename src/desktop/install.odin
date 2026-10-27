@@ -448,6 +448,61 @@ parent_dir :: proc(path: string) -> string {
 }
 
 ////////////////////////////////
+// Uninstall: the whole installed copy
+
+// The outcome of a full uninstall: the integration, the PATH entry, the system's record and the files are all gone,
+// except files a running program holds, which are listed (and renamed to `.old`) for the caller to delete later.
+Uninstall_Result :: struct {
+	result:    Result,            // the first error (uninstall keeps going past one: the files should go even if a key will not)
+	leftovers: [dynamic]string,   // files that could not be deleted now (the running copy's own); the given allocator
+	folder:    string,            // the install folder when leftovers remain in it (owned); "" otherwise
+	removed:   int,               // files deleted now
+	dir:       string,            // the folder uninstalled (owned); "" when nothing was installed
+}
+
+// Removes the integration (shortcuts, the browser registration), the PATH entry, the system's record (Settings > Apps),
+// and the files Setup placed, for the installed copy of `o`. Reads where the copy is from `o.install_dir`, else the
+// system's record, else the default. Keeps going past the first error so a missing key does not leave the files behind.
+// `running_exe` is this process's executable: when it is the copy being removed, its own file cannot be deleted and is
+// returned in `leftovers` for the caller to schedule (cleanup_later). The user's profile is not touched.
+uninstall :: proc(o: ^Options, running_exe: string, allocator := context.temp_allocator) -> Uninstall_Result {
+	ur := Uninstall_Result{leftovers = make([dynamic]string, allocator)}
+	b := platform_backend()
+	if b == nil { ur.result = {.Unsupported, error_text(.Unsupported)}; return ur }
+	if e := validate(o, need_exe = false); e.error != .None { ur.result = e; return ur }
+	dir := install_target(o, allocator)
+	ur.dir = dir
+	exe_name := exe_name_of(o.identity)
+	// the integration is measured against (and so removes the marks of) the installed executable when there is one, else
+	// the running one: remove() deletes only what carries this program's mark, so the right executable matters.
+	prev_exe := o.exe
+	installed_exe := dir != "" ? join_path(dir, exe_name) : running_exe
+	o.exe = installed_exe
+	defer o.exe = prev_exe
+	if r := remove(o); r.error != .None && ur.result.error == .None { ur.result = r }
+	if dir != "" {
+		if r := forget_path(o, dir); r.error != .None && ur.result.error == .None { ur.result = r }
+		if r := unrecord_install(o); r.error != .None && ur.result.error == .None { ur.result = r }
+		rm := files_remove(o, dir)
+		ur.removed = rm.removed
+		if rm.result.error != .None && ur.result.error == .None { ur.result = rm.result }
+		for l in rm.leftovers { append(&ur.leftovers, strings.clone(l, allocator)) }
+		if len(rm.leftovers) > 0 { ur.folder = strings.clone(dir, allocator) }
+	} else {
+		if r := unrecord_install(o); r.error != .None && ur.result.error == .None { ur.result = r }
+	}
+	return ur
+}
+
+uninstall_result_destroy :: proc(ur: ^Uninstall_Result, allocator := context.temp_allocator) {
+	for l in ur.leftovers { delete(l, allocator) }
+	delete(ur.leftovers)
+	delete(ur.folder, allocator)
+	delete(ur.dir, allocator)
+	ur^ = {}
+}
+
+////////////////////////////////
 // The system's record, the deferred deletion, the PATH of a folder that goes away
 
 // Records the installed copy in `dir` with the system (Windows: the Apps list). Nothing to do where there is no record.

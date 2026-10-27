@@ -702,6 +702,12 @@ styles_panel :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 		if dt_bar("###dt_sty_bar", dtm.bar - dt_px(4)) {
 			dt_gap(3)
 			dt_search("###dt_sty_filter", &s.filter, "Filter styles", 0, false)
+			// :hov, as Chrome's Styles pane has it: force :hover / :active / :focus / :focus-within / :visited on the chosen element
+			// (and its ancestors for :hover, :active and :focus-within, as a real pointer or focus does). On, the rules those states
+			// bring in appear in the list below because styles_refresh reads the engine with the forced state (effective_state).
+			forced_on := e.selected != base.NIL_HANDLE && page.dev_forced(t.page).el == e.selected && page.dev_forced(t.page) != (page.Forced_State{el = e.selected})
+			hov := dt_menu_btn("###dt_sty_hov", .None, ":hov", tooltip = "Force the element's states (:hover, :active, :focus, :focus-within, :visited)", on = forced_on)
+			if ui.ctx_menu(hov, dt_px(220)) { hov_menu(app, t, e) }
 			cls := dt_menu_btn("###dt_sty_cls", .None, ".cls", tooltip = "Toggle the classes of the element")
 			if ui.ctx_menu(cls, dt_px(220)) { class_menu(app, t, e) }
 			if dt_btn("###dt_sty_add", .Plus, tooltip = "New declaration for this element (element.style)", enabled = e.selected != base.NIL_HANDLE).clicked {
@@ -741,6 +747,44 @@ sub_tab_btn :: proc(id, label: string, on: bool) -> ui.Signal {
 		if d.on { draw.rect(dc, {{r.min.x + dt_px(3), r.max.y - dt_px(2)}, {r.max.x - dt_px(3), r.max.y}}, dtc.accent) }
 	}, st
 	return sig
+}
+
+// The :hov panel of the Styles pane (Chrome's): checkboxes that force the element's interactive states. The rules those
+// states select then appear in the list, because styles_refresh reads the engine with the forced state. Forcing :hover,
+// :active or :focus-within applies to the element and its ancestors (the matcher walks the flat ancestor chain), so a rule
+// such as `a:hover .label` or `.menu:focus-within` lights up as it would under a real pointer or focus.
+@(private = "file")
+hov_menu :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
+	ui.menu_heading("Force element state")
+	if t.page == nil || e.selected == base.NIL_HANDLE { ui.menu_item("Select an element###dt_hov_none", enabled = false); return }
+	f := page.dev_forced(t.page)
+	if f.el != e.selected { f = {} }   // forced states belong to one element at a time
+	toggle :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, f: page.Forced_State, which: int) {
+		g := f
+		switch which {
+		case 0: g.hover = !g.hover
+		case 1: g.active = !g.active
+		case 2: g.focus = !g.focus
+		case 3: g.focus_within = !g.focus_within
+		case 4: g.visited = !g.visited
+		}
+		page.dev_force_state(t.page, e.selected, g.hover, g.active, g.focus, g.focus_within, g.visited)
+		e.version += 1
+		e.side.rev += 1   // the Styles list is keyed on this: rebuild it with the new matched rules
+		request_frames(app, 3)
+	}
+	if ui.menu_item(":hover###dt_hov_h", checked = f.hover, keep_open = true).clicked { toggle(app, t, e, f, 0) }
+	if ui.menu_item(":active###dt_hov_a", checked = f.active, keep_open = true).clicked { toggle(app, t, e, f, 1) }
+	if ui.menu_item(":focus###dt_hov_f", checked = f.focus, keep_open = true).clicked { toggle(app, t, e, f, 2) }
+	if ui.menu_item(":focus-within###dt_hov_fw", checked = f.focus_within, keep_open = true).clicked { toggle(app, t, e, f, 3) }
+	if ui.menu_item(":visited###dt_hov_v", checked = f.visited, keep_open = true).clicked { toggle(app, t, e, f, 4) }
+	ui.menu_separator()
+	if ui.menu_item("Clear###dt_hov_clear", enabled = page.dev_forced(t.page).el != base.NIL_HANDLE).clicked {
+		page.dev_force_state(t.page, base.NIL_HANDLE, false, false, false, false, false)
+		e.version += 1
+		e.side.rev += 1
+		request_frames(app, 3)
+	}
 }
 
 // Classes of the element as switches: one off is taken out of the attribute, and put back when it is on again.

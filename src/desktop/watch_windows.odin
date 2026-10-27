@@ -3,7 +3,8 @@ package desktop
 // Windows: one thread waits on the change notifications of every place an integration lives, and on the watcher's stop
 // event: the registry subtree HKCU\<registry_root> (the keys of the integration live under Software: Classes, Clients,
 // RegisteredApplications, the Uninstall entry), the user's environment key (the PATH entry), the Start menu's Programs
-// folder and the Desktop folder (the two shortcuts). A change wakes the program, which reads the state again when it
+// folder, the Desktop folder (the two shortcuts) and the install folder (a reinstall, a repair, a file removed, an
+// uninstall of the installed copy by another Wren). A change wakes the program, which reads the state again when it
 // shows it.
 //
 // A place that disappears (its key or folder is deleted: that is a change too) cannot be waited on any more: the thread
@@ -24,7 +25,7 @@ foreign kernel32_watch {
 }
 
 WATCH_KEYS :: 2   // the registry subtree, the environment key
-WATCH_DIRS :: 2   // the Programs folder, the Desktop folder
+WATCH_DIRS :: 3   // the Programs folder, the Desktop folder, the install folder
 WATCH_RETRY_MS :: 3000
 
 Watch_Key :: struct {
@@ -65,6 +66,9 @@ watch_start_windows :: proc(o: ^Options, wake: Watch_Proc, user: rawptr) -> ^Wat
 	desktop := o.desktop_dir != "" ? o.desktop_dir : known_folder(win.FOLDERID_Desktop)
 	st.dirs[0].path = strings.clone(menu)
 	st.dirs[1].path = strings.clone(desktop)
+	// the install folder: where the copy is recorded, else the default. A fresh profile has none yet; the thread opens it
+	// when it comes (watch_dir_open retries), so a first install starts being followed too.
+	st.dirs[2].path = strings.clone(install_target(o, context.temp_allocator))
 
 	// the registry subtree is the one that must exist now: without it there is nothing to follow. The others may be
 	// missing (a fresh profile has no Desktop key...): they are tried again by the thread
