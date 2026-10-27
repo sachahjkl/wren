@@ -12,6 +12,17 @@ license = "MIT"
 [lib]
 path = "src/lib.rs"
 
+# Audio decoding (src/media/audio.rs) and output (src/media/aout.rs) are built only where the platform has no native
+# media stack of its own: Windows keeps Media Foundation and WASAPI, so these C-bearing crates (Opus' libopus, cpal's
+# ALSA) stay out of the Windows build. Symphonia (AAC-LC, MP3, FLAC, Vorbis, PCM) is pure safe Rust; the `opus` crate
+# builds Xiph's libopus with cc (no pure-Rust Opus decoder is mature); cpal drives ALSA, which PipeWire and PulseAudio
+# serve; libc gives CLOCK_MONOTONIC in the output callback.
+[target.'cfg(not(target_os = "windows"))'.dependencies]
+symphonia = { version = "=0.5.4", default-features = false, features = ["aac", "mp3", "flac", "vorbis", "pcm"] }
+opus = "=0.3.0"
+cpal = "=0.15.3"
+libc = "=0.2.191"
+
 [dependencies]
 # SVG: usvg (parse + simplify) and tiny-skia (rasterise); text with the system's fonts (fontdb), <image> with data: URLs
 resvg = { version = "=0.48.1", default-features = false, features = ["text", "system-fonts", "memmap-fonts", "raster-images"] }

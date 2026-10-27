@@ -20,11 +20,13 @@ Watcher :: struct {
 // opened): the caller's periodic check stays.
 watch_start :: proc(o: ^Options, wake: Watch_Proc, user: rawptr) -> ^Watcher {
 	when ODIN_OS == .Windows { return watch_start_windows(o, wake, user) }
-	return nil
+	else when ODIN_OS == .Linux { return watch_start_linux(o, wake, user) }
+	else { return nil }
 }
 
 watch_stop :: proc(w: ^Watcher) {
 	if w == nil { return }
 	when ODIN_OS == .Windows { watch_stop_windows(w) }
+	else when ODIN_OS == .Linux { watch_stop_linux(w) }
 	free(w)
 }

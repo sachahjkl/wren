@@ -21,13 +21,14 @@ import "core:strings"
 @(private = "file")
 LINUX_BACKEND := Backend{
 	name = "linux",
-	targets = "application menu, default browser",
-	parts = {.Launcher, .Icons},
+	targets = "application menu, default browser, PATH",
+	parts = {.Launcher, .Icons, .Path},
 	status = linux_status,
 	install = linux_install,
 	remove = linux_remove,
 	open_defaults = nil,   // each desktop has its own settings program; there is no portable address for it
 	default_install_dir = linux_default_install_dir,
+	path_remove = linux_path_remove,
 }
 
 @(private)
@@ -68,14 +69,6 @@ layout_of :: proc(o: ^Options) -> (l: Layout, ok: bool) {
 	l.icons = o.icons_dir != "" ? o.icons_dir : strings.concatenate({data_home, "/icons/hicolor"}, context.temp_allocator)
 	l.entry = strings.concatenate({l.applications, "/", o.identity.slug, ".desktop"}, context.temp_allocator)
 	return l, true
-}
-
-@(private = "file")
-xdg_data_home :: proc() -> string {
-	if v, ok := os.lookup_env("XDG_DATA_HOME", context.temp_allocator); ok && filepath.is_abs(v) { return v }
-	home, err := os.user_home_dir(context.temp_allocator)
-	if err != nil || home == "" { return "" }
-	return strings.concatenate({home, "/.local/share"}, context.temp_allocator)
 }
 
 @(private = "file")
@@ -127,7 +120,25 @@ linux_status :: proc(o: ^Options, allocator: runtime.Allocator) -> Status {
 	} else if len(o.icons) == 0 {
 		for size in ICON_SIZES { if os.is_file(icon_path(l, o.identity.slug, size)) { s.parts[.Icons].present = true; break } }
 	}
+
+	// PATH: the symlink in ~/.local/bin. present when it is there; its target is the program it runs (stale when another).
+	if link := bin_link_path(o); link != "" {
+		if target, err := os.read_link(link, context.temp_allocator); err == nil {
+			ps := &s.parts[.Path]
+			ps.present = true
+			ps.target = clone_or_empty(target, allocator)
+			ps.stale = !same_path(target, o.exe)
+		}
+	}
 	return s
+}
+
+// ~/.local/bin/<slug>: the symlink that puts the program on the user's PATH (the "Add to PATH" of Linux).
+@(private = "file")
+bin_link_path :: proc(o: ^Options) -> string {
+	bin := xdg_bin_dir()
+	if bin == "" { return "" }
+	return strings.concatenate({bin, "/", o.identity.slug}, context.temp_allocator)
 }
 
 ////////////////////////////////
@@ -152,6 +163,21 @@ linux_install :: proc(o: ^Options) -> Result {
 		mark, _ := entry_value(content, ENTRY_MARKER)
 		exec, _ := entry_value(content, "Exec")
 		if mark == o.identity.slug || same_path(exec_program(exec), o.exe) { _ = os.remove(l.entry) }
+	}
+
+	// PATH: a symlink in ~/.local/bin to the executable (replaced when it points elsewhere); removed when the option is off.
+	if link := bin_link_path(o); link != "" {
+		if o.add_to_path {
+			if !ensure_dir(filepath.dir(link)) { return {.Io, strings.concatenate({"cannot create the directory of ", link}, context.temp_allocator)} }
+			if target, err := os.read_link(link, context.temp_allocator); err != nil || !same_path(target, o.exe) {
+				_ = os.remove(link)   // a stale or foreign link of our own name: replace it (a non-symlink file stays, symlink fails below)
+				if serr := os.symlink(o.exe, link); serr != nil {
+					return {.Io, strings.concatenate({"cannot create the symlink ", link}, context.temp_allocator)}
+				}
+			}
+		} else if target, err := os.read_link(link, context.temp_allocator); err == nil && same_path(target, o.exe) {
+			_ = os.remove(link)   // off: take out only a link that runs this program
+		}
 	}
 
 	// (the icon theme's cache is checked against the directories' times: there is nothing to run for the icons)
@@ -198,8 +224,28 @@ linux_remove :: proc(o: ^Options) -> Result {
 		path := icon_path(l, o.identity.slug, ic.size)
 		if os.is_file(path) { _ = os.remove(path) }
 	}
+	// PATH: the symlink goes only when it runs this program (a file of the same name that is not ours stays).
+	if link := bin_link_path(o); link != "" {
+		if target, err := os.read_link(link, context.temp_allocator); err == nil && same_path(target, o.exe) {
+			if rerr := os.remove(link); rerr != nil && res.error == .None { res = {.Io, strings.concatenate({"cannot delete ", link}, context.temp_allocator)} }
+		}
+	}
 	if o.notify_system { run_tool("update-desktop-database", {l.applications}) }
 	return res
+}
+
+// Takes one folder's symlink out of ~/.local/bin (install.odin calls this when a copy is uninstalled). `dir` is the
+// folder whose executable the link points into; the link is removed when it resolves to a program in that folder.
+@(private = "file")
+linux_path_remove :: proc(o: ^Options, dir: string) -> Result {
+	link := bin_link_path(o)
+	if link == "" { return {} }
+	target, err := os.read_link(link, context.temp_allocator)
+	if err != nil { return {} }
+	if same_path(filepath.dir(target), dir) || same_path(target, o.exe) {
+		if rerr := os.remove(link); rerr != nil { return {.Io, strings.concatenate({"cannot delete ", link}, context.temp_allocator)} }
+	}
+	return {}
 }
 
 ////////////////////////////////
