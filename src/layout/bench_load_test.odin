@@ -30,9 +30,9 @@ bench_load :: proc(t: ^testing.T) {
 	temp: runtime.Arena
 	defer runtime.arena_destroy(&temp)
 	context.temp_allocator = runtime.arena_allocator(&temp)
-	pages := os.get_env("WREN_LOADBENCH_PAGES", context.allocator)
-	defer delete(pages)
-	if pages == "" { pages = "p10k,p50k" }
+	env_pages := os.get_env("WREN_LOADBENCH_PAGES", context.allocator)
+	defer delete(env_pages)   // (not the default below: a literal)
+	pages := env_pages != "" ? env_pages : "p10k,p50k"
 	rounds := 7
 	if r := os.get_env("WREN_LOADBENCH_ROUNDS", context.temp_allocator); r != "" { rounds = max(1, parse_int(r)) }
 	sample_s := parse_int(os.get_env("WREN_LOADBENCH_SAMPLE", context.temp_allocator))
@@ -95,10 +95,14 @@ bench_load :: proc(t: ^testing.T) {
 			ahead, taken := 0, 0
 			// WREN_LOADBENCH_RESIZE_GAP_MS: a pause between passes, as between the frames of a window (threads go idle)
 			gap := parse_int(os.get_env("WREN_LOADBENCH_RESIZE_GAP_MS", context.temp_allocator))
+			// WREN_LOADBENCH_RESIZE_AXIS=h: the height changes instead (a window resized from its bottom edge), =wh: both
+			axis := os.get_env("WREN_LOADBENCH_RESIZE_AXIS", context.allocator)   // (the temp allocator is emptied every step)
+			defer delete(axis)
 			for k in 0 ..< resize_steps {
 				if gap > 0 { time.sleep(time.Duration(gap) * time.Millisecond) }
 				ri := in_
-				ri.viewport.x = resize_width(k)
+				if axis != "h" { ri.viewport.x = resize_width(k) }
+				if axis == "h" || axis == "wh" { ri.viewport.y = resize_width(k) - 600 }
 				t0 := time.tick_now()
 				run(&rl, ri)
 				tot[k], st5[k] = time.duration_milliseconds(time.tick_since(t0)), rl.stats
