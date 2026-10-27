@@ -19,8 +19,7 @@ Interaction_Settings :: struct {
 	ctx_shift_forces:     bool,
 	zoom_min, zoom_max:   f32,
 	zoom_levels:          [dynamic]f32,
-	search_engine:        string,              // owned
-	search_custom:        string,              // owned
+	search_engine:        string,              // the default engine's id (search_engines.odin); owned
 	closed_tabs_max:      int,
 	source_colors:        bool,
 }
@@ -56,10 +55,8 @@ INTERACTION_PREFS := [?]config.Def{
 		description = "Smallest page zoom (Ctrl+wheel goes down to it)."},
 	{name = "browser.zoom.max_percent", kind = .Float, default = {f = 500}, bounded = true, min = 100, max = 1000, unit = "%",
 		description = "Largest page zoom."},
-	{name = "browser.search.engine", kind = .String, default = {s = "duckduckgo"}, choices = {"duckduckgo", "bing", "google", "qwant", "ecosia", "startpage", "custom"},
-		description = "Search engine of the context menu's \"Search for\" and of addresses that are not URLs. custom: browser.search.custom_url."},
-	{name = "browser.search.custom_url", kind = .String, default = {s = "https://duckduckgo.com/?q=%s"},
-		description = "Search URL when browser.search.engine is custom: %s is replaced by the words searched (percent-encoded)."},
+	{name = "browser.search.engine", kind = .String, default = {s = "duckduckgo"}, category = "search",
+		description = "The default search engine: words typed in the address bar that are not an address, the context menu's \"Search for\". The id of an engine of the list (Search engines, above: duckduckgo, bing, google, qwant, ecosia, startpage, wikipedia, or one added); an id the list lacks means its first engine."},
 	{name = "browser.tabs.closed_max", kind = .Int, default = {i = 25}, bounded = true, min = 0, max = 1000, category = "tabs",
 		description = "Closed tabs Ctrl+Shift+T can reopen (most recent first)."},
 	{name = "browser.view_source.colors", kind = .Bool, default = {b = true},
@@ -85,7 +82,6 @@ interaction_settings_from_prefs :: proc(p: ^config.Prefs) -> Interaction_Setting
 		zoom_min = f32(config.float_of(p, "browser.zoom.min_percent")) / 100,
 		zoom_max = f32(config.float_of(p, "browser.zoom.max_percent")) / 100,
 		search_engine = strings.clone(config.string_of(p, "browser.search.engine")),
-		search_custom = strings.clone(config.string_of(p, "browser.search.custom_url")),
 		closed_tabs_max = int(config.int_of(p, "browser.tabs.closed_max")),
 		source_colors = config.bool_of(p, "browser.view_source.colors"),
 	}
@@ -108,7 +104,7 @@ interaction_settings_from_prefs :: proc(p: ^config.Prefs) -> Interaction_Setting
 interaction_settings_destroy :: proc(s: ^Interaction_Settings) {
 	delete(s.sel_bg); delete(s.sel_fg); delete(s.sel_inactive_bg)
 	delete(s.find_bg); delete(s.find_active_bg)
-	delete(s.search_engine); delete(s.search_custom)
+	delete(s.search_engine)
 	delete(s.zoom_levels)
 	s^ = {}
 }
@@ -129,53 +125,4 @@ parse_percent :: proc(s: string) -> f32 {
 		}
 	}
 	return seen ? v : 0
-}
-
-// The URL that searches for `words` with the configured engine.
-search_url :: proc(s: ^Interaction_Settings, words: string) -> string {
-	q := percent_encode_query(words)
-	template: string
-	switch s.search_engine {
-	case "bing": template = "https://www.bing.com/search?q=%s"
-	case "google": template = "https://www.google.com/search?q=%s"
-	case "qwant": template = "https://www.qwant.com/?q=%s"
-	case "ecosia": template = "https://www.ecosia.org/search?q=%s"
-	case "startpage": template = "https://www.startpage.com/do/search?query=%s"
-	case "custom": template = s.search_custom
-	case: template = "https://duckduckgo.com/?q=%s"
-	}
-	if !strings.contains(template, "%s") { return strings.concatenate({template, q}, context.temp_allocator) }
-	out, _ := strings.replace_all(template, "%s", q, context.temp_allocator)
-	return out
-}
-
-search_engine_name :: proc(s: ^Interaction_Settings) -> string {
-	switch s.search_engine {
-	case "bing": return "Bing"
-	case "google": return "Google"
-	case "qwant": return "Qwant"
-	case "ecosia": return "Ecosia"
-	case "startpage": return "Startpage"
-	case "custom": return "the web"
-	}
-	return "DuckDuckGo"
-}
-
-@(private = "file")
-percent_encode_query :: proc(s: string) -> string {
-	HEX := "0123456789ABCDEF"
-	sb := strings.builder_make(context.temp_allocator)
-	for i in 0 ..< len(s) {
-		c := s[i]
-		switch {
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~':
-			strings.write_byte(&sb, c)
-		case c == ' ': strings.write_byte(&sb, '+')
-		case:
-			strings.write_byte(&sb, '%')
-			strings.write_byte(&sb, HEX[c >> 4])
-			strings.write_byte(&sb, HEX[c & 15])
-		}
-	}
-	return strings.to_string(sb)
 }

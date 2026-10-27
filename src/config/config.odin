@@ -471,6 +471,21 @@ default_string :: proc(p: ^Prefs, r: Ref, allocator := context.temp_allocator) -
 	return strings.clone(value_text(e.def, e.def.default), allocator)
 }
 
+// What the user's layer (the profile file, about:config) holds for `name`, registered or not: a preference a version no
+// longer registers is still read once to migrate it. ok = false when the user never set it.
+user_text :: proc(p: ^Prefs, name: string, allocator := context.temp_allocator) -> (text: string, ok: bool) {
+	if i, found := p.index[name]; found {
+		e := &p.entries[i]
+		switch {
+		case e.source == .User: return strings.clone(value_text(e.def, e.value), allocator), true
+		case e.has_user:        return strings.clone(e.user_text, allocator), true
+		}
+		return "", false
+	}
+	if pv, found := p.pending[name]; found && pv.has[.User] { return strings.clone(pv.value[.User], allocator), true }
+	return "", false
+}
+
 @(private)
 escape :: proc(s: string) -> string {
 	sb := strings.builder_make(context.temp_allocator)

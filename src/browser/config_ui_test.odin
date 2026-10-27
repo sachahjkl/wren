@@ -15,6 +15,7 @@ kinds :: proc(v: ^Config_View) -> string {
 		case .Header:  strings.write_string(&sb, "#"); strings.write_string(&sb, r.group)
 		case .Pref:    strings.write_string(&sb, r.name)
 		case .Desktop: strings.write_string(&sb, "desktop")
+		case .Engines: strings.write_string(&sb, "engines")
 		}
 	}
 	return strings.to_string(sb)
