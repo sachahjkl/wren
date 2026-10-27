@@ -1,6 +1,9 @@
 package browser
 
 // Suggestions of the address bar: while the user types in it, a list below it (browser.urlbar.*).
+//   * Search engines (search_engines.odin): the search rows use the default engine, or the one whose keyword starts the
+//     text ("@g cats"); Ctrl+Down / Ctrl+Up picks another for this time (the search row chosen), and so does a click on
+//     a badge of the row of engines under the list (browser.urlbar.suggest.engines).
 //   * Rows: what the typed text does (open it as an address, or search for it with browser.search.engine), the open
 //     tabs it matches ("Switch to tab"), the addresses of the browsing history it matches (urlbar_index.odin: prefix
 //     of the address first, then words of the title or the address; frecency within each), and a search for it when
@@ -42,8 +45,10 @@ URLBAR_PREFS := [?]config.Def{
 		description = "Suggest pages of the browsing history (not while history.global.enabled is off)."},
 	{name = "browser.urlbar.suggest.tabs", kind = .Bool, default = {b = true},
 		description = "Suggest open tabs whose title or address matches (\"Switch to tab\")."},
-	{name = "browser.urlbar.suggest.search", kind = .Bool, default = {b = true},
+	{name = "browser.urlbar.suggest.search", kind = .Bool, default = {b = true}, category = "search",
 		description = "When the text looks like an address, also offer to search for it (with browser.search.engine)."},
+	{name = "browser.urlbar.suggest.engines", kind = .Bool, default = {b = true}, category = "search",
+		description = "Below the suggestions, a badge per search engine (\"This time, search with\"): a click searches the text with it, whatever the default."},
 	{name = "browser.urlbar.autofill", kind = .Bool, default = {b = true},
 		description = "Typing the start of an address visited before completes it in the field (up to its host, or the next / of its path), the completed part selected: typing on replaces it, Backspace removes it."},
 	{name = "browser.urlbar.min_chars", kind = .Int, default = {i = 1}, bounded = true, min = 1, max = 20,
@@ -55,7 +60,7 @@ URLBAR_PREFS := [?]config.Def{
 register_urlbar_prefs :: proc(p: ^config.Prefs) { config.register(p, URLBAR_PREFS[:]) }
 
 Urlbar_Settings :: struct {
-	enabled, history, tabs, search, autofill, top_sites: bool,
+	enabled, history, tabs, search, autofill, top_sites, engines_row: bool,
 	max_rows, max_tab_rows, min_chars:                   int,
 }
 
@@ -65,6 +70,7 @@ urlbar_settings_from_prefs :: proc(p: ^config.Prefs) -> Urlbar_Settings {
 		history = config.bool_of(p, "browser.urlbar.suggest.history"),
 		tabs = config.bool_of(p, "browser.urlbar.suggest.tabs"),
 		search = config.bool_of(p, "browser.urlbar.suggest.search"),
+		engines_row = config.bool_of(p, "browser.urlbar.suggest.engines"),
 		autofill = config.bool_of(p, "browser.urlbar.autofill"),
 		top_sites = config.bool_of(p, "browser.urlbar.top_sites"),
 		max_rows = int(config.int_of(p, "browser.urlbar.max_rows")),
@@ -95,6 +101,7 @@ Urlbar_View :: struct {
 	focused:      bool,                // the address field had the keyboard last frame
 	just_focused: bool,                // ... and did not have it the frame before
 	click_selects: bool,               // a click gave it the keyboard: all selected while the button is held still
+	engine_pick:  int,                 // the engine the search rows use this time (Ctrl+Up / Down), index + 1; 0: what the text says
 }
 
 Urlbar :: struct {
@@ -216,6 +223,7 @@ urlbar_close :: proc(uv: ^Urlbar_View) {
 	uv.open = false
 	clear(&uv.rows)
 	uv.sel = 0
+	uv.engine_pick = 0
 	set_owned(&uv.fill_text, ""); set_owned(&uv.fill_address, "")
 }
 
@@ -243,7 +251,29 @@ skipped_address :: proc(a: string) -> bool {
 
 // Is `text` searched for (not an address)?
 @(private = "file")
-is_search_text :: proc(text: string) -> bool { return address_or_search(text) == search_url(&ix, strings.trim_space(text)) }
+is_search_text :: proc(text: string) -> bool { _, s := address_target(text); return s != nil }
+
+// The engine and the words of the search rows: the engine picked this time, else the keyword's, else the default; the
+// words without the keyword.
+urlbar_search_of :: proc(uv: ^Urlbar_View) -> (engine: int, words: string) {
+	q := strings.trim_space(uv.typed)
+	engine, words = search_default_index(), q
+	if i, w, ok := engines_keyword(&sengines, q); ok { engine, words = i, w }
+	if uv.engine_pick > 0 && uv.engine_pick <= len(sengines.list) { engine = uv.engine_pick - 1 }
+	return
+}
+
+// Ctrl+Down / Ctrl+Up: the next or previous engine for the search rows, the search row chosen.
+@(private = "file")
+urlbar_cycle_engine :: proc(app: ^App, dir: int) {
+	uv := urlbar_view(app)
+	n := len(sengines.list)
+	if n == 0 { return }
+	cur, _ := urlbar_search_of(uv)
+	uv.engine_pick = (cur + dir + n) % n + 1
+	for r, i in uv.rows { if r.kind == .Search { urlbar_choose(app, i); break } }
+	request_frames(app, 2)
+}
 
 ////////////////////////////////
 // Rows
@@ -353,7 +383,7 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 	q := strings.trim_space(uv.typed)
 	switch r.kind {
 	case .Go:      return address_or_search(q)
-	case .Search:  return search_url(&ix, q)
+	case .Search:  engine, words := urlbar_search_of(uv); return search_url(words, engine)
 	case .Tab:     if x := tab_by_id(app, r.tab_id); x != nil { return x.url }
 	case .History:
 		if r.fill { return uv.fill_address }
@@ -471,6 +501,8 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	}
 	n := len(uv.rows)
 	switch {
+	case ui.key_press(.Down, {.Ctrl}):                      urlbar_cycle_engine(app, 1)
+	case ui.key_press(.Up, {.Ctrl}):                        urlbar_cycle_engine(app, -1)
 	case ui.key_press(.Down), ui.key_press(.Tab):           urlbar_choose(app, min(uv.sel + 1, n - 1))
 	case ui.key_press(.Up), ui.key_press(.Tab, {.Shift}):   urlbar_choose(app, max(uv.sel - 1, 0))
 	case ui.key_press(.Page_Down):                          urlbar_choose(app, n - 1)
@@ -599,7 +631,7 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 	pad := math.round(em * 0.3)
 	q := strings.trim_space(uv.typed)
 	terms := strings.fields(strings.to_lower(q, context.temp_allocator), context.temp_allocator)
-	open_at, open_new, remove_at := -1, false, -1
+	open_at, open_new, remove_at, search_with := -1, false, -1, -1
 	if ui.popover(URLBAR_POPUP, field.rect, w, .Below, align_right = false) {
 		// to a screen reader: a list of suggestions the field controls, its chosen row read as the field's focus
 		list := ui.parent_box()
@@ -634,7 +666,8 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 						title, hint = q, "Go to address"
 					case .Search:
 						icon.kind = .Search
-						title, hint = q, fmt.tprintf("Search with %s", search_engine_name(&ix))
+						engine, words := urlbar_search_of(uv)
+						title, hint = words, fmt.tprintf(i18n.tr("Search with %s"), search_engine_name(engine))
 					case .Tab:
 						if x := tab_by_id(app, r.tab_id); x != nil {
 							icon.tab = tab_icon_of(app, x, f32(tab_icon_px(app)))
@@ -697,8 +730,27 @@ urlbar_popup :: proc(app: ^App, t: ^Tab, field: ^ui.Box) {
 				ui.spacer(ui.px(pad))
 			}
 		}
+		// this time, another engine
+		if q != "" && len(sengines.list) > 1 && ub.cfg.engines_row {
+			if i := urlbar_engine_row(uv, w, rh, pad); i >= 0 { search_with = i }
+		}
 		ui.spacer(ui.px(pad))
 	}
 	if remove_at >= 0 { urlbar_remove_row(app, remove_at); return }
+	if search_with >= 0 { urlbar_search_with(app, t, search_with); return }
 	if open_at >= 0 { _ = urlbar_open(app, t, open_at, open_new) }
+}
+
+// A badge of the engines' row clicked: the words searched with that engine.
+@(private = "file")
+urlbar_search_with :: proc(app: ^App, t: ^Tab, engine: int) {
+	uv := urlbar_view(app)
+	uv.engine_pick = engine + 1
+	_, words := urlbar_search_of(uv)
+	address := strings.clone(search_url(words, engine), context.temp_allocator)
+	urlbar_close(uv)
+	ui.set_focus(0)
+	if t == nil { tab_open(app, address, origin = .User); return }
+	navigate(app, t, address, origin = .User)
+	forms_focus_from_chrome(app, t, 1)
 }

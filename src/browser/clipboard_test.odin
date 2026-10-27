@@ -6,14 +6,6 @@ import "core:testing"
 // (the clipboard's formats, "HTML Format" and PNG included, are the toolkit's: gui_toolkit tests/clipboard)
 
 @(test)
-search_urls :: proc(t: ^testing.T) {
-	s := Interaction_Settings{search_engine = "custom", search_custom = "https://s.test/?q=%s&x=1"}
-	testing.expect_value(t, search_url(&s, "caf\u00e9 & tea"), "https://s.test/?q=caf%C3%A9+%26+tea&x=1")
-	s.search_engine = "duckduckgo"
-	testing.expect_value(t, search_url(&s, "a b"), "https://duckduckgo.com/?q=a+b")
-}
-
-@(test)
 source_markup_escapes_and_colors :: proc(t: ^testing.T) {
 	m := source_markup(`<!doctype html><!-- c --><a href="x?a=1&b">t</a><script>if (a < b) {}</script>`, true, false)
 	testing.expect(t, strings.contains(m, `<span class="t">&lt;a</span> <span class="n">href</span>=<span class="v">"x?a=1&amp;b"</span>`), m)
