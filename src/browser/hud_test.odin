@@ -116,6 +116,8 @@ hud_numbers_from_history :: proc(t: ^testing.T) {
 	defer hud = saved
 	hud = {}
 	hud.cfg.window_ms, hud.cfg.budget = 1000, 16.7
+	app := new(App)   // (no window: the budget's pacing is the bare window's)
+	defer free(app)
 	ui.history_init(&hud.history, 512, CPU_SERIES)
 	defer ui.history_destroy(&hud.history)
 	hud.details = make([]Frame_Detail, 512)
@@ -129,7 +131,7 @@ hud_numbers_from_history :: proc(t: ^testing.T) {
 		if i % 10 == 0 { s.v[Hud_Series.Layout] = 20; d.lay_pass = .Full }
 		hud.details[hud.serial % 512] = d
 	}
-	hud_refresh(nil, 3000)
+	hud_refresh(app, 3000)
 	n := hud.nums
 	testing.expect_value(t, n.frames, 101)                 // 2000 .. 3000 ms inclusive
 	testing.expect(t, abs(n.fps - 101) < 0.01)
@@ -143,11 +145,11 @@ hud_numbers_from_history :: proc(t: ^testing.T) {
 	// frames faster than the history keeps: the rate comes from the time the kept ones span
 	ui.history_clear(&hud.history)
 	for i in 0 ..< 600 { hud.serial += 1; ui.history_push(&hud.history, 5000 + f64(i) * 0.5, hud.serial) }
-	hud_refresh(nil, 5300)
+	hud_refresh(app, 5300)
 	testing.expect_value(t, hud.nums.frames, 512)
 	testing.expect(t, hud.nums.fps > 1900 && hud.nums.fps < 2100)
 	// nothing in the window: at rest
-	hud_refresh(nil, 9000)
+	hud_refresh(app, 9000)
 	testing.expect_value(t, hud.nums.frames, 0)
 	testing.expect_value(t, hud.nums.fps, 0)
 }

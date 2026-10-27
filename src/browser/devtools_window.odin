@@ -171,9 +171,9 @@ devtools_window_frame :: proc(app: ^App) {
 	platform.frame_gate_stage(gate, .Building)
 	evs := devtools_events(app, events[:], true)
 	ui.begin_build(&dw.ui, {
-		window_size = size, events = evs, dt = pacer.dt, animations = os_animations_enabled(app),
+		window_size = size, events = evs, dt = pacer_of(app).dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
-		disable_zoom = true, window = w, frame_ms = pacer.frame_ms,
+		disable_zoom = true, window = w, frame_ms = pacer_of(app).frame_ms,
 	})
 	devtools_panel(app, t, false, {width = ui.fill(), height = ui.fill()}, fill = size)
 	ui.end_build()
@@ -185,7 +185,7 @@ devtools_window_frame :: proc(app: ^App) {
 	draw.end_frame(&app.dc)
 	// a step of a resize is shown at once, as the main window's is (pacing.odin): waiting for the screen would hold the thread, and
 	// the main window with it, for a refresh at every step
-	resizing := w.size != dw.size_seen && pacer.cfg.resize_immediate && active_window(app).presented   // (browser.frame.resize_immediate)
+	resizing := w.size != dw.size_seen && active_window(app).presented   // (a Resize_Step of the cadence model: platform/pacing.odin)
 	dw.size_seen = w.size
 	pacer_latency(app, &dw.latency, resizing)   // (pacing.odin: two frames may queue during a resize step, as for the main window)
 	present_start := qpc()

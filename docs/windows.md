@@ -36,7 +36,7 @@ window the user is in (the front one).
 * Everything that meant "every tab" reads `tabs_all(app)` or `tab_by_id`; `tab_reveal`, `tab_close_tab`, `address_set` and
   `window_of_tab` find a tab's own window.
 * The loop (`windows_pass`) sleeps when no window has a cause, then makes a frame for each window (the front one first: it runs the
-  tasks of the loop). A minimized window does not draw. The pacer (`pacing.odin`) is one per window except its preferences and timer.
+  tasks of the loop). A minimized window does not draw. The pacer (`pacing.odin`) is the window's (`Browser_Window.pacer`, read by `pacer_of(app)`: its monitor's rate, the cadence model's state, its frame clock); its preferences and timer are the process's (`App.pacing`). Nothing of it is exchanged by `window_activate`.
 * Moves (`tab_move`, `tab_detach`) and the choice of the drop target (`drop_index`, `pick_drop`, `detach_wanted`) are pure and tested in
   `windows_test.odin` and `tab_drag_test.odin`.
 * Session: `wren-session 3` lists the windows (`window left top width height state`, then their tabs); a one-window session is the old
