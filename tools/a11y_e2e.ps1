@@ -170,12 +170,12 @@ try {
     Check 'the changes went as patches, not whole trees' ([int]$s1.a11yPageBuilds -eq [int]$s0.a11yPageBuilds -and [int]$s1.a11yPagePatches -gt [int]$s0.a11yPagePatches) "builds $($s0.a11yPageBuilds) -> $($s1.a11yPageBuilds) ($($s1.a11yPageFallback)), patches $($s0.a11yPagePatches) -> $($s1.a11yPagePatches)"
     Check 'every patch equals a whole tree' ([int]$s1.a11yPageVerifyFailed -eq 0) "$($s1.a11yPageVerifyFailed) differ"
 
-    # at rest: nothing is built or sent while nothing changes
+    # at rest: nothing of the page is built or sent while nothing changes (the chrome's own tree follows its status bar, a few updates a second at most: the CI measured 2 in 1.5 s)
     Start-Sleep -Milliseconds 800
     $r0 = Wren-Ctl stats --json | ConvertFrom-Json
     Start-Sleep -Milliseconds 1500
     $r1 = Wren-Ctl stats --json | ConvertFrom-Json
-    Check 'nothing built or sent at rest' ([int]$r1.a11yPageSends -eq [int]$r0.a11yPageSends -and [int]$r1.a11yPageBuilds -eq [int]$r0.a11yPageBuilds -and [int]$r1.a11yPagePatches -eq [int]$r0.a11yPagePatches -and [int]$r1.a11yUpdates -eq [int]$r0.a11yUpdates) "sends $($r0.a11yPageSends) -> $($r1.a11yPageSends), chrome $($r0.a11yUpdates) -> $($r1.a11yUpdates)"
+    Check 'nothing built or sent at rest' ([int]$r1.a11yPageSends -eq [int]$r0.a11yPageSends -and [int]$r1.a11yPageBuilds -eq [int]$r0.a11yPageBuilds -and [int]$r1.a11yPagePatches -eq [int]$r0.a11yPagePatches -and [int]$r1.a11yUpdates -le [int]$r0.a11yUpdates + 6) "sends $($r0.a11yPageSends) -> $($r1.a11yPageSends), chrome $($r0.a11yUpdates) -> $($r1.a11yUpdates)"
 
     # a frame: its document in the page's tree, its button acts in the frame
     Check 'the frame''s document is in the page''s tree' ([int]$s1.a11yPageFrames -ge 1) "frames $($s1.a11yPageFrames)"
