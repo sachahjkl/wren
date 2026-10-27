@@ -10,33 +10,12 @@
  *                            webkitFullscreenElement, onwebkitfullscreenchange...): not in any IDL, defined on the
  *                            prototypes at pre-initialization
  * All of it reads the browser's state (scroll offset, the viewport's size, the element's rectangle) through its functions
- * or is a constant; the members are bound by the generator from the IDL of their specifications. What stays in JavaScript
- * (prelude/compat.js, run by `start` when a window's realm starts, once the interfaces exist on the global object):
- * document.execCommand("copy" / "cut") and the description of console arguments for the developer tools. */
+ * or is a constant; the members are bound by the generator from the IDL of their specifications. Also native here:
+ * document.execCommand("copy" / "cut"), queryCommandSupported / queryCommandEnabled (the clipboard fallback of pages,
+ * glue between the page's selection and navigator.clipboard). The description of console arguments for the developer
+ * tools, which `start` sets up when a window's realm starts, is in runtime/web_devtools.c. */
 #include <stdlib.h>
 #include "web.h"
-
-static JSValue hooks;
-static bool hooks_set;
-
-/* ---- the prelude's natives (__wren_compat_host) ---- */
-
-static JSValue host_install(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    if (argc < 1 || !JS_IsObject(argv[0])) { return JS_ThrowTypeError(ctx, "install: an object of hooks"); }
-    if (hooks_set) { JS_FreeValue(ctx, hooks); }
-    hooks = JS_DupValue(ctx, argv[0]);
-    hooks_set = true;
-    return JS_UNDEFINED;
-}
-
-JSValue wj_compat_host_object(JSContext *ctx)
-{
-    JSValue o = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, o, "install", JS_NewCFunction(ctx, host_install, "install", 1));
-    return o;
-}
 
 /* obj.name(args) for a name known here */
 static JSValue invoke(JSContext *ctx, JSValueConst obj, const char *name, int argc, JSValueConst *argv)
@@ -471,6 +450,148 @@ static void define_webkit_fullscreen(JSContext *ctx)
     JS_FreeValue(ctx, exit);
 }
 
+/* ---- document.execCommand("copy" / "cut"), queryCommandSupported / queryCommandEnabled ----
+ * The clipboard fallback of pages: glue between the page's selection and navigator.clipboard, both read through their
+ * JavaScript objects (the DOM accessors are native; this calls them). */
+
+/* { text, control } of the current selection: an input/textarea with a non-empty selection, else the document's
+ * Selection as a string (control null). Caller frees *out_text (JS_FreeCString) and *out_control (JS_FreeValue). */
+static void compat_selected_text(JSContext *ctx, char **out_text, size_t *out_len, JSValue *out_control)
+{
+    *out_text = NULL; *out_len = 0; *out_control = JS_UNDEFINED;
+    JSValue document = JS_GetPropertyStr(ctx, wj_the_realm.global, "document");
+    JSValue active = JS_GetPropertyStr(ctx, document, "activeElement");
+    JS_FreeValue(ctx, document);
+    if (JS_IsObject(active)) {
+        JSValue lnv = JS_GetPropertyStr(ctx, active, "localName");
+        const char *ln = JS_ToCString(ctx, lnv);
+        bool is_field = ln && (strcmp(ln, "input") == 0 || strcmp(ln, "textarea") == 0);
+        if (ln) { JS_FreeCString(ctx, ln); }
+        JS_FreeValue(ctx, lnv);
+        if (is_field) {
+            JSValue ss = JS_GetPropertyStr(ctx, active, "selectionStart");
+            JSValue se = JS_GetPropertyStr(ctx, active, "selectionEnd");
+            if (JS_IsNumber(ss)) {
+                int64_t start = 0, end = 0; JS_ToInt64(ctx, &start, ss); JS_ToInt64(ctx, &end, se);
+                if (start != end) {
+                    JSValue valuev = JS_GetPropertyStr(ctx, active, "value");
+                    JSValue subfn = JS_GetPropertyStr(ctx, valuev, "substring");
+                    JSValueConst sargs[2] = { ss, se };
+                    JSValue sub = JS_Call(ctx, subfn, valuev, 2, sargs);
+                    JS_FreeValue(ctx, subfn); JS_FreeValue(ctx, valuev);
+                    const char *s = JS_ToCString(ctx, sub);
+                    *out_text = s ? web_strndup(s, strlen(s)) : NULL;
+                    *out_len = s ? strlen(s) : 0;
+                    if (s) { JS_FreeCString(ctx, s); }
+                    JS_FreeValue(ctx, sub);
+                    *out_control = JS_DupValue(ctx, active);
+                    JS_FreeValue(ctx, ss); JS_FreeValue(ctx, se); JS_FreeValue(ctx, active);
+                    return;
+                }
+            }
+            JS_FreeValue(ctx, ss); JS_FreeValue(ctx, se);
+        }
+    }
+    JS_FreeValue(ctx, active);
+    /* globalThis.getSelection() as a string */
+    JSValue getsel = JS_GetPropertyStr(ctx, wj_the_realm.global, "getSelection");
+    if (JS_IsFunction(ctx, getsel)) {
+        JSValue sel = JS_Call(ctx, getsel, wj_the_realm.global, 0, NULL);
+        if (JS_IsObject(sel)) {
+            JSValue s = JS_ToString(ctx, sel);
+            const char *str = JS_ToCString(ctx, s);
+            *out_text = str ? web_strndup(str, strlen(str)) : web_strndup("", 0);
+            *out_len = str ? strlen(str) : 0;
+            if (str) { JS_FreeCString(ctx, str); }
+            JS_FreeValue(ctx, s);
+        }
+        JS_FreeValue(ctx, sel);
+    }
+    JS_FreeValue(ctx, getsel);
+    if (!*out_text) { *out_text = web_strndup("", 0); }
+}
+
+static bool command_known(JSContext *ctx, JSValueConst cmdv, char *out, size_t out_cap)
+{
+    const char *s = JS_ToCString(ctx, cmdv);
+    if (!s) { out[0] = 0; return false; }
+    size_t i = 0; for (; s[i] && i < out_cap - 1; i++) { char c = s[i]; out[i] = (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c; }
+    out[i] = 0;
+    JS_FreeCString(ctx, s);
+    return strcmp(out, "copy") == 0 || strcmp(out, "cut") == 0;
+}
+
+static JSValue compat_exec_command(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    char c[16];
+    if (argc < 1 || !command_known(ctx, argv[0], c, sizeof c)) { return JS_FALSE; }
+    char *text; size_t tlen; JSValue control;
+    compat_selected_text(ctx, &text, &tlen, &control);
+    if (tlen == 0) { free(text); JS_FreeValue(ctx, control); return JS_FALSE; }
+    JSValue navigator = JS_GetPropertyStr(ctx, wj_the_realm.global, "navigator");
+    JSValue clipboard = JS_GetPropertyStr(ctx, navigator, "clipboard");
+    JS_FreeValue(ctx, navigator);
+    bool ok = true;
+    if (JS_IsObject(clipboard)) {
+        JSValue wt = JS_GetPropertyStr(ctx, clipboard, "writeText");
+        JSValueConst a = JS_NewStringLen(ctx, text, tlen);
+        JSValue p = JS_Call(ctx, wt, clipboard, 1, &a);
+        JS_FreeValue(ctx, (JSValue)a); JS_FreeValue(ctx, wt);
+        if (JS_IsObject(p)) {
+            /* .catch(() => {}) to leave a rejection unreported, like the JS did */
+            JSValue swallow = JS_NewCFunction(ctx, ignore_rejection, "", 1);
+            JSValue r = invoke(ctx, p, "catch", 1, (JSValueConst *)&swallow);
+            JS_FreeValue(ctx, swallow); JS_FreeValue(ctx, r);
+        }
+        JS_FreeValue(ctx, p);
+    } else {
+        ok = false;
+    }
+    JS_FreeValue(ctx, clipboard);
+    if (ok && strcmp(c, "cut") == 0 && JS_IsObject(control)) {
+        JSValue ro = JS_GetPropertyStr(ctx, control, "readOnly");
+        JSValue dis = JS_GetPropertyStr(ctx, control, "disabled");
+        bool readonly = JS_ToBool(ctx, ro), disabled = JS_ToBool(ctx, dis);
+        JS_FreeValue(ctx, ro); JS_FreeValue(ctx, dis);
+        if (!readonly && !disabled) {
+            JSValue srt = JS_GetPropertyStr(ctx, control, "setRangeText");
+            JSValueConst empty = JS_NewString(ctx, "");
+            JSValue r = JS_Call(ctx, srt, control, 1, &empty);
+            JS_FreeValue(ctx, (JSValue)empty); JS_FreeValue(ctx, srt); JS_FreeValue(ctx, r);
+        }
+    }
+    free(text); JS_FreeValue(ctx, control);
+    return ok ? JS_TRUE : JS_FALSE;
+}
+
+static JSValue compat_query_supported(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    char c[16];
+    return JS_NewBool(ctx, argc >= 1 && command_known(ctx, argv[0], c, sizeof c));
+}
+
+static JSValue compat_query_enabled(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    char c[16];
+    if (argc < 1 || !command_known(ctx, argv[0], c, sizeof c)) { return JS_FALSE; }
+    char *text; size_t tlen; JSValue control;
+    compat_selected_text(ctx, &text, &tlen, &control);
+    free(text); JS_FreeValue(ctx, control);
+    return JS_NewBool(ctx, tlen != 0);
+}
+
+static void install_exec_command(JSContext *ctx)
+{
+    JSValue document = wj_the_realm.protos[WJ_IFACE_Document];
+    if (!JS_IsObject(document)) { return; }
+    JS_DefinePropertyValueStr(ctx, document, "execCommand", JS_NewCFunction(ctx, compat_exec_command, "execCommand", 3), HIDDEN);
+    JS_DefinePropertyValueStr(ctx, document, "queryCommandSupported", JS_NewCFunction(ctx, compat_query_supported, "queryCommandSupported", 1), HIDDEN);
+    JS_DefinePropertyValueStr(ctx, document, "queryCommandEnabled", JS_NewCFunction(ctx, compat_query_enabled, "queryCommandEnabled", 1), HIDDEN);
+}
+
 /* ---- life cycle ---- */
 
 int web_compat_preinit(JSContext *ctx)
@@ -492,17 +613,16 @@ int web_compat_preinit(JSContext *ctx)
         JS_DefinePropertyValueStr(ctx, element, "scrollIntoViewIfNeeded", JS_NewCFunction(ctx, scroll_into_view_if_needed, "scrollIntoViewIfNeeded", 1), HIDDEN);
     }
     define_webkit_fullscreen(ctx);
+    install_exec_command(ctx);
     return 0;
 }
 
 int web_compat_start(JSContext *ctx, int kind)
 {
     WJ_UNUSED(kind);
-    if (!web_is_window() || !hooks_set) { return 0; }
-    JSValue f = JS_GetPropertyStr(ctx, hooks, "start");
-    JSValue r = JS_Call(ctx, f, JS_UNDEFINED, 0, NULL);
-    JS_FreeValue(ctx, f);
-    if (JS_IsException(r)) { wj_report_pending(ctx); return 0; }
-    JS_FreeValue(ctx, r);
+    if (!web_is_window()) { return 0; }
+    /* the console description for the developer tools (runtime/web_devtools.c) */
+    extern void wj_devtools_install(JSContext *ctx);
+    wj_devtools_install(ctx);
     return 0;
 }

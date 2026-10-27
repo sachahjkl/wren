@@ -10,16 +10,17 @@
 int wj_run_preludes(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
-    extern JSValue wj_ce_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_ce_host", wj_ce_host_object(ctx));
-    extern JSValue wj_shadow_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
-    extern JSValue wj_frames_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_frames_host", wj_frames_host_object(ctx));
-    extern JSValue wj_clipboard_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_clipboard_host", wj_clipboard_host_object(ctx));
-    extern JSValue wj_compat_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_compat_host", wj_compat_host_object(ctx));
+    /* custom elements: the registry, definitions, upgrades and reactions are native (runtime/custom_elements.c),
+     * built into the image here in place of the old prelude/customelements.js */
+    extern void wj_install_custom_elements(JSContext *ctx);
+    wj_install_custom_elements(ctx);
+    /* adoptedStyleSheets (ObservableArray), the Window's named properties and element.part are native exotic objects
+     * (runtime/shadow.c), in place of prelude/shadow.js */
+    extern void wj_install_shadow(JSContext *ctx);
+    wj_install_shadow(ctx);
+    /* other windows (WindowProxy) are native exotic objects (runtime/frames.c), in place of prelude/frames.js */
+    extern void wj_install_frames(JSContext *ctx);
+    wj_install_frames(ctx);
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;
