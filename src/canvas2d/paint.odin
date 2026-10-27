@@ -173,7 +173,10 @@ Image_Source :: struct {
 	bmp:        ^Bitmap,
 	x0, y0, x1, y1: int,
 	wrap_x, wrap_y: Wrap,
-	smooth:     bool,    // bilinear; else nearest
+	smooth:     bool,              // bilinear; else nearest
+	quality:    Smoothing_Quality, // how a shrunk image is resampled (Medium / High use mips, below)
+	mips:       ^Mip_Chain,        // Medium / High: a box-filtered pyramid of the source rectangle (nil: not built)
+	lod:        f64,               // levels of detail one device pixel spans in the source (log2 of texels per pixel); <= 0 enlarging
 }
 
 @(private)
@@ -194,11 +197,20 @@ fetch :: #force_inline proc(s: ^Image_Source, x, y: int) -> [4]f32 {
 	return {f32(p[0]), f32(p[1]), f32(p[2]), f32(p[3])} * (1.0 / 255.0)
 }
 
-// The premultiplied color of the source at (u, v), in texel units (texel i covers [i, i + 1)).
+// The premultiplied color of the source at (u, v), in texel units (texel i covers [i, i + 1)). With a mip chain built
+// (Medium / High quality on a shrunk image), it samples the right level of detail; otherwise it is plain bilinear of
+// the source, as Low quality and enlarging always are.
 sample :: proc(s: ^Image_Source, u, v: f64) -> [4]f32 {
 	if s.x1 <= s.x0 || s.y1 <= s.y0 { return {} }
 	if !s.smooth {
 		return fetch(s, int(math.floor(u)), int(math.floor(v)))
+	}
+	if s.mips != nil && len(s.mips.levels) > 0 && s.lod > 0 {
+		if s.quality == .High {
+			return mip_sample_trilinear(s.mips, s, u, v, s.lod)
+		}
+		// Medium: the nearest single level (rounded), bilinear within it
+		return mip_sample_level(s.mips, int(s.lod + 0.5), s, u, v)
 	}
 	fu, fv := u - 0.5, v - 0.5
 	iu, iv := math.floor(fu), math.floor(fv)
@@ -226,6 +238,8 @@ Paint :: struct {
 	pat:     ^Pattern,
 	img:     Image_Source,  // Image: the source rectangle; Pattern keeps its own
 	inv:     Matrix,        // device space -> the space of the gradient / pattern / image's texels
+	pat_mips: Mip_Chain,    // Pattern on Medium / High quality, shrunk: the pyramid of pat.bmp
+	has_pat_mips: bool,     // pat_mips is built (else the pattern is plain bilinear)
 }
 
 LUT_SIZE :: 1024
@@ -247,13 +261,22 @@ paint_at :: proc(p: ^Paint, x, y: int) -> [4]f32 {
 	case .Pattern:
 		q := matrix_apply(p.inv, {f64(x) + 0.5, f64(y) + 0.5})
 		src := Image_Source{bmp = &p.pat.bmp, x0 = 0, y0 = 0, x1 = p.pat.bmp.w, y1 = p.pat.bmp.h,
-			wrap_x = p.pat.repeat_x ? .Repeat : .None, wrap_y = p.pat.repeat_y ? .Repeat : .None, smooth = p.img.smooth}
+			wrap_x = p.pat.repeat_x ? .Repeat : .None, wrap_y = p.pat.repeat_y ? .Repeat : .None, smooth = p.img.smooth,
+			quality = p.img.quality, mips = p.has_pat_mips ? &p.pat_mips : nil, lod = p.img.lod}
 		return sample(&src, q.x, q.y)
 	case .Image:
 		q := matrix_apply(p.inv, {f64(x) + 0.5, f64(y) + 0.5})
 		return sample(&p.img, q.x, q.y)
 	}
 	return {}
+}
+
+// The level of detail one device pixel spans, from the device -> texel inverse `inv`: log2 of the source texels a unit
+// device step covers (the larger singular value of the linear part). <= 0 when the image is enlarged (no mip wanted).
+image_lod :: proc "contextless" (inv: Matrix) -> f64 {
+	big, _ := matrix_scales(inv)
+	if big <= 1 { return 0 }
+	return math.log2(big)
 }
 
 // A copy of texels [x0, x1) x [y0, y1) of `src` reduced by an integer factor `f` in each direction (box filter): the
