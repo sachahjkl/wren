@@ -260,7 +260,11 @@ frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, nod
 ////////////////////////////////
 // Input
 
-// The deepest frame under `pos` (window px) in the document of `t`, and its stand-in tab; nil when none.
+// The deepest frame under `pos` (window px) in the document of `t`, and its stand-in tab; nil when none. The target
+// comes from the frame's geometry in the page (its content box, with the page scroll, zoom, clips and CSS transforms
+// applied), not from the paint state: a frame that was not painted in the last chrome frame (off screen, throttled, or
+// simply not repainted this frame) still takes a click that lands on it. A frame with no box (display:none, laid out
+// away) is already dropped by frame_box; a destroyed frame has no Frame_View.
 frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Frame_View {
 	if t == nil || t.page == nil || t.page.frames == nil || !t.layout.valid || !draw.rect_contains(rect, pos) { return nil }
 	h := hit_test(&t.layout, pos - rect.min, draw.rect_size(rect), t.scroll)
@@ -268,8 +272,21 @@ frame_under :: proc(app: ^App, t: ^Tab, pos: draw.Vec2, rect: draw.Rect) -> ^Fra
 	n := page.frame_of_element(t.page, h)
 	if n == nil || n.page == nil { return nil }
 	fv := frame_view_of(n.page)
-	if fv == nil || !fv.ready || fv.painted + 2 < chrome_frames.frame_no || fv.transformed || !draw.rect_contains(fv.rect, pos) { return nil }
-	if inner := frame_under(app, &fv.tab, pos, fv.rect); inner != nil { return inner }
+	if fv == nil || !fv.ready { return nil }
+	// the frame's content box, in the parent's document coordinates, from the layout hit_test already read
+	r, ok := frame_box(&t.layout, n.element, draw.rect_size(rect), t.scroll)
+	if !ok { return nil }
+	// a box under a transform: its on-screen quad is not axis-aligned; input is not routed (as before), and `rect`
+	// would only be its bounds
+	if r.transformed || fv.transformed { return nil }
+	// document coordinates -> window px: the page scroll is taken off and the page area's origin added (box_of's rects
+	// are document coordinates for every box; see blocker_picker.odin, context_menu.odin)
+	shift := draw.Vec2{rect.min.x, rect.min.y - t.scroll}
+	screen := draw.Rect{{r.content.min.x + shift.x, r.content.min.y + shift.y}, {r.content.max.x + shift.x, r.content.max.y + shift.y}}
+	if !draw.rect_contains(screen, pos) { return nil }
+	// routing uses this box as the frame's page area: keep it current even when the frame was not painted this frame
+	fv.rect = screen
+	if inner := frame_under(app, &fv.tab, pos, screen); inner != nil { return inner }
 	return fv
 }
 
