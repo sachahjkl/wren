@@ -456,11 +456,54 @@ JSValue wjr_Navigation_get_transition(JSContext *ctx, JSValueConst this_val)
     return JS_IsUndefined(transition) ? JS_NULL : JS_DupValue(ctx, transition);
 }
 
-/* the document's activation (how it was reached) is not recorded: null, as for a document without one */
+/* navigation.activation: made once from what the browser says (Navigation_activation); null without one */
+static JSValue activation = JS_UNDEFINED;
+
+static JSValue entry_by_key(JSContext *ctx, int64_t key)
+{
+    if (!key) { return JS_NULL; }
+    for (uint32_t i = 0; i < entries_n; i++) {
+        nav_entry *e = entry_of(entries[i]);
+        if (e && e->key == key) { return JS_DupValue(ctx, entries[i]); }
+    }
+    return JS_NULL;
+}
+
 JSValue wjr_Navigation_get_activation(JSContext *ctx, JSValueConst this_val)
 {
-    return nav_this(ctx, this_val) ? JS_NULL : JS_EXCEPTION;
+    if (!nav_this(ctx, this_val)) { return JS_EXCEPTION; }
+    if (!JS_IsUndefined(activation)) { return JS_DupValue(ctx, activation); }
+    nav_sync(ctx);
+    int32_t n;
+    WJ_FETCH_STRING(n, wr_Navigation_activation(wj_scratch.data, wj_scratch.cap));
+    if (n <= 0) { activation = JS_NULL; return JS_NULL; }
+    char buf[64];
+    size_t len = (size_t)n < sizeof buf - 1 ? (size_t)n : sizeof buf - 1;
+    memcpy(buf, wj_scratch.data, len);
+    buf[len] = 0;
+    char *p = buf;
+    int type = (int)strtol(p, &p, 10);
+    int64_t from = strtoll(p, &p, 10);
+    if (type < 0 || type > NAV_TRAVERSE) { activation = JS_NULL; return JS_NULL; }
+    JSValue a = wj_new_object(ctx, WJ_IFACE_NavigationActivation, NULL, NULL);
+    if (JS_IsException(a)) { return a; }
+    web_extra_set(ctx, a, "navigationType", JS_NewString(ctx, nav_types[type]));
+    web_extra_set(ctx, a, "entry", current_entry(ctx));
+    web_extra_set(ctx, a, "from", entry_by_key(ctx, from));
+    activation = JS_DupValue(ctx, a);
+    return a;
 }
+
+static JSValue activation_member(JSContext *ctx, JSValueConst this_val, const char *name)
+{
+    if (!wj_this(ctx, this_val, WJ_IFACE_NavigationActivation)) { return JS_EXCEPTION; }
+    JSValue v = web_extra_get(ctx, this_val, name);
+    return JS_IsUndefined(v) ? JS_NULL : v;
+}
+
+JSValue wjr_NavigationActivation_get_from(JSContext *ctx, JSValueConst this_val) { return activation_member(ctx, this_val, "from"); }
+JSValue wjr_NavigationActivation_get_entry(JSContext *ctx, JSValueConst this_val) { return activation_member(ctx, this_val, "entry"); }
+JSValue wjr_NavigationActivation_get_navigationType(JSContext *ctx, JSValueConst this_val) { return activation_member(ctx, this_val, "navigationType"); }
 
 JSValue wjr_Navigation_get_canGoBack(JSContext *ctx, JSValueConst this_val)
 {
@@ -809,6 +852,22 @@ WJ_EXPORT("wj_nav_fire") int32_t wj_nav_fire(int32_t unused)
     web_extra_set(ctx, ev, "hashChange", JS_NewBool(ctx, (flags & NF_HASH) != 0));
     web_extra_set(ctx, ev, "signal", signal);
     web_extra_set(ctx, ev, "info", o->tracker ? JS_DupValue(ctx, o->tracker->info) : JS_UNDEFINED);
+    /* what started it: sourceElement, and a POST form submission's formData (new FormData(form, submitter)) */
+    wr_NavigationSource src = { 0 };
+    wr_Navigation_pendingSource(&src);
+    if (src.source) {
+        JSValue el = wj_wrap_node(ctx, src.source);
+        if (JS_IsException(el)) { JS_FreeValue(ctx, JS_GetException(ctx)); el = JS_NULL; }
+        web_extra_set(ctx, ev, "sourceElement", el);
+    }
+    if (src.form) {
+        JSValue args[2] = { wj_wrap_node(ctx, src.form), src.submitter ? wj_wrap_node(ctx, src.submitter) : JS_UNDEFINED };
+        JSValue fd = JS_CallConstructor(ctx, wj_the_realm.ctors[WJ_IFACE_FormData], src.submitter ? 2 : 1, args);
+        JS_FreeValue(ctx, args[0]);
+        JS_FreeValue(ctx, args[1]);
+        if (JS_IsException(fd)) { JS_FreeValue(ctx, JS_GetException(ctx)); fd = JS_NULL; }
+        web_extra_set(ctx, ev, "formData", fd);
+    }
     o->event = ev;
     o->handlers = JS_NewArray(ctx);
     o->firing = true;

@@ -8,6 +8,19 @@ commits a navigation, and the rest (wj_nav_commit) after a same-document commit.
 
 Exposed to: Window. Source: `api/navigation.widl`.
 
+## Types
+
+### struct `NavigationSource`
+
+What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+
+| field | type | |
+|---|---|---|
+| `source` | `u64` |  |%!(EXTRA false)
+| `form` | `u64` |  |%!(EXTRA false)
+| `submitter` | `u64` |  |%!(EXTRA false)
+
 ## Functions
 
 ### `Navigation_entries`
@@ -117,4 +130,24 @@ destination.getState() of that navigation: Not_Found when it has none.
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Navigation_pendingState :: proc(c: ^Call) -> (string, Api_Error)`
+
+### `Navigation_pendingSource`
+
+```
+NavigationSource Navigation_pendingSource()
+```
+
+Host: `Navigation_pendingSource :: proc(c: ^Call) -> Api_NavigationSource`
+
+### `Navigation_activation`
+
+```
+string Navigation_activation()
+```
+
+navigation.activation: "<type> <from key>" (type as Navigation_pending's; from key 0: null, the entry of the
+document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
+navigation the browser measured (activation null).
+
+Host: `Navigation_activation :: proc(c: ^Call) -> string`
 

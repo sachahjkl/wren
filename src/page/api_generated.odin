@@ -527,6 +527,14 @@ Api_MediaSourceHandle :: struct {
 	data:   ^Mse_Handle_Object,
 }
 
+// What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+// submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+Api_NavigationSource :: struct {
+	source: u64,
+	form: u64,
+	submitter: u64,
+}
+
 // A request and, once it arrived, its response.
 // A live Fetch: its handle and what lookup_Fetch found.
 Api_Fetch :: struct {
@@ -24016,6 +24024,40 @@ _t_navigation_Navigation_pendingState :: proc "c" (env: rawptr, caller: wasm.Cal
 	return nil
 }
 
+// Navigation_pendingSource :: proc(c: ^Call) -> Api_NavigationSource
+@(private = "file")
+_t_navigation_Navigation_pendingSource :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[0]), 24)
+	if !_rk { return wasm.trap_bounds(&f, "navigation.Navigation_pendingSource", "result pointer") }
+	_r := Navigation_pendingSource(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	intrinsics.unaligned_store((^u64)(&_rs[0]), _r.source)
+	intrinsics.unaligned_store((^u64)(&_rs[8]), _r.form)
+	intrinsics.unaligned_store((^u64)(&_rs[16]), _r.submitter)
+	return nil
+}
+
+// Navigation_activation :: proc(c: ^Call) -> string
+@(private = "file")
+_t_navigation_Navigation_activation :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[1])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[0]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "navigation.Navigation_activation", "result buffer") }
+	_r := Navigation_activation(&c)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Fetch_start :: proc(c: ^Call, url: string, callback: u32, user: i32, method: string, headers: string, body: Maybe([]u8), options: Api_FetchOptions) -> u64
 @(private = "file")
 _t_net_Fetch_start :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -28071,6 +28113,8 @@ api_imports := [?]wasm.Import{
 	{module = "navigation", name = "Navigation_traverseTo", fn = _t_navigation_Navigation_traverseTo, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "navigation", name = "Navigation_pending", fn = _t_navigation_Navigation_pending, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "navigation", name = "Navigation_pendingState", fn = _t_navigation_Navigation_pendingState, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "navigation", name = "Navigation_pendingSource", fn = _t_navigation_Navigation_pendingSource, realms = 1, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "navigation", name = "Navigation_activation", fn = _t_navigation_Navigation_activation, realms = 1, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_start", fn = _t_net_Fetch_start, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I64, .I64, .I64, .I64, .I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "net", name = "Fetch_state", fn = _t_net_Fetch_state, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "net", name = "Fetch_status", fn = _t_net_Fetch_status, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},

@@ -1042,6 +1042,9 @@ JSValue wjr_NavigateEvent_get_sourceElement(JSContext *ctx, JSValueConst this_va
 JSValue wjr_NavigateEvent_get_userInitiated(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigateEvent_intercept(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigateEvent_scroll(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_NavigationActivation_get_entry(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationActivation_get_from(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_NavigationActivation_get_navigationType(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigationCurrentEntryChangeEvent_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_NavigationCurrentEntryChangeEvent_get_from(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_NavigationCurrentEntryChangeEvent_get_navigationType(JSContext *ctx, JSValueConst this_val);
@@ -16927,9 +16930,9 @@ static const wj_member wj_m_NamedNodeMap[] = {
     { "removeNamedItemNS", WJ_M_METHOD, 0, 2, wjr_NamedNodeMap_removeNamedItemNS, NULL, NULL, 0 },
 };
 static const wj_member wj_m_NavigationActivation[] = {
-    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "entry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
-    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "from", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationActivation_get_from, NULL, 0 },
+    { "entry", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationActivation_get_entry, NULL, 0 },
+    { "navigationType", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationActivation_get_navigationType, NULL, 0 },
 };
 static const wj_member wj_m_NavigationDestination[] = {
     { "url", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_NavigationDestination_get_url, NULL, 0 },
@@ -19927,7 +19930,7 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_NamedNodeMap, .n_members = 8, .subtree_end = 454,
       .index_get = wjr_NamedNodeMap_index_get, .length_get = wjr_NamedNodeMap_length_hook, .named_get = wjr_NamedNodeMap_named_get, .named_set = NULL, .named_delete = NULL, .named_keys = wjr_NamedNodeMap_named_keys,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "NavigationActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
+    { .name = "NavigationActivation", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = 0, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_NavigationActivation, .n_members = 3, .subtree_end = 455,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
