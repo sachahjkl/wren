@@ -614,7 +614,8 @@ Api_FetchOptions :: struct {
 
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
 // timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
-// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
+// tasks (Long_Task: a task of the window's realm that took 50 ms or more), the largest contentful paint, the layout
+// shifts, the element timing entries and the visibility-state changes.
 Api_PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
@@ -625,6 +626,10 @@ Api_PerformanceEntryType :: enum i32 {
 	Event = 6,
 	First_Input = 7,
 	Long_Task = 8,
+	Largest_Contentful_Paint = 9,
+	Layout_Shift = 10,
+	Element = 11,
+	Visibility_State = 12,
 }
 
 // What the current event of a service worker's realm is (kind 0: none waits).
@@ -833,7 +838,7 @@ _valid_ReferrerPolicy :: #force_inline proc "contextless" (v: u32) -> bool { swi
 _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switch v { case 0, 1, 2, 3, 4, 5: return true }; return false }
 
 @(private = "file")
-_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8: return true }; return false }
+_valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12: return true }; return false }
 
 @(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
@@ -24877,6 +24882,28 @@ _t_performance_Performance_timelineNextSeq :: proc "c" (env: rawptr, caller: was
 	return nil
 }
 
+// Performance_timelineNode :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, seq: u64, index: u32) -> u64
+@(private = "file")
+_t_performance_Performance_timelineNode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_e0 := i32(a[0].i32)
+	if !_valid_PerformanceEntryType(_e0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "performance.Performance_timelineNode: argument entry_type is not a PerformanceEntryType") }
+		return wasm.trap_new("performance.Performance_timelineNode: argument entry_type is not a PerformanceEntryType")
+	}
+	_p0 := Api_PerformanceEntryType(_e0)
+	_p1 := u64(a[1].i64)
+	_p2 := u32(a[2].i32)
+	_r := Performance_timelineNode(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
 // Performance_timelineInterest :: proc(c: ^Call, kinds: u32)
 @(private = "file")
 _t_performance_Performance_timelineInterest :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -28308,6 +28335,7 @@ api_imports := [?]wasm.Import{
 	{module = "performance", name = "Performance_clearMeasures", fn = _t_performance_Performance_clearMeasures, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_timeline", fn = _t_performance_Performance_timeline, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "performance", name = "Performance_timelineNextSeq", fn = _t_performance_Performance_timelineNextSeq, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "performance", name = "Performance_timelineNode", fn = _t_performance_Performance_timelineNode, realms = 3, params = []wasm.Val_Kind{.I32, .I64, .I32}, results = []wasm.Val_Kind{.I64}},
 	{module = "performance", name = "Performance_timelineInterest", fn = _t_performance_Performance_timelineInterest, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_onTimeline", fn = _t_performance_Performance_onTimeline, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}},
 	{module = "performance", name = "Performance_setResourceTimingBufferSize", fn = _t_performance_Performance_setResourceTimingBufferSize, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{}},

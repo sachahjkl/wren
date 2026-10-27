@@ -5,8 +5,9 @@
 module performance {
   /// The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
   /// timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
-  /// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
-  enum PerformanceEntryType : i32 { Any, Mark, Measure, Navigation, Resource, Paint, Event, First_Input, Long_Task }
+  /// tasks (Long_Task: a task of the window's realm that took 50 ms or more), the largest contentful paint, the layout
+  /// shifts, the element timing entries and the visibility-state changes.
+  enum PerformanceEntryType : i32 { Any, Mark, Measure, Navigation, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State }
   /// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
   /// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
   callback TimelineCallback(i32 user, i32 kinds);
@@ -43,6 +44,12 @@ module performance {
   string Performance_timeline(PerformanceEntryType entry_type, u64 from_seq = 0);
   /// The sequence number the next entry of this kind will have.
   u64 Performance_timelineNextSeq(PerformanceEntryType entry_type);
+  /// Wraps the DOM node a timeline entry refers to and returns its handle, or 0 when there is none or it is no longer in
+  /// the document: the element of the `index`-th member of entry `seq` of `entry_type` — for Largest_Contentful_Paint and
+  /// Element, index 0 is the entry's own element (its `element` attribute); for Layout_Shift, index i is the node of its
+  /// i-th source (LayoutShiftAttribution.node). The engine carries the other members of each entry in the JSON of
+  /// Performance_timeline; only live node handles come from here (a handle cannot be put in JSON and stay valid).
+  u64 Performance_timelineNode(PerformanceEntryType entry_type, u64 seq, u32 index);
   /// The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
   void Performance_timelineInterest(u32 kinds);
   /// Where the browser announces new entries of the kinds of Performance_timelineInterest (a task of the page).
