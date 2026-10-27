@@ -101,7 +101,7 @@ pr_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	// the inert preview has no frames pages: an empty paint stack makes frames_paint_content return false, so replaced
 	// boxes fall to the default painter (an empty rectangle for an unresolved <img>, since nothing is fetched). The image
 	// shell reads natural sizes and textures from the current page; the preview's document is none, so no page is current.
-	clear(&paint_stack)
+	frames_paint_reset()
 	saved := images_shell_page_swap(nil)
 	paint(l, dc, d.doc, r.min, size, d.scroll, r, doc_scrollbar = true)
 	images_shell_page_swap(saved)
