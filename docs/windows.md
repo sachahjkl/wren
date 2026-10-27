@@ -24,11 +24,15 @@ window the user is in (the front one).
 ## How it works
 
 * `Browser_Window` (`src/browser/windows.odin`): a native window, its swap chain (the first is the renderer's own, the others are
-  `render.Surface` values swapped in for the length of their frame), its toolkit `ui.State`, and the window's share of `App`
-  (`tabs`, `current`, `address`, `page_rect`, `frames_requested`, `presented`, `focus_address`). `window_activate` exchanges that
-  share with the `App`, so the code written for one window still reads `app.tabs` or `app.win`. What the chrome keeps of a window
-  (tab strip, sidebar, find bar, form controls, selection, cursors, address bar suggestions, full screen) is `Browser_Window.own`
-  (`Window_Own`), read through `window_own(app)` and never exchanged; `tools\lint_globals.ps1` fails on a new global of a window.
+  `render.Surface` values swapped in for the length of their frame), its toolkit `ui.State` (`ui`), and its `Window_Ctx` (`tabs`,
+  `current`, `address`, `page_rect`, `frames_requested`, `presented`, `focus_address`, embedded: `w.tabs`). None of it is copied
+  into the `App`: the shell reads the window being framed (or the front one between frames) as `active_window(app)`
+  (`active_window(app).tabs`, `.win`, `.ui`; `request_frames(app, n)` asks it for frames), any other window as `w.tabs`
+  (`window_request(app, w, n)`). `window_activate` only makes a window the one framed (`app.active`), its toolkit state the
+  toolkit's, its surface the renderer's, and adopts its pacing. An `App` with no window (the tests') has a bare one (`App.bare`).
+  What the chrome keeps of a window (tab strip, sidebar, find bar, form controls, selection, cursors, address bar suggestions, full
+  screen, context menu, frames' pointer, touch input, page preparation) is `Browser_Window.own` (`Window_Own`), read through
+  `window_own(app)`; `tools\lint_globals.ps1` fails on a new global of a window.
 * Everything that meant "every tab" reads `tabs_all(app)` or `tab_by_id`; `tab_reveal`, `tab_close_tab`, `address_set` and
   `window_of_tab` find a tab's own window.
 * The loop (`windows_pass`) sleeps when no window has a cause, then makes a frame for each window (the front one first: it runs the
