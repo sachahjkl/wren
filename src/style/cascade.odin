@@ -481,6 +481,18 @@ build_style :: proc(p: ^Pass, h: base.Handle, parent: ^Computed, entries: []Entr
 		for pr in inherited_list { copy_prop(c, parent, pr) }
 		c.custom = parent.custom
 		c.inherits = inherited_set
+		c.content_language = parent.content_language   // `lang` inherits; overridden below by the element's own attribute
+	}
+	// the content language (CSS `lang`, for a face's locale forms: the `locl` feature) comes from the element's `lang`
+	// or `xml:lang`, else the parent's. Only an element that declares one clones a string (a subtree then shares the
+	// parent's by copying its header), so this stays off the hot path of the ordinary element.
+	if n := dom.get(p.mc.doc, h); n != nil && n.kind == .Element {
+		lv, has := attr(n, "lang")
+		if !has { lv, has = attr(n, "xml:lang") }
+		if has {
+			t := strings.trim_space(lv)
+			if t != c.content_language { c.content_language = t == "" ? "" : strings.clone(t, a) }
+		}
 	}
 	cx := Cx{settings = &e.settings, parent = parent, initial = s.initial, c = c, alloc = a}
 	cx.cenv = css.Color_Env{system = system_color, user = &e.settings}
