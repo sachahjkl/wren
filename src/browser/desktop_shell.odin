@@ -4,7 +4,7 @@ package browser
 // the Start menu shortcut, the registration as a candidate browser, the freedesktop.org entry...; this file decides when,
 // and shows the state:
 //
-//   * the box in about:config ("Integrate Wren with the desktop (Start menu, default apps)"): its state is read from the
+//   * the "Desktop integration" row of about:config's Browser category (a switch): its state is read from the
 //     disk (the registry) whenever the page is shown, never from a preference; ticking it adds the files, unticking it
 //     removes them. A box ticked with "points to <old path>" means the files exist but run another executable (the
 //     program was moved, or updated into another folder): "Update" makes them run this one. Its "Setup..." button opens the
@@ -27,6 +27,7 @@ import "toolkit:ui"
 import "wb:config"
 import "wb:desktop"
 import "wb:host"
+import "wb:i18n"
 
 DESKTOP_PREFS := [?]config.Def{
 	{name = "browser.desktop_integration.on_first_run", kind = .Bool, default = {b = APP_CHANNEL == .Release},
@@ -295,61 +296,62 @@ desktop_profile_is_disposable :: proc(app: ^App, explicit: bool) -> bool {
 ////////////////////////////////
 // The box in about:config
 
-// Above the list of preferences: the box, what it found on the disk, and the system's page of default programs.
-desktop_config_panel :: proc(app: ^App) {
-	if !desktop.supported() { return }
-	desktop_status_poll(app)
-	em := ui.font_size()
-	// a background read changes nothing on the disk: the box keeps its state and stays usable (a "Working..." every
-	// second made the panel jump), only a change being written or the first read shows as work
-	busy := dsk.writes > 0
-	first := !dsk.known
-	state := dsk.known ? dsk.status.state : .Absent
+// The integration is a row of about:config's Browser category (config_ui.odin builds the row and its title; this file
+// fills in the state, the switch and the buttons).
 
-	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2.4))})
-	if ui.row(.Center) {
-		ui.spacer(ui.px(em * 0.8))
-		checked := dsk.known && state != .Absent
-		label := fmt.aprintf("Integrate %s with the desktop (%s)", APP_NAME, desktop.targets(), allocator = ui.frame_allocator())
-		ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
-		if ui.disabled(busy || first) {
-			if ui.checkbox("###desktop_box", label, &checked).clicked { desktop_toggle(app) }
-		}
-		ui.spacer(ui.px(em * 0.5))
-		if state == .Repair {
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
-			if ui.disabled(busy || first) { if ui.button(dsk.status.stale_exe != "" ? "Update###desktop_update" : "Repair###desktop_update").clicked { desktop_update(app) } }
-			ui.spacer(ui.px(em * 0.5))
-		}
-		if desktop.has_default_apps_page() {
-			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
-			if ui.tags("ghost_button") { if ui.button("Open default apps###desktop_defaults").clicked { desktop.open_default_apps() } }
-			ui.spacer(ui.px(em * 0.5))
-		}
-		ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 2))})
-		if ui.tags("ghost_button") { if ui.button("Setup\u2026###desktop_setup").clicked { setup_open(app) } }
-		ui.spacer(ui.px(em * 0.8))
-	}
-	// the facts under it: what the files run, or what failed
-	note := ""
-	tone := "weak"
+// Whether the switch can be used now: a background read changes nothing on the disk, so the switch keeps its state and
+// stays usable (a "Working..." every second made the row jump); only a change being written or the first read is work.
+desktop_config_busy :: proc() -> bool { return dsk.writes > 0 || !dsk.known }
+
+// What the row says under its title: what the files run, or what failed (temp memory), and its tone tag.
+desktop_config_note :: proc() -> (note: string, tone: string) {
+	state := dsk.known ? dsk.status.state : .Absent
+	tone = "weak"
 	switch {
 	case dsk.failure != "": note, tone = dsk.failure, "bad"
-	case busy || first:    note = "Working..."
-	case state == .Repair && dsk.status.stale_exe != "": note = fmt.tprintf("Points to %s \u2014 Update makes it run this copy of %s.", dsk.status.stale_exe, APP_NAME)
-	case state == .Repair:  note = "Some of its files are missing \u2014 Repair puts them back."
-	case state == .Installed: note = fmt.tprintf("Installed. %s is listed as a program that can open web addresses; the default is yours to pick.", APP_NAME)
+	case desktop_config_busy(): note = i18n.tr("Working\u2026")
+	case state == .Repair && dsk.status.stale_exe != "": note = fmt.tprintf(i18n.tr("Points to %s \u2014 Update makes it run this copy of %s."), dsk.status.stale_exe, APP_NAME)
+	case state == .Repair:  note = i18n.tr("Some of its files are missing \u2014 Repair puts them back.")
+	case state == .Installed: note = fmt.tprintf(i18n.tr("Installed. %s is listed as a program that can open web addresses; the default is yours to pick."), APP_NAME)
+	case: note = fmt.tprintf(i18n.tr("Adds %s to the Start menu and to the programs that can open web addresses."), APP_NAME)
 	}
-	if note != "" {
-		ui.next({width = ui.fill(), height = ui.children_sum()})
-		if ui.row(.Center) {
-			ui.spacer(ui.px(em * 0.8 + em * 2.0))
-			if ui.tags(tone) {
-				ui.next({width = ui.fill(), text_pad = 0})
-				ui.paragraph(fmt.aprintf("%s###desktop_note", note, allocator = ui.frame_allocator()))
-			}
-			ui.spacer(ui.px(em * 0.8))
-		}
-	}
-	ui.spacer(ui.px(em * 0.3))
+	return
 }
+
+// The row's buttons (under its note): Update / Repair, the system's page of default programs, Setup.
+desktop_config_buttons :: proc(app: ^App) {
+	em := ui.font_size()
+	busy := desktop_config_busy()
+	state := dsk.known ? dsk.status.state : .Absent
+	ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
+	if ui.row(.Center) {
+		if state == .Repair {
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
+			if ui.disabled(busy) { if ui.button(dsk.status.stale_exe != "" ? i18n.tr("Update###desktop_update") : i18n.tr("Repair###desktop_update")).clicked { desktop_update(app) } }
+			ui.spacer(ui.px(em * 0.4))
+		}
+		if desktop.has_default_apps_page() {
+			ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
+			if ui.tags("ghost_button") { if ui.button(i18n.tr("Open default apps###desktop_defaults")).clicked { desktop.open_default_apps() } }
+			ui.spacer(ui.px(em * 0.4))
+		}
+		ui.next({width = ui.text_size(em * 0.8), height = ui.px(ui.dense(em * 1.8))})
+		if ui.tags("ghost_button") { if ui.button(i18n.tr("Setup\u2026###desktop_setup")).clicked { setup_open(app) } }
+	}
+}
+
+// The row's switch (in the editor column); true when it was flipped.
+desktop_config_switch :: proc(app: ^App) -> bool {
+	em := ui.font_size()
+	checked := dsk.known && dsk.status.state != .Absent
+	ui.next({width = ui.px(em * 3.4), height = ui.px(ui.dense(em * 2))})
+	flipped := false
+	if ui.disabled(desktop_config_busy()) {
+		ui.a11y({name = i18n.tr("Integrate with the desktop")})
+		if ui.toggle("###desktop_box", "", &checked).clicked { desktop_toggle(app); flipped = true }
+	}
+	return flipped
+}
+
+// The integration's subtitle: what it touches ("Start menu, default apps").
+desktop_config_targets :: proc() -> string { return desktop.targets() }
