@@ -15,6 +15,10 @@
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+#[cfg(not(target_os = "windows"))]
+mod aout;
+#[cfg(not(target_os = "windows"))]
+mod audio;
 mod av1video;
 mod avif;
 mod color;
@@ -428,6 +432,182 @@ pub unsafe extern "C" fn wm_av1_close(d: *mut c_void) {
     }
     let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(d as *mut av1video::Decoder))));
 }
+
+////////////////////////////////
+// Audio decoding (the media player: src/media/audio_decode_rust.odin) and output (cpal). Built only where there is no
+// native media stack (not Windows): the symbols the Odin side links on Linux and macOS.
+#[cfg(not(target_os = "windows"))]
+mod audio_ffi {
+use super::*;
+
+/// Makes an audio decoder for a track. `codec` is media.Codec's number, `config` the codec private data (may be empty),
+/// `rate` / `channels` the container's header, `pre_skip` Opus' encoder delay in 48 kHz samples (0 otherwise).
+/// # Safety
+/// `config` points at `config_len` bytes (or is null for 0); `out` is a valid slot.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_open(codec: u32, config: *const u8, config_len: usize, rate: u32, channels: u32, pre_skip: u32, out: *mut *mut c_void) -> i32 {
+    guard(|| {
+        if out.is_null() {
+            return Err(ERR_INTERNAL);
+        }
+        let cfg = if config.is_null() || config_len == 0 { &[][..] } else { std::slice::from_raw_parts(config, config_len) };
+        *out = Box::into_raw(audio::Decoder::open(codec, cfg, rate, channels, pre_skip)?) as *mut c_void;
+        Ok(())
+    })
+}
+
+/// 0 taken, 1 refused (take the block first), else an error.
+/// # Safety
+/// `d` comes from wm_audio_open; `data` points at `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_send(d: *mut c_void, data: *const u8, len: usize, pts: i64) -> i32 {
+    guard_value(|| {
+        let bytes = if len == 0 || data.is_null() { &[][..] } else { std::slice::from_raw_parts(data, len) };
+        (*(d as *mut audio::Decoder)).send(bytes, pts)
+    })
+}
+
+/// 0 a block in `blk`, 1 none yet (more input), else an error. The samples live until the next get or wm_audio_taken.
+/// # Safety
+/// `d` comes from wm_audio_open; `blk` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_get(d: *mut c_void, blk: *mut audio::Block) -> i32 {
+    guard_value(|| (*(d as *mut audio::Decoder)).get(&mut *blk))
+}
+
+/// The block from the last get was copied: decode more on the next get.
+/// # Safety
+/// `d` comes from wm_audio_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_taken(d: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(d as *mut audio::Decoder)).taken()));
+}
+
+/// # Safety
+/// `d` comes from wm_audio_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_flush(d: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(d as *mut audio::Decoder)).flush()));
+}
+
+/// # Safety
+/// `d` comes from wm_audio_open; closed once.
+#[no_mangle]
+pub unsafe extern "C" fn wm_audio_close(d: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| audio::close(d)));
+}
+
+/// Whether a codec can be decoded here (1) or not (0), asked before a source is accepted.
+#[no_mangle]
+pub extern "C" fn wm_audio_supported(codec: u32) -> i32 {
+    audio::supported(codec) as i32
+}
+
+////////////////////////////////
+// Audio output (cpal: src/media/audio_out_cpal.odin)
+
+/// Opens the default audio device at `rate` (stereo float), or an error (no device, build failed). `out` receives a
+/// handle.
+/// # Safety
+/// `out` is a valid slot.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_open(rate: u32, out: *mut *mut c_void) -> i32 {
+    guard(|| {
+        if out.is_null() {
+            return Err(ERR_INTERNAL);
+        }
+        *out = Box::into_raw(aout::Output::open(rate)?) as *mut c_void;
+        Ok(())
+    })
+}
+
+/// Queues interleaved stereo frames (2 floats each); returns frames taken (the ring may be full).
+/// # Safety
+/// `o` comes from wm_aout_open; `samples` points at `len` floats.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_write(o: *mut c_void, samples: *const f32, len: usize) -> i32 {
+    guard_value(|| {
+        let s = if len == 0 || samples.is_null() { &[][..] } else { std::slice::from_raw_parts(samples, len) };
+        Ok((*(o as *mut aout::Output)).write(s))
+    })
+}
+
+/// Frames the ring can take now.
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_room(o: *mut c_void) -> i32 {
+    guard_value(|| Ok((*(o as *mut aout::Output)).room()))
+}
+
+/// Frames queued but not played yet.
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_queued(o: *mut c_void) -> i32 {
+    guard_value(|| Ok((*(o as *mut aout::Output)).queued()))
+}
+
+/// Audible frames played since the last flush (`frames`) and the mono_ns they are true at (`at`).
+/// # Safety
+/// `o` comes from wm_aout_open; `frames` and `at` are valid slots.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_position(o: *mut c_void, frames: *mut i64, at: *mut i64) {
+    let _ = catch_unwind(AssertUnwindSafe(|| {
+        let (f, a) = (*(o as *mut aout::Output)).position();
+        if !frames.is_null() {
+            *frames = f;
+        }
+        if !at.is_null() {
+            *at = a;
+        }
+    }));
+}
+
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_start(o: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(o as *mut aout::Output)).start()));
+}
+
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_stop(o: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(o as *mut aout::Output)).stop()));
+}
+
+/// # Safety
+/// `o` comes from wm_aout_open; the output must be stopped.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_flush(o: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(o as *mut aout::Output)).flush()));
+}
+
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_set_gain(o: *mut c_void, gain: f32) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(o as *mut aout::Output)).set_gain(gain)));
+}
+
+/// 1 when the device went away (make another), 0 otherwise.
+/// # Safety
+/// `o` comes from wm_aout_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_failed(o: *mut c_void) -> i32 {
+    guard_value(|| Ok((*(o as *mut aout::Output)).failed() as i32))
+}
+
+/// # Safety
+/// `o` comes from wm_aout_open; closed once.
+#[no_mangle]
+pub unsafe extern "C" fn wm_aout_close(o: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| aout::close(o)));
+}
+
+} // mod audio_ffi
 
 /// Versions of the libraries, for about: pages ("resvg 0.48.1, ..."), NUL-terminated, static.
 #[no_mangle]

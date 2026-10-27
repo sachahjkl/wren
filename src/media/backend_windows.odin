@@ -31,3 +31,11 @@ backend_audio_support :: proc(c: Codec) -> Decoder_Support {
 
 // Threads that drive decoders start with the platform's component runtime initialized.
 com_thread_init_any :: proc() { com_thread_init() }
+
+// media.audio.backend selects an alternative audio output on systems without a native one (Linux); on Windows WASAPI
+// is always the output, so the preference does nothing here.
+apply_audio_backend_pref :: proc(name: string) {}
+
+// media.h264.* select the H.264 decoder on systems without a native one (Linux: VA-API / openh264); on Windows Media
+// Foundation (DXVA) is always used, so the preferences do nothing here.
+apply_h264_prefs :: proc(backend: string, openh264_path: string) {}
