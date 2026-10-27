@@ -230,7 +230,7 @@ Requirements (CI installs the same: [.github/actions/setup](.github/actions/setu
 | Windows | 10 or 11, x64 | the only platform |
 | [Odin](https://github.com/odin-lang/Odin/releases/tag/dev-2026-10) | **`dev-2026-10`** (`dev-2026-10-nightly:84bc3fc`) | the browser and its tools |
 | Visual Studio 2022 or later (or its Build Tools) | "Desktop development with C++": MSVC x64 and a Windows SDK (CI: the runner's Visual Studio) | Odin's linker, Lexbor and the C shims |
-| [Rust](https://rustup.rs) | 1.99.1 (CI's pinned version; any recent stable works), `x86_64-pc-windows-msvc` | the built-in image and font decoders (`native/media`) |
+| [Rust](https://rustup.rs) | 1.99.1 (CI's pinned version; any recent stable works), `x86_64-pc-windows-msvc` | the built-in image and font decoders, the text backend and the accessibility adapter (`native/`) |
 | [Go](https://go.dev/dl/) | ≥ 1.25.6 | only the test server (`tools/testserver`) |
 | Git | any | submodules, the commit shown in About |
 
@@ -255,9 +255,11 @@ What `build.bat` does, each step skipped when it is already up to date:
    `build\wasmtime`; its static `wasmtime.lib` is linked into the exe.
 2. `tools\build_lexbor.ps1` compiles **Lexbor v3.0.1** (`ext/lexbor`) and the C shims of `src/shim` with MSVC into
    `build\lexbor\lexbor.lib`.
-3. `tools\build_media.ps1` builds `native/media` with Cargo (`--locked`, every crate pinned by version and hash),
-   downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component on first
-   use, and produces `build\media\wren_media.lib` (about 1.5 minutes the first time).
+3. `tools\build_native.ps1` builds the Cargo workspace `native/` with Cargo (`--locked`, every crate pinned by version
+   and hash), downloads **NASM 2.16.03** (SHA-256 pinned) for rav1d's assembly, adds the `llvm-tools` rustup component
+   on first use, and produces `build\native\wren_native.lib`, the one Rust library of `wren.exe`: the image and font
+   decoders (`native/media`) and the toolkit's text backend and accessibility adapter (about 1 minute the first time;
+   `build.bat release` and `profile` link it with fat LTO, 2 minutes; see `docs/architecture.md`, "The Rust library").
 4. `src/tools/bindgen` regenerates the web API bindings, SDK and docs from `api/*.widl`, and the JavaScript bindings
    and their coverage from the Web IDL of `native/js/webref` (only what changed).
 5. `tools\build_js.ps1` downloads **Zig 0.15.2** and the **QuickJS-ng 0.17.0** source (both SHA-256 pinned), applies
@@ -388,7 +390,9 @@ examples/       Wasm guest pages (counter, forms, workers, conformance...), Java
 ext/            submodules: gui_toolkit (window, UI, renderer, text), lexbor (HTML, URLs, encodings)
 native/js/      the JavaScript engine module: QuickJS-ng patches, the engine layer, hand-written members, preludes,
                 generated bindings, the Web IDL of webref
-native/media/   Rust static library: SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
+native/         Cargo workspace of the one Rust static library of wren.exe (native/wren_native, the assembly crate,
+                picks native/media and the toolkit's native/text and native/a11y)
+native/media/   SVG (resvg), WebP (image-webp), AVIF (rav1d), color (qcms), WOFF2 (brotli)
 sdk/odin/web/   generated Odin guest SDK
 src/
   base/         scopes (ownership tree with cleanups) and generational handle pools

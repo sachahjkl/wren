@@ -68,12 +68,18 @@ if not defined WREN_ANY_ODIN (
 ::  Wasmtime   C API, a pinned release checked by SHA-256                     -> build\wasmtime
 ::  Lexbor     HTML parser (ext\lexbor) + the C shims (src\shim), MSVC         -> build\lexbor\lexbor.lib
 ::  emoji      Noto Color Emoji (COLR v1), pinned by SHA-256                -> build\emoji (compiled into the exe)
-::  media      image decoders in Rust (resvg, image-webp, zenavif-parse,       -> build\media\wren_media.lib
-::             rav1d, qcms; crates pinned by Cargo.lock, NASM by SHA-256)
+::  native     the one Rust library (native\ workspace): image decoders         -> build\native\wren_native.lib
+::             (resvg, image-webp, zenavif-parse, rav1d, qcms), WOFF2, the
+::             toolkit's text backend and accessibility adapter; crates pinned
+::             by native\Cargo.lock, NASM by SHA-256; Cargo profile `release` (fat
+::             LTO) for release and profile, `quick` (no LTO: a change rebuilds one crate) for the others
 
+set "NATIVE_PROFILE=quick"
+if /I "%VARIANT%"=="release" set "NATIVE_PROFILE=release"
+if /I "%VARIANT%"=="profile" set "NATIVE_PROFILE=release"
 call :step "fetching Wasmtime"            tools\fetch_wasmtime.ps1 || exit /b 1
 call :step "building Lexbor"              tools\build_lexbor.ps1   || exit /b 1
-call :step "building the image decoders"  tools\build_media.ps1    || exit /b 1
+call :step "building the Rust library"    tools\build_native.ps1 -Profile %NATIVE_PROFILE% || exit /b 1
 call :step "fetching the emoji font"      tools\fetch_emoji.ps1    || exit /b 1
 if not exist build mkdir build
 
@@ -155,7 +161,7 @@ if defined WREN_EMBEDDED_LICENSE set "FLAGS=%FLAGS% -define:WREN_EMBEDDED_LICENS
 
 set "FLAGS=%FLAGS% -vet -subsystem:windows"
 :: the toolkit's render backend (WREN_RENDER=wgpu|d3d11; default d3d11): a wgpu build writes build\wren_prof_wgpu.exe etc. and links wgpu-native
-:: as a DLL (wgpu_native.dll, next to the program: Wren already links another Rust static library, the image decoders, and two cannot coexist),
+:: as a DLL (wgpu_native.dll, next to the program: Wren already links a Rust static library, build\native\wren_native.lib, and two cannot coexist),
 :: with the DXC DLLs next to it (toolkit tools\fetch_wgpu.ps1) so that Direct3D 12 compiles the shaders in 0.3 s instead of 2.8 s
 set "WREN_SUFFIX="
 if "%WREN_RENDER%"=="wgpu" set "WREN_SUFFIX=_wgpu"
@@ -164,13 +170,13 @@ if "%WREN_RENDER%"=="wgpu" set "FLAGS=%FLAGS% -define:TOOLKIT_RENDER=wgpu -defin
 if defined WREN_ODIN_EXTRA set "FLAGS=%FLAGS% %WREN_ODIN_EXTRA%"
 if defined WREN_TAG set "WREN_SUFFIX=%WREN_SUFFIX%%WREN_TAG%"
 :: text: the toolkit's native text backend (Fontations, HarfRust and ICU4X, from ext\gui_toolkit\native\text, built into
-:: the image decoders' library by tools\build_media.ps1 above: a program links one Rust static library at most) shapes,
+:: Wren's Rust library by tools\build_native.ps1 above: a program links one Rust static library at most) shapes,
 :: breaks and reads the fonts. WREN_TEXT=dwrite builds with DirectWrite's shaper and analyzers instead: build\wren_dwrite.exe
 :: etc. (the system's fonts and their fallback come from DirectWrite in both)
 if not "%WREN_TEXT%"=="dwrite" set "FLAGS=%FLAGS% -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false"
 if "%WREN_TEXT%"=="dwrite" set "WREN_SUFFIX=%WREN_SUFFIX%_dwrite"
 :: accessibility: the toolkit's AccessKit adapter (UI Automation: screen readers read the chrome and the pages), built
-:: into the same library (feature `a11y` of native\media)
+:: into the same library (feature `a11y` of native\wren_native)
 set "FLAGS=%FLAGS% -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false"
 if "%WREN_RENDER%"=="wgpu" powershell -NoProfile -ExecutionPolicy Bypass -File ext\gui_toolkit\tools\fetch_wgpu.ps1 -Dest build >nul || (echo fetching the wgpu dependencies failed & exit /b 1)
 
@@ -254,11 +260,11 @@ exit /b 0
 
 
 :: ------------------------------------------------------------------------------------------------------------
-::  :step "what" script.ps1 : runs a build script quietly; on failure says which one to run by hand
+::  :step "what" script.ps1 [arguments] : runs a build script quietly; on failure says which one to run by hand
 :: ------------------------------------------------------------------------------------------------------------
 :step
-powershell -NoProfile -ExecutionPolicy Bypass -File %2 >nul && exit /b 0
-echo %~1 failed: run  powershell -File %2
+powershell -NoProfile -ExecutionPolicy Bypass -File %2 %3 %4 >nul && exit /b 0
+echo %~1 failed: run  powershell -File %2 %3 %4
 exit /b 1
 
 :: ------------------------------------------------------------------------------------------------------------

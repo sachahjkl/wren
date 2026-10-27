@@ -12,8 +12,8 @@ import "core:compress"
 import "core:compress/zlib"
 import "core:slice"
 
-foreign import wren_media {
-	"../../build/media/wren_media.lib",
+foreign import wren_native {
+	"../../build/native/wren_native.lib",
 	"system:ws2_32.lib",
 	"system:advapi32.lib",
 	"system:userenv.lib",
@@ -35,7 +35,7 @@ Wm_Byte_Sink :: struct {
 }
 
 @(private, default_calling_convention = "c")
-foreign wren_media {
+foreign wren_native {
 	wm_woff2_decode :: proc(data: [^]u8, len: uint, max_bytes: u64, sink: ^Wm_Byte_Sink) -> i32 ---
 }
 

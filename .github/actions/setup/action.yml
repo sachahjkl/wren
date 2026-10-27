@@ -1,11 +1,18 @@
 name: Set up the Wren toolchain
 description: >-
   Odin (pinned release, SHA-256 checked), Rust (pinned version) with llvm-tools, Go, the MSVC environment, and the caches of
-  what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry, Zig and the
+  what build.bat fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, Zig and the
   QuickJS-ng source, the JavaScript engine) and of the pinned test suites tools\test_all.ps1 fetches (test262,
   web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
   Zig, QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
   Cargo.lock (crates); Rust (RUST_VERSION below) and Go (go.mod's version) come from their installers.
+
+inputs:
+  native-profile:
+    description: >-
+      The Cargo profile of the Rust library this job builds (tools\build_native.ps1 -Profile): quick (build.bat, debug,
+      check) or release (build.bat release and profile). Its compiled crates are cached.
+    default: quick
 
 runs:
   using: composite
@@ -27,7 +34,7 @@ runs:
         Add-Content $env:GITHUB_PATH (Join-Path $dir 'dist')
         & (Join-Path $dir 'dist\odin.exe') version
 
-    # pinned like everything else: a new stable can change codegen or lints of native/media under the same Cargo.lock
+    # pinned like everything else: a new stable can change codegen or lints of native/ under the same Cargo.lock
     - name: Rust 1.99.1 + llvm-tools
       shell: pwsh
       env:
@@ -66,15 +73,29 @@ runs:
           build/lexbor/STAMP
         key: lexbor-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/shim/**', 'tools/build_lexbor.ps1') }}
 
-    - name: Cache native/media and NASM
+    # The Rust library (tools\build_native.ps1), with the crates Cargo compiled for it (build/native/target/<profile>):
+    # - the same sources (the key covers every input of the script's STAMP, the toolkit's crates included): the library
+    #   is restored, nothing is compiled;
+    # - other sources, same Cargo.lock: the latest entry of that Cargo.lock is restored (restore-keys) and Cargo compiles
+    #   only the workspace's crates and the toolkit's (their files are newer after the checkout: seconds with the quick
+    #   profile), never the crates.io ones (rav1d, resvg, ICU4X...: minutes);
+    # - another Cargo.lock or Rust: everything (780 s on this runner with the release profile; the quick profile skips
+    #   the LTO step).
+    # The staticlibs Cargo also writes for the toolkit's crates (their crate-type) are rebuilt anyway: not cached.
+    - name: Cache the Rust library (native/), its compiled crates and NASM
       uses: actions/cache@v4
       with:
         path: |
-          build/media/wren_media.lib
-          build/media/STAMP
+          build/native/wren_native.lib
+          build/native/STAMP
+          build/native/target/${{ inputs.native-profile }}/deps
+          build/native/target/${{ inputs.native-profile }}/build
+          build/native/target/${{ inputs.native-profile }}/.fingerprint
+          !build/native/target/${{ inputs.native-profile }}/deps/*.lib
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: media-rust1.99.1-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
+        key: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-${{ hashFiles('native/Cargo.toml', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'tools/build_native.ps1') }}
+        restore-keys: native-${{ inputs.native-profile }}-rust1.99.1-${{ hashFiles('native/Cargo.lock') }}-
 
     # tools\build_js.ps1: Zig (its clang and wasi-libc) and the QuickJS-ng release source, both pinned in the script
     - name: Cache Zig and the QuickJS-ng source
@@ -110,10 +131,14 @@ runs:
           build/wpt/CHECKOUT
         key: suites-${{ hashFiles('tools/test262.ps1', 'tools/wpt.ps1', 'wpt/MANIFEST.txt', 'wpt/suites.txt') }}
 
+    # with the unpacked sources (registry/src): unpacked again, their files would be newer than the compiled crates of the
+    # cache above, and a build script that watches its files (rav1d: its assembly) would run again, then its crate and
+    # every crate above it
     - name: Cache cargo registry
       uses: actions/cache@v4
       with:
         path: |
           ~/.cargo/registry/index
           ~/.cargo/registry/cache
-        key: cargo-registry-${{ hashFiles('native/media/Cargo.lock') }}
+          ~/.cargo/registry/src
+        key: cargo-registry-src-${{ hashFiles('native/Cargo.lock') }}

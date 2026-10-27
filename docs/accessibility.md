@@ -6,9 +6,10 @@ toolkit makes the accessibility tree of the interface from its boxes and hands i
 
 ## Build
 
-`native/media` builds the toolkit's adapter (`ext/gui_toolkit/native/a11y`, AccessKit 0.25 and its Windows adapter) into
-`wren_media.lib` (feature `a11y`: a program links one Rust static library), and `build.bat` builds with
-`-define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false`. The crates are listed in `native/media/rust-crates.txt`
+The assembly crate `native/wren_native` builds the toolkit's adapter (`ext/gui_toolkit/native/a11y`, AccessKit 0.25
+and its Windows adapter) into `wren_native.lib` (feature `a11y`: a program links one Rust static library; see
+`docs/architecture.md`, "The Rust library"), and `build.bat` builds with
+`-define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false`. The crates are listed in `native/rust-crates.txt`
 (about:licenses).
 
 Nothing is built until an assistive technology asks for a window's tree; from then on each frame sends the nodes that
