@@ -203,6 +203,13 @@ media_element :: proc(p: ^Page, node: base.Handle) -> ^Media_Element {
 	el.created_ms = page_now_ms(p)
 	el.muted = media_has_attr(p.doc, node, "muted")
 	pm.elements[node] = el
+	// the <track> children the parser made (media_note_inserted only hears of the ones a script inserts)
+	for c := n.first_child; c != base.NIL_HANDLE; {
+		cn := dom.get(p.doc, c)
+		if cn == nil { break }
+		if cn.kind == .Element && cn.name == "track" { media_track_element_added(p, node, c) }
+		c = cn.next
+	}
 	// a <video src>, <video><source>: the resource selection algorithm runs when the element is made (parser-created)
 	if media_has_attr(p.doc, node, "src") || media_has_source_child(p, node) {
 		media_schedule_load(el)
