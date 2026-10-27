@@ -41,6 +41,7 @@ Webauthn_Doc :: struct {
 	page_id:      u64,
 	activation_ns: i64,     // loop clock of the last activation-triggering input event
 	has_activation: bool,
+	has_been_active: bool,  // sticky: the page had an activation-triggering input at least once (UserActivation.hasBeenActive)
 	active:       ^Webauthn_Op,
 	cleanup:      base.Cleanup_Id,
 }
@@ -106,7 +107,14 @@ webauthn_note_input :: proc(p: ^Page, ev: dom.Event) {
 	if !trigger { return }
 	d := webauthn_doc(p, true)
 	if d == nil { return }
-	d.activation_ns, d.has_activation = host.now_ns(p.loop), true
+	d.activation_ns, d.has_activation, d.has_been_active = host.now_ns(p.loop), true, true
+}
+
+// Whether the page has ever had an activation-triggering input (UserActivation.hasBeenActive, a sticky flag that, unlike
+// transient activation, never expires for the life of the document).
+user_activation_has_been_active :: proc(p: ^Page) -> bool {
+	d := webauthn_doc(p)
+	return d != nil && d.has_been_active
 }
 
 // Whether the page has transient activation now.

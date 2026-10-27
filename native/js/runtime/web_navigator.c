@@ -13,6 +13,22 @@ static JSValue make_navigator(JSContext *ctx)
     return wj_new_object(ctx, web_is_window() ? WJ_IFACE_Navigator : WJ_IFACE_WorkerNavigator, NULL, NULL);
 }
 
+/* navigator.userActivation (UserActivation): the transient/sticky activation state the browser already tracks
+ * (UserActivation_isActive / _hasBeenActive). [SameObject]: the one object is kept on the Navigator. */
+JSValue wjr_Navigator_get_userActivation(JSContext *ctx, JSValueConst this_val)
+{
+    if (!nav_this(ctx, this_val)) { return JS_EXCEPTION; }
+    JSValue ua = web_extra_get(ctx, this_val, "userActivation");
+    if (JS_IsObject(ua)) { return ua; }
+    JS_FreeValue(ctx, ua);
+    ua = wj_new_object(ctx, WJ_IFACE_UserActivation, NULL, NULL);
+    if (JS_IsException(ua)) { return ua; }
+    if (!web_extra_set(ctx, this_val, "userActivation", JS_DupValue(ctx, ua))) { JS_FreeValue(ctx, ua); return JS_EXCEPTION; }
+    return ua;
+}
+JSValue wjr_UserActivation_get_isActive(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_UserActivation) ? JS_NewBool(ctx, wr_UserActivation_isActive()) : JS_EXCEPTION; }
+JSValue wjr_UserActivation_get_hasBeenActive(JSContext *ctx, JSValueConst this_val) { return wj_this(ctx, this_val, WJ_IFACE_UserActivation) ? JS_NewBool(ctx, wr_UserActivation_hasBeenActive()) : JS_EXCEPTION; }
+
 JSValue wjr_Window_get_navigator(JSContext *ctx, JSValueConst this_val) { WJ_UNUSED(this_val); return web_singleton(ctx, WEB_SINGLE_NAVIGATOR, make_navigator); }
 JSValue wjr_Window_get_clientInformation(JSContext *ctx, JSValueConst this_val) { WJ_UNUSED(this_val); return web_singleton(ctx, WEB_SINGLE_NAVIGATOR, make_navigator); }
 JSValue wjr_WorkerGlobalScope_get_navigator(JSContext *ctx, JSValueConst this_val) { WJ_UNUSED(this_val); return web_singleton(ctx, WEB_SINGLE_NAVIGATOR, make_navigator); }

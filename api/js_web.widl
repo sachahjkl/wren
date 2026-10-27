@@ -29,6 +29,12 @@ module navigator {
   i32 Navigator_maxTouchPoints();
   /// navigator.cookieEnabled: whether the document may use cookies.
   bool Navigator_cookieEnabled();
+  /// navigator.userActivation.isActive: whether the document has transient activation now (a recent click or key press
+  /// within the transient activation window, security.webauthn.user_activation_ms).
+  bool UserActivation_isActive();
+  /// navigator.userActivation.hasBeenActive: whether the document has ever had an activation-triggering input (sticky:
+  /// it does not expire).
+  bool UserActivation_hasBeenActive();
   /// navigator.sendBeacon(url, data): a POST queued with the page's policy (CORS no-cors mode, credentials included),
   /// whose response nobody reads; it is not cancelled when the page closes. False when the beacon is refused (too large:
   /// navigator.beacon_max_bytes, or an invalid URL). `content_type` "" sends none.

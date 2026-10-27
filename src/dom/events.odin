@@ -369,6 +369,13 @@ dispatch_ex :: proc(d: ^Document, dp: ^Dispatcher, target: base.Handle, proto: E
 	return !(e.cancelable && e.default_prevented), final_target
 }
 
+// The type ("click", "load"...) of the event being dispatched, by its handle, or "" when the handle is stale. Used by the
+// Long Animation Frames instrumentation to name the invoker of an event listener (src/page/timeline_loaf.odin).
+event_type :: proc(dp: ^Dispatcher, eh: base.Handle) -> string {
+	e := base.pool_get(&dp.events, eh)
+	return e != nil ? e.type : ""
+}
+
 // Event.composedPath() of the event being dispatched (DOM §2.9): the invocation targets around the current one that a
 // listener there may see (closed shadow trees it is not inside are hidden). A NIL handle stands for the Window.
 composed_path :: proc(dp: ^Dispatcher, eh: base.Handle, allocator := context.temp_allocator) -> []base.Handle {
