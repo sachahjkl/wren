@@ -7,7 +7,7 @@ module performance {
   /// timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
   /// tasks (Long_Task: a task of the window's realm that took 50 ms or more), the largest contentful paint, the layout
   /// shifts, the element timing entries and the visibility-state changes.
-  enum PerformanceEntryType : i32 { Any, Mark, Measure, Navigation, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State }
+  enum PerformanceEntryType : i32 { Any, Mark, Measure, Navigation, Resource, Paint, Event, First_Input, Long_Task, Largest_Contentful_Paint, Layout_Shift, Element, Visibility_State, Long_Animation_Frame, Script }
   /// A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
   /// has new entries: `kinds` has one bit for each (1 << PerformanceEntryType).
   callback TimelineCallback(i32 user, i32 kinds);

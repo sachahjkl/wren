@@ -62,6 +62,11 @@ Navigator_cookieEnabled :: proc(c: ^Call) -> bool {
 	return ok
 }
 
+// navigator.userActivation (UserActivation): transient activation is a recent activation-triggering input (the same
+// signal passkeys and the popup blocker use, bindings_webauthn.odin); hasBeenActive is sticky for the life of the document.
+UserActivation_isActive :: proc(c: ^Call) -> bool { return webauthn_has_activation(c.page) }
+UserActivation_hasBeenActive :: proc(c: ^Call) -> bool { return user_activation_has_been_active(c.page) }
+
 // A beacon outlives its page: it owns a copy of the page's environment (without the page's violation callback), freed
 // once the request is over.
 @(private)

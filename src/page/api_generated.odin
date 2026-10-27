@@ -684,6 +684,8 @@ Api_PerformanceEntryType :: enum i32 {
 	Layout_Shift = 10,
 	Element = 11,
 	Visibility_State = 12,
+	Long_Animation_Frame = 13,
+	Script = 14,
 }
 
 // What the current event of a service worker's realm is (kind 0: none waits).

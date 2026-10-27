@@ -48,6 +48,12 @@ Objects :: struct {
 	depth:       int,                // guest calls in progress
 	draining:    bool,
 	checkpoint_posted: bool,         // host_post_checkpoint: a checkpoint task is queued
+	// Long Animation Frames (timeline_loaf.odin): what invoked the next depth-0 guest call, so its PerformanceScriptTiming
+	// can name it. A caller (a timer, requestAnimationFrame, an event listener, a module's script) sets it just before
+	// call_guest; it is read once and reset. The default is a user-callback with no source.
+	loaf_kind:       Loaf_Invoker,
+	loaf_invoker:    string,   // static or temp: the invoker name (e.g. the event type)
+	loaf_source_url: string,   // static or temp: the script's source URL
 }
 
 @(private)
@@ -162,7 +168,10 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 		if l.once { object_remove_listener(p, h, l.id) }
 		argv := [3]u32{l.user, u32(u64(eh)), u32(u64(eh) >> 32)}
 		inst := instance_by_index(p, l.owner)
-		if inst != nil { call_guest(p, inst, l.callback, argv[:]) }
+		if inst != nil {
+			loaf_set_invoker(p, .Event_Listener, proto.type)   // Long Animation Frames: invoker is the event type
+			call_guest(p, inst, l.callback, argv[:])
+		}
 		e := base.pool_get(&p.dp.events, eh)
 		if e == nil || e.stop_immediate { break }
 	}
@@ -182,12 +191,16 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 call_guest :: proc(p: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32) -> bool {
 	if inst == nil || inst.dead || p.closed || realm_halted(p) { return false }
 	task := p.objects.depth == 0 ? timeline_task_begin(p) : 0   // a task of the page: long ones are Long Tasks (timeline.odin)
+	opened := p.objects.depth == 0 ? loaf_frame_begin(p) : false   // Long Animation Frames (timeline_loaf.odin)
+	loaf := p.objects.depth == 0 ? loaf_script_in(p) : 0
 	p.objects.depth += 1
 	res := wasm.call_indirect(inst, table_index, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if loaf != 0 { loaf_script_end(p, loaf) }
 	if task != 0 { timeline_task_end(p, task) }
+	if opened { loaf_frame_end(p) }
 	return res == .Ok
 }
 
@@ -195,12 +208,16 @@ call_guest :: proc(p: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32
 call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 = nil) -> wasm.Call_Result {
 	if inst == nil || inst.dead || p.closed || realm_halted(p) { return .Trapped }
 	task := p.objects.depth == 0 ? timeline_task_begin(p) : 0
+	opened := p.objects.depth == 0 ? loaf_frame_begin(p) : false
+	loaf := p.objects.depth == 0 ? loaf_script_in(p) : 0
 	p.objects.depth += 1
 	res := wasm.call_raw(inst, name, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if loaf != 0 { loaf_script_end(p, loaf) }
 	if task != 0 { timeline_task_end(p, task) }
+	if opened { loaf_frame_end(p) }
 	return res
 }
 
