@@ -18,6 +18,7 @@ import "wb:base"
 import "wb:dom"
 import "wb:html"
 import "wb:images"
+import "wb:webfont"
 
 Pv_Kind :: enum u8 { None, Image, Font, Html, Media }
 
@@ -35,8 +36,13 @@ Preview_State :: struct {
 	fit:     bool,            // fitted to the pane (else its own size)
 	unfit:   bool,            // `fit` was set by the user
 	// a font
-	font:    font.Font_Id,
-	font_ok: bool,
+	font_id:    font.Font_Id,
+	font_ok:    bool,
+	font_meta:  Font_Meta,      // the chosen face's names and glyph count
+	font_axes:  []font.Axis,    // owned: the chosen face's variable axes (empty for a static face)
+	font_format: webfont.Format,   // what the downloaded bytes were (TTF, OTF, WOFF, WOFF2, collection)
+	font_faces: int,            // faces in a collection (0 when not a collection)
+	font_index: int,            // the chosen face, 0..font_faces-1 (0 for a single face)
 	// an HTML page
 	html:    Html_Reader,
 	source:  bool,            // the markup as text instead
@@ -61,8 +67,12 @@ preview_release :: proc(pv: ^Preview_State) {
 	app := the_app
 	if app != nil {
 		if pv.tex_ok { render.destroy_texture(&app.r, pv.tex) }
-		if pv.font_ok { font.unload(&app.fonts, pv.font) }
+		if pv.font_ok { font.unload(&app.fonts, pv.font_id) }
 	}
+	font_meta_free(&pv.font_meta)
+	delete(pv.font_axes)
+	// The sfnt bytes are not freed here: font.load_from_memory takes ownership of them (it keeps its own copy and
+	// frees the one we pass, whether it loaded or not), and font.unload above frees the face's copy.
 	html_reader_free(&pv.html)
 	dt_list_destroy(&pv.list)
 	delete(pv.err)
@@ -98,10 +108,7 @@ preview_ensure :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry, kind: Pv_Kind) 
 		pv.tex_ok = true
 		images.image_destroy(img)
 	case .Font:
-		copied := make([]byte, len(body))
-		copy(copied, body)
-		id, ok := font.load_from_memory(&app.fonts, copied)
-		if ok { pv.font, pv.font_ok = id, true } else { pv.err = strings.clone("This font could not be read (WOFF2 and collections are not read by the preview).") }
+		font_prepare(app, pv, body)
 	case .Html:
 		html_reader_make(&pv.html, body)
 	case .Media, .None:
@@ -251,6 +258,102 @@ response_image :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 ////////////////////////////////
 // A font
 
+// Decodes the downloaded bytes and loads face 0, reading the format and, for a collection, the face count. Failures
+// leave a precise message in `pv.err`. Called once per chosen request; the face selector then switches faces without
+// re-sniffing.
+@(private = "file")
+font_prepare :: proc(app: ^App, pv: ^Preview_State, body: []byte) {
+	limit := app.page_settings.style.webfont_max_bytes
+	pv.font_format = webfont.sniff(body)
+	// A collection (.ttc / .otc) is unpacked to a standalone sfnt per face; count the faces from its header so the
+	// selector can offer them. (A WOFF2 that wraps a collection is split to its first face by the decoder, so only
+	// that face is reachable: it shows as a single face.)
+	if pv.font_format == .Collection {
+		pv.font_faces = font_collection_count(body)
+		if pv.font_faces <= 0 { pv.err = strings.clone("This font collection is corrupt (its header does not list any face)."); return }
+	}
+	font_load_face(app, pv, body, 0, limit)
+}
+
+// Produces the standalone sfnt of face `index` from the downloaded bytes (decoding WOFF / WOFF2 and pulling one face
+// out of a collection), loads it into the font engine, and reads its names, axes and glyph count. On failure sets
+// `pv.err`; on success sets font_id/font_ok/font_meta/font_axes. The font engine takes ownership of the sfnt bytes
+// (it keeps its own copy and frees the ones we pass, on success or failure), so they are not tracked here.
+@(private = "file")
+font_load_face :: proc(app: ^App, pv: ^Preview_State, body: []byte, index, limit: int) {
+	sfnt, err := font_decode_face(body, pv.font_format, index, limit)
+	if err != .None {
+		pv.err = strings.clone(font_decode_message(err))
+		return
+	}
+	pv.font_meta = font_meta_read(sfnt)   // read before handing the bytes off (load_from_memory frees them)
+	id, ok := font.load_from_memory(&app.fonts, sfnt, 0)   // the sfnt already holds exactly one face
+	if !ok {
+		pv.err = strings.clone("This font could not be read (DirectWrite rejected it: the file may be corrupt or use an unsupported outline format).")
+		font_meta_free(&pv.font_meta)
+		return
+	}
+	pv.font_id, pv.font_ok, pv.font_index = id, true, index
+	pv.font_axes = font.axes(&app.fonts, id)
+}
+
+// The standalone sfnt bytes of one face of the downloaded font, in the heap allocator (the engine frees them). For a
+// collection, `collection_face` copies out face `index`; a WOFF2 that wraps a collection is decoded then split; a WOFF
+// is inflated; a plain sfnt is validated and copied.
+@(private = "file")
+font_decode_face :: proc(body: []byte, format: webfont.Format, index, limit: int) -> ([]byte, webfont.Error) {
+	switch format {
+	case .Collection:
+		return webfont.collection_face(body, index, limit, context.allocator)
+	case .Woff2:
+		// webfont.decode already splits a WOFF2 collection down to face 0, so only that face is reachable this way.
+		// A later face of a WOFF2 collection (very rare) would need the raw decoded sfnt, which decode does not hand
+		// back; report it rather than show the wrong face.
+		if index != 0 { return nil, .Unsupported_Collection }
+		sfnt, _, err := webfont.decode(body, limit, context.allocator)
+		return sfnt, err
+	case .Woff, .Truetype, .Opentype:
+		sfnt, _, err := webfont.decode(body, limit, context.allocator)
+		return sfnt, err
+	case .Eot: return nil, .Unsupported_Eot
+	case .Unknown: return nil, .Unknown_Format
+	}
+	return nil, .Unknown_Format
+}
+
+// A precise, human sentence for why a font could not be read.
+@(private = "file")
+font_decode_message :: proc(err: webfont.Error) -> string {
+	#partial switch err {
+	case .Too_Small:       return "This file is too small to be a font."
+	case .Unknown_Format:  return "This is not a font the preview recognizes (not TrueType, OpenType, WOFF or WOFF2)."
+	case .Unsupported_Woff2: return "This WOFF2 font uses a table transform the format does not define."
+	case .Unsupported_Collection: return "This face is out of range for the collection, or a WOFF2 collection face other than the first cannot be shown."
+	case .Unsupported_Eot: return "Embedded OpenType (.eot) fonts are not shown."
+	case .Malformed:       return "This font file is corrupt (a table offset or length points outside the file)."
+	case .Too_Large:       return "This font is larger than the limit (style.webfonts.max_bytes) once decoded."
+	case .Decompression_Failed: return "This font could not be decompressed (its compressed tables are corrupt)."
+	}
+	return "This font could not be read."
+}
+
+// Switches the preview to a different face of a collection: unloads the current face (which frees its sfnt) and
+// loads the chosen one. Keeps the error path clean on failure (the old face is already gone, so the preview shows
+// the message rather than a stale face).
+@(private = "file")
+font_select_face :: proc(app: ^App, pv: ^Preview_State, body: []byte, index: int) {
+	if index == pv.font_index || index < 0 || index >= pv.font_faces { return }
+	if pv.font_ok { font.unload(&app.fonts, pv.font_id); pv.font_ok = false }
+	font_meta_free(&pv.font_meta)
+	delete(pv.font_axes); pv.font_axes = nil
+	delete(pv.err); pv.err = ""
+	font_load_face(app, pv, body, index, app.page_settings.style.webfont_max_bytes)
+}
+
+@(private = "file") FONT_FORMAT_NAMES := [webfont.Format]string{
+	.Unknown = "font", .Truetype = "TrueType", .Opentype = "OpenType (CFF)", .Collection = "collection", .Woff = "WOFF", .Woff2 = "WOFF2", .Eot = "EOT",
+}
+
 @(private = "file")
 Font_Draw :: struct { id: font.Font_Id }
 
@@ -277,22 +380,135 @@ font_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	}
 }
 
+// The face's facts, one line per present fact, drawn weakly under the specimen bar.
+@(private = "file")
+Font_Info_Draw :: struct { lines: []string }
+
+@(private = "file")
+font_info_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
+	d := (^Font_Info_Draw)(user)
+	r := b.rect
+	y := r.min.y + dt_px(6)
+	lh := math.round(dtm.fs * 1.5)
+	for s in d.lines {
+		cy := y + dtm.fs * 0.5
+		dt_text(dc, dtm.ui_font, dtm.fs, r.min.x + dt_px(16), cy, dtc.weak, s, r.max.x - r.min.x - dt_px(24))
+		y += lh
+	}
+}
+
 @(private = "file")
 preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	pv := &d.pv
-	if !pv.font_ok { dt_empty("###dt_pv_fonterr", .File_Font, "No preview", pv.err); return }
+	// A single face that could not be read has no selector to recover with: show the message alone.
+	if !pv.font_ok && pv.font_faces <= 1 { dt_empty("###dt_pv_fonterr", .File_Font, "No preview", pv.err); return }
+	// The bar: the file's name, format and size, and (for a collection) a face selector that stays visible even when
+	// the chosen face failed, so another face can be picked.
 	if dt_bar("###dt_pf_bar", dtm.bar - dt_px(4)) {
 		dt_gap(6)
+		if pv.font_faces > 1 {
+			font_face_selector(app, e, pv)
+			dt_gap(4)
+		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
 		ui.custom("###dt_pf_info", proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
-		}, new_clone(dt_frame_str(fmt.tprintf("%s, %s", net_name_of(e.url), dt_size_text(i64(len(e.body))))), ui.frame_allocator()))
+		}, new_clone(dt_frame_str(font_bar_text(pv, e)), ui.frame_allocator()))
+	}
+	// A collection whose chosen face failed: keep the selector above, show the message in the body.
+	if !pv.font_ok { dt_empty("###dt_pv_fonterr2", .File_Font, "This face could not be read", pv.err); return }
+	// The facts (family, style, version, license, axes, glyph count), each on its own line if present.
+	lines := font_info_lines(pv)
+	if len(lines) > 0 {
+		lh := math.round(dtm.fs * 1.5)
+		ui.next({width = ui.fill(), height = ui.px(lh * f32(len(lines)) + dt_px(12))})
+		info := ui.frame_new(Font_Info_Draw)
+		info.lines = lines
+		box := ui.build_box({}, "###dt_pf_facts")
+		box.custom, box.custom_user = font_info_paint, info
+		dt_hsep("###dt_pf_rule")
 	}
 	fd := ui.frame_new(Font_Draw)
-	fd.id = pv.font
+	fd.id = pv.font_id
 	ui.next({width = ui.fill(), height = ui.fill()})
 	box := ui.build_box({.Clip}, "###dt_pf_canvas")
 	box.custom, box.custom_user = font_paint, fd
+}
+
+// The text of the bar: the file name, its container format and its downloaded size.
+@(private = "file")
+font_bar_text :: proc(pv: ^Preview_State, e: ^Net_Entry) -> string {
+	fmtn := FONT_FORMAT_NAMES[pv.font_format]
+	return fmt.tprintf("%s \u00b7 %s \u00b7 %s", net_name_of(e.url), fmtn, dt_size_text(i64(len(e.body))))
+}
+
+// The face facts to show, each a short labelled line; absent facts are skipped. All frame-allocated.
+@(private = "file")
+font_info_lines :: proc(pv: ^Preview_State) -> []string {
+	out := make([dynamic]string, 0, 8, ui.frame_allocator())
+	m := &pv.font_meta
+	if pv.font_faces > 1 { append(&out, fmt.aprintf("Face %d of %d in the collection", pv.font_index + 1, pv.font_faces, allocator = ui.frame_allocator())) }
+	if m.family != "" {
+		style := m.subfamily != "" ? m.subfamily : (m.full != "" ? m.full : "")
+		if style != "" { append(&out, fmt.aprintf("Family: %s \u2014 %s", m.family, style, allocator = ui.frame_allocator())) } else { append(&out, fmt.aprintf("Family: %s", m.family, allocator = ui.frame_allocator())) }
+	} else if m.full != "" {
+		append(&out, fmt.aprintf("Name: %s", m.full, allocator = ui.frame_allocator()))
+	}
+	if m.version != "" { append(&out, fmt.aprintf("Version: %s", font_trim_line(m.version), allocator = ui.frame_allocator())) }
+	if m.glyphs > 0 { append(&out, fmt.aprintf("%d glyphs", m.glyphs, allocator = ui.frame_allocator())) }
+	if len(pv.font_axes) > 0 { append(&out, font_axes_line(pv.font_axes)) }
+	if m.license != "" { append(&out, fmt.aprintf("License: %s", font_trim_line(m.license), allocator = ui.frame_allocator())) }
+	if m.license_url != "" { append(&out, fmt.aprintf("License URL: %s", font_trim_line(m.license_url), allocator = ui.frame_allocator())) }
+	if m.copyright != "" { append(&out, fmt.aprintf("%s", font_trim_line(m.copyright), allocator = ui.frame_allocator())) }
+	return out[:]
+}
+
+// A one-line summary of a variable font's axes: "Variable: wght 100..900 (400), wdth 75..125 (100)".
+@(private = "file")
+font_axes_line :: proc(axes: []font.Axis) -> string {
+	b := strings.builder_make(ui.frame_allocator())
+	strings.write_string(&b, "Variable: ")
+	for a, i in axes {
+		if i > 0 { strings.write_string(&b, ", ") }
+		tag := a.tag
+		strings.write_string(&b, string(tag[:]))
+		fmt.sbprintf(&b, " %g..%g (%g)", a.min, a.max, a.default)
+	}
+	return strings.to_string(b)
+}
+
+// A `name` string can be long or hold several lines; keep the first line and cap it so the facts stay tidy.
+@(private = "file")
+font_trim_line :: proc(s: string) -> string {
+	t := s
+	if i := strings.index_any(t, "\r\n"); i >= 0 { t = t[:i] }
+	t = strings.trim_space(t)
+	if len(t) > 120 { t = strings.concatenate({t[:117], "\u2026"}, ui.frame_allocator()) }
+	return t
+}
+
+// The face selector of a collection: a row of chips when they are few, a dropdown otherwise. Picking a face reloads
+// the specimen and the facts.
+@(private = "file")
+font_face_selector :: proc(app: ^App, e: ^Net_Entry, pv: ^Preview_State) {
+	body := e.body[:]
+	if pv.font_faces <= 6 {
+		for i in 0 ..< pv.font_faces {
+			label := fmt.tprintf("%d", i + 1)
+			if dt_chip(fmt.tprintf("###dt_pf_face%d", i), label, i == pv.font_index, fmt.tprintf("Face %d of %d", i + 1, pv.font_faces)).clicked {
+				font_select_face(app, pv, body, i)
+			}
+		}
+		return
+	}
+	key := dt_menu_btn("###dt_pf_facemenu", .File_Font, fmt.tprintf("Face %d / %d", pv.font_index + 1, pv.font_faces), "Choose a face of the collection")
+	if ui.ctx_menu(key, ui.font_size() * 14) {
+		for i in 0 ..< pv.font_faces {
+			if ui.menu_item(fmt.tprintf("Face %d", i + 1), checked = i == pv.font_index).clicked {
+				font_select_face(app, pv, body, i)
+			}
+		}
+	}
 }
 
 ////////////////////////////////
