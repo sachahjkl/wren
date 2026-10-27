@@ -49,7 +49,7 @@ function not exposed to workers is not instantiated.
 | module | functions | exposed | |
 |---|---:|---|---|
 | [`abort`](abort.md) | 10 | Window | AbortController and AbortSignal (DOM Standard). A signal is an EventTarget ("abort"). Its reason is a (code, text) |
-| [`animations`](animations.md) | 28 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
+| [`animations`](animations.md) | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
 | [`caches`](caches.md) | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
 | [`canvas`](canvas.md) | 137 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
@@ -58,7 +58,7 @@ function not exposed to workers is not instantiated.
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
 | [`crypto`](crypto.md) | 4 | Window | Web Crypto: random values, UUIDs and digests (SHA-1, SHA-256, SHA-384, SHA-512 through BCrypt; large inputs are |
 | [`document`](document.md) | 5 | Window, Worker | The document's address, origin and cookies. Window_origin and Window_isSecureContext belong to |
-| [`dom`](dom.md) | 369 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
+| [`dom`](dom.md) | 372 | Window, Worker | The document tree (DOM Standard: Document, Node, Element). In a worker there is no document: the functions taking a |
 | [`encoding`](encoding.md) | 8 | Window, Worker | TextEncoder and TextDecoder (Encoding Standard). Decoders keep their state between calls, so every WHATWG label |
 | [`events`](events.md) | 44 | Window, Worker | Events (DOM Standard: EventTarget, Event; UI Events: MouseEvent, KeyboardEvent). Any node and any host object (a |
 | [`eventsource`](eventsource.md) | 7 | Window | Server-sent events (HTML EventSource) and the MessageEvent members that are not plain payload. Messages arrive as |
@@ -79,7 +79,7 @@ function not exposed to workers is not instantiated.
 | [`media`](media.md) | 4 | Window |  |
 | [`htmlmedia`](htmlmedia.md) | 30 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
 | [`mse`](mse.md) | 33 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
-| [`navigation`](navigation.md) | 9 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
+| [`navigation`](navigation.md) | 11 | Window | The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their |
 | [`net`](net.md) | 12 | Window, Worker | Fetch with a callback (Fetch Standard through the browser's loader: origin, CORS, cookies, referrer, CSP and mixed |
 | [`performance`](performance.md) | 19 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`popover`](popover.md) | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
@@ -92,4 +92,4 @@ function not exposed to workers is not instantiated.
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1217 imports in 1118 functions.
+1224 imports in 1125 functions.

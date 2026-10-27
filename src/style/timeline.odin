@@ -61,6 +61,7 @@ Transition :: struct {
 	start_sent: bool,
 	done:       bool,
 	key:        [2]f64,        // phase and eased progress of the last tick
+	serial:     u64,           // its identity for scripts (css_anim_api.odin): never reused
 }
 
 @(private)
@@ -70,6 +71,8 @@ Frame_Value :: struct {
 	props:      Prop_Set,
 	easing:     Easing,
 	has_easing: bool,
+	composition: Composition,
+	has_composition: bool,   // false: the animation's
 }
 
 @(private)
@@ -90,6 +93,22 @@ Anim_Run :: struct {
 	iteration:   f64,          // last iteration reported
 	key:         [3]f64,       // phase, directed progress, effect of the last tick
 	set:         ^Keyframes_Set,   // the keyframes of a script's effect (script_anim.odin); nil: the @keyframes `name`
+	serial:      u64,          // its identity for scripts (css_anim_api.odin): never reused
+	forced:      Css_Forced,   // what a script's pause() / play() / cancel() set over animation-play-state
+}
+
+// A script's hold on a CSS animation (CSSAnimation.pause / play / cancel): it wins over animation-play-state until
+// animation-name drops the animation.
+Css_Forced :: enum u8 { None, Paused, Running, Canceled }
+
+@(private)
+run_running :: #force_inline proc(r: ^Anim_Run) -> bool {
+	switch r.forced {
+	case .Paused, .Canceled: return false
+	case .Running: return true
+	case .None:
+	}
+	return r.spec.play_state == .Running
 }
 
 @(private)
@@ -130,6 +149,7 @@ Timeline :: struct {
 	last_props:  Prop_Set,     // properties the overlays wrote at the last application
 	retired:     [dynamic]^Anim_Run,   // animations that ended in this restyle, freed once update_element is done with the old style
 	scripts:     map[u64]^Script_Run,  // the effects of Web Animations, by animation (script_anim.odin)
+	css_serial:  u64,                  // the last serial given to a CSS animation or transition
 }
 
 timeline_make :: proc(e: ^Engine) -> ^Timeline {
@@ -453,6 +473,8 @@ sync_runs :: proc(tl: ^Timeline, ea: ^Element_Anim, c: ^Computed) {
 			if tl.running >= tl.engine.settings.anim_max_running { continue }
 			r = new(Anim_Run)
 			r.name = strings.clone(name)
+			tl.css_serial += 1
+			r.serial = tl.css_serial
 			r.last_now = tl.now
 			r.iteration = -1
 			r.key = {-1, -1, -1}
@@ -519,6 +541,8 @@ start_transition :: proc(tl: ^Timeline, ea: ^Element_Anim, p: Prop, from, to, re
 	_ = virtual.arena_init_growing(&tr.arena, 16 * 1024)
 	a := virtual.arena_allocator(&tr.arena)
 	tr.prop = p
+	tl.css_serial += 1
+	tr.serial = tl.css_serial
 	tr.from, tr.to, tr.reverse_start = new(Computed, a), new(Computed, a), new(Computed, a)
 	clone_prop(tr.from, from, p, a)
 	clone_prop(tr.to, to, p, a)
@@ -634,6 +658,7 @@ Run_State :: struct {
 
 @(private)
 run_state :: proc(r: ^Anim_Run) -> (st: Run_State) {
+	if r.forced == .Canceled { return }   // canceled by a script: idle, no effect
 	dur := max(f64(r.spec.duration), 0)
 	iters := max(f64(r.spec.iterations), 0)
 	st.t = r.local - f64(r.spec.delay)
@@ -690,7 +715,8 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 	props := set.props
 	for &block, i in set.frames {
 		c, extra := compute_keyframe(tl.engine, &block, ea.base, parent, s.initial, s.root_font_size, a)
-		frames[i] = Frame_Value{offset = f64(block.offset), c = c, props = ps_union(block.props, extra), easing = clone_easing(block.easing, a), has_easing = block.has_easing}
+		frames[i] = Frame_Value{offset = f64(block.offset), c = c, props = ps_union(block.props, extra), easing = clone_easing(block.easing, a), has_easing = block.has_easing,
+			composition = block.composition, has_composition = block.has_composition}
 		props = ps_union(props, extra)
 	}
 	r.frames = frames
@@ -701,18 +727,18 @@ ensure_frames :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, ea: ^Elemen
 @(private)
 apply_run :: proc(r: ^Anim_Run, st: Run_State, dst, scratch: ^Computed, ctx: ^Interp_Ctx) -> Prop_Set {
 	if !st.effect { return {} }
-	Kf :: struct { offset: f64, c: ^Computed, easing: Easing }
+	Kf :: struct { offset: f64, c: ^Computed, easing: Easing, composition: Composition }
 	list := make([dynamic]Kf, context.temp_allocator)
 	for p in Prop {
 		if !ps_has(r.props, p) { continue }
 		clear(&list)
 		for f in r.frames {
-			if ps_has(f.props, p) { append(&list, Kf{f.offset, f.c, f.has_easing ? f.easing : r.spec.easing}) }
+			if ps_has(f.props, p) { append(&list, Kf{f.offset, f.c, f.has_easing ? f.easing : r.spec.easing, f.has_composition ? f.composition : r.spec.composition}) }
 		}
 		if len(list) == 0 { continue }
 		// implicit 0% and 100% keyframes take the underlying value
-		if list[0].offset > 0 { inject_at(&list, 0, Kf{0, nil, r.spec.easing}) }
-		if list[len(list) - 1].offset < 1 { append(&list, Kf{1, nil, r.spec.easing}) }
+		if list[0].offset > 0 { inject_at(&list, 0, Kf{0, nil, r.spec.easing, .Replace}) }
+		if list[len(list) - 1].offset < 1 { append(&list, Kf{1, nil, r.spec.easing, .Replace}) }
 		copy_prop(scratch, dst, p)
 		x := st.directed
 		k := 0
@@ -723,13 +749,17 @@ apply_run :: proc(r: ^Anim_Run, st: Run_State, dst, scratch: ^Computed, ctx: ^In
 		t := easing_eval(ka.easing, local, st.before)
 		a := ka.c != nil ? ka.c : scratch
 		b := kb.c != nil ? kb.c : scratch
-		if r.spec.composition != .Replace {
-			// each keyframe value is composed with the underlying value, then interpolated
+		// each keyframe value is composed with the underlying value (its own composite operation, else the
+		// animation's), then interpolated
+		if ka.composition != .Replace && ka.c != nil {
 			ca := new(Computed, context.temp_allocator)
+			ca^ = scratch^
+			if add_prop(ca, scratch, ka.c, p, ctx) { a = ca }
+		}
+		if kb.composition != .Replace && kb.c != nil {
 			cb := new(Computed, context.temp_allocator)
-			ca^, cb^ = scratch^, scratch^
-			if ka.c != nil && add_prop(ca, scratch, ka.c, p, ctx) { a = ca }
-			if kb.c != nil && add_prop(cb, scratch, kb.c, p, ctx) { b = cb }
+			cb^ = scratch^
+			if add_prop(cb, scratch, kb.c, p, ctx) { b = cb }
 		}
 		if !interpolate_prop(dst, a, b, p, t, ctx) { discrete_prop(dst, a, b, p, t) }
 	}
@@ -803,8 +833,9 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			}
 		}
 		for r in ea.runs {
-			if r.spec.play_state == .Running { r.local += now - r.last_now }
+			if run_running(r) { r.local += now - r.last_now }
 			r.last_now = now
+			if r.forced == .Canceled { continue }
 			st := run_state(r)
 			if st.phase != .Before && !r.started {
 				r.started = true
@@ -823,7 +854,7 @@ timeline_tick :: proc(tl: ^Timeline, doc: ^dom.Document, s: ^Styled, wall_ms: f6
 			}
 			key := [3]f64{f64(st.phase), st.directed, st.effect ? 1 : 0}
 			if key != r.key { r.key = key; changed = true }
-			if r.spec.play_state == .Running {
+			if run_running(r) {
 				switch st.phase {
 				case .Before: want(&next, -st.t)
 				case .Active:

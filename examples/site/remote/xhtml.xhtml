@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>XHTML fixture</title>
+<style>#box { width: 80px; height: 40px; background: rgb(0, 0, 255); }</style>
+</head>
+<body>
+<p id="p" dataName="x">An XHTML page, parsed as XML<br/>by Wren.</p>
+<div id="empty"/>
+<div id="box"></div>
+<script><![CDATA[
+window.xhtml = [document.contentType, document.getElementById("p").tagName, document.getElementById("p").getAttributeNames().join(" "),
+  document.getElementById("empty").childNodes.length, document.createElement("myElement").localName].join();
+]]></script>
+</body>
+</html>

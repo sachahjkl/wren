@@ -34,6 +34,36 @@ tree_ops_and_cycles :: proc(t: ^testing.T) {
 }
 
 @(test)
+xml_element_attribute_case :: proc(t: ^testing.T) {
+	d := document_create()
+	defer document_destroy(d)
+	h := create_element(d, "div")
+	set_attribute(d, h, "dataFoo", "1")
+	testing.expect_value(t, get(d, h).attrs[0].name, "datafoo")
+	x := create_element(d, "item")
+	get(d, x).xml = .Element
+	set_attribute(d, x, "viewBox", "a")
+	set_attribute(d, x, "viewbox", "b")
+	testing.expect_value(t, len(get(d, x).attrs), 2)
+	v, ok := get_attribute_exact(d, x, "viewBox")
+	testing.expect(t, ok && v == "a")
+	_, ok = get_attribute_exact(d, x, "VIEWBOX")
+	testing.expect(t, !ok)
+	v, ok = get_attribute(d, x, "VIEWBOX")   // the browser's readers ignore case
+	testing.expect(t, ok)
+	remove_attribute(d, x, "viewBox")
+	testing.expect_value(t, len(get(d, x).attrs), 1)
+	testing.expect_value(t, get(d, x).attrs[0].name, "viewbox")
+	// document.open() erases every listener of the tree
+	append_child(d, d.root, x)
+	add_listener(d, x, "click", 1, 1, false, false, false)
+	add_listener(d, d.root, "load", 1, 2, false, false, false)
+	erase_listeners(d, d.root)
+	testing.expect_value(t, len(get(d, x).listeners), 0)
+	testing.expect_value(t, len(get(d, d.root).listeners), 0)
+}
+
+@(test)
 release_invalidates_handles :: proc(t: ^testing.T) {
 	d := document_create()
 	defer document_destroy(d)

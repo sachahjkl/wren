@@ -588,6 +588,30 @@ wj_val wj_cached(wj_ctx *ctx, uint64_t handle)
     return JS_IsUndefined(v) ? wj_map_get(&wj_hosts, handle) : v;
 }
 
+/* The wrappers of connected nodes with listeners of their own, each counted (the caller frees them and the array);
+ * NULL when there are none or memory ran out. For document.open(), which erases them. */
+wj_val *wj_connected_listening_nodes(wj_ctx *ctx, uint32_t *count)
+{
+    *count = 0;
+    wj_val *out = NULL;
+    uint32_t cap = 0;
+    for (uint32_t i = 0; i < wj_nodes.cap; i++) {
+        wj_slot *s = &wj_nodes.slots[i];
+        if (!s->key) { continue; }
+        wj_obj *o = wj_obj_of(s->obj);
+        if (!o || !o->listeners || !wr_Node_isConnected(o->handle)) { continue; }
+        if (*count == cap) {
+            uint32_t ncap = cap ? cap * 2 : 16;
+            wj_val *n = realloc(out, ncap * sizeof *n);
+            if (!n) { break; }
+            out = n;
+            cap = ncap;
+        }
+        out[(*count)++] = JS_DupValue(ctx, s->obj);
+    }
+    return out;
+}
+
 wj_val wj_wrap_node(wj_ctx *ctx, uint64_t node)
 {
     if (!node) { return JS_NULL; }

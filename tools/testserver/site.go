@@ -54,7 +54,8 @@ func sitePath(parts ...string) string {
 }
 
 var siteTypes = map[string]string{
-	".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8",
+	".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".xhtml": "application/xhtml+xml", ".xht": "application/xhtml+xml",
+	".css": "text/css; charset=utf-8",
 	".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8", ".json": "application/json",
 	".wasm": "application/wasm", ".txt": "text/plain; charset=utf-8", ".xml": "application/xml",
 	".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
@@ -94,7 +95,7 @@ func servePorted(w http.ResponseWriter, r *http.Request, full string, st os.File
 		return false
 	}
 	switch strings.ToLower(path.Ext(full)) {
-	case ".html", ".htm", ".css", ".js", ".mjs", ".json", ".svg", ".txt", ".xml":
+	case ".html", ".htm", ".xhtml", ".xht", ".css", ".js", ".mjs", ".json", ".svg", ".txt", ".xml":
 	default:
 		return false
 	}

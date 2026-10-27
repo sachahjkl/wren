@@ -124,3 +124,39 @@ script_effects_write_values :: proc(t: ^testing.T) {
 	timeline_script_remove(f.tl, 1)
 	testing.expect_value(t, len(f.tl.elements), 0)
 }
+
+@(test)
+keyframe_composite_and_css_animations_for_scripts :: proc(t: ^testing.T) {
+	f := open(`<style>#b { width: 10px } #c { animation: grow 1000ms linear } @keyframes grow { from { height: 0 } to { height: 100px } }</style><div id=b></div><div id=c></div>`)
+	defer close(&f)
+	// a keyframe's own composite operation: `add` at 0% over the effect's `replace`
+	b := dom.find_by_id(f.doc, "b")
+	ok := timeline_script_put(f.tl, 1, b, "0\x1f\x1fcomposite\x1fadd\x1fwidth\x1f100px\x1e1\x1f\x1fwidth\x1f100px", timing(100, .Both), "", .Replace)
+	testing.expect(t, ok)
+	timeline_script_clock(f.tl, 1, {hold = 0, has_hold = true, rate = 1, timeline = true})
+	timeline_tick(f.tl, f.doc, f.st, 1)
+	testing.expectf(t, near(f64(node(&f, "b").width.v), 110, 0.5), "0%% adds to the underlying 10px: %v", node(&f, "b").width)
+	timeline_script_clock(f.tl, 1, {hold = 100, has_hold = true, rate = 1, timeline = true})
+	timeline_tick(f.tl, f.doc, f.st, 2)
+	testing.expectf(t, near(f64(node(&f, "b").width.v), 100, 0.5), "100%% replaces: %v", node(&f, "b").width)
+
+	// the CSS animation as scripts see it: listed, paused and played, sought, canceled
+	c := dom.find_by_id(f.doc, "c")
+	list := timeline_css_animations(f.tl, c)
+	testing.expect(t, len(list) == 1 && list[0].name == "grow" && !list[0].transition && list[0].running, "the CSS animation is listed")
+	serial := list[0].serial
+	timeline_tick(f.tl, f.doc, f.st, 200)
+	testing.expect(t, timeline_css_pause(f.tl, serial, true))
+	timeline_tick(f.tl, f.doc, f.st, 600)
+	info, found := timeline_css_info(f.tl, serial)
+	testing.expectf(t, found && !info.running && near(info.current, 200, 1), "paused by a script: its time holds (%v)", info.current)
+	testing.expect(t, timeline_css_seek(f.tl, serial, 500))
+	timeline_tick(f.tl, f.doc, f.st, 601)
+	testing.expectf(t, near(f64(node(&f, "c").height.v), 50, 0.5), "sought to the middle: %v", node(&f, "c").height)
+	testing.expect(t, timeline_css_cancel(f.tl, serial))
+	timeline_tick(f.tl, f.doc, f.st, 602)
+	info, found = timeline_css_info(f.tl, serial)
+	testing.expect(t, found && info.canceled, "canceled: idle")
+	testing.expectf(t, near(f64(node(&f, "c").height.v), 0, 0.5), "and no effect: %v", node(&f, "c").height)
+	timeline_script_remove(f.tl, 1)
+}

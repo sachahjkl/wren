@@ -242,8 +242,8 @@
 	Should parse reserved characters within a CDATA section in type image/svg+xml: PASS
 	Should parse reserved characters within a CDATA section in type text/xml: PASS
 /domparsing/DOMParser-parseFromString-xml-doctype.html: OK
-	Doctype parsing of System Id can handle a quoted value: FAIL
-	Doctype parsing of System Id can handle empty string: FAIL
+	Doctype parsing of System Id can handle a quoted value: PASS
+	Doctype parsing of System Id can handle empty string: PASS
 	Doctype parsing of System Id must fail on ommitted value: PASS
 /domparsing/DOMParser-parseFromString-xml-empty-nodes.html: OK
 	Should generate an empty CDATA Section node in type application/xhtml+xml: PASS
@@ -281,9 +281,9 @@
 	image/svg+xml is preserved in the error document: PASS
 	text/xml is preserved in the error document: PASS
 /domparsing/DOMParser-parseFromString-xml-scripting-support-disabled.html: OK
-	parseFromString as HTML, append importNode result: FAIL
+	parseFromString as HTML, append importNode result: PASS
 	parseFromString as HTML, appendChild: PASS
-	parseFromString as HTML, svg script, append importNode result: FAIL
+	parseFromString as HTML, svg script, append importNode result: PASS
 	parseFromString as HTML, svg script, appendChild: PASS
 	parseFromString as XHTML, script, append adoptNode result: FAIL
 	parseFromString as XHTML, script, append cloneNode result: FAIL
@@ -303,14 +303,14 @@
 	Should return an error document for XML wellformedness errors in type application/xml: PASS
 	Should return an error document for XML wellformedness errors in type image/svg+xml: PASS
 	Should return an error document for XML wellformedness errors in type text/xml: PASS
-	XMLDocument interface for correctly parsed document with type application/xhtml+xml: FAIL
-	XMLDocument interface for correctly parsed document with type application/xml: FAIL
-	XMLDocument interface for correctly parsed document with type image/svg+xml: FAIL
-	XMLDocument interface for correctly parsed document with type text/xml: FAIL
-	XMLDocument interface for incorrectly parsed document with type application/xhtml+xml: FAIL
-	XMLDocument interface for incorrectly parsed document with type application/xml: FAIL
-	XMLDocument interface for incorrectly parsed document with type image/svg+xml: FAIL
-	XMLDocument interface for incorrectly parsed document with type text/xml: FAIL
+	XMLDocument interface for correctly parsed document with type application/xhtml+xml: PASS
+	XMLDocument interface for correctly parsed document with type application/xml: PASS
+	XMLDocument interface for correctly parsed document with type image/svg+xml: PASS
+	XMLDocument interface for correctly parsed document with type text/xml: PASS
+	XMLDocument interface for incorrectly parsed document with type application/xhtml+xml: PASS
+	XMLDocument interface for incorrectly parsed document with type application/xml: PASS
+	XMLDocument interface for incorrectly parsed document with type image/svg+xml: PASS
+	XMLDocument interface for incorrectly parsed document with type text/xml: PASS
 	scripting must be disabled with type application/xhtml+xml: PASS
 	scripting must be disabled with type application/xml: PASS
 	scripting must be disabled with type image/svg+xml: PASS
@@ -363,7 +363,7 @@
 	<html> and <body> must work the same, 1: PASS
 	<html> and <body> must work the same, 2: PASS
 	<html> in a different namespace shouldn't be special: PASS
-	<script>s should be run when appended to the document (but not before): FAIL
+	<script>s should be run when appended to the document (but not before): PASS
 	Don't auto-create <body> when applied to <html>: PASS
 	Implicit <body> creation: PASS
 	Must not throw INVALID_STATE_ERR for a detached node.: PASS
@@ -579,7 +579,7 @@
 	Document.parseHTML(): FAIL
 	Document.parseHTMLUnsafe(): PASS
 	This document has a tuple origin (prerequisite for the tests below): PASS
-	createDocument(): FAIL
+	createDocument(): PASS
 	createHTMLDocument(): PASS
 /domparsing/positional-html-into-script-safe.html: OK
 	Element.appendHTML() on HTML script element does not execute scripts in markup: FAIL
@@ -2180,9 +2180,9 @@
 	streamPrependHTMLUnsafe on <xmp> initializes tokenizer in RAWTEXT state: FAIL
 /domparsing/tentative/unclosed-script-already-started.html: OK
 	Control: closed <script> from setHTMLUnsafe({runScripts: true}) runs: FAIL
-	Unclosed <script> from createContextualFragment() never runs: FAIL
-	Unclosed <script> from innerHTML never runs once connected: FAIL
-	Unclosed <script> from setHTMLUnsafe({runScripts: true}) never runs: FAIL
+	Unclosed <script> from createContextualFragment() never runs: PASS
+	Unclosed <script> from innerHTML never runs once connected: PASS
+	Unclosed <script> from setHTMLUnsafe({runScripts: true}) never runs: PASS
 /domparsing/xml-parse-serialize-roundtrip.html: OK
 	DOMParser and XMLSerializer should round trip with CDATA sections: large CDATA: PASS
 	DOMParser and XMLSerializer should round trip with CDATA sections: multiple CDATAs: PASS

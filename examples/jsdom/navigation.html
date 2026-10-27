@@ -174,9 +174,11 @@ section("intercept outside the dispatch, constructed events", () => {
   t("dispose", disposed && gone.index === -1);
 
   // errors
-  await rejects("traverseTo an unknown key", nav.traverseTo("nope").finished, "InvalidStateError");
-  await rejects("forward without an entry ahead", nav.forward().committed, "InvalidStateError");
-  await rejects("an invalid URL", nav.navigate("http://[bad").committed, "SyntaxError");
+  // (the other promise of each result is rejected too: handled, or it would be reported once a task runs)
+  const handled = (r) => { r.committed.catch(() => {}); r.finished.catch(() => {}); return r; };
+  await rejects("traverseTo an unknown key", handled(nav.traverseTo("nope")).finished, "InvalidStateError");
+  await rejects("forward without an entry ahead", handled(nav.forward()).committed, "InvalidStateError");
+  await rejects("an invalid URL", handled(nav.navigate("http://[bad")).committed, "SyntaxError");
   const same = nav.traverseTo(nav.currentEntry.key);
   eq("traverseTo the current entry", await same.finished, nav.currentEntry);
 
@@ -206,6 +208,29 @@ section("intercept outside the dispatch, constructed events", () => {
   const fake = new NavigateEvent("navigate", { destination: tev.destination, signal: new AbortController().signal, canIntercept: true });
   eq("constructed: canIntercept", fake.canIntercept, true);
   throws("constructed: intercept()", () => fake.intercept(), "SecurityError");
+
+  // a form submission fires navigate: its sourceElement, a POST's formData; intercepted, the document stays
+  const form = document.createElement("form");
+  form.method = "post";
+  form.action = "/jsdom/sent";
+  form.innerHTML = '<input name="q" value="wren"><button id="go" name="b" value="1">go</button>';
+  document.body.appendChild(form);
+  const formNav = new Promise((resolve) => nav.addEventListener("navigate", (e) => {
+    resolve({ type: e.navigationType, source: e.sourceElement, fd: e.formData instanceof FormData, q: e.formData && e.formData.get("q"), b: e.formData && e.formData.get("b") });
+    e.intercept();
+  }, { once: true }));
+  form.requestSubmit(document.getElementById("go"));
+  const fn = await formNav;
+  await new Promise((r) => setTimeout(r, 0));
+  eq("a form submission: navigate", fn.type, "push");
+  eq("its sourceElement is the submitter", fn.source, document.getElementById("go"));
+  t("its formData", fn.fd && fn.q === "wren" && fn.b === "1", JSON.stringify(fn));
+  eq("intercepted: the document stays, at the action URL", location.pathname, "/jsdom/sent");
+  form.method = "get";
+  const getNav = new Promise((resolve) => nav.addEventListener("navigate", (e) => { resolve(e.formData); e.preventDefault(); }, { once: true }));
+  form.requestSubmit();
+  eq("a GET submission has no formData", await getNav, null);
+  eq("no measured navigation reached this document: activation null", nav.activation, null);
   done();
 })().catch((e) => { t("navigation (async)", false, e && e.name + ": " + e.message + "\n" + e.stack); done(); });
 </script>

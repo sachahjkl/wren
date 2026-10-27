@@ -5,6 +5,7 @@ import "wb:base"
 import "wb:dom"
 import "wb:forms"
 import "wb:host"
+import "wb:style"
 
 // The Popover API (HTML §6.12; api/popover.widl, native/js/runtime/dom_popover.c): the `popover` attribute, showPopover /
 // hidePopover / togglePopover, the popover target attributes of buttons (forms/activation.odin calls popover_invoke),
@@ -13,7 +14,8 @@ import "wb:host"
 // The showing popovers are kept in the order they were shown; the auto ones (and hints) form the popover stack, where
 // showing an auto popover first hides those that are not its ancestors (its DOM ancestors, or its invoker's). Their
 // state reaches the style engine through the control provider (:popover-open: bindings_forms.odin), so the UA sheet
-// shows them (style/ua.odin: fixed to the viewport, above the page: there is no top layer). `beforetoggle` is fired
+// shows them (style/ua.odin: fixed to the viewport, above the page), and they are the style engine's top layer
+// (popover_restyle: style.engine_set_top_layer, their ancestors' stacking contexts undone). `beforetoggle` is fired
 // at once (cancelable when it opens); `toggle` is queued and coalesced per popover (its oldState stays the first one).
 // A popover removed from the document stops showing without events.
 
@@ -83,7 +85,10 @@ popover_forget :: proc(p: ^Page, s: ^Popover_State, i: int) {
 
 @(private)
 popover_restyle :: proc(p: ^Page) {
-	if p.engine != nil { p.engine.restyle_needed = true }
+	if p.engine == nil { return }
+	p.engine.restyle_needed = true
+	// the showing popovers are the top layer: their ancestors no longer hold them inside the page
+	if s := popover_state(p); s != nil { style.engine_set_top_layer(p.engine, s.showing[:]) } else { style.engine_set_top_layer(p.engine, nil) }
 }
 
 // The auto (and hint) popovers showing, bottom to top.

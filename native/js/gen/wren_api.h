@@ -25,6 +25,14 @@ enum wr_AnimationReplaceState {
     wr_AnimationReplaceState_Removed = 1,
     wr_AnimationReplaceState_Persisted = 2,
 };
+// A CSS animation or transition among Animation_relevant's handles (src/page/web_animations_css.odin).
+typedef struct wr_CssAnimationInfo {
+    int32_t kind;
+    uint64_t target;
+    double delay;
+    double duration;
+    double iterations;
+} wr_CssAnimationInfo;
 
 /* module async: types */
 // Any host object (not a node). Released with Object_release; freed with the page in any case.
@@ -421,6 +429,13 @@ typedef uint64_t wr_SourceBufferList;
 typedef uint64_t wr_MediaSourceHandle;
 
 /* module navigation: types */
+// What started that navigation, besides its URL: the element (event.sourceElement: a link, a submitter, a form
+// submitted without one) and, for a POST form submission, the form and its submitter (event.formData). 0: none.
+typedef struct wr_NavigationSource {
+    uint64_t source;
+    uint64_t form;
+    uint64_t submitter;
+} wr_NavigationSource;
 
 /* module net: types */
 // A request and, once it arrived, its response.
@@ -734,6 +749,10 @@ WR_IMPORT("animations", "Animation_computedTiming") double wr_Animation_computed
 // The relevant animations (Web Animations 1 §5.7) of `root` (with `subtree`: of it and its descendants), or of the
 // whole document when `root` is 0, in composite order: 8 bytes per handle.
 WR_IMPORT("animations", "Animation_relevant") int32_t wr_Animation_relevant(uint64_t root, int32_t subtree, uint8_t *_buf, uint32_t _cap);
+// What a CSS animation or transition is, for its wrapper; `notify(user)` then runs as for Animation_create.
+WR_IMPORT("animations", "Animation_cssBind") void wr_Animation_cssBind(uint64_t animation, uint32_t notify, int32_t user, wr_CssAnimationInfo *_ret);
+// CSSAnimation.animationName / CSSTransition.transitionProperty ("" once it is gone).
+WR_IMPORT("animations", "Animation_cssName") int32_t wr_Animation_cssName(uint64_t animation, uint8_t *_buf, uint32_t _cap);
 // document.timeline.currentTime (NaN: null)
 WR_IMPORT("animations", "DocumentTimeline_currentTime") double wr_DocumentTimeline_currentTime(void);
 // Whether `easing` is an easing function (CSS Easing 2).
@@ -1502,6 +1521,10 @@ WR_IMPORT("dom", "Range_text") int32_t wr_Range_text(uint64_t start, uint32_t st
 // The contents of a range: mode 0 cloneContents (a new fragment), 1 extractContents (a fragment, the contents
 // removed), 2 deleteContents (returns 0). Hierarchy when a doctype is in the range.
 WR_IMPORT("dom", "Range_contents") int32_t wr_Range_contents(uint64_t start, uint32_t start_offset, uint64_t end, uint32_t end_offset, int32_t mode, uint64_t *_ret);
+// range.createContextualFragment(markup): parsed with the range's start node (its parent element for a Text or a
+// Comment) as the context element, a <body> without one or for <html>; the scripts of the fragment are not marked
+// "already started" (they run once inserted), except one the markup left open (HTML: end of input in a script).
+WR_IMPORT("dom", "Range_createContextualFragment") int32_t wr_Range_createContextualFragment(uint64_t start, const uint8_t *markup, uint32_t markup_len, uint64_t *_ret);
 // The selection (offsets in UTF-16 code units for Text nodes).
 WR_IMPORT("dom", "Selection_state") void wr_Selection_state(wr_SelectionState *_ret);
 // setBaseAndExtent: Index_Size for an offset past a node's length, Invalid_Handle for a node outside the document.
@@ -1703,6 +1726,15 @@ WR_IMPORT("dom", "DOMParser_parseXMLNode") int32_t wr_DOMParser_parseXMLNode(con
 WR_IMPORT("dom", "ProcessingInstruction_target") int32_t wr_ProcessingInstruction_target(uint64_t node, uint8_t *_buf, uint32_t _cap);
 // document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
 WR_IMPORT("dom", "Document_xmlContentType") int32_t wr_Document_xmlContentType(uint64_t document, uint8_t *_buf, uint32_t _cap);
+// createElement(localName) (`with_namespace` false) or createElementNS(namespace, qualifiedName) of an XML document
+// (DOMParser's XML types, createDocument): an element of that document, whose names keep their case (tagName as
+// written, attribute names as given); createElement gives it the HTML namespace only in an application/xhtml+xml
+// document. Invalid_Character, Namespace as the others; Not_Found when `document` is not an XML document.
+WR_IMPORT("dom", "Document_createXMLElement") int32_t wr_Document_createXMLElement(uint64_t document, const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, int32_t with_namespace, uint64_t *_ret);
+// document.implementation.createDocument(namespace, qualifiedName, doctype): a new inert XMLDocument, with the
+// doctype (a node made by createDocumentType, not in a tree) and its element when the name is not empty; its
+// contentType follows the namespace (application/xhtml+xml, image/svg+xml, else application/xml).
+WR_IMPORT("dom", "DOMImplementation_createDocument") int32_t wr_DOMImplementation_createDocument(const uint8_t *namespace, uint32_t namespace_len, const uint8_t *qualified_name, uint32_t qualified_name_len, uint64_t doctype, uint64_t *_ret);
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
 WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
@@ -2507,7 +2539,8 @@ WR_IMPORT("entries", "FsReader_entry") uint64_t wr_FsReader_entry(uint64_t reade
 // for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
 WR_IMPORT("scripts", "Document_writeMarkup") int32_t wr_Document_writeMarkup(const uint8_t *markup, uint32_t markup_len);
 // document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
-// script). Invalid_State when the document cannot be opened.
+// script; the listeners and handlers of its tree and of its Window are erased, the engine's records first through
+// its export wj_document_opening). Invalid_State when the document cannot be opened.
 WR_IMPORT("scripts", "Document_openStream") int32_t wr_Document_openStream(void);
 // document.close(): the parser of a document.open() finishes (DOMContentLoaded, then load).
 WR_IMPORT("scripts", "Document_closeStream") int32_t wr_Document_closeStream(void);
@@ -2741,6 +2774,11 @@ WR_IMPORT("navigation", "Navigation_traverseTo") int32_t wr_Navigation_traverseT
 WR_IMPORT("navigation", "Navigation_pending") int32_t wr_Navigation_pending(uint8_t *_buf, uint32_t _cap);
 // destination.getState() of that navigation: Not_Found when it has none.
 WR_IMPORT("navigation", "Navigation_pendingState") int32_t wr_Navigation_pendingState(uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("navigation", "Navigation_pendingSource") void wr_Navigation_pendingSource(wr_NavigationSource *_ret);
+// navigation.activation: "<type> <from key>" (type as Navigation_pending's; from key 0: null, the entry of the
+// document this one replaced when it is among navigation.entries()); "" when the document was not reached by a
+// navigation the browser measured (activation null).
+WR_IMPORT("navigation", "Navigation_activation") int32_t wr_Navigation_activation(uint8_t *_buf, uint32_t _cap);
 
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A
