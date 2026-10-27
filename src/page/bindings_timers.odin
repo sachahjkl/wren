@@ -316,6 +316,7 @@ idle_invoke :: proc(p: ^Page, c: Idle_Callback, deadline_ms: f64, did_timeout: b
 set_page_visible :: proc(p: ^Page, visible: bool) {
 	if p == nil || p.closed || p.web.visible == visible { return }
 	p.web.visible = visible
+	timeline_visibility_state(p, !visible)   // visibility-state entry (timeline_lcp.odin)
 	dispatch_event(p, p.doc.root, dom.Event{type = "visibilitychange", bubbles = true})
 }
 
