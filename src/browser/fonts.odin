@@ -81,7 +81,8 @@ page_fonts_destroy :: proc(pf: ^Page_Fonts) {
 
 // Drops the resolution cache (preferences changed, a face was registered or dropped).
 page_fonts_forget :: proc(pf: ^Page_Fonts) {
-	canvas_outlines_clear()   // (canvas glyph outlines are keyed by font id)
+	canvas_outlines_clear()      // (canvas glyph outlines are keyed by font id)
+	canvas_color_glyphs_clear()  // (so are color-glyph bitmaps)
 	for k in pf.resolved { delete(k) }
 	clear(&pf.resolved)
 }
