@@ -39,12 +39,22 @@ window the user is in (the front one).
   tasks of the loop). A minimized window does not draw. The pacer (`pacing.odin`) is the window's (`Browser_Window.pacer`, read by `pacer_of(app)`: its monitor's rate, the cadence model's state, its frame clock); its preferences and timer are the process's (`App.pacing`). Nothing of it is exchanged by `window_activate`.
 * Moves (`tab_move`, `tab_detach`) and the choice of the drop target (`drop_index`, `pick_drop`, `detach_wanted`) are pure and tested in
   `windows_test.odin` and `tab_drag_test.odin`.
+* Developer tools (`devtools.odin`, `devtools_window.odin`): each window has its own (`Window_Own.devtools`, read as `dev()`, the
+  active window's), docked in it or in a window of their own, showing its current tab. F12 in one window opens them there only.
+  A tab they show that moves to a window with none open takes them along (`devtools_follow_tab`: docked or in their window); a
+  window that closes closes its developer tools' window. Where they sit, their tab and their size are saved from the window that
+  changed them (`browser.devtools.*`) and are what a new window starts with; the text size and the density are every window's.
+  The network log's bodies and the pages' console descriptions are kept while any window shows its developer tools; a speed
+  limit or blocked addresses are those of the request's tab's window. A media preview of the Network tab plays in one window
+  at a time.
+* Remote calls with `--win-id` (or a tab of that window) act on that window until they answer: their waits count its frames,
+  and a capture is of its frame (`remote_capture_arm`: the renderer copies the next frame it ends, so it is asked for in that
+  window's frame).
 * Session: `wren-session 3` lists the windows (`window left top width height state`, then their tabs); a one-window session is the old
   file. `browser.session.max_windows` caps what a restore reopens.
 
 ## Limits
 
-* The developer tools' detached window follows the front window's current tab; the docked panel belongs to one window.
 * Chrome frames while a page's script holds the thread (`shell_frames.odin`) exist for the window whose frame runs it; the others
   wait for it.
 * The caret blink and the validation bubble timers of forms are the process's: two windows with a focused field blink together.

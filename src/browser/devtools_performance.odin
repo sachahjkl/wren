@@ -30,7 +30,7 @@ Dev_Performance :: struct {
 }
 
 performance_destroy :: proc() {
-	p := &dev.perf
+	p := &dev().perf
 	delete(p.snap)
 	dt_list_destroy(&p.list)
 	p^ = {}
@@ -75,7 +75,7 @@ Chart_Draw :: struct {
 }
 
 performance_panel :: proc(app: ^App, t: ^Tab) {
-	p := &dev.perf
+	p := &dev().perf
 	if p.sel == 0 && !p.frozen && ui.history_len(&hud.history) == 0 { p.sel = -1 }
 	n := count_frames(p)
 	if dt_bar("###dt_perf_bar") {
@@ -374,7 +374,7 @@ frame_detail :: proc(p: ^Dev_Performance, n: int) {
 	add(&lines, "Layout", fmt.tprintf("%v: %d boxes, %d items", f.d.lay_pass, f.d.lay_boxes, f.d.lay_items))
 	if f.d.comp_valid { add(&lines, "Compositor", fmt.tprintf("%d pictures, %d visible, %d replayed", f.d.comp.chunks, f.d.comp.visible, f.d.comp.replayed)) }
 	add(&lines, "WebAssembly", fmt.tprintf("%.2f ms in %d calls", f.d.wasm_ms, f.d.wasm_calls))
-	if lst, ok := dt_list("###dt_perf_dl", &dev.perf.list, len(lines), dtm.row, nil, ui.fill(), ui.fill()); ok {
+	if lst, ok := dt_list("###dt_perf_dl", &dev().perf.list, len(lines), dtm.row, nil, ui.fill(), ui.fill()); ok {
 		for k in lst.first ..< lst.last {
 			d := ui.frame_new(Pair_Draw_Simple)
 			d.k, d.v = lines[k][0], lines[k][1]

@@ -86,7 +86,7 @@ Dev_Elements :: struct {
 El_Crumb :: struct { h: base.Handle, label: string }   // owned
 
 elements_destroy :: proc() {
-	e := &dev.els
+	e := &dev().els
 	rows_free(e)
 	delete(e.rows)
 	delete(e.ids)
@@ -304,7 +304,7 @@ elements_select :: proc(t: ^Tab, target: base.Handle) {
 	h := target
 	p := t.page
 	if p == nil || p.closed { return }
-	e := &dev.els
+	e := &dev().els
 	if rawptr(p) != e.page { elements_refresh(t, e) }
 	n := dom.get(p.doc, h)
 	if n == nil { return }
@@ -413,7 +413,7 @@ el_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // The panel
 
 elements_panel :: proc(app: ^App, t: ^Tab) {
-	e := &dev.els
+	e := &dev().els
 	if t.page == nil || t.page.closed {
 		dt_empty("###dt_el_none", .Tab_Elements, "No document", "Elements shows the markup of a web page. Open one in this tab.")
 		return
@@ -726,7 +726,7 @@ apply_html :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 
 @(private = "file")
 tree_keys :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements, n: int) {
-	if ui.key_press(.F, {.Ctrl}) && dev.panel == .Elements { e.search_on = true }
+	if ui.key_press(.F, {.Ctrl}) && dev().panel == .Elements { e.search_on = true }
 	if !e.list.focused || n == 0 || e.edit != .None { return }
 	old := e.list.sel
 	if dt_list_keys(&e.list, n, max(int(e.list.view / dtm.row) - 1, 1)) {
@@ -860,9 +860,9 @@ elements_menu_items :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	if ui.menu_item("Collapse all underneath###dt_em_col", enabled = r.expandable).clicked { budget := 5000; toggle_all(e, t.page.doc, h, false, &budget) }
 	if ui.menu_item("Scroll into view###dt_em_scroll", enabled = is_el).clicked { scroll_into_view(app, t, h) }
 	if ui.menu_item("Store as global variable###dt_em_store", enabled = r.kind != .Close && r.kind != .Doctype).clicked {
-		dev.con.evaluating = true
+		dev().con.evaluating = true
 		if page.dev_store_node(t.page, h) { ui.toast(.Info, "Stored as a global variable: see the Console") } else { ui.toast(.Warn, "This node is not in the document's own tree (a shadow tree or a detached node)") }
-		dev.con.evaluating = false
+		dev().con.evaluating = false
 	}
 	if sp := e.menu_span; e.menu_has_span && sp.val_a >= 0 {
 		val := r.label[sp.val_a:sp.val_b]
@@ -1113,7 +1113,7 @@ crumbs_make :: proc(p: ^page.Page, e: ^Dev_Elements) {
 elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 	wnd := active_window(app)
 	e.picked = base.NIL_HANDLE
-	if !dev.picking { return }
+	if !dev().picking { return }
 	mp := ui.mouse_pos()
 	if !draw.rect_contains(wnd.page_rect, mp) || !t.layout.valid { return }
 	h := hit_test(&t.layout, mp - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll)
@@ -1125,13 +1125,13 @@ elements_picker :: proc(app: ^App, t: ^Tab, e: ^Dev_Elements) {
 // Called by route_page_input for each event of the frame while picking: the click picks, nothing reaches the page.
 devtools_pick_event :: proc(app: ^App, t: ^Tab, kind: int, pos: draw.Vec2, pressed: bool) -> bool {
 	wnd := active_window(app)
-	if !dev.picking || !dev.visible || t == nil || t.page == nil { return false }
+	if !dev().picking || !dev().visible || t == nil || t.page == nil { return false }
 	if !draw.rect_contains(wnd.page_rect, pos) { return false }
 	if pressed {
-		h := dev.els.picked
+		h := dev().els.picked
 		if h == base.NIL_HANDLE && t.layout.valid { h = hit_test(&t.layout, pos - wnd.page_rect.min, draw.rect_size(wnd.page_rect), t.scroll) }
 		if h != base.NIL_HANDLE { elements_select(t, h) }
-		dev.picking = false
+		dev().picking = false
 		request_frames(app, 3)
 	}
 	return true

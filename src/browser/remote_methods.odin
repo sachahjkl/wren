@@ -378,6 +378,17 @@ m_windows :: proc(app: ^App) -> Reply {
 		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
 		j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top)); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
 		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
+		j_num(&b, "dpiScale", f64(w.win.dpi_scale))
+		// its developer tools (devtools.odin: each window has its own)
+		d := &w.own.devtools
+		j_key(&b, "devtools"); j_begin(&b)
+		j_bool(&b, "visible", d.visible); j_str(&b, "dock", DEV_DOCK_NAMES[d.dock]); j_str(&b, "panel", DEV_PANEL_NAMES[d.panel])
+		j_bool(&b, "detached", d.win != nil || d.want_win)
+		if d.win != nil {
+			j_int(&b, "hwnd", i64(uintptr(d.win.win.hwnd))); j_str(&b, "title", d.win.title)
+			j_num(&b, "dpiScale", f64(d.win.win.dpi_scale))
+		}
+		j_end(&b)
 		j_end(&b)
 	}
 	j_end(&b, ']'); j_end(&b)
@@ -700,12 +711,14 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
 		if op.stage == -2 { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
+		if op.asked && rep.code != 0 { render.capture_cancel(&app.r) }   // (asked, not taken: the next capture may start)
+		if op.asked { the_remote.capture_window = 0 }
 		op_finish(op, rep)
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
 	if op.stage == -2 || op.stage == 0 {
 		request_frames(app, 2)
-		if r.frame_no < op.until || render.capture_pending(&app.r) {
+		if r.frame_no < op.until || render.capture_pending(&app.r) || r.capture_window != 0 {
 			if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out before the frame to capture was drawn (is the window hidden or minimized?)")) }
 			return
 		}
@@ -735,7 +748,10 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			if x1 <= x0 || y1 <= y0 { finish(app, op, fail(remote.ERR_FAILED, "the element is outside the page's visible area (scroll to it first)")); return }
 			rect = {int(math.floor(x0)), int(math.floor(y0)), int(math.ceil(x1 - x0)), int(math.ceil(y1 - y0))}
 		}
-		if !render.capture_request(&app.r, rect) { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
+		when render.USE_WGPU { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
+		// the renderer copies the next frame it ends, whichever window's: asked for in this window's own frame (remote_capture_arm)
+		r.capture_window, r.capture_rect = active_window(app).id, rect
+		op.asked = true
 		op.stage = op.stage == -2 ? 3 : 1
 		request_frames(app, 2)
 		return
@@ -747,7 +763,7 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	switch st {
 	case .None, .Pending:
 		if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out waiting for the frame's pixels")); return }
-		if op.stage == -2 && st == .Pending { op.stage = 3 }
+		if op.stage == -2 && (st == .Pending || r.capture_window != 0) { op.stage = 3 }   // (asked, its frame not drawn yet: remote_capture_arm)
 	case .Failed: finish(app, op, fail(remote.ERR_FAILED, "the frame could not be read back (device lost, or an empty area)"))
 	case .Ready:
 		defer delete(pixels)
@@ -1353,9 +1369,9 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
 	j_int(&b, "cacheEntries", app.profile.cache != nil ? i64(httpcache.summary(app.profile.cache).entries) : 0)
 	j_int(&b, "historyVisits", i64(len(ghist.visits))); j_int(&b, "closedTabs", i64(len(closed_tabs))); j_int(&b, "downloadsActive", i64(downloads_active()))
-	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev.visible)
+	j_int(&b, "checkpoints", i64(len(the_remote.checkpoints))); j_bool(&b, "devtools", dev().visible)
 	j_int(&b, "pendingOps", i64(len(the_remote.ops)))   // the commands that wait (a wait, a navigation's load): a test sees one is registered before it acts on it
-	j_int(&b, "devtoolsRoomChecks", i64(dev.room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev.room_wrong))   // devtools.odin: dev_width
+	j_int(&b, "devtoolsRoomChecks", i64(dev().room_checks)); j_int(&b, "devtoolsRoomWrong", i64(dev().room_wrong))   // devtools.odin: dev_width
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -1522,11 +1538,15 @@ m_devtools :: proc(app: ^App, c: ^Call) -> Reply {
 	case "console":  devtools_open(app, .Console)
 	case "elements": devtools_open(app, .Elements)
 	case "network":  devtools_open(app, .Network)
-	case "none", "close": if dev.visible { devtools_toggle(app) }
+	case "none", "close": if dev().visible { devtools_toggle(app) }
 	case: return fail(remote.ERR_PARAMS, "panel: console, elements, network or none")
 	}
-	if dock, ok := remote.param_string(c.params, "dock"); ok {
-		for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { devtools_set_dock(app, d) } }
+	if dock, ok := remote.param_string(c.params, "dock"); ok && dock != "" {
+		if dock == "window" {   // a window of their own (devtools_window.odin)
+			devtools_detach(app)
+		} else {
+			for d in Dev_Dock { if DEV_DOCK_NAMES[d] == dock { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, d) } }
+		}
 	}
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames + 1)
 }

@@ -238,7 +238,7 @@ chrome_reset :: proc(app: ^App) {
 	if palette_open() { palette_close(app) }
 	if blocker_picker_active() { blocker_picker_cancel(app) }
 	if devtools_detached() { devtools_attach(app) }
-	if dev.visible { devtools_toggle(app) }
+	if dev().visible { devtools_toggle(app) }
 	if platform.is_fullscreen(active_window(app).win) { toggle_fullscreen(app) }
 	downloads_cancel_all()
 }

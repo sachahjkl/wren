@@ -1,6 +1,7 @@
 package browser
 
 import "core:strings"
+import "toolkit:platform"
 import "wb:a11y"
 import "wb:config"
 import "wb:blocker"
@@ -112,11 +113,12 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	_ = html.PREFS
 }
 
-// The interface's scale: browser.ui.scale, else the display's (window_chrome.odin, main.odin's build).
-ui_scale_of :: proc(app: ^App) -> f32 {
-	wnd := active_window(app)
+// The interface's scale: browser.ui.scale, else the display's of the window (`of`; the active one by default: window_chrome.odin,
+// main.odin's build). Each window has its own: two windows on monitors of different DPI are drawn each at its monitor's.
+ui_scale_of :: proc(app: ^App, of: ^platform.Window = nil) -> f32 {
 	if app.cfg.ui_scale > 0 { return app.cfg.ui_scale }
-	return wnd.win != nil && wnd.win.dpi_scale > 0 ? wnd.win.dpi_scale : 1
+	pw := of != nil ? of : active_window(app).win
+	return pw != nil && pw.dpi_scale > 0 ? pw.dpi_scale : 1
 }
 
 settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {

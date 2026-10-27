@@ -30,7 +30,7 @@ Con_Eval :: struct {
 // The input row of the console (built when the console is shown and the tab has a page).
 console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	if t == nil || t.page == nil || !app.page_settings.js.console_eval { return }
-	c := &dev.con.eval
+	c := &dev().con.eval
 	c.tab = t
 	h := math.round(row_h * 1.25)
 	focused := false
@@ -65,9 +65,9 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			c.cursor = len(c.history)
 			ui.field_clear(&c.field)
 			c.open = false
-			dev.con.evaluating = true
+			dev().con.evaluating = true
 			page.js_console_eval(console_target(t), source)
-			dev.con.evaluating = false
+			dev().con.evaluating = false
 			request_frames(app, 3)
 		}
 	}
@@ -184,7 +184,7 @@ comp_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 
 // Window closing.
 console_eval_destroy :: proc() {
-	c := &dev.con.eval
+	c := &dev().con.eval
 	ui.field_destroy(&c.field)
 	for h in c.history { delete(h) }
 	delete(c.history)
@@ -255,7 +255,7 @@ complete_names :: proc(c: ^Con_Eval, path, word: string) {
 	for n in c.dyn { add(c, n, word) }
 	if path == "" {
 		for g in GLOBALS { add(c, g, word) }
-		for h in dev.con.eval.history {
+		for h in dev().con.eval.history {
 			// identifiers the user used before
 			i := 0
 			for i < len(h) {

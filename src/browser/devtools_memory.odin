@@ -33,8 +33,9 @@ Dev_Memory :: struct {
 MEM_MAX_SAMPLES :: 600
 
 memory_destroy :: proc() {
-	m := &dev.mem
+	m := &dev().mem
 	delete(m.samples)
+	if m.tick != base.NIL_HANDLE && the_app != nil { host.clear_timer(&the_app.loop, m.tick) }
 	m^ = {}
 }
 
@@ -57,7 +58,7 @@ sample_now :: proc(app: ^App, t: ^Tab) -> Mem_Sample {
 }
 
 memory_panel :: proc(app: ^App, t: ^Tab) {
-	m := &dev.mem
+	m := &dev().mem
 	now := ui.now_ms()
 	if len(m.samples) == 0 || now - m.samples[len(m.samples) - 1].at_ms >= 900 {
 		if len(m.samples) >= MEM_MAX_SAMPLES { ordered_remove(&m.samples, 0) }
@@ -77,11 +78,12 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		dt_gap(3)
 	}
 	if m.live && m.tick == base.NIL_HANDLE {
-		m.tick = host.set_timer(&app.loop, 1000, 0, proc(data: rawptr) {
-			a := (^App)(data)
-			dev.mem.tick = base.NIL_HANDLE
-			if dev.visible && dev.panel == .Memory && dev.mem.live { request_frames(a, 2) }
-		}, app, nil)
+		m.tick = host.set_timer(&app.loop, 1000, 0, proc(data: rawptr) {   // (the window's id: it may close before)
+			w, d := devtools_of_window_id(the_app, int(uintptr(data)))
+			if d == nil { return }
+			d.mem.tick = base.NIL_HANDLE
+			if d.visible && d.panel == .Memory && d.mem.live { window_request(the_app, w, 2) }
+		}, rawptr(uintptr(active_window(app).id)), nil)
 	}
 	tiles := [?]struct { title: string, value: f64, get: proc(s: Mem_Sample) -> f64, bytes: bool, tip: string }{
 		{"Process memory", cur.ws, proc(s: Mem_Sample) -> f64 { return s.ws }, true, "Working set of the browser process: what Windows keeps in RAM for it"},

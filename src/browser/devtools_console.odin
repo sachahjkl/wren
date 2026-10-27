@@ -66,7 +66,7 @@ Dev_Console :: struct {
 }
 
 console_panel_destroy :: proc() {
-	c := &dev.con
+	c := &dev().con
 	dt_list_destroy(&c.list)
 	delete(c.rows)
 	delete(c.offs)
@@ -420,7 +420,7 @@ con_level_icon :: proc(k: Con_Kind) -> (Dt_Icon, draw.Color) {
 // The panel
 
 console_panel :: proc(app: ^App, t: ^Tab) {
-	c := &dev.con
+	c := &dev().con
 	console_toolbar(app, t, c)
 	con_refresh(t, c)
 	n := len(c.rows)
@@ -586,9 +586,9 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, con_prefs.timestamps)) }
 	ui.menu_separator()
 	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
-		dev.con.evaluating = true
+		dev().con.evaluating = true
 		page.dev_console_store(rpage, ref)
-		dev.con.evaluating = false
+		dev().con.evaluating = false
 		request_frames(app, 3)
 	}
 	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
@@ -688,8 +688,8 @@ console_page_of :: proc(t: ^Tab, body: string) -> ^page.Page {
 
 // The page the evaluation line runs in: the selected nested document, else the tab's.
 console_target :: proc(t: ^Tab) -> ^page.Page {
-	if t.page == nil || dev.con.ctx == "" { return t.page }
-	for f in page.dev_frames(t.page) { if f.href == dev.con.ctx { return f.page } }
+	if t.page == nil || dev().con.ctx == "" { return t.page }
+	for f in page.dev_frames(t.page) { if f.href == dev().con.ctx { return f.page } }
 	return t.page
 }
 
@@ -794,10 +794,10 @@ console_clear :: proc(app: ^App, t: ^Tab) {
 	for l in t.console { delete(l) }
 	clear(&t.console)
 	con_sync_meta(t)
-	dev.con.has_sel = false
-	dev.con.stop = t.console_added
-	clear(&dev.con.expanded)
-	clear(&dev.con.folded)
+	dev().con.has_sel = false
+	dev().con.stop = t.console_added
+	clear(&dev().con.expanded)
+	clear(&dev().con.folded)
 	request_frames(app, 2)
 }
 
@@ -837,7 +837,7 @@ con_table_paint :: proc(dc: ^draw.Context, d: ^Con_Draw, x, y0, right: f32) {
 
 // What the page's realm said an expression offers (a JSON array of names): the evaluation line's completions use it.
 console_complete_reply :: proc(json_text: string) {
-	e := &dev.con.eval
+	e := &dev().con.eval
 	for s in e.dyn { delete(s) }
 	clear(&e.dyn)
 	v, err := json.parse(transmute([]byte)json_text, spec = .JSON, allocator = context.temp_allocator)
@@ -849,7 +849,7 @@ console_complete_reply :: proc(json_text: string) {
 
 // Tells every tab's realm whether to describe its console arguments: on while the panel is open.
 console_arm_all :: proc(app: ^App) {
-	want := dev.visible && con_prefs.max_payload > 0 ? con_prefs.max_payload : 0
+	want := devtools_any_visible(app) && con_prefs.max_payload > 0 ? con_prefs.max_payload : 0
 	if want == page.dev_console_max { return }
 	page.dev_console_max = want
 	for t in tabs_all(app) { if t.page != nil { page.dev_console_arm(t.page, want) } }

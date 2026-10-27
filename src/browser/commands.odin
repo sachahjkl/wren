@@ -332,42 +332,42 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { set_pref_bool(app, "browser.title.stats", !hud.cfg.title_stats) }})
 	add(r, {name = "view.devtools", title = "Developer tools", category = "View", keywords = "inspect console elements network dom debug f12",
 		keys = keys(&r.arena, {key = .F12}, {key = .I, mods = cs}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle(app) }})
 	add(r, {name = "view.console", title = "Console", category = "View", keywords = "log javascript eval devtools",
 		keys = keys(&r.arena, {key = .J, mods = cs}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Console },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Console },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_toggle_panel(app, .Console) }})
 	add(r, {name = "view.devtools_elements", title = "Developer tools: Elements", category = "View", keywords = "inspect dom document tree html",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Elements },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Elements },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Elements) }})
 	add(r, {name = "view.devtools_network", title = "Developer tools: Network", category = "View", keywords = "requests http fetch log",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Network },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Network },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Network) }})
 	add(r, {name = "view.devtools_dock_bottom", title = "Developer tools: dock at the bottom", category = "View", keywords = "devtools panel position",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Bottom },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Bottom },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Bottom) }})
 	add(r, {name = "view.devtools_dock_right", title = "Developer tools: dock at the right", category = "View", keywords = "devtools panel position side",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Right },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Right },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Right) }})
 	add(r, {name = "view.devtools_dock_floating", title = "Developer tools: undock into a floating panel", category = "View", keywords = "devtools panel position window",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Floating },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Floating },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_set_dock(app, .Floating) }})
 	add(r, {name = "view.devtools_application", title = "Developer tools: Application", category = "View", keywords = "storage cookies local session cache manifest",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Application },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Application },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Application) }})
 	add(r, {name = "view.devtools_performance", title = "Developer tools: Performance", category = "View", keywords = "frames timing fps cpu gpu profile",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Performance },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Performance },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Performance) }})
 	add(r, {name = "view.devtools_memory", title = "Developer tools: Memory", category = "View", keywords = "heap allocation leak usage",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.visible && dev.panel == .Memory },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().visible && dev().panel == .Memory },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_open(app, .Memory) }})
 	add(r, {name = "view.devtools_pick", title = "Developer tools: select an element in the page", category = "View", keywords = "inspect picker element select eyedropper",
 		keys = keys(&r.arena, {key = .C, mods = cs}), enabled = has_tab,
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.picking },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().picking },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { devtools_pick(app) }})
 	add(r, {name = "view.devtools_dock_left", title = "Developer tools: dock at the left", category = "View", keywords = "devtools panel position side",
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev.dock == .Left && !devtools_detached() },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return dev().dock == .Left && !devtools_detached() },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { if devtools_detached() { devtools_attach(app) }; devtools_set_dock(app, .Left) }})
 	add(r, {name = "view.devtools_detach", title = "Developer tools: open in a separate window", category = "View", keywords = "devtools panel undock detach window second",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return devtools_detached() },
@@ -381,7 +381,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "view.devtools_clear_console", title = "Developer tools: clear the console", category = "View", keywords = "devtools log messages empty",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { console_clear(app, t) }})
 	add(r, {name = "view.devtools_clear_network", title = "Developer tools: clear the network log", category = "View", keywords = "devtools requests empty",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { net_clear(&t.net); dev.net.has_sel = false }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { net_clear(&t.net); dev().net.has_sel = false }})
 	for p in NET_BUILTIN {
 		add(r, {name = fmt.aprintf("view.devtools_speed.%s", p.id, allocator = a), title = fmt.aprintf("Developer tools: network speed: %s", p.name, allocator = a), category = "View",
 			keywords = "devtools throttle throttling network speed slow offline 3g bandwidth latency", arg = p.id, enabled = has_tab,

@@ -128,8 +128,8 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	if len(control) > 3 && control[0] == 1 {
 		switch {
 		case strings.has_prefix(control, "\x01dt:"):
-			delete(dev.con.pending_payload)
-			dev.con.pending_payload = len(control) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
+			delete(dev().con.pending_payload)
+			dev().con.pending_payload = len(control) - 4 <= max(con_prefs.max_payload, 1024) ? strings.clone(control[4:]) : ""
 			return
 		case strings.has_prefix(control, "\x01dtc:"):
 			console_complete_reply(control[5:])
@@ -150,13 +150,13 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	append(&t.console, fmt.aprintf("%s%s", prefix, message))
 	t.console_added += 1
 	if kind == .Log {
-		if strings.has_prefix(message, "> ") { kind = .Input } else if dev.con.evaluating { kind = .Result }
+		if strings.has_prefix(message, "> ") { kind = .Input } else if dev().con.evaluating { kind = .Result }
 	}
 	con_sync_meta(t)   // (lines dropped behind our back)
 	m := &t.conlog
 	for len(m.meta) < len(t.console) - 1 { append(&m.meta, Con_Meta{kind = .Log}); m.counts[.Log] += 1 }
 	payload := ""
-	if dev.con.pending_payload != "" { payload, dev.con.pending_payload = dev.con.pending_payload, "" }
+	if dev().con.pending_payload != "" { payload, dev().con.pending_payload = dev().con.pending_payload, "" }
 	if payload != "" && kind == .Log {
 		switch payload_level(payload) {
 		case "info": kind = .Info
@@ -167,7 +167,7 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	append(&m.meta, Con_Meta{at_ms = local_time_ms(), kind = kind, payload = payload})
 	m.counts[kind] += 1
 	con_trim(t)
-	if dev.visible && dev.panel == .Console { request_frames(the_app, 2) }
+	devtools_request_showing(the_app, t, .Console)
 }
 
 // A page's navigation (or a built-in page loading): the console starts over unless it is kept, with a line saying so.
