@@ -1245,7 +1245,7 @@ frame :: proc(app: ^App, idled := false) {
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)
-	frame_log_presented()
+	frame_log_presented(pacer_at_once(app))
 	pacer_end_frame(app)
 	{
 		items, nodes := 0, 0
