@@ -346,6 +346,7 @@ Img_Element :: struct {
 	lazy_cred:   fetch.Credentials,
 	broken_empty: bool,           // src="" (or an invalid URL): broken without a request
 	notified:    bool,            // the load / error event of the current request is queued
+	load_ms:     f64,             // page timeline ms when the current image finished loading (Largest Contentful Paint / Element Timing loadTime); 0 = not loaded
 	distance:    f32,             // from the viewport (CSS px), max = unknown
 	seen:        u64,             // sync pass that saw it in the tree
 	held:        bool,            // a script touched it: kept up to date even outside the tree
@@ -1000,6 +1001,7 @@ element_update :: proc(p: ^Page, el: ^Img_Element) {
 		// the same image again (the "list of available images"): done at once, events again
 		el.density = sel.density
 		if el.current.state == .Ready || el.current.state == .Broken {
+			if el.current.state == .Ready { el.load_ms = page_now_ms(p) }
 			queue_element_event(p, el.node, el.current.state == .Ready ? "load" : "error")
 			el.notified = true
 		}
@@ -1061,6 +1063,7 @@ element_settle :: proc(p: ^Page, el: ^Img_Element) {
 	if r == nil { return }
 	if !el.notified && (r.state == .Ready || r.state == .Broken) {
 		el.notified = true
+		if r.state == .Ready { el.load_ms = page_now_ms(p) }
 		queue_element_event(p, el.node, r.state == .Ready ? "load" : "error")
 		p.images.sizes = next_serial()
 	}
@@ -1431,6 +1434,23 @@ css_image_view :: proc(p: ^Page, written: string) -> Image_View {
 	r, ok := p.images.css_urls[written]
 	if !ok { return {} }
 	return view_of(r, 1)
+}
+
+// What the performance timeline needs of an image element to make a Largest Contentful Paint or Element Timing entry
+// (timeline_lcp.odin): whether its image is loaded, when it finished (loadTime, page ms), its natural pixel area (for
+// bits-per-pixel against the displayed area) and encoded byte size, and the URL it loaded. ok is false for an element
+// that is not an image, has no loaded image, or shows an SVG / animated image the specification keeps out of LCP.
+image_candidate :: proc(p: ^Page, node: base.Handle) -> (load_ms: f64, natural_px: f64, encoded_bytes: int, url: string, ok: bool) {
+	if !p.images.ready { return }
+	el, found := p.images.elements[node]
+	if !found || el.current == nil || el.current.state != .Ready { return }
+	e := el.current.entry
+	if e == nil { return }
+	if e.info.format == .Svg { return }   // vectors have no fixed entropy: not an LCP image candidate
+	px := f64(e.info.width) * f64(e.info.height)
+	if px <= 0 { return }
+	enc := e.blob != nil ? len(e.blob.bytes) : 0
+	return el.load_ms, px, enc, el.current_url, true
 }
 
 // Natural size in CSS px for layout (Replaced_Api.intrinsic): only once known; the element's width / height
