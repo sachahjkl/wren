@@ -5687,13 +5687,13 @@ _t_canvas_ImageBitmap_close :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^
 	return nil
 }
 
-// Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: bool) -> (u64, Api_Error)
+// Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)
 @(private = "file")
 _t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	c := api_begin(f.inst)
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[7]), 8)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[12]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_createBitmap", "result pointer") }
 	_p0 := u64(a[0].i64)
 	_p1 := a[1].i32
@@ -5701,8 +5701,13 @@ _t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	_p3 := a[3].f64
 	_p4 := a[4].f64
 	_p5 := a[5].f64
-	_p6 := a[6].i32 != 0
-	_r, _err := Canvas_createBitmap(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6)
+	_p6 := a[6].i32
+	_p7 := a[7].i32
+	_p8 := a[8].i32
+	_p9 := a[9].i32
+	_p10 := a[10].i32
+	_p11 := a[11].i32
+	_r, _err := Canvas_createBitmap(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -5714,7 +5719,7 @@ _t_canvas_Canvas_createBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: 
 	return nil
 }
 
-// Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, flip_y: bool) -> (u64, Api_Error)
+// Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)
 @(private = "file")
 _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -5723,13 +5728,18 @@ _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller,
 	_n0 := wasm.addr(&f, a[1])
 	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
 	if !_k0 { return wasm.trap_bounds(&f, "canvas.Canvas_bitmapFromPixels", "data") }
-	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[5]), 8)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[10]), 8)
 	if !_rk { return wasm.trap_bounds(&f, "canvas.Canvas_bitmapFromPixels", "result pointer") }
 	_p0 := _s0[:_n0]
 	_p1 := a[2].i32
 	_p2 := a[3].i32
-	_p3 := a[4].i32 != 0
-	_r, _err := Canvas_bitmapFromPixels(&c, _p0, _p1, _p2, _p3)
+	_p3 := a[4].i32
+	_p4 := a[5].i32
+	_p5 := a[6].i32
+	_p6 := a[7].i32
+	_p7 := a[8].i32
+	_p8 := a[9].i32
+	_r, _err := Canvas_bitmapFromPixels(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8)
 	api_end(&c)
 	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
 	if _err != .None {
@@ -28798,8 +28808,8 @@ api_imports := [?]wasm.Import{
 	{module = "canvas", name = "ImageBitmap_width", fn = _t_canvas_ImageBitmap_width, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "ImageBitmap_height", fn = _t_canvas_ImageBitmap_height, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
-	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
-	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "compression", name = "Compression_create", fn = _t_compression_Compression_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "compression", name = "Compression_push", fn = _t_compression_Compression_push, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "compression", name = "Compression_finish", fn = _t_compression_Compression_finish, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

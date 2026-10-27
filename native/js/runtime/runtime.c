@@ -22,6 +22,8 @@ int wj_runtime_preinit(JSContext *ctx)
     /* Intl (ECMA-402): a native namespace built into the image, in place of the old prelude/intl.js */
     extern void wj_install_intl(JSContext *ctx);
     wj_install_intl(ctx);
+    extern void wj_tracks_install(void);
+    wj_tracks_install();
     if (wj_dom_preinit(ctx) < 0) { return -1; }
     extern int wj_run_preludes(JSContext *ctx);
     if (wj_run_preludes(ctx) != 0) { return -1; }

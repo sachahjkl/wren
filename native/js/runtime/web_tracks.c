@@ -434,3 +434,11 @@ JSValue wjr_HTMLTrackElement_get_readyState(JSContext *ctx, JSValueConst this_va
     if (!self) { return JS_EXCEPTION; }
     return JS_NewUint32(ctx, (uint32_t)wr_HTMLTrackElement_readyState(self->handle));
 }
+
+/* Called once when a realm is made (runtime.c): every cue the browser hands out is a WebVTT one, so a TextTrackCue handed out is wrapped as a VTTCue (it has text, region, line...). */
+extern int wj_wrap_remap_from, wj_wrap_remap_to;
+void wj_tracks_install(void)
+{
+    wj_wrap_remap_from = WJ_IFACE_TextTrackCue;
+    wj_wrap_remap_to = WJ_IFACE_VTTCue;
+}
