@@ -311,6 +311,7 @@ window_select :: proc(app: ^App, w: ^Browser_Window, i: int) {
 tab_menu_group_items :: proc(app: ^App, t: ^Tab) {
 	w, _ := window_of_tab(app, t)
 	if w == nil { return }
+	if ui.menu_item(t.muted ? i18n.tr("Unmute tab") : i18n.tr("Mute tab")).clicked { tab_set_muted(app, t, !t.muted) }   // tab_sound.odin
 	if ui.menu_item(t.pinned ? i18n.tr("Unpin tab") : i18n.tr("Pin tab")).clicked { tab_set_pinned(app, t, !t.pinned); ui.ctx_menu_close(); return }
 	if ui.menu_item(i18n.tr("Add tab to a new group")).clicked { _ = tab_group_new(app, t); ui.ctx_menu_close(); return }
 	others := 0

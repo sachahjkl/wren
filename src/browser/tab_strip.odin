@@ -193,6 +193,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 				request_frames(app, 2)
 			}
 		}
+		tab_sound_frame(app)   // tab_sound.odin
 		any_turning := false
 		for t in wnd.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
@@ -303,6 +304,8 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		speaker := tab_speaker(app, t)
+		if t.pinned { tab_speaker_badge(speaker, {pad + isz * 0.45, math.round((b.size.y - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
 		ui.spacer(ui.px(math.round(em * 0.5)))
 		title := t.pinned ? "" : t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
@@ -322,6 +325,9 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
 			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
+		}
+		if speaker != .None && !t.pinned {
+			if ui.tab_stops(false) { _ = tab_speaker_button(app, t, speaker, math.round(em * 1.45), "###speaker") }
 		}
 		show_close := !t.pinned && (on || inside || w >= favs.cfg.close_min_em * em)
 		if show_close {

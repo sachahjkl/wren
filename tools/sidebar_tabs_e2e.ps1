@@ -148,6 +148,35 @@ try {
         Select-Tab 'Alpha'; Wren-Ctl cmd tab.group_leave | Out-Null; Wren-Ctl wait frames 2 | Out-Null
         Expect 'its last tab gone, the group goes' @(Groups).Count 0
     }
+
+    if (Want 'sound') {
+        # (a file: page reads only files under its own folder)
+        Copy-Item (Join-Path $root 'examples\site\devtools\assets\tone_opus.webm') (Join-Path $tmp 'tone.webm')
+        $tone = 'tone.webm'
+        Wren-Ctl pref set media.autoplay.policy allow-all | Out-Null
+        Wren-Ctl tab new (Page 'Sound' "<audio src='$tone' autoplay loop></audio>") | Out-Null
+        $until = (Get-Date).AddSeconds(30); $s = $null
+        while ((Get-Date) -lt $until) { $s = Tab 'Sound'; if ($s.audible) { break }; Wren-Ctl wait frames 5 | Out-Null }
+        if ($s.audible -and $s.playing) { Pass 'a tab that plays sound shows its speaker (audible)' } else { Fail "the tab playing a tone is not audible: $($s | ConvertTo-Json -Compress)" }
+        if (-not (Tab 'Alpha').audible) { Pass 'the others do not' } else { Fail 'a silent tab is audible' }
+        Shot 'son, haut-parleur'
+        Wren-Ctl cmd tab.mute | Out-Null; Wren-Ctl wait frames 3 | Out-Null
+        $s = Tab 'Sound'
+        if ($s.muted -and -not $s.audible -and $s.playing) { Pass 'muted: the speaker is crossed out, the page still plays' } else { Fail "after tab.mute: $($s | ConvertTo-Json -Compress)" }
+        Expect 'the page is not told (its element is not muted)' (Wren-Eval 'String(document.querySelector("audio").muted)') 'false'
+        Shot 'son, onglet muet'
+        Wren-Ctl pref set browser.tabs.sidebar_collapsed true | Out-Null; Wren-Ctl wait frames 6 | Out-Null
+        Shot 'son, barre reduite'
+        Wren-Ctl pref set browser.tabs.sidebar_collapsed false | Out-Null; Wren-Ctl wait frames 6 | Out-Null
+        Wren-Ctl cmd tab.mute | Out-Null; Wren-Ctl wait frames 3 | Out-Null
+        Expect 'unmuted' (Tab 'Sound').muted $false
+        Wren-Ctl pref set browser.tabs.audio_hold_ms 0 | Out-Null
+        Wren-Eval 'document.querySelector("audio").pause(); 1' | Out-Null
+        Wren-Ctl wait frames 5 | Out-Null
+        $s = Tab 'Sound'
+        if (-not $s.audible -and -not $s.playing) { Pass 'paused, the speaker goes' } else { Fail "after pause: $($s | ConvertTo-Json -Compress)" }
+        Wren-Ctl cmd tab.close | Out-Null
+    }
 } finally { Stop-Wren | Out-Null; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
 
 # Saved in the profile: the pinned tabs come back without the session, the groups with it.

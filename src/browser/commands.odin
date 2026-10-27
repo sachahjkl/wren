@@ -226,6 +226,9 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "tab.pin", title = i18n.tr("Pin or unpin tab"), category = "Tabs", keywords = "pinned app tab sticky keep",
 		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.pinned },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_pinned(app, t, !t.pinned) }})
+	add(r, {name = "tab.mute", title = i18n.tr("Mute or unmute tab"), category = "Tabs", keywords = "sound audio silence speaker volume",
+		enabled = has_tab, checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.muted },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_set_muted(app, t, !t.muted) }})
 	add(r, {name = "tab.group_new", title = i18n.tr("Add tab to a new group"), category = "Tabs", keywords = "group tabs together organize",
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { _ = tab_group_new(app, t) }})
 	add(r, {name = "tab.group_leave", title = i18n.tr("Remove tab from its group"), category = "Tabs", keywords = "ungroup group",
