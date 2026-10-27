@@ -19,6 +19,16 @@ Font_Metrics :: struct {
 	em_ascent, em_descent: f32,
 }
 
+// A color glyph (emoji, COLR / sbix / CBDT / SVG) as pixels: `px` is `w` x `h` straight-alpha sRGB RGBA, rows top to
+// bottom, owned by the engine (valid until the next engine call); (ox, oy) is where the bitmap's top-left corner sits
+// relative to the pen on the baseline, in pixels of the shaped size (y down). fillText draws it as an image, so it takes
+// the transform, global alpha, shadow, filter and clip like any drawImage.
+Color_Glyph :: struct {
+	px:     []u8,
+	w, h:   int,
+	ox, oy: f32,
+}
+
 Text_Engine :: struct {
 	user:    rawptr,
 	// the font for a spec (0: none can be made)
@@ -28,6 +38,9 @@ Text_Engine :: struct {
 	// the outline of a glyph in em units, y up, origin at the pen on the baseline; owned by the engine (nil: none)
 	outline: proc(user: rawptr, face: u64, gid: u16) -> ^Path,
 	metrics: proc(user: rawptr, font: u64, size: f32) -> Font_Metrics,
+	// the color bitmap of a glyph at `size` px with text color `fg` (straight sRGB 0..1), ok = false when the glyph is
+	// not drawn in color (draw its outline). nil: the engine draws no color glyphs (all glyphs go to `outline`).
+	color_glyph: proc(user: rawptr, face: u64, gid: u16, size: f32, fg: [4]f32) -> (Color_Glyph, bool),
 }
 
 Text_Metrics :: struct {
@@ -126,6 +139,9 @@ ctx_draw_text :: proc(c: ^Context, text: string, x, y: f64, max_width: f64, has_
 	w := f64(lo.width)
 	if has_max && w > max_width && w > 0 { k = max_width / w; w = max_width }
 	ox, oy := text_origin(c, x, y, w, lo.metrics)
+	// Color glyphs (emoji, COLR / sbix / CBDT / SVG) are drawn as images, in color, whatever fill or stroke asks
+	// (browsers draw the colored glyph regardless): they are taken out of the outline run first.
+	draw_color_glyphs(c, &lo, ox, oy, k)
 	if c.gpu != nil && !stroke {
 		paint, pok := make_paint(c, &c.state.fill)
 		if pok { gpu_fill_text(c, &lo, ox, oy, k, &paint) }
@@ -154,6 +170,39 @@ ctx_draw_text :: proc(c: ^Context, text: string, x, y: f64, max_width: f64, has_
 	}
 }
 
+// Draws every color glyph of `lo` as an image at its placed position and drops it from `lo.glyphs`, so the outline run
+// that follows leaves it out. The text color (currentColor of foreground layers) is the fill style's color when it is
+// solid, else opaque black.
+@(private)
+draw_color_glyphs :: proc(c: ^Context, lo: ^Laid_Out, ox, oy, k: f64) {
+	e := &c.text
+	if e.color_glyph == nil { return }
+	fg := c.state.fill.kind == .Solid ? c.state.fill.color : [4]f32{0, 0, 0, 1}
+	kept := 0
+	for g in lo.glyphs {
+		cg, is_color := e.color_glyph(e.user, g.face, g.gid, lo.size, fg)
+		if !is_color || cg.w <= 0 || cg.h <= 0 || len(cg.px) < cg.w * cg.h * 4 {
+			lo.glyphs[kept] = g
+			kept += 1
+			continue
+		}
+		draw_color_glyph(c, &cg, ox + f64(g.x) * k, oy + f64(g.y))
+	}
+	for len(lo.glyphs) > kept { pop(&lo.glyphs) }
+}
+
+// One color glyph: a temporary premultiplied bitmap of its pixels drawn into the destination rectangle (its top-left
+// at the pen plus the glyph's offset, its size the bitmap's), through the current transform, alpha, shadow and clip.
+// The maxWidth squeeze `applies only to x`, as it does to the outline run.
+@(private)
+draw_color_glyph :: proc(c: ^Context, cg: ^Color_Glyph, pen_x, pen_y: f64) {
+	tmp, tok := bitmap_create(cg.w, cg.h, max(int), context.temp_allocator)
+	if !tok { return }
+	bitmap_write_straight(&tmp, cg.px, cg.w, 0, 0, cg.w, cg.h, 0, 0)
+	dx, dy := pen_x + f64(cg.ox), pen_y + f64(cg.oy)
+	ctx_draw_image(c, &tmp, 0, 0, f64(cg.w), f64(cg.h), dx, dy, f64(cg.w), f64(cg.h))
+}
+
 // measureText. Positions are relative to the alignment point and baseline, positive to the right and upwards (the
 // bounding box left is positive when the box extends to the left of the point).
 ctx_measure_text :: proc(c: ^Context, text: string) -> (tm: Text_Metrics, ok: bool) {
@@ -165,6 +214,16 @@ ctx_measure_text :: proc(c: ^Context, text: string) -> (tm: Text_Metrics, ok: bo
 	x0, y0, x1, y1 := math.INF_F64, math.INF_F64, -math.INF_F64, -math.INF_F64
 	e := &c.text
 	for g in lo.glyphs {
+		// a color glyph (emoji) has no outline: its ink box is its bitmap's rectangle around the pen
+		if e.color_glyph != nil {
+			if cg, is_color := e.color_glyph(e.user, g.face, g.gid, lo.size, {0, 0, 0, 1}); is_color && cg.w > 0 && cg.h > 0 {
+				gx, gy := ox + f64(g.x), oy + f64(g.y)
+				bx0, by0 := gx + f64(cg.ox), gy + f64(cg.oy)
+				x0, x1 = min(x0, bx0), max(x1, bx0 + f64(cg.w))
+				y0, y1 = min(y0, by0), max(y1, by0 + f64(cg.h))
+				continue
+			}
+		}
 		o := e.outline(e.user, g.face, g.gid)
 		if o == nil { continue }
 		// the curves themselves (a quadratic's control point lies outside it): flattened to 1/500 em
