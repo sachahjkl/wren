@@ -54,7 +54,11 @@ compute_overflow :: proc(l: ^Layout, order: []i32, in_fixed: []bool, vp: Vec2) -
 	has := make([]bool, n, context.temp_allocator)
 	for x in order {
 		b := &l.boxes[x]
-		if .Scroll in b.flags { b.overflow = padding_rect(b) }
+		// an inline box never becomes a scroll container (finish and refresh_overflow only build a scroll space for
+		// kind != .Inline, and no box is ever its clip owner): its overflow is never read. Forcing it empty here (not
+		// padding_rect) matches what the incremental paths produce (they never recompute it), so a spliced layout and
+		// a full one agree on it (verify.odin). A box reused across a display change keeps no stale value either.
+		if .Scroll in b.flags { b.overflow = b.kind == .Inline ? Rect{} : padding_rect(b) }
 	}
 	doc := Rect{{0, 0}, vp}
 	add :: proc(l: ^Layout, owner: i32, r: Rect, fixed: bool, doc: ^Rect) {
