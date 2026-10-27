@@ -36,8 +36,8 @@ Settings :: struct {
 }
 
 PREFS := [?]config.Def{
-	{name = "network.backend", kind = .String, default = {s = "winhttp"}, choices = {"winhttp", "rust"}, restart = true,
-		description = "The network stack. winhttp: the operating system's (Windows only). rust: the built-in stack (HTTP/1.1, HTTP/2, HTTP/3 raced against TCP, WebSockets, TLS 1.2 and 1.3 checked against the system's trust store, the system proxy settings; proxy auto-configuration scripts are not run). The WREN_NET_BACKEND environment variable overrides it."},
+	{name = "network.backend", kind = .String, default = {s = "rust"}, choices = {"rust", "winhttp"}, restart = true,
+		description = "The network stack. rust: the built-in stack, the same on every platform (HTTP/1.1, HTTP/2, HTTP/3 raced against TCP, WebSockets, TLS 1.2 and 1.3 checked against the system's trust store, the system proxy settings). It does not run proxy auto-configuration scripts: where the system proxy is set by one (PAC), WinHTTP is used. winhttp: the operating system's (Windows only; no HTTP/3). The WREN_NET_BACKEND environment variable overrides it."},
 	{name = "network.http3.race_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",
 		description = "Built-in stack: how long an HTTP/3 (QUIC) connection has to come up before the request goes over TCP instead (the QUIC attempt goes on for the next requests)."},
 	{name = "network.http3.broken_host_ms", kind = .Int, default = {i = 300_000}, bounded = true, min = 0, max = 86_400_000, unit = "ms",
@@ -63,7 +63,7 @@ PREFS := [?]config.Def{
 	{name = "network.timeout.receive_ms", kind = .Int, default = {i = 60_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "Timeout waiting for response data. 0 = no timeout."},
 	{name = "network.http2.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Use HTTP/2 when the server offers it."},
-	{name = "network.http3.enabled", kind = .Bool, default = {b = false}, restart = true, description = "Use HTTP/3 when the server and the OS support it. Off by default: for a site that announces HTTP/3 WinHTTP tries QUIC first and, where UDP does not get through (a firewall, a network), never falls back to TCP: the page stays on Connecting for ever (odin-lang.org)."},
+	{name = "network.http3.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Built-in stack: use HTTP/3 (QUIC) with a site that announced it (Alt-Svc), raced against TCP (network.http3.race_ms) and left aside where QUIC fails. The WinHTTP stack never uses HTTP/3: it does not fall back to TCP where UDP does not get through (odin-lang.org stayed on Connecting)."},
 	{name = "network.proxy.mode", kind = .String, default = {s = "system"}, choices = {"system", "none"}, restart = true,
 		description = "system: the operating system's proxy settings (auto-detection included). none: connect directly."},
 	{name = "network.user_agent", kind = .String, default = {s = ""}, restart = true,
