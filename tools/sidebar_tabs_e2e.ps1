@@ -141,6 +141,7 @@ try {
         $cur = Tabs | Where-Object { $_.active }
         if ($cur.group -ne (Groups)[0].id) { Pass "the current tab left the collapsed group ($($cur.title))" } else { Fail 'the current tab is hidden in the collapsed group' }
         if (-not (Tab 'Alpha').rect) { Pass 'its tabs are not drawn' } else { Fail 'a tab of the collapsed group is still drawn' }
+        Start-Sleep -Milliseconds 800   # (two clicks in the system's double-click time are a double click: the header's rename)
         Shot 'groupe Work replie'
         Wren-Ctl click (Center (Groups)[0].rect) --window | Out-Null; Wren-Ctl wait frames 4 | Out-Null
         Expect 'a second click expands it' ((Groups)[0].collapsed) $false
