@@ -236,7 +236,8 @@ font_info :: proc(c: ^Ctx, cs: ^style.Computed) -> i32 {
 	info.style, info.stretch = cs.font_style, cs.font_stretch > 0 ? cs.font_stretch : 100
 	info.families = make([]string, len(cs.font_family), c.sa)
 	for f, i in cs.font_family { info.families[i] = strings.clone(f, c.sa) }
-	info.features, info.variations = font_features(cs, c.sa)
+	info.features, info.variations = font_features(cs, info.size, c.sa)
+	if cs.content_language != "" { info.language = strings.clone(cs.content_language, c.sa) }
 	switch cs.line_height.kind {
 	case .Normal: info.lh_normal = true   // (font_resolve: from the face)
 	case .Number: info.line_h = info.size * cs.line_height.v
@@ -275,7 +276,7 @@ font_resolve :: proc(c: ^Ctx, info: ^Font_Info) {
 	if c.text.font_request != nil {
 		req := Font_Request{
 			families = info.families, weight = info.weight, italic = info.italic, style = info.style, stretch = info.stretch,
-			features = info.features, variations = info.variations,
+			features = info.features, variations = info.variations, language = info.language,
 		}
 		info.font = c.text.font_request(c.text.user, &req)
 	} else {
