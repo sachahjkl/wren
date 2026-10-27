@@ -1284,14 +1284,21 @@ version = "0.1.0"
 dependencies = [
  "brotli-decompressor",
  "enough",
- "gt_a11y",
- "gt_text",
  "image-webp",
  "qcms",
  "rav1d",
  "resvg",
  "skrifa",
  "zenavif-parse",
+]
+
+[[package]]
+name = "wren_native"
+version = "0.1.0"
+dependencies = [
+ "gt_a11y",
+ "gt_text",
+ "wren_media",
 ]
 
 [[package]]

@@ -1,0 +1,25 @@
+# Wren's Rust code: one workspace, one Cargo.lock, one target directory, ONE static library linked into wren.exe
+# (tools\build_native.ps1 -> build\native\wren_native.lib).
+#
+# Why one library: every Rust static library carries its own copy of Rust's standard library, and two built by the same
+# compiler define the same symbols: a program links one at most. So the crates are ordinary libraries (rlib) and the
+# assembly crate `wren_native` (a staticlib) picks them:
+#   media         the image decoders (SVG, WebP, AVIF, colour management) and WOFF2: crate `wren_media`
+#   gt_text       the toolkit's native text backend (ext/gui_toolkit/native/text), feature `text`
+#   gt_a11y       the toolkit's accessibility adapter (ext/gui_toolkit/native/a11y), feature `a11y`
+# The toolkit's crates stay in the toolkit (its own Cargo.lock builds them alone into gt_text.lib / gt_a11y.lib for its
+# examples); here they are path dependencies resolved by this workspace's Cargo.lock.
+#
+# Every dependency is pinned exactly (in the crates' Cargo.toml) and by Cargo.lock (SHA-256 of every crate); the build
+# runs with --locked. Profiles live here only (Cargo ignores those of members and path dependencies).
+[workspace]
+resolver = "2"
+members = ["media", "wren_native"]
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+lto = "fat"
+debug = false
+panic = "unwind"   # every entry point catches panics: a decoder bug is a broken image, not a dead browser
+incremental = false

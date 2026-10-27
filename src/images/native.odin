@@ -1,6 +1,7 @@
 package images
 
-// The built-in decoders: a Rust static library (native\media, built by tools\build_media.ps1 into build\media). WebP and
+// The built-in decoders: Rust (native\media), in the one Rust static library of wren.exe (tools\build_native.ps1 ->
+// build\native\wren_native.lib). WebP and
 // AVIF never go to WIC (they would need optional Store extensions there, and these are formats where a memory-safe
 // decoder matters most); SVG documents are parsed once per encoded file (the parsed tree is kept with the Blob, shared by
 // every raster made from it) and rasterised at whatever size is asked. The library converts colours to sRGB itself
@@ -9,8 +10,8 @@ package images
 import "base:runtime"
 import "core:sync"
 
-foreign import wren_media {
-	"../../build/media/wren_media.lib",
+foreign import wren_native {
+	"../../build/native/wren_native.lib",
 	"system:ws2_32.lib",
 	"system:advapi32.lib",
 	"system:userenv.lib",
@@ -66,7 +67,7 @@ Wm_Sink :: struct {
 }
 
 @(private, default_calling_convention = "c")
-foreign wren_media {
+foreign wren_native {
 	wm_webp_probe :: proc(data: [^]u8, len: uint, limits: ^Wm_Limits, info: ^Wm_Info) -> i32 ---
 	wm_webp_decode :: proc(data: [^]u8, len: uint, limits: ^Wm_Limits, out_w, out_h: u32, sink: ^Wm_Sink, info: ^Wm_Info) -> i32 ---
 	wm_avif_probe :: proc(data: [^]u8, len: uint, limits: ^Wm_Limits, info: ^Wm_Info) -> i32 ---

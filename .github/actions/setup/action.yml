@@ -1,7 +1,7 @@
 name: Set up the Wren toolchain
 description: >-
   Odin (pinned release, SHA-256 checked), Rust (pinned version) with llvm-tools, Go, the MSVC environment, and the caches of
-  what build.bat fetches or builds (Wasmtime, Lexbor, the native/media library, NASM, the cargo registry, Zig and the
+  what build.bat fetches or builds (Wasmtime, Lexbor, the Rust library of native/, NASM, the cargo registry, Zig and the
   QuickJS-ng source, the JavaScript engine) and of the pinned test suites tools\test_all.ps1 fetches (test262,
   web-platform-tests). Every download is pinned: by SHA-256 in the script that fetches it (Odin here, Wasmtime, NASM,
   Zig, QuickJS-ng, test262), by commit and a SHA-256 list of its files (web-platform-tests: wpt/MANIFEST.txt), by
@@ -27,7 +27,7 @@ runs:
         Add-Content $env:GITHUB_PATH (Join-Path $dir 'dist')
         & (Join-Path $dir 'dist\odin.exe') version
 
-    # pinned like everything else: a new stable can change codegen or lints of native/media under the same Cargo.lock
+    # pinned like everything else: a new stable can change codegen or lints of native/ under the same Cargo.lock
     - name: Rust 1.99.1 + llvm-tools
       shell: pwsh
       env:
@@ -66,15 +66,17 @@ runs:
           build/lexbor/STAMP
         key: lexbor-${{ steps.keys.outputs.lexbor }}-${{ hashFiles('src/shim/**', 'tools/build_lexbor.ps1') }}
 
-    - name: Cache native/media and NASM
+    # the key covers every input of tools\build_native.ps1's STAMP, the toolkit's crates included (a key without them
+    # restored a library the script then rebuilt from nothing at each run, and never saved again)
+    - name: Cache the Rust library (native/) and NASM
       uses: actions/cache@v4
       with:
         path: |
-          build/media/wren_media.lib
-          build/media/STAMP
+          build/native/wren_native.lib
+          build/native/STAMP
           build/tools/nasm-*
           !build/tools/nasm-*.zip
-        key: media-rust1.99.1-${{ hashFiles('native/media/src/**', 'native/media/Cargo.toml', 'native/media/Cargo.lock', 'tools/build_media.ps1') }}
+        key: native-rust1.99.1-${{ hashFiles('native/Cargo.toml', 'native/Cargo.lock', 'native/media/src/**', 'native/media/Cargo.toml', 'native/wren_native/**', 'ext/gui_toolkit/native/text/src/**', 'ext/gui_toolkit/native/text/Cargo.toml', 'ext/gui_toolkit/native/a11y/src/**', 'ext/gui_toolkit/native/a11y/Cargo.toml', 'tools/build_native.ps1') }}
 
     # tools\build_js.ps1: Zig (its clang and wasi-libc) and the QuickJS-ng release source, both pinned in the script
     - name: Cache Zig and the QuickJS-ng source
@@ -116,4 +118,4 @@ runs:
         path: |
           ~/.cargo/registry/index
           ~/.cargo/registry/cache
-        key: cargo-registry-${{ hashFiles('native/media/Cargo.lock') }}
+        key: cargo-registry-${{ hashFiles('native/Cargo.lock') }}

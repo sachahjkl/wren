@@ -1,4 +1,4 @@
-Rust crates of native/media (wren_media.lib, linked into wren.exe), from Cargo.lock: the whole graph, with the
+Rust crates of native/ (wren_native.lib, linked into wren.exe), from Cargo.lock: the whole graph, with the
 build-time and test-only crates (they are not in wren.exe).
 Each crate's license text is in its source package (crates.io) or repository.
 

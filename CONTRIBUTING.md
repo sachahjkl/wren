@@ -69,7 +69,7 @@
 Odin is pinned to the `dev-2026-10` release (`.github/actions/setup/action.yml`: tag and SHA-256 of the archive). To
 move to another one, change both there and in the README, and build and test locally first. Wasmtime, NASM, Zig,
 QuickJS-ng, Lexbor, the Rust crates, webref's Web IDL, test262 and web-platform-tests are pinned in their scripts,
-submodules, `native/media/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. A new QuickJS-ng or wasi-libc
+submodules, `native/Cargo.lock`, `native/js/webref/VERSION` and `wpt/MANIFEST.txt`. A new QuickJS-ng or wasi-libc
 (Zig) version: update the license texts of `native/js/licenses` too.
 
 ## Making a release
