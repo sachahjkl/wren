@@ -135,6 +135,7 @@ foreign wren_native_net {
 	wn_ws_accept :: proc(c: rawptr, id: u64) -> u8 ---
 	wn_ws_send :: proc(c: rawptr, id: u64, binary: u8, data: [^]u8, len: uint) -> u8 ---
 	wn_ws_shutdown :: proc(c: rawptr, id: u64, code: u16, reason: [^]u8, len: uint) -> u8 ---
+	wn_net_abi :: proc(out: ^[4]u64) ---
 }
 
 @(private)
