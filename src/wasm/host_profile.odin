@@ -12,7 +12,7 @@ import "core:fmt"
 import "core:os"
 import "core:slice"
 import "core:strings"
-import win "core:sys/windows"
+import "core:time"
 
 @(private = "file")
 Timed :: struct {
@@ -31,8 +31,6 @@ timed: [dynamic]^Timed
 host_profile_path: string
 @(private = "file")
 host_profile_known: bool
-@(private = "file")
-qpc_freq: i64
 @(private = "file", thread_local)
 child_ns: u64
 
@@ -41,7 +39,6 @@ host_profile_enabled :: proc() -> bool {
 	if !host_profile_known {
 		host_profile_known = true
 		host_profile_path = os.get_env("WREN_HOST_PROFILE", context.allocator)
-		win.QueryPerformanceFrequency((^win.LARGE_INTEGER)(&qpc_freq))
 	}
 	return host_profile_path != ""
 }
@@ -58,9 +55,7 @@ host_profile_wrap :: proc(im: ^Import, env: rawptr) -> (Host_Fn, rawptr) {
 
 @(private = "file")
 now_ns :: #force_inline proc "contextless" () -> u64 {
-	c: i64
-	win.QueryPerformanceCounter((^win.LARGE_INTEGER)(&c))
-	return u64(c) * 1_000_000_000 / u64(qpc_freq)
+	return u64(time.tick_now()._nsec)   // QueryPerformanceCounter, CLOCK_MONOTONIC
 }
 
 @(private = "file")

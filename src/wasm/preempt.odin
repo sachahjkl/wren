@@ -7,12 +7,10 @@ package wasm
 // any module (a call started meanwhile, on any store of that thread, is refused: `preempting`). The time the hook takes
 // is given back to the call's deadlines (wasm.max_call_ms, the slow script interruption).
 //
-// The epoch ticker sleeps on a high-resolution waitable timer: Sleep() would round its period up to the system timer
-// (15.6 ms unless some process asked for better), which is both the interruption's accuracy and the preemption's.
+// The epoch ticker's sleep is in preempt_<os>.odin (its accuracy is both the interruption's and the preemption's).
 
 import "core:sync"
 import "core:time"
-import win "core:sys/windows"
 
 Preempt_Hook :: #type proc(user: rawptr)
 
@@ -76,30 +74,4 @@ ticker_period_ms :: proc() -> int {
 	p := max(wt.rs.epoch_tick_ms, 1)
 	if t := sync.atomic_load(&preempt.tick_ms); t > 0 && t < p { p = t }
 	return p
-}
-
-@(private)
-ticker_timer: win.HANDLE
-
-// Sleeps `ms` on a high-resolution waitable timer (Sleep where there is none: before Windows 10 1803).
-@(private)
-ticker_sleep :: proc(ms: int) {
-	if ticker_timer == nil {
-		CREATE_WAITABLE_TIMER_HIGH_RESOLUTION :: 0x2
-		ticker_timer = win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
-	}
-	if ticker_timer != nil {
-		due := win.LARGE_INTEGER(-i64(ms) * 10_000)   // relative, 100 ns units
-		if win.SetWaitableTimerEx(ticker_timer, &due, 0, nil, nil, nil, 0) {
-			win.WaitForSingleObject(ticker_timer, win.INFINITE)
-			return
-		}
-	}
-	time.sleep(time.Duration(ms) * time.Millisecond)
-}
-
-// The ticker's timer, when it stops.
-@(private)
-ticker_sleep_destroy :: proc() {
-	if ticker_timer != nil { win.CloseHandle(ticker_timer); ticker_timer = nil }
 }

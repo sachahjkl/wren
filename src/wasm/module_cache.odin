@@ -408,9 +408,9 @@ disk_key_load :: proc(dir: string) -> bool {
 	}
 	if !random_fill(cache.key[:]) { return fail(path, "no random key for") }
 	blob, ok := protect(cache.key[:], context.temp_allocator)
-	if !ok { return fail(path, "DPAPI cannot protect") }
+	if !ok { return fail(path, "the system cannot protect") }
 	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if err := os.write_entire_file(tmp, blob); err != nil { return fail(tmp, "cannot write", err) }
+	if err := os.write_entire_file(tmp, blob, {.Read_User, .Write_User}); err != nil { return fail(tmp, "cannot write", err) }
 	if err := os.rename(tmp, path); err != nil { _ = os.remove(tmp); return fail(path, "cannot create", err) }
 	return true
 }

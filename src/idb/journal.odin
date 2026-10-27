@@ -287,7 +287,7 @@ load_origin :: proc(dir, stem: string, allocator: runtime.Allocator) -> (res: Or
 		rest := n[len(stem):]
 		if g, ok := generation_of(rest, ".widb"); ok { append(&gens, g) }
 		if strings.has_suffix(rest, ".tmp") && (strings.has_prefix(rest, ".wid") || strings.has_prefix(rest, "~")) {
-			file_delete(strings.concatenate({dir, "\\", n}, context.temp_allocator))   // a write that never finished
+			file_delete(strings.concatenate({dir, SEP, n}, context.temp_allocator))   // a write that never finished
 		}
 	}
 	if len(gens) == 0 { return }
@@ -296,16 +296,16 @@ load_origin :: proc(dir, stem: string, allocator: runtime.Allocator) -> (res: Or
 	res.data.replay_gen = u8(res.jgen & 1)
 	// older generations: what a finished compaction left (or one that died: the highest generation is complete)
 	for g in gens[1:] {
-		file_delete(strings.concatenate({dir, "\\", generation_name(stem, g, ".widb", context.temp_allocator)}, context.temp_allocator))
-		file_delete(strings.concatenate({dir, "\\", generation_name(stem, g, ".widx", context.temp_allocator)}, context.temp_allocator))
+		file_delete(strings.concatenate({dir, SEP, generation_name(stem, g, ".widb", context.temp_allocator)}, context.temp_allocator))
+		file_delete(strings.concatenate({dir, SEP, generation_name(stem, g, ".widx", context.temp_allocator)}, context.temp_allocator))
 	}
 	for n in names {
 		rest := n[len(stem):]
 		if g, ok := generation_of(rest, ".widx"); ok && g != res.jgen {
-			file_delete(strings.concatenate({dir, "\\", n}, context.temp_allocator))
+			file_delete(strings.concatenate({dir, SEP, n}, context.temp_allocator))
 		}
 	}
-	jpath := strings.concatenate({dir, "\\", generation_name(stem, res.jgen, ".widb", context.temp_allocator)}, context.temp_allocator)
+	jpath := strings.concatenate({dir, SEP, generation_name(stem, res.jgen, ".widb", context.temp_allocator)}, context.temp_allocator)
 	f, ok := file_open(jpath, true, false)
 	if !ok { return }
 	size, _ := file_size(f)
@@ -319,7 +319,7 @@ load_origin :: proc(dir, stem: string, allocator: runtime.Allocator) -> (res: Or
 
 	// the checkpoint
 	from := i64(HEADER_SIZE)
-	ckpath := strings.concatenate({dir, "\\", generation_name(stem, res.jgen, ".widx", context.temp_allocator)}, context.temp_allocator)
+	ckpath := strings.concatenate({dir, SEP, generation_name(stem, res.jgen, ".widx", context.temp_allocator)}, context.temp_allocator)
 	if ckf, cok := file_open(ckpath, false, false); cok {
 		if cd, dok := ck_read_directory(ckf, size, context.temp_allocator); dok {
 			if ck_apply_directory(&res.data, &cd) {
