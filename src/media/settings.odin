@@ -75,6 +75,10 @@ MEDIA_PREFS := [?]config.Def{
 		description = "Offer AV1 when a decoder is available (the system's, or the software one)."},
 	{name = "media.software.threads", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 64, unit = "threads",
 		description = "Threads of one video decoded in software (the built-in AV1 decoder). 0: half the processors, at least one."},
+	{name = "media.software.vp9_fallback", kind = .Bool, default = {b = true},
+		description = "Decode VP9 in software (the built-in decoder) when the system has no VP9 decoder of its own (no Store extension). Off: VP9 then counts as unsupported and a page falls to another codec."},
+	{name = "media.software.av1_fallback", kind = .Bool, default = {b = true},
+		description = "Decode AV1 in software (the built-in decoder) when the system has no AV1 decoder of its own. Off: AV1 then counts as unsupported."},
 	{name = "media.controls.enabled", kind = .Bool, default = {b = true},
 		description = "Draw the built-in controls (play, position, volume) of <video controls> and <audio controls>."},
 	{name = "media.controls.hide_ms", kind = .Float, default = {f = 2500}, bounded = true, min = 0, max = 60000, unit = "ms",
@@ -91,6 +95,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	}
 	ms :: proc(f: f64) -> Time { return Time(f * 1e6) }
 	set_software_threads(int(config.int_of(p, "media.software.threads")))
+	set_software_fallbacks(config.bool_of(p, "media.software.vp9_fallback"), config.bool_of(p, "media.software.av1_fallback"))
 	return Settings{
 		enabled = config.bool_of(p, "media.enabled"),
 		player = Player_Settings{

@@ -4,8 +4,8 @@
 //   sample store        store.odin: the coded samples of a stream, by track, with the ranges they cover (what a
 //                       SourceBuffer is, and what a progressive download fills)
 //   decoders            decoder.odin: Video_Decoder / Audio_Decoder, made by a backend; the Windows one is Media
-//                       Foundation (mf_*_windows.odin: DXVA decoding into Direct3D 11 textures), AV1 may fall back
-//                       to the software decoder of native/media
+//                       Foundation (mf_*_windows.odin: DXVA decoding into Direct3D 11 textures), VP9 and AV1 fall back
+//                       to the software decoders of native/media (vp9_soft.odin, av1_soft.odin) when the system has none
 //   audio output        audio.odin: Audio_Output (WASAPI on Windows, wasapi_windows.odin)
 //   player              player.odin: threads, queues, the clock, seeking; the page's media elements drive it
 //

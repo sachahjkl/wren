@@ -52,6 +52,22 @@ software_threads: int
 
 set_software_threads :: proc(n: int) { sync.atomic_store(&software_threads, n) }
 
+// Whether the built-in software decoders stand in when the system has none for a codec (media.software.vp9_fallback /
+// media.software.av1_fallback). On Linux there is no system decoder, so the backend uses them regardless; these gate
+// the Windows fallback. Read when a decoder is made and when support is asked (canPlayType).
+@(private)
+software_vp9: b32 = true
+@(private)
+software_av1: b32 = true
+
+set_software_fallbacks :: proc(vp9, av1: bool) {
+	sync.atomic_store(&software_vp9, b32(vp9))
+	sync.atomic_store(&software_av1, b32(av1))
+}
+
+software_vp9_enabled :: proc() -> bool { return bool(sync.atomic_load(&software_vp9)) }
+software_av1_enabled :: proc() -> bool { return bool(sync.atomic_load(&software_av1)) }
+
 @(private)
 AV1_MAX_PIXELS :: u64(8192 * 8192)   // the largest picture of AV1's level 6.3; the container's limits come first
 
