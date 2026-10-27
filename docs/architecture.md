@@ -149,4 +149,4 @@ pass (refresh, incremental or full; `layout.incremental.verify` checks an increm
 display list, then the compositor (`src/browser/compositor.odin`), which records the display list into retained
 pictures of the toolkit's draw layer and replays them every frame: scrolling and transform animations only change
 matrices. The painter (`src/browser/render.odin`) maps the display list onto draw's transform, clip and layer stacks
-(filters, blend modes, backdrops, masks). Frames are paced on the display's refresh (`src/browser/pacing.odin`).
+(filters, blend modes, backdrops, masks). Frames are paced on the display's refresh by the toolkit's cadence model (`platform/pacing.odin`, its `docs/pacing.md`: one decision per frame), which `src/browser/pacing.odin` executes.

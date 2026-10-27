@@ -105,7 +105,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	p := &window_own(app).page_prep
 	paint_size := size
 	if p.frame != chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
-		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && (pacer.resizing || pacer.resize_held) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
+		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && pacer_resizing() && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
 			// only the size changed since the page phase, the window is being resized, and this page's layout is long:
 			// what was laid out is painted at its size, anchored at the top left, never stretched; the next frame lays
 			// it out at the new size (on the page thread, the chrome drawing meanwhile). Not while a panel inside the

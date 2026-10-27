@@ -185,7 +185,7 @@ devtools_window_frame :: proc(app: ^App) {
 	draw.end_frame(&app.dc)
 	// a step of a resize is shown at once, as the main window's is (pacing.odin): waiting for the screen would hold the thread, and
 	// the main window with it, for a refresh at every step
-	resizing := w.size != dw.size_seen && pacer.cfg.resize_immediate && active_window(app).presented   // (browser.frame.resize_immediate)
+	resizing := w.size != dw.size_seen && active_window(app).presented   // (a Resize_Step of the cadence model: platform/pacing.odin)
 	dw.size_seen = w.size
 	pacer_latency(app, &dw.latency, resizing)   // (pacing.odin: two frames may queue during a resize step, as for the main window)
 	present_start := qpc()

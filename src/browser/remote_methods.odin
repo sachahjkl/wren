@@ -1275,7 +1275,13 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	// or last run of frames (hzNow; primary monitor only), the swap chain's (hzSwapChain), and whether frames aim for the top one (variableRefresh)
 	j_num(&b, "hzReported", pacer.display.hz); j_num(&b, "hzMax", pacer.display.max_hz); j_num(&b, "hzNow", pacer.live_hz)
 	j_num(&b, "hzSwapChain", render.measured_refresh_hz(&app.r)); j_bool(&b, "variableRefresh", pacer.variable)
-	j_bool(&b, "frameCapStrict", pacer.slots.strict || pacer.slots.escalated); j_num(&b, "framePeriodMs", pacer.period_ms)
+	j_bool(&b, "frameCapStrict", pacer.cadence.slots.strict || pacer.cadence.slots.escalated); j_num(&b, "framePeriodMs", pacer.period_ms)
+	{
+		// the frames by state of the cadence model (toolkit platform/pacing.odin) since start-up, and the last one's
+		sb := strings.builder_make(context.temp_allocator)
+		for n, s in pacer.cadence.counts { if n > 0 { fmt.sbprintf(&sb, "%v=%d ", s, n) } }
+		j_str(&b, "frameStates", strings.trim_space(strings.to_string(sb))); j_str(&b, "frameState", fmt.tprint(pacer.cadence.state))
+	}
 	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
 	j_bool(&b, "dropTarget", platform.drop_target_enabled(wnd.win))
 	{
