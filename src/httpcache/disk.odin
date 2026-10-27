@@ -5,8 +5,8 @@ import "core:fmt"
 import "core:hash"
 import "core:slice"
 import "core:strings"
+import "core:path/filepath"
 import "core:sync"
-import win "core:sys/windows"
 import "wb:host"
 import "wb:base"
 
@@ -164,7 +164,7 @@ push_write :: proc(d: ^Disk, op: ^Op) {
 
 @(private)
 entry_path :: proc(d: ^Disk, serial: u64, ext: string, allocator := context.temp_allocator) -> string {
-	return fmt.aprintf("%s\\%016x.%s", d.dir, serial, ext, allocator = allocator)
+	return fmt.aprintf("%s%s%016x.%s", d.dir, SEP, serial, ext, allocator = allocator)
 }
 
 ////////////////////////////////
@@ -390,13 +390,13 @@ writer_main :: proc(data: rawptr) {
 		case .Delete:
 			delete_file(entry_path(d, op.serial, "wce"))
 		case .Save_Index:
-			tmp := strings.concatenate({d.dir, "\\", INDEX_NAME, ".tmp"}, context.temp_allocator)
-			final := strings.concatenate({d.dir, "\\", INDEX_NAME}, context.temp_allocator)
+			tmp := strings.concatenate({d.dir, SEP, INDEX_NAME, ".tmp"}, context.temp_allocator)
+			final := strings.concatenate({d.dir, SEP, INDEX_NAME}, context.temp_allocator)
 			op.ok = write_file(tmp, {op.head}, true) && replace_file(tmp, final)
 			if !op.ok { delete_file(tmp) }
 		case .Clear:
 			for f in list_dir(d.dir) {
-				if is_ours(f.name) { delete_file(strings.concatenate({d.dir, "\\", f.name}, context.temp_allocator)) }
+				if is_ours(f.name) { delete_file(strings.concatenate({d.dir, SEP, f.name}, context.temp_allocator)) }
 			}
 		case .Read:
 		}
@@ -450,11 +450,11 @@ load_index :: proc(d: ^Disk, op: ^Op) {
 		if serial, ok := serial_of(f.name, ".wce"); ok { present[serial] = f.size; continue }
 		// temporary files of an interrupted write, and anything of an older format, go
 		if strings.has_suffix(f.name, ".tmp") || (is_ours(f.name) && f.name != INDEX_NAME) {
-			delete_file(strings.concatenate({d.dir, "\\", f.name}, context.temp_allocator))
+			delete_file(strings.concatenate({d.dir, SEP, f.name}, context.temp_allocator))
 		}
 	}
 	known := make(map[u64]bool, context.temp_allocator)
-	idx_path := strings.concatenate({d.dir, "\\", INDEX_NAME}, context.temp_allocator)
+	idx_path := strings.concatenate({d.dir, SEP, INDEX_NAME}, context.temp_allocator)
 	if bytes, ok := read_file(idx_path); ok {
 		defer delete(bytes, heap())
 		if !decode_index(bytes, op) {
@@ -660,85 +660,31 @@ decode_index :: proc(bytes: []byte, op: ^Op) -> bool {
 }
 
 ////////////////////////////////
-// Files (Win32: atomic replacement, no buffering surprises)
+// Files (base's: atomic replacement, readers never block a rename or a deletion)
 
 @(private)
-wide :: proc(s: string) -> win.LPCWSTR { return win.utf8_to_wstring(s, context.temp_allocator) }
+make_dirs :: proc(dir: string) { base.make_dirs(dir) }
 
 @(private)
-make_dirs :: proc(dir: string) {
-	// every level, from the root (CreateDirectory fails harmlessly on the ones that exist)
-	for i in 0 ..< len(dir) {
-		if (dir[i] == '\\' || dir[i] == '/') && i > 0 && dir[i - 1] != ':' { win.CreateDirectoryW(wide(dir[:i]), nil) }
-	}
-	win.CreateDirectoryW(wide(dir), nil)
-}
+write_file :: proc(path: string, parts: [][]byte, flush: bool) -> bool { return base.file_write_parts(path, parts, flush) }
 
 @(private)
-write_file :: proc(path: string, parts: [][]byte, flush: bool) -> bool {
-	h := win.CreateFileW(wide(path), win.GENERIC_WRITE, 0, nil, win.CREATE_ALWAYS, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h == win.INVALID_HANDLE_VALUE { return false }
-	ok := true
-	for p in parts {
-		at := 0
-		for at < len(p) && ok {
-			n: win.DWORD
-			chunk := win.DWORD(min(len(p) - at, 1 << 30))
-			if !win.WriteFile(h, raw_data(p[at:]), chunk, &n, nil) || n == 0 { ok = false; break }
-			at += int(n)
-		}
-	}
-	if ok && flush { ok = bool(win.FlushFileBuffers(h)) }
-	win.CloseHandle(h)
-	return ok
-}
+replace_file :: proc(from, to: string) -> bool { return base.file_replace(from, to, durable = true) }
 
 @(private)
-replace_file :: proc(from, to: string) -> bool {
-	return bool(win.MoveFileExW(wide(from), wide(to), win.MOVEFILE_REPLACE_EXISTING | win.MOVEFILE_WRITE_THROUGH))
-}
-
-@(private)
-delete_file :: proc(path: string) { win.DeleteFileW(wide(path)) }
+delete_file :: proc(path: string) { base.file_delete(path) }
 
 // The whole file (heap).
 @(private)
-read_file :: proc(path: string) -> ([]byte, bool) {
-	h := win.CreateFileW(wide(path), win.GENERIC_READ, win.FILE_SHARE_READ | win.FILE_SHARE_DELETE, nil, win.OPEN_EXISTING, win.FILE_ATTRIBUTE_NORMAL, nil)
-	if h == win.INVALID_HANDLE_VALUE { return nil, false }
-	defer win.CloseHandle(h)
-	size: win.LARGE_INTEGER
-	if !win.GetFileSizeEx(h, &size) || size < 0 || i64(size) > 1 << 40 { return nil, false }
-	buf := make([]byte, int(size), heap())
-	at := 0
-	for at < len(buf) {
-		n: win.DWORD
-		chunk := win.DWORD(min(len(buf) - at, 1 << 30))
-		if !win.ReadFile(h, raw_data(buf[at:]), chunk, &n, nil) || n == 0 { delete(buf, heap()); return nil, false }
-		at += int(n)
-	}
-	return buf, true
-}
+read_file :: proc(path: string) -> ([]byte, bool) { return base.file_read_all(path, heap()) }
 
 @(private)
-Dir_File :: struct { name: string, size: i64 }
+Dir_File :: base.Dir_File
 
 // The plain files of a directory (temp allocator).
 @(private)
-list_dir :: proc(dir: string) -> []Dir_File {
-	out := make([dynamic]Dir_File, context.temp_allocator)
-	fd: win.WIN32_FIND_DATAW
-	h := win.FindFirstFileW(wide(strings.concatenate({dir, "\\*"}, context.temp_allocator)), &fd)
-	if h == win.INVALID_HANDLE_VALUE { return out[:] }
-	defer win.FindClose(h)
-	for {
-		if fd.dwFileAttributes & win.FILE_ATTRIBUTE_DIRECTORY == 0 {
-			n := 0
-			for n < len(fd.cFileName) && fd.cFileName[n] != 0 { n += 1 }
-			name, _ := win.utf16_to_utf8(fd.cFileName[:n], context.temp_allocator)
-			append(&out, Dir_File{name = name, size = i64(fd.nFileSizeHigh) << 32 | i64(fd.nFileSizeLow)})
-		}
-		if !win.FindNextFileW(h, &fd) { break }
-	}
-	return out[:]
-}
+list_dir :: proc(dir: string) -> []Dir_File { return base.list_files(dir, context.temp_allocator) }
+
+// Between the directory and a file name in the paths of this package.
+@(private)
+SEP :: filepath.SEPARATOR_STRING

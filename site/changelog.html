@@ -43,14 +43,37 @@
 <section class="section">
   <div class="wrap">
     <h2>Releases</h2>
-    <p class="intro">Four versions in three days: the first public build, JavaScript, then a JIT.</p>
+    <p class="intro">Five versions in nine days: the first public build, JavaScript, a JIT, then a text engine of its own and a browser that speaks to screen readers.</p>
     <div class="timeline">
 
-      <article class="release latest" id="v0-3-0">
+      <article class="release latest" id="v0-4-0">
+        <div class="rail"><span class="dot"></span></div>
+        <div class="release-body">
+          <p class="release-date"><time datetime="2026-10-27">October 27, 2026</time></p>
+          <div class="release-title"><h3>0.4.0</h3><span class="badge">Latest</span></div>
+          <ul class="release-list">
+            <li><strong>Text without DirectWrite</strong>: fonts, shaping and line breaking come from Fontations,
+              HarfRust and ICU4X, the same on every machine.</li>
+            <li><strong>Accessibility</strong>: the chrome and the pages are exposed to screen readers through
+              UI Automation, with updates node by node when a page changes.</li>
+            <li>A <strong>configuration page you can read</strong>, and a <strong>list of search engines</strong> with
+              keywords (<code>@g cats</code>).</li>
+            <li><strong>Tab sidebar</strong>: pinned tabs, groups, a speaker on the tab that plays, a title that fades,
+              1000 tabs at about 1&nbsp;ms a frame.</li>
+            <li><strong>Several windows, each on its own</strong>: developer tools, caret, scale on another monitor,
+              and a splitter dragged at the screen's top rate.</li>
+            <li>Web Animations, popovers, the Navigation API, XML parsing, compression streams, and crash reports
+              with names.</li>
+          </ul>
+          <p class="release-links"><a href="https://github.com/sachahjkl/wren/blob/master/docs/releases/v0.4.0.md">Release notes</a> ·
+            <a href="https://github.com/sachahjkl/wren/releases/tag/v0.4.0">Download</a></p>
+        </div>
+      </article>
+      <article class="release" id="v0-3-0">
         <div class="rail"><span class="dot"></span></div>
         <div class="release-body">
           <p class="release-date"><time datetime="2026-10-21">October 21, 2026</time></p>
-          <div class="release-title"><h3>0.3.0</h3><span class="badge">Latest</span></div>
+          <div class="release-title"><h3>0.3.0</h3></div>
           <ul class="release-list">
             <li><strong>A JIT for JavaScript that produces WebAssembly</strong>: hot functions are compiled to Wasm
               modules on background threads, then by Cranelift; a second tab compiles nothing.</li>

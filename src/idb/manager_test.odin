@@ -52,7 +52,7 @@ Harness :: struct {
 
 @(private)
 harness_init :: proc(h: ^Harness, name: string, async := false, settings: Maybe(Settings) = nil, fresh := true) {
-	h.dir = fmt.aprintf("%s/wren_idb_test/%s", os.get_env("TEMP", context.temp_allocator), name)
+	h.dir = fmt.aprintf("%s/wren_idb_test/%s", base.temp_dir(context.temp_allocator), name)
 	if fresh {
 		base.remove_tree(fmt.tprintf("%s/idb", h.dir))
 	}

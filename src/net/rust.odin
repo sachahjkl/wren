@@ -14,22 +14,27 @@ import "core:sync"
 import "wb:base"
 import "wb:host"
 
-foreign import wren_native_net {
-	"../../build/native/wren_native.lib",
-	"system:ws2_32.lib",
-	"system:advapi32.lib",
-	"system:userenv.lib",
-	"system:ntdll.lib",
-	"system:kernel32.lib",
-	"system:bcrypt.lib",
-	"system:crypt32.lib",
-	"system:secur32.lib",
-	"system:ole32.lib",
-	"system:oleaut32.lib",
-	"system:iphlpapi.lib",
-	"system:msvcrt.lib",
-	"system:ucrt.lib",
-	"system:libvcruntime.lib",
+when ODIN_OS == .Windows {
+	foreign import wren_native_net {
+		"../../build/native/wren_native.lib",
+		"system:ws2_32.lib",
+		"system:advapi32.lib",
+		"system:userenv.lib",
+		"system:ntdll.lib",
+		"system:kernel32.lib",
+		"system:bcrypt.lib",
+		"system:crypt32.lib",
+		"system:secur32.lib",
+		"system:ole32.lib",
+		"system:oleaut32.lib",
+		"system:iphlpapi.lib",
+		"system:msvcrt.lib",
+		"system:ucrt.lib",
+		"system:libvcruntime.lib",
+	}
+} else {
+	// tools/build_native.sh (cargo for this system)
+	foreign import wren_native_net { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
 }
 
 @(private)

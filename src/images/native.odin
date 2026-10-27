@@ -10,17 +10,22 @@ package images
 import "base:runtime"
 import "core:sync"
 
-foreign import wren_native {
-	"../../build/native/wren_native.lib",
-	"system:ws2_32.lib",
-	"system:advapi32.lib",
-	"system:userenv.lib",
-	"system:ntdll.lib",
-	"system:kernel32.lib",
-	"system:bcrypt.lib",
-	"system:msvcrt.lib",
-	"system:ucrt.lib",
-	"system:libvcruntime.lib",
+when ODIN_OS == .Windows {
+	foreign import wren_native {
+		"../../build/native/wren_native.lib",
+		"system:ws2_32.lib",
+		"system:advapi32.lib",
+		"system:userenv.lib",
+		"system:ntdll.lib",
+		"system:kernel32.lib",
+		"system:bcrypt.lib",
+		"system:msvcrt.lib",
+		"system:ucrt.lib",
+		"system:libvcruntime.lib",
+	}
+} else {
+	// tools/build_native.sh (cargo for this system): Rust's standard library needs libdl, libpthread and libm
+	foreign import wren_native { "../../build/native-" + ODIN_OS_STRING + "/libwren_native.a", "system:dl", "system:pthread", "system:m" }
 }
 
 // Mirrors of the library's repr(C) structs (native\media\src\lib.rs).
@@ -40,6 +45,7 @@ Wm_Limits :: struct {
 	svg_max_depth:       u32,
 	svg_max_expansion:   u64,
 	svg_max_render_cost: u64,
+	target_w, target_h:  u32,
 }
 
 @(private)
@@ -52,7 +58,8 @@ Wm_Info :: struct {
 	color:           u8,
 	svg_has_w:       u8,
 	svg_has_h:       u8,
-	_pad:            [2]u8,
+	orientation:     u8,
+	_pad:            u8,
 	svg_w, svg_h:    f32,
 	svg_ratio:       f32,
 }
@@ -66,6 +73,26 @@ Wm_Sink :: struct {
 	frame: Wm_Frame_Proc,
 }
 
+@(private)
+Wm_Byte_Sink :: struct {
+	user:  rawptr,
+	alloc: proc "c" (user: rawptr, n: uint) -> [^]u8,
+}
+
+// The library's codes of the raster formats (native\media\src\raster.rs); 0: not one of them.
+@(private)
+raster_code :: proc(f: Format) -> u32 {
+	#partial switch f {
+	case .Png:  return 1
+	case .Jpeg: return 2
+	case .Gif:  return 3
+	case .Bmp:  return 4
+	case .Ico:  return 5
+	case .Tiff: return 6
+	}
+	return 0
+}
+
 @(private, default_calling_convention = "c")
 foreign wren_native {
 	wm_webp_probe :: proc(data: [^]u8, len: uint, limits: ^Wm_Limits, info: ^Wm_Info) -> i32 ---
@@ -75,6 +102,9 @@ foreign wren_native {
 	wm_svg_parse :: proc(data: [^]u8, len: uint, limits: ^Wm_Limits, info: ^Wm_Info, doc: ^rawptr) -> i32 ---
 	wm_svg_render :: proc(doc: rawptr, limits: ^Wm_Limits, w, h: u32, pixels: [^]u8) -> i32 ---
 	wm_svg_free :: proc(doc: rawptr) ---
+	wm_raster_probe :: proc(format: u32, data: [^]u8, len: uint, limits: ^Wm_Limits, info: ^Wm_Info) -> i32 ---
+	wm_raster_decode :: proc(format: u32, data: [^]u8, len: uint, limits: ^Wm_Limits, out_w, out_h: u32, sink: ^Wm_Sink, info: ^Wm_Info) -> i32 ---
+	wm_raster_encode :: proc(format: u32, rgba: [^]u8, w, h: u32, quality: f32, premultiplied: u8, sink: ^Wm_Byte_Sink) -> i32 ---
 	wm_color_icc_to_srgb :: proc(icc: [^]u8, icc_len: uint, pixels: [^]u8, n: uint) -> i32 ---
 	wm_color_adobe_to_srgb :: proc(pixels: [^]u8, n: uint) -> i32 ---
 	wm_versions :: proc() -> cstring ---
@@ -95,6 +125,7 @@ wm_limits :: proc(o: Decode_Options) -> Wm_Limits {
 		svg_text = u8(s.text), svg_data_images = u8(s.data_images),
 		svg_max_nodes = u32(clamp(s.max_nodes, 1, int(max(u32)))), svg_max_depth = u32(clamp(s.max_depth, 1, 100_000)),
 		svg_max_expansion = u64(max(s.max_expansion, 0)), svg_max_render_cost = u64(max(s.max_render_cost, 1)),
+		target_w = u32(clamp(o.target_w, 0, int(max(u32)))), target_h = u32(clamp(o.target_h, 0, int(max(u32)))),
 	}
 }
 
@@ -106,7 +137,7 @@ error_of :: proc(code: i32) -> Error {
 
 @(private)
 info_of :: proc(f: Format, w: Wm_Info) -> Info {
-	info := Info{format = f, width = int(w.width), height = int(w.height), frames = int(w.frames), plays = int(w.plays), orientation = 1}
+	info := Info{format = f, width = int(w.width), height = int(w.height), frames = int(w.frames), plays = int(w.plays), orientation = max(w.orientation, 1)}
 	info.animated = w.animated != 0
 	info.color = Color_Tag(min(w.color, u8(max(Color_Tag))))
 	if f == .Svg {
@@ -141,14 +172,20 @@ native_frame :: proc "c" (user: rawptr, index, w, h, delay_ms: u32) -> [^]u8 {
 	return raw_data(px)
 }
 
-// WebP / AVIF: headers (`header_only`) or pixels. Stills may come reduced to (target_w, target_h) by `reduced_size`.
+// WebP / AVIF, and PNG, JPEG, GIF, BMP, ICO, TIFF (raster_code): headers (`header_only`) or pixels, EXIF orientation
+// applied. Stills may come reduced to (target_w, target_h) by `reduced_size`.
 @(private)
 native_raster :: proc(data: []byte, info_in: Info, opts: Decode_Options, header_only: bool) -> (img: ^Image, info: Info, err: Error) {
 	info = info_in
 	l := wm_limits(opts)
 	wi: Wm_Info
 	avif := info.format == .Avif
-	code := avif ? wm_avif_probe(raw_data(data), uint(len(data)), &l, &wi) : wm_webp_probe(raw_data(data), uint(len(data)), &l, &wi)
+	rc := raster_code(info.format)
+	probe :: proc(rc: u32, avif: bool, data: []byte, l: ^Wm_Limits, wi: ^Wm_Info) -> i32 {
+		if rc != 0 { return wm_raster_probe(rc, raw_data(data), uint(len(data)), l, wi) }
+		return avif ? wm_avif_probe(raw_data(data), uint(len(data)), l, wi) : wm_webp_probe(raw_data(data), uint(len(data)), l, wi)
+	}
+	code := probe(rc, avif, data, &l, &wi)
 	if code != 0 { return nil, info, error_of(code) }
 	info = info_of(info.format, wi)
 	if e := check_size(info.width, info.height, opts.limits); e != .None { return nil, info, e }
@@ -168,7 +205,11 @@ native_raster :: proc(data: []byte, info_in: Info, opts: Decode_Options, header_
 	}
 	sink := Wm_Sink{user = &nf, frame = native_frame}
 	tw, th := u32(reduced ? ow : 0), u32(reduced ? oh : 0)
-	code = avif ? wm_avif_decode(raw_data(data), uint(len(data)), &l, tw, th, &sink, &wi) : wm_webp_decode(raw_data(data), uint(len(data)), &l, tw, th, &sink, &wi)
+	switch {
+	case rc != 0: code = wm_raster_decode(rc, raw_data(data), uint(len(data)), &l, tw, th, &sink, &wi)
+	case avif:    code = wm_avif_decode(raw_data(data), uint(len(data)), &l, tw, th, &sink, &wi)
+	case:         code = wm_webp_decode(raw_data(data), uint(len(data)), &l, tw, th, &sink, &wi)
+	}
 	if code != 0 && len(nf.frames) == 0 { return nil, info, nf.failed ? .Too_Much_Memory : error_of(code) }
 	if len(nf.frames) == 0 { return nil, info, .Corrupt }
 	img = new(Image)
@@ -260,6 +301,34 @@ svg_run :: proc(b: ^Blob, data: []byte, opts: Decode_Options, header_only: bool)
 	img.frames[0] = Frame{pixels = pixels}
 	img.bytes = len(pixels)
 	return img, info, .None
+}
+
+////////////////////////////////
+// Encoding (the canvas's toDataURL / toBlob / convertToBlob)
+
+// Encodes a w x h image of RGBA8 as PNG (straight alpha) or JPEG (`quality` 0 to 1; transparent areas over black).
+// `premultiplied`: the pixels are premultiplied (a canvas's): PNG gets them divided by alpha, JPEG as they are (a
+// color premultiplied by its alpha is that color over black). The bytes are allocated with `allocator`. false: it
+// could not be encoded (a size out of range, no memory).
+encode_rgba :: proc(rgba: []u8, w, h: int, format: Encode_Format, quality: f32, premultiplied: bool, allocator := context.allocator) -> (out: []u8, ok: bool) {
+	if w <= 0 || h <= 0 || w > 65535 * 4 || h > 65535 * 4 || len(rgba) < w * h * 4 { return }
+	Out :: struct { ctx: runtime.Context, bytes: []u8 }
+	o := Out{ctx = context}
+	o.ctx.allocator = allocator
+	sink := Wm_Byte_Sink{user = &o, alloc = proc "c" (user: rawptr, n: uint) -> [^]u8 {
+		o := (^Out)(user)
+		context = o.ctx
+		b, err := make([]u8, int(n))
+		if err != nil { return nil }
+		o.bytes = b
+		return raw_data(b)
+	}}
+	code := u32(format == .Png ? 1 : 2)
+	if wm_raster_encode(code, raw_data(rgba), u32(w), u32(h), quality, u8(premultiplied), &sink) != 0 {
+		delete(o.bytes, allocator)
+		return nil, false
+	}
+	return o.bytes, o.bytes != nil
 }
 
 ////////////////////////////////

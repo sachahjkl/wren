@@ -299,7 +299,8 @@ want_stacks :: proc "contextless" () -> bool {
 write_stack :: proc(b: ^strings.Builder, stack: Stack) {
 	stack := stack
 	n := 0
-	for f in stack { if f == 0 { break }; n += 1 }
+	none: trace.Capture_Entry // uintptr on Windows, rawptr on Linux and macOS
+	for f in stack { if f == none { break }; n += 1 }
 	if n == 0 { return }
 	locs, err := trace.resolve_n(stack[:n], context.allocator, context.temp_allocator)
 	if err != nil { return }

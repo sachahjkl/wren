@@ -17,6 +17,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 
 mod avif;
 mod color;
+mod raster;
 mod scale;
 mod svg;
 mod webp;
@@ -54,6 +55,8 @@ pub struct Limits {
     pub svg_max_depth: u32,
     pub svg_max_expansion: u64,
     pub svg_max_render_cost: u64,
+    pub target_w: u32,     // the size the image will be shown at (0: unknown): an ICO's entry is chosen by it
+    pub target_h: u32,
 }
 
 /// What the headers say.
@@ -71,7 +74,8 @@ pub struct Info {
     // SVG: natural size in CSS px when the document gives one, and the natural ratio (0 = none)
     pub svg_has_w: u8,
     pub svg_has_h: u8,
-    pub _pad: [u8; 2],
+    pub orientation: u8,   // raster: the EXIF orientation applied (1..8; 0 = none known)
+    pub _pad: u8,
     pub svg_w: f32,
     pub svg_h: f32,
     pub svg_ratio: f32,
@@ -318,8 +322,50 @@ pub unsafe extern "C" fn wm_woff2_decode(data: *const u8, len: usize, max_bytes:
     })
 }
 
+////////////////////////////////
+// PNG, JPEG, GIF, BMP, ICO, TIFF (raster.rs: the format codes raster::PNG...)
+
+/// # Safety
+/// See `args`.
+#[no_mangle]
+pub unsafe extern "C" fn wm_raster_probe(format: u32, data: *const u8, len: usize, limits: *const Limits, info: *mut Info) -> i32 {
+    guard(|| {
+        let (bytes, l, info) = args(data, len, limits, info)?;
+        *info = raster::probe(format, bytes, &l)?;
+        Ok(())
+    })
+}
+
+/// Decodes every frame (or the first) at the natural size (oriented), or the still image reduced to `out_w` x `out_h`.
+/// # Safety
+/// See `args`; `sink` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_raster_decode(format: u32, data: *const u8, len: usize, limits: *const Limits, out_w: u32, out_h: u32, sink: *const FrameSink, info: *mut Info) -> i32 {
+    guard(|| {
+        let (bytes, l, info) = args(data, len, limits, info)?;
+        if sink.is_null() {
+            return Err(ERR_INTERNAL);
+        }
+        raster::decode(format, bytes, &l, out_w, out_h, &*sink, info)
+    })
+}
+
+/// Encodes w x h RGBA8 pixels as PNG (format 1) or JPEG (format 2) into one buffer from `sink`.
+/// # Safety
+/// `rgba` points at w*h*4 readable bytes; `sink` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_raster_encode(format: u32, rgba: *const u8, w: u32, h: u32, quality: f32, premultiplied: u8, sink: *const ByteSink) -> i32 {
+    if sink.is_null() || rgba.is_null() {
+        return ERR_INTERNAL;
+    }
+    guard(|| {
+        let px = std::slice::from_raw_parts(rgba, w as usize * h as usize * 4);
+        raster::encode(format, px, w, h, quality, premultiplied != 0, &*sink)
+    })
+}
+
 /// Versions of the libraries, for about: pages ("resvg 0.48.1, ..."), NUL-terminated, static.
 #[no_mangle]
 pub extern "C" fn wm_versions() -> *const u8 {
-    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, qcms 0.3.0, brotli-decompressor 6.1.0\0".as_ptr()
+    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, qcms 0.3.0, brotli-decompressor 6.1.0, image 0.25.10 (png 0.18.1, zune-jpeg 0.5.15, gif 0.14.2, tiff)\0".as_ptr()
 }

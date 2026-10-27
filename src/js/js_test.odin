@@ -9,11 +9,12 @@ import "core:os"
 import "core:path/filepath"
 import "core:testing"
 import "core:time"
+import "wb:base"
 import "wb:tools/testenv"
 
 @(test)
 cache_memory_and_disk :: proc(t: ^testing.T) {
-	dir := filepath.join({os.get_env("TEMP", context.temp_allocator), fmt.tprintf("wren-js-cache-test-%d", time.now()._nsec)}, context.temp_allocator) or_else ""
+	dir := filepath.join({base.temp_dir(context.temp_allocator), fmt.tprintf("wren-js-cache-test-%d", time.now()._nsec)}, context.temp_allocator) or_else ""
 	defer testenv.remove_tree(dir)
 	cache_start({memory_bytes = 64, disk = true, disk_max_bytes = 1 << 20, min_source_bytes = 4, profile_dir = dir})
 	k1 := key_of("v1", 0, "https://a.example/x.js", transmute([]byte)string("let x = 1"))
