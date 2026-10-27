@@ -174,6 +174,11 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 	switch os.get_env("WREN_NET_BACKEND", context.temp_allocator) {
 	case "rust":    c.settings.backend = .Rust
 	case "winhttp": c.settings.backend = .Winhttp
+	case:
+		if c.settings.backend == .Rust && c.settings.proxy == .System && system_proxy_uses_pac() {
+			fmt.eprintln("net: the system proxy is configured by a script (PAC): network.backend = winhttp for this session")
+			c.settings.backend = .Winhttp
+		}
 	}
 	c.events = make([dynamic]Event, heap())    // appended to from WinHTTP threads
 	c.scratch = make([dynamic]Event, heap())
@@ -193,13 +198,11 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 		tls = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
 		WinHttpSetOption(c.session, WINHTTP_OPTION_SECURE_PROTOCOLS, &tls, size_of(tls))
 	}
+	// Never HTTP/3: for a site that announces it WinHTTP tries QUIC first and, where UDP does not get through, never falls
+	// back to TCP (odin-lang.org stayed on Connecting). network.http3.enabled is the built-in stack's, which races the two.
 	protocols: win.DWORD
 	if c.settings.http2 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP2 }
-	if c.settings.http3 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP3 }
-	if protocols != 0 && !WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) {
-		protocols &= ~win.DWORD(WINHTTP_PROTOCOL_FLAG_HTTP3)   // HTTP/3 needs a recent Windows
-		WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols))
-	}
+	if protocols != 0 { WinHttpSetOption(c.session, WINHTTP_OPTION_ENABLE_HTTP_PROTOCOL, &protocols, size_of(protocols)) }
 	// Policy belongs to the fetch layer: redirects are returned to it (each hop is re-checked), and the OS never sends
 	// ambient credentials on its own.
 	never: win.DWORD = WINHTTP_OPTION_REDIRECT_POLICY_NEVER
