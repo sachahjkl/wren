@@ -9,7 +9,12 @@ import "wb:config"
 
 Proxy_Mode :: enum u8 { System, None }
 
+// Which stack carries the requests: WinHTTP (the operating system's), or the built-in one in Rust (native/net: the same on
+// every platform, HTTP/3 raced against TCP). The API, the events and the limits are the same.
+Backend :: enum u8 { Winhttp, Rust }
+
 Settings :: struct {
+	backend:       Backend,
 	max_per_host:  int,
 	max_total:     int,
 	timeout_resolve_ms, timeout_connect_ms, timeout_send_ms, timeout_receive_ms: i32,
@@ -21,9 +26,30 @@ Settings :: struct {
 	read_chunk:    int,      // size of one read from WinHTTP
 	high_water:    int,      // reading pauses when this many bytes wait for the consumer...
 	low_water:     int,      // ...and resumes below this
+	// the Rust stack only
+	h3_race_ms:    int,      // how long QUIC has to connect before TCP is used
+	h3_broken_ms:  int,      // how long an origin where QUIC failed is left to TCP
+	extra_ca_file: string,   // owned: PEM file of more trusted authorities ("" = the system's only)
+	threads:       int,
+	idle_timeout_ms:   int,
+	max_idle_per_host: int,
 }
 
 PREFS := [?]config.Def{
+	{name = "network.backend", kind = .String, default = {s = "winhttp"}, choices = {"winhttp", "rust"}, restart = true,
+		description = "The network stack. winhttp: the operating system's (Windows only). rust: the built-in stack (HTTP/1.1, HTTP/2, HTTP/3 raced against TCP, WebSockets, TLS 1.2 and 1.3 checked against the system's trust store, the system proxy settings; proxy auto-configuration scripts are not run). The WREN_NET_BACKEND environment variable overrides it."},
+	{name = "network.http3.race_ms", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 60_000, unit = "ms",
+		description = "Built-in stack: how long an HTTP/3 (QUIC) connection has to come up before the request goes over TCP instead (the QUIC attempt goes on for the next requests)."},
+	{name = "network.http3.broken_host_ms", kind = .Int, default = {i = 300_000}, bounded = true, min = 0, max = 86_400_000, unit = "ms",
+		description = "Built-in stack: how long a site where QUIC failed (UDP blocked, handshake error) is reached over TCP only."},
+	{name = "network.tls.extra_ca_file", kind = .String, default = {s = ""}, restart = true,
+		description = "Built-in stack: a PEM file of certificate authorities trusted on top of the system's (a private network, tests). Empty: the system's only."},
+	{name = "network.threads", kind = .Int, default = {i = 2}, bounded = true, min = 1, max = 64, restart = true,
+		description = "Built-in stack: threads that run the network I/O."},
+	{name = "network.pool.idle_timeout_ms", kind = .Int, default = {i = 90_000}, bounded = true, min = 1000, max = 3_600_000, unit = "ms", restart = true,
+		description = "Built-in stack: how long an idle connection is kept for reuse."},
+	{name = "network.pool.max_idle_per_host", kind = .Int, default = {i = 8}, bounded = true, min = 0, max = 256, restart = true,
+		description = "Built-in stack: idle connections kept per host for reuse."},
 	{name = "network.max_connections_per_host", kind = .Int, default = {i = 6}, bounded = true, min = 1, max = 256,
 		description = "Requests in flight to one host:port. Extra requests wait in the browser's own priority queues, so waiting never counts against the connect timeout."},
 	{name = "network.max_connections_total", kind = .Int, default = {i = 64}, bounded = true, min = 1, max = 4096,
@@ -89,6 +115,13 @@ settings_from_prefs :: proc(p: ^config.Prefs, allocator := context.allocator) ->
 	s.read_chunk = int(config.int_of(p, "network.read_chunk_bytes"))
 	s.high_water = int(config.int_of(p, "network.queue.high_water_bytes"))
 	s.low_water = min(int(config.int_of(p, "network.queue.low_water_bytes")), s.high_water)
+	s.backend = config.string_of(p, "network.backend") == "rust" ? .Rust : .Winhttp
+	s.h3_race_ms = int(config.int_of(p, "network.http3.race_ms"))
+	s.h3_broken_ms = int(config.int_of(p, "network.http3.broken_host_ms"))
+	s.extra_ca_file = strings.clone(config.string_of(p, "network.tls.extra_ca_file"), allocator)
+	s.threads = int(config.int_of(p, "network.threads"))
+	s.idle_timeout_ms = int(config.int_of(p, "network.pool.idle_timeout_ms"))
+	s.max_idle_per_host = int(config.int_of(p, "network.pool.max_idle_per_host"))
 	return s
 }
 
@@ -100,5 +133,6 @@ settings_default :: proc(allocator := context.allocator) -> Settings {
 
 settings_destroy :: proc(s: ^Settings) {
 	delete(s.user_agent)
+	delete(s.extra_ca_file)
 	s^ = {}
 }

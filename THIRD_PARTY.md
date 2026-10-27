@@ -23,6 +23,10 @@ components below; their license texts are in the executable (bout:licenses) and
 | [rav1d](https://github.com/memorysafety/rav1d) | 1.1.0 | BSD-2-Clause | `native/media` |
 | [qcms](https://github.com/FirefoxGraphics/qcms) | 0.3.0 | MIT | `native/media` |
 | [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) | 6.1.0 | BSD-3-Clause OR MIT | `native/media` |
+| [tokio](https://github.com/tokio-rs/tokio), [hyper](https://github.com/hyperium/hyper), [hyper-util](https://github.com/hyperium/hyper-util), [h2](https://github.com/hyperium/h2), [h3 / h3-quinn](https://github.com/hyperium/h3) | 1.54.1, 1.12.0, 0.1.21, 0.4.20, 0.0.8 / 0.0.10 | MIT | `native/net` (the built-in network stack) |
+| [quinn](https://github.com/quinn-rs/quinn) (QUIC), [tungstenite / tokio-tungstenite](https://github.com/snapview/tungstenite-rs) (WebSocket) | 0.11.12, 0.30.0 | MIT OR Apache-2.0 (tokio-tungstenite: MIT) | `native/net` |
+| [rustls](https://github.com/rustls/rustls), [rustls-platform-verifier](https://github.com/rustls/rustls-platform-verifier), [tokio-rustls](https://github.com/rustls/tokio-rustls) | 0.23.46, 0.6.2, 0.26.6 | Apache-2.0 OR ISC OR MIT (the verifier and tokio-rustls: MIT OR Apache-2.0) | `native/net` (TLS) |
+| [ring](https://github.com/briansmith/ring), [rustls-webpki](https://github.com/rustls/webpki), [untrusted](https://github.com/briansmith/untrusted) | 0.17.14, 0.103.16, 0.9.0 | Apache-2.0 AND ISC (webpki, untrusted: ISC) | `native/net` (cryptography, certificate parsing) |
 | other Rust crates (with those of the toolkit's text backend and accessibility adapter) | `native/Cargo.lock` | MIT, Apache-2.0, BSD, Zlib, Unicode-3.0… | `native/rust-crates.txt` (also in `about:licenses`) lists each one |
 
 The license texts of QuickJS-ng, wasi-libc and its parts, and webref are kept in

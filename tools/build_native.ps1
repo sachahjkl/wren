@@ -1,6 +1,6 @@
 # Builds Wren's Rust code (the native\ workspace) into build\native\wren_native.lib, the one Rust static library linked
 # into wren.exe (no DLL to ship): the image decoders and WOFF2 (native\media: resvg, image-webp, zenavif-parse, rav1d,
-# qcms, brotli), the toolkit's native text backend (ext\gui_toolkit\native\text) and its accessibility adapter
+# qcms, brotli), the network stack (native\net: hyper, quinn + h3, tungstenite, rustls), the toolkit's native text backend (ext\gui_toolkit\native\text) and its accessibility adapter
 # (ext\gui_toolkit\native\a11y), picked by the assembly crate native\wren_native. See native\Cargo.toml.
 #   powershell -NoProfile -File tools\build_native.ps1 [-Profile release|quick] [-Force]
 # -Profile: Cargo's profile (native\Cargo.toml): `release` (default) is fat LTO, what is shipped (build.bat release and
@@ -28,7 +28,7 @@ $features = @('a11y')
 if ($text) { $features = @('text') + $features }
 
 # what the library is made of: change any of it and it is built again
-$crates = @((Join-Path $ws 'media'), (Join-Path $ws 'wren_native'), (Join-Path $root 'ext\gui_toolkit\native\a11y'))
+$crates = @((Join-Path $ws 'media'), (Join-Path $ws 'net'), (Join-Path $ws 'wren_native'), (Join-Path $root 'ext\gui_toolkit\native\a11y'))
 if ($text) { $crates += Join-Path $root 'ext\gui_toolkit\native\text' }
 $inputs = @(Get-Item (Join-Path $ws 'Cargo.toml'), (Join-Path $ws 'Cargo.lock'), $PSCommandPath)
 foreach ($c in $crates) { $inputs += @(Get-ChildItem (Join-Path $c 'src') -Recurse -File) + @(Get-Item (Join-Path $c 'Cargo.toml')) }
