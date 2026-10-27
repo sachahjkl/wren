@@ -1,8 +1,9 @@
 /* shadow.c: shadow trees for JavaScript (DOM §4.2.2, §4.8, HTML slots and declarative shadow roots, ElementInternals,
  * CSSOM constructable stylesheets). The trees, slots and the event path are the browser's (src/dom/shadow.odin,
  * src/page/js_shadow.odin); these are the members whose arguments need converting by hand (dictionaries, variadic
- * nodes, setlike CustomStateSet), and the natives of prelude/shadow.js, which keeps the adoptedStyleSheets arrays
- * (ObservableArray: a proxy whose every change is given to the browser). */
+ * nodes, setlike CustomStateSet), and, native here in place of the old prelude/shadow.js: the adoptedStyleSheets
+ * ObservableArray (an exotic array whose every change is given to the browser), the Window's named properties object
+ * and element.part — all built with JSClassExoticMethods. */
 #include "dom_internal.h"
 #include "web.h"
 
@@ -813,56 +814,26 @@ JSValue wjr_StyleSheetList_item(JSContext *ctx, JSValueConst t, int argc, JSValu
     return found ? v : JS_NULL;
 }
 
-/* ---- adoptedStyleSheets (prelude/shadow.js keeps the arrays) ---- */
+/* ---- adoptedStyleSheets: an ObservableArray<CSSStyleSheet> per root, native (in place of prelude/shadow.js) ----
+ * It is an exotic object whose backing store is a real array kept in its opaque; reads delegate to the backing array
+ * and its Array.prototype methods (set/define/delete are the exotic hooks, so push/splice through the methods are
+ * seen); every change is checked (constructed stylesheets only) and given to the browser (wr_DocumentOrShadowRoot_adopt).
+ * The arrays are kept by root handle (obs_by_root), not by wrapper, and closed roots are dropped from time to time. */
 
-static JSValue shadow_hooks;     /* the prelude's functions, counted */
-static bool shadow_hooks_set;
+static JSClassID obs_class;
+static JSValue obs_by_root;   /* Map root handle -> the ObservableArray (counted); per realm */
+static bool shadow_ready;
+static uint32_t obs_made;
 
-static JSValue call_hook(JSContext *ctx, const char *name, int argc, JSValueConst *argv)
+static JSValue sg_global_prop(JSContext *ctx, const char *name) { return JS_GetPropertyStr(ctx, wj_the_realm.global, name); }
+
+static bool atom_is_name(JSContext *ctx, JSAtom prop, const char *name)
 {
-    if (!shadow_hooks_set) { return JS_ThrowTypeError(ctx, "adoptedStyleSheets: not available"); }
-    JSValue fn = JS_GetPropertyStr(ctx, shadow_hooks, name);
-    JSValue r = JS_Call(ctx, fn, JS_UNDEFINED, argc, argv);
-    JS_FreeValue(ctx, fn);
-    return r;
-}
-
-static JSValue adopted_get(JSContext *ctx, JSValueConst t, int iface)
-{
-    wj_obj *o = wj_this(ctx, t, iface);
-    if (!o) { return JS_EXCEPTION; }
-    JSValue args[2] = { JS_DupValue(ctx, t), JS_NewFloat64(ctx, (double)o->handle) };
-    JSValue r = call_hook(ctx, "get", 2, args);
-    JS_FreeValue(ctx, args[0]); JS_FreeValue(ctx, args[1]);
-    return r;
-}
-
-static JSValue adopted_set(JSContext *ctx, JSValueConst t, JSValueConst v, int iface)
-{
-    wj_obj *o = wj_this(ctx, t, iface);
-    if (!o) { return JS_EXCEPTION; }
-    JSValue args[3] = { JS_DupValue(ctx, t), JS_NewFloat64(ctx, (double)o->handle), JS_DupValue(ctx, v) };
-    JSValue r = call_hook(ctx, "set", 3, args);
-    for (int i = 0; i < 3; i++) { JS_FreeValue(ctx, args[i]); }
-    if (JS_IsException(r)) { return r; }
-    JS_FreeValue(ctx, r);
-    return JS_UNDEFINED;
-}
-
-JSValue wjr_Document_get_adoptedStyleSheets(JSContext *ctx, JSValueConst t) { return adopted_get(ctx, t, I(Document)); }
-JSValue wjr_Document_set_adoptedStyleSheets(JSContext *ctx, JSValueConst t, JSValueConst v) { return adopted_set(ctx, t, v, I(Document)); }
-JSValue wjr_ShadowRoot_get_adoptedStyleSheets(JSContext *ctx, JSValueConst t) { return adopted_get(ctx, t, I(ShadowRoot)); }
-JSValue wjr_ShadowRoot_set_adoptedStyleSheets(JSContext *ctx, JSValueConst t, JSValueConst v) { return adopted_set(ctx, t, v, I(ShadowRoot)); }
-
-/* __wren_shadow_host: install(hooks), adopt(root handle, sheets), isSheet(v), isLive(root handle) */
-static JSValue host_install(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val);
-    if (argc < 1 || !JS_IsObject(argv[0])) { return JS_ThrowTypeError(ctx, "install: an object of hooks"); }
-    if (shadow_hooks_set) { JS_FreeValue(ctx, shadow_hooks); }
-    shadow_hooks = JS_DupValue(ctx, argv[0]);
-    shadow_hooks_set = true;
-    return JS_UNDEFINED;
+    JSValue v = JS_AtomToValue(ctx, prop);
+    bool eq = false;
+    if (JS_IsString(v)) { const char *s = JS_ToCString(ctx, v); eq = s && strcmp(s, name) == 0; if (s) { JS_FreeCString(ctx, s); } }
+    JS_FreeValue(ctx, v);
+    return eq;
 }
 
 /* the browser's handle of a constructed stylesheet wrapper (0: not one) */
@@ -873,87 +844,411 @@ static uint64_t sheet_handle(JSValueConst v)
     return o->handle;
 }
 
-static JSValue host_is_sheet(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* isSheet(v): 0 not a CSSStyleSheet, 1 a non-constructed one, 2 a constructed one */
+static int sheet_kind(JSContext *ctx, JSValueConst v)
 {
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return JS_FALSE; }
-    if (wj_unwrap(argv[0], I(CSSStyleSheet)) == NULL) { return JS_NewInt32(ctx, 0); }
-    return JS_NewInt32(ctx, sheet_handle(argv[0]) ? 2 : 1);   /* 1: a stylesheet, not constructed */
+    WJ_UNUSED(ctx);
+    if (wj_unwrap(v, I(CSSStyleSheet)) == NULL) { return 0; }
+    return sheet_handle(v) ? 2 : 1;
 }
 
-static JSValue host_adopt(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* check(v): throws for a non-stylesheet or a non-constructed one; returns true on a constructed sheet */
+static bool obs_check(JSContext *ctx, JSValueConst v)
 {
-    WJ_UNUSED(this_val);
-    if (argc < 2) { return JS_ThrowTypeError(ctx, "adopt: (root, sheets)"); }
-    double hd = 0;
-    if (JS_ToFloat64(ctx, &hd, argv[0]) < 0) { return JS_EXCEPTION; }
-    JSValue len = JS_GetPropertyStr(ctx, argv[1], "length");
-    uint32_t n = 0;
-    if (JS_ToUint32(ctx, &n, len) < 0) { JS_FreeValue(ctx, len); return JS_EXCEPTION; }
-    JS_FreeValue(ctx, len);
-    uint64_t *hs = n ? malloc(n * sizeof *hs) : NULL;
+    int k = sheet_kind(ctx, v);
+    if (k == 0) { JS_ThrowTypeError(ctx, "Failed to set the 'adoptedStyleSheets' property: Failed to convert value to 'CSSStyleSheet'."); return false; }
+    if (k == 1) { JS_Throw(ctx, web_dom_exception(ctx, "NotAllowedError", "Failed to set the 'adoptedStyleSheets' property: Can't adopt non-constructed stylesheets.")); return false; }
+    return true;
+}
+
+typedef struct { uint64_t root; JSValue array; } obs_state;
+
+static void obs_finalizer(JSRuntime *rt, JSValue val)
+{
+    obs_state *s = JS_GetOpaque(val, obs_class);
+    if (!s) { return; }
+    JS_FreeValueRT(rt, s->array);
+    free(s);
+}
+static void obs_mark(JSRuntime *rt, JSValueConst val, JS_MarkFunc *mark)
+{
+    obs_state *s = JS_GetOpaque(val, obs_class);
+    if (s) { JS_MarkValue(rt, s->array, mark); }
+}
+
+/* commit(): give the backing array's sheets to the browser */
+static JSValue obs_commit(JSContext *ctx, obs_state *s)
+{
+    int64_t n = 0; JS_GetLength(ctx, s->array, &n);
+    uint64_t *hs = n ? malloc((size_t)n * sizeof *hs) : NULL;
     if (n && !hs) { return JS_ThrowOutOfMemory(ctx); }
-    for (uint32_t i = 0; i < n; i++) {
-        JSValue v = JS_GetPropertyUint32(ctx, argv[1], i);
-        hs[i] = sheet_handle(v);
-        JS_FreeValue(ctx, v);
-    }
-    int32_t st = wr_DocumentOrShadowRoot_adopt((uint64_t)hd, hs, n);
+    for (int64_t i = 0; i < n; i++) { JSValue v = JS_GetPropertyInt64(ctx, s->array, i); hs[i] = sheet_handle(v); JS_FreeValue(ctx, v); }
+    int32_t st = wr_DocumentOrShadowRoot_adopt(s->root, hs, (uint32_t)n);
     free(hs);
     return st < 0 ? wj_throw_status(ctx, st, "adoptedStyleSheets") : JS_UNDEFINED;
 }
 
-static JSValue host_is_live(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+static bool obs_is_index(JSContext *ctx, JSAtom prop, uint32_t *out)
 {
-    WJ_UNUSED(this_val);
-    double hd = 0;
-    if (argc < 1 || JS_ToFloat64(ctx, &hd, argv[0]) < 0) { return JS_FALSE; }
-    return JS_NewBool(ctx, wr_Node_isLive((uint64_t)hd) != 0);
+    return JS_AtomGetArrayIndex(ctx, out, prop);
 }
+
+/* exotic set: an index or length; else fall through to the backing array (a plain property) */
+static int obs_set(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueConst value, JSValueConst receiver, int flags)
+{
+    WJ_UNUSED(receiver); WJ_UNUSED(flags);
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return -1; }
+    uint32_t idx;
+    if (obs_is_index(ctx, prop, &idx)) {
+        int64_t len = 0; JS_GetLength(ctx, s->array, &len);
+        if ((int64_t)idx > len) { JS_ThrowRangeError(ctx, "adoptedStyleSheets: index past the end"); return -1; }
+        if (!obs_check(ctx, value)) { return -1; }
+        JS_SetPropertyInt64(ctx, s->array, idx, JS_DupValue(ctx, value));
+        JSValue c = obs_commit(ctx, s);
+        if (JS_IsException(c)) { return -1; }
+        return true;
+    }
+    if (atom_is_name(ctx, prop, "length")) {
+        int64_t len = 0; JS_GetLength(ctx, s->array, &len);
+        int64_t n = 0; if (JS_ToInt64(ctx, &n, value) < 0) { return -1; }
+        if (n < 0 || n > len) { JS_ThrowRangeError(ctx, "adoptedStyleSheets: invalid length"); return -1; }
+        JS_SetPropertyStr(ctx, s->array, "length", JS_NewInt64(ctx, n));
+        JSValue c = obs_commit(ctx, s);
+        if (JS_IsException(c)) { return -1; }
+        return true;
+    }
+    /* Reflect.set(backing, prop, value) */
+    JSValue v = JS_AtomToValue(ctx, prop);
+    int r = JS_SetProperty(ctx, s->array, prop, JS_DupValue(ctx, value));
+    JS_FreeValue(ctx, v);
+    return r;
+}
+static int obs_define(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueConst val, JSValueConst g, JSValueConst s2, int flags)
+{
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return -1; }
+    uint32_t idx;
+    if (obs_is_index(ctx, prop, &idx)) {
+        if (!(flags & JS_PROP_HAS_VALUE)) { return false; }
+        int64_t len = 0; JS_GetLength(ctx, s->array, &len);
+        if ((int64_t)idx > len) { return false; }
+        if (!obs_check(ctx, val)) { return -1; }
+        JS_SetPropertyInt64(ctx, s->array, idx, JS_DupValue(ctx, val));
+        JSValue c = obs_commit(ctx, s);
+        if (JS_IsException(c)) { return -1; }
+        return true;
+    }
+    return JS_DefineProperty(ctx, s->array, prop, val, g, s2, flags);
+}
+static int obs_delete(JSContext *ctx, JSValueConst obj, JSAtom prop)
+{
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return -1; }
+    uint32_t idx;
+    if (obs_is_index(ctx, prop, &idx)) {
+        int64_t len = 0; JS_GetLength(ctx, s->array, &len);
+        if ((int64_t)idx != len - 1) { return false; }   /* only the last element */
+        JS_SetPropertyStr(ctx, s->array, "length", JS_NewInt64(ctx, len - 1));
+        JSValue c = obs_commit(ctx, s);
+        if (JS_IsException(c)) { return -1; }
+        return true;
+    }
+    return JS_DeleteProperty(ctx, s->array, prop, 0);
+}
+/* reads delegate to the backing array */
+static JSValue obs_get(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueConst receiver)
+{
+    WJ_UNUSED(receiver);
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return JS_UNDEFINED; }
+    return JS_GetProperty(ctx, s->array, prop);
+}
+static int obs_has(JSContext *ctx, JSValueConst obj, JSAtom prop)
+{
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return 0; }
+    return JS_HasProperty(ctx, s->array, prop);
+}
+static int obs_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop)
+{
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { return 0; }
+    JSPropertyDescriptor d;
+    int r = JS_GetOwnProperty(ctx, &d, s->array, prop);
+    if (r <= 0) { return r; }
+    if (desc) { *desc = d; } else { JS_FreeValue(ctx, d.value); JS_FreeValue(ctx, d.getter); JS_FreeValue(ctx, d.setter); }
+    return 1;
+}
+static int obs_names(JSContext *ctx, JSPropertyEnum **ptab, uint32_t *plen, JSValueConst obj)
+{
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    if (!s) { *ptab = js_malloc(ctx, sizeof(JSPropertyEnum)); *plen = 0; return *ptab ? 0 : -1; }
+    return JS_GetOwnPropertyNames(ctx, ptab, plen, s->array, JS_GPN_STRING_MASK | JS_GPN_SYMBOL_MASK);
+}
+
+static JSClassExoticMethods obs_exotic = {
+    .get_own_property = obs_get_own,
+    .get_own_property_names = obs_names,
+    .delete_property = obs_delete,
+    .define_own_property = obs_define,
+    .has_property = obs_has,
+    .get_property = obs_get,
+    .set_property = obs_set,
+};
+static JSClassDef obs_def = { "Array", .finalizer = obs_finalizer, .gc_mark = obs_mark, .exotic = &obs_exotic };
+
+/* drop the observable arrays of roots that are gone (the old prune, every 64 made) */
+static void obs_prune(JSContext *ctx)
+{
+    if (JS_IsUndefined(obs_by_root)) { return; }
+    JSValue keysfn = JS_GetPropertyStr(ctx, obs_by_root, "keys");
+    JSValue it = JS_Call(ctx, keysfn, obs_by_root, 0, NULL); JS_FreeValue(ctx, keysfn);
+    JSValue arrayc = sg_global_prop(ctx, "Array"); JSValue from = JS_GetPropertyStr(ctx, arrayc, "from");
+    JSValue keys = JS_Call(ctx, from, arrayc, 1, (JSValueConst *)&it); JS_FreeValue(ctx, from); JS_FreeValue(ctx, arrayc); JS_FreeValue(ctx, it);
+    int64_t n = 0; JS_GetLength(ctx, keys, &n);
+    JSValue delfn = JS_GetPropertyStr(ctx, obs_by_root, "delete");
+    for (int64_t i = 0; i < n; i++) {
+        JSValue k = JS_GetPropertyInt64(ctx, keys, i);
+        double d = 0; JS_ToFloat64(ctx, &d, k);
+        if (wr_Node_isLive((uint64_t)d) == 0) { JSValue r = JS_Call(ctx, delfn, obs_by_root, 1, (JSValueConst *)&k); JS_FreeValue(ctx, r); }
+        JS_FreeValue(ctx, k);
+    }
+    JS_FreeValue(ctx, delfn); JS_FreeValue(ctx, keys);
+}
+
+/* the ObservableArray of a root, made (empty) the first time; the same object each time */
+static JSValue obs_entry(JSContext *ctx, uint64_t handle)
+{
+    if (JS_IsUndefined(obs_by_root)) { JSValue mapc = sg_global_prop(ctx, "Map"); obs_by_root = JS_CallConstructor(ctx, mapc, 0, NULL); JS_FreeValue(ctx, mapc); }
+    JSValue key = JS_NewFloat64(ctx, (double)handle);
+    JSValue getfn = JS_GetPropertyStr(ctx, obs_by_root, "get");
+    JSValue e = JS_Call(ctx, getfn, obs_by_root, 1, (JSValueConst *)&key);
+    JS_FreeValue(ctx, getfn);
+    if (!JS_IsUndefined(e)) { JS_FreeValue(ctx, key); return e; }
+    JS_FreeValue(ctx, e);
+    JSValue obj = JS_NewObjectClass(ctx, (int)obs_class);
+    if (JS_IsException(obj)) { JS_FreeValue(ctx, key); return obj; }
+    obs_state *s = calloc(1, sizeof *s);
+    if (!s) { JS_FreeValue(ctx, obj); JS_FreeValue(ctx, key); return JS_ThrowOutOfMemory(ctx); }
+    s->root = handle; s->array = JS_NewArray(ctx);
+    JS_SetOpaque(obj, s);
+    /* reads resolve array methods: its prototype is Array.prototype */
+    JSValue arrayc = sg_global_prop(ctx, "Array");
+    JSValue arrproto = JS_GetPropertyStr(ctx, arrayc, "prototype");
+    JS_SetPrototype(ctx, obj, arrproto);
+    JS_FreeValue(ctx, arrproto); JS_FreeValue(ctx, arrayc);
+    JSValue setfn = JS_GetPropertyStr(ctx, obs_by_root, "set");
+    JSValueConst sa[2] = { key, obj };
+    JSValue r = JS_Call(ctx, setfn, obs_by_root, 2, sa); JS_FreeValue(ctx, r); JS_FreeValue(ctx, setfn); JS_FreeValue(ctx, key);
+    if (++obs_made % 64 == 0) { obs_prune(ctx); }
+    return obj;
+}
+
+static JSValue adopted_get(JSContext *ctx, JSValueConst t, int iface)
+{
+    wj_obj *o = wj_this(ctx, t, iface);
+    if (!o) { return JS_EXCEPTION; }
+    if (!shadow_ready) { return JS_ThrowTypeError(ctx, "adoptedStyleSheets: not available"); }
+    return obs_entry(ctx, o->handle);
+}
+
+/* set adoptedStyleSheets = value: the sequence replaces the array, then commit */
+static JSValue adopted_set(JSContext *ctx, JSValueConst t, JSValueConst v, int iface)
+{
+    wj_obj *o = wj_this(ctx, t, iface);
+    if (!o) { return JS_EXCEPTION; }
+    if (!shadow_ready) { return JS_ThrowTypeError(ctx, "adoptedStyleSheets: not available"); }
+    int it = JS_IsObject(v) ? web_is_iterable(ctx, v) : 0;
+    if (it <= 0) {
+        if (it < 0) { return JS_EXCEPTION; }
+        return JS_ThrowTypeError(ctx, "Failed to set the 'adoptedStyleSheets' property: The provided value cannot be converted to a sequence.");
+    }
+    /* Array.from(value): materialise and check every element first */
+    JSValue arrayc = sg_global_prop(ctx, "Array");
+    JSValue from = JS_GetPropertyStr(ctx, arrayc, "from");
+    JSValue mat = JS_Call(ctx, from, arrayc, 1, (JSValueConst *)&v);
+    JS_FreeValue(ctx, from); JS_FreeValue(ctx, arrayc);
+    if (JS_IsException(mat)) { return mat; }
+    int64_t n = 0; JS_GetLength(ctx, mat, &n);
+    for (int64_t i = 0; i < n; i++) { JSValue el = JS_GetPropertyInt64(ctx, mat, i); if (!obs_check(ctx, el)) { JS_FreeValue(ctx, el); JS_FreeValue(ctx, mat); return JS_EXCEPTION; } JS_FreeValue(ctx, el); }
+    JSValue obj = obs_entry(ctx, o->handle);
+    if (JS_IsException(obj)) { JS_FreeValue(ctx, mat); return obj; }
+    obs_state *s = JS_GetOpaque(obj, obs_class);
+    /* array.length = 0; push each */
+    JS_SetPropertyStr(ctx, s->array, "length", JS_NewInt32(ctx, 0));
+    for (int64_t i = 0; i < n; i++) { JSValue el = JS_GetPropertyInt64(ctx, mat, i); JS_SetPropertyInt64(ctx, s->array, i, el); }
+    JS_FreeValue(ctx, mat);
+    JSValue c = obs_commit(ctx, s);
+    JS_FreeValue(ctx, obj);
+    if (JS_IsException(c)) { return c; }
+    return JS_UNDEFINED;
+}
+
+JSValue wjr_Document_get_adoptedStyleSheets(JSContext *ctx, JSValueConst t) { return adopted_get(ctx, t, I(Document)); }
+JSValue wjr_Document_set_adoptedStyleSheets(JSContext *ctx, JSValueConst t, JSValueConst v) { return adopted_set(ctx, t, v, I(Document)); }
+JSValue wjr_ShadowRoot_get_adoptedStyleSheets(JSContext *ctx, JSValueConst t) { return adopted_get(ctx, t, I(ShadowRoot)); }
+JSValue wjr_ShadowRoot_set_adoptedStyleSheets(JSContext *ctx, JSValueConst t, JSValueConst v) { return adopted_set(ctx, t, v, I(ShadowRoot)); }
+
+/* ---- the Window's named properties object (HTML §7.2.2.3) ----
+ * Elements with an id, and embed/form/img/object elements with a name, reachable as properties of the global. A null-
+ * backed exotic object inserted between Window.prototype and EventTarget.prototype whose get/has/getOwnPropertyDescriptor
+ * fall back to a document lookup when Window.prototype / the global do not already define the name. */
+
+static JSClassID named_class;
+
+static JSValue named_lookup(JSContext *ctx, JSAtom prop)
+{
+    JSValue pv = JS_AtomToValue(ctx, prop);
+    if (!JS_IsString(pv)) { JS_FreeValue(ctx, pv); return JS_UNDEFINED; }
+    size_t len; const char *name = JS_ToCStringLen(ctx, &len, pv);
+    JS_FreeValue(ctx, pv);
+    if (!name || len == 0) { if (name) { JS_FreeCString(ctx, name); } return JS_UNDEFINED; }
+    /* lone surrogates: name.isWellFormed() === false */
+    bool well_formed = true;
+    { JSValue sv = JS_AtomToValue(ctx, prop); JSValue iwf = JS_GetPropertyStr(ctx, sv, "isWellFormed"); if (JS_IsFunction(ctx, iwf)) { JSValue r = JS_Call(ctx, iwf, sv, 0, NULL); well_formed = JS_ToBool(ctx, r); JS_FreeValue(ctx, r); } JS_FreeValue(ctx, iwf); JS_FreeValue(ctx, sv); }
+    if (!well_formed) { JS_FreeCString(ctx, name); return JS_UNDEFINED; }
+    /* a child frame's window first (runtime/frames.c) */
+    extern JSValue wj_frames_lookup(JSContext *ctx, JSValueConst name);
+    JSValue namev = JS_NewStringLen(ctx, name, len);
+    JSValue w = wj_frames_lookup(ctx, namev);
+    if (!JS_IsUndefined(w) && !JS_IsNull(w)) { JS_FreeValue(ctx, namev); JS_FreeCString(ctx, name); return w; }
+    JS_FreeValue(ctx, w);
+    JSValue document = sg_global_prop(ctx, "document");
+    if (!JS_IsObject(document)) { JS_FreeValue(ctx, document); JS_FreeValue(ctx, namev); JS_FreeCString(ctx, name); return JS_UNDEFINED; }
+    JSValue result = JS_UNDEFINED;
+    /* for (el of document.getElementsByName(name)) if NAMED.has(el.localName) return el */
+    JSValue gebn = JS_GetPropertyStr(ctx, document, "getElementsByName");
+    JSValue list = JS_Call(ctx, gebn, document, 1, (JSValueConst *)&namev);
+    JS_FreeValue(ctx, gebn);
+    if (!JS_IsException(list) && JS_IsObject(list)) {
+        int64_t n = 0; JS_GetLength(ctx, list, &n);
+        for (int64_t i = 0; i < n; i++) {
+            JSValue el = JS_GetPropertyInt64(ctx, list, i);
+            JSValue lnv = JS_GetPropertyStr(ctx, el, "localName");
+            const char *ln = JS_ToCString(ctx, lnv);
+            bool named = ln && (strcmp(ln, "embed") == 0 || strcmp(ln, "form") == 0 || strcmp(ln, "img") == 0 || strcmp(ln, "object") == 0);
+            if (ln) { JS_FreeCString(ctx, ln); }
+            JS_FreeValue(ctx, lnv);
+            if (named) { result = el; break; }
+            JS_FreeValue(ctx, el);
+        }
+    } else if (JS_IsException(list)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+    JS_FreeValue(ctx, list);
+    if (JS_IsUndefined(result)) {
+        JSValue gebi = JS_GetPropertyStr(ctx, document, "getElementById");
+        JSValue el = JS_Call(ctx, gebi, document, 1, (JSValueConst *)&namev);
+        JS_FreeValue(ctx, gebi);
+        if (JS_IsException(el)) { JS_FreeValue(ctx, JS_GetException(ctx)); }
+        else if (!JS_IsNull(el)) { result = el; }
+        else { JS_FreeValue(ctx, el); }
+    }
+    JS_FreeValue(ctx, document); JS_FreeValue(ctx, namev); JS_FreeCString(ctx, name);
+    return result;
+}
+
+/* The exotic object has no own data properties of its own: a looked-up name is reported as an own data property here,
+ * so the engine's ordinary [[Get]] / [[Has]] (which walk the chain and call get_own_property at each step with the
+ * right receiver) see it. Names Window.prototype or the global already define are found before the chain reaches this
+ * object, so they win. define / delete refuse, as the spec's named-properties object does. */
+static int named_get_own(JSContext *ctx, JSPropertyDescriptor *desc, JSValueConst obj, JSAtom prop)
+{
+    JSValue pv = JS_AtomToValue(ctx, prop);
+    bool is_str = JS_IsString(pv);
+    JS_FreeValue(ctx, pv);
+    if (!is_str) { return 0; }
+    /* a name the object's own prototype chain (EventTarget.prototype...) already has is not shadowed (the old
+     * proxy's `!(p in t)` test, t's prototype being EventTarget.prototype) */
+    JSValue proto = JS_GetPrototype(ctx, obj);
+    int on_proto = JS_IsObject(proto) ? JS_HasProperty(ctx, proto, prop) : 0;
+    JS_FreeValue(ctx, proto);
+    if (on_proto > 0) { return 0; }
+    JSValue v = named_lookup(ctx, prop);
+    if (JS_IsUndefined(v)) { return 0; }
+    if (desc) { desc->flags = JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE; desc->value = v; desc->getter = JS_UNDEFINED; desc->setter = JS_UNDEFINED; }
+    else { JS_FreeValue(ctx, v); }
+    return 1;
+}
+static int named_define(JSContext *ctx, JSValueConst obj, JSAtom prop, JSValueConst val, JSValueConst g, JSValueConst s, int flags)
+{ WJ_UNUSED(ctx); WJ_UNUSED(obj); WJ_UNUSED(prop); WJ_UNUSED(val); WJ_UNUSED(g); WJ_UNUSED(s); WJ_UNUSED(flags); return false; }
+static int named_delete(JSContext *ctx, JSValueConst obj, JSAtom prop) { WJ_UNUSED(ctx); WJ_UNUSED(obj); WJ_UNUSED(prop); return false; }
+
+static JSClassExoticMethods named_exotic = {
+    .get_own_property = named_get_own,
+    .delete_property = named_delete,
+    .define_own_property = named_define,
+};
+static JSClassDef named_def = { "WindowProperties", .exotic = &named_exotic };
+
+/* ---- element.part (CSS Shadow Parts §5): the DOMTokenList of the part attribute, the same object every time ---- */
+
+static JSValue part_lists;   /* WeakMap element -> DOMTokenList (per realm, counted) */
 
 extern JSValue wj_token_list_of(JSContext *ctx, JSValueConst element, const char *attr);
 
-static JSValue host_part_list(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+static JSValue part_get(JSContext *ctx, JSValueConst this_val)
 {
-    WJ_UNUSED(this_val);
-    if (argc < 1) { return JS_ThrowTypeError(ctx, "partList: an element"); }
-    return wj_token_list_of(ctx, argv[0], "part");
+    if (JS_IsUndefined(part_lists)) { JSValue wmc = sg_global_prop(ctx, "WeakMap"); part_lists = JS_CallConstructor(ctx, wmc, 0, NULL); JS_FreeValue(ctx, wmc); }
+    JSValue getfn = JS_GetPropertyStr(ctx, part_lists, "get");
+    JSValue l = JS_Call(ctx, getfn, part_lists, 1, (JSValueConst *)&this_val);
+    JS_FreeValue(ctx, getfn);
+    if (!JS_IsUndefined(l)) { return l; }
+    JS_FreeValue(ctx, l);
+    l = wj_token_list_of(ctx, this_val, "part");
+    if (JS_IsException(l)) { return l; }
+    JSValue setfn = JS_GetPropertyStr(ctx, part_lists, "set");
+    JSValueConst sa[2] = { this_val, l };
+    JSValue r = JS_Call(ctx, setfn, part_lists, 2, sa); JS_FreeValue(ctx, r); JS_FreeValue(ctx, setfn);
+    return JS_DupValue(ctx, l);
+}
+static JSValue part_set(JSContext *ctx, JSValueConst this_val, JSValueConst v)
+{
+    JSValue l = part_get(ctx, this_val);
+    if (JS_IsException(l)) { return l; }
+    JS_SetPropertyStr(ctx, l, "value", JS_DupValue(ctx, v));
+    JS_FreeValue(ctx, l);
+    return JS_UNDEFINED;
 }
 
-/* frame(name): the window's child frame of that index or name (runtime/frames.c), undefined when none */
-static JSValue host_frame(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* register the classes at pre-initialization (called from wj_run_preludes) */
+void wj_install_shadow(JSContext *ctx)
 {
-    WJ_UNUSED(this_val);
-    extern JSValue wj_frames_lookup(JSContext *ctx, JSValueConst name);
-    return argc < 1 ? JS_UNDEFINED : wj_frames_lookup(ctx, argv[0]);
+    JSRuntime *rt = JS_GetRuntime(ctx);
+    JS_NewClassID(rt, &obs_class);
+    JS_NewClassID(rt, &named_class);
+    if (JS_NewClass(rt, obs_class, &obs_def) < 0 || JS_NewClass(rt, named_class, &named_def) < 0) { return; }
+    obs_by_root = JS_UNDEFINED;
+    part_lists = JS_UNDEFINED;
+    shadow_ready = true;
 }
 
-JSValue wj_shadow_host_object(JSContext *ctx)
-{
-    JSValue o = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, o, "frame", JS_NewCFunction(ctx, host_frame, "frame", 1));
-    JS_SetPropertyStr(ctx, o, "partList", JS_NewCFunction(ctx, host_part_list, "partList", 1));
-    JS_SetPropertyStr(ctx, o, "install", JS_NewCFunction(ctx, host_install, "install", 1));
-    JS_SetPropertyStr(ctx, o, "isSheet", JS_NewCFunction(ctx, host_is_sheet, "isSheet", 1));
-    JS_SetPropertyStr(ctx, o, "adopt", JS_NewCFunction(ctx, host_adopt, "adopt", 2));
-    JS_SetPropertyStr(ctx, o, "isLive", JS_NewCFunction(ctx, host_is_live, "isLive", 1));
-    return o;
-}
-
-/* At the start of a Window realm: the named properties object of the Window (prelude/shadow.js), the members of
- * ShadowRoot that the IDL lacks. */
+/* At the start of a Window realm: the named properties object of the Window, element.part, the members of ShadowRoot
+ * that the IDL lacks. */
 int wj_named_properties_install(JSContext *ctx)
 {
     install_shadow_root_extras(ctx);
-    if (!shadow_hooks_set) { return 0; }
-    JSValue proto = JS_GetPrototype(ctx, wj_the_realm.global);   /* Window.prototype */
-    if (!JS_IsObject(proto)) { JS_FreeValue(ctx, proto); return 0; }
-    JSValue r = call_hook(ctx, "namedProperties", 1, (JSValueConst *)&proto);
-    JS_FreeValue(ctx, proto);
-    if (JS_IsException(r)) { wj_report_pending(ctx); return 0; }   /* without named access, the realm still works */
-    JS_FreeValue(ctx, r);
-    r = call_hook(ctx, "elementExtras", 0, NULL);
-    if (JS_IsException(r)) { wj_report_pending(ctx); return 0; }
-    JS_FreeValue(ctx, r);
+    if (!shadow_ready) { return 0; }
+    /* the named properties object between Window.prototype and its prototype (EventTarget.prototype) */
+    JSValue windowProto = JS_GetPrototype(ctx, wj_the_realm.global);   /* Window.prototype */
+    if (JS_IsObject(windowProto)) {
+        JSValue parent = JS_GetPrototype(ctx, windowProto);   /* EventTarget.prototype */
+        JSValue named = JS_NewObjectClass(ctx, (int)named_class);
+        if (JS_IsObject(named)) {
+            JS_SetPrototype(ctx, named, parent);
+            JS_SetPrototype(ctx, windowProto, named);
+        } else { JS_FreeValue(ctx, named); }
+        JS_FreeValue(ctx, parent);
+    }
+    JS_FreeValue(ctx, windowProto);
+    /* element.part */
+    JSValue element = sg_global_prop(ctx, "Element");
+    if (JS_IsFunction(ctx, element)) {
+        JSValue proto = JS_GetPropertyStr(ctx, element, "prototype");
+        JSAtom a = JS_NewAtom(ctx, "part");
+        JS_DefinePropertyGetSet(ctx, proto, a, JS_NewCFunction(ctx, (JSCFunction *)part_get, "get part", 0), JS_NewCFunction(ctx, (JSCFunction *)part_set, "set part", 1), JS_PROP_CONFIGURABLE | JS_PROP_ENUMERABLE);
+        JS_FreeAtom(ctx, a);
+        JS_FreeValue(ctx, proto);
+    }
+    JS_FreeValue(ctx, element);
     return 0;
 }

@@ -14,8 +14,10 @@ int wj_run_preludes(JSContext *ctx)
      * built into the image here in place of the old prelude/customelements.js */
     extern void wj_install_custom_elements(JSContext *ctx);
     wj_install_custom_elements(ctx);
-    extern JSValue wj_shadow_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
+    /* adoptedStyleSheets (ObservableArray), the Window's named properties and element.part are native exotic objects
+     * (runtime/shadow.c), in place of prelude/shadow.js */
+    extern void wj_install_shadow(JSContext *ctx);
+    wj_install_shadow(ctx);
     /* other windows (WindowProxy) are native exotic objects (runtime/frames.c), in place of prelude/frames.js */
     extern void wj_install_frames(JSContext *ctx);
     wj_install_frames(ctx);
