@@ -603,6 +603,10 @@ Step 'tab sidebar resized by its handle: the edge where the pointer is in every 
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_resize_e2e.ps1
 } -UiOnly
+Step 'tab sidebar features (tools\sidebar_tabs_e2e.ps1, no window shown: opening and closing go through the widths between; pinned tabs, groups, the sound of a tab, through wren ctl)' {
+    if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\sidebar_tabs_e2e.ps1
+}
 Step 'live resize while a video plays (tools\resize_e2e.ps1: the real mouse drags the window corner over the player simulator for 2 x 15 s; the process must live: a modal size loop begun inside a chrome frame used to run a full frame re-entrantly)' {
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\resize_e2e.ps1
 } -UiOnly
