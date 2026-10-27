@@ -159,7 +159,6 @@ memory_trim.odin trim_state process
 os_settings.odin OS_SETTINGS_PREFS process  # a table
 os_settings.odin os_anim process
 pacing.odin FRAME_PREFS process  # a table
-pacing.odin pacer window  # exchanged by window_activate (pacer_adopt): the window's pacing, with the process's preferences and timer
 page_cursor.odin CURSOR_PREFS process  # a table
 page_cursor.odin ccfg process  # preferences read once and on change
 page_cursor.odin pcs process  # the preference watch and the log's path (a window's cursors: Window_Own.cursor)

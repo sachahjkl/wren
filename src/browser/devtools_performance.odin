@@ -136,7 +136,7 @@ performance_panel :: proc(app: ^App, t: ^Tab) {
 		frames := make([]Perf_Frame, n, ui.frame_allocator())
 		for i in 0 ..< n { frames[i] = frame_at(p, i) }
 		cd.frames, cd.colors, cd.hide = frames, hud_series_colors(), p.hide
-		cd.budget = hud_budget()
+		cd.budget = hud_budget(app)
 		peak := f32(0)
 		for f in frames { peak = max(peak, perf_height(f, p.hide)) }
 		cd.scale = clamp(peak * 1.1, cd.budget * 1.6, cd.budget * 4)

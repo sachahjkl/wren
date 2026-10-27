@@ -111,16 +111,15 @@ parse_target_hz :: proc(s: string) -> f64 {
 // the preferences and what happened since the last frame, when a frame starts, whether it waits for the screen and how it
 // is shown; pacer_wait and pacer_begin_frame execute that decision (a high-resolution timer, the swap chain's latency
 // object, the frame's time) and pacer_end_frame tells the model about the present.
+// One per window (Browser_Window.pacer: its monitor's rate, its swap chain's queue, its resize steps); the preferences and
+// the timer are the process's (App.pacing).
 Pacer :: struct {
-	cfg:        Pacer_Settings,
-	watch:      int,
 	display:    platform.Display_Info,
 	hz:         f64,          // the rate aimed for
 	period_ms:  f64,          // 1000 / hz: the frame budget
 	interval:   int,          // vsync refreshes per frame
 	timed:      bool,         // frames are timed by the browser (platform.cadence_sync)
 	tearing:    bool,         // presenting with tearing (asked for and supported)
-	timer:      win.HANDLE,   // the timing of timed frames (high resolution waitable timer)
 	variable:   bool,         // the screen shows frames above the rate it reports: the target is its top rate
 	cadence:    platform.Cadence,          // the model's memory: its clock (slots), the last frame's state
 	decision:   platform.Frame_Decision,   // this frame's (pacer_wait)
@@ -139,28 +138,41 @@ Pacer :: struct {
 	read_tick:  i64,          // tick this frame had read its input (the key of its Displayed_Frame)
 }
 
-pacer: Pacer
+// What the windows' pacers share: the preferences and the timer of timed frames (App.pacing).
+Pacing :: struct {
+	cfg:   Pacer_Settings,
+	watch: int,
+	timer: win.HANDLE,   // the timing of timed frames (high resolution waitable timer)
+}
+
+// The pacing of the window being framed (the active one; an App with no window: its bare window's).
+pacer_of :: proc(app: ^App) -> ^Pacer { return &active_window(app).pacer }
+
+// The frame's time of the window being painted, for paint code that is given no App (compositor.odin, paint_planes.odin);
+// 0 with no App (a test that paints a layout alone).
+frame_now_ms :: proc() -> f64 { return the_app != nil ? pacer_of(the_app).frame_ms : 0 }
 
 pacer_init :: proc(app: ^App) {
-	pacer.cfg = pacer_settings_from_prefs(&app.prefs)
-	render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
+	app.pacing.cfg = pacer_settings_from_prefs(&app.prefs)
+	render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
 	CREATE_WAITABLE_TIMER_HIGH_RESOLUTION :: 0x2
-	pacer.timer = win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
-	if pacer.timer == nil { pacer.timer = win.CreateWaitableTimerExW(nil, nil, 0, win.TIMER_ALL_ACCESS) }   // before Windows 10 1803
-	pacer.watch = config.watch(&app.prefs, "browser.frame.", proc(user: rawptr, name: string, p: ^config.Prefs) {
+	app.pacing.timer = win.CreateWaitableTimerExW(nil, nil, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, win.TIMER_ALL_ACCESS)
+	if app.pacing.timer == nil { app.pacing.timer = win.CreateWaitableTimerExW(nil, nil, 0, win.TIMER_ALL_ACCESS) }   // before Windows 10 1803
+	app.pacing.watch = config.watch(&app.prefs, "browser.frame.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
-		pacer.cfg = pacer_settings_from_prefs(p)
-		render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
-		pacer.display.serial = 0   // plan again
+		app.pacing.cfg = pacer_settings_from_prefs(p)
+		render.set_latency_probe(&app.r, app.pacing.cfg.latency_probe)
+		for w in app.windows { w.pacer.display.serial = 0 }   // plan again, every window
+		active_window(app).pacer.display.serial = 0
 		request_frames(app, 2)
 	}, app)
 	pacer_update(app)
 }
 
 pacer_destroy :: proc(app: ^App) {
-	config.unwatch(&app.prefs, pacer.watch)
-	if pacer.timer != nil { win.CloseHandle(pacer.timer) }
-	pacer = {}
+	config.unwatch(&app.prefs, app.pacing.watch)
+	if app.pacing.timer != nil { win.CloseHandle(app.pacing.timer) }
+	app.pacing = {}
 }
 
 // The model's choices from the preferences (`tearing`: asked for and supported).
@@ -172,12 +184,13 @@ pacer_choices :: proc(cfg: Pacer_Settings, tearing: bool) -> platform.Cadence_Ch
 pacer_update :: proc(app: ^App) {
 	// the page's idle periods leave room for a frame of this length (timers.frame_budget_ms = 0); apply_prefs makes the
 	// settings again from the preferences
+	pacer := pacer_of(app)
 	defer app.page_settings.web.frame_period_ms = pacer.period_ms
 	d := platform.display_info(active_window(app).win)
 	if d.serial == pacer.display.serial && pacer.hz > 0 { return }
 	pacer.display = d
-	pacer.tearing = pacer.cfg.mode == .Tearing && render.tearing_supported(&app.r)
-	plan := platform.cadence_plan(d, pacer_choices(pacer.cfg, pacer.tearing))
+	pacer.tearing = app.pacing.cfg.mode == .Tearing && render.tearing_supported(&app.r)
+	plan := platform.cadence_plan(d, pacer_choices(app.pacing.cfg, pacer.tearing))
 	pacer.variable, pacer.hz, pacer.period_ms, pacer.interval, pacer.timed = plan.variable, plan.hz, plan.period_ms, plan.interval, plan.timed
 	pacer.cadence.slots = plan.slots
 	render.set_present_mode(&app.r, pacer.tearing ? .Tearing : .Vsync)
@@ -193,6 +206,7 @@ Resize_Frame_Cause :: enum u8 { Step, Events, Tasks, Page, Ui_Animation, Ui_Time
 // asked for are forgotten): one picture per step of a resize instead of three.
 resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
 	wnd := active_window(app)
+	pacer := &wnd.pacer
 	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
 	// chain keeps it on screen)
 	cause := Resize_Frame_Cause.Page
@@ -229,16 +243,19 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 }
 
 // Present without waiting for a refresh: the resize step, a frame of the burst after it, the frame that answers input.
-pacer_at_once :: proc() -> bool { return platform.cadence_at_once(&pacer.cadence) }
+pacer_at_once :: proc(app: ^App) -> bool { return platform.cadence_at_once(&pacer_of(app).cadence) }
 
 // The frame is a step of a resize: made at once, whatever the screen and the cadence (chrome frames too).
-pacer_resize_step :: proc() -> bool { return pacer.cadence.state == .Resize_Step }
+pacer_resize_step :: proc(app: ^App) -> bool { return pacer_of(app).cadence.state == .Resize_Step }
 
 // The frame belongs to a resize (its step or its burst).
-pacer_resizing :: proc() -> bool { return platform.cadence_resizing(&pacer.cadence) }
+pacer_resizing :: proc(app: ^App) -> bool { return platform.cadence_resizing(&pacer_of(app).cadence) }
 
-// The frame budget in ms: what one frame may take at the target rate.
-frame_budget_ms :: proc() -> f32 { return pacer.period_ms > 0 ? f32(pacer.period_ms) : 1000.0 / 60 }
+// The frame budget in ms: what one frame may take at the target rate of the window being framed.
+frame_budget_ms :: proc(app: ^App) -> f32 {
+	period := pacer_of(app).period_ms
+	return period > 0 ? f32(period) : 1000.0 / 60
+}
 
 // The most frames the swap chain in use may queue: two for a frame shown at once (see pacer_wait), else one. `latency` is
 // the window's own memory of it (the swap chain in use is the renderer's current one: the main window's, or a surface made
@@ -256,6 +273,8 @@ pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
 // this frame (nothing moved): it starts a new run of frames.
 pacer_wait :: proc(app: ^App, idled: bool) {
 	wnd := active_window(app)
+	pacer := &wnd.pacer
+	timer := app.pacing.timer
 	t0 := time.tick_now()
 	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
 	pacer.continuous = !idled
@@ -271,17 +290,17 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	})
 	pacer.decision = d
 	pacer_latency(app, &pacer.latency, d.latency == 2)
-	if d.wait_ns > 0 && pacer.timer != nil {
+	if d.wait_ns > 0 && timer != nil {
 		due := win.LARGE_INTEGER(-(d.wait_ns / 100))   // relative, in 100 ns units
-		if win.SetWaitableTimerEx(pacer.timer, &due, 0, nil, nil, nil, 0) {
-			platform.wait_handle(wnd.win, rawptr(pacer.timer), int(d.wait_ns / 1_000_000) + 50)
+		if win.SetWaitableTimerEx(timer, &due, 0, nil, nil, nil, 0) {
+			platform.wait_handle(wnd.win, rawptr(timer), int(d.wait_ns / 1_000_000) + 50)
 		}
 	}
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
 	// the timeout (100 ms of input latency after any wake of no consequence).
 	if d.wait_swap_chain {   // (the timer's wait above takes messages)
-		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
+		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), wnd.frames_requested) }
 	}
@@ -291,6 +310,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 // its state (platform.cadence_inner_frame).
 pacer_inner_frame :: proc(app: ^App) {
 	wnd := active_window(app)
+	pacer := &wnd.pacer
 	resized := wnd.win.size != pacer.size
 	pacer.size = wnd.win.size
 	platform.cadence_inner_frame(&pacer.cadence, resized, wnd.presented)
@@ -298,6 +318,7 @@ pacer_inner_frame :: proc(app: ^App) {
 
 // After the frame's events are read: its time, its dt, and what the renderer should credit it with.
 pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
+	pacer := pacer_of(app)
 	now_ms := loop_ms(app, time.tick_now())
 	// the vblank the frame starts at, on the swap chain's grid; a variable refresh screen (or tearing) has no grid of vblanks
 	// to land on: the frames' own slots are the clock
@@ -319,12 +340,13 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 	read := time.tick_now()
 	pacer.read_tick = read._nsec
 	render.set_frame_read(&app.r, read)
-	drag_probe_count_moves(events)
+	drag_probe_count_moves(app, events)
 	render.set_frame_continuous(&app.r, pacer.continuous)
 }
 
 // After the present: frames that reached the screen since the last one go to the status bar's statistics.
 pacer_end_frame :: proc(app: ^App) {
+	pacer := pacer_of(app)
 	pacer.slot_held = false   // the present used it
 	shell_presented()
 	now := time.tick_now()._nsec
@@ -336,8 +358,8 @@ pacer_end_frame :: proc(app: ^App) {
 		if hz, ok := platform.display_live_hz(active_window(app).win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
 		pacer.live_ns = now
 	}
-	drag_probe_presented()
-	for d in render.take_displayed(&app.r) { hud_displayed(d); drag_probe_displayed(d) }
+	drag_probe_presented(app)
+	for d in render.take_displayed(&app.r) { hud_displayed(d); drag_probe_displayed(app, d) }
 }
 
 // A tick of core:time on the event loop clock (ms since the loop started), the clock pages see.

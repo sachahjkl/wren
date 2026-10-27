@@ -1257,7 +1257,8 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		j_end(&b)
 	}
 	j_bool(&b, "menuOpen", ui.ctx_menu_any_open())   // a menu of the chrome is open (the page's context menu, the tab menu...)
-	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
+	pacer := &wnd.pacer   // (the window's pacing; the preferences are the process's)
+	if app.pacing.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
 	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(wnd.tabs)))
 	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
 	// pages out of it, by reason

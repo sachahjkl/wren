@@ -250,6 +250,7 @@ smooth_scroll_to :: proc(app: ^App, t: ^Tab, node: base.Handle, target: [2]f32, 
 		append(&s.anims, Scroller_Anim{node = node, applied = cur})
 		a = &s.anims[len(s.anims) - 1]
 	}
+	pacer := pacer_of(app)
 	now := pacer.frame_ms
 	moved := false
 	for k in 0 ..< 2 {
@@ -286,7 +287,7 @@ smooth_tick :: proc(app: ^App, t: ^Tab) -> bool {
 	if t == nil || t.page == nil || t.kind != .Web { return false }
 	page_world_check("smooth_tick: scrollers moved in a chrome frame, or during a page thread pass")
 	s := smooth_of(t)
-	now := pacer.frame_ms
+	now := pacer_of(app).frame_ms
 	for i := len(s.anims) - 1; i >= 0; i -= 1 {
 		a := &s.anims[i]
 		cur, limit, ok := scroller_state(app, t, a.node)

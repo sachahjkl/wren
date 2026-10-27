@@ -275,7 +275,7 @@ plane_plan :: proc(e: ^Effects, g, s: i32, bounds: lay.Rect) -> Plane_Plan {
 	scale := want
 	key := u64(uintptr(e.l)) * 0x9E3779B97F4A7C15 + u64(g)
 	sig := matrix_signature(m)
-	now := pacer.frame_ms
+	now := frame_now_ms()
 	if plane_mem.allocator.procedure == nil { plane_mem = make(map[u64]Plane_Mem, 64, base.permanent_allocator()) }   // (lives as long as the process)
 	mem, known := plane_mem[key]
 	stale := false
