@@ -957,7 +957,7 @@ static bool bitmap_options(JSContext *ctx, JSValueConst options, bitmap_opts *o)
 static void opts_from_array(JSContext *ctx, JSValueConst a, bitmap_opts *o)
 {
     o->orient = 0; o->premul = 0; o->colorspace = 0; o->resize_w = 0; o->resize_h = 0; o->resize_q = 1;
-    if (!JS_IsArray(ctx, a)) { return; }
+    if (!JS_IsArray(a)) { return; }
     int32_t *f[] = { &o->orient, &o->premul, &o->colorspace, &o->resize_w, &o->resize_h, &o->resize_q };
     for (uint32_t i = 0; i < 6; i++) {
         JSValue v = JS_GetPropertyUint32(ctx, a, i);
