@@ -256,6 +256,16 @@ post_page_task :: proc(p: ^Page, fn: Page_Task_Proc, data: rawptr) {
 	host.post(p.loop, run_page_task, t)
 }
 
+// The page tasks still in the loop's queue when the browser exits: none of their pages is left, so each one frees its data
+// (p == nil) and itself, as it would have if the loop had run it.
+discard_page_tasks :: proc(l: ^host.Loop) {
+	host.discard_posted(l, run_page_task, proc(d: rawptr) {
+		t := (^Page_Task)(d)
+		t.fn(nil, t.data)
+		free(t)
+	})
+}
+
 @(private)
 Realm_Task :: struct {
 	page:    ^Page,

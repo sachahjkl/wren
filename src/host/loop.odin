@@ -108,6 +108,20 @@ now_ns :: proc(l: ^Loop) -> i64 {
 	return i64(time.tick_diff(l.origin, time.tick_now()))
 }
 
+// Takes out of the posted queue the tasks of `fn` that did not run and hands each one's data to `discard` (what a loop being
+// destroyed does with the tasks nobody will run: whoever allocated their data frees it). Any thread.
+discard_posted :: proc(l: ^Loop, fn: Task_Proc, discard: proc(data: rawptr)) {
+	sync.mutex_lock(&l.mu)
+	taken := make([dynamic]rawptr, context.temp_allocator)
+	w := 0
+	for t in l.posted {
+		if t.fn == fn { append(&taken, t.data) } else { l.posted[w] = t; w += 1 }
+	}
+	resize(&l.posted, w)
+	sync.mutex_unlock(&l.mu)
+	for d in taken { discard(d) }
+}
+
 // Any thread.
 post :: proc(l: ^Loop, fn: Task_Proc, data: rawptr) {
 	sync.mutex_lock(&l.mu)
