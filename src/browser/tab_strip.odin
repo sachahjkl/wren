@@ -195,7 +195,7 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			}
-			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - own.strip.offset) }   // a tab carried over this bar
+			if app.active != nil && app.active.dropping { drop_hint_mark(area, false, app.active.drop.mark - own.strip.offset, app.active.drop.group) }   // a tab carried over this bar (tab_drag.odin)
 		}
 		if move_from >= 0 {
 			// pinned tabs stay among themselves; a tab takes the group of the one whose place it takes (tab_groups.odin)

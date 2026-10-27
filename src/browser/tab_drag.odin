@@ -35,14 +35,71 @@ drop_index :: proc(z: Drop_Zone, p: draw.Vec2) -> (index: int, inside: bool) {
 	return clamp(int(math.floor((along + z.offset) / z.pitch + 0.5)), 0, z.n), true
 }
 
-// Among windows (each: where its client area starts on the screen, and its zone), the first one but `skip` whose tabs are under the
-// screen position `screen`: its index in the list and the place there. ok = false: none.
-pick_drop :: proc(origins: []draw.Vec2, zones: []Drop_Zone, skip: int, screen: draw.Vec2) -> (window, index: int, ok: bool) {
+// Among windows from the topmost down (each: where its client area starts on the screen, its zone, and what it covers on the
+// screen: `covers`, none given: nothing), the first one but `skip` whose tabs are under the screen position `screen`: its index in
+// the list and the place there. A window that covers the position and does not have its tabs there hides the ones below it.
+// ok = false: none.
+pick_drop :: proc(origins: []draw.Vec2, zones: []Drop_Zone, skip: int, screen: draw.Vec2, covers: []draw.Rect = nil) -> (window, index: int, ok: bool) {
 	for z, i in zones {
 		if i == skip { continue }
 		if at, inside := drop_index(z, screen - origins[i]); inside { return i, at, true }
+		if i < len(covers) && draw.rect_contains(covers[i], screen) { break }
 	}
 	return -1, 0, false
+}
+
+// Where a tab carried over a window's tabs would go, exactly as the release puts it: its place among that window's tabs, the
+// group it joins there (0: none), whether it is pinned, and where the mark is drawn (along the zone, in its content: before the
+// scroll offset is taken off).
+Drop_Slot :: struct {
+	index:  int,
+	group:  u64,
+	pinned: bool,
+	mark:   f32,
+}
+
+// A row of tabs, every tab `pitch` long (the pinned ones too): the gap nearest to `along` (content). A pinned tab goes among the
+// pinned ones, another after them (tabs_normalize would move it there); between two tabs of one group it joins the group (as a
+// tab dragged along the row takes the group of the place it takes).
+drop_slot_row :: proc(tabs: []^Tab, pitch, along: f32, pinned: bool) -> Drop_Slot {
+	n, np := len(tabs), pinned_count(tabs)
+	at := pitch > 0 ? clamp(int(math.floor(along / pitch + 0.5)), 0, n) : n
+	at = pinned ? clamp(at, 0, np) : clamp(at, np, n)
+	g: u64
+	if !pinned && at > 0 && at < n && tabs[at - 1].group != 0 && tabs[at - 1].group == tabs[at].group { g = tabs[at].group }
+	return {index = at, group = g, pinned = pinned, mark = f32(at) * pitch}
+}
+
+// The sidebar's list (side_list_layout's rows: tabs, and a header before each group's tabs; a collapsed group's tabs left out):
+// the row under `y` (content), before it in its upper half, after it in its lower half. A tab's row gives its group (the tab
+// joins it, at its end after its last row); a header's upper half is before its group, out of it; its lower half the start of
+// the group, in it (a collapsed group: after it, out of it). A tab dropped in the list is not pinned, as one dragged down from
+// the pinned tabs within a window.
+drop_slot_list :: proc(items: []Side_Item, tabs: []^Tab, groups: []Tab_Group, y: f32) -> Drop_Slot {
+	if len(items) == 0 { return {index = len(tabs)} }
+	it := items[side_item_at(items, y)]
+	lower := y >= it.y + it.h * 0.5
+	switch it.kind {
+	case .Tab:
+		if lower { return {index = it.index + 1, group = tabs[it.index].group, mark = it.y + it.h} }
+		return {index = it.index, group = tabs[it.index].group, mark = it.y}
+	case .Header:
+		g := groups[it.index]
+		first, last := group_span(tabs, g.id)
+		if first < 0 { return {index = len(tabs), mark = it.y} }
+		if !lower { return {index = first, mark = it.y} }
+		if g.collapsed { return {index = last + 1, mark = it.y + it.h} }
+		return {index = first, group = g.id, mark = it.y + it.h}
+	}
+	return {index = len(tabs)}
+}
+
+// Where a tab carried over window `w`'s tabs at `p` (its client pixels, on its tabs) would go, from what its last frame laid out.
+window_drop_slot :: proc(w: ^Browser_Window, p: draw.Vec2, carried: ^Tab) -> Drop_Slot {
+	z := w.zone
+	along := (z.vertical ? p.y - z.rect.min.y : p.x - z.rect.min.x) + z.offset
+	if z.vertical { return drop_slot_list(w.own.sidebar.items[:], w.tabs[:], w.groups[:], along) }
+	return drop_slot_row(w.tabs[:], z.pitch, along, carried != nil && carried.pinned)
 }
 
 // Whether the pointer has gone far enough from the bar `bar` for the tab to leave it: along the other axis than the bar's, by
@@ -119,19 +176,24 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 	for ev in events {
 		#partial switch ev.kind {
 		case .Mouse_Move, .Mouse_Release:
-			screen := pointer_screen(client_origin(app.active) + ev.pos)
+			// (the system's cursor, but for input a test or a remote control injected: the real pointer is elsewhere)
+			at_event := client_origin(app.active) + ev.pos
+			screen := ev.injected ? at_event : pointer_screen(at_event)
 			if carried.win != nil {
 				x, y := keep_on_screen(int(screen.x) - tab_drag.grab.x, int(screen.y) - tab_drag.grab.y, carried)
 				platform.move_window(carried.win, x, y)
 			}
-			dest, at := tab_drop_target(app, carried, screen)
-			for w in app.windows { w.drop_hint = 0 }
+			dest, slot := tab_drop_target(app, carried, t, screen)
+			for w in app.windows {
+				if w.dropping && (w != dest || w.drop != slot) { window_request(app, w, 2) }
+				if w != dest { w.dropping = false }
+			}
 			if dest != nil && ev.kind == .Mouse_Move {
-				dest.drop_hint = at + 1
-				window_request(app, dest, 2)
+				if !dest.dropping || dest.drop != slot { window_request(app, dest, 2) }
+				dest.drop, dest.dropping = slot, true
 			}
 			if ev.kind == .Mouse_Release {
-				if dest != nil { tab_move(app, t, dest, at); window_focus(app, dest, true) }
+				if dest != nil { tab_move(app, t, dest, slot.index, slot = slot); window_focus(app, dest, true) }
 				tab_drag_end(app)
 				return
 			}
@@ -139,25 +201,53 @@ tab_drag_events :: proc(app: ^App, events: []platform.Event) {
 	}
 }
 
+// The window whose tabs are under the pointer: the topmost window under it (the carried one aside: it is under the pointer),
+// if the pointer is on its tabs. A window covered there by another one is not: what the user sees is the other one.
 @(private = "file")
-tab_drop_target :: proc(app: ^App, carried: ^Browser_Window, screen: draw.Vec2) -> (dest: ^Browser_Window, at: int) {
-	origins := make([]draw.Vec2, len(app.windows), context.temp_allocator)
-	zones := make([]Drop_Zone, len(app.windows), context.temp_allocator)
+tab_drop_target :: proc(app: ^App, carried: ^Browser_Window, t: ^Tab, screen: draw.Vec2) -> (dest: ^Browser_Window, slot: Drop_Slot) {
+	order := windows_by_z(app)
+	origins := make([]draw.Vec2, len(order), context.temp_allocator)
+	zones := make([]Drop_Zone, len(order), context.temp_allocator)
+	covers := make([]draw.Rect, len(order), context.temp_allocator)
 	skip := -1
-	for w, i in app.windows {
+	for w, i in order {
 		origins[i], zones[i] = client_origin(w), w.zone
+		r := platform.outer_rect(w.win)
+		covers[i] = {{f32(r[0]), f32(r[1])}, {f32(r[0] + r[2]), f32(r[1] + r[3])}}
 		if w == carried { skip = i }
 	}
-	i, index, ok := pick_drop(origins, zones, skip, screen)
-	if !ok { return nil, 0 }
-	return app.windows[i], index
+	i, _, ok := pick_drop(origins, zones, skip, screen, covers)
+	if !ok { return nil, {} }
+	w := order[i]
+	return w, window_drop_slot(w, screen - origins[i], t)
 }
 
-// The mark of the place a carried tab would take (`at`: along the tab bar, in the bar's own pixels).
-drop_hint_mark :: proc(area: ^ui.Box, vertical: bool, at: f32) {
+// The browser windows from the topmost down (the system's z-order; a window it does not list, last).
+@(private = "file")
+windows_by_z :: proc(app: ^App) -> []^Browser_Window {
+	out := make([dynamic]^Browser_Window, 0, len(app.windows), context.temp_allocator)
+	for h := win.GetTopWindow(nil); h != nil && len(out) < len(app.windows); h = win.GetWindow(h, win.GW_HWNDNEXT) {
+		for w in app.windows { if w.win != nil && w.win.hwnd == h { append(&out, w) } }
+	}
+	for w in app.windows { if !slice_has(out[:], w) { append(&out, w) } }
+	return out[:]
+}
+
+@(private = "file")
+slice_has :: proc(s: []^Browser_Window, w: ^Browser_Window) -> bool {
+	for x in s { if x == w { return true } }
+	return false
+}
+
+// The mark of the place a carried tab would take (`at`: along the tab bar, in the bar's own pixels), in the colour of the group
+// it would join (`group`, else the accent).
+drop_hint_mark :: proc(area: ^ui.Box, vertical: bool, at: f32, group: u64 = 0) {
 	th := max(math.round(2.5 * ui.scale()), 2)
 	c := ui.frame_new(draw.Color)
 	c^ = ui.color("accent")
+	if group != 0 && the_app != nil {
+		if gi := group_index(active_window(the_app).groups[:], group); gi >= 0 { c^ = group_color(active_window(the_app).groups[gi].color) }
+	}
 	if vertical {
 		ui.next({fixed_x = 0, fixed_y = at - th * 0.5, width = ui.px(area.size.x), height = ui.px(th)})
 	} else {
@@ -167,6 +257,6 @@ drop_hint_mark :: proc(area: ^ui.Box, vertical: bool, at: f32) {
 }
 
 tab_drag_end :: proc(app: ^App) {
-	for w in app.windows { if w.drop_hint != 0 { w.drop_hint = 0; window_request(app, w, 2) } }
+	for w in app.windows { if w.dropping { w.dropping = false; window_request(app, w, 2) } }
 	tab_drag = {}
 }

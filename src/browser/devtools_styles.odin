@@ -294,7 +294,7 @@ apply_block :: proc(app: ^App, t: ^Tab, s: ^Dev_Styles, bi: int) {
 			if !d.enabled || d.name == "" || d.value == "" { continue }
 			fmt.sbprintf(&sb, "%s: %s%s; ", d.name, d.value, d.important ? " !important" : "")
 		}
-		page.dev_set_style_attribute(t.page, dev.els.selected, strings.trim_space(strings.to_string(sb)))
+		page.dev_set_style_attribute(t.page, dev().els.selected, strings.trim_space(strings.to_string(sb)))
 	case .Rule:
 		ds := make([dynamic]style.Dev_Decl, context.temp_allocator)
 		for d in b.decls {

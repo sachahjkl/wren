@@ -294,7 +294,7 @@ cmd_drag :: proc(ctx: ^Context, args: []string) -> int {
 		if strings.builder_len(via) > 0 { strings.write_byte(&via, ',') }
 		fmt.sbprintf(&via, "[%v,%v]", v[0], v[1])
 	}
-	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page")))
+	return simple(ctx, "Wren.drag", fmt.tprintf(`{{"x":%v,"y":%v,"toX":%v,"toY":%v,"via":[%s],"steps":%d,"space":%s,"hold":%v,"resume":%v}}`, a[0], a[1], z[0], z[1], strings.to_string(via), opt_int(&ctx.o, "steps", 8), q(flag(&ctx.o, "window") ? "window" : "page"), flag(&ctx.o, "hold"), flag(&ctx.o, "resume")))
 }
 
 // scroll <notches> [x,y]: the wheel; positive goes down. Without a point, the middle of the page area.
@@ -493,6 +493,9 @@ cmd_tab :: proc(ctx: ^Context, args: []string) -> int {
 
 @(private)
 cmd_window :: proc(ctx: ^Context) -> int {
+	// (the window: --win-id, else the front one)
+	if flag(&ctx.o, "front") { return simple(ctx, "Browser.activateWindow", "{}") }
+	if flag(&ctx.o, "close") { return simple(ctx, "Browser.closeWindow", "{}") }
 	b := strings.builder_make(context.temp_allocator)
 	strings.write_byte(&b, '{')
 	sep := ""
@@ -507,6 +510,11 @@ cmd_window :: proc(ctx: ^Context) -> int {
 		fmt.sbprintf(&b, `%s"left":%d,"top":%d`, sep, int(v[0]), int(v[1])); sep = ","
 	}
 	if s := opt(&ctx.o, "state"); s != "" { fmt.sbprintf(&b, `%s"windowState":%s`, sep, q(s)); sep = "," }
+	if s := opt(&ctx.o, "dpi"); s != "" {   // (the window as if moved to a monitor of that scale: WM_DPICHANGED)
+		v, ok := parse_float(s)
+		if !ok || v <= 0 { return usage("window", "--dpi n (96 = 100 %, 144 = 150 %)") }
+		fmt.sbprintf(&b, `%s"dpi":%d`, sep, int(v + 0.5)); sep = ","
+	}
 	strings.write_byte(&b, '}')
 	method := sep == "" ? "Browser.getWindowBounds" : "Browser.setWindowBounds"
 	return simple(ctx, method, strings.to_string(b))

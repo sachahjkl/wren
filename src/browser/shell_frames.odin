@@ -376,7 +376,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	ui.begin_build(wnd.ui, {
 		window_size = size, events = chrome, dt = wnd.pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
-		disable_zoom = true, window = wnd.win, frame_ms = wnd.pacer.frame_ms,
+		disable_zoom = true, window = wnd.win, frame_ms = wnd.pacer.frame_ms, inactive = !window_is_front(app),
 	})
 	build_ui(app)
 	ui.end_build()
@@ -392,6 +392,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	ui.draw_tree(wnd.ui, &app.dc)
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
+	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
 	pacer_end_frame(app)

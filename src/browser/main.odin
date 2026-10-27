@@ -99,6 +99,9 @@ Tab :: struct {
 	conlog:   Con_Log,         // what the Console tab keeps beside the lines: their times, kinds, counts (devtools_console_log.odin)
 	layout:   Layout,
 	scroll:   f32,
+	scroll_dpi: f32,            // the window scale `scroll` was in (zoom.odin tab_scale_follow; 0: not known yet)
+	layout_ms: f64,             // page_thread.odin: how long its last layout pass took (whether the next goes to the page thread)
+	layout_ms_known: bool,
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
 	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
@@ -936,7 +939,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 		// drag and drop, fingers and pens, a cancelled touch's mouse emulation (dnd_shell.odin, page_input.odin)
 		if dnd_route(app, t, ev) || route_device_pointer(app, t, ev) || page_drop_emulated(app, ev) { if t.page == nil { return }; continue }
 		if ev.kind == .Mouse_Release && ev.button == .Left { window_own(app).selection.pending = false }   // whichever handler below takes the release (selection_pointer_up)
-		if dev.picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
+		if dev().picking && (ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release) && devtools_pick_event(app, t, int(ev.kind), ev.pos, ev.kind == .Mouse_Press) { continue }   // the element picker of the developer tools (devtools_elements.odin)
 		if DEBUG_INPUT && ev.kind != .Mouse_Move { debug_log(fmt.tprintf("event %v at %v inside=%v rect=%v", ev.kind, ev.pos, inside, wnd.page_rect)) }
 		if fullscreen_shell_escape(app, ev) { consume(app, index); continue }   // Escape leaves a page's full screen, the page does not see it (fullscreen_shell.odin)
 		if !hud_captures(app, ev.pos) && scrollbar_event(app, t, ev) { continue }   // the page's scroll bars (smooth_scroll.odin)
@@ -1107,12 +1110,13 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(active_window(app).win, false)
+	tab_scale_follow(app, current_tab(app))   // zoom.odin: the window changed monitor, or the tab came from a window of another scale
 	platform.frame_gate_stage(gate, .Work)   // the page phase (chrome frames may be made in it: shell_frames.odin)
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events {
 		if e.kind == .Activate { desktop_note_activate() }
 		// the window the user is in is the one the process acts on outside a frame (windows.odin)
-		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { app.front = app.active }
+		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { window_set_front(app, app.active) }
 	}
 	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
@@ -1211,6 +1215,7 @@ frame :: proc(app: ^App, idled := false) {
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = active_window(app).win, frame_ms = wnd.pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
+		inactive = !window_is_front(app),   // a window in the back shows no caret in its fields (windows.odin)
 	})
 	build_ui(app)
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
@@ -1236,6 +1241,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Submit)
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
+	remote_capture_arm(app)   // remote_shell.odin: a capture of this window
 	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)

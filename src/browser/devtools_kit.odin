@@ -53,8 +53,8 @@ dt_px :: proc(v: f32) -> f32 { return math.round(v * dtm.sc) }
 dt_begin :: proc(app: ^App) {
 	hud_mono(app)
 	sc := ui.scale()
-	pt := math.clamp(dev.font_pt, 8, 24)
-	comfy := dev.density == .Comfortable
+	pt := math.clamp(dev().font_pt, 8, 24)
+	comfy := dev().density == .Comfortable
 	k := pt / 12
 	dtm = {
 		sc = sc, fs = math.round(pt * sc), mono_fs = math.round(pt * sc), ui_font = app.ui_font, mono = ui.mono_font(),

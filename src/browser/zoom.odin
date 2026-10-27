@@ -7,11 +7,29 @@ package browser
 
 import "toolkit:ui"
 
-// Device pixels per CSS pixel of the current tab's page.
+// Device pixels per CSS pixel of the current tab's page: the window's scale (its monitor's: ui_scale_of, at once when the window
+// changes monitor, not the scale of the last build) times the tab's zoom. Without a window (a test's App), the toolkit's.
 page_scale :: proc(app: ^App) -> f32 {
 	z: f32 = 1
 	if t := current_tab(app); t != nil && t.zoom > 0 { z = t.zoom }
-	return ui.scale() * z
+	if active_window(app).win == nil { return ui.scale() * z }
+	return ui_scale_of(app) * z
+}
+
+// The tab's document scroll (t.scroll: device pixels) follows its window's scale: a window that changed monitor (WM_DPICHANGED), a
+// tab moved to a window on a monitor of another scale, keep the same place of the document (as zoom_set does for the zoom).
+// Called at the start of a frame, before the page's input and layout, for the window's current tab.
+tab_scale_follow :: proc(app: ^App, t: ^Tab) {
+	if t == nil || active_window(app).win == nil { return }
+	now := ui_scale_of(app)
+	if t.scroll_dpi > 0 && abs(now - t.scroll_dpi) > 1e-4 {
+		k := now / t.scroll_dpi
+		t.scroll *= k
+		clear(&t.smooth.anims)   // (an animation's ends were in the old pixels)
+		t.smooth.drag.active = false
+		request_frames(app, 2)
+	}
+	t.scroll_dpi = now
 }
 
 zoom_step :: proc(app: ^App, t: ^Tab, dir: int) {
