@@ -57,6 +57,9 @@ Player :: struct {
 	seek_gen: u32,                 // bumps with every seek
 	seek_to:  Time,
 	source_ended: bool,            // no more data will come into the stores
+	// requested track selection (HTMLMediaElement.audioTracks / videoTracks); honoured when a demuxer can switch mid-stream
+	want_audio_track, want_video_track: int,
+	want_audio_track_on, want_video_track_on: bool,
 	// the clock
 	started:  bool,                // the clock runs (playing, and enough is ready)
 	clock_pos: Time,               // media time at clock_at (while not running: where it stands)
@@ -389,6 +392,22 @@ player_has_picture :: proc(p: ^Player) -> bool {
 	sync.mutex_lock(&p.mu)
 	defer sync.mutex_unlock(&p.mu)
 	return p.has_cur || len(p.queue) > 0
+}
+
+// A script enabled / selected a different audio or video track (HTMLMediaElement.audioTracks / videoTracks). This
+// player decodes the single stream the container's chosen track feeds into its stores, so a switch to another track of
+// the same resource cannot take effect mid-stream here: the call records the request for a future multi-stream player
+// and is otherwise a no-op. The state the script reads (which track is enabled / selected) is kept by the page layer.
+player_select_audio :: proc(p: ^Player, index: int, enabled: bool) {
+	sync.mutex_lock(&p.mu)
+	p.want_audio_track, p.want_audio_track_on = index, enabled
+	sync.mutex_unlock(&p.mu)
+}
+
+player_select_video :: proc(p: ^Player, index: int, selected: bool) {
+	sync.mutex_lock(&p.mu)
+	p.want_video_track, p.want_video_track_on = index, selected
+	sync.mutex_unlock(&p.mu)
 }
 
 @(private)
