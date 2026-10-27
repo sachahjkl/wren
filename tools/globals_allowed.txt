@@ -110,8 +110,6 @@ font_settings.odin text_watch process  # preferences read once and on change
 fonts.odin ALIASES process  # a table
 fonts.odin text_ctx process
 forms_plane.odin ctl_plane process
-forms_shell.odin fview_blink_timer process
-forms_shell.odin fview_report_timer process
 forms_shell.odin page_focus_leave_backward page
 frame_log.odin frame_log process
 frames_shell.odin frame_views page  # the views of the frames (iframes) of pages

@@ -1112,7 +1112,7 @@ frame :: proc(app: ^App, idled := false) {
 	for e in events {
 		if e.kind == .Activate { desktop_note_activate() }
 		// the window the user is in is the one the process acts on outside a frame (windows.odin)
-		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { app.front = app.active }
+		if (e.kind == .Activate && active_window(app).win.active) || e.kind == .Mouse_Press || e.kind == .Key_Press { window_set_front(app, app.active) }
 	}
 	tab_drag_events(app, events)   // tab_drag.odin: a tab carried by this window's press
 	remote_record_events(app, events)   // remote_extras.odin: a recording of the input, when one runs
@@ -1211,6 +1211,7 @@ frame :: proc(app: ^App, idled := false) {
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
 		window = active_window(app).win, frame_ms = wnd.pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
+		inactive = !window_is_front(app),   // a window in the back shows no caret in its fields (windows.odin)
 	})
 	build_ui(app)
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer

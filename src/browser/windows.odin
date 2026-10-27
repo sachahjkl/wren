@@ -149,8 +149,22 @@ window_front :: proc(app: ^App) -> ^Browser_Window {
 
 // Makes `w` the window the user is in (it comes to the front of the others on screen too when `raise`).
 window_focus :: proc(app: ^App, w: ^Browser_Window, raise := false) {
-	app.front = w
+	window_set_front(app, w)
 	if raise && !app.headless && w != nil && w.win != nil && !platform.is_minimized(w.win) { win.SetForegroundWindow(w.win.hwnd) }
+}
+
+// The window the user is in becomes `w`: the one that was and `w` draw again (the caret of a focused field shows only in the front
+// window: forms_shell.odin).
+window_set_front :: proc(app: ^App, w: ^Browser_Window) {
+	if app.front == w { return }
+	if app.front != nil && slice.contains(app.windows[:], app.front) { window_request(app, app.front, 2) }
+	app.front = w
+	if w != nil { window_request(app, w, 2) }
+}
+
+// Whether the active window is the one the user is in (always, with one window).
+window_is_front :: proc(app: ^App) -> bool {
+	return len(app.windows) <= 1 || app.active == window_front(app)
 }
 
 window_by_id :: proc(app: ^App, id: int) -> ^Browser_Window {

@@ -1364,6 +1364,9 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		j_int(&b, "a11yPageRefused", i64(ps.refused)); j_int(&b, "a11yPageNodes", i64(ps.nodes)); j_int(&b, "a11yPageWritten", i64(ps.written))
 		j_int(&b, "a11yPageFrames", i64(ps.frames)); j_int(&b, "a11yPageVerifyFailed", i64(ps.verify_failed)); j_str(&b, "a11yPageFallback", ps.fallback); j_str(&b, "a11yPageVerifyDiff", ps.verify_diff)
 	}
+	// the caret of a focused field of the page in this window: blinking (a timer of its own), and shown in this frame
+	fv := forms_view(app)
+	j_bool(&b, "caretBlinking", fv.blink_timer != base.NIL_HANDLE); j_bool(&b, "caretShown", fv.blink_on); j_bool(&b, "frontWindow", window_is_front(app))
 	j_num(&b, "cpuTimeMs", cpu); j_num(&b, "cpuUserMs", cpu_user); j_num(&b, "cpuKernelMs", cpu_kernel)
 	j_int(&b, "threads", i64(process_thread_count())); j_int(&b, "handles", pc.handles); j_int(&b, "gdiObjects", pc.gdi); j_int(&b, "userObjects", pc.user)
 	j_int(&b, "cookies", i64(cookies.count(&app.profile.jar))); j_int(&b, "storageSites", i64(len(page.storage_sites(&app.storage))))
