@@ -174,6 +174,13 @@ client_init :: proc(c: ^Client, loop: ^host.Loop, settings: Settings = {}) -> bo
 	apply_timeouts(c)
 	decompress: win.DWORD = WINHTTP_DECOMPRESSION_FLAG_ALL
 	WinHttpSetOption(c.session, WINHTTP_OPTION_DECOMPRESSION, &decompress, size_of(decompress))
+	// TLS 1.2 and 1.3 asked for by name: WinHTTP leaves TLS 1.3 off unless the program says so, and servers that speak only TLS 1.3
+	// (speedtest.net's measurement servers) then fail with a security channel error. An older Windows without 1.3 keeps 1.2.
+	tls: win.DWORD = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3
+	if !WinHttpSetOption(c.session, WINHTTP_OPTION_SECURE_PROTOCOLS, &tls, size_of(tls)) {
+		tls = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2
+		WinHttpSetOption(c.session, WINHTTP_OPTION_SECURE_PROTOCOLS, &tls, size_of(tls))
+	}
 	protocols: win.DWORD
 	if c.settings.http2 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP2 }
 	if c.settings.http3 { protocols |= WINHTTP_PROTOCOL_FLAG_HTTP3 }

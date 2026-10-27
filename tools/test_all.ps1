@@ -256,7 +256,7 @@ Step 'a tab dragged onto another window''s tabs (tools\tab_drag_windows_e2e.ps1:
 Step 'windows on monitors of different scales (tools\window_dpi_e2e.ps1: WM_DPICHANGED for one window of two: its scale alone, no scroll jump, devicePixelRatio and resolution queries; a tab moved between scales; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\window_dpi_e2e.ps1
-} -Weight 10
+} -UiOnly   # (the size the system suggests for a new scale depends on the machine's window frame: 1000x700 -> 1028x780 on the CI runner)
 Step 'the globals of src\browser against their list (tools\lint_globals.ps1: a new global of a window or a tab goes into Browser_Window or Tab)' -Light { powershell -NoProfile -ExecutionPolicy Bypass -File tools\lint_globals.ps1 }
 Step 'the frame gate end to end (tools\frame_gate_e2e.ps1: the system''s drag of a page drag, a long script preempted by chrome frames, the page''s context menu; no frame begun inside another''s build, no violation of the state machine; a window shown fully transparent and click-through)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
