@@ -97,6 +97,23 @@ of the list scrolls it. A new current tab is scrolled into view; a drag does not
 Nothing animates at rest: the rows slide only while tabs move, the loading indicator turns only while a tab loads, and no frame is
 drawn for the sidebar otherwise.
 
+### Many tabs
+
+Neither tab bar builds what does not show: the sidebar builds the rows in view (and those its scroll heads for), the row of
+tabs the tabs in view and two on either side (`strip_visible_tabs`), both also the current tab, the one dragged and the one
+that has the keyboard. What still runs over every tab each frame is cheap and constant per tab: `tab_refresh` returns at
+once for a tab without a page or whose document did not change, the sound state reads a page's media elements only when it
+has some, and an icon not drawn is only marked as still used in the cache.
+
+`tools/sidebar_perf.ps1` (a measure, not in the CI; `-Perf` asserts the 180 Hz budget) restores a session of N tabs (in
+groups of ten every other ten) and reads the CPU time of a frame from `wren ctl stats`. On the development machine
+(2026-10-27, dev build, 240 frames):
+
+| tabs | row of tabs, before | row of tabs | sidebar |
+|---|---|---|---|
+| 10 | 0.65 ms (p95 0.74) | 0.69 ms (p95 0.75) | 0.81 ms (p95 0.89) |
+| 1000 | 10.8 ms (p95 29.8, max 100) | 0.82 ms (p95 0.93) | 0.98 ms (p95 1.12) |
+
 ## Pinned tabs and groups
 
 `src/browser/tab_groups.odin` holds the model, `src/browser/tab_sidebar_list.odin` draws it.

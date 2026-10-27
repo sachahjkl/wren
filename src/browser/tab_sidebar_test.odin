@@ -181,6 +181,24 @@ sidebar_builds_only_the_visible_rows :: proc(t: ^testing.T) {
 	testing.expect_value(t, f, 0)
 }
 
+// The row of tabs builds the tabs in view and a margin, whatever the number of tabs.
+@(test)
+strip_builds_only_the_visible_tabs :: proc(t: ^testing.T) {
+	f, l := strip_visible_tabs(0, 1000, 70, 1000, 2)
+	testing.expect_value(t, f, 0)
+	testing.expect_value(t, l, 17)          // 1000 / 70 = 14.3: 15 tabs, and 2
+	f, l = strip_visible_tabs(35000, 1000, 70, 1000, 2)
+	testing.expect_value(t, f, 498)
+	testing.expect_value(t, l, 517)
+	f, l = strip_visible_tabs(69000, 1000, 70, 1000, 2)   // the end
+	testing.expect_value(t, l, 1000)
+	f, l = strip_visible_tabs(0, 1000, 200, 3, 2)         // few tabs: all
+	testing.expect_value(t, f, 0)
+	testing.expect_value(t, l, 3)
+	f, l = strip_visible_tabs(0, 1000, 70, 0, 2)
+	testing.expect_value(t, l, 0)
+}
+
 // The geometry of the row of tabs, along Y: the row a dragged tab goes to, and the scroll that keeps the current tab in view.
 @(test)
 sidebar_rows_reorder_along_y :: proc(t: ^testing.T) {

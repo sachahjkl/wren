@@ -46,6 +46,15 @@ focused_tab_index :: proc(app: ^App) -> int {
 // Geometry: the toolkit's list of items reordered by dragging (ui/reorder.odin), under the names the shell and its
 // tests use (tab_strip_test.odin)
 
+// The tabs of a row scrolled by `offset` that show in `view` (`pitch` apart, `n` of them), and `margin` more on either side:
+// [first, last).
+strip_visible_tabs :: proc(offset, view, pitch: f32, n, margin: int) -> (first, last: int) {
+	if n <= 0 || pitch <= 0 { return 0, 0 }
+	first = clamp(int(math.floor(offset / pitch)) - margin, 0, n)
+	last = clamp(int(math.ceil((offset + view) / pitch)) + margin, first, n)
+	return
+}
+
 tab_width :: ui.reorder_item_size   // each tab's width: an equal share between the minimum and the maximum
 strip_offset :: ui.reorder_offset   // the scroll, in range, following the current tab when it changes
 drag_slot :: ui.reorder_slot        // the slot a dragged tab's middle is over
@@ -147,6 +156,9 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			request_frames(app, 2)
 		}
 		move_from, move_to := -1, -1
+		// only the tabs in view and two on either side are built (with 1000 tabs a frame built them all: 11 ms of CPU, 30 at
+		// the 95th percentile), and those that must be: the current one, the one dragged, the one that has the keyboard
+		first, last := strip_visible_tabs(own.strip.offset, view_w + cg.overlap, w, n, 2)
 		if ui.parent(area) {
 			if classic {
 				// the button first: the tabs draw over its left foot as each draws over the one before it, and take the clicks;
@@ -162,15 +174,20 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			for t, i in wnd.tabs {
 				if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
 			}
+			focused := focused_tab_index(app)
+			built :: proc(i, first, last, current, dragged, focused: int) -> bool {
+				return (i >= first && i < last) || i == current || i == dragged || i == focused
+			}
 			if classic {
 				order := make([dynamic]int, 0, n, context.temp_allocator)
 				tab_stack_order(n, wnd.current, dragged, &order)
 				for i in order {
+					if !built(i, first, last, wnd.current, dragged, focused) { continue }
 					if tab_box(app, i, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			} else {
 				for _, i in wnd.tabs {
-					if i == dragged { continue }
+					if i == dragged || !built(i, first, last, wnd.current, dragged, focused) { continue }
 					r := tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
 					if r == .Closed { return true }
 				}
@@ -195,9 +212,11 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		}
 		tab_sound_frame(app)   // tab_sound.odin
 		any_turning := false
-		for t in wnd.tabs {
+		for t, i in wnd.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
 			any_turning ||= tab_busy(t) && spinner_turning(t)
+			// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
+			if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(t.icon.url) }
 		}
 		if any_turning { spinner_wake(app) }
 
