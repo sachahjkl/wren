@@ -512,7 +512,8 @@ typedef void (*wr_FetchCallback)(int32_t user, uint64_t request, int32_t state);
 /* module performance: types */
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
 // timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
-// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
+// tasks (Long_Task: a task of the window's realm that took 50 ms or more), the largest contentful paint, the layout
+// shifts, the element timing entries and the visibility-state changes.
 enum wr_PerformanceEntryType {
     wr_PerformanceEntryType_Any = 0,
     wr_PerformanceEntryType_Mark = 1,
@@ -2865,7 +2866,11 @@ WR_IMPORT("performance", "Performance_clearMeasures") void wr_Performance_clearM
 WR_IMPORT("performance", "Performance_timeline") int32_t wr_Performance_timeline(int32_t entry_type, uint64_t from_seq, uint8_t *_buf, uint32_t _cap);
 // The sequence number the next entry of this kind will have.
 WR_IMPORT("performance", "Performance_timelineNextSeq") uint64_t wr_Performance_timelineNextSeq(int32_t entry_type);
-// Wraps the DOM node a timeline entry refers to and returns its handle, or 0 when there is none or it left the document.
+// Wraps the DOM node a timeline entry refers to and returns its handle, or 0 when there is none or it is no longer in
+// the document: the element of the `index`-th member of entry `seq` of `entry_type` — for Largest_Contentful_Paint and
+// Element, index 0 is the entry's own element (its `element` attribute); for Layout_Shift, index i is the node of its
+// i-th source (LayoutShiftAttribution.node). The engine carries the other members of each entry in the JSON of
+// Performance_timeline; only live node handles come from here (a handle cannot be put in JSON and stay valid).
 WR_IMPORT("performance", "Performance_timelineNode") uint64_t wr_Performance_timelineNode(int32_t entry_type, uint64_t seq, uint32_t index);
 // The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
 WR_IMPORT("performance", "Performance_timelineInterest") void wr_Performance_timelineInterest(uint32_t kinds);

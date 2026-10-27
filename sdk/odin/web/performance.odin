@@ -8,7 +8,8 @@ import "base:runtime"
 
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
 // timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
-// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
+// tasks (Long_Task: a task of the window's realm that took 50 ms or more), the largest contentful paint, the layout
+// shifts, the element timing entries and the visibility-state changes.
 PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
@@ -19,6 +20,10 @@ PerformanceEntryType :: enum i32 {
 	Event = 6,
 	First_Input = 7,
 	Long_Task = 8,
+	Largest_Contentful_Paint = 9,
+	Layout_Shift = 10,
+	Element = 11,
+	Visibility_State = 12,
 }
 
 // A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)
@@ -43,6 +48,7 @@ foreign _m_performance {
 	@(link_name = "Performance_clearMeasures") _Performance_clearMeasures :: proc(name: [^]u8, name_len: u32) ---
 	@(link_name = "Performance_timeline") _Performance_timeline :: proc(entry_type: PerformanceEntryType, from_seq: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "Performance_timelineNextSeq") _Performance_timelineNextSeq :: proc(entry_type: PerformanceEntryType) -> u64 ---
+	@(link_name = "Performance_timelineNode") _Performance_timelineNode :: proc(entry_type: PerformanceEntryType, seq: u64, index: u32) -> u64 ---
 	@(link_name = "Performance_timelineInterest") _Performance_timelineInterest :: proc(kinds: u32) ---
 	@(link_name = "Performance_onTimeline") _Performance_onTimeline :: proc(callback: TimelineCallback, user: i32) ---
 	@(link_name = "Performance_setResourceTimingBufferSize") _Performance_setResourceTimingBufferSize :: proc(entries: u32) ---
@@ -171,6 +177,15 @@ Performance_timeline_alloc :: proc(entry_type: PerformanceEntryType, from_seq: u
 // The sequence number the next entry of this kind will have.
 Performance_timelineNextSeq :: proc "contextless" (entry_type: PerformanceEntryType) -> u64 {
 	return _Performance_timelineNextSeq(entry_type)
+}
+
+// Wraps the DOM node a timeline entry refers to and returns its handle, or 0 when there is none or it is no longer in
+// the document: the element of the `index`-th member of entry `seq` of `entry_type` — for Largest_Contentful_Paint and
+// Element, index 0 is the entry's own element (its `element` attribute); for Layout_Shift, index i is the node of its
+// i-th source (LayoutShiftAttribution.node). The engine carries the other members of each entry in the JSON of
+// Performance_timeline; only live node handles come from here (a handle cannot be put in JSON and stay valid).
+Performance_timelineNode :: proc "contextless" (entry_type: PerformanceEntryType, seq: u64, index: u32) -> u64 {
+	return _Performance_timelineNode(entry_type, seq, index)
 }
 
 // The kinds (bits 1 << PerformanceEntryType) a PerformanceObserver wants to hear of: only those wake the realm.
