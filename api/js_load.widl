@@ -18,7 +18,8 @@ module scripts {
   /// for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
   void Document_writeMarkup(usvstring markup) raises;
   /// document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
-  /// script). Invalid_State when the document cannot be opened.
+  /// script; the listeners and handlers of its tree and of its Window are erased, the engine's records first through
+  /// its export wj_document_opening). Invalid_State when the document cannot be opened.
   void Document_openStream() raises;
   /// document.close(): the parser of a document.open() finishes (DOMContentLoaded, then load).
   void Document_closeStream() raises;

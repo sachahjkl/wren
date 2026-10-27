@@ -161,7 +161,8 @@
 /navigation-api/navigate-event/defer/tentative/defer-with-single-handler.html: TIMEOUT
 	navigateEvent.deferPageSwap: deferring method should complete before committing: TIMEOUT
 /navigation-api/navigate-event/defer/tentative/restore-after-bfcache.html: ERROR
-/navigation-api/navigate-event/document-open-after-replaceState.html: CRASH
+/navigation-api/navigate-event/document-open-after-replaceState.html: OK
+	document.open() after replaceState should not crash when updating navigation entries: FAIL
 /navigation-api/navigate-event/event-constructor.html: OK
 	all properties are reflected back: PASS
 	can't bypass required members by omitting the dictionary entirely: PASS

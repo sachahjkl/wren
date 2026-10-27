@@ -2507,7 +2507,8 @@ WR_IMPORT("entries", "FsReader_entry") uint64_t wr_FsReader_entry(uint64_t reade
 // for a document that does not accept it now (a custom element constructor, a parser that would have to be aborted).
 WR_IMPORT("scripts", "Document_writeMarkup") int32_t wr_Document_writeMarkup(const uint8_t *markup, uint32_t markup_len);
 // document.open(): the document is emptied and its parser starts again (does nothing while the parser runs a
-// script). Invalid_State when the document cannot be opened.
+// script; the listeners and handlers of its tree and of its Window are erased, the engine's records first through
+// its export wj_document_opening). Invalid_State when the document cannot be opened.
 WR_IMPORT("scripts", "Document_openStream") int32_t wr_Document_openStream(void);
 // document.close(): the parser of a document.open() finishes (DOMContentLoaded, then load).
 WR_IMPORT("scripts", "Document_closeStream") int32_t wr_Document_closeStream(void);
