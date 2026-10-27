@@ -207,6 +207,10 @@ JSValue web_stream_read_all(JSContext *ctx, JSValueConst stream);
 JSValue web_stream_tee(JSContext *ctx, JSValueConst stream, bool clone_second);
 /* cancel(reason) (promise) */
 JSValue web_stream_cancel(JSContext *ctx, JSValueConst stream, JSValueConst reason);
+/* 0 readable, 1 closed, 2 errored (-1: not a ReadableStream); `error` (may be NULL) gets the stored error, counted */
+int web_stream_state(JSContext *ctx, JSValueConst v, JSValue *error);
+/* WritableStream (web_writable.c): 0 writable, 1 erroring, 2 errored, 3 closed (-1: not one); `error` as above */
+int web_writable_state(JSContext *ctx, JSValueConst v, JSValue *error);
 
 /* Runs fn(data) from a task of its own (a zero-delay timer of the browser): what the specifications "queue a task"
  * for (FileReader events, MessagePort messages). `data` is kept until then. */
@@ -310,7 +314,7 @@ enum {
     WEB_SINGLE_LOCATION, WEB_SINGLE_HISTORY, WEB_SINGLE_NAVIGATOR, WEB_SINGLE_LOCAL_STORAGE, WEB_SINGLE_SESSION_STORAGE,
     WEB_SINGLE_PERFORMANCE, WEB_SINGLE_CRYPTO, WEB_SINGLE_SUBTLE, WEB_SINGLE_SCREEN, WEB_SINGLE_CREDENTIALS, WEB_SINGLE_CLIPBOARD,
     WEB_SINGLE_VISUAL_VIEWPORT, WEB_SINGLE_PERMISSIONS, WEB_SINGLE_FONTS, WEB_SINGLE_CACHES, WEB_SINGLE_SERVICE_WORKER,
-    WEB_SINGLE_STORAGE, WEB_SINGLE_COUNT,
+    WEB_SINGLE_STORAGE, WEB_SINGLE_TIMELINE, WEB_SINGLE_COUNT,
 };
 /* The singleton `which`, made by `make` the first time (counted result). */
 JSValue web_singleton(JSContext *ctx, int which, JSValue (*make)(JSContext *ctx));

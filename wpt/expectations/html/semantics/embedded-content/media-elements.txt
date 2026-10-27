@@ -11,16 +11,16 @@
 	Check if media.volume is able to set to new value 1.0 as loudest: PASS
 	Check if media.volume is set to new value less than 0.0 that expecting an IndexSizeError exception is to be thrown: PASS
 	Check if the intial value of the audio.volume is in the range 0.0 to 1.0 inclusive: PASS
+/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy-attribute-redirect-on-load.https.sub.html: OK
+	Permissions-Policy allow="autoplay" allows same-origin navigation in an iframe.: FAIL
+	Permissions-Policy allow="autoplay" disallows cross-origin navigation in an iframe.: FAIL
+/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy-attribute.https.sub.html: OK
+	Feature policy "autoplay" can be enabled in cross-origin iframe using allow="autoplay" attribute: FAIL
+	Feature policy "autoplay" can be enabled in same-origin iframe using allow="autoplay" attribute: FAIL
 /html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy.https.sub.html: OK
 	Permissions-Policy header: autoplay * allows cross-origin iframes.: FAIL
 	Permissions-Policy header: autoplay * allows same-origin iframes.: FAIL
 	Permissions-Policy header: autoplay * allows the top-level document.: FAIL
-/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy-attribute.https.sub.html: OK
-	Feature policy "autoplay" can be enabled in cross-origin iframe using allow="autoplay" attribute: FAIL
-	Feature policy "autoplay" can be enabled in same-origin iframe using allow="autoplay" attribute: FAIL
-/html/semantics/embedded-content/media-elements/autoplay-allowed-by-permissions-policy-attribute-redirect-on-load.https.sub.html: OK
-	Permissions-Policy allow="autoplay" allows same-origin navigation in an iframe.: FAIL
-	Permissions-Policy allow="autoplay" disallows cross-origin navigation in an iframe.: FAIL
 /html/semantics/embedded-content/media-elements/autoplay-default-permissions-policy.https.sub.html: OK
 	Default "autoplay" feature policy ["self"] allows same-origin iframes.: FAIL
 	Default "autoplay" feature policy ["self"] allows the top-level document.: FAIL
@@ -159,7 +159,7 @@
 /html/semantics/embedded-content/media-elements/event_playing_noautoplay.html: ERROR
 	audio events - playing: PASS
 	calling play() on audio should trigger playing event: NOTRUN
-	calling play() on video should trigger playing event: NOTRUN
+	calling play() on video should trigger playing event: PASS
 	video events - playing: PASS
 /html/semantics/embedded-content/media-elements/event_progress.html: OK
 	audio events - progress: PASS
@@ -177,7 +177,7 @@
 /html/semantics/embedded-content/media-elements/event_timeupdate_noautoplay.html: ERROR
 	audio events - timeupdate: PASS
 	calling play() on a sufficiently long audio should trigger timeupdate event: FAIL
-	calling play() on a sufficiently long video should trigger timeupdate event: NOTRUN
+	calling play() on a sufficiently long video should trigger timeupdate event: PASS
 	video events - timeupdate: PASS
 /html/semantics/embedded-content/media-elements/event_volumechange.html: OK
 	adding/removing audio muted content attribute on a connected element will not fire volumechange: FAIL
@@ -199,6 +199,8 @@
 	setting video.volume/muted repeatedly fires volumechange repeatedly: PASS
 	setting video.volume/muted to the same value does not fire volumechange: PASS
 /html/semantics/embedded-content/media-elements/historical.html: OK
+	MediaController constructor should not be supported: PASS
+	TextTrackCue constructor should not be supported: FAIL
 	audio.addCuePoint should not be supported: PASS
 	audio.addCueRange should not be supported: PASS
 	audio.autobuffer should not be supported: PASS
@@ -224,9 +226,7 @@
 	audio.startTime should not be supported: PASS
 	audio.totalBytes should not be supported: PASS
 	audio.webkitPreservesPitch should not be supported: PASS
-	MediaController constructor should not be supported: PASS
 	source.pixelratio should not be supported: PASS
-	TextTrackCue constructor should not be supported: FAIL
 	video.addCuePoint should not be supported: PASS
 	video.addCueRange should not be supported: PASS
 	video.audio should not be supported: PASS
@@ -280,11 +280,11 @@
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLMediaElement/textTracks.html: OK
 	HTMLMediaElement.textTracks: FAIL
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/default.html: OK
-	HTMLTrackElement.default empty string content attribute: PASS
 	HTMLTrackElement.default empty string IDL attribute: PASS
+	HTMLTrackElement.default empty string content attribute: PASS
 	HTMLTrackElement.default false in IDL attribute: PASS
-	HTMLTrackElement.default foo in content attribute: PASS
 	HTMLTrackElement.default foo in IDL attribute: PASS
+	HTMLTrackElement.default foo in content attribute: PASS
 	HTMLTrackElement.default missing value: PASS
 	HTMLTrackElement.default true in IDL attribute: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/kind.html: OK
@@ -299,6 +299,7 @@
 	HTMLTrackElement.kind content attribute with uppercase turkish I (with dot): PASS
 	HTMLTrackElement.kind invalid value in content attribute: PASS
 	HTMLTrackElement.kind missing value: PASS
+	HTMLTrackElement.kind setting IDL attribute to "CAPTIONS": PASS
 	HTMLTrackElement.kind setting IDL attribute to "captions": PASS
 	HTMLTrackElement.kind setting IDL attribute to "chapters": PASS
 	HTMLTrackElement.kind setting IDL attribute to "descriptions": PASS
@@ -309,15 +310,15 @@
 	HTMLTrackElement.kind setting IDL attribute with uppercase turkish I (with dot): PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/label.html: OK
 	HTMLTrackElement.label \\u0000 in IDL attribute: PASS
-	HTMLTrackElement.label empty string content attribute: PASS
 	HTMLTrackElement.label empty string IDL attribute: PASS
-	HTMLTrackElement.label lowercase content attribute: PASS
+	HTMLTrackElement.label empty string content attribute: PASS
 	HTMLTrackElement.label lowercase IDL attribute: PASS
+	HTMLTrackElement.label lowercase content attribute: PASS
 	HTMLTrackElement.label missing value: PASS
-	HTMLTrackElement.label uppercase content attribute: PASS
 	HTMLTrackElement.label uppercase IDL attribute: PASS
-	HTMLTrackElement.label whitespace in content attribute: PASS
+	HTMLTrackElement.label uppercase content attribute: PASS
 	HTMLTrackElement.label whitespace in IDL attribute: PASS
+	HTMLTrackElement.label whitespace in content attribute: PASS
 	HTMLTrackElement.label\\u0000 in content attribute: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/readyState.html: OK
 	HTMLTrackElement.readyState default value: FAIL
@@ -337,15 +338,15 @@
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/srclang.html: OK
 	HTMLTrackElement.srclang \\u0000 content attribute: PASS
 	HTMLTrackElement.srclang \\u0000 in IDL attribute: PASS
-	HTMLTrackElement.srclang empty string content attribute: PASS
 	HTMLTrackElement.srclang empty string IDL attribute: PASS
-	HTMLTrackElement.srclang lowercase content attribute: PASS
+	HTMLTrackElement.srclang empty string content attribute: PASS
 	HTMLTrackElement.srclang lowercase IDL attribute: PASS
+	HTMLTrackElement.srclang lowercase content attribute: PASS
 	HTMLTrackElement.srclang missing value: PASS
-	HTMLTrackElement.srclang uppercase content attribute: PASS
 	HTMLTrackElement.srclang uppercase IDL attribute: PASS
-	HTMLTrackElement.srclang whitespace in content attribute: PASS
+	HTMLTrackElement.srclang uppercase content attribute: PASS
 	HTMLTrackElement.srclang whitespace in IDL attribute: PASS
+	HTMLTrackElement.srclang whitespace in content attribute: PASS
 /html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/track.html: OK
 	HTMLTrackElement.track: FAIL
 /html/semantics/embedded-content/media-elements/interfaces/TextTrack/activeCues.html: ERROR
@@ -392,9 +393,9 @@
 	TextTrackCueList.getCueById, no id: FAIL
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/getter.html: ERROR
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackCueList/length.html: ERROR
-/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getter.html: ERROR
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getTrackById.html: OK
 	TextTrackList.getTrackById: FAIL
+/html/semantics/embedded-content/media-elements/interfaces/TextTrackList/getter.html: ERROR
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/length.html: ERROR
 /html/semantics/embedded-content/media-elements/interfaces/TextTrackList/onaddtrack.html: OK
 	TextTrackList.addEventListener/removeEventListener: FAIL
@@ -433,10 +434,12 @@
 	removing the candidate source, onerror: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-currentSrc.html: OK
 	Test currentSrc behaviour in various playback scenarios: FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor.html: OK
-	invoking resource selection with new Audio(src): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor-no-src.html: OK
 	NOT invoking resource selection with new Audio() sans src: PASS
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-audio-constructor.html: OK
+	invoking resource selection with new Audio(src): FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-in-sync-event.html: OK
+	await a stable state and sync event handlers: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-fragment-into-document.html: OK
 	NOT invoking resource selection by inserting document fragment into a document: PASS
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-into-document.html: OK
@@ -445,8 +448,6 @@
 	NOT invoking resource selection by inserting into other document with src set: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-parent-into-document.html: OK
 	NOT invoking resource selection by inserting parent into a document: PASS
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source.html: OK
-	invoking resource selection by inserting <source>: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-div.html: OK
 	NOT invoking resource selection by inserting <source> in <div> in <video>: PASS
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-in-namespace.html: OK
@@ -455,12 +456,10 @@
 	NOT invoking resource selection by inserting <source> when networkState is not NETWORK_EMPTY: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source-not-in-document.html: OK
 	invoking resource selection by inserting <source> in video not in a document: FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-in-sync-event.html: OK
-	await a stable state and sync event handlers: FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-insert-source.html: OK
+	invoking resource selection by inserting <source>: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-load.html: OK
 	invoking resource selection with load(): FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-move-source.html: OK
-	invoking resource selection by moving <source>: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-move-source-audio.html: OK
 	invoking resource selection by moving <source> (audio element): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-move-source-in-div.html: OK
@@ -471,26 +470,28 @@
 	invoking resource selection by moving <source> in video not in a document: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-move-source-same-parent.html: OK
 	invoking resource selection by moving <source> within the same media element: FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause.html: OK
-	invoking resource selection with pause(): FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-move-source.html: OK
+	invoking resource selection by moving <source>: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause-networkState.html: OK
 	NOT invoking resource selection with pause() when networkState is not NETWORK_EMPTY: FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-pause.html: OK
+	invoking resource selection with pause(): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-play.html: OK
 	invoking resource selection with play(): FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document.html: OK
-	NOT invoking resource selection by removing from document with NETWORK_EMPTY: PASS
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document-networkState.html: OK
 	NOT invoking resource selection with implicit pause() when networkState is not NETWORK_EMPTY: FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-from-document.html: OK
+	NOT invoking resource selection by removing from document with NETWORK_EMPTY: PASS
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-remove-src.html: OK
 	NOT invoking media load or resource selection when removing the src attribute: PASS
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src.html: OK
-	invoking load by setting src: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-in-namespace.html: OK
 	NOT invoking load by setting src in the wrong namespace: PASS
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-networkState.html: OK
 	invoking load by setting src when networkState is not NETWORK_EMPTY: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src-not-in-document.html: OK
 	invoking load by setting src on video not in a document: FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-invoke-set-src.html: OK
+	invoking load by setting src: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-control.html: OK
 	pointer updates (control test): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-br.html: OK
@@ -499,10 +500,10 @@
 	pointer updates (adding source elements): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-insert-text.html: OK
 	pointer updates (adding text nodes): FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source.html: OK
-	pointer updates (removing source elements): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source-after.html: OK
 	pointer updates (removing source element after pointer): FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-source.html: OK
+	pointer updates (removing source elements): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-pointer-remove-text.html: OK
 	pointer updates (removing text nodes): FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-remove-source.html: OK
@@ -511,10 +512,10 @@
 	invoking resource selection by setting src; await stable state: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-resumes-onload.html: OK
 	resource selection should not delay the load event indefinitely: FAIL
-/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-source-media.html: OK
-	the <source> media attribute: FAIL
 /html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-source-media-env-change.html: OK
 	the <source> media attribute: no reaction to environment change: FAIL
+/html/semantics/embedded-content/media-elements/loading-the-media-resource/resource-selection-source-media.html: OK
+	the <source> media attribute: FAIL
 /html/semantics/embedded-content/media-elements/location-of-the-media-resource/currentSrc.html: OK
 	audio.currentSrc after adding source element with src attribute " ": FAIL
 	audio.currentSrc after adding source element with src attribute "": PASS
@@ -534,8 +535,6 @@
 	video.currentSrc after setting src attribute ".": PASS
 	video.currentSrc after setting src attribute "data:,": PASS
 	video.currentSrc initial value: PASS
-/html/semantics/embedded-content/media-elements/media_fragment_seek.html: OK
-	Video should seek to time specified in media fragment syntax: FAIL
 /html/semantics/embedded-content/media-elements/media-playback-while-not-visible-permission-policy/cant-play-if-hidden.tentative.sub.html?origin=cross-origin&frame=direct&visibility=display&media=audio: OK
 	cross-origin direct: audio elements in hidden iframes shouldn't be allowed to play (visibility=display): FAIL
 /html/semantics/embedded-content/media-elements/media-playback-while-not-visible-permission-policy/cant-play-if-hidden.tentative.sub.html?origin=cross-origin&frame=direct&visibility=display&media=video: OK
@@ -688,6 +687,8 @@
 	same-origin: audio playback should not pause when its iframe is scrolled out of view: FAIL
 /html/semantics/embedded-content/media-elements/media-playback-while-not-visible-permission-policy/viewport.tentative.sub.html?origin=same-origin&media=video: OK
 	same-origin: video playback should not pause when its iframe is scrolled out of view: PASS
+/html/semantics/embedded-content/media-elements/media_fragment_seek.html: OK
+	Video should seek to time specified in media fragment syntax: FAIL
 /html/semantics/embedded-content/media-elements/mime-types/canPlayType.html: OK
 	application/octet-stream not supported: PASS
 	audio/mp4 (optional): PASS
@@ -762,12 +763,12 @@
 	video.networkState - default state: PASS
 /html/semantics/embedded-content/media-elements/no-autoplay-audio-history-back-does-not-play.html: OK
 	No autoplay audio remains paused after iframe history back: FAIL
+/html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/currentTime-move-within-document.html: OK
+	playback should not reset when moving within a document: FAIL
 /html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/currentTime.html: OK
 	currentTime initial value: PASS
-	setting currentTime when readyState is greater than HAVE_NOTHING: PASS
 	setting currentTime when readyState is HAVE_NOTHING: PASS
-/html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/currentTime-move-within-document.html: ERROR
-	playback should not reset when moving within a document: FAIL
+	setting currentTime when readyState is greater than HAVE_NOTHING: PASS
 /html/semantics/embedded-content/media-elements/offsets-into-the-media-resource/duration.html: OK
 	duration initial value: PASS
 /html/semantics/embedded-content/media-elements/paused_false_during_play.html: OK
@@ -783,29 +784,29 @@
 /html/semantics/embedded-content/media-elements/played-loop.html: OK
 	played TimeRanges should be preserved and not reset when video loops: PASS
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/fragmented-mp4-end.html: TIMEOUT
-	fragmented-mp4-end: TIMEOUT|PASS
+	fragmented-mp4-end: TIMEOUT
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/loop-from-ended.tentative.html: OK
 	play() with loop set to true after playback ended: FAIL
-/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-to-other-document.html: ERROR
-	paused state when moving to other document: TIMEOUT
-/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-within-document.html: ERROR
-	paused state when moving within a document: TIMEOUT
-/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document.html: ERROR
-	paused state when removing from a document: TIMEOUT
-/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document-different-load.html: ERROR
-	paused state when removing from a document: TIMEOUT
+/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-to-other-document.html: OK
+	paused state when moving to other document: FAIL
+/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-move-within-document.html: OK
+	paused state when moving within a document: FAIL
+/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document-different-load.html: OK
+	paused state when removing from a document: FAIL
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document-networkState.html: OK
 	paused state when removing from a document when networkState is NETWORK_EMPTY: FAIL
+/html/semantics/embedded-content/media-elements/playing-the-media-resource/pause-remove-from-document.html: OK
+	paused state when removing from a document: FAIL
+/html/semantics/embedded-content/media-elements/playing-the-media-resource/play-in-detached-document.html: OK
+	play() in detached document: PASS
 /html/semantics/embedded-content/media-elements/playing-the-media-resource/playbackRate.html: OK
 	playbackRate initial value: PASS
-	playbackRate set to 0: FAIL
 	playbackRate set to -1: FAIL
+	playbackRate set to 0: FAIL
 	playbackRate set to large negative value: FAIL
 	playbackRate set to large positive value: FAIL
 	playbackRate set to small negative value: FAIL
 	playbackRate set to small positive value: PASS
-/html/semantics/embedded-content/media-elements/playing-the-media-resource/play-in-detached-document.html: TIMEOUT
-	play() in detached document: TIMEOUT
 /html/semantics/embedded-content/media-elements/preload_reflects_none_autoplay.html: OK
 	audio.preload - reflection test: PASS
 	video.preload - reflection test: PASS
@@ -819,6 +820,21 @@
 	Test that preservesPitch is present and unprefixed.: PASS
 	The default playbackRate should not affect pitch: FAIL
 	The default playbackRate should not affect pitch, even with preservesPitch=false: FAIL
+/html/semantics/embedded-content/media-elements/ready-states/autoplay-hidden.optional.html: TIMEOUT
+	Allow delaying autoplay until video elements become visible: TIMEOUT
+/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html: OK
+	autoplay with slow text tracks: FAIL
+/html/semantics/embedded-content/media-elements/ready-states/autoplay.html: ERROR
+	audio.autoplay: FAIL
+	audio.autoplay and internal pause steps: FAIL
+	audio.autoplay and load(): FAIL
+	audio.autoplay and pause(): FAIL
+	audio.autoplay and play(): FAIL
+	video.autoplay: PASS
+	video.autoplay and internal pause steps: PASS
+	video.autoplay and load(): PASS
+	video.autoplay and pause(): PASS
+	video.autoplay and play(): FAIL
 /html/semantics/embedded-content/media-elements/readyState_during_canplay.html: OK
 	audio events - readyState property during canplay: PASS
 	audio.readyState should be >= HAVE_FUTURE_DATA during canplay event: FAIL
@@ -847,32 +863,24 @@
 /html/semantics/embedded-content/media-elements/readyState_initial.html: OK
 	audio.readyState - default state: PASS
 	video.readyState - default state: PASS
-/html/semantics/embedded-content/media-elements/ready-states/autoplay.html: ERROR
-	audio.autoplay: FAIL
-	audio.autoplay and internal pause steps: FAIL
-	audio.autoplay and load(): FAIL
-	audio.autoplay and pause(): FAIL
-	audio.autoplay and play(): FAIL
-	video.autoplay: PASS
-	video.autoplay and internal pause steps: PASS
-	video.autoplay and load(): PASS
-	video.autoplay and pause(): PASS
-	video.autoplay and play(): FAIL
-/html/semantics/embedded-content/media-elements/ready-states/autoplay-hidden.optional.html: TIMEOUT
-	Allow delaying autoplay until video elements become visible: TIMEOUT
-/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html: OK
-	autoplay with slow text tracks: FAIL
 /html/semantics/embedded-content/media-elements/seeking/seek-to-currentTime.html: OK
-	seek to currentTime: PASS|FAIL
+	seek to currentTime: FAIL
 /html/semantics/embedded-content/media-elements/seeking/seek-to-max-value.htm: OK
 	seek to Number.MAX_VALUE: FAIL
 /html/semantics/embedded-content/media-elements/seeking/seek-to-negative-time.htm: OK
 	seek to negative time: PASS
-/html/semantics/embedded-content/media-elements/src_object_blob.html: ERROR
-	HTMLMediaElement.srcObject blob: TIMEOUT
+/html/semantics/embedded-content/media-elements/src_object_blob.html: OK
+	HTMLMediaElement.srcObject blob: FAIL
 /html/semantics/embedded-content/media-elements/src_reflects_attribute_not_source_elements.html: OK
 	audio.src - reflection test: PASS
 	video.src - reflection test: PASS
+/html/semantics/embedded-content/media-elements/user-interface/muted-playbackrate.tentative.html: OK
+	audio.muted reflects an extreme playbackRate: FAIL
+	audio.muted reflects an extreme playbackRate after the muted setter: FAIL
+	audio: playbackRate does not unmute an element muted via the muted setter: FAIL
+	video.muted reflects an extreme playbackRate: FAIL
+	video.muted reflects an extreme playbackRate after the muted setter: FAIL
+	video: playbackRate does not unmute an element muted via the muted setter: FAIL
 /html/semantics/embedded-content/media-elements/user-interface/muted.html: OK
 	adding muted attribute has no effect on a connected audio after the setter: PASS
 	adding muted attribute has no effect on a connected video after the setter: PASS
@@ -925,15 +933,8 @@
 	toggling video.muted does not change defaultMuted: PASS
 	video muted="" is honored regardless of connectedness: PASS
 	video.defaultMuted reflects a muted attribute added via markup: PASS
-/html/semantics/embedded-content/media-elements/user-interface/muted-playbackrate.tentative.html: OK
-	audio.muted reflects an extreme playbackRate: FAIL
-	audio.muted reflects an extreme playbackRate after the muted setter: FAIL
-	audio: playbackRate does not unmute an element muted via the muted setter: FAIL
-	video.muted reflects an extreme playbackRate: FAIL
-	video.muted reflects an extreme playbackRate after the muted setter: FAIL
-	video: playbackRate does not unmute an element muted via the muted setter: FAIL
-/html/semantics/embedded-content/media-elements/video_loop_base.html: ERROR
-	Check if video.loop is set to true that expecting the seeking event is fired more than once: NOTRUN
+/html/semantics/embedded-content/media-elements/video_loop_base.html: OK
+	Check if video.loop is set to true that expecting the seeking event is fired more than once: PASS
 /html/semantics/embedded-content/media-elements/video_volume_check.html: OK
 	Check if media.volume is able to set to new value 0.0 as silent: PASS
 	Check if media.volume is able to set to new value 1.0 as loudest: PASS
@@ -942,11 +943,11 @@
 	Check if video.volume is able to set to new value in the range 0.0 to 1.0: PASS
 	Check if video.volume is set to new value greater than 1.0 that expecting an IndexSizeError exception is to be thrown: PASS
 /html/semantics/embedded-content/media-elements/volume_nonfinite.html: OK
-	Setting audio.volume to Infinity should throw a TypeError: PASS
 	Setting audio.volume to -Infinity should throw a TypeError: PASS
+	Setting audio.volume to Infinity should throw a TypeError: PASS
 	Setting audio.volume to NaN should throw a TypeError: PASS
-	Setting video.volume to Infinity should throw a TypeError: PASS
 	Setting video.volume to -Infinity should throw a TypeError: PASS
+	Setting video.volume to Infinity should throw a TypeError: PASS
 	Setting video.volume to NaN should throw a TypeError: PASS
 /html/semantics/embedded-content/media-elements/volumechange-ratechange-queue-task.html: OK
 	setting defaultPlaybackRate queues a task to fire ratechange: PASS

@@ -54,23 +54,23 @@
 	Constructor in child window with bad NewTarget from parent window: FAIL
 	Constructor in child window with normal NewTarget from parent window: FAIL
 	Constructor in parent window with bad NewTarget from child window: FAIL
-	Constructor in parent window with bad NewTarget from parent window that's a bound child window function: FAIL
-	Constructor in parent window with bad NewTarget from parent window that's a proxy for a child window function: FAIL
-	Constructor in parent window with normal NewTarget from child window: FAIL
+	Constructor in parent window with bad NewTarget from parent window that's a bound child window function: PASS
+	Constructor in parent window with bad NewTarget from parent window that's a proxy for a child window function: PASS
+	Constructor in parent window with normal NewTarget from child window: PASS
 	Normal constructor in child window: FAIL
-	Normal constructor in parent window: FAIL
+	Normal constructor in parent window: PASS
 	Realm for constructed objects: PASS
 	Subclass constructor in child window: FAIL
 	Subclass constructor in child window with parent class in parent window: FAIL
-	Subclass constructor in parent window: FAIL
+	Subclass constructor in parent window: PASS
 	Subclass constructor in parent window with parent class in child window: FAIL
 /webidl/ecmascript-binding/default-iterator-object.html: OK
 	@@toStringTag has correct value from prototype: PASS
 	Default iterator objects for an interface have the same prototype: PASS
 	Object.prototype.toString returns correct value: PASS
 /webidl/ecmascript-binding/default-toJSON-cross-realm.html: OK
-	Cross-realm [Default] toJSON() converts its interface attributes to ECMAScript values of correct realm: FAIL
-	Cross-realm [Default] toJSON() creates result object in its realm: FAIL
+	Cross-realm [Default] toJSON() converts its interface attributes to ECMAScript values of correct realm: PASS
+	Cross-realm [Default] toJSON() creates result object in its realm: PASS
 /webidl/ecmascript-binding/es-exceptions/DOMException-audioworklet.https.html: ERROR
 	A DOMException can be posted to AudioWorkletGlobalScope: NOTRUN
 	A DOMException created in AudioWorkletGlobalScope can be posted to the window: NOTRUN
@@ -366,13 +366,13 @@
 	Cross-realm global object's setter throws when called on incompatible object: FAIL
 /webidl/ecmascript-binding/global-object-implicit-this-value.any.html: OK
 	Global object's getter throws when called on incompatible object: FAIL
-	Global object's getter throws when called on incompatible object (document.all): FAIL
+	Global object's getter throws when called on incompatible object (document.all): PASS
 	Global object's getter works when called on null / undefined: PASS
 	Global object's operation throws when called on incompatible object: FAIL
 	Global object's operation throws when called on incompatible object (document.all): FAIL
 	Global object's operation works when called on null / undefined: PASS
 	Global object's setter throws when called on incompatible object: FAIL
-	Global object's setter throws when called on incompatible object (document.all): FAIL
+	Global object's setter throws when called on incompatible object (document.all): PASS
 	Global object's setter works when called on null / undefined: FAIL
 /webidl/ecmascript-binding/global-object-implicit-this-value.any.worker.html: OK
 	Global object's getter throws when called on incompatible object: FAIL
@@ -486,15 +486,23 @@
 	window.parent setter throws TypeError if called on non-configurable accessor property: FAIL
 	window.screen setter throws TypeError if called on non-configurable non-writable data property: FAIL
 	window.self setter throws TypeError if called on non-configurable accessor property: FAIL
-/webidl/ecmascript-binding/sequence-conversion.html: ERROR
+/webidl/ecmascript-binding/sequence-conversion.html: OK
+	A generator: FAIL
+	A holey array with fallback to an accessor on the prototype: FAIL
+	A string array in sequence<sequence> or record: PASS
+	An array: PASS
+	An array with an overridden %ArrayIterator%.prototype.next: FAIL
+	An array with an overridden Symbol.iterator: FAIL
+	An array with an overridden Symbol.iterator on the prototype: FAIL
+	An object with an overriden Symbol.iterator: FAIL
 /webidl/ecmascript-binding/setter-argument.html: OK
 	Object attribute setter called with undefined should behave in the same way as no arguments: FAIL
 	Object attribute setter should throw if this value is invalid: PASS
 	Object attribute setter should treat no arguments as undefined: FAIL
-	String attribute setter called with string should just work: FAIL
-	String attribute setter called with undefined should behave in the same way as no arguments: FAIL
-	String attribute setter should throw if this value is invalid: FAIL
-	String attribute setter should treat no arguments as undefined: FAIL
+	String attribute setter called with string should just work: PASS
+	String attribute setter called with undefined should behave in the same way as no arguments: PASS
+	String attribute setter should throw if this value is invalid: PASS
+	String attribute setter should treat no arguments as undefined: PASS
 	[LegacyLenientSetter] setter called with undefined should behave in the same way as no arguments: FAIL
 	[LegacyLenientSetter] setter should treat no arguments as undefined: FAIL
 	[LegacyLenientThis] setter called with undefined should behave in the same way as no arguments: PASS
@@ -515,7 +523,7 @@
 	[[HasProperty]]: FAIL
 	[[OwnPropertyKeys]]: FAIL
 	[[PreventExtensions]] and [[IsExtensible]]: FAIL
-	[[SetPrototypeOf]] and [[GetPrototypeOf]]: FAIL
+	[[SetPrototypeOf]] and [[GetPrototypeOf]]: PASS
 	[[Set]] (Reflect.set): FAIL
 	[[Set]] (direct): FAIL
 	[[Set]] (prototype chain): FAIL

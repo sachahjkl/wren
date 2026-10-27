@@ -3902,3 +3902,16 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `DocumentOrShadowRoot_adopt :: proc(c: ^Call, root: Api_Node, sheets: []u64) -> Api_Error`
 
+### `XMLSerializer_serialize`
+
+```
+string XMLSerializer_serialize(Node node) raises
+```
+
+new XMLSerializer().serializeToString(node): the node and its subtree as XML (DOM Parsing §3.2, not
+well-formed-checked). Range past page.max_fetch_bytes.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `XMLSerializer_serialize :: proc(c: ^Call, node: Api_Node) -> (string, Api_Error)`
+

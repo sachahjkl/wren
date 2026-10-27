@@ -7,7 +7,8 @@ package web
 import "base:runtime"
 
 // The entries a query matches (Any: every user timing entry). The values from Navigation on are the browser's
-// timeline entries (Performance_timeline): the document's navigation, its resources, paints and slow inputs.
+// timeline entries (Performance_timeline): the document's navigation, its resources, paints, slow inputs and long
+// tasks (Long_Task: a task of the window's realm that took 50 ms or more).
 PerformanceEntryType :: enum i32 {
 	Any = 0,
 	Mark = 1,
@@ -17,6 +18,7 @@ PerformanceEntryType :: enum i32 {
 	Paint = 5,
 	Event = 6,
 	First_Input = 7,
+	Long_Task = 8,
 }
 
 // A function of the realm the browser calls when a kind of timeline entry it was asked for (Performance_timelineInterest)

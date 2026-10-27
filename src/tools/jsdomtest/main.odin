@@ -182,6 +182,7 @@ main :: proc() {
 		case "events.html": browser_event_checks(p)
 		case "fullscreen.html": fullscreen_checks(p)
 		case "dnd.html": dnd_checks(p)   // dnd.odin
+		case "popover.html": popover_checks(p)   // popover.odin
 		}
 		fmt.printf("  (%.0f ms)\n", ms)
 		page.page_close(p)

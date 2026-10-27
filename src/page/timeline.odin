@@ -34,7 +34,11 @@ Timeline_Settings :: struct {
 	resource_entries: int,
 	event_entries:    int,
 	event_min_ms:     f64,
+	long_task_entries: int,
 }
+
+// Long Tasks: a task that took at least this long (the specification's 50 ms) is a long task.
+LONG_TASK_MS :: 50
 
 TIMELINE_PREFS := [?]config.Def{
 	{name = "performance.resource_timing_entries", kind = .Int, default = {i = 250}, bounded = true, min = 0, max = 100_000,
@@ -43,6 +47,8 @@ TIMELINE_PREFS := [?]config.Def{
 		description = "How many Event Timing entries (slow input events, PerformanceObserver type \"event\") a document keeps. 0: none are recorded."},
 	{name = "performance.event_timing_min_ms", kind = .Float, default = {f = 16}, bounded = true, min = 0, max = 10_000, unit = "ms",
 		description = "An input event whose listeners took at least this long (rounded up to 8 ms) is recorded as an Event Timing entry; an observer asks for its own threshold (durationThreshold, 104 ms by default). The first input is recorded whatever it took."},
+	{name = "performance.long_task_entries", kind = .Int, default = {i = 200}, bounded = true, min = 0, max = 100_000,
+		description = "How many Long Tasks entries (a task of a page's scripts that took 50 ms or more, PerformanceObserver type \"longtask\") a document keeps for its observers. 0: none are recorded (tasks are not timed)."},
 }
 
 timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
@@ -50,12 +56,13 @@ timeline_settings_from_prefs :: proc(p: ^config.Prefs) -> Timeline_Settings {
 		resource_entries = int(config.int_of(p, "performance.resource_timing_entries")),
 		event_entries = int(config.int_of(p, "performance.event_timing_entries")),
 		event_min_ms = config.float_of(p, "performance.event_timing_min_ms"),
+		long_task_entries = int(config.int_of(p, "performance.long_task_entries")),
 	}
 }
 
 // The kinds of entries (the values of Api_PerformanceEntryType from Navigation on).
 @(private)
-Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input }
+Tl_Kind :: enum u8 { Navigation = 3, Resource, Paint, Event, First_Input, Long_Task }
 
 // One entry as the engine reads it (JSON): the members of the interfaces, absent ones are 0 or "".
 @(private)
@@ -276,6 +283,7 @@ timeline_add :: proc(p: ^Page, kind: Tl_Kind, e: Tl_Entry) {
 	switch kind {
 	case .Resource: limit = t.res_limit
 	case .Event: limit = p.settings.timeline.event_entries
+	case .Long_Task: limit = p.settings.timeline.long_task_entries
 	case .Navigation, .Paint, .First_Input: limit = 64
 	}
 	if limit <= 0 { tmp := e; tl_entry_free(&tmp); b.next_seq += 1; return }
@@ -429,11 +437,32 @@ timeline_event_end :: proc(p: ^Page, ev: ^dom.Event, begin: i64) {
 }
 
 ////////////////////////////////
+// Long Tasks
+
+// The start of a task of the page (an outermost call into one of its realms): 0 when tasks are not timed.
+@(private)
+timeline_task_begin :: proc(p: ^Page) -> i64 {
+	if p.worker != nil || p.web == nil || p.settings.timeline.long_task_entries == 0 { return 0 }
+	return host.now_ns(p.loop)
+}
+
+// The task (its microtask checkpoint included) ended: a long one becomes an entry ("self": the page's own window; the
+// attribution says no more).
+@(private)
+timeline_task_end :: proc(p: ^Page, begin: i64) {
+	if begin == 0 || p.closed || p.web == nil { return }
+	end := host.now_ns(p.loop)
+	ms := f64(end - begin) / 1e6
+	if ms < LONG_TASK_MS { return }
+	timeline_add(p, .Long_Task, Tl_Entry{name = strings.clone("self"), start = f64(begin - p.web.origin_ns) / 1e6, duration = ms})
+}
+
+////////////////////////////////
 // Imports
 
 Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, from_seq: u64) -> string {
 	p := c.page
-	if entry_type < .Navigation || entry_type > .First_Input { return "[]" }
+	if entry_type < .Navigation || entry_type > .Long_Task { return "[]" }
 	kind := Tl_Kind(entry_type)
 	list := make([dynamic]Tl_Entry, context.temp_allocator)
 	if kind == .Navigation {
@@ -451,7 +480,7 @@ Performance_timeline :: proc(c: ^Call, entry_type: Api_PerformanceEntryType, fro
 }
 
 Performance_timelineNextSeq :: proc(c: ^Call, entry_type: Api_PerformanceEntryType) -> u64 {
-	if entry_type < .Navigation || entry_type > .First_Input { return 0 }
+	if entry_type < .Navigation || entry_type > .Long_Task { return 0 }
 	t := tl_of(c.page, false)
 	if t == nil { return 0 }
 	return t.bufs[Tl_Kind(entry_type)].next_seq

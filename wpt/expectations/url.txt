@@ -5351,196 +5351,196 @@
 	Data URI parsing of fragments: FAIL
 /url/failure.html: OK
 	Loading data…: PASS
-	Location's href: asdf://%43|/ should throw: FAIL
-	Location's href: data://:443 should throw: FAIL
-	Location's href: data://[:1] should throw: FAIL
-	Location's href: data://test:test should throw: FAIL
-	Location's href: file://%43%3A should throw: FAIL
-	Location's href: file://%43%7C should throw: FAIL
-	Location's href: file://%43%7C/ should throw: FAIL
-	Location's href: file://%43| should throw: FAIL
-	Location's href: file://%C2%AD/p should throw: FAIL
-	Location's href: file://C%7C should throw: FAIL
-	Location's href: file://[example]/ should throw: FAIL
-	Location's href: file://example%/ should throw: FAIL
-	Location's href: file://example:1/ should throw: FAIL
-	Location's href: file://example:test/ should throw: FAIL
-	Location's href: file://­/p should throw: FAIL
-	Location's href: ftp://example.com%80/ should throw: FAIL
-	Location's href: ftp://example.com%A0/ should throw: FAIL
-	Location's href: http://# should throw: FAIL
-	Location's href: http://0..0x300./ should throw: FAIL
-	Location's href: http://0..0x300/ should throw: FAIL
-	Location's href: http://01.2.3.4.5 should throw: FAIL
-	Location's href: http://01.2.3.4.5. should throw: FAIL
-	Location's href: http://09.2.3.4 should throw: FAIL
-	Location's href: http://09.2.3.4. should throw: FAIL
-	Location's href: http://0999999999999999999/ should throw: FAIL
-	Location's href: http://0x1.2.3.4.5 should throw: FAIL
-	Location's href: http://0x1.2.3.4.5. should throw: FAIL
-	Location's href: http://0x100.2.3.4 should throw: FAIL
-	Location's href: http://0x100.2.3.4. should throw: FAIL
-	Location's href: http://1.2.3.08 should throw: FAIL
-	Location's href: http://1.2.3.08. should throw: FAIL
-	Location's href: http://1.2.3.09 should throw: FAIL
-	Location's href: http://? should throw: FAIL
-	Location's href: http://@/www.example.com should throw: FAIL
-	Location's href: http://@:www.example.com should throw: FAIL
-	Location's href: http://[::127.0.0.0.1] should throw: FAIL
-	Location's href: http://[www.google.com]/ should throw: FAIL
-	Location's href: http://a b/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://a b/ should throw: FAIL
-	Location's href: http://a%b/ should throw: FAIL
-	Location's href: http://a:b@/www.example.com should throw: FAIL
-	Location's href: http://a<b should throw: FAIL
-	Location's href: http://a>b should throw: FAIL
-	Location's href: http://a[b/ should throw: FAIL
-	Location's href: http://a]b/ should throw: FAIL
-	Location's href: http://a^b should throw: FAIL
-	Location's href: http://a|b/ should throw: FAIL
-	Location's href: http://ab/ should throw: FAIL
-	Location's href: http://foo.09 should throw: FAIL
-	Location's href: http://foo.09. should throw: FAIL
-	Location's href: http://foo.0XFfFfFfFfFfFfFfFfFfAcE123 should throw: FAIL
-	Location's href: http://foo.0x should throw: FAIL
-	Location's href: http://foo.0x4 should throw: FAIL
-	Location's href: http://foo.0x4. should throw: FAIL
-	Location's href: http://foo.1.2.3.4 should throw: FAIL
-	Location's href: http://foo.1.2.3.4. should throw: FAIL
-	Location's href: http://foo.2.3.4 should throw: FAIL
-	Location's href: http://foo.2.3.4. should throw: FAIL
-	Location's href: http://foo:-80/ should throw: FAIL
-	Location's href: http://ho%00st/ should throw: FAIL
-	Location's href: http://ho%01st/ should throw: FAIL
-	Location's href: http://ho%02st/ should throw: FAIL
-	Location's href: http://ho%03st/ should throw: FAIL
-	Location's href: http://ho%04st/ should throw: FAIL
-	Location's href: http://ho%05st/ should throw: FAIL
-	Location's href: http://ho%06st/ should throw: FAIL
-	Location's href: http://ho%07st/ should throw: FAIL
-	Location's href: http://ho%08st/ should throw: FAIL
-	Location's href: http://ho%09st/ should throw: FAIL
-	Location's href: http://ho%0Ast/ should throw: FAIL
-	Location's href: http://ho%0Bst/ should throw: FAIL
-	Location's href: http://ho%0Cst/ should throw: FAIL
-	Location's href: http://ho%0Dst/ should throw: FAIL
-	Location's href: http://ho%0Est/ should throw: FAIL
-	Location's href: http://ho%0Fst/ should throw: FAIL
-	Location's href: http://ho%10st/ should throw: FAIL
-	Location's href: http://ho%11st/ should throw: FAIL
-	Location's href: http://ho%12st/ should throw: FAIL
-	Location's href: http://ho%13st/ should throw: FAIL
-	Location's href: http://ho%14st/ should throw: FAIL
-	Location's href: http://ho%15st/ should throw: FAIL
-	Location's href: http://ho%16st/ should throw: FAIL
-	Location's href: http://ho%17st/ should throw: FAIL
-	Location's href: http://ho%18st/ should throw: FAIL
-	Location's href: http://ho%19st/ should throw: FAIL
-	Location's href: http://ho%1Ast/ should throw: FAIL
-	Location's href: http://ho%1Bst/ should throw: FAIL
-	Location's href: http://ho%1Cst/ should throw: FAIL
-	Location's href: http://ho%1Dst/ should throw: FAIL
-	Location's href: http://ho%1Est/ should throw: FAIL
-	Location's href: http://ho%1Fst/ should throw: FAIL
-	Location's href: http://ho%20st/ should throw: FAIL
-	Location's href: http://ho%23st/ should throw: FAIL
-	Location's href: http://ho%25st/ should throw: FAIL
-	Location's href: http://ho%2Fst/ should throw: FAIL
-	Location's href: http://ho%3Ast/ should throw: FAIL
-	Location's href: http://ho%3Cst/ should throw: FAIL
-	Location's href: http://ho%3Est/ should throw: FAIL
-	Location's href: http://ho%3Fst/ should throw: FAIL
-	Location's href: http://ho%40st/ should throw: FAIL
-	Location's href: http://ho%5Bst/ should throw: FAIL
-	Location's href: http://ho%5Cst/ should throw: FAIL
-	Location's href: http://ho%5Dst/ should throw: FAIL
-	Location's href: http://ho%7Cst/ should throw: FAIL
-	Location's href: http://ho%7Fst/ should throw: FAIL
-	Location's href: http://user:pass@/ should throw: FAIL
-	Location's href: http://user@/www.example.com should throw: FAIL
-	Location's href: http://💩.123/ should throw: FAIL
-	Location's href: https:// y should throw: FAIL
-	Location's href: https://%43%7C/ should throw: FAIL
-	Location's href: https://%C2%AD/ should throw: FAIL
-	Location's href: https://%EF%BF%BD should throw: FAIL
-	Location's href: https://0x100000000/test should throw: FAIL
-	Location's href: https://256.0.0.1/test should throw: FAIL
-	Location's href: https://[0:.0] should throw: FAIL
-	Location's href: https://[0:0:] should throw: FAIL
-	Location's href: https://[0:1.00.0.0.0] should throw: FAIL
-	Location's href: https://[0:1.23.23] should throw: FAIL
-	Location's href: https://[0:1.290.0.0.0] should throw: FAIL
-	Location's href: https://[0:1:2:3:4:5:192.0.02.1]/ should throw: FAIL
-	Location's href: https://[0:1:2:3:4:5:6:7.0.0.0.1] should throw: FAIL
-	Location's href: https://[0::0::0] should throw: FAIL
-	Location's href: https://[192.0.2.1::]/ should throw: FAIL
-	Location's href: https://example.com%80/ should throw: FAIL
-	Location's href: https://example.com%A0/ should throw: FAIL
-	Location's href: https://x x:12 should throw: FAIL
-	Location's href: https://­/ should throw: FAIL
-	Location's href: https://� should throw: FAIL
-	Location's href: https://￿y should throw: FAIL
-	Location's href: intent://:443 should throw: FAIL
-	Location's href: intent://[:1] should throw: FAIL
-	Location's href: intent://test:test should throw: FAIL
-	Location's href: javascript://:443 should throw: FAIL
-	Location's href: javascript://[:1] should throw: FAIL
-	Location's href: javascript://test:test should throw: FAIL
-	Location's href: mailto://:443 should throw: FAIL
-	Location's href: mailto://[:1] should throw: FAIL
-	Location's href: mailto://test:test should throw: FAIL
-	Location's href: non-special://[:80/ should throw: FAIL
-	Location's href: non-special://host\\a should throw: FAIL
-	Location's href: sc://:/ should throw: FAIL
-	Location's href: sc://:12/ should throw: FAIL
-	Location's href: sc://@/ should throw: FAIL
-	Location's href: sc://a b/ should throw: FAIL
-	Location's href: sc://a b/ should throw: FAIL
-	Location's href: sc://a<b should throw: FAIL
-	Location's href: sc://a>b should throw: FAIL
-	Location's href: sc://a[b/ should throw: FAIL
-	Location's href: sc://a\\b/ should throw: FAIL
-	Location's href: sc://a]b/ should throw: FAIL
-	Location's href: sc://a^b should throw: FAIL
-	Location's href: sc://a|b/ should throw: FAIL
-	Location's href: sc://te@s:t@/ should throw: FAIL
-	Location's href: stun://:443 should throw: FAIL
-	Location's href: stun://[:1] should throw: FAIL
-	Location's href: stun://test:test should throw: FAIL
-	Location's href: turn://:443 should throw: FAIL
-	Location's href: turn://[:1] should throw: FAIL
-	Location's href: turn://test:test should throw: FAIL
-	Location's href: urn://:443 should throw: FAIL
-	Location's href: urn://[:1] should throw: FAIL
-	Location's href: urn://test:test should throw: FAIL
+	Location's href: asdf://%43|/ should throw: PASS
+	Location's href: data://:443 should throw: PASS
+	Location's href: data://[:1] should throw: PASS
+	Location's href: data://test:test should throw: PASS
+	Location's href: file://%43%3A should throw: PASS
+	Location's href: file://%43%7C should throw: PASS
+	Location's href: file://%43%7C/ should throw: PASS
+	Location's href: file://%43| should throw: PASS
+	Location's href: file://%C2%AD/p should throw: PASS
+	Location's href: file://C%7C should throw: PASS
+	Location's href: file://[example]/ should throw: PASS
+	Location's href: file://example%/ should throw: PASS
+	Location's href: file://example:1/ should throw: PASS
+	Location's href: file://example:test/ should throw: PASS
+	Location's href: file://­/p should throw: PASS
+	Location's href: ftp://example.com%80/ should throw: PASS
+	Location's href: ftp://example.com%A0/ should throw: PASS
+	Location's href: http://# should throw: PASS
+	Location's href: http://0..0x300./ should throw: PASS
+	Location's href: http://0..0x300/ should throw: PASS
+	Location's href: http://01.2.3.4.5 should throw: PASS
+	Location's href: http://01.2.3.4.5. should throw: PASS
+	Location's href: http://09.2.3.4 should throw: PASS
+	Location's href: http://09.2.3.4. should throw: PASS
+	Location's href: http://0999999999999999999/ should throw: PASS
+	Location's href: http://0x1.2.3.4.5 should throw: PASS
+	Location's href: http://0x1.2.3.4.5. should throw: PASS
+	Location's href: http://0x100.2.3.4 should throw: PASS
+	Location's href: http://0x100.2.3.4. should throw: PASS
+	Location's href: http://1.2.3.08 should throw: PASS
+	Location's href: http://1.2.3.08. should throw: PASS
+	Location's href: http://1.2.3.09 should throw: PASS
+	Location's href: http://? should throw: PASS
+	Location's href: http://@/www.example.com should throw: PASS
+	Location's href: http://@:www.example.com should throw: PASS
+	Location's href: http://[::127.0.0.0.1] should throw: PASS
+	Location's href: http://[www.google.com]/ should throw: PASS
+	Location's href: http://a b/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://a b/ should throw: PASS
+	Location's href: http://a%b/ should throw: PASS
+	Location's href: http://a:b@/www.example.com should throw: PASS
+	Location's href: http://a<b should throw: PASS
+	Location's href: http://a>b should throw: PASS
+	Location's href: http://a[b/ should throw: PASS
+	Location's href: http://a]b/ should throw: PASS
+	Location's href: http://a^b should throw: PASS
+	Location's href: http://a|b/ should throw: PASS
+	Location's href: http://ab/ should throw: PASS
+	Location's href: http://foo.09 should throw: PASS
+	Location's href: http://foo.09. should throw: PASS
+	Location's href: http://foo.0XFfFfFfFfFfFfFfFfFfAcE123 should throw: PASS
+	Location's href: http://foo.0x should throw: PASS
+	Location's href: http://foo.0x4 should throw: PASS
+	Location's href: http://foo.0x4. should throw: PASS
+	Location's href: http://foo.1.2.3.4 should throw: PASS
+	Location's href: http://foo.1.2.3.4. should throw: PASS
+	Location's href: http://foo.2.3.4 should throw: PASS
+	Location's href: http://foo.2.3.4. should throw: PASS
+	Location's href: http://foo:-80/ should throw: PASS
+	Location's href: http://ho%00st/ should throw: PASS
+	Location's href: http://ho%01st/ should throw: PASS
+	Location's href: http://ho%02st/ should throw: PASS
+	Location's href: http://ho%03st/ should throw: PASS
+	Location's href: http://ho%04st/ should throw: PASS
+	Location's href: http://ho%05st/ should throw: PASS
+	Location's href: http://ho%06st/ should throw: PASS
+	Location's href: http://ho%07st/ should throw: PASS
+	Location's href: http://ho%08st/ should throw: PASS
+	Location's href: http://ho%09st/ should throw: PASS
+	Location's href: http://ho%0Ast/ should throw: PASS
+	Location's href: http://ho%0Bst/ should throw: PASS
+	Location's href: http://ho%0Cst/ should throw: PASS
+	Location's href: http://ho%0Dst/ should throw: PASS
+	Location's href: http://ho%0Est/ should throw: PASS
+	Location's href: http://ho%0Fst/ should throw: PASS
+	Location's href: http://ho%10st/ should throw: PASS
+	Location's href: http://ho%11st/ should throw: PASS
+	Location's href: http://ho%12st/ should throw: PASS
+	Location's href: http://ho%13st/ should throw: PASS
+	Location's href: http://ho%14st/ should throw: PASS
+	Location's href: http://ho%15st/ should throw: PASS
+	Location's href: http://ho%16st/ should throw: PASS
+	Location's href: http://ho%17st/ should throw: PASS
+	Location's href: http://ho%18st/ should throw: PASS
+	Location's href: http://ho%19st/ should throw: PASS
+	Location's href: http://ho%1Ast/ should throw: PASS
+	Location's href: http://ho%1Bst/ should throw: PASS
+	Location's href: http://ho%1Cst/ should throw: PASS
+	Location's href: http://ho%1Dst/ should throw: PASS
+	Location's href: http://ho%1Est/ should throw: PASS
+	Location's href: http://ho%1Fst/ should throw: PASS
+	Location's href: http://ho%20st/ should throw: PASS
+	Location's href: http://ho%23st/ should throw: PASS
+	Location's href: http://ho%25st/ should throw: PASS
+	Location's href: http://ho%2Fst/ should throw: PASS
+	Location's href: http://ho%3Ast/ should throw: PASS
+	Location's href: http://ho%3Cst/ should throw: PASS
+	Location's href: http://ho%3Est/ should throw: PASS
+	Location's href: http://ho%3Fst/ should throw: PASS
+	Location's href: http://ho%40st/ should throw: PASS
+	Location's href: http://ho%5Bst/ should throw: PASS
+	Location's href: http://ho%5Cst/ should throw: PASS
+	Location's href: http://ho%5Dst/ should throw: PASS
+	Location's href: http://ho%7Cst/ should throw: PASS
+	Location's href: http://ho%7Fst/ should throw: PASS
+	Location's href: http://user:pass@/ should throw: PASS
+	Location's href: http://user@/www.example.com should throw: PASS
+	Location's href: http://💩.123/ should throw: PASS
+	Location's href: https:// y should throw: PASS
+	Location's href: https://%43%7C/ should throw: PASS
+	Location's href: https://%C2%AD/ should throw: PASS
+	Location's href: https://%EF%BF%BD should throw: PASS
+	Location's href: https://0x100000000/test should throw: PASS
+	Location's href: https://256.0.0.1/test should throw: PASS
+	Location's href: https://[0:.0] should throw: PASS
+	Location's href: https://[0:0:] should throw: PASS
+	Location's href: https://[0:1.00.0.0.0] should throw: PASS
+	Location's href: https://[0:1.23.23] should throw: PASS
+	Location's href: https://[0:1.290.0.0.0] should throw: PASS
+	Location's href: https://[0:1:2:3:4:5:192.0.02.1]/ should throw: PASS
+	Location's href: https://[0:1:2:3:4:5:6:7.0.0.0.1] should throw: PASS
+	Location's href: https://[0::0::0] should throw: PASS
+	Location's href: https://[192.0.2.1::]/ should throw: PASS
+	Location's href: https://example.com%80/ should throw: PASS
+	Location's href: https://example.com%A0/ should throw: PASS
+	Location's href: https://x x:12 should throw: PASS
+	Location's href: https://­/ should throw: PASS
+	Location's href: https://� should throw: PASS
+	Location's href: https://￿y should throw: PASS
+	Location's href: intent://:443 should throw: PASS
+	Location's href: intent://[:1] should throw: PASS
+	Location's href: intent://test:test should throw: PASS
+	Location's href: javascript://:443 should throw: PASS
+	Location's href: javascript://[:1] should throw: PASS
+	Location's href: javascript://test:test should throw: PASS
+	Location's href: mailto://:443 should throw: PASS
+	Location's href: mailto://[:1] should throw: PASS
+	Location's href: mailto://test:test should throw: PASS
+	Location's href: non-special://[:80/ should throw: PASS
+	Location's href: non-special://host\\a should throw: PASS
+	Location's href: sc://:/ should throw: PASS
+	Location's href: sc://:12/ should throw: PASS
+	Location's href: sc://@/ should throw: PASS
+	Location's href: sc://a b/ should throw: PASS
+	Location's href: sc://a b/ should throw: PASS
+	Location's href: sc://a<b should throw: PASS
+	Location's href: sc://a>b should throw: PASS
+	Location's href: sc://a[b/ should throw: PASS
+	Location's href: sc://a\\b/ should throw: PASS
+	Location's href: sc://a]b/ should throw: PASS
+	Location's href: sc://a^b should throw: PASS
+	Location's href: sc://a|b/ should throw: PASS
+	Location's href: sc://te@s:t@/ should throw: PASS
+	Location's href: stun://:443 should throw: PASS
+	Location's href: stun://[:1] should throw: PASS
+	Location's href: stun://test:test should throw: PASS
+	Location's href: turn://:443 should throw: PASS
+	Location's href: turn://[:1] should throw: PASS
+	Location's href: turn://test:test should throw: PASS
+	Location's href: urn://:443 should throw: PASS
+	Location's href: urn://[:1] should throw: PASS
+	Location's href: urn://test:test should throw: PASS
 	URL's constructor's base argument:  should throw: PASS
 	URL's constructor's base argument: # should throw: PASS
 	URL's constructor's base argument: ? should throw: PASS
@@ -12283,7 +12283,112 @@
 	response.formData() with input: test: PASS
 	response.formData() with input: †&†=x: PASS
 	response.formData() with input: ﻿test=﻿: PASS
-/url/urlencoded-parser.any.worker.html: CRASH
+/url/urlencoded-parser.any.worker.html: OK
+	URLSearchParams constructed with: : PASS
+	URLSearchParams constructed with: %61+%4d%4D=: PASS
+	URLSearchParams constructed with: %61=a: PASS
+	URLSearchParams constructed with: %=a: PASS
+	URLSearchParams constructed with: %C2: PASS
+	URLSearchParams constructed with: %C2x: PASS
+	URLSearchParams constructed with: %EF%BB%BFtest=%EF%BB%BF: PASS
+	URLSearchParams constructed with: %EF%BF%BF=%EF%BF%BF: PASS
+	URLSearchParams constructed with: %FE%FF: PASS
+	URLSearchParams constructed with: %FF%FE: PASS
+	URLSearchParams constructed with: %a=a: PASS
+	URLSearchParams constructed with: %a_=a: PASS
+	URLSearchParams constructed with: &: PASS
+	URLSearchParams constructed with: &&&a=b&&&&c=d&: PASS
+	URLSearchParams constructed with: &a: PASS
+	URLSearchParams constructed with: =b: PASS
+	URLSearchParams constructed with: _charset_=windows-1252&test=%C2x: PASS
+	URLSearchParams constructed with: a: PASS
+	URLSearchParams constructed with: a&: PASS
+	URLSearchParams constructed with: a&a: PASS
+	URLSearchParams constructed with: a&b&c: PASS
+	URLSearchParams constructed with: a=: PASS
+	URLSearchParams constructed with: a==a: PASS
+	URLSearchParams constructed with: a=a&a=b&a=c: PASS
+	URLSearchParams constructed with: a=a+b+c+d: PASS
+	URLSearchParams constructed with: a=b: PASS
+	URLSearchParams constructed with: a=b&c=d: PASS
+	URLSearchParams constructed with: a=b&c=d&: PASS
+	URLSearchParams constructed with: b=%2%2af%2a: PASS
+	URLSearchParams constructed with: b=%2a: PASS
+	URLSearchParams constructed with: b=%2sf%2a: PASS
+	URLSearchParams constructed with: id=0&value=%: PASS
+	URLSearchParams constructed with: test: PASS
+	URLSearchParams constructed with: †&†=x: PASS
+	URLSearchParams constructed with: ﻿test=﻿: PASS
+	request.formData() with input: : PASS
+	request.formData() with input: %61+%4d%4D=: PASS
+	request.formData() with input: %61=a: PASS
+	request.formData() with input: %=a: PASS
+	request.formData() with input: %C2: PASS
+	request.formData() with input: %C2x: PASS
+	request.formData() with input: %EF%BB%BFtest=%EF%BB%BF: PASS
+	request.formData() with input: %EF%BF%BF=%EF%BF%BF: PASS
+	request.formData() with input: %FE%FF: PASS
+	request.formData() with input: %FF%FE: PASS
+	request.formData() with input: %a=a: PASS
+	request.formData() with input: %a_=a: PASS
+	request.formData() with input: &: PASS
+	request.formData() with input: &&&a=b&&&&c=d&: PASS
+	request.formData() with input: &a: PASS
+	request.formData() with input: =b: PASS
+	request.formData() with input: _charset_=windows-1252&test=%C2x: PASS
+	request.formData() with input: a: PASS
+	request.formData() with input: a&: PASS
+	request.formData() with input: a&a: PASS
+	request.formData() with input: a&b&c: PASS
+	request.formData() with input: a=: PASS
+	request.formData() with input: a==a: PASS
+	request.formData() with input: a=a&a=b&a=c: PASS
+	request.formData() with input: a=a+b+c+d: PASS
+	request.formData() with input: a=b: PASS
+	request.formData() with input: a=b&c=d: PASS
+	request.formData() with input: a=b&c=d&: PASS
+	request.formData() with input: b=%2%2af%2a: PASS
+	request.formData() with input: b=%2a: PASS
+	request.formData() with input: b=%2sf%2a: PASS
+	request.formData() with input: id=0&value=%: PASS
+	request.formData() with input: test: PASS
+	request.formData() with input: †&†=x: PASS
+	request.formData() with input: ﻿test=﻿: PASS
+	response.formData() with input: : PASS
+	response.formData() with input: %61+%4d%4D=: PASS
+	response.formData() with input: %61=a: PASS
+	response.formData() with input: %=a: PASS
+	response.formData() with input: %C2: PASS
+	response.formData() with input: %C2x: PASS
+	response.formData() with input: %EF%BB%BFtest=%EF%BB%BF: PASS
+	response.formData() with input: %EF%BF%BF=%EF%BF%BF: PASS
+	response.formData() with input: %FE%FF: PASS
+	response.formData() with input: %FF%FE: PASS
+	response.formData() with input: %a=a: PASS
+	response.formData() with input: %a_=a: PASS
+	response.formData() with input: &: PASS
+	response.formData() with input: &&&a=b&&&&c=d&: PASS
+	response.formData() with input: &a: PASS
+	response.formData() with input: =b: PASS
+	response.formData() with input: _charset_=windows-1252&test=%C2x: PASS
+	response.formData() with input: a: PASS
+	response.formData() with input: a&: PASS
+	response.formData() with input: a&a: PASS
+	response.formData() with input: a&b&c: PASS
+	response.formData() with input: a=: PASS
+	response.formData() with input: a==a: PASS
+	response.formData() with input: a=a&a=b&a=c: PASS
+	response.formData() with input: a=a+b+c+d: PASS
+	response.formData() with input: a=b: PASS
+	response.formData() with input: a=b&c=d: PASS
+	response.formData() with input: a=b&c=d&: PASS
+	response.formData() with input: b=%2%2af%2a: PASS
+	response.formData() with input: b=%2a: PASS
+	response.formData() with input: b=%2sf%2a: PASS
+	response.formData() with input: id=0&value=%: PASS
+	response.formData() with input: test: PASS
+	response.formData() with input: †&†=x: PASS
+	response.formData() with input: ﻿test=﻿: PASS
 /url/urlsearchparams-append.any.html: OK
 	Append empty strings: PASS
 	Append multiple: PASS
@@ -12322,7 +12427,34 @@
 	URLSearchParams constructor, remove leading "?": PASS
 	URLSearchParams constructor, string.: PASS
 	URLSearchParams constructor, {} as argument: PASS
-/url/urlsearchparams-constructor.any.worker.html: CRASH
+/url/urlsearchparams-constructor.any.worker.html: OK
+	Basic URLSearchParams construction: PASS
+	Construct with 2 unpaired surrogates (no trailing): FAIL
+	Construct with 3 unpaired surrogates (no leading): FAIL
+	Construct with array with two keys: PASS
+	Construct with object with +: PASS
+	Construct with object with NULL, non-ASCII, and surrogate keys: PASS
+	Construct with object with two keys: PASS
+	Constructor with sequence of sequences of strings: PASS
+	Custom [Symbol.iterator]: PASS
+	Parse %00: PASS
+	Parse %20: PASS
+	Parse %e2%8e%84: PASS
+	Parse %f0%9f%92%a9: PASS
+	Parse +: PASS
+	Parse \\0: PASS
+	Parse encoded +: PASS
+	Parse space: PASS
+	Parse ⎄: PASS
+	Parse 💩: PASS
+	URLSearchParams constructor, DOMException as argument: PASS
+	URLSearchParams constructor, FormData.: PASS
+	URLSearchParams constructor, empty string as argument: PASS
+	URLSearchParams constructor, no arguments: PASS
+	URLSearchParams constructor, object.: PASS
+	URLSearchParams constructor, remove leading "?": PASS
+	URLSearchParams constructor, string.: PASS
+	URLSearchParams constructor, {} as argument: PASS
 /url/urlsearchparams-delete.any.html: OK
 	Changing the query of a URL with an opaque path with trailing spaces: FAIL
 	Changing the query of a URL with an opaque path with trailing spaces and a fragment: FAIL

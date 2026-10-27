@@ -1,0 +1,110 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Popover API</title>
+<body>
+<div id="a" popover>A <div id="nested" popover>nested</div></div>
+<div id="b" popover="auto">B</div>
+<div id="m" popover="manual">M</div>
+<div id="x" popover="bogus">X</div>
+<div id="plain">plain</div>
+<button id="btn" popovertarget="b">toggle B</button>
+<button id="show" popovertarget="m" popovertargetaction="show">show M</button>
+<div id="outside">outside</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const open = (el) => el.matches(":popover-open");
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+section("interface and reflection", () => {
+  eq("showPopover", typeof HTMLElement.prototype.showPopover, "function");
+  eq("popover: empty is auto", $("a").popover, "auto");
+  eq("popover: manual", $("m").popover, "manual");
+  eq("popover: invalid is manual", $("x").popover, "manual");
+  eq("popover: absent is null", $("plain").popover, null);
+  const d = document.createElement("div");
+  d.popover = "hint";
+  eq("popover setter", d.getAttribute("popover") + ":" + d.popover, "hint:hint");
+  d.popover = null;
+  eq("popover = null removes it", d.hasAttribute("popover"), false);
+  eq("popoverTargetElement", $("btn").popoverTargetElement, $("b"));
+  eq("popoverTargetAction default", $("btn").popoverTargetAction, "toggle");
+  eq("popoverTargetAction", $("show").popoverTargetAction, "show");
+  const te = new ToggleEvent("toggle", { oldState: "closed", newState: "open" });
+  eq("ToggleEvent init", te.oldState + ">" + te.newState + ":" + te.source, "closed>open:null");
+});
+
+section("show, hide, styles, errors", () => {
+  t("hidden at first", !open($("a")) && getComputedStyle($("a")).display === "none");
+  $("a").showPopover();
+  t("showPopover: :popover-open", open($("a")));
+  const cs = getComputedStyle($("a"));
+  eq("shown: display", cs.display, "block");
+  eq("shown: position fixed", cs.position, "fixed");
+  $("a").hidePopover();
+  t("hidePopover", !open($("a")) && getComputedStyle($("a")).display === "none");
+  $("a").hidePopover();
+  t("hiding a hidden popover is no error", true);
+  throws("not a popover", () => $("plain").showPopover(), "NotSupportedError");
+  throws("disconnected", () => { const d = document.createElement("div"); d.popover = "auto"; d.showPopover(); }, "InvalidStateError");
+  eq("togglePopover shows", $("m").togglePopover(), true);
+  eq("togglePopover(true) keeps it", $("m").togglePopover(true), true);
+  eq("togglePopover({force: false})", $("m").togglePopover({ force: false }), false);
+});
+
+section("the auto stack", () => {
+  $("a").showPopover();
+  $("m").showPopover();
+  $("b").showPopover();
+  t("an auto popover hides the other auto ones", !open($("a")) && open($("b")));
+  t("manual popovers stay", open($("m")));
+  $("b").hidePopover();
+  $("a").showPopover();
+  $("nested").showPopover();
+  t("a nested popover keeps its ancestor", open($("a")) && open($("nested")));
+  $("a").hidePopover();
+  t("hiding the ancestor hides the nested one", !open($("nested")));
+  $("m").hidePopover();
+});
+
+section("beforetoggle cancels", () => {
+  const stop = (e) => e.preventDefault();
+  $("b").addEventListener("beforetoggle", stop);
+  $("b").showPopover();
+  t("cancelled", !open($("b")));
+  $("b").removeEventListener("beforetoggle", stop);
+});
+
+(async () => {
+  const seen = [];
+  const log = (e) => seen.push(e.type + ":" + e.oldState + ">" + e.newState + (e instanceof ToggleEvent ? "" : "!"));
+  $("b").addEventListener("beforetoggle", log);
+  $("b").addEventListener("toggle", log);
+  $("b").showPopover();
+  eq("beforetoggle is synchronous", seen.join(), "beforetoggle:closed>open");
+  await tick();
+  eq("toggle comes after", seen.join(), "beforetoggle:closed>open,toggle:closed>open");
+  seen.length = 0;
+  $("b").hidePopover();
+  $("b").showPopover();
+  await tick();
+  eq("toggle events are coalesced", seen.filter((s) => s.startsWith("toggle")).join(), "toggle:open>open");
+  $("b").hidePopover();
+  await tick();
+  seen.length = 0;
+  $("btn").click();
+  t("a popovertarget button toggles", open($("b")));
+  await tick();
+  const srcs = [];
+  $("b").addEventListener("toggle", (e) => srcs.push(e.source && e.source.id));
+  $("btn").click();
+  t("and again", !open($("b")));
+  await tick();
+  eq("toggle source is the invoker", srcs.join(), "btn");
+  $("show").click();
+  $("show").click();
+  t("popovertargetaction=show only shows", open($("m")));
+  $("m").hidePopover();
+  window.ready = true;
+  done();
+})().catch((e) => { t("async section", false, e && e.name + ": " + e.message); done(); });
+</script>

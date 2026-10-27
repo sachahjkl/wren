@@ -8840,7 +8840,7 @@
 	getElementsByTagName() should not leak nodes in shadow tree: PASS
 	getElementsByTagNameNS() should not leak nodes in shadow tree: FAIL
 /shadow-dom/leaktests/html-collection.html: OK
-	document.all should not contain shadow nodes: FAIL
+	document.all should not contain shadow nodes: PASS
 	document.anchors should not contain shadow nodes: PASS
 	document.applets should not contain any nodes: FAIL
 	document.embeds should not contain shadow nodes: PASS
@@ -8901,7 +8901,7 @@
 	New referenced element prepended to the shadow supercedes the existing label: FAIL
 	Removing the referenced element results in an empty computed label: FAIL
 	The existing label supercedes new element (with same id as the existing label) appended to the shadow: FAIL
-/shadow-dom/reference-target/tentative/event-path.html: TIMEOUT
+/shadow-dom/reference-target/tentative/event-path.html: ERROR
 	Constructed events given a source don't become composed: FAIL
 	Event path includes all shadow hosts and shadow roots up to the root of the source, but non-bubbling event fires only where currentTarget == retargeted original target: FAIL
 	Event path should go all the way to window if source is not in a shadow, but should only fire when currentTarget == retargeted original target: FAIL
@@ -8991,6 +8991,21 @@
 	button.form has IDL setter behavior IsNull when pointing to select with reference target: PASS
 	button.form has IDL setter behavior IsNull when pointing to textarea with reference target: PASS
 	button.form has IDL setter behavior ReflectsHostReadOnly when pointing to form with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to button with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to datalist with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to div with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to fieldset with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to form with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to input with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to label with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to legend with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to meter with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to object with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to option with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to output with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to progress with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to select with reference target: PASS
+	button.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to textarea with reference target: PASS
 	fieldset.form has IDL setter behavior IsNull when pointing to button with reference target: PASS
 	fieldset.form has IDL setter behavior IsNull when pointing to datalist with reference target: PASS
 	fieldset.form has IDL setter behavior IsNull when pointing to div with reference target: PASS
@@ -9036,6 +9051,21 @@
 	input.list has IDL setter behavior IsNull when pointing to select with reference target: PASS
 	input.list has IDL setter behavior IsNull when pointing to textarea with reference target: PASS
 	input.list has IDL setter behavior ReflectsHostReadOnly when pointing to datalist with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to button with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to datalist with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to div with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to fieldset with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to form with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to input with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to label with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to legend with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to meter with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to object with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to option with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to output with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to progress with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to select with reference target: PASS
+	input.popoverTargetElement has IDL setter behavior ReflectsHost when pointing to textarea with reference target: PASS
 	label.control has IDL setter behavior IsNull when pointing to datalist with reference target: PASS
 	label.control has IDL setter behavior IsNull when pointing to div with reference target: PASS
 	label.control has IDL setter behavior IsNull when pointing to fieldset with reference target: PASS
@@ -9202,6 +9232,21 @@
 	button.form has reflection behavior IsNull when pointing to select with reference target with imperative setup: PASS
 	button.form has reflection behavior IsNull when pointing to textarea with reference target with imperative setup: PASS
 	button.form has reflection behavior ReflectsHostReadOnly when pointing to form with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to button with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to datalist with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to div with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to fieldset with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to form with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to input with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to label with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to legend with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to meter with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to object with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to option with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to output with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to progress with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to select with reference target with imperative setup: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to textarea with reference target with imperative setup: FAIL
 	fieldset.form has reflection behavior IsNull when pointing to button with reference target with imperative setup: PASS
 	fieldset.form has reflection behavior IsNull when pointing to datalist with reference target with imperative setup: PASS
 	fieldset.form has reflection behavior IsNull when pointing to div with reference target with imperative setup: PASS
@@ -9247,6 +9292,21 @@
 	input.list has reflection behavior IsNull when pointing to select with reference target with imperative setup: PASS
 	input.list has reflection behavior IsNull when pointing to textarea with reference target with imperative setup: PASS
 	input.list has reflection behavior ReflectsHostReadOnly when pointing to datalist with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to button with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to datalist with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to div with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to fieldset with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to form with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to input with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to label with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to legend with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to meter with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to object with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to option with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to output with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to progress with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to select with reference target with imperative setup: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to textarea with reference target with imperative setup: FAIL
 	label.control has reflection behavior IsNull when pointing to datalist with reference target with imperative setup: PASS
 	label.control has reflection behavior IsNull when pointing to div with reference target with imperative setup: PASS
 	label.control has reflection behavior IsNull when pointing to fieldset with reference target with imperative setup: PASS
@@ -9414,6 +9474,21 @@
 	button.form has reflection behavior IsNull when pointing to select with reference target: PASS
 	button.form has reflection behavior IsNull when pointing to textarea with reference target: PASS
 	button.form has reflection behavior ReflectsHostReadOnly when pointing to form with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to button with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to datalist with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to div with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to fieldset with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to form with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to input with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to label with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to legend with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to meter with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to object with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to option with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to output with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to progress with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to select with reference target: FAIL
+	button.popoverTargetElement has reflection behavior ReflectsHost when pointing to textarea with reference target: FAIL
 	fieldset.form has reflection behavior IsNull when pointing to button with reference target: PASS
 	fieldset.form has reflection behavior IsNull when pointing to datalist with reference target: PASS
 	fieldset.form has reflection behavior IsNull when pointing to div with reference target: PASS
@@ -9459,6 +9534,21 @@
 	input.list has reflection behavior IsNull when pointing to select with reference target: PASS
 	input.list has reflection behavior IsNull when pointing to textarea with reference target: PASS
 	input.list has reflection behavior ReflectsHostReadOnly when pointing to datalist with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to button with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to datalist with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to div with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to fieldset with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to form with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to input with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to label with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to legend with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to meter with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to object with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to option with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to output with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to progress with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to select with reference target: FAIL
+	input.popoverTargetElement has reflection behavior ReflectsHost when pointing to textarea with reference target: FAIL
 	label.control has reflection behavior IsNull when pointing to datalist with reference target: PASS
 	label.control has reflection behavior IsNull when pointing to div with reference target: PASS
 	label.control has reflection behavior IsNull when pointing to fieldset with reference target: PASS

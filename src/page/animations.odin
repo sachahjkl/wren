@@ -38,6 +38,7 @@ Page_Animations :: struct {
 	wake_at:      f64,          // document clock (ms) the wake timer is set for
 	frame_time:   f64,
 	pinned:       bool,
+	scripted:     ^Web_Anims,   // Web Animations of scripts (web_animations.odin), made on first use
 }
 
 @(private)
@@ -50,6 +51,7 @@ animations_init :: proc(p: ^Page) {
 animations_destroy :: proc(p: ^Page) {
 	if p.anim.flush_timer != base.NIL_HANDLE { host.clear_timer(p.loop, p.anim.flush_timer) }
 	if p.anim.wake_timer != base.NIL_HANDLE { host.clear_timer(p.loop, p.anim.wake_timer) }
+	web_anims_destroy(p)
 	style.timeline_destroy(p.anim.timeline, p.styled)
 	p.anim.timeline = nil
 	for e in p.anim.pending { delete(e.name) }

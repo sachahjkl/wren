@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web Animations</title>
+<style>
+  body { max-width: 780px; margin: 24px auto; font-family: sans-serif; font-size: 17px; }
+  h1 { color: #1c7ed6; }
+  .card { display: inline-block; width: 90px; height: 90px; margin: 12px; border-radius: 12px; background: #1c7ed6; color: #fff;
+          text-align: center; line-height: 90px; font-weight: bold; }
+  .track { position: relative; height: 24px; width: 400px; background: #e9ecef; border-radius: 12px; margin: 8px 0; }
+  .ball { position: absolute; width: 24px; height: 24px; border-radius: 50%; background: #e8590c; }
+  button { margin: 4px; padding: 6px 12px; }
+  #probe-track { width: 200px; height: 20px; background: #fff; border: 0; }
+  #probe { width: 0; height: 20px; background: rgb(0, 0, 255); }
+  #log { font-family: monospace; font-size: 13px; color: #495057; white-space: pre; min-height: 6em; }
+</style>
+</head>
+<body>
+<h1>Web Animations</h1>
+<p><code>element.animate()</code>, <code>Animation</code> and <code>KeyframeEffect</code>: keyframes in both forms, timing
+(easing, iterations, direction, fill), play state controls, <code>ready</code> / <code>finished</code> promises,
+<code>finish</code> / <code>cancel</code> / <code>remove</code> events and <code>getAnimations()</code>.</p>
+
+<div class="card" id="spin">spin</div>
+<div class="card" id="pulse">pulse</div>
+<div class="card" id="steps">steps</div>
+
+<div class="track"><div class="ball" id="ball"></div></div>
+<div>
+  <button id="pause">pause</button><button id="play">play</button><button id="reverse">reverse</button>
+  <button id="faster">rate x2</button><button id="finish">finish</button><button id="cancel">cancel</button>
+</div>
+<div id="probe-track"><div id="probe"></div></div>
+<div id="log"></div>
+
+<script>
+const log = (s) => { const l = document.getElementById("log"); l.textContent = (s + "\n" + l.textContent).split("\n").slice(0, 8).join("\n"); };
+const spin = document.getElementById("spin").animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: 2000, iterations: Infinity });
+document.getElementById("pulse").animate({ opacity: [1, 0.3, 1], transform: ["scale(1)", "scale(0.85)", "scale(1)"] }, { duration: 1500, iterations: Infinity, easing: "ease-in-out" });
+document.getElementById("steps").animate({ backgroundColor: ["#2f9e44", "#f08c00"] }, { duration: 2000, iterations: Infinity, direction: "alternate", easing: "steps(5, end)" });
+const ball = document.getElementById("ball").animate([{ left: "0px" }, { left: "376px" }], { duration: 3000, iterations: Infinity, direction: "alternate", easing: "ease-in-out" });
+ball.ready.then(() => log("ball ready: " + ball.playState));
+const button = (id, fn) => document.getElementById(id).addEventListener("click", () => { try { fn(); log(id + ": " + ball.playState + ", rate " + ball.playbackRate); } catch (e) { log(id + ": " + e.name); } });
+button("pause", () => ball.pause());
+button("play", () => ball.play());
+button("reverse", () => ball.reverse());
+button("faster", () => ball.updatePlaybackRate(ball.playbackRate * 2));
+button("finish", () => ball.finish());
+button("cancel", () => ball.cancel());
+ball.oncancel = () => log("cancel event");
+ball.onfinish = (e) => log("finish event at " + e.currentTime);
+window.demo = { spin, ball, count: () => document.getAnimations().length };
+</script>
+</body>
+</html>

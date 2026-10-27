@@ -69,6 +69,9 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 		#partial switch cs.width.kind {
 		case .Min_Content: spec_w, has_w = intrinsic(c, ai)[0], true
 		case .Max_Content: spec_w, has_w = intrinsic(c, ai)[1], true
+		case .Fit_Content:
+			// CSS Sizing 3: shrink-to-fit in the space the insets leave; a size, so auto margins centre it (a popover)
+			spec_w, has_w = shrink_to_fit(c, ai, cbw - (il_ok ? il : 0) - (ir_ok ? ir : 0) - mL - mR), true
 		}
 		k = &c.l.boxes[ai]
 	}
@@ -114,6 +117,8 @@ layout_abs :: proc(c: ^Ctx, ai, ref: i32, cbr: Rect) {
 	h := res.h
 	_, has_h := to_border_h(c, k, cs.height, cbh)
 	has_h = has_h || k.kind == .Replaced || cs.aspect_ratio > 0
+	// an intrinsic height keyword is the content's height: the insets do not stretch it (auto margins centre it)
+	#partial switch cs.height.kind { case .Min_Content, .Max_Content, .Fit_Content: has_h = true }
 	static_top := sp.y - cbr.min.y
 	top: f32
 	if has_h {

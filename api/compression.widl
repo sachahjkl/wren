@@ -1,0 +1,19 @@
+/// CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves:
+/// native/js/runtime/web_transform.c): a DEFLATE stream (src/flate: gzip, zlib "deflate" or raw) fed chunk by chunk. One call's
+/// output is bounded by page.max_fetch_bytes (Quota past it: a decompression bomb errors the stream).
+[Exposed=(Window,Worker)]
+module compression {
+  handle Compressor : Object = Zip_Stream via lookup_Compressor;
+
+  enum CompressionFormat : i32 { Gzip, Deflate, Deflate_Raw }
+
+  /// A compressor (decompress false) or a decompressor of `format`.
+  Compressor Compression_create(CompressionFormat format, bool decompress) raises;
+  /// Feeds `input`: the output it made (Compression_output reads it again when the buffer was too small). Type for
+  /// data that is not of the format, or that follows the end of the compressed data; Quota past the bound.
+  [Effects] bytes Compression_push(Compressor compressor, bytes input) raises;
+  /// The end of the input: what is left of the output. Type when the compressed data ended before its end.
+  [Effects] bytes Compression_finish(Compressor compressor) raises;
+  /// The output of the last push or finish.
+  bytes Compression_output(Compressor compressor);
+}

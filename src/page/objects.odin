@@ -172,22 +172,26 @@ object_dispatch :: proc(p: ^Page, h: u64, proto: dom.Event) -> bool {
 // Every host -> guest call of the page goes through here. Returns false when the call trapped (already logged).
 call_guest :: proc(p: ^Page, inst: ^wasm.Instance, table_index: u32, argv: []u32) -> bool {
 	if inst == nil || inst.dead || p.closed || realm_halted(p) { return false }
+	task := p.objects.depth == 0 ? timeline_task_begin(p) : 0   // a task of the page: long ones are Long Tasks (timeline.odin)
 	p.objects.depth += 1
 	res := wasm.call_indirect(inst, table_index, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if task != 0 { timeline_task_end(p, task) }
 	return res == .Ok
 }
 
 // Calls an export of a module as a task of the page (embedders and tests): the microtask checkpoint runs afterwards.
 call_export :: proc(p: ^Page, inst: ^wasm.Instance, name: cstring, argv: []u32 = nil) -> wasm.Call_Result {
 	if inst == nil || inst.dead || p.closed || realm_halted(p) { return .Trapped }
+	task := p.objects.depth == 0 ? timeline_task_begin(p) : 0
 	p.objects.depth += 1
 	res := wasm.call_raw(inst, name, argv)
 	p.objects.depth -= 1
 	if res != .Ok { guest_failed(p, inst) }
 	if p.objects.depth == 0 { microtask_checkpoint(p) }
+	if task != 0 { timeline_task_end(p, task) }
 	return res
 }
 

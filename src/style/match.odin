@@ -22,6 +22,7 @@ State :: struct {
 Control_Query :: enum u8 {
 	Checked, Indeterminate, Default, Disabled, Read_Write, Placeholder_Shown,
 	Valid, Invalid, User_Valid, User_Invalid, In_Range, Out_Of_Range,
+	Popover_Open,   // the element is a popover that is showing (not a form control: the page's popover state)
 }
 
 Control_Provider :: struct {
@@ -558,6 +559,10 @@ matches_pseudo :: proc(m: ^Match_Ctx, el: base.Handle, n: ^dom.Node, s: css.Simp
 		a, _ := control_query(m, el, q)
 		return a
 	case .Autofill: return false
+	case .Popover_Open:
+		if _, ok := attr(n, "popover"); !ok { return false }
+		a, _ := control_query(m, el, .Popover_Open)
+		return a
 	case .Placeholder_Shown:
 		if a, known := control_query(m, el, .Placeholder_Shown); known { return a }
 		if n.name != "input" && n.name != "textarea" { return false }
