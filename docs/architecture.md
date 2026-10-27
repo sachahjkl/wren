@@ -85,8 +85,8 @@ collection so that a detached tree nothing holds is freed (`src/page/js_realm.od
 
 `src/images` decodes on its own threads, never on the interface thread. PNG, JPEG, GIF, BMP, ICO and TIFF go through
 the platform (WIC; HEIF too when the Store codec is installed). WebP, AVIF and SVG are always available, whatever
-Windows has installed, through a Rust static library built by `tools\build_media.ps1` from `native\media` (rebuilt
-only when its sources change; about 6 MB added to the exe, 1.5 min the first time):
+Windows has installed, through the crate `native\media`, part of Wren's one Rust static library (see "The Rust
+library" below; about 6 MB added to the exe):
 
 - **SVG**: resvg 0.48.1 (usvg + tiny-skia; text with the system fonts through fontdb). Rendered at the size it is
   shown at (device pixels), in the secure static mode of SVG images (no external resource, script or animation);
@@ -100,10 +100,46 @@ only when its sources change; about 6 MB added to the exe, 1.5 min the first tim
 - **WOFF2** web fonts: brotli-decompressor 6.1.0, then the glyf / loca / hmtx transforms reversed
   (`native/media/src/woff2.rs`, used by `src/webfont`).
 
-Every crate is pinned by exact version in `native\media\Cargo.toml` and by SHA-256 in `Cargo.lock` (`--locked`).
-Both Rust libraries (Wasmtime's and this one) carry a standard library: the script renames the one duplicated
-unmangled symbol (`rust_eh_personality`, unused on MSVC) in ours with `llvm-objcopy`. `tools\gen_media_fixtures.ps1`
-(ImageMagick, FFmpeg) made the AVIF / WebP test files of `examples\site\media`; `src\tools\mediabench` times decodes.
+Every crate is pinned (see below). `tools\gen_media_fixtures.ps1` (ImageMagick, FFmpeg) made the AVIF / WebP test files of `examples\site\media`;
+`src\tools\mediabench` times decodes.
+
+## The Rust library (`native/`)
+
+A program links one Rust static library at most: each carries its own copy of Rust's standard library, and two built
+by the same compiler define the same symbols. So all of Wren's Rust code is one Cargo workspace, `native/`, with one
+`Cargo.lock`, one target directory (`build\native\target`) and one output, `build\native\wren_native.lib`
+(`tools\build_native.ps1`, run by `build.bat`; nothing is done when `build\native\STAMP` matches the sources):
+
+- `native/media` (crate `wren_media`, a library): the image decoders and WOFF2 above (`src/images`, `src/webfont`).
+- The toolkit's crates, path dependencies that stay in the toolkit: `ext/gui_toolkit/native/text` (`gt_text`, the
+  native text backend; feature `text`, left out of a `WREN_TEXT=dwrite` build) and `ext/gui_toolkit/native/a11y`
+  (`gt_a11y`, AccessKit; feature `a11y`). The toolkit is built with `-define:FONT_NATIVE_LINK=false
+  -define:A11Y_NATIVE_LINK=false`: it links nothing of its own.
+- `native/wren_native`, the assembly crate (a `staticlib` with no code): it picks the libraries, and their C functions
+  (`wm_*`, `gt_*`) are exported from it.
+
+Two Cargo profiles, with the same code generation for each crate (`opt-level = 3`, one codegen unit, `panic =
+"unwind"`: every entry point catches panics):
+
+- `release` (`build.bat release` and `profile`: what is shipped, and measured as shipped): fat LTO, the whole graph
+  optimized as one module. A change in any crate runs that step again over all of them (a minute or more).
+- `quick` (`build.bat`, `debug`, `check`, the CI): no LTO, each crate's objects go into the archive as they are. A
+  change in one crate rebuilds that crate and the archive: touching the accessibility adapter recompiles neither the
+  decoders nor the text backend (7 s against 65 s). Measured against `release` on 2026-10-27: decoding as fast (WebP,
+  AVIF, SVG, WOFF2 within 3 %), shaping 2 to 5 % slower, the exe 0.6 MB larger.
+
+Both stay compiled in `build\native\target`; switching between them copies the library. The CI caches the compiled
+crates by profile and `Cargo.lock` (`.github/actions/setup`): a run whose `Cargo.lock` did not change compiles only
+the workspace's and the toolkit's crates.
+
+Why not a DLL per library (`cdylib`): measured, the adapter's DLL is 0.6 MB and the text backend's 2.4 MB (each with
+its own standard library), loading one costs 2 to 3 ms (40 ms the first time a new file is scanned), and each DLL is
+one more file to sign, ship and keep in step with the exe; `wren.exe` needs no file beside it, and stays so.
+
+Every crate is pinned by exact version in its `Cargo.toml` and by SHA-256 in `native\Cargo.lock` (`--locked`);
+`tools\rust_crates.ps1` writes the list `about:licenses` shows (`native\rust-crates.txt`). Wasmtime's library carries
+a standard library of another compiler: its mangled symbols differ, and the one unmangled symbol both define
+(`rust_eh_personality`, unused on MSVC) is renamed in ours with `llvm-objcopy`.
 
 ## Security model
 

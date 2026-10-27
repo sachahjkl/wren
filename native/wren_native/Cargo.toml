@@ -1,0 +1,27 @@
+# The assembly crate of the native/ workspace: the one Rust static library wren.exe links (build\native\wren_native.lib,
+# tools\build_native.ps1). It has no code of its own: it picks the libraries, and their C functions (#[no_mangle]) are
+# exported from it. A program links one Rust static library at most (each carries Rust's standard library).
+[package]
+name = "wren_native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["staticlib"]
+path = "src/lib.rs"
+
+[dependencies]
+# the image decoders and WOFF2 (native/media): package images, package webfont
+wren_media = { path = "../media" }
+# The toolkit's native text backend (Fontations, HarfRust, ICU4X): the toolkit is then built with
+# -define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false. Left out of a WREN_TEXT=dwrite build.
+gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
+# The toolkit's accessibility adapter (AccessKit and its UI Automation adapter: screen readers read the chrome and the
+# pages): the toolkit is then built with -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false.
+gt_a11y = { path = "../../ext/gui_toolkit/native/a11y", optional = true }
+
+[features]
+text = ["dep:gt_text"]
+a11y = ["dep:gt_a11y"]

@@ -12,13 +12,6 @@
 //! are checked before allocating, and SVG documents go through limits of nodes, depth, entity and `<use>` expansion and
 //! rendering cost before a pixel is drawn.
 
-// the text backend's C functions (feature `text`): linked in from the dependency, exported with this library's
-#[cfg(feature = "text")]
-pub use gt_text;
-// the toolkit's accessibility adapter (feature `a11y`: AccessKit, UI Automation), the same way
-#[cfg(feature = "a11y")]
-pub use gt_a11y;
-
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 

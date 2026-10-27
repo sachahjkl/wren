@@ -166,7 +166,7 @@ function Test-WrenBuildFresh([string]$Variant = 'wren') {
     $exe = Join-Path $root "build\$Variant.exe"
     if (-not (Test-Path $exe)) { return $false }
     $built = [IO.File]::GetLastWriteTimeUtc($exe)
-    foreach ($f in 'build.bat', 'odin.version', 'build\js\wren_js.wasm', 'build\lexbor\lexbor.lib', 'build\media\wren_media.lib') {
+    foreach ($f in 'build.bat', 'odin.version', 'build\js\wren_js.wasm', 'build\lexbor\lexbor.lib', 'build\native\wren_native.lib') {
         $p = Join-Path $root $f
         if (-not (Test-Path $p) -or [IO.File]::GetLastWriteTimeUtc($p) -gt $built) { return $false }
     }
