@@ -27,6 +27,11 @@ Color_Glyph :: struct {
 	px:     []u8,
 	w, h:   int,
 	ox, oy: f32,
+	// A stable identity for this glyph's pixels (the engine caches them by face, gid, size and color). When non-zero,
+	// the GPU source cache keys on it, so an emoji drawn every frame is uploaded once instead of each frame; `px` then
+	// stays valid for the life of the engine's cache. Zero: the old behaviour (pixels valid only until the next call,
+	// a fresh upload each time).
+	uid:    u64,
 }
 
 Text_Engine :: struct {
@@ -202,6 +207,13 @@ draw_color_glyph :: proc(c: ^Context, cg: ^Color_Glyph, pen_x, pen_y: f64) {
 	tmp^, ok = bitmap_create(cg.w, cg.h, max(int), context.temp_allocator)
 	if !ok { return }
 	bitmap_write_straight(tmp, cg.px, cg.w, 0, 0, cg.w, cg.h, 0, 0)
+	// A cached glyph has a stable identity: give the bitmap that uid and a fixed version so the GPU source cache keeps
+	// one texture for the glyph across frames instead of uploading it anew each time (the shell owns the pixels).
+	if cg.uid != 0 {
+		tmp.uid = cg.uid
+		tmp.version = 1
+		tmp.dirty_min, tmp.dirty_max = {0, 0}, {cg.w, cg.h}
+	}
 	dx, dy := pen_x + f64(cg.ox), pen_y + f64(cg.oy)
 	ctx_draw_image(c, tmp, 0, 0, f64(cg.w), f64(cg.h), dx, dy, f64(cg.w), f64(cg.h))
 }
