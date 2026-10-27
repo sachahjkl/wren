@@ -3,7 +3,7 @@
 # Module `compression`
 
 CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves:
-native/js/runtime/web_transform.c): a DEFLATE stream (src/flate: gzip, zlib "deflate" or raw) fed chunk by chunk. One call's
+native/js/runtime/web_transform.c): a DEFLATE stream (the toolkit's flate package: gzip, zlib "deflate" or raw) fed chunk by chunk. One call's
 output is bounded by page.max_fetch_bytes (Quota past it: a decompression bomb errors the stream).
 
 Exposed to: Window, Worker. Source: `api/compression.widl`.

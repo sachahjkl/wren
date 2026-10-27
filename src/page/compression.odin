@@ -1,10 +1,12 @@
 package page
 
 import "core:fmt"
-import "wb:flate"
+// the toolkit's codec by path rather than through the toolkit: collection, so the many tools that link package page
+// build with -collection:wb=src alone
+import "../../ext/gui_toolkit/flate"
 
 // CompressionStream / DecompressionStream (Compression Standard; api/compression.widl, the streams themselves:
-// native/js/runtime/web_transform.c) on wb:flate: gzip, zlib ("deflate") or raw deflate, fed chunk by chunk; what a chunk
+// native/js/runtime/web_transform.c) on the toolkit's flate package: gzip, zlib ("deflate") or raw deflate, fed chunk by chunk; what a chunk
 // makes is returned at once (kept for Compression_output when the caller's buffer was too small). The output of one
 // call is bounded by page.max_fetch_bytes: a small input that inflates past it errors the stream (Quota).
 
