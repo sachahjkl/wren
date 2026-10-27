@@ -212,7 +212,7 @@ pacer_init :: proc(app: ^App) {
 		pacer.cfg = pacer_settings_from_prefs(p)
 		render.set_latency_probe(&app.r, pacer.cfg.latency_probe)
 		pacer.display.serial = 0   // plan again
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, app)
 	pacer_update(app)
 }
@@ -228,7 +228,7 @@ pacer_update :: proc(app: ^App) {
 	// the page's idle periods leave room for a frame of this length (timers.frame_budget_ms = 0); apply_prefs makes the
 	// settings again from the preferences
 	defer app.page_settings.web.frame_period_ms = pacer.period_ms
-	d := platform.display_info(app.win)
+	d := platform.display_info(active_window(app).win)
 	if d.serial == pacer.display.serial && pacer.hz > 0 { return }
 	pacer.display = d
 	pacer.tearing = pacer.cfg.mode == .Tearing && render.tearing_supported(&app.r)
@@ -292,20 +292,21 @@ Resize_Frame_Cause :: enum u8 { Step, Events, Tasks, Page, Ui_Animation, Ui_Time
 
 // frame() (main.odin): whether this frame is such an echo; it is then not made (frames asked for are forgotten).
 resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
+	wnd := active_window(app)
 	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
 	// chain keeps it on screen)
 	cause := Resize_Frame_Cause.Page
 	switch {
-	case ui.needs_frame(app.ui_state): cause = .Ui_Animation
-	case ui.wake_due(app.ui_state): cause = .Ui_Timer
+	case ui.needs_frame(wnd.ui): cause = .Ui_Animation
+	case ui.wake_due(wnd.ui): cause = .Ui_Timer
 	}
 	wants := page_wants || cause != .Page
 	// a step is a frame at a size not drawn yet (the window's size against the renderer's: pacer_wait only sees a size
 	// that came before its wait, and calls the frame after the one that drew it a step too)
-	step := app.win.size != app.r.size
+	step := wnd.win.size != app.r.size
 	if t := current_tab(app); t != nil && t.page != nil {
 		if len(t.smooth.anims) > 0 { wants = true; cause = .Scrolling }
-		if page_prep.tab == t && page_prep.size != draw.rect_size(app.page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
+		if pp := &window_own(app).page_prep; pp.tab == t && pp.size != draw.rect_size(wnd.page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
 	}
 	held := pacer.resize_held || pacer.resizing
 	if !resize_echo(held, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) {
@@ -322,8 +323,8 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 		}
 		return false
 	}
-	app.frames_requested = 0
-	platform.take_paint_request(app.win)
+	wnd.frames_requested = 0
+	platform.take_paint_request(wnd.win)
 	pacer.echoes_skipped += 1
 	return true
 }
@@ -348,22 +349,24 @@ pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
 // At the start of a frame: wait for its time (a timed rate), then for the swap chain to take a frame, taking input
 // meanwhile. `idled`: the loop slept before this frame (nothing moved): it starts a new run of frames.
 pacer_wait :: proc(app: ^App, idled: bool) {
+	wnd := active_window(app)
 	t0 := time.tick_now()
 	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
 	pacer.continuous = !idled
+	presented := wnd.presented
 	// The window changed size since the last frame: this frame is a resize step. It is drawn and shown at once, without
 	// the timer nor the wait for the swap chain's slot (below): the desktop composer would otherwise show the previous
 	// frame, drawn for the old size, stretched over the new one until this frame reaches the screen
 	// (browser.frame.resize_immediate).
-	resized := app.win.size != pacer.size
-	pacer.size = app.win.size
+	resized := wnd.win.size != pacer.size
+	pacer.size = wnd.win.size
 	// A drag of the developer tools' splitter or floating panel, or of the tab sidebar's width handle, is not: the window
 	// keeps its size (nothing is stretched by the composer), and its frames are those of any drag, one per slot (a step of
 	// a resize skips the slot: at the pointer's 1 kHz that was a frame a millisecond, hundreds a second the screen never
 	// showed, and the ones it did advanced unevenly). Each of them lays the panel and the page out at the pointer it read.
-	pacer.resizing = resize_step(resized, app.presented, pacer.cfg.resize_immediate)
+	pacer.resizing = resize_step(resized, presented, pacer.cfg.resize_immediate)
 	tick := time.tick_now()._nsec
-	pacer.resize_held = !pacer.resizing && app.presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
+	pacer.resize_held = !pacer.resizing && presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
 	if resized { pacer.resize_ns = tick }
 	input := shell_user_input_pending()
 	// Only the frame that starts an answer to input is shown at once: while frames follow one another (a drag, the wheel,
@@ -371,7 +374,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// Shown at once, each of the hundreds of frames a second was presented over the one before and the swap chain's
 	// three buffers filled with frames a millisecond apart that the screen then showed one per refresh: the picture
 	// advanced a millisecond for three refreshes, then jumped (see tools\drag_fluidity.ps1).
-	pacer.input_frame = input && app.presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
+	pacer.input_frame = input && presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
 	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
 	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
 	pacer_latency(app, &pacer.latency, pacer_at_once())
@@ -386,7 +389,7 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	if wait > 0 && pacer.timer != nil {
 		due := win.LARGE_INTEGER(-(wait / 100))   // relative, in 100 ns units
 		if win.SetWaitableTimerEx(pacer.timer, &due, 0, nil, nil, nil, 0) {
-			platform.wait_handle(app.win, rawptr(pacer.timer), int(wait / 1_000_000) + 50)
+			platform.wait_handle(wnd.win, rawptr(pacer.timer), int(wait / 1_000_000) + 50)
 		}
 	}
 	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
@@ -394,10 +397,10 @@ pacer_wait :: proc(app: ^App, idled: bool) {
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
 	// the timeout (100 ms of input latency after any wake of no consequence).
-	if app.presented && !pacer.slot_held && !pacer.input_frame {
-		ok := platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
+	if wnd.presented && !pacer.slot_held && !pacer.input_frame {   // (the timer's wait above takes messages)
+		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
-		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), app.frames_requested) }
+		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), wnd.frames_requested) }
 	}
 }
 
@@ -440,7 +443,7 @@ pacer_end_frame :: proc(app: ^App) {
 	// read every 100 ms of the run and started afresh after a rest (primary monitor only: platform.display_live_hz)
 	if !pacer.continuous { pacer.live_hz = 0 }
 	if pacer.present_ns - pacer.live_ns >= 100_000_000 {
-		if hz, ok := platform.display_live_hz(app.win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
+		if hz, ok := platform.display_live_hz(active_window(app).win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
 		pacer.live_ns = pacer.present_ns
 	}
 	drag_probe_presented()

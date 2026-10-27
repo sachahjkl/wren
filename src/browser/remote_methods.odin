@@ -27,7 +27,7 @@ import "wb:page"
 import "wb:remote"
 
 ui_toast_remote :: proc(text: string) { ui.toast(.Warn, "%s", text) }
-ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(app.ui_state) }
+ui_needs_frame :: proc(app: ^App) -> bool { return ui.needs_frame(active_window(app).ui) }
 render_capture_busy :: proc() -> bool { return the_app != nil && render.capture_pending(&the_app.r) }
 
 ////////////////////////////////
@@ -157,12 +157,13 @@ builder :: proc() -> strings.Builder { return strings.builder_make(context.temp_
 
 // The window rectangle (x, y, w, h) of a laid out element, whether or not it is in view.
 element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32, ok: bool) {
+	wnd := active_window(app)
 	if t.page == nil || !t.layout.valid { return {}, false }
-	r, found := lay.box_of(&t.layout, h, draw.rect_size(app.page_rect), t.scroll)
+	r, found := lay.box_of(&t.layout, h, draw.rect_size(wnd.page_rect), t.scroll)
 	if !found { return {}, false }
 	b := r.bounds   // where the border box is drawn (its transforms applied)
 	// document coordinates, a position: fixed box's too (box_of adds the scroll to the fixed space's)
-	x, y := app.page_rect.min.x + b.min.x, app.page_rect.min.y + b.min.y - t.scroll
+	x, y := wnd.page_rect.min.x + b.min.x, wnd.page_rect.min.y + b.min.y - t.scroll
 	return {x, y, b.max.x - b.min.x, b.max.y - b.min.y}, true
 }
 
@@ -170,7 +171,7 @@ element_window_rect :: proc(app: ^App, t: ^Tab, h: base.Handle) -> (rect: [4]f32
 element_visible :: proc(app: ^App, t: ^Tab, h: base.Handle) -> bool {
 	r, ok := element_window_rect(app, t, h)
 	if !ok || r[2] <= 0 || r[3] <= 0 { return false }
-	pr := app.page_rect
+	pr := active_window(app).page_rect
 	return r[0] < pr.max.x && r[0] + r[2] > pr.min.x && r[1] < pr.max.y && r[1] + r[3] > pr.min.y
 }
 
@@ -180,7 +181,7 @@ frames_op :: proc(app: ^App, c: ^Call, t: ^Tab, n: int, result := "") -> Reply {
 	op.tab = t != nil ? t.id : 0
 	op.until = the_remote.frame_no + u64(max(n, 1))
 	op.result = strings.clone(result)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
@@ -211,32 +212,34 @@ m_close :: proc(app: ^App, c: ^Call) -> Reply {
 	remote_answer(c.conn, c.id, done())
 	remote.close_client(c.conn)
 	app.quitting = true
-	platform.request_close(app.win)
+	platform.request_close(active_window(app).win)
 	return Reply{deferred = true}
 }
 
 window_state :: proc(app: ^App) -> string {
+	wnd := active_window(app)
 	switch {
-	case platform.is_fullscreen(app.win): return "fullscreen"
-	case platform.is_minimized(app.win):  return "minimized"
-	case platform.is_maximized(app.win):  return "maximized"
+	case platform.is_fullscreen(wnd.win): return "fullscreen"
+	case platform.is_minimized(wnd.win):  return "minimized"
+	case platform.is_maximized(wnd.win):  return "maximized"
 	}
 	return "normal"
 }
 
 @(private = "file")
 m_window_get :: proc(app: ^App) -> Reply {
+	wnd := active_window(app)
 	rc: win.RECT
-	win.GetWindowRect(app.win.hwnd, &rc)
+	win.GetWindowRect(wnd.win.hwnd, &rc)
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "windowId", i64(app.active.id))
 	j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top))
 	j_int(&b, "outerWidth", i64(rc.right - rc.left)); j_int(&b, "outerHeight", i64(rc.bottom - rc.top))
-	j_int(&b, "width", i64(app.win.size.x)); j_int(&b, "height", i64(app.win.size.y))   // the client area, in pixels
+	j_int(&b, "width", i64(wnd.win.size.x)); j_int(&b, "height", i64(wnd.win.size.y))   // the client area, in pixels
 	j_str(&b, "windowState", window_state(app))
-	j_num(&b, "dpiScale", f64(app.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
-	j_bool(&b, "visible", bool(win.IsWindowVisible(app.win.hwnd)))
+	j_num(&b, "dpiScale", f64(wnd.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
+	j_bool(&b, "visible", bool(win.IsWindowVisible(wnd.win.hwnd)))
 	j_end(&b)
 	return done(strings.to_string(b))
 }
@@ -262,32 +265,33 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
 // the checkpoints of remote_state.odin.
 window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top: int, has_w, has_h, has_l, has_t: bool) {
-	hwnd := app.win.hwnd
+	wnd := active_window(app)
+	hwnd := wnd.win.hwnd
 	if has_state {
 		switch state {
 		case "normal":
-			if platform.is_fullscreen(app.win) { toggle_fullscreen(app) }
+			if platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }
 			win.ShowWindow(hwnd, win.SW_SHOWNOACTIVATE)
-			if platform.is_maximized(app.win) || platform.is_minimized(app.win) { win.ShowWindow(hwnd, win.SW_RESTORE) }
+			if platform.is_maximized(wnd.win) || platform.is_minimized(wnd.win) { win.ShowWindow(hwnd, win.SW_RESTORE) }
 		case "minimized":  win.ShowWindow(hwnd, win.SW_SHOWMINNOACTIVE)
 		case "maximized":  win.ShowWindow(hwnd, win.SW_SHOWMAXIMIZED)
-		case "fullscreen": if !platform.is_fullscreen(app.win) { toggle_fullscreen(app) }
+		case "fullscreen": if !platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }
 		}
 	}
 	if has_w || has_h || has_l || has_t {
 		rc: win.RECT
 		win.GetWindowRect(hwnd, &rc)
 		dpi := win.GetDpiForWindow(hwnd)
-		cw, ch := has_w ? w : app.win.size.x, has_h ? h : app.win.size.y
+		cw, ch := has_w ? w : wnd.win.size.x, has_h ? h : wnd.win.size.y
 		frame := win.RECT{0, 0, i32(max(cw, 1)), i32(max(ch, 1))}
 		win.AdjustWindowRectExForDpi(&frame, win.WS_OVERLAPPEDWINDOW, false, 0, dpi)
-		if platform.is_integrated_title(app.win) { frame.top = 0 }
+		if platform.is_integrated_title(wnd.win) { frame.top = 0 }
 		flags: win.UINT = win.SWP_NOZORDER | win.SWP_NOACTIVATE
 		if !(has_w || has_h) { flags |= win.SWP_NOSIZE }
 		if !(has_l || has_t) { flags |= win.SWP_NOMOVE }
 		win.SetWindowPos(hwnd, nil, i32(has_l ? left : int(rc.left)), i32(has_t ? top : int(rc.top)), frame.right - frame.left, frame.bottom - frame.top, flags)
 	}
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 ////////////////////////////////
@@ -314,13 +318,14 @@ m_targets :: proc(app: ^App) -> Reply {
 
 @(private = "file")
 m_target_create :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	address, _ := remote.param_string(c.params, "url")
 	background, _ := remote.param_bool(c.params, "background")
-	was := app.current
+	was := wnd.current
 	t := tab_open(app, address, origin = .User)
-	if background && was >= 0 && was < len(app.tabs) - 1 {
-		app.current = was
-		if cur := current_tab(app); cur != nil { ui.field_set(&app.address, cur.url) }
+	if background && was >= 0 && was < len(wnd.tabs) - 1 {
+		wnd.current = was
+		if cur := current_tab(app); cur != nil { ui.field_set(&wnd.address, cur.url) }
 	}
 	if wait, ok := remote.param_string(c.params, "wait"); ok && wait != "none" && wait != "" { return start_wait(app, c, t, wait, fmt.tprintf(`{{"targetId":%d}}`, t.id)) }
 	return done(fmt.tprintf(`{{"targetId":%d}}`, t.id))
@@ -394,7 +399,7 @@ m_target_activate :: proc(app: ^App, c: ^Call) -> Reply {
 	if t := tab_by_id(app, u64(id)); t != nil {
 		tab_reveal(app, t)
 		windows_spill(app, 3)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return done()
 	}
 	return fail(remote.ERR_PARAMS, fmt.tprintf("no tab %d", id))
@@ -443,7 +448,7 @@ m_navigate :: proc(app: ^App, c: ^Call) -> Reply {
 	t, e := tab_of(app, c)
 	if t == nil { return e }
 	navigate(app, t, address, origin = .User)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait")
 	return start_wait(app, c, t, what, fmt.tprintf(`{{"tabId":%d,"url":%s}}`, t.id, remote.quote(t.url)))
 }
@@ -545,6 +550,7 @@ m_outer_html :: proc(app: ^App, c: ^Call) -> Reply {
 
 @(private = "file")
 m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
@@ -564,7 +570,7 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 		j_str(&b, "outerHTML", html[:min(len(html), 300)])
 		if r, ok := element_window_rect(app, t, h); ok {
 			s := f64(page_scale(app))
-			j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", f64(r[0] - app.page_rect.min.x) / s, f64(r[1] - app.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s))
+			j_raw(&b, "box", fmt.tprintf("[%.2f,%.2f,%.2f,%.2f]", f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s))
 		}
 		j_end(&b)
 	}
@@ -575,6 +581,7 @@ m_query_all :: proc(app: ^App, c: ^Call) -> Reply {
 // The element's box: in CSS pixels from the page's top-left corner (what getBoundingClientRect says), and in window pixels.
 @(private = "file")
 m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	sel, bad := need_string(c, "selector")
 	if bad.code != 0 { return bad }
 	t, e := tab_of(app, c)
@@ -586,7 +593,7 @@ m_box_model :: proc(app: ^App, c: ^Call) -> Reply {
 	if !ok { return fail(remote.ERR_FAILED, "the element has no box (display: none, or the layout is not made yet)") }
 	s := f64(page_scale(app))
 	return done(fmt.tprintf(`{{"found":true,"visible":%v,"x":%.2f,"y":%.2f,"width":%.2f,"height":%.2f,"window":{{"x":%.1f,"y":%.1f,"width":%.1f,"height":%.1f}}}}`,
-		element_visible(app, t, h), f64(r[0] - app.page_rect.min.x) / s, f64(r[1] - app.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
+		element_visible(app, t, h), f64(r[0] - wnd.page_rect.min.x) / s, f64(r[1] - wnd.page_rect.min.y) / s, f64(r[2]) / s, f64(r[3]) / s, r[0], r[1], r[2], r[3]))
 }
 
 @(private = "file")
@@ -649,29 +656,29 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	if !has { settle = the_remote.cfg.settle_frames }
 	op.until = the_remote.frame_no + u64(max(settle, 0)) + 1
 	// a window on the taskbar draws nothing: it comes back without taking the focus, and goes back after
-	if platform.is_minimized(app.win) {
-		win.ShowWindow(app.win.hwnd, win.SW_SHOWNOACTIVATE)
+	if platform.is_minimized(active_window(app).win) {
+		win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWNOACTIVATE)
 		op.stage = -1
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
 capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
-		if op.stage == -2 { win.ShowWindow(app.win.hwnd, win.SW_SHOWMINNOACTIVE) }
+		if op.stage == -2 { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
 		op_finish(op, rep)
 	}
 	if op.stage < 0 && op.stage != -2 { op.stage = -2 }   // (restored for this capture: minimized again at the end)
 	if op.stage == -2 || op.stage == 0 {
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		if r.frame_no < op.until || render.capture_pending(&app.r) {
 			if timed_out { finish(app, op, fail(remote.ERR_TIMEOUT, "timed out before the frame to capture was drawn (is the window hidden or minimized?)")) }
 			return
 		}
 		rect: [4]int
-		pr := app.page_rect
+		pr := active_window(app).page_rect
 		switch op.target {
 		case .Window:
 		case .Page: rect = {int(pr.min.x), int(pr.min.y), int(pr.max.x - pr.min.x), int(pr.max.y - pr.min.y)}
@@ -698,11 +705,11 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 		}
 		if !render.capture_request(&app.r, rect) { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
 		op.stage = op.stage == -2 ? 3 : 1
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		return
 	}
 	// 1 (or 3: to be minimized again): the copy is made when the frame ends; the GPU reads it a moment later
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	pixels, size, st := render.capture_poll(&app.r, context.allocator)
 	if op.stage == 3 { op.stage = -2 }   // (finish() looks for -2)
 	switch st {
@@ -785,9 +792,9 @@ inject :: proc(app: ^App, ev: platform.Event) {
 	}
 	held := inject_held
 	if ev.kind == .Mouse_Move || ev.kind == .Mouse_Press || ev.kind == .Mouse_Release { ev.buttons = held }
-	platform.inject_event(app.win, ev)
+	platform.inject_event(active_window(app).win, ev)
 	the_remote.inputs += 1
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 }
 
 // A point given in the page's CSS pixels (from its top-left corner), or in window pixels (`"space": "window"`).
@@ -798,7 +805,7 @@ point_of :: proc(app: ^App, c: ^Call, xk, yk: string) -> (p: [2]f32, ok: bool) {
 	if !hx || !hy { return {}, false }
 	if space, _ := remote.param_string(c.params, "space"); space == "window" { return {f32(x), f32(y)}, true }
 	s := page_scale(app)
-	return app.page_rect.min + {f32(x) * s, f32(y) * s}, true
+	return active_window(app).page_rect.min + {f32(x) * s, f32(y) * s}, true
 }
 
 @(private = "file")
@@ -853,7 +860,7 @@ m_click :: proc(app: ^App, c: ^Call) -> Reply {
 		op := op_new(app, c, .Click, timeout_of(c), fmt.tprintf("the element %s", sel))
 		op.tab, op.arg, op.button, op.count = t.id, strings.clone(sel), button_of(c), max(count, 1)
 		op.until = the_remote.frame_no
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return Reply{deferred = true}
 	}
 	pos, ok := point_of(app, c, "x", "y")
@@ -874,8 +881,9 @@ click_at :: proc(app: ^App, pos: [2]f32, button: platform.Mouse_Button, count: i
 // A click on an element: it is scrolled into view first, and the click goes to the middle of its box once the page has
 // scrolled.
 click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
+	wnd := active_window(app)
 	r := &the_remote
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	h, valid := page.query_first(t.page, op.arg)
 	if !valid { op_finish(op, fail(remote.ERR_PARAMS, fmt.tprintf("invalid selector %q", op.arg))); return }
@@ -888,11 +896,11 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	}
 	switch op.stage {
 	case 0:
-		pr := app.page_rect
+		pr := wnd.page_rect
 		center_y := er[1] + er[3] / 2
 		if center_y < pr.min.y || center_y > pr.max.y {
 			// document coordinates of the element's middle, to the middle of the view
-			doc_y := er[1] - app.page_rect.min.y + t.scroll
+			doc_y := er[1] - wnd.page_rect.min.y + t.scroll
 			scroll_document_to(app, t, max(doc_y + er[3] / 2 - (pr.max.y - pr.min.y) / 2, 0), false)
 			op.until = r.frame_no + 2
 		}
@@ -913,6 +921,7 @@ click_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 // instead). The reply says what the window answered (the effect the app set).
 @(private = "file")
 m_drop :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	pos, ok := point_of(app, c, "x", "y")
 	if !ok { return fail(remote.ERR_PARAMS, "x and y are missing") }
 	d: platform.Drag_Data
@@ -926,11 +935,11 @@ m_drop :: proc(app: ^App, c: ^Call) -> Reply {
 	if platform.drag_data_empty(d) { return fail(remote.ERR_PARAMS, "give files, text, url or html") }
 	leave, _ := remote.param_bool(c.params, "leave")
 	mods := mods_of(c)
-	if !platform.drop_inject(app.win, .Drop_Enter, pos, &d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
-	platform.drop_inject(app.win, .Drop_Over, pos, mods = mods)
-	platform.drop_inject(app.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
+	if !platform.drop_inject(wnd.win, .Drop_Enter, pos, &d, mods = mods) { return fail(remote.ERR_PARAMS, "this system has no drag and drop") }
+	platform.drop_inject(wnd.win, .Drop_Over, pos, mods = mods)
+	platform.drop_inject(wnd.win, leave ? .Drop_Leave : .Drop, pos, mods = mods)
 	the_remote.inputs += 1
-	app.frames_requested = max(app.frames_requested, 4)
+	request_frames(app, 4)
 	return frames_op(app, c, nil, the_remote.cfg.settle_frames)
 }
 
@@ -965,11 +974,11 @@ m_drag :: proc(app: ^App, c: ^Call) -> Reply {
 			y, yok := num(pt[1])
 			if !xok || !yok { continue }
 			p := [2]f32{x, y}
-			append(&op.via, space == "window" ? p : app.page_rect.min + p * s)
+			append(&op.via, space == "window" ? p : active_window(app).page_rect.min + p * s)
 		}
 	}
 	op.until = the_remote.frame_no
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return Reply{deferred = true}
 }
 
@@ -1013,7 +1022,7 @@ remote_drag_steps :: proc(app: ^App) -> ([]platform.Drag_Step, bool) {
 // Press (stage 0), one move per frame (stage 1, idx: the steps made), release at the last position (stage 2), settle.
 drag_step :: proc(app: ^App, op: ^Remote_Op) {
 	r := &the_remote
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	if r.frame_no < op.until { return }
 	switch op.stage {
 	case 0:
@@ -1204,13 +1213,14 @@ key_from_name :: proc(n: string) -> (platform.Key, bool) {
 
 @(private = "file")
 m_stats :: proc(app: ^App, c: ^Call) -> Reply {
+	wnd := active_window(app)
 	n := &hud.nums
 	b := builder()
 	reset_latency, _ := remote.param_bool(c.params, "resetLatency")
 	reset_frames, _ := remote.param_bool(c.params, "resetFrames")
 	gaps := frame_log_intervals()
-	loops := platform.pump_stats(app.win)
-	defer if reset_frames { frame_log_reset(); drag_probe_reset(); app.win.stats = {} }
+	loops := platform.pump_stats(wnd.win)
+	defer if reset_frames { frame_log_reset(); drag_probe_reset(); wnd.win.stats = {} }
 	latency := render.latency_summary(&app.r)
 	latency_on := render.latency_probe_on(&app.r)
 	if reset_latency { render.latency_reset(&app.r) }
@@ -1232,7 +1242,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_num(&b, "cpuMs", f64(n.cpu_mean)); j_num(&b, "cpuP95Ms", f64(n.cpu_p95)); j_num(&b, "cpuP99Ms", f64(n.cpu_p99)); j_num(&b, "cpuMaxMs", f64(n.cpu_max))
 	j_num(&b, "gpuMs", f64(n.gpu_mean)); j_bool(&b, "gpuMeasured", n.gpu_n > 0)
 	j_int(&b, "workingSetBytes", i64(n.working_set)); j_int(&b, "privateBytes", i64(n.private_bytes))
-	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(app.frames_requested))
+	j_int(&b, "framesDrawn", i64(hud.serial)); j_int(&b, "framesRequested", i64(wnd.frames_requested))
 	// the presents since resetFrames, the gaps between them, and how the window's frames were asked for (platform.Pump_Stats)
 	j_int(&b, "framesPresented", i64(frame_log.presented)); j_int(&b, "frameGaps", i64(gaps.count))
 	j_num(&b, "frameGapP50Ms", gaps.p50); j_num(&b, "frameGapP95Ms", gaps.p95); j_num(&b, "frameGapP99Ms", gaps.p99); j_num(&b, "frameGapMaxMs", gaps.max)
@@ -1248,7 +1258,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	}
 	j_bool(&b, "menuOpen", ui.ctx_menu_any_open())   // a menu of the chrome is open (the page's context menu, the tab menu...)
 	if pacer.cfg.drag_probe { j_key(&b, "dragSamples"); drag_probe_json(&b) }
-	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(app.tabs)))
+	j_int(&b, "requestsInFlight", i64(fetch.in_flight(&app.loader))); j_int(&b, "tabs", i64(len(wnd.tabs)))
 	// the back/forward cache since start-up (bfcache.odin): its coverage (traversals served from it) and what kept
 	// pages out of it, by reason
 	j_key(&b, "bfcache"); j_begin(&b)
@@ -1267,7 +1277,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	j_num(&b, "hzSwapChain", render.measured_refresh_hz(&app.r)); j_bool(&b, "variableRefresh", pacer.variable)
 	j_bool(&b, "frameCapStrict", pacer.slots.strict || pacer.slots.escalated); j_num(&b, "framePeriodMs", pacer.period_ms)
 	// the picture of the last drag that went to the system (dnd_image.odin), as the system holds it: "WxH@x,y", "" for none
-	j_bool(&b, "dropTarget", platform.drop_target_enabled(app.win))
+	j_bool(&b, "dropTarget", platform.drop_target_enabled(wnd.win))
 	{
 		lp := dnd_last_picture
 		j_str(&b, "dragPicture", lp.size.x > 0 ? fmt.tprintf("%dx%d@%d,%d rgba=%d,%d,%d,%d", lp.size.x, lp.size.y, lp.hot.x, lp.hot.y, lp.middle[0], lp.middle[1], lp.middle[2], lp.middle[3]) : "")
@@ -1280,7 +1290,7 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 		for n, k in pacer.resize_event_kinds { if n > 0 { fmt.sbprintf(&sb, "ev.%v=%d ", k, n) } }
 		j_str(&b, "resizeFrameCauses", strings.trim_space(strings.to_string(sb)))
 	}
-	if sz, hot, held := platform.drag_image_held(app.win); held { j_str(&b, "dragImage", fmt.tprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y)) } else { j_str(&b, "dragImage", "") }
+	if sz, hot, held := platform.drag_image_held(wnd.win); held { j_str(&b, "dragImage", fmt.tprintf("%dx%d@%d,%d", sz.x, sz.y, hot.x, hot.y)) } else { j_str(&b, "dragImage", "") }
 	// how often the subsystems were configured again by preference writes (prefs_apply.odin)
 	j_int(&b, "prefsNetApplied", i64(prefs_apply_counts[.Net])); j_int(&b, "prefsCacheApplied", i64(prefs_apply_counts[.Http_Cache])); j_int(&b, "prefsDownloadsApplied", i64(prefs_apply_counts[.Downloads]))
 	if t := current_tab(app); t != nil && t.page != nil { j_int(&b, "nodes", i64(t.page.doc.nodes.count)); j_int(&b, "layoutItems", i64(len(t.layout.items))) }
@@ -1290,10 +1300,10 @@ m_stats :: proc(app: ^App, c: ^Call) -> Reply {
 	pc := process_counters()
 	j_int(&b, "pid", i64(win.GetCurrentProcessId())); j_num(&b, "uptimeMs", process_uptime_ms())
 	// accessibility (a11y_chrome.odin): updates sent to the screen readers' adapter, refused by it, nodes of the last one
-	if app.ui_state != nil {
-		au, ar, an := ui.a11y_stats(app.ui_state)
+	if wnd.ui != nil {
+		au, ar, an := ui.a11y_stats(wnd.ui)
 		j_int(&b, "a11yUpdates", i64(au)); j_int(&b, "a11yRefused", i64(ar)); j_int(&b, "a11yLastNodes", i64(an))
-		j_int(&b, "a11yNodes", i64(len(ui.a11y_tree(app.ui_state).nodes)))
+		j_int(&b, "a11yNodes", i64(len(ui.a11y_tree(wnd.ui).nodes)))
 		pb, ps, pr, pn := page_a11y_stats()
 		j_int(&b, "a11yPageBuilds", i64(pb)); j_int(&b, "a11yPageSends", i64(ps)); j_int(&b, "a11yPageRefused", i64(pr)); j_int(&b, "a11yPageNodes", i64(pn))
 	}
@@ -1416,7 +1426,7 @@ m_pref_set :: proc(app: ^App, c: ^Call) -> Reply {
 		return fail(remote.ERR_FAILED, fmt.tprintf("%s: %s", name, config.set_error_text(err)))
 	}
 	remote_reload_settings(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	s, _ := pref_json(app, name)
 	return done(s)
 }

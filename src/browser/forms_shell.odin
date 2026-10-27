@@ -140,9 +140,6 @@ current_page :: proc(app: ^App) -> (^Tab, ^page.Page, ^forms.Forms) {
 }
 
 @(private = "file")
-request_frames :: proc(app: ^App, n := 2) { app.frames_requested = max(app.frames_requested, n) }
-
-@(private = "file")
 caret_reset :: proc(fv: ^Forms_View) { fv.caret_epoch = time.tick_now() }
 
 @(private = "file")
@@ -259,7 +256,7 @@ is_rendered :: proc(p: ^page.Page, h: base.Handle) -> bool {
 // the bounds of the transformed box when a CSS transform applies.
 @(private = "file")
 layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return draw.Rect{r.bounds.min, r.bounds.max}, true
 }
@@ -267,7 +264,7 @@ layout_rect :: proc(t: ^Tab, h: base.Handle) -> (draw.Rect, bool) {
 // A document point relative to the border box of `h`, in the box's own (untransformed) coordinates: offsetX / offsetY.
 @(private = "file")
 layout_offset :: proc(t: ^Tab, h: base.Handle, doc_pos: [2]f32) -> ([2]f32, bool) {
-	r, ok := lay.box_of(&t.layout, h, draw.rect_size(the_app.page_rect), t.scroll)
+	r, ok := lay.box_of(&t.layout, h, draw.rect_size(active_window(the_app).page_rect), t.scroll)
 	if !ok { return {}, false }
 	return lay.box_point_to_local(r, doc_pos) - r.border.min, true
 }
@@ -287,10 +284,11 @@ forms_content_painter :: proc(user: rawptr, dc: ^draw.Context, doc: ^dom.Documen
 }
 
 scroll_into_view :: proc(app: ^App, t: ^Tab, h: base.Handle) {
+	wnd := active_window(app)
 	if t == nil || h == base.NIL_HANDLE { return }
 	r, ok := layout_rect(t, h)
 	if !ok { return }
-	view_h := app.page_rect.max.y - app.page_rect.min.y
+	view_h := wnd.page_rect.max.y - wnd.page_rect.min.y
 	if r.min.y < t.scroll { t.scroll = max(r.min.y - 16, 0) } else if r.max.y > t.scroll + view_h { t.scroll = r.max.y - view_h + 16 }
 }
 
@@ -1067,7 +1065,7 @@ forms_route_event :: proc(app: ^App, t: ^Tab, ev: platform.Event, index: int) ->
 	f := page.page_forms(p)
 	#partial switch ev.kind {
 	case .Mouse_Press:
-		inside := draw.rect_contains(app.page_rect, ev.pos)
+		inside := draw.rect_contains(active_window(app).page_rect, ev.pos)
 		fv.page_focus = inside
 		if fv.popup.open {
 			if draw.rect_contains(fv.popup.rect, ev.pos) {
@@ -1174,7 +1172,7 @@ route_key :: proc(app: ^App, t: ^Tab, p: ^page.Page, f: ^forms.Forms, ev: platfo
 		// or back from the page area
 		forms.blur(f)
 		fv.page_focus = false
-		if shift { page_focus_leave_backward = true } else { app.focus_address = true }
+		if shift { page_focus_leave_backward = true } else { active_window(app).focus_address = true }
 		return true
 	}
 	if !forms.is_text_field(f, h) && selection_key(app, t, p, ev) { return true }
@@ -1589,7 +1587,7 @@ post_done :: proc(job: ^Post_Job) {
 	if job.cancelled { return }
 	if !job.ok { tab_log(job.tab, .Error, job.message); set_status(job.tab, "form not sent"); return }
 	submit_navigate(job.app, job.tab, job.from, job.sub)
-	job.app.frames_requested = max(job.app.frames_requested, 3)
+	request_frames(job.app, 3)
 }
 
 @(private = "file")
@@ -1695,7 +1693,7 @@ start_picker :: proc(app: ^App, p: ^page.Page, input: base.Handle, color: bool) 
 	n := dom.get(p.doc, input)
 	if n == nil { return }
 	job := new(Picker_Job)
-	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, app.win.hwnd
+	job.app, job.page, job.input, job.color, job.owner = app, p, input, color, active_window(app).win.hwnd
 	job.multiple = forms.has_attr(n, "multiple")
 	job.max_files = app.page_settings.forms.upload_max_files
 	if color {
@@ -1784,7 +1782,7 @@ picker_work :: proc(data: rawptr) {
 		return
 	}
 	// the toolkit's Open dialog (the one File System Access pickers use too)
-	d := platform.File_Dialog{owner = job.app.win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
+	d := platform.File_Dialog{owner = active_window(job.app).win, multiple = job.multiple, all_files = true, remember_id = "input-file"}
 	filters: [1]platform.File_Filter
 	if job.filter != "" {
 		filters[0] = {name = "Accepted files", patterns = strings.split(job.filter, ";", context.temp_allocator)}
@@ -1838,7 +1836,7 @@ picker_done :: proc(data: rawptr) {
 		forms.set_files(f, job.input, list)
 		delete(list)
 	}
-	job.app.frames_requested = max(job.app.frames_requested, 3)
+	request_frames(job.app, 3)
 }
 
 _ :: runtime

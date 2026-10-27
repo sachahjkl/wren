@@ -165,7 +165,7 @@ urlbar_index_start :: proc(app: ^App, now: i64) {
 		app := ub.app
 		uv := urlbar_view(app)
 		if uv.open { sel := uv.sel; urlbar_refresh(app, .Keep); urlbar_choose(app, sel) }
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, j)
 }
 
@@ -286,7 +286,7 @@ urlbar_refresh :: proc(app: ^App, fill: Fill_Mode) {
 	if fill == .New && ub.cfg.autofill && history && uv.typed == strings.trim_left_space(uv.typed) {
 		if text, address, entry, ok := url_autofill(&ub.idx, uv.typed, matches); ok && !skipped_address(address) {
 			set_owned(&uv.fill_text, text); set_owned(&uv.fill_address, address)
-			field_show(&app.address, text, len(uv.typed))
+			field_show(&active_window(app).address, text, len(uv.typed))
 			fill_entry = entry
 		}
 	} else if fill == .Keep && uv.fill_text != "" {
@@ -364,14 +364,15 @@ row_address :: proc(app: ^App, r: Urlbar_Row) -> string {
 
 // What the field shows while row `i` is chosen.
 urlbar_choose :: proc(app: ^App, i: int) {
+	wnd := active_window(app)
 	uv := urlbar_view(app)
 	if len(uv.rows) == 0 { return }
 	uv.sel = clamp(i, 0, len(uv.rows) - 1)
 	r := uv.rows[uv.sel]
 	switch {
-	case uv.sel == 0 && r.fill:  field_show(&app.address, uv.fill_text, len(uv.typed))
-	case r.kind == .Go || r.kind == .Search: field_show(&app.address, uv.typed)
-	case: field_show(&app.address, row_address(app, r))
+	case uv.sel == 0 && r.fill:  field_show(&wnd.address, uv.fill_text, len(uv.typed))
+	case r.kind == .Go || r.kind == .Search: field_show(&wnd.address, uv.typed)
+	case: field_show(&wnd.address, row_address(app, r))
 	}
 }
 
@@ -391,12 +392,12 @@ urlbar_remove_row :: proc(app: ^App, i: int) {
 	url_index_forget(&ub.idx, address)
 	was_sel := uv.sel
 	urlbar_refresh(app, r.fill ? .None : .Keep)
-	if r.fill { field_show(&app.address, uv.typed) }
+	if r.fill { field_show(&active_window(app).address, uv.typed) }
 	// the next row takes the choice (the one now at its place)
 	next := was_sel
 	if i < was_sel { next = was_sel - 1 }
 	urlbar_choose(app, clamp(next, 0, len(uv.rows) - 1))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Enter (new_tab: Alt / Ctrl+Enter) on row `i`, or on what was typed when the list is closed. True when done.
@@ -427,6 +428,7 @@ urlbar_open :: proc(app: ^App, t: ^Tab, i: int, new_tab: bool) -> bool {
 
 // Before the field is built: the keys of the list while it is open (the field does not see them).
 urlbar_keys :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	uv := urlbar_view(app)
 	akey := address_key(app)
 	focused := akey != 0 && ui.focus_key() == akey
@@ -442,7 +444,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	uv.just_focused = !uv.focused
 	if !uv.focused {
 		// the field just got the keyboard: what it shows is what is "typed" until the user types
-		set_owned(&uv.typed, ui.field_string(&app.address))
+		set_owned(&uv.typed, ui.field_string(&wnd.address))
 		uv.tab_id = t != nil ? t.id : 0
 		// the index in step now (a first build, or the day's new weights), not at the first letter typed
 		if ub.cfg.enabled && ub.cfg.history && hcfg.global { _ = urlbar_index_ready(app, age = true) }
@@ -454,15 +456,15 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 
 	if ui.key_press(.Return, {.Alt}) || ui.key_press(.Return, {.Ctrl}) {
 		if !urlbar_open(app, t, uv.sel, true) {
-			text := strings.clone(strings.trim_space(ui.field_string(&app.address)), context.temp_allocator)
+			text := strings.clone(strings.trim_space(ui.field_string(&wnd.address)), context.temp_allocator)
 			if text != "" { urlbar_close(uv); tab_open(app, address_or_search(text), origin = .User); ui.set_focus(0) }
 		}
 		return
 	}
 	if !uv.open {
 		// Down on a closed list: the suggestions for what the field shows
-		if ui.field_string(&app.address) != "" && ui.key_press(.Down) {
-			set_owned(&uv.typed, ui.field_string(&app.address))
+		if ui.field_string(&wnd.address) != "" && ui.key_press(.Down) {
+			set_owned(&uv.typed, ui.field_string(&wnd.address))
 			urlbar_refresh(app, .None)
 		}
 		return
@@ -476,7 +478,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 	case ui.key_press(.Escape):
 		// the list goes, what was typed comes back (the next Escape: the page's address)
 		urlbar_close(uv)
-		field_show(&app.address, uv.typed)
+		field_show(&wnd.address, uv.typed)
 	case uv.sel < n && uv.rows[uv.sel].kind == .History && ui.key_press(.Delete, {.Shift}):
 		urlbar_remove_row(app, uv.sel)
 	}
@@ -486,7 +488,7 @@ urlbar_keys :: proc(app: ^App, t: ^Tab) {
 urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool) {
 	uv := urlbar_view(app)
 	if !uv.focused { return false }
-	f := &app.address
+	f := &active_window(app).address
 	// a click that gives the field the keyboard selects the whole address (as browsers do: typing replaces it); a
 	// drag from there selects what it covers
 	if uv.just_focused && res.pressed && .Shift not_in res.mods { uv.click_selects = true }
@@ -501,7 +503,7 @@ urlbar_edited :: proc(app: ^App, t: ^Tab, res: ui.Edit_Result) -> (handled: bool
 		grew := strings.has_prefix(text, uv.typed) && len(text) > len(uv.typed) && f.cursor == len(f.buf) && f.mark == f.cursor
 		set_owned(&uv.typed, text)
 		urlbar_refresh(app, grew ? .New : .None)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if res.committed && t != nil && uv.open {
 		// the inline completion was kept (Right / End) or is still selected: it is what Enter opens

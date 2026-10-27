@@ -264,14 +264,6 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 
 PANEL_W_EM :: f32(37)
 
-@(private = "file")
-Panel_State :: struct {
-	rules_sorted: []blocker.Dyn_Rule,
-}
-
-@(private = "file")
-panel: Panel_State
-
 // The toolkit reads "##" in a label as the start of a hidden part (ui/key.odin): a zero-width space keeps the text whole
 // (filters and URLs have them: example.com##.banner).
 label_text :: proc(s: string) -> string {

@@ -657,7 +657,7 @@ palette_show :: proc(app: ^App, text := "") {
 	cpal.focus_pending = true
 	cpal.opened = time.tick_now()
 	cpal.last_mouse = ui.mouse_pos()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Closes it; the keyboard goes back to what had it (when that is still there).
@@ -668,7 +668,7 @@ palette_close :: proc(app: ^App) {
 	ui.set_focus(k != 0 && ui.box_from_key(k) != nil ? k : 0)
 	clear(&cpal.rows)
 	cpal.cache_valid = false
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // While it is open the palette takes every press and wheel turn: the page under it gets none (hud_captures).
@@ -689,7 +689,7 @@ mix :: proc(h, v: u64) -> u64 { return (h ~ v) * 0x100000001b3 }
 results_key :: proc(app: ^App) -> u64 {
 	h: u64 = 0xcbf29ce484222325
 	h = mix(h, app.prefs.version)
-	h = mix(h, u64(app.current))
+	h = mix(h, u64(active_window(app).current))
 	h = mix(h, cpal.usage.version)
 	h = mix(h, u64(len(closed_tabs)))
 	for t in tabs_all(app) { h = mix(h, t.id); h = fnv(h, t.title); h = fnv(h, t.url) }
@@ -897,7 +897,7 @@ palette_execute :: proc(app: ^App, i: int, new_tab: bool) {
 		palette_close(app)
 		if src.activate != nil { src.activate(src.user, app, key, new_tab) }
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -931,10 +931,11 @@ label_id :: proc(text, suffix: string) -> string {
 
 // Builds the palette over the window (after the chrome, the page and the menus). Nothing when it is closed.
 palette_build :: proc(app: ^App) {
+	wnd := active_window(app)
 	if !palette_open() { return }
 	palette_ready(app)
 	em := ui.font_size()
-	win_w, win_h := f32(app.win.size.x), f32(app.win.size.y)
+	win_w, win_h := f32(wnd.win.size.x), f32(wnd.win.size.y)
 	ctrl, cs := platform.Modifiers{.Ctrl}, platform.Modifiers{.Ctrl, .Shift}
 
 	// its own shortcut closes it; Tab stays in it
@@ -945,7 +946,7 @@ palette_build :: proc(app: ^App) {
 	k: f32 = 1
 	if cpal.cfg.open_ms > 0 && os_animations_enabled(app) {
 		k = f32(clamp(time.duration_milliseconds(time.tick_since(cpal.opened)) / cpal.cfg.open_ms, 0, 1))
-		if k < 1 { app.frames_requested = max(app.frames_requested, 2) }
+		if k < 1 { request_frames(app, 2) }
 	}
 	ease := 1 - (1 - k) * (1 - k) * (1 - k)
 
@@ -959,7 +960,7 @@ palette_build :: proc(app: ^App) {
 	x := math.round((win_w - w) * 0.5)
 	// over the address row, as VS Code's over its title bar
 	y := em * 0.5
-	if b := ui.box_from_key(address_key(app)); b != nil && !platform.is_fullscreen(app.win) { y = b.rect.min.y - em * 0.15 }
+	if b := ui.box_from_key(address_key(app)); b != nil && !platform.is_fullscreen(wnd.win) { y = b.rect.min.y - em * 0.15 }
 	y = math.round(y - (1 - ease) * em * 0.6)
 	rh := ui.dense(em * 2.1)
 	pad := math.round(em * 0.4)

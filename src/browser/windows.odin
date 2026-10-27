@@ -4,9 +4,9 @@ package browser
 // the renderer, the fonts, the network and the loop are the process's, so a tab moves from one window to another with its page
 // (its scripts, its video, its forms, its history, its zoom) as it is: only the pointer to the tab moves.
 //
-// The shell was written for one window, and still reads `app.win`, `app.tabs`, `app.current`, `app.page_rect`... : those fields
-// are the *active* window's. `window_activate` puts the active window's share of the App aside in its Browser_Window and takes
-// the other's in; what the chrome keeps of a window is in its Browser_Window (Window_Own) and is never exchanged. A frame is made for one window at a
+// The shell was written for one window. What is a window's lives in its Browser_Window and is read there: its tabs, page
+// area and frames (Window_Ctx: active_window(app).tabs, w.tabs, request_frames(app, n)), the chrome's state (Window_Own).
+// Its native window and toolkit state too (active_window(app).win, .ui). A frame is made for one window at a
 // time, with that window active; what runs outside a frame (tasks of the loop, remote calls, menus) acts on the front window (the
 // last one used), or finds a tab's own window (window_of_tab).
 //
@@ -34,15 +34,15 @@ import "wb:config"
 import "wb:host"
 import "wb:page"
 
-// What the App holds for the active window and a window keeps aside while another is active.
+// A window's tabs, address field, page area and frames: only here, never copied into the App (active_window(app).tabs).
 Window_Ctx :: struct {
 	tabs:             [dynamic]^Tab,
-	current:          int,
-	address:          ui.Text_Field,
-	focus_address:    bool,
-	page_rect:        draw.Rect,
-	frames_requested: int,
-	presented:        bool,
+	current:          int,            // the tab shown (an index in tabs)
+	address:          ui.Text_Field,  // the address field
+	focus_address:    bool,           // Ctrl+L: focus the address field in the next build
+	page_rect:        draw.Rect,      // where the page was painted last frame (physical pixels)
+	frames_requested: int,            // frames asked for (request_frames, window_request): the loop counts one off per frame
+	presented:        bool,           // a frame went to the swap chain: from then on each frame waits for it to take the next
 }
 
 Browser_Window :: struct {
@@ -51,7 +51,7 @@ Browser_Window :: struct {
 	surf:    render.Surface,      // the window's swap chain, when it is not the primary one
 	primary: bool,                // its swap chain is the renderer's own (render.init)
 	ui:      ^ui.State,
-	ctx:     Window_Ctx,          // valid while the window is not active
+	using ctx: Window_Ctx,
 	pacer:   Pacer,               // ... and its pacing (the preferences and the timer stay the process's)
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
@@ -81,16 +81,25 @@ Window_Own :: struct {
 	address_key:         ui.Key,              // chrome.odin: the address field's key, set when it is built
 	chip_segment:        Chip_Segment,        // chrome.odin: the security chip's segment of the address bar, as drawn
 	chip_icon:           Chip_Icon,           // chrome.odin: the security chip's icon, as drawn
+	ctx_menu:            Context_Menu_State,  // context_menu.odin: the context menu asked for, and the one open
+	frames:              Frames_Input,        // frames_shell.odin: the frame hovered, focused, pressed
+	nav_press:           Nav_Press,           // history_ui.odin: the back/forward button held down
+	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
+	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
+	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
 	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
 	blocker_panel_request: bool,              // blocker_ui.odin: the content blocker's panel
 }
 
-// The state of the window being framed (the active one); an App with no window (a test's) has one of its own.
-window_own :: proc(app: ^App) -> ^Window_Own {
-	return app.active != nil ? &app.active.own : &app.bare_own
+// The window being framed (the active one); an App with no window (a test's) has one of its own, never shown.
+active_window :: proc(app: ^App) -> ^Browser_Window {
+	return app.active != nil ? app.active : &app.bare
 }
+
+// The chrome's state of the active window.
+window_own :: proc(app: ^App) -> ^Window_Own { return &active_window(app).own }
 
 // What a window's own state holds is freed (the window closes, or the browser ends: every window's, the front one's last).
 window_own_destroy :: proc(own: ^Window_Own) {
@@ -98,22 +107,12 @@ window_own_destroy :: proc(own: ^Window_Own) {
 	urlbar_view_destroy(&own.urlbar)
 	find_destroy(&own.find)
 	forms_shell_destroy(&own.forms)
+	context_menu_state_destroy(&own.ctx_menu)
+	device_input_destroy(&own.devices)
 }
 
 ////////////////////////////////
 // The active window
-
-@(private = "file")
-ctx_store :: proc(app: ^App, c: ^Window_Ctx) {
-	c.tabs, c.current, c.address, c.focus_address = app.tabs, app.current, app.address, app.focus_address
-	c.page_rect, c.frames_requested, c.presented = app.page_rect, app.frames_requested, app.presented
-}
-
-@(private = "file")
-ctx_load :: proc(app: ^App, c: ^Window_Ctx) {
-	app.tabs, app.current, app.address, app.focus_address = c.tabs, c.current, c.address, c.focus_address
-	app.page_rect, app.frames_requested, app.presented = c.page_rect, c.frames_requested, c.presented
-}
 
 // Pacing is the window's (its monitor's rate, its swap chain's queue, its resize steps); the preferences and the timer are not.
 @(private = "file")
@@ -129,23 +128,18 @@ window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if app.active == w { return }
 	if app.active != nil { window_deactivate(app) }
 	if w == nil { return }
-	ctx_load(app, &w.ctx)
-	w.ctx = {}
 	pacer_adopt(w)
-	app.win, app.ui_state = w.win, w.ui
 	app.active = w
 	ui.use(w.ui)
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
 }
 
-// Back to no window: the renderer has its own swap chain again and the window has its fields.
+// Back to no window: the renderer has its own swap chain again and the window its pacing.
 window_deactivate :: proc(app: ^App) {
 	w := app.active
 	if w == nil { return }
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
-	ctx_store(app, &w.ctx)
 	w.pacer = pacer
-	app.tabs, app.address = nil, {}
 	app.active = nil
 }
 
@@ -166,10 +160,10 @@ window_by_id :: proc(app: ^App, id: int) -> ^Browser_Window {
 	return nil
 }
 
-// A window's tabs and its current one, whether it is active (the App holds them) or not.
-window_tabs :: proc(app: ^App, w: ^Browser_Window) -> ^[dynamic]^Tab { return w == app.active ? &app.tabs : &w.ctx.tabs }
-window_current :: proc(app: ^App, w: ^Browser_Window) -> ^int { return w == app.active ? &app.current : &w.ctx.current }
-window_address :: proc(app: ^App, w: ^Browser_Window) -> ^ui.Text_Field { return w == app.active ? &app.address : &w.ctx.address }
+// A window's tabs, its current one, its address field (active or not: they are only in the window).
+window_tabs :: proc(app: ^App, w: ^Browser_Window) -> ^[dynamic]^Tab { return &w.tabs }
+window_current :: proc(app: ^App, w: ^Browser_Window) -> ^int { return &w.current }
+window_address :: proc(app: ^App, w: ^Browser_Window) -> ^ui.Text_Field { return &w.address }
 
 window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 	tabs := window_tabs(app, w)
@@ -179,9 +173,11 @@ window_current_tab :: proc(app: ^App, w: ^Browser_Window) -> ^Tab {
 
 // Asks for frames of one window, active or not.
 window_request :: proc(app: ^App, w: ^Browser_Window, n: int) {
-	f := w == app.active ? &app.frames_requested : &w.ctx.frames_requested
-	f^ = max(f^, n)
+	w.frames_requested = max(w.frames_requested, n)
 }
+
+// Asks for frames of the active window (the frame being made, or the front one between frames).
+request_frames :: proc(app: ^App, n := 2) { window_request(app, active_window(app), n) }
 
 // The window that holds the tab, and its place there.
 window_of_tab :: proc(app: ^App, t: ^Tab) -> (^Browser_Window, int) {
@@ -193,8 +189,8 @@ window_of_tab :: proc(app: ^App, t: ^Tab) -> (^Browser_Window, int) {
 
 // Every tab of every window (the front window's first), valid until the list changes.
 tabs_all :: proc(app: ^App) -> []^Tab {
-	out := make([dynamic]^Tab, 0, len(app.tabs) + 8, context.temp_allocator)
-	if len(app.windows) == 0 { append(&out, ..app.tabs[:]); return out[:] }   // (a bare App, as the tests make)
+	out := make([dynamic]^Tab, 0, len(active_window(app).tabs) + 8, context.temp_allocator)
+	if len(app.windows) == 0 { append(&out, ..app.bare.tabs[:]); return out[:] }   // (a bare App, as the tests make)
 	front := window_front(app)
 	if front != nil { append(&out, ..window_tabs(app, front)[:]) }
 	for w in app.windows { if w != front { append(&out, ..window_tabs(app, w)[:]) } }
@@ -234,7 +230,7 @@ address_set :: proc(app: ^App, t: ^Tab, text: string) {
 windows_spill :: proc(app: ^App, n: int) {
 	for w in app.windows {
 		if w == app.active || w.minimized { continue }
-		w.ctx.frames_requested = max(w.ctx.frames_requested, n)
+		w.frames_requested = max(w.frames_requested, n)
 	}
 }
 
@@ -355,9 +351,9 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 	nw.user = bw
 	ui.init(bw.ui, &app.fonts, &app.theme)
 	bw.ui.icon_font = app.icons
-	bw.ui.mono_font = app.ui_state.mono_font
-	ui.use(app.ui_state)
-	bw.ctx.frames_requested = 4
+	bw.ui.mono_font = active_window(app).ui.mono_font
+	ui.use(active_window(app).ui)
+	bw.frames_requested = 4
 	append(&app.windows, bw)
 	if show && !app.headless { window_show(bw) }
 	return bw
@@ -368,16 +364,16 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 window_close :: proc(app: ^App, w: ^Browser_Window) {
 	if w == nil || len(app.windows) <= 1 { return }
 	was_front := app.front == w
-	// its tabs go with it (the App holds them while it is active), then what it owns
+	// its tabs go with it (made active: what a tab's end reads is its window's), then what it owns
 	window_activate(app, w)
-	for len(app.tabs) > 0 {
-		t := pop(&app.tabs)
+	for len(w.tabs) > 0 {
+		t := pop(&w.tabs)
 		tab_discard(app, t)
 	}
 	window_own_destroy(&w.own)
 	window_deactivate(app)
-	delete(w.ctx.tabs)
-	ui.field_destroy(&w.ctx.address)
+	delete(w.tabs)
+	ui.field_destroy(&w.address)
 	// the swap chain: another window's becomes the renderer's own when it is the primary one that goes
 	idx := -1
 	for x, i in app.windows { if x == w { idx = i } }
@@ -399,7 +395,7 @@ window_close :: proc(app: ^App, w: ^Browser_Window) {
 	free(w)
 	if was_front || app.front == w { app.front = nil }
 	wake_retarget(app)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -412,7 +408,7 @@ window_has_cause :: proc(app: ^App, w: ^Browser_Window) -> bool {
 	if w.minimized || len(window_tabs(app, w)) == 0 { return false }
 	events_waiting := len(w.win.events) > w.win.returned || len(w.win.injected) > 0
 	paint := platform.take_paint_request(w.win)
-	return app.frames_requested != 0 || ui.needs_frame(app.ui_state) || ui.wake_due(app.ui_state) || paint || events_waiting
+	return w.frames_requested != 0 || ui.needs_frame(w.ui) || ui.wake_due(w.ui) || paint || events_waiting
 }
 
 
@@ -436,7 +432,7 @@ windows_pass :: proc(app: ^App) -> bool {
 		w.minimized = len(app.windows) > 1 && platform.is_minimized(w.win)
 		causes[i] = window_has_cause(app, w)
 		any_cause ||= causes[i]
-		if ms := ui.wake_in_ms(app.ui_state); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
+		if ms := ui.wake_in_ms(w.ui); ms > 0 && !w.minimized && (wake == 0 || ms < wake) { wake = ms }
 	}
 	idled := false
 	if !any_cause {
@@ -452,13 +448,13 @@ windows_pass :: proc(app: ^App) -> bool {
 		if w.minimized {
 			window_activate(app, w)
 			platform.poll_events(w.win, false)
-			for tab in app.tabs { if tab.page != nil { page.set_page_visible(tab.page, false) } }
+			for tab in w.tabs { if tab.page != nil { page.set_page_visible(tab.page, false) } }
 			continue
 		}
 		window_activate(app, w)
 		frame(app, idled || !causes[i])
 		if front != nil && w == front { devtools_window_tick(app) }
-		if app.frames_requested > 0 { app.frames_requested -= 1 }
+		if w.frames_requested > 0 { w.frames_requested -= 1 }
 	}
 	app.pass_first = false
 	if app.quitting { return false }
@@ -473,7 +469,7 @@ windows_pass :: proc(app: ^App) -> bool {
 			if len(app.windows) == 1 {   // (its twin closed in the same pass: the browser keeps one, with a new tab)
 				w.closing, w.closing_force = false, false
 				window_activate(app, w)
-				if len(app.tabs) == 0 { tab_open_new(app) }
+				if len(w.tabs) == 0 { tab_open_new(app) }
 			} else {
 				window_close(app, w)
 			}
@@ -608,18 +604,14 @@ windows_shutdown_begin :: proc(app: ^App) {
 
 // Every tab was freed: the lists forget them.
 windows_forget_tabs :: proc(app: ^App) {
-	clear(&app.tabs)
-	for w in app.windows {
-		if w == app.active { continue }
-		delete(w.ctx.tabs)
-		w.ctx.tabs = nil
-	}
+	clear(&app.bare.tabs)
+	for w in app.windows { clear(&w.tabs) }   // (the lists are freed with the windows: windows_destroy)
 }
 
-// The toolkit states of every window (the active one's address field was freed by its own step).
+// The toolkit states of every window, and their address fields.
 windows_destroy_ui :: proc(app: ^App) {
 	for w in app.windows {
-		if w != app.active { ui.field_destroy(&w.ctx.address) }
+		ui.field_destroy(&w.address)
 		ui.destroy(w.ui)
 	}
 }
@@ -633,7 +625,7 @@ windows_destroy_surfaces :: proc(app: ^App) {
 windows_destroy :: proc(app: ^App) {
 	for w in app.windows {
 		delete(w.title)
-		delete(w.ctx.tabs)   // (the active window's list went to it when windows_destroy_surfaces deactivated it)
+		delete(w.tabs)
 		free(w.ui)
 		platform.destroy_window(w.win)
 		free(w)
@@ -642,5 +634,5 @@ windows_destroy :: proc(app: ^App) {
 	delete(pass_order); delete(pass_causes)
 	pass_order, pass_causes = nil, nil
 	app.windows = nil
-	app.active, app.front, app.win, app.ui_state = nil, nil, nil, nil
+	app.active, app.front = nil, nil
 }

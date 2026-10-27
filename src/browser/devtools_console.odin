@@ -582,14 +582,14 @@ console_row_menu_items :: proc(app: ^App, t: ^Tab, c: ^Dev_Console) {
 	}
 	if ui.menu_item("Copy stack trace###dt_con_copy_stack", enabled = c.menu_src.line > 0 || row_has_stack(t, c)).clicked { clip_set(row_stack_text(t, c)) }
 	ref, rpage := row_object(t, c)
-	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil).clicked { page.dev_console_copy(rpage, ref); app.frames_requested = max(app.frames_requested, 3) }
+	if ui.menu_item("Copy object###dt_con_copy_obj", enabled = ref > 0 && rpage != nil).clicked { page.dev_console_copy(rpage, ref); request_frames(app, 3) }
 	if ui.menu_item("Copy all messages shown###dt_con_copy_all", enabled = n > 0).clicked { clip_set(con_text(t, c, false, con_prefs.timestamps)) }
 	ui.menu_separator()
 	if ui.menu_item("Store as global variable###dt_con_store", enabled = ref > 0 && rpage != nil).clicked {
 		dev.con.evaluating = true
 		page.dev_console_store(rpage, ref)
 		dev.con.evaluating = false
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	}
 	if ui.menu_item("Select all###dt_con_all", "Ctrl+A", enabled = n > 0).clicked { c.has_sel, c.sel_a, c.sel_b = true, c.rows[0].abs, c.rows[n - 1].abs }
 	ui.menu_separator()
@@ -664,7 +664,7 @@ row_stack_text :: proc(t: ^Tab, c: ^Dev_Console) -> string {
 @(private = "file")
 con_ctx_changed :: proc(app: ^App, c: ^Dev_Console) {
 	c.key_ser = 0   // the rows are made again (Selected context only)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Whether a line is of the selected context: a nested document's lines start with "[frame <address>] ".
@@ -798,7 +798,7 @@ console_clear :: proc(app: ^App, t: ^Tab) {
 	dev.con.stop = t.console_added
 	clear(&dev.con.expanded)
 	clear(&dev.con.folded)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // console.table: the columns sized to what they hold, a rule under the header.

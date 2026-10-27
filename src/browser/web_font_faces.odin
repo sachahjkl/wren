@@ -189,7 +189,7 @@ blocking_text_update :: proc(pf: ^Page_Fonts, t: ^Tab) {
 		if b.timer != base.NIL_HANDLE { host.clear_timer(&the_app.loop, b.timer) }
 		b.timer = host.set_timer(&the_app.loop, next_ms + 1, 0, proc(data: rawptr) {
 			page_render.fonts.blocking.timer = base.NIL_HANDLE
-			the_app.frames_requested = max(the_app.frames_requested, 2)
+			request_frames(the_app, 2)
 		}, nil)
 	}
 }

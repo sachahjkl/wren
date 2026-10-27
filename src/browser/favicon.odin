@@ -161,7 +161,7 @@ favicons_init :: proc(app: ^App) {
 	favs.entries = make(map[string]^Favicon)
 	favs.watch = config.watch(&app.prefs, "browser.tabs.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		favs.cfg = tab_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 }
 
@@ -364,7 +364,7 @@ title_wake :: proc(app: ^App, ms: f64) {
 	favs.timer = host.set_timer(&app.loop, max(ms, 1), 0, proc(data: rawptr) {
 		favs.timer = base.NIL_HANDLE
 		a := (^App)(data)
-		a.frames_requested = max(a.frames_requested, 1)
+		request_frames(a, 1)
 	}, app)
 }
 
@@ -374,7 +374,7 @@ spinner_wake :: proc(app: ^App) {
 	favs.spin = host.set_timer(&app.loop, f64(1000 / max(favs.cfg.spinner_fps, 1)), 0, proc(data: rawptr) {
 		favs.spin = base.NIL_HANDLE
 		a := (^App)(data)
-		a.frames_requested = max(a.frames_requested, 1)
+		request_frames(a, 1)
 	}, app)
 }
 
@@ -462,7 +462,7 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	render.update_texture_rgba(&app.r, e.tex, 0, 0, img.width, img.height, img.frames[0].pixels, img.stride)
 	e.w, e.h = img.width, img.height
 	e.state = .Ready
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Room for one more entry: the least recently drawn ones go (never one still loading or decoding).

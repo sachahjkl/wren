@@ -49,7 +49,7 @@ dialog_work :: proc(data: rawptr) {
 	types := [2]win.COMDLG_FILTERSPEC{{win.utf8_to_wstring(i18n.tr("Text files"), context.temp_allocator), win.L("*.txt")}, {win.utf8_to_wstring(i18n.tr("All files"), context.temp_allocator), win.L("*.*")}}
 	dlg->SetFileTypes(2, &types[0])
 	dlg->SetDefaultExtension(win.L("txt"))
-	if dlg->Show(j.app.win.hwnd) < 0 { free_all(context.temp_allocator); return }
+	if dlg->Show(active_window(j.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
 	item: ^win.IShellItem
 	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
 	defer item->Release()
@@ -96,5 +96,5 @@ dialog_done :: proc(data: rawptr) {
 			dash_add_filter(app, strings.trim_space(string(data)))
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }

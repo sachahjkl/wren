@@ -87,12 +87,12 @@ wchrome: Window_Chrome
 
 window_chrome_init :: proc(app: ^App) {
 	wchrome.cfg = window_settings_from_prefs(&app.prefs)
-	platform.set_square_corners(app.win, wchrome.cfg.square_corners)
+	platform.set_square_corners(active_window(app).win, wchrome.cfg.square_corners)
 	wchrome.watch = config.watch(&app.prefs, "browser.window.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		app := (^App)(user)
 		wchrome.cfg = window_settings_from_prefs(p)
-		platform.set_square_corners(app.win, wchrome.cfg.square_corners)
-		app.frames_requested = max(app.frames_requested, 2)
+		platform.set_square_corners(active_window(app).win, wchrome.cfg.square_corners)
+		request_frames(app, 2)
 	}, app)
 }
 
@@ -104,25 +104,27 @@ window_chrome_destroy :: proc(app: ^App) {
 
 // Before the frame's build: the title bar the preference asks for, smooth scrolling of the toolkit's lists like the page's.
 window_chrome_frame :: proc(app: ^App) {
-	if !platform.is_fullscreen(app.win) && platform.is_integrated_title(app.win) != wchrome.cfg.integrated {
-		platform.set_integrated_title(app.win, wchrome.cfg.integrated)
-		render.resize(&app.r, app.win.size)
+	wnd := active_window(app)
+	if !platform.is_fullscreen(wnd.win) && platform.is_integrated_title(wnd.win) != wchrome.cfg.integrated {
+		platform.set_integrated_title(wnd.win, wchrome.cfg.integrated)
+		render.resize(&app.r, wnd.win.size)
 	}
 	// about:config and the other lists of the chrome scroll along the page's curve (smooth_scroll.odin)
 	sc := smooth_cfg
 	curve: ui.Scroll_Curve = sc.curve == .Ease_Out ? .Ease_Out : .Impulse
 	dur := f32(sc.wheel_ms)
 	if !sc.enabled || (sc.reduced_motion && (app.page_settings.style.reduced_motion || !os_animations_enabled(app))) { dur = 0 }
-	ui.set_scroll_settings(app.ui_state, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
+	ui.set_scroll_settings(wnd.ui, {curve = curve, impulse = f32(sc.impulse), duration_ms = dur})
 }
 
 toggle_fullscreen :: proc(app: ^App) {
+	wnd := active_window(app)
 	if fullscreen_shell_leave(app) { return }   // F11 in a page's full screen (a video): back to the page, window as it was
-	on := !platform.is_fullscreen(app.win)
-	platform.set_fullscreen(app.win, on)
+	on := !platform.is_fullscreen(wnd.win)
+	platform.set_fullscreen(wnd.win, on)
 	window_own(app).full.revealed = false
-	render.resize(&app.r, app.win.size)
-	app.frames_requested = max(app.frames_requested, 3)
+	render.resize(&app.r, wnd.win.size)
+	request_frames(app, 3)
 }
 
 @(private = "file")
@@ -151,14 +153,14 @@ app_icon :: proc(app: ^App, size: f32) {
 	b.cursor = .Arrow
 	sig := ui.signal(b)
 	if hud.title_text != "" { tip(sig, hud.title_text) }
-	if sig.clicked || sig.right_clicked { wchrome.menu_win, wchrome.menu_at = app.win, {b.rect.min.x, b.rect.max.y} }
+	if sig.clicked || sig.right_clicked { wchrome.menu_win, wchrome.menu_at = active_window(app).win, {b.rect.min.x, b.rect.max.y} }
 }
 
 // At the end of a frame: the system menu the icon asked for. Not from the build: the menu's loop paints the window
 // (window_on_frame), and a frame made inside the build broke the one being built (windows.odin: the frame gate).
 window_chrome_after_frame :: proc(app: ^App) {
 	w := wchrome.menu_win
-	if w == nil || w != app.win { return }
+	if w == nil || w != active_window(app).win { return }
 	wchrome.menu_win = nil
 	if !platform.is_closed(w) { platform.show_system_menu(w, wchrome.menu_at) }
 }
@@ -170,26 +172,27 @@ window_chrome_forget :: proc(w: ^platform.Window) {
 
 // Full screen: the bars over the top of the page while revealed. Built after the page so they draw over it.
 fullscreen_bars :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	fw := &window_own(app).full
-	if !platform.is_fullscreen(app.win) { fw.revealed = false; return }
+	if !platform.is_fullscreen(wnd.win) { fw.revealed = false; return }
 	if !wchrome.cfg.reveal || fullscreen_shell_active(app.active) { fw.revealed = false; return }   // (a page's own full screen keeps the whole window)
 	m := ui.mouse_pos()
 	if !fw.revealed {
-		fw.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(app.win.size.x)
+		fw.revealed = m.y >= 0 && m.y < wchrome.cfg.reveal_px && m.x >= 0 && m.x < f32(wnd.win.size.x)
 	} else {
 		// they stay while the pointer is over them, a menu of theirs is open or the address bar has the keyboard
 		over := m.y < fw.overlay.max.y + ui.font_size()
 		fw.revealed = over || ui.ctx_menu_any_open() || (ui.focus_key() != 0 && ui.focus_key() == address_key(app))
 	}
 	if !fw.revealed { fw.overlay = {}; return }
-	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(app.win.size.x)), height = ui.children_sum(), axis = .Y})
+	ui.next({fixed_x = 0, fixed_y = 0, width = ui.px(f32(wnd.win.size.x)), height = ui.children_sum(), axis = .Y})
 	col := ui.build_box({.Draw_Background, .Draw_Side_Bottom}, "###fullscreen_bars")
 	if ui.parent(col) {
 		if tab_strip(app, false) { return }
 		toolbar_row(app, t)   // chrome_style.odin
 	}
 	// (the rect is last layout's: one more frame when it moved, so that the capture follows)
-	if col.rect != fw.overlay { app.frames_requested = max(app.frames_requested, 2) }
+	if col.rect != fw.overlay { request_frames(app, 2) }
 	fw.overlay = col.rect
 }
 

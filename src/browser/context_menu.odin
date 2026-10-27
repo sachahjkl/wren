@@ -42,9 +42,12 @@ Context_Request :: struct {
 	selection:   string,         // owned
 }
 
-@(private = "file") ctx_req: Context_Request
-@(private = "file") ctx_pending: bool
-@(private = "file") ctx_open: Context_Request   // what the open menu is about
+// A window's context menu (Window_Own.ctx_menu).
+Context_Menu_State :: struct {
+	req:     Context_Request,   // asked for, opened by the next build
+	pending: bool,
+	open:    Context_Request,   // what the open menu is about
+}
 
 CTX_MENU_ID :: "###page_context_menu"
 
@@ -54,18 +57,21 @@ request_free :: proc(r: ^Context_Request) {
 	r^ = {}
 }
 
-context_menu_destroy :: proc() {
-	request_free(&ctx_req)
-	request_free(&ctx_open)
-	ctx_pending = false
+context_menu_state_destroy :: proc(cm: ^Context_Menu_State) {
+	request_free(&cm.req)
+	request_free(&cm.open)
+	cm.pending = false
 }
+
+context_menu_destroy :: proc(app: ^App) { context_menu_state_destroy(&window_own(app).ctx_menu) }
 
 @(private = "file")
 request :: proc(app: ^App, r: Context_Request) {
-	request_free(&ctx_req)
-	ctx_req = r
-	ctx_pending = true
-	app.frames_requested = max(app.frames_requested, 2)
+	cm := &window_own(app).ctx_menu
+	request_free(&cm.req)
+	cm.req = r
+	cm.pending = true
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -137,19 +143,20 @@ page_context_press :: proc(app: ^App, t: ^Tab, pos: [2]f32) {
 // The Menu key / Shift+F10 while the page has the keyboard: at the focused element, else at the selection, else at
 // the top left corner of the page.
 page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
+	wnd := active_window(app)
 	p := t.page
 	if p == nil { return }
 	em := ui.font_size()
-	pos := app.page_rect.min + {em, em}
+	pos := wnd.page_rect.min + {em, em}
 	target := p.body
-	view := draw.rect_size(app.page_rect)
+	view := draw.rect_size(wnd.page_rect)
 	if p.formctl != nil {
 		f := page.page_forms(p)
 		if f.focus != base.NIL_HANDLE {
 			target = f.focus
 			if r, ok := lay.box_of(&t.layout, f.focus, view, t.scroll); ok {
 				// (box_of's rects are document coordinates for every box, position: fixed ones included)
-				pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
+				pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll}
 			}
 		}
 	}
@@ -159,11 +166,11 @@ page_context_menu_keyboard :: proc(app: ^App, t: ^Tab) {
 		if n != nil {
 			el := n.kind == .Text ? n.parent : a.node
 			target = el
-			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = app.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
+			if r, ok := lay.box_of(&t.layout, el, view, t.scroll); ok { pos = wnd.page_rect.min + {r.bounds.min.x, r.bounds.max.y - t.scroll} }
 		}
 	}
-	pos = {clamp(pos.x, app.page_rect.min.x, app.page_rect.max.x), clamp(pos.y, app.page_rect.min.y, app.page_rect.max.y)}
-	page_context_menu(app, t, target, pos, pos - app.page_rect.min + {0, t.scroll}, false, keyboard = true)
+	pos = {clamp(pos.x, wnd.page_rect.min.x, wnd.page_rect.max.x), clamp(pos.y, wnd.page_rect.min.y, wnd.page_rect.max.y)}
+	page_context_menu(app, t, target, pos, pos - wnd.page_rect.min + {0, t.scroll}, false, keyboard = true)
 }
 
 tab_context_menu :: proc(app: ^App, index: int, pos: [2]f32, keyboard := false) {
@@ -189,15 +196,16 @@ short :: proc(s: string, n: int) -> string {
 // Builds the open context menu (call once per frame, after the chrome and the page area).
 context_menus_build :: proc(app: ^App) {
 	key := ui.key_from_string(0, CTX_MENU_ID)
-	if ctx_pending {
-		ctx_pending = false
-		request_free(&ctx_open)
-		ctx_open, ctx_req = ctx_req, {}
-		ui.ctx_menu_open(key, ctx_open.pos, from_keyboard = ctx_open.keyboard)
+	cm := &window_own(app).ctx_menu
+	if cm.pending {
+		cm.pending = false
+		request_free(&cm.open)
+		cm.open, cm.req = cm.req, {}
+		ui.ctx_menu_open(key, cm.open.pos, from_keyboard = cm.open.keyboard)
 	}
 	if !ui.ctx_menu_is_open(key) { return }
 	t := current_tab(app)
-	r := &ctx_open
+	r := &cm.open
 	if r.kind == .Page && (t == nil || t.page != r.page) { ui.ctx_menu_close(); return }
 	if ui.ctx_menu(key) {
 		switch r.kind {
@@ -239,7 +247,7 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 		if ui.menu_item("Delete", "Del", enabled = mutable && has_sel).clicked { forms.edit(f, h, .Delete_Backward) }
 		ui.menu_separator()
 		if ui.menu_item("Select all", "Ctrl+A", enabled = forms.edit_text(f, h) != "").clicked { forms.select_all(f, h) }
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if r.link != "" {
 		sep(&groups)
@@ -295,15 +303,16 @@ page_menu_items :: proc(app: ^App, t: ^Tab, r: ^Context_Request) {
 
 @(private = "file")
 tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
-	if r.tab < 0 || r.tab >= len(app.tabs) { ui.ctx_menu_close(); return }
-	t := app.tabs[r.tab]
+	wnd := active_window(app)
+	if r.tab < 0 || r.tab >= len(wnd.tabs) { ui.ctx_menu_close(); return }
+	t := wnd.tabs[r.tab]
 	if ui.menu_item("New tab", "Ctrl+T", icon = GLYPH_ADD).clicked { tab_open_new(app); return }
 	ui.menu_separator()
 	if ui.menu_item("Reload", "Ctrl+R", icon = GLYPH_RELOAD, enabled = t.kind == .Web || t.kind == .Config).clicked { reload(app, t) }
 	if ui.menu_item("Duplicate").clicked { open_in_new_tab(app, t.url, origin = .Replay) }
 	ui.menu_separator()
 	if ui.menu_item("Close tab", "Ctrl+W", icon = GLYPH_CLOSE).clicked { tab_close(app, r.tab); return }
-	if ui.menu_item("Close other tabs", enabled = len(app.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
+	if ui.menu_item("Close other tabs", enabled = len(wnd.tabs) > 1).clicked { close_other_tabs(app, r.tab); return }
 	if ui.menu_item("Reopen closed tab", "Ctrl+Shift+T", enabled = len(closed_tabs) > 0).clicked { reopen_closed_tab(app) }
 	ui.menu_separator()
 	menu_command(app, t, "tab.move_to_new_window")
@@ -329,7 +338,7 @@ tab_menu_items :: proc(app: ^App, r: ^Context_Request) {
 
 @(private = "file")
 address_menu_items :: proc(app: ^App) {
-	f := &app.address
+	f := &active_window(app).address
 	sel := ui.field_has_selection(f)
 	clip := clip_get()
 	if ui.menu_item("Undo", "Ctrl+Z", enabled = ui.field_can_undo(f)).clicked { ui.field_undo(f) }
@@ -402,12 +411,13 @@ open_in_new_tab :: proc(app: ^App, address: string, from: ^page.Page = nil, orig
 }
 
 close_other_tabs :: proc(app: ^App, keep: int) {
-	t := app.tabs[keep]
-	for i := len(app.tabs) - 1; i >= 0; i -= 1 {
-		if app.tabs[i] != t { tab_close(app, i) }
+	wnd := active_window(app)
+	t := wnd.tabs[keep]
+	for i := len(wnd.tabs) - 1; i >= 0; i -= 1 {
+		if wnd.tabs[i] != t { tab_close(app, i) }
 	}
-	for x, i in app.tabs { if x == t { app.current = i } }
-	ui.field_set(&app.address, current_tab(app).url)
+	for x, i in wnd.tabs { if x == t { wnd.current = i } }
+	ui.field_set(&wnd.address, current_tab(app).url)
 }
 
 ////////////////////////////////
@@ -512,7 +522,7 @@ save_dialog_work :: proc(data: rawptr) {
 		dlg->SetFileTypes(2, &types[0])
 		dlg->SetDefaultExtension(win.utf8_to_wstring(ext[1:], context.temp_allocator))
 	}
-	if dlg->Show(job.app.win.hwnd) < 0 { free_all(context.temp_allocator); return }
+	if dlg->Show(active_window(job.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
 	item: ^win.IShellItem
 	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
 	defer item->Release()
@@ -539,7 +549,7 @@ save_dialog_done :: proc(data: rawptr) {
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
 			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
-			j.app.frames_requested = max(j.app.frames_requested, 3)
+			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
 		return
@@ -566,14 +576,14 @@ save_fetch_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		}, proc(data: rawptr) {
 			j := (^Save_Job)(data)
 			if j.ok { ui.toast(.Good, "Saved %s", filepath.base(j.path)) } else { ui.toast(.Bad, "Could not write %s", j.path) }
-			j.app.frames_requested = max(j.app.frames_requested, 3)
+			request_frames(j.app, 3)
 			save_job_free(j)
 		}, job)
 	case .Failed:
 		ui.toast(.Bad, "Download failed: %s", ev.detail)
 		save_job_free(job)
 	}
-	the_app.frames_requested = max(the_app.frames_requested, 3)
+	request_frames(the_app, 3)
 }
 
 @(private = "file")

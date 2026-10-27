@@ -63,7 +63,7 @@ fullscreen_shell_destroy :: proc(app: ^App) {
 
 @(private = "file")
 fullscreen_settle_arm :: proc(app: ^App, fs: ^Window_Fullscreen, top: ^page.Page, tab_id: u64, changes: bool) {
-	fs.settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(app.page_rect), changes = changes}
+	fs.settle = {armed = true, page_id = page.page_id(top), tab_id = tab_id, area = draw.rect_size(active_window(app).page_rect), changes = changes}
 }
 
 // Each frame of the window `w` (the active one), before the animation frames: once the page has been laid out for the
@@ -79,11 +79,11 @@ fullscreen_shell_settle :: proc(app: ^App, w: ^Browser_Window) {
 		return
 	}
 	settle.frames += 1
-	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(app.page_rect) != settle.area : settle.frames >= 2)
-	if !ready { app.frames_requested = max(app.frames_requested, 2); return }
+	ready := settle.frames >= 60 || (settle.changes ? draw.rect_size(active_window(app).page_rect) != settle.area : settle.frames >= 2)
+	if !ready { request_frames(app, 2); return }
 	settle.armed = false
 	page.fullscreen_settled(tab_of.page)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // An element of the document shown in the window `w` is in full screen.
@@ -93,19 +93,19 @@ fullscreen_shell_active :: proc(w: ^Browser_Window) -> bool { return w != nil &&
 @(private = "file")
 fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_FullscreenNavigation) -> bool {
 	app := the_app
-	if app == nil || app.win == nil || app.active == nil { return true }
+	if app == nil || active_window(app).win == nil || app.active == nil { return true }
 	fs := &app.active.own.fullscreen
 	id := page.page_id(top)
 	if on {
 		t := current_tab(app)
 		if t == nil || t.page != top || t.kind != .Web || id == 0 { return false }
 		if fs.shell.page_id == 0 {
-			fs.shell.window_was = platform.is_fullscreen(app.win)
+			fs.shell.window_was = platform.is_fullscreen(active_window(app).win)
 			if wchrome.cfg.fullscreen_hint { ui.toast(.Info, "Press Esc to exit full screen") }
 		}
 		if fs.shell.page_id == 0 { fs.shell.scroll = t.scroll }
 		fs.shell.page_id, fs.shell.tab_id = id, t.id
-		fullscreen_settle_arm(app, fs, top, t.id, !platform.is_fullscreen(app.win))
+		fullscreen_settle_arm(app, fs, top, t.id, !platform.is_fullscreen(active_window(app).win))
 		window_fullscreen(app, true)
 		return true
 	}
@@ -115,13 +115,13 @@ fullscreen_set :: proc(top: ^page.Page, on: bool, navigation: page.Api_Fullscree
 	fs.shell.page_id = 0
 	if !fs.shell.window_was { window_fullscreen(app, false) }
 	app.active.own.full.revealed = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return true
 }
 
 @(private = "file")
 fullscreen_scroll_arm :: proc(app: ^App, fs: ^Window_Fullscreen) {
-	fs.back = {active = true, tab_id = fs.shell.tab_id, page_id = fs.shell.page_id, scroll = fs.shell.scroll, w = int(app.win.size.x), h = int(app.win.size.y), resized = !fs.shell.window_was}
+	fs.back = {active = true, tab_id = fs.shell.tab_id, page_id = fs.shell.page_id, scroll = fs.shell.scroll, w = int(active_window(app).win.size.x), h = int(active_window(app).win.size.y), resized = !fs.shell.window_was}
 }
 
 @(private = "file")
@@ -134,23 +134,23 @@ fullscreen_scroll_tick :: proc(app: ^App, fs: ^Window_Fullscreen) {
 	if tab_of == nil || tab_of.page == nil || page.page_id(tab_of.page) != sback.page_id || sback.frames > 60 { sback.active = false; return }
 	// (the page is laid out at the window's size of the frame before: one frame after the window changed)
 	if sback.resized && sback.frames < 30 {
-		if int(app.win.size.x) == sback.w && int(app.win.size.y) == sback.h { app.frames_requested = max(app.frames_requested, 2); return }
-		if !sback.laid_out { sback.laid_out = true; app.frames_requested = max(app.frames_requested, 2); return }
+		if int(active_window(app).win.size.x) == sback.w && int(active_window(app).win.size.y) == sback.h { request_frames(app, 2); return }
+		if !sback.laid_out { sback.laid_out = true; request_frames(app, 2); return }
 	}
 	smooth_stop(tab_of)
 	tab_of.scroll = sback.scroll
 	sback.active = false
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 @(private = "file")
 window_fullscreen :: proc(app: ^App, on: bool) {
-	if platform.is_fullscreen(app.win) != on {
-		platform.set_fullscreen(app.win, on)
-		render.resize(&app.r, app.win.size)
+	if platform.is_fullscreen(active_window(app).win) != on {
+		platform.set_fullscreen(active_window(app).win, on)
+		render.resize(&app.r, active_window(app).win.size)
 	}
 	window_own(app).full.revealed = false
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Leaves element full screen on the user's behalf (Escape, F11) in the active window. False when the shown tab has none.

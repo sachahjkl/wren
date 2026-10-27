@@ -338,7 +338,7 @@ net_media_preview :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 		if m.playing && m.duration > 0 && pos >= m.duration - 0.05 { m.playing, m.ended = false, true }
 	case .None:
 	}
-	if m.playing { app.frames_requested = max(app.frames_requested, 2) }
+	if m.playing { request_frames(app, 2) }
 	if dt_bar("###dt_pm_bar", dtm.bar) {
 		dt_gap(4)
 		if dt_btn("###dt_pm_play", m.playing ? .Pause : .Play, tooltip = m.playing ? "Pause" : "Play", shortcut = "Space").clicked { set_playing(m, !m.playing) }

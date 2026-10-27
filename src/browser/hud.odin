@@ -290,7 +290,7 @@ hud_init :: proc(app: ^App) {
 		hud.cfg = hud_settings_from_prefs(p)
 		hud_resize(app)
 		hud.title_ms, hud.nums.at_ms = 0, 0   // shows the change at the next frame
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}, app)
 }
 
@@ -443,7 +443,7 @@ hud_settle_timer :: proc "system" (hwnd: win.HWND, msg: win.UINT, id: win.UINT_P
 		return
 	}
 	hud.settle_skip = true   // the frame this wakes is no sample
-	app.frames_requested = max(app.frames_requested, 1)   // (a wake without anything to do draws no frame)
+	request_frames(app, 1)   // (a wake without anything to do draws no frame)
 	if phase_clock.on { hud_refresh(app, now) }
 }
 
@@ -718,7 +718,7 @@ hud_title :: proc(app: ^App, now: f64) {
 	if text == h.title_text { return }
 	delete(h.title_text)
 	h.title_text = strings.clone(text)
-	platform.set_title(app.win, text)
+	platform.set_title(active_window(app).win, text)
 }
 
 ////////////////////////////////
@@ -729,5 +729,5 @@ hud_mono :: proc(app: ^App) {
 	if hud.mono_tried { return }
 	hud.mono_tried = true
 	id, ok, _ := font.load_system_or_embedded(&app.fonts, platform.system_font_path("consola.ttf"), font.FALLBACK_MONO_DATA)
-	if ok { hud.mono = id; app.ui_state.mono_font = id }
+	if ok { hud.mono = id; active_window(app).ui.mono_font = id }
 }

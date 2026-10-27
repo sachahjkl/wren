@@ -83,7 +83,7 @@ find_close :: proc(app: ^App) {
 	delete(fs.query)
 	fs.query = ""
 	fs.page = nil
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Case folding with a map from each folded byte back to the byte of the text it comes from.
@@ -118,7 +118,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 	if same_query && fs.page == p && fs.mutations == p.doc.mutations && fs.styled == styled_serial { return }
 	// content that keeps changing is searched again at most a few times a second
 	now := ui.now_ms()
-	if same_query && fs.page == p && now - fs.searched_ms < 250 { app.frames_requested = max(app.frames_requested, 2); return }
+	if same_query && fs.page == p && now - fs.searched_ms < 250 { request_frames(app, 2); return }
 	keep := same_query && fs.page == p ? fs.active : -1
 	find_clear_matches(fs)
 	delete(fs.query)
@@ -168,7 +168,7 @@ find_update :: proc(app: ^App, t: ^Tab) {
 		n := dom.get(p.doc, m.start.node)
 		if n == nil { continue }
 		el := n.kind == .Text ? n.parent : m.start.node
-		if r, ok := lay.box_of(&t.layout, el, draw.rect_size(app.page_rect), t.scroll); ok && r.border.max.y >= t.scroll { fs.active = i; break }
+		if r, ok := lay.box_of(&t.layout, el, draw.rect_size(active_window(app).page_rect), t.scroll); ok && r.border.max.y >= t.scroll { fs.active = i; break }
 	}
 	fs.reveal = true
 }
@@ -179,7 +179,7 @@ find_step :: proc(app: ^App, dir: int) {
 	if n == 0 { return }
 	fs.active = ((fs.active < 0 ? (dir > 0 ? -1 : 0) : fs.active) + dir + n) % n
 	fs.reveal = true
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The bar (built under the address row while open).
@@ -251,7 +251,7 @@ find_paint_item :: proc(fs: ^Find_State, l: ^Layout, dc: ^draw.Context, it: ^lay
 		// through the shaped clusters: in a right-to-left item the match runs from its end's caret to its start's
 		ca, cb := lay.item_caret_x(l, it, a, api), lay.item_caret_x(l, it, b, api)
 		x0, x1 := min(ca, cb), max(ca, cb)
-		draw.rect(dc, {{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}, s.match == fs.active ? act : bg, 2 * the_app.ui_state.scale)
+		draw.rect(dc, {{r.min.x + x0, r.min.y}, {r.min.x + x1, r.max.y}}, s.match == fs.active ? act : bg, 2 * active_window(the_app).ui.scale)
 	}
 }
 
@@ -266,7 +266,7 @@ find_reveal :: proc(app: ^App, fs: ^Find_State, t: ^Tab) {
 	items := lay.items_of_text(l, t.page.doc, m.start.node, m.start.offset, m.start.offset + 1)
 	if len(items) == 0 { return }
 	it := &l.items[items[0]]
-	view := draw.rect_size(app.page_rect)
+	view := draw.rect_size(active_window(app).page_rect)
 	margin := view.y * 0.25
 	rect := it.rect
 	for s := it.space; s != lay.NONE; s = l.spaces[s].parent {
@@ -284,7 +284,7 @@ find_reveal :: proc(app: ^App, fs: ^Find_State, t: ^Tab) {
 			rect = {rect.min - got, rect.max - got}
 		case .Document:
 			if rect.min.y < t.scroll || rect.max.y > t.scroll + view.y { t.scroll = max(rect.min.y - margin, 0) }
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			return
 		case .Fixed:
 			return

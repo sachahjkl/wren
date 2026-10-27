@@ -387,7 +387,7 @@ net_observe :: proc(user: rawptr, ev: ^fetch.Observed) {
 	}
 	// whatever the event was, the rows of that tab are made again, and a frame shows it
 	if touched != nil { touched.net.version += 1 }
-	if (dev.visible && (dev.panel == .Network || dev.panel == .Performance)) || (touched != nil && touched == current_tab(app)) { app.frames_requested = max(app.frames_requested, 2) }
+	if (dev.visible && (dev.panel == .Network || dev.panel == .Performance)) || (touched != nil && touched == current_tab(app)) { request_frames(app, 2) }
 }
 
 // A message of a socket, or an event of a stream, into the entry's list.
