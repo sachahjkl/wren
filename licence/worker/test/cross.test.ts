@@ -35,6 +35,7 @@ function tool(...args: string[]) {
 async function workerLicence(body: string, customerJson: string) {
 	const env = makeEnv();
 	const net = fakeNetwork({ "https://sandbox-api.paddle.com/customers/": () => jsonResponse(customerJson) });
+	env._deps = net.deps;   // the Paddle customer is read inside the Durable Object, which uses env._deps
 	const res = await handle(webhookRequest(body), env, waiter, net.deps);
 	assert.equal(res.status, 200);
 	return JSON.parse(env.LICENSES.data.get(`txn:${TXN}`)!) as { licence: string; file: string; name: string; order: string };

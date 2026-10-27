@@ -50,3 +50,14 @@ export function hexEncode(bytes: Uint8Array): string {
 export async function sha256Hex(text: string): Promise<string> {
 	return hexEncode(new Uint8Array(await crypto.subtle.digest("SHA-256", utf8(text))));
 }
+
+// Compares two strings without leaking their length relationship through timing: used for the admin and bounce tokens.
+// Different lengths return false, but only after a full pass over the longer one, so the time does not reveal the length.
+export function timingSafeEqual(a: string, b: string): boolean {
+	const x = utf8(a);
+	const y = utf8(b);
+	const n = Math.max(x.length, y.length);
+	let diff = x.length ^ y.length;
+	for (let i = 0; i < n; i++) diff |= (x[i] ?? 0) ^ (y[i] ?? 0);
+	return diff === 0;
+}

@@ -124,40 +124,54 @@ buyer ── Paddle checkout (overlay on support.html) ── pays
                 │                                       │
                 │ checkout.completed (browser)          │ transaction.completed (signed webhook)
                 ▼                                       ▼
-        thanks.html?txn=txn_…                    Worker POST /paddle/webhook
-                │                                  verifies Paddle-Signature, reads the customer (Paddle API),
-                │ GET /licence?txn=txn_…           signs the licence, stores it in KV, mails it (Email Service)
-                └──────────────► Worker ◄───────────────────────────┘
-                     shows the key, the .wrenlicense download
+        thanks.html?txn=txn_…                    Worker POST /paddle/webhook  verifies Paddle-Signature,
+                │                                        │                     then hands the transaction to
+                │ GET /licence?txn=txn_…                 ▼                     the LicenseOrder Durable Object
+                │                                 LicenseOrder(txn)  ── reads the customer (Paddle API), signs,
+                └──────────────► Worker ◄── KV ◄──  (one per purchase)   writes the KV copy, mails it (Email Service);
+                     shows the key, the .wrenlicense       │             a failed mail waits on the object's alarm
+                     download (from the KV copy)           └── retry queue: 1, 5, 30 min … then dead-letter
 ```
+
+The Durable Object is what makes a double webhook safe: Cloudflare runs at most one instance of a given object at a
+time and serialises calls to it, so two deliveries of the same `transaction.completed`, even at the very same instant,
+are handled one after the other. KV is no longer the authority (its reads and writes are not a transaction); it is the
+globally-replicated copy the thank-you page reads, kept in step by the object.
 
 ### What the Worker does
 
 | Endpoint | |
 |---|---|
-| `POST /paddle/webhook` | Checks `Paddle-Signature` (`ts=…;h1=…`: HMAC-SHA256 of `ts:` + the raw body with the destination's secret, compared in constant time, `ts` within `WEBHOOK_TOLERANCE_SECONDS`, 300 by default; several `h1` are accepted during a secret rotation). Only `transaction.completed` acts. Edition from the price ids, name and e-mail from the Paddle API (`GET /customers/{id}`), licence signed, stored under `txn:<id>`, mailed. Answers 200 when done, **401** for a bad signature, **422** for a transaction that can never work (no customer e-mail: nothing to retry), **500** when something may work later (Paddle API down, or Email Service refusing for now because of a rate or daily limit: Paddle then delivers the webhook again, and only the missing step is redone). A transaction with no Wren price is acknowledged and ignored. |
+| `POST /paddle/webhook` | Checks `Paddle-Signature` (`ts=…;h1=…`: HMAC-SHA256 of `ts:` + the raw body with the destination's secret, compared in constant time, `ts` within `WEBHOOK_TOLERANCE_SECONDS`, 300 by default; several `h1` are accepted during a secret rotation). Only `transaction.completed` acts. The transaction is handed to its `LicenseOrder` Durable Object: edition from the price ids, name and e-mail from the Paddle API (`GET /customers/{id}`), licence signed, stored under `txn:<id>`, mailed (or queued). Answers 200 when done **or queued**, **401** for a bad signature, **422** for a transaction that can never work (no customer e-mail: nothing to retry), **500** when the Paddle API is down (Paddle then delivers the webhook again). A mail that cannot go out now no longer makes the webhook fail: the object queues it and retries on its own alarm. A transaction with no Wren price is acknowledged and ignored. |
+| `POST /mail/bounce` | The mail provider's delivery webhook (a bounce or complaint). Protected by `MAIL_BOUNCE_SECRET` (the `X-Bounce-Secret` header or a bearer token), **closed** when that is unset. Body `{"txn"\|"order": …, "reason": …}`: marks that purchase's mail `failed` and dead-letters it. Cloudflare Email Service has no such webhook today, so this is deliberately provider-agnostic (use it by hand, or wire a provider that has one). |
 | `GET /licence?txn=txn_…` | For `thanks.html`. 200 with the licence, 202 (`Retry-After: 3`) while the webhook has not been processed. |
 | `GET /licence/txn_….wrenlicense` | The file, as a download. |
-| `POST /resend` `{"email": "…"}` | Mails the licences bought with that address again ("resend" as in "send again"; the settings keep that name). **Off** unless `RESEND_ENABLED` is `true`. Same answer whether or not the address bought something; at most `RESEND_MAX_PER_HOUR` (3) mails per address and hour. It ignores the mail state of the purchase, so it is also the way to get a licence whose first mail failed or was lost. |
-| `GET /health` | `{"ok": true}`, or 503 with the names of the settings not set yet. |
+| `POST /resend` `{"email": "…"}` | Mails the licences bought with that address again ("resend" as in "send again"; the settings keep that name). **Off** unless `RESEND_ENABLED` is `true` (and the `ADMIN_TOKEN` bearer when `RESEND_REQUIRE_TOKEN`). Same answer whether or not the address bought something; at most `RESEND_MAX_PER_HOUR` (3) mails per address and hour. Every mail goes back through the order's object (never sent straight from here). It ignores the mail state of the purchase, so it is also the way to get a licence whose first mail failed, was lost, or dead-lettered. |
+| `GET /admin/dead-letter` | The mails that gave up (`Authorization: Bearer ADMIN_TOKEN`). An order, a code, a count, a time: no name, no address. `POST /admin/dead-letter/retry {"txn":"txn_…"}` re-queues one. |
+| `GET /health` | `{"ok": true}`, or 503 with the names of the settings not set yet (`ORDERS` is one). |
 
 Properties worth knowing:
 
-- **Idempotent.** The licence is a function of the transaction (Ed25519 signatures are deterministic, the date is the
-  transaction's own, the order number is derived from its id: `txn_01hv8wptq8987qeep44cyrewp9` gives
-  `WREN-EEP4-4CYR-EWP9`). A webhook delivered twice gives the same licence and does not send a second mail (next
-  point). `order:<number>` in KV finds the transaction of an order number.
-- **At most one mail per purchase.** Email Service has no idempotency key (Resend had one), so the Worker keeps the
-  promise itself, in the record `txn:<id>`: `mail` says `sending` *before* `send()` is called (in the same write that
-  stores the licence), then `sent`, `failed` or `skipped`. A delivery that finds `sending` does not send again: that
-  attempt may have gone out, and the Worker cannot know (it was cut off, `send()` timed out, the last write failed).
-  Only an error that means "nothing was sent" (`E_RATE_LIMIT_EXCEEDED`, `E_DAILY_LIMIT_EXCEEDED`,
-  `E_INTERNAL_SERVER_ERROR`) puts the record back to `pending` and answers 500, so Paddle delivers again and the mail is
-  retried. Every other error (`E_SENDER_NOT_VERIFIED`, `E_RECIPIENT_NOT_ALLOWED`, `E_DELIVERY_FAILED`, …) is final:
-  `failed`, with the code in `mail_detail`. The price of "at most once" is that a mail can be lost where "at least once"
-  would have sent two: the buyer still has the thank-you page, and `POST /resend` (or you, by hand) sends it again.
-  Two webhooks processed at the very same instant, before either has written, can still both send (KV is not atomic);
-  Paddle does not do that in practice.
+- **Idempotent, atomically.** The licence is a function of the transaction (Ed25519 signatures are deterministic, the
+  date is the transaction's own, the order number is derived from its id: `txn_01hv8wptq8987qeep44cyrewp9` gives
+  `WREN-EEP4-4CYR-EWP9`). The `LicenseOrder` Durable Object serialises every delivery of the same webhook, so two of
+  them, even at the same instant, issue one licence and send one mail — the race KV alone could not close.
+  `order:<number>` in KV finds the transaction of an order number.
+- **One mail per purchase, at least once and never twice.** Email Service has no idempotency key (a second `send()`
+  is a second mail), so the object's state decides, under its input gate. `mail` goes `pending → sending → sent`
+  (or `failed`/`dead`/`skipped`). `sending` is written to the object's own storage **before** `send()` is called: if
+  the object is cut off mid-send, a later wake reads `sending` and does **not** send again (the attempt may have gone
+  out and cannot be confirmed), so the buyer, who got nothing, asks with `POST /resend`, which forces one more attempt.
+  - **The retry queue is the object's alarm, not Paddle's redelivery.** An error that means "nothing was sent"
+    (`E_RATE_LIMIT_EXCEEDED`, `E_DAILY_LIMIT_EXCEEDED`, `E_INTERNAL_SERVER_ERROR`) puts the mail back to `pending` and
+    schedules the next attempt on a backoff ladder (`MAIL_BACKOFF_MINUTES`, default `1, 5, 30, 120, 720, 2880` minutes;
+    the last rung repeats). The webhook is **acknowledged (200)** either way: the object owns the retry now.
+  - **Dead-letter.** After `MAIL_MAX_ATTEMPTS` tries (default 7) that all deserved a retry, the mail is `dead` and a
+    small record lands under `dead:<txn>` (order, code, count, time — no personal data), listed by
+    `GET /admin/dead-letter`. Re-queue it with `POST /admin/dead-letter/retry` or `/resend` once the provider is well.
+  - **A bounce** reported to `POST /mail/bounce` marks the mail `failed` and dead-letters it (alert and consult).
+  - Every other error (`E_SENDER_NOT_VERIFIED`, `E_RECIPIENT_NOT_ALLOWED`, `E_DELIVERY_FAILED`, a bad address, …) is
+    final right away: `failed`, with the code in `mail_detail`.
 - **The id is the only secret of `GET /licence`.** It is a ULID (80 random bits): not guessable, known to the buyer and to
   Paddle. What it yields is a licence that unlocks nothing. Responses carry `Cache-Control: no-store`, and CORS is limited
   to `ALLOWED_ORIGIN`.
@@ -167,11 +181,55 @@ Properties worth knowing:
   customer without a name gets their e-mail address as name.
 - **Logs** hold event names, transaction ids, order numbers, statuses and Email Service error codes: never a name, an
   address, a key or a secret (the message of an Email Service error can quote the address, so it is not logged).
-- **KV writes**: four per purchase (free plan: 1000 a day; one more in the rare case of a retried mail). Nothing else
-  writes, except `/resend` for an address that really bought (so a flood of made-up addresses uses none).
-- KV keeps the buyer's name and e-mail address next to the licence (that is how it is shown and mailed again). Paddle holds
-  them anyway; delete a key on request: `npx wrangler kv key delete --binding LICENSES --remote "txn:txn_…"` (and
-  `order:…`; the `email:` index only holds a hash).
+- **KV writes**: four per purchase (`txn:` when the mail starts, `order:`, `email:`, `txn:` again when it settles; one
+  more per retry or bounce). Nothing else writes, except `/resend` for an address that really bought (so a flood of
+  made-up addresses uses none).
+- **Retention (RGPD).** KV keeps the buyer's name and e-mail address next to the licence (that is how the page shows it
+  and how `/resend` mails it again). `PII_RETENTION_DAYS` days after the mail settles, the object purges them: the
+  record's `name`, `email`, `licence` and `file` are blanked (`name` becomes `(purged)`), the `email:` index is dropped;
+  what stays is the order number and a note that it was purged. The licence is reproducible from the public transaction
+  id, so nothing is really lost; the person is. Set `PII_RETENTION_DAYS=0` to keep forever. Delete one by hand before
+  then: `npx wrangler kv key delete --binding LICENSES --remote "txn:txn_…"` (and `order:…`; the `email:` index only
+  holds a hash).
+
+### The order object: state and failure scenarios
+
+Each `LicenseOrder` keeps, in its own SQLite-backed storage (durable, transactional with its input gate):
+
+```
+OrderState {
+  status: "received" | "issued" | "mailed" | "failed",
+  stored: { … the signed licence, the buyer, the mail state and attempts … } | undefined,
+  attempts: number,              // send() calls made
+  next_attempt: ISO string | undefined,   // when the retry alarm will fire
+  journal: [ { at, evt, detail? } ]        // the last ~40 steps, no personal data
+}
+```
+
+The mail state (`stored.mail`) is the one KV mirrors: `pending` (owed, maybe queued), `sending` (a send is in flight,
+its outcome unknown), `sent`, `failed` (final defeat), `dead` (gave up after the attempt cap while every try deserved a
+retry), `skipped` (no sender configured yet). The single alarm serves two non-overlapping phases: the retry queue while
+a mail is owed, then the RGPD purge once it is settled.
+
+What happens when things go wrong:
+
+- **A webhook delivered twice** (Paddle retries on any non-2xx; it can also fire two near-simultaneous deliveries). Both
+  reach the same object; its input gate runs them one after the other. The first issues and mails; the second finds
+  `issued`/`mailed` and returns `replayed` without signing or sending again.
+- **The mail provider is down** (a rate/daily limit, a 5xx). The object marks `pending`, sets its alarm for the next
+  backoff rung, and acknowledges the webhook (200). The alarm retries — 1, 5, 30, 120, 720, 2880 minutes — until it
+  succeeds or reaches `MAIL_MAX_ATTEMPTS`, then dead-letters. Paddle is not involved in the retry.
+- **The object is cut off mid-send** (a redeploy, a timeout, an eviction). `sending` was written before `send()`, so the
+  next wake does not send again (the mail may have gone, and we cannot confirm it). The buyer uses `/resend`, or you
+  re-queue from the dead-letter; `/resend` forces one more attempt whatever the state.
+- **The Worker is redeployed in the middle.** A new code version keeps talking to the same objects (same ids, same
+  storage); the `v1` migration already ran, so the class is unchanged. In flight requests finish or are retried by
+  Paddle; the object's state is the source of truth, so nothing is issued or mailed twice.
+- **The object's storage is lost** (a reset, or an old KV-only record from before this change). On the next call the
+  object rehydrates `stored` from the KV copy by its transaction id, so `/resend` and reads still work; it is
+  authoritative again from there.
+- **The Paddle API is down** while reading the customer. The object throws, the webhook answers 500, nothing is stored,
+  and Paddle delivers again later. No half-issued state is left behind.
 
 ### 1. Accounts
 
@@ -241,6 +299,13 @@ cf deploy --mode sandbox --secrets-file secrets.sandbox.env
 `--mode sandbox` is a second Worker, `wren-licence-sandbox`, with its own KV namespace (created by the first deploy), so
 the sandbox and the live shop never mix. The command prints the address,
 `https://wren-licence-sandbox.<your-subdomain>.workers.dev`. Check it: `https://…/health` lists what is still missing.
+
+**Durable Objects need the Workers Paid plan.** The Worker uses one `LicenseOrder` object per purchase; the first deploy
+runs the `v1` migration that creates its SQLite-backed class (declared in both config files: `migrations` with
+`new_sqlite_classes` in `wrangler.jsonc`, `newSqliteClasses` in `cloudflare.config.ts`). On the free plan the deploy is
+refused. Since mailing a stranger already needs Workers Paid (below), the shop needs the paid plan to run for real
+anyway; a free-plan deploy can still issue licences to the thank-you page if you drop the Durable Object, but then the
+double-webhook and the retry queue are gone. Later migrations get a new `tag` and are appended, never edited.
 
 `cf deploy --dry-run --mode sandbox` builds and shows the bindings without uploading. To change one secret later:
 `cf workers secrets update PADDLE_API_KEY --worker wren-licence-sandbox --text …`, or edit the file and deploy again. To
@@ -322,12 +387,17 @@ Set in `cloudflare.config.ts` / `wrangler.jsonc` (`vars`), not secret:
 | `ALLOWED_ORIGIN` | origins that may call `GET /licence` from a page, comma separated (`*` = any) |
 | `WEBHOOK_TOLERANCE_SECONDS` | how old a webhook may be (300) |
 | `RESEND_ENABLED`, `RESEND_MAX_PER_HOUR` | `POST /resend` ("send the licence again") on/off (false) and its limit per address (3) |
+| `RESEND_REQUIRE_TOKEN` | `true` also requires the `ADMIN_TOKEN` bearer on `/resend` (false) |
+| `MAIL_BACKOFF_MINUTES` | the mail retry ladder, minutes between attempts, comma separated (`1,5,30,120,720,2880`); the last rung repeats |
+| `MAIL_MAX_ATTEMPTS` | send tries before a mail goes to the dead-letter (7) |
+| `PII_RETENTION_DAYS` | days the buyer's name and address are kept after the mail settles, then purged (90; 0 = never) |
 
-Bindings: `LICENSES` (KV) and `EMAIL` (Email Service sending; absent: licences are not mailed, the thank-you page still
-shows them).
+Bindings: `LICENSES` (KV), `ORDERS` (the `LicenseOrder` Durable Object namespace), `EMAIL` (Email Service sending;
+absent: licences are not mailed, the thank-you page still shows them).
 
 Secrets (`secrets.env`, uploaded by `cf deploy --secrets-file`, never in a committed file): `LICENSE_PRIVATE_KEY`,
-`PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`. The mail needs no secret.
+`PADDLE_WEBHOOK_SECRET`, `PADDLE_API_KEY`, and optionally `ADMIN_TOKEN` (for `/admin/*` and, with
+`RESEND_REQUIRE_TOKEN`, `/resend`) and `MAIL_BOUNCE_SECRET` (for `/mail/bounce`). The mail itself needs no secret.
 
 ### Tests
 
@@ -336,9 +406,11 @@ cd licence\worker
 node --test "test/*.test.ts"      # Node 22.18+ (or: bun test test/); no network, no dependency
 ```
 
-`tools\test_all.ps1` runs them (SKIP when neither node nor bun is installed). They cover the webhook signature (valid,
-altered, wrong secret, too old, malformed, rotation), a `transaction.completed` in Paddle Billing's format
-(`licence/worker/test/fixtures`), idempotency, the mail outcomes (a fake `EMAIL` binding: sent, skipped, retry, failed, the
+`tools\test_all.ps1` runs them (SKIP when neither node nor bun is installed). The tests drive the Durable Object through
+a fake `ORDERS` namespace (one in-memory `LicenseOrder` per id, with a fake storage and a manually-fired alarm). They
+cover the webhook signature (valid, altered, wrong secret, too old, malformed, rotation), a `transaction.completed` in
+Paddle Billing's format (`licence/worker/test/fixtures`), idempotency (a double webhook issues and mails once), the mail
+outcomes (a fake `EMAIL` binding: sent, skipped, a deferred mail that the retry alarm later sends, failed, the
 attachment, no second mail), the endpoints, `/resend`, and the cross-check: licences made by
 the Worker with the development pair (`DEV_SEED` of `src/license/dev_keys.odin`, read from the Odin source) are verified
 by Wren's own tool (`license.exe verify -dev`) as a key and as a `.wrenlicense` file; altered ones and ones of another
