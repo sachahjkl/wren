@@ -582,7 +582,8 @@ fx_settings_from_prefs :: proc(p: ^config.Prefs) -> Fx_Settings {
 @(private)
 fx_settings_apply :: proc(app: ^App) {
 	s := fx_settings
-	hz := pacer.hz > 0 ? pacer.hz : 60
+	hz := pacer_of(app).hz
+	if hz <= 0 { hz = 60 }
 	idle := max(int(s.idle_ms * f64(hz) / 1000), 1)
 	draw.set_layer_cache(&app.dc, s.enabled ? s.budget : 0, s.whole_px, idle)
 	render.set_filter_precision(&app.r, s.precision)

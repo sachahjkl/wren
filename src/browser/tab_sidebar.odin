@@ -648,7 +648,7 @@ sidebar_handle :: proc(app: ^App, pos: Tabs_Position, bar: ^ui.Box, extent, dpi:
 			request_frames(app, 1)
 		}
 		// the edge this frame draws, against the pointer it was built from (browser.frame.drag_probe)
-		drag_probe_note(ui.mouse_pos().x, pos == .Left ? bar.rect.min.x + extent : bar.rect.max.x - extent)
+		drag_probe_note(app, ui.mouse_pos().x, pos == .Left ? bar.rect.min.x + extent : bar.rect.max.x - extent)
 	}
 	if !sig.dragging && own.sidebar.resizing {
 		own.sidebar.resizing = false

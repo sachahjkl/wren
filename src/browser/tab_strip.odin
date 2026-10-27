@@ -235,7 +235,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	// (the release slides from where the pointer left it)
 	x, dragging := ui.reorder_item_pos(&own.strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
 		ui.mouse_pos().x - area.rect.min.x, -own.strip.offset, f32(n - 1) * w - own.strip.offset)
-	if dragging { drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + own.strip.drag.grab) }
+	if dragging { drag_probe_note(app, ui.mouse_pos().x, x + area.rect.min.x + own.strip.drag.grab) }
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 

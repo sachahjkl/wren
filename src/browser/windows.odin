@@ -52,7 +52,7 @@ Browser_Window :: struct {
 	primary: bool,                // its swap chain is the renderer's own (render.init)
 	ui:      ^ui.State,
 	using ctx: Window_Ctx,
-	pacer:   Pacer,               // ... and its pacing (the preferences and the timer stay the process's)
+	pacer:   Pacer,               // its pacing (pacing.odin; the preferences and the timer are the process's: App.pacing)
 	minimized: bool,              // seen minimized by the last pass: no frames until it comes back
 	closing:   bool,              // its last tab was closed: it closes at the end of the pass
 	closing_force: bool,          // ... with the tabs it still has (a remote call asked)
@@ -114,32 +114,22 @@ window_own_destroy :: proc(own: ^Window_Own) {
 ////////////////////////////////
 // The active window
 
-// Pacing is the window's (its monitor's rate, its swap chain's queue, its resize steps); the preferences and the timer are not.
-@(private = "file")
-pacer_adopt :: proc(w: ^Browser_Window) {
-	shared := pacer
-	pacer = w.pacer
-	pacer.cfg, pacer.watch, pacer.timer = shared.cfg, shared.watch, shared.timer
-	if pacer.latency == 0 { pacer.latency = 1 }   // (what a swap chain is made with)
-}
-
-// Makes `w` the window the App's per-window fields and the renderer are about.
+// Makes `w` the window the frame, the toolkit's state and the renderer are about.
 window_activate :: proc(app: ^App, w: ^Browser_Window) {
 	if app.active == w { return }
 	if app.active != nil { window_deactivate(app) }
 	if w == nil { return }
-	pacer_adopt(w)
+	if w.pacer.latency == 0 { w.pacer.latency = 1 }   // (what a swap chain is made with)
 	app.active = w
 	ui.use(w.ui)
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
 }
 
-// Back to no window: the renderer has its own swap chain again and the window its pacing.
+// Back to no window: the renderer has its own swap chain again.
 window_deactivate :: proc(app: ^App) {
 	w := app.active
 	if w == nil { return }
 	if !w.primary { render.surface_use(&app.r, &w.surf) }
-	w.pacer = pacer
 	app.active = nil
 }
 

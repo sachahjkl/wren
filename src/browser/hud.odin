@@ -168,11 +168,11 @@ hud_settings_from_prefs :: proc(p: ^config.Prefs) -> (s: Hud_Settings) {
 }
 
 // The frame budget (ms): browser.status_bar.graph.budget_ms, else the frame period (pacing.odin).
-hud_budget :: proc() -> f32 { b, _, _ := hud_thresholds(hud.cfg, frame_budget_ms()); return b }
+hud_budget :: proc(app: ^App) -> f32 { b, _, _ := hud_thresholds(hud.cfg, frame_budget_ms(app)); return b }
 
 // The warning / error thresholds (ms; 0 = none).
-hud_warn :: proc() -> f32 { _, w, _ := hud_thresholds(hud.cfg, frame_budget_ms()); return w }
-hud_bad :: proc() -> f32 { _, _, b := hud_thresholds(hud.cfg, frame_budget_ms()); return b }
+hud_warn :: proc(app: ^App) -> f32 { _, w, _ := hud_thresholds(hud.cfg, frame_budget_ms(app)); return w }
+hud_bad :: proc(app: ^App) -> f32 { _, _, b := hud_thresholds(hud.cfg, frame_budget_ms(app)); return b }
 
 // Budget and thresholds from the settings: set values win, else the frame period and multiples of the budget.
 hud_thresholds :: proc(s: Hud_Settings, period_ms: f32) -> (budget, warn, bad: f32) {
@@ -453,7 +453,7 @@ hud_refresh :: proc(app: ^App, now: f64) {
 	n := &h.nums
 	n^ = {at_ms = now}
 	since := now - h.cfg.window_ms
-	budget := hud_budget()
+	budget := hud_budget(app)
 	n.budget = budget
 	cpu := make([dynamic]f32, 0, 256, context.temp_allocator)
 	gpu := make([dynamic]f32, 0, 256, context.temp_allocator)

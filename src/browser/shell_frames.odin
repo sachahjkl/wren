@@ -252,8 +252,9 @@ shell_presented :: proc() { chrome_frames.last_present = time.tick_now() }
 
 // Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does.
 shell_before_draw :: proc(app: ^App) {
-	if active_window(app).presented && !pacer.slot_held {
-		if platform.wait_handle(active_window(app).win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
+	wnd := active_window(app)
+	if wnd.presented && !wnd.pacer.slot_held {
+		if platform.wait_handle(wnd.win, render.frame_waitable(&app.r), app.pacing.cfg.timeout_ms) { wnd.pacer.slot_held = true }
 	}
 }
 
@@ -271,7 +272,7 @@ shell_preempt :: proc(user: rawptr) {
 	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
 	// has no such rate: the chrome must show at the new size before the composer stretches the last frame)
 	since := time.duration_milliseconds(time.tick_diff(chrome_frames.last_present, now))
-	if !pacer.resizing && since < pacer.period_ms * 0.75 { return }
+	if !pacer_resize_step(app) && since < wnd.pacer.period_ms * 0.75 { return }
 	// and only when the chrome has something new to show: input (or a message: a resize, a repaint), an animation of its
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
@@ -323,17 +324,13 @@ foreign user32_shell {
 // thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
-	wnd := active_window(app)
 	if !chrome_frames.nested {
 		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
 		frame(app)
 		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
 		return
 	}
-	resized := wnd.win.size != pacer.size
-	pacer.size = wnd.win.size
-	pacer.resizing = resized && wnd.presented && pacer.cfg.resize_immediate
-	pacer.resize_held = false
+	pacer_inner_frame(app)   // (pacing.odin: a new size makes it a resize step)
 	shell_chrome_frame(app)
 }
 
@@ -348,9 +345,9 @@ shell_chrome_frame :: proc(app: ^App) {
 	defer platform.frame_gate_end(gate, gate_token)
 	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
 	// resize step skips it: its frame is presented at once, whatever the screen is doing
-	if !pacer.slot_held && !pacer.resizing {
+	if !wnd.pacer.slot_held && !pacer_resize_step(app) {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
-		pacer.slot_held = true
+		wnd.pacer.slot_held = true
 	}
 	was_nested := chrome_frames.nested   // (a modal loop of the system may have begun inside a chrome frame: window_frame)
 	chrome_frames.nested = true
@@ -377,9 +374,9 @@ shell_chrome_frame :: proc(app: ^App) {
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)
 	ui.begin_build(wnd.ui, {
-		window_size = size, events = chrome, dt = pacer.dt, animations = os_animations_enabled(app),
+		window_size = size, events = chrome, dt = wnd.pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
-		disable_zoom = true, window = wnd.win, frame_ms = pacer.frame_ms,
+		disable_zoom = true, window = wnd.win, frame_ms = wnd.pacer.frame_ms,
 	})
 	build_ui(app)
 	ui.end_build()
@@ -395,7 +392,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	ui.draw_tree(wnd.ui, &app.dc)
 	draw.end_frame(&app.dc)
 	platform.frame_gate_stage(gate, .Presenting)
-	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
+	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)

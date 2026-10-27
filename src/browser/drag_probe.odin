@@ -36,34 +36,33 @@ drag_probe: Drag_Probe
 // The pointer moves of the frame whose events were just read (pacer_begin_frame).
 drag_probe_moves: i32
 
-drag_probe_count_moves :: proc(events: []platform.Event) {
+drag_probe_count_moves :: proc(app: ^App, events: []platform.Event) {
 	drag_probe_moves = 0
-	if !pacer.cfg.drag_probe { return }
+	if !app.pacing.cfg.drag_probe { return }
 	for e in events { if e.kind == .Mouse_Move { drag_probe_moves += 1 } }
 }
 
 // The dragged tab was built for this frame (tab_box): `finger_x` is the pointer position the tab's left edge implies.
-drag_probe_note :: proc(mouse_x, finger_x: f32) {
-	if !pacer.cfg.drag_probe { return }
+drag_probe_note :: proc(app: ^App, mouse_x, finger_x: f32) {
+	if !app.pacing.cfg.drag_probe { return }
+	pacer := pacer_of(app)
 	drag_probe.ring[drag_probe.n % DRAG_PROBE_CAP] = {read = pacer.read_tick, mouse_x = mouse_x, finger_x = finger_x, dt = pacer.dt, moves = drag_probe_moves, waited = f32(pacer.waited_ms)}
 	drag_probe.n += 1
 }
 
 // Present returned (pacer_end_frame).
-drag_probe_presented :: proc() {
-	if !pacer.cfg.drag_probe || drag_probe.n == 0 { return }
+drag_probe_presented :: proc(app: ^App) {
+	if !app.pacing.cfg.drag_probe || drag_probe.n == 0 { return }
 	s := &drag_probe.ring[(drag_probe.n - 1) % DRAG_PROBE_CAP]
-	if s.read != pacer.read_tick { return }
+	if s.read != pacer_of(app).read_tick { return }
 	s.done = time.tick_now()._nsec
-	if app := the_app; app != nil {
-		s.area_w = draw.rect_size(active_window(app).page_rect).x
-		if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == chrome_frames.frame_no { s.page_w = pp.size.x }
-	}
+	s.area_w = draw.rect_size(active_window(app).page_rect).x
+	if t, pp := current_tab(app), &window_own(app).page_prep; t != nil && pp.tab == t && pp.frame == chrome_frames.frame_no { s.page_w = pp.size.x }
 }
 
 // A frame reached the screen: the sample made for it learns when.
-drag_probe_displayed :: proc(d: render.Displayed_Frame) {
-	if !pacer.cfg.drag_probe || d.read._nsec == 0 { return }
+drag_probe_displayed :: proc(app: ^App, d: render.Displayed_Frame) {
+	if !app.pacing.cfg.drag_probe || d.read._nsec == 0 { return }
 	for i := drag_probe.n - 1; i >= 0 && i >= drag_probe.n - 64; i -= 1 {
 		s := &drag_probe.ring[i % DRAG_PROBE_CAP]
 		if s.read == d.read._nsec { s.shown = d.shown._nsec; return }

@@ -143,6 +143,7 @@ App :: struct {
 	process:  ^base.Scope,
 
 	measure:  Measure,        // text measurement cache of the layout
+	pacing:   Pacing,         // what the windows' pacers share: the preferences, the timer (pacing.odin)
 	show_console:  bool,
 
 	last_tick:        time.Tick,
@@ -1166,11 +1167,11 @@ frame :: proc(app: ^App, idled := false) {
 	// the frame's time (pacing.odin: its vblank) is the animation frame callbacks' timestamp and the CSS clock
 	if t := current_tab(app); t != nil && t.page != nil && page.page_visible(t.page) {
 		prof_begin(.Animation)
-		page.run_animation_frames(t.page, pacer.frame_ms)
+		page.run_animation_frames(t.page, wnd.pacer.frame_ms)
 		prof_end(.Animation)
 		// (the loop counts this frame off after it: 2 = this one and the next)
 		if page.wants_animation_frame(t.page) { request_frames(app, 2) }
-		if frames_tick(app, t, pacer.frame_ms) { request_frames(app, 2) }   // (frames_shell.odin)
+		if frames_tick(app, t, wnd.pacer.frame_ms) { request_frames(app, 2) }   // (frames_shell.odin)
 	}
 	fullscreen_shell_frame(app, app.active)   // a page's full screen ends with its tab being shown (fullscreen_shell.odin)
 	page_update(app)   // page_frame.odin: styles and layout, in the page phase (chrome frames can be made meanwhile)
@@ -1188,7 +1189,7 @@ frame :: proc(app: ^App, idled := false) {
 
 	render.resize(&app.r, active_window(app).win.size)
 	size := draw.Vec2{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)}
-	dt := pacer.dt
+	dt := wnd.pacer.dt
 
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)   // window_chrome.odin
@@ -1197,7 +1198,7 @@ frame :: proc(app: ^App, idled := false) {
 		window_size = size, events = events, dt = dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
 		disable_zoom = true,   // Ctrl+Plus / Minus / 0 and Ctrl+wheel zoom the page (zoom.odin), not the chrome
-		window = active_window(app).win, frame_ms = pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
+		window = active_window(app).win, frame_ms = wnd.pacer.frame_ms,   // the integrated title bar's regions; scroll animations on the vblank clock
 	})
 	build_ui(app)
 	instance_frame(app)   // instance_shell.odin: the notice of a first Wren that did not answer
@@ -1223,7 +1224,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Submit)
 	prof_begin(.Present)
 	platform.frame_gate_stage(gate, .Presenting)
-	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
+	render.frame_end(&app.r, !pacer_at_once(app))   // a resize step, the frames right after it, or an input frame are shown at once
 	wnd.presented = true
 	prof_end(.Present)
 	frame_log_presented()
@@ -1436,7 +1437,7 @@ main :: proc() {
 	host.shutdown_step("instance_end")
 	instance_end()   // instance_shell.odin: later starts are told to wait, then the profile is free
 	host.shutdown_step("prof_report")
-	prof_report()
+	prof_report(app)
 	wasm.host_profile_write()   // (WREN_HOST_PROFILE: before the pages are freed; the runtime's end writes it again)
 	host.shutdown_step("desktop_shell_shutdown")
 	desktop_shell_shutdown(app)   // desktop_shell.odin: a job still out finishes
