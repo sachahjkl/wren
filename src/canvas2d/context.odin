@@ -414,7 +414,15 @@ make_paint :: proc(c: ^Context, s: ^Style, alpha_only := false) -> (p: Paint, ok
 	case .Pattern:
 		inv, iok := matrix_invert(matrix_mul(c.state.ctm, s.pat.transform))
 		if !iok { return }
-		return Paint{kind = .Pattern, pat = s.pat, inv = inv, img = Image_Source{smooth = c.state.smoothing}}, true
+		lod := image_lod(inv)
+		pp := Paint{kind = .Pattern, pat = s.pat, inv = inv, img = Image_Source{smooth = c.state.smoothing, quality = c.state.quality, lod = lod}}
+		// a shrunk pattern: a box-filtered pyramid of its bitmap (Medium / High), so the tile does not alias
+		if c.state.smoothing && c.state.quality != .Low && lod > 0 && s.pat.bmp.w > 0 && s.pat.bmp.h > 0 {
+			levels := c.state.quality == .High ? 16 : int(math.floor(lod + 0.5)) + 1
+			m, mok := mip_build(&s.pat.bmp, 0, 0, s.pat.bmp.w, s.pat.bmp.h, levels)
+			if mok { pp.pat_mips = m; pp.has_pat_mips = true }
+		}
+		return pp, true
 	}
 	return
 }
@@ -823,23 +831,23 @@ ctx_draw_image :: proc(c: ^Context, src: ^Bitmap, sx, sy, sw, sh, dx, dy, dw, dh
 	paint := Paint{kind = .Image, inv = inv}
 	paint.img = Image_Source{bmp = use, x0 = int(math.floor(sx)), y0 = int(math.floor(sy)),
 		x1 = min(int(math.ceil(sx + sw)), src.w), y1 = min(int(math.ceil(sy + sh)), src.h),
-		wrap_x = .Clamp, wrap_y = .Clamp, smooth = c.state.smoothing}
-	// shrunk a lot: sample a box-filtered copy (mip level) instead of aliasing
-	reduced: Bitmap
-	big, small := matrix_scales(to_dev)
-	if c.state.smoothing && big > 0 && big < 0.5 {
-		f := clamp(int(1 / max(big, 1e-6)), 1, 64)
-		_ = small
-		rb, rok := bitmap_reduce(use, paint.img.x0, paint.img.y0, paint.img.x1, paint.img.y1, f, c.opts.max_bytes)
-		if rok {
-			reduced = rb
-			ox, oy := f64(paint.img.x0), f64(paint.img.y0)
-			// source texel (u, v) -> reduced texel ((u - ox) / f, (v - oy) / f)
-			paint.inv = matrix_mul(matrix_mul(matrix_scale(1 / f64(f), 1 / f64(f)), matrix_translate(-ox, -oy)), inv)
-			paint.img = Image_Source{bmp = &reduced, x0 = 0, y0 = 0, x1 = reduced.w, y1 = reduced.h, wrap_x = .Clamp, wrap_y = .Clamp, smooth = true}
+		wrap_x = .Clamp, wrap_y = .Clamp, smooth = c.state.smoothing, quality = c.state.quality}
+	// shrunk: resample through a box-filtered pyramid instead of aliasing (imageSmoothingQuality). Low keeps plain
+	// bilinear; Medium reads one level; High blends two.
+	mip: Mip_Chain
+	big, _ := matrix_scales(to_dev)
+	if c.state.smoothing && c.state.quality != .Low && big > 0 && big < 0.5 {
+		lod := image_lod(inv)
+		if lod > 0 {
+			levels := c.state.quality == .High ? 16 : int(math.floor(lod + 0.5)) + 1
+			m, mok := mip_build(use, paint.img.x0, paint.img.y0, paint.img.x1, paint.img.y1, levels)
+			if mok {
+				mip = m
+				paint.img.mips = &mip
+				paint.img.lod = lod
+			}
 		}
 	}
-	defer if reduced.pix != nil { bitmap_destroy(&reduced) }
 
 	// the destination rectangle, with edges antialiased
 	if c.state.ctm.b == 0 && c.state.ctm.c == 0 {
