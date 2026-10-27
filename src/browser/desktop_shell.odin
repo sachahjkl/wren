@@ -190,7 +190,7 @@ desktop_job_done :: proc(data: rawptr) {
 		}
 		changed = true
 	}
-	if changed { app.frames_requested = max(app.frames_requested, 3) }
+	if changed { request_frames(app, 3) }
 }
 
 // The integration of this channel as it is on the disk now, read again when older than the preference says. Called
@@ -213,7 +213,7 @@ desktop_watch_wake :: proc(user: rawptr) {
 desktop_changed_on_loop :: proc(_: rawptr) {
 	app := the_app
 	if app == nil { return }
-	if t := current_tab(app); setup_is_open() || (t != nil && t.kind == .Config) { app.frames_requested = max(app.frames_requested, 3) }
+	if t := current_tab(app); setup_is_open() || (t != nil && t.kind == .Config) { request_frames(app, 3) }
 }
 
 // After the first tab exists, before Setup's start-up: the system tells us when the integration changes (its registry

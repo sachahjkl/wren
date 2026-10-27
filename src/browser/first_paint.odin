@@ -94,7 +94,7 @@ first_paint_init :: proc(app: ^App) {
 	scheme_ui = first_paint_settings_from(&app.prefs)
 	first_paint_watch = config.watch(&app.prefs, "browser.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		scheme_ui = first_paint_settings_from(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 }
 
@@ -243,7 +243,7 @@ first_paint_wake :: proc(app: ^App, t: ^Tab) {
 	first_paint_timer = host.set_timer(&app.loop, max(wait, 1), 0, proc(data: rawptr) {
 		first_paint_timer = base.NIL_HANDLE
 		a := (^App)(data)
-		a.frames_requested = max(a.frames_requested, 2)
+		request_frames(a, 2)
 	}, app)
 }
 
@@ -263,7 +263,7 @@ loading_bar :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, r: draw.Rect) {
 	draw.push_clip(dc, r)
 	draw.rect(dc, {{x, r.min.y}, {x + seg, r.min.y + h}}, accent)
 	draw.pop_clip(dc)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The tab is loading a document that has not painted yet.

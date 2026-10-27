@@ -79,7 +79,7 @@ command_run :: proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
 	// during a chrome frame (shell_frames.odin) once the page holding the thread is done
 	if shell_nested() { shell_defer({kind = .Command, tab = t != nil ? t.id : 0, text = strings.clone(c.name)}); return true }
 	c.run(app, t, c)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	return true
 }
 
@@ -197,24 +197,24 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(closed_tabs) > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { reopen_closed_tab(app) }})
 	add(r, {name = "tab.close", title = "Close tab", category = "Tabs", glyph = GLYPH_CLOSE, keys = keys(&r.arena, {key = .W, mods = ctrl}, {key = .F4, mods = ctrl}),
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, app.current) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_close(app, active_window(app).current) }})
 	add(r, {name = "tab.close_others", title = "Close other tabs", category = "Tabs",
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, app.current) }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { close_other_tabs(app, active_window(app).current) }})
 	add(r, {name = "tab.duplicate", title = "Duplicate tab", category = "Tabs", keywords = "copy clone",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_in_new_tab(app, t.url, origin = .Replay) }})
 	add(r, {name = "tab.next", title = "Next tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = ctrl}, {key = .Page_Down, mods = ctrl}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(app.tabs); if n > 0 { tab_select(app, (app.current + 1) % n) } }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + 1) % n) } }})
 	add(r, {name = "tab.previous", title = "Previous tab", category = "Tabs", keywords = "switch", keys = keys(&r.arena, {key = .Tab, mods = cs}, {key = .Page_Up, mods = ctrl}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(app.tabs) > 1 },
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(app.tabs); if n > 0 { tab_select(app, (app.current + n - 1) % n) } }})
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return len(active_window(app).tabs) > 1 },
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { n := len(active_window(app).tabs); if n > 0 { tab_select(app, (active_window(app).current + n - 1) % n) } }})
 	add(r, {name = "tab.move_right", title = "Move tab right", category = "Tabs", keys = keys(&r.arena, {key = .Page_Down, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current + 1 < len(app.tabs) },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current + 1 < len(active_window(app).tabs) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, +1) }})
 	add(r, {name = "tab.move_left", title = "Move tab left", category = "Tabs", keys = keys(&r.arena, {key = .Page_Up, mods = cs}),
-		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return app.current > 0 },
+		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return active_window(app).current > 0 },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { tab_move_current(app, -1) }})
 	add(r, {name = "tab.move_to_new_window", title = "Move tab to a new window", category = "Tabs", keywords = "detach pop out separate window",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool {
@@ -247,10 +247,10 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "nav.home", title = "Home", category = "Navigation", glyph = GLYPH_HOME, keywords = "start page homepage", keys = keys(&r.arena, {key = .Home, mods = alt}),
 		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { navigate(app, t, app.cfg.homepage, origin = .User) }})
 	add(r, {name = "nav.focus_address", title = "Focus the address bar", category = "Navigation", keywords = "location url edit", keys = keys(&r.arena, {key = .L, mods = ctrl}, {key = .D, mods = alt}),
-		run = proc(app: ^App, t: ^Tab, c: ^Command) { app.focus_address = true }})
+		run = proc(app: ^App, t: ^Tab, c: ^Command) { active_window(app).focus_address = true }})
 	add(r, {name = "nav.focus_toggle", title = "Address bar or page", category = "Navigation", keywords = "focus switch keyboard", keys = keys(&r.arena, {key = .F6}, {key = .F6, mods = shift}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if ui.focus_key() != 0 && ui.focus_key() == address_key { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { app.focus_address = true }
+			if ui.focus_key() != 0 && ui.focus_key() == address_key(app) { ui.set_focus(0); forms_focus_from_chrome(app, t, 1) } else { active_window(app).focus_address = true }
 		}})
 
 	// --- page
@@ -265,7 +265,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "page.find", title = "Find in page…", category = "Page", keywords = "search text", keys = keys(&r.arena, {key = .F, mods = ctrl}, {key = .F3}),
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && (t.kind == .Web || t.kind == .Config || t.kind == .History) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) {
-			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if find.open { find.focus = true } else { find_open(app) }
+			if t.kind == .Config { app.config_view.focus_search = true } else if t.kind == .History { hview.focus_search = true } else if fs := find_state(app); fs.open { fs.focus = true } else { find_open(app) }
 		}})
 	add(r, {name = "page.save", title = "Save page as…", category = "Page", keywords = "download file", keys = keys(&r.arena, {key = .S, mods = ctrl}),
 		enabled = web_page, run = proc(app: ^App, t: ^Tab, c: ^Command) { save_page(app, t) }})
@@ -279,7 +279,7 @@ commands_build :: proc(r: ^Command_Registry) {
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return t != nil && t.url != "" },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { clip_set(t.url); ui.toast(.Info, "Address copied") }})
 	add(r, {name = "page.info", title = "Page information", category = "Page", glyph = GLYPH_INFO, keywords = "security certificate cookies connection",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { page_info_request = true }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).page_info_request = true }})
 	add(r, {name = "page.javascript_site", title = "JavaScript on this site", category = "Page", keywords = "script js enable disable block allow",
 		enabled = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return tab_host(t) != "" },
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return js_on_for(&app.prefs, tab_host(t)) },
@@ -358,7 +358,7 @@ commands_build :: proc(r: ^Command_Registry) {
 			checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return net_profile_of(t).id == c.arg },
 			run = proc(app: ^App, t: ^Tab, c: ^Command) { net_profile_set(app, t, c.arg) }})
 	}	add(r, {name = "view.full_screen", title = "Full screen", category = "View", keywords = "fullscreen kiosk", keys = keys(&r.arena, {key = .F11}),
-		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(app.win) },
+		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return platform.is_fullscreen(active_window(app).win) },
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { toggle_fullscreen(app) }})
 	add(r, {name = "view.tabs_in_title_bar", title = "Tabs in the title bar", category = "View", keywords = "integrated titlebar window",
 		checked = proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return wchrome.cfg.integrated },
@@ -400,7 +400,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	add(r, {name = "browser.command_palette", title = "Command palette…", category = "Browser", keys = keys(&r.arena, {key = .P, mods = cs}, {key = .K, mods = ctrl, pref = "browser.palette.ctrl_k"}),
 		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { palette_toggle(app) }})
 	add(r, {name = "browser.main_menu", title = "Open the main menu", category = "Browser", keys = keys(&r.arena, {key = .F, mods = alt}, {key = .E, mods = alt}),
-		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { main_menu_request = true }})
+		hidden = true, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).main_menu_request = true }})
 	add(r, {name = "browser.history", title = "History", category = "Browser", keywords = "about:history visited pages past", url = HISTORY_URL, keys = keys(&r.arena, {key = .H, mods = ctrl}),
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { open_history(app, t, false) }})
 	add(r, {name = "browser.history_tree", title = "Tab history tree", category = "Browser", keywords = "branches back forward graph session",
@@ -414,7 +414,7 @@ commands_build :: proc(r: ^Command_Registry) {
 	blocker_on := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { return bl.started && bl.b.cfg.enabled }
 	web_http := proc(app: ^App, t: ^Tab, c: ^Command) -> bool { _, ok := blocker_page_host(t); return ok && bl.started }
 	add(r, {name = "blocker.panel", title = i18n.tr("Blocker: open the panel"), category = "Blocker", keywords = "ads adblock shield tracker matrix",
-		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_panel_request = true; app.frames_requested = max(app.frames_requested, 3) }})
+		enabled = has_tab, run = proc(app: ^App, t: ^Tab, c: ^Command) { window_own(app).blocker_panel_request = true; request_frames(app, 3) }})
 	add(r, {name = "blocker.picker", title = i18n.tr("Blocker: block an element\u2026"), category = "Blocker", keywords = "ads element picker zapper hide",
 		keys = keys(&r.arena, {key = .K, mods = cs}), enabled = web_http, run = proc(app: ^App, t: ^Tab, c: ^Command) { blocker_picker_begin(app, t) }})
 	add(r, {name = "blocker.dashboard", title = i18n.tr("Blocker: dashboard"), category = "Blocker", keywords = "lists filters rules whitelist statistics", url = "about:blocker",

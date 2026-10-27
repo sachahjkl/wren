@@ -56,5 +56,5 @@ crash_banner :: proc(app: ^App) {
 	case do_details: recovery_show_details(app)
 	case close:      recovery.banner = .None
 	}
-	if do_primary || do_details || close { app.frames_requested = max(app.frames_requested, 3) }
+	if do_primary || do_details || close { request_frames(app, 3) }
 }

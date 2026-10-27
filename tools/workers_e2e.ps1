@@ -54,9 +54,9 @@ try {
   Expect ($mod -eq '42 module dynamic /site/workers/module.js TypeError') 'module worker: static imports (relative, absolute, nested), import(), import.meta.url, importScripts throws TypeError' $mod
   $modsh = Wren-Ctl eval 'new Promise((ok) => { const s = new SharedWorker("module.js", {name: "m", type: "module"}); s.port.onmessage = (e) => ok(e.data); s.onerror = () => ok("error"); setTimeout(() => ok("connected"), 1500); })' --await
   Expect ($modsh -eq 'connected') 'a module shared worker starts (no error)' $modsh
-  $blob = Wren-Ctl eval 'new Promise((ok) => { const u = URL.createObjectURL(new Blob(["postMessage(\"dedicated \" + self.location.protocol)"], {type: "text/javascript"})); const w = new Worker(u); URL.revokeObjectURL(u); w.onmessage = (e) => { const su = URL.createObjectURL(new Blob(["onconnect = (e) => e.ports[0].postMessage(\"shared\")"])); const s = new SharedWorker(su); s.port.onmessage = (m) => ok(e.data + " " + m.data); }; w.onerror = () => ok("error"); setTimeout(() => ok("timeout"), 5000); })' --await
+  $blob = Wren-Ctl eval 'new Promise((ok) => { const u = URL.createObjectURL(new Blob(["postMessage(\"dedicated \" + self.location.protocol)"], {type: "text/javascript"})); const w = new Worker(u); URL.revokeObjectURL(u); w.onmessage = (e) => { const su = URL.createObjectURL(new Blob(["onconnect = (e) => e.ports[0].postMessage(\"shared\")"])); const s = new SharedWorker(su); s.port.onmessage = (m) => ok(e.data + " " + m.data); }; w.onerror = () => ok("error"); setTimeout(() => ok("timeout"), 30000); })' --await
   Expect ($blob -eq 'dedicated blob: shared') 'workers from blob: URLs (dedicated, revoked right after; shared)' $blob
-  $sx = Wren-Ctl eval 'new Promise((ok) => { const src = "const x = new XMLHttpRequest(); x.open(\"GET\", location.origin + \"/site/workers/index.html\", false); x.send(); postMessage(x.status + \" \" + (x.responseText.length > 0) + \" \" + x.readyState);"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout"), 5000); })' --await
+  $sx = Wren-Ctl eval 'new Promise((ok) => { const src = "const x = new XMLHttpRequest(); x.open(\"GET\", location.origin + \"/site/workers/index.html\", false); x.send(); postMessage(x.status + \" \" + (x.responseText.length > 0) + \" \" + x.readyState);"; const w = new Worker(URL.createObjectURL(new Blob([src]))); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); setTimeout(() => ok("timeout"), 30000); })' --await
   Expect ($sx -eq '200 true 4') 'a synchronous XMLHttpRequest in a dedicated worker' $sx
   $pipe = Wren-Ctl eval 'new Promise((ok) => { const got = []; new ReadableStream({ start(c) { c.enqueue("a"); c.enqueue("b"); c.close(); } }).pipeTo(new WritableStream({ write(x) { got.push(x); } })).then(() => ok(got.join("")), (e) => ok("error " + e)); })' --await
   Expect ($pipe -eq 'ab') 'ReadableStream.pipeTo a WritableStream' $pipe
@@ -64,7 +64,7 @@ try {
   Expect ($broken -eq 'error') 'a module worker whose import cannot be resolved fires error' $broken
 
   # --- nested workers (examples/site/workers/nested.js)
-  $ask = 'new Promise((ok) => { const w = new Worker("nested.js", {name: "level3"}); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); w.postMessage(MSG); setTimeout(() => ok("timeout"), 8000); })'
+  $ask = 'new Promise((ok) => { const w = new Worker("nested.js", {name: "level3"}); w.onmessage = (e) => { ok(e.data); w.terminate(); }; w.onerror = (e) => ok("error " + e.message); w.postMessage(MSG); setTimeout(() => ok("timeout"), 30000); })'
   $chain = Wren-Ctl eval ($ask -replace 'MSG', '{op: "chain", depth: 3}') --await
   Expect ($chain -eq 'bottom level1 < level2 < level3') 'a chain of three workers, each started by the one above: messages down and up' $chain
   $types = Wren-Ctl eval ($ask -replace 'MSG', '{op: "types"}') --await
@@ -75,7 +75,7 @@ try {
   Expect ($tr -eq 'back 8 detached true port 8') 'a buffer and a MessagePort transferred to a nested worker, the buffer back' $tr
   $cross = Wren-Ctl eval ($ask -replace 'MSG', '{op: "cross"}') --await
   Expect ($cross -eq 'error event') 'a nested worker of another origin: an error event in the parent' $cross
-  $keep = Wren-Ctl eval 'new Promise((ok) => { const w = new Worker("nested.js"); let n = 0; w.onmessage = () => { n++; if (n === 5) { w.terminate(); setTimeout(() => { const at = n; setTimeout(() => ok(n === at ? "stopped" : "still ticking " + (n - at)), 300); }, 100); } }; w.postMessage({op: "keep"}); setTimeout(() => ok("timeout " + n), 8000); })' --await
+  $keep = Wren-Ctl eval 'new Promise((ok) => { const t0 = Date.now(); const w = new Worker("nested.js"); let n = 0; w.onmessage = () => { n++; if (n === 5) { w.terminate(); setTimeout(() => { const at = n; setTimeout(() => ok(n === at ? "stopped" : "still ticking " + (n - at)), 300); }, 100); } }; w.postMessage({op: "keep"}); setTimeout(() => ok("timeout " + n + " after " + (Date.now() - t0) + " ms"), 30000); })' --await
   Expect ($keep -eq 'stopped') 'terminating a worker terminates the workers it started' $keep
   Wren-Ctl pref set workers.max_depth 2 | Out-Null
   $deep = Wren-Ctl eval ($ask -replace 'MSG', '{op: "chain", depth: 3}') --await

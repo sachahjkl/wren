@@ -83,7 +83,9 @@ status_bar_build :: proc(app: ^App, t: ^Tab) {
 		avail := max(f32)
 		if b := ui.prev_box("###sb_left"); b != nil && b.size.x > 0 {
 			avail = b.size.x
-			if b.size.x != left_width_seen { left_width_seen = b.size.x; app.frames_requested = max(app.frames_requested, 2) }
+			// (the window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
+			ws := window_own(app)
+			if b.size.x != ws.status_left_width { ws.status_left_width = b.size.x; request_frames(app, 2) }
 		}
 		if ui.status_fill("###sb_left") {
 			link := hud.cfg.link_preview ? hovered_link(t) : ""
@@ -155,10 +157,6 @@ status_left_fit :: proc(items: []Status_Left_Item, avail, sep_w: f32, measure: p
 	}
 }
 
-@(private = "file") left_width_seen: f32   // the left part's width in the frame before (to draw again when it changes)
-
-// (a window's own: with one for all, two windows with other statuses asked each other for a frame, for ever)
-status_bar_window_local :: proc() { window_local(&left_width_seen) }
 
 @(private = "file")
 status_left :: proc(app: ^App, t: ^Tab, avail: f32) {
@@ -357,7 +355,7 @@ frame_stats_panel :: proc(app: ^App, t: ^Tab, anchor: draw.Rect) {
 		c := hud.cfg.comma
 		col := em * 17
 		gap := em * 0.6
-		ncols := clamp(int((f32(app.win.size.x) - em) / (col + gap)), 1, 3)
+		ncols := clamp(int((f32(active_window(app).win.size.x) - em) / (col + gap)), 1, 3)
 		w := col * f32(ncols) + gap * f32(ncols - 1)
 		layout: [][]Panel_Section
 		switch ncols {
@@ -511,7 +509,7 @@ toggle_status_bar :: proc(app: ^App) {
 toggle_frame_stats :: proc(app: ^App) {
 	hud.panel_open = !hud.panel_open || !hud.cfg.bar_visible
 	if hud.panel_open && !hud.cfg.bar_visible { set_pref_bool(app, "browser.status_bar.visible", true) }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 set_pref_bool :: proc(app: ^App, name: string, v: bool) {
@@ -521,12 +519,12 @@ set_pref_bool :: proc(app: ^App, name: string, v: bool) {
 }
 
 // The panel takes the clicks and the wheel that land on it (the page under it does not get them).
-hud_captures :: proc(pos: draw.Vec2) -> bool {
-	if fullscreen_bars_capture(pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
+hud_captures :: proc(app: ^App, pos: draw.Vec2) -> bool {
+	if fullscreen_bars_capture(app, pos) { return true }   // and so do the bars of full screen (window_chrome.odin)
 	if devtools_captures(pos) { return true }   // the floating developer tools (devtools.odin)
 	if palette_captures(pos) { return true }   // and the command palette while it is open (palette.odin)
 	if setup_captures() { return true }   // and the Setup dialog (setup.odin)
-	if urlbar_captures(pos) { return true }   // and the address bar's suggestions (urlbar.odin)
+	if urlbar_captures(app, pos) { return true }   // and the address bar's suggestions (urlbar.odin)
 	if !hud.panel_open { return false }
 	r, ok := ui.popover_rect(PANEL_ID)
 	return ok && draw.rect_contains(r, pos)

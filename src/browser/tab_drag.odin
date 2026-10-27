@@ -100,7 +100,7 @@ tab_drag_begin :: proc(app: ^App, t: ^Tab, pos: draw.Vec2) -> bool {
 	grab := [2]int{int(60 * scale), int(16 * scale)}
 	screen := client_origin(src) + pos
 	carried := src
-	if len(app.tabs) > 1 {
+	if len(active_window(app).tabs) > 1 {
 		carried = tab_detach(app, t, [2]int{int(screen.x) - grab.x, int(screen.y) - grab.y}, focus = false)
 		if carried == nil { return false }
 	}

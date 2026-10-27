@@ -52,9 +52,9 @@ blocker_event :: proc(user: rawptr, ev: ^blocker.Event) {
 				break
 			}
 		}
-		if t := current_tab(app); t != nil && t.id == ev.tab { app.frames_requested = max(app.frames_requested, 1) }
+		if t := current_tab(app); t != nil && t.id == ev.tab { request_frames(app, 1) }
 	case .Changed, .Lists:
-		app.frames_requested = max(app.frames_requested, 1)
+		request_frames(app, 1)
 	case .Reload:
 		for t in tabs_all(app) { if t.id == ev.tab && t.kind == .Web { reload(app, t); break } }
 	}

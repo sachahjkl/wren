@@ -16,7 +16,7 @@ import "wb:page"
 
 Page_Prep_State :: enum u8 { None, Hold, Ready }
 
-// What page_prepare made, for page_paint.
+// What page_prepare made, for page_paint (the window's: Window_Own.page_prep).
 Page_Prep :: struct {
 	frame:  u64,          // chrome_frames.frame_no it was made in
 	tab:    ^Tab,
@@ -27,20 +27,19 @@ Page_Prep :: struct {
 	canvas: css.Color,
 }
 
-page_prep: Page_Prep
-
 // The page phase: the current tab's page prepared for the page area of the last frame.
 page_update :: proc(app: ^App) {
 	t := current_tab(app)
 	if t == nil || t.kind != .Web || t.page == nil { return }
-	size := draw.rect_size(app.page_rect)
+	size := draw.rect_size(active_window(app).page_rect)
 	if size.x <= 0 || size.y <= 0 { return }
 	page_prepare(app, t, size)
 }
 
 page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 	page_world_check("page_prepare: a chrome frame, or the page thread has the layout")
-	page_prep = Page_Prep{frame = chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
+	page_prep := &window_own(app).page_prep
+	page_prep^ = Page_Prep{frame = chrome_frames.frame_no, tab = t, page = t.page, size = size, scale = page_scale(app), state = .None, canvas = expected_canvas(app)}
 	hold_commit(t)
 	scale := page_prep.scale
 	// an incremental layout reads what the style passes changed (layout.incremental.*)
@@ -103,7 +102,7 @@ page_prepare :: proc(app: ^App, t: ^Tab, size: draw.Vec2) {
 page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 	page_world_check("page_paint: a chrome frame, or the page thread has the layout")
 	size := draw.rect_size(rect)
-	p := &page_prep
+	p := &window_own(app).page_prep
 	paint_size := size
 	if p.frame != chrome_frames.frame_no || p.tab != t || p.page != t.page || p.size != size || p.scale != page_scale(app) {
 		if p.frame == chrome_frames.frame_no && p.tab == t && p.page == t.page && p.scale == page_scale(app) && p.state == .Ready && (pacer.resizing || pacer.resize_held) && page_layout_is_long(app, t) && config.bool_of(&app.prefs, "browser.shell.resize_anchored") {
@@ -113,7 +112,7 @@ page_paint :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect) {
 			// window is dragged (the tab sidebar's edge, the developer tools' splitter): the page beside it is laid out
 			// at the width the pointer gives it in the frame that draws the panel there, never shown at another one.
 			paint_size = p.size
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 		} else {
 			page_prepare(app, t, size)
 		}

@@ -325,7 +325,7 @@ prof_record :: proc(app: ^App, items, elements: int) {
 	for p in Phase { rec.dur[p] = f32(phase_clock.acc[p]) }
 	rec.items, rec.elements = i32(items), i32(elements)
 	rec.insts, rec.batches = i32(len(app.dc.insts)), i32(len(app.dc.batches))
-	rec.ui_boxes = i32(ui.boxes_built(app.ui_state))
+	rec.ui_boxes = i32(ui.boxes_built(active_window(app).ui))
 	if n := render.gpu_next_frame(&app.r); n > prof.gpu_next { rec.gpu_index = n - 1 }
 	prof.gpu_next = render.gpu_next_frame(&app.r)
 	append(&prof.frames, rec)

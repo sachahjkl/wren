@@ -97,7 +97,7 @@ history_tree_settings_init :: proc(app: ^App) {
 	tcfg = tree_settings_from_prefs(&app.prefs)
 	tree_watch = config.watch(&app.prefs, "browser.history.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		tcfg = tree_settings_from_prefs(p)
-		(^App)(user).frames_requested = max((^App)(user).frames_requested, 2)
+		request_frames((^App)(user), 2)
 	}, app)
 }
 
@@ -384,7 +384,7 @@ history_tree_destroy :: proc() {
 history_tree_events :: proc(app: ^App, events: []platform.Event) -> []platform.Event {
 	clear(&tview.pending)
 	t := current_tab(app)
-	if t == nil || t.kind != .History || hview.mode != 1 || tview.built != app.ui_state.build_index || ui.ctx_menu_any_open() { return events }
+	if t == nil || t.kind != .History || hview.mode != 1 || tview.built != active_window(app).ui.build_index || ui.ctx_menu_any_open() { return events }
 	r := tview.view_rect
 	focus := ui.focus_key()
 	out := make([dynamic]platform.Event, 0, len(events), context.temp_allocator)
@@ -421,7 +421,7 @@ tree_set_layout :: proc(app: ^App, l: Tree_Layout) {
 	// (locked by a policy, the preference stays: the layout changes for this session only)
 	_ = config.set_from_string(&app.prefs, "browser.history.tree_layout", l == .Vertical ? "vertical" : "horizontal", .User)
 	tcfg.layout = l
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -643,7 +643,7 @@ minimap_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 // about:history's tab tree part.
 history_tree_view :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
-	st := app.ui_state
+	st := active_window(app).ui
 	now := st.frame_ms
 	dt := f32(clamp((now - tview.last_ms) / 1000, 0, 0.1))
 	tview.last_ms = now
@@ -704,7 +704,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 		tview.cam_ok, tview.cam_tab = true, t.id
 		tview.revealed = m.current >= 0 ? m.nodes[m.current].id : 0
 	}
-	if !tview.cam_ok { app.frames_requested = max(app.frames_requested, 2) }
+	if !tview.cam_ok { request_frames(app, 2) }
 
 	if tview.cam_ok {
 		zstep := tcfg.zoom_step
@@ -878,7 +878,7 @@ history_tree_view :: proc(app: ^App, t: ^Tab) {
 	}
 	tree_menu(app, t)
 	tree_tooltip(app, t, m, now)
-	if busy { app.frames_requested = max(app.frames_requested, 2) }
+	if busy { request_frames(app, 2) }
 }
 
 // Height the canvas's controls take along its bottom edge (with their margins).
@@ -1027,6 +1027,7 @@ tree_controls :: proc(m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: 
 // The minimap, in the bottom-right corner while the tree is larger than the view.
 @(private = "file")
 tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2]f32, em: f32) {
+	wnd := active_window(app)
 	if len(m.nodes) < 2 || size.x <= 0 || extent.x <= 0 || extent.y <= 0 { return }
 	s := em * tview.cam.zoom
 	if extent.x * s <= size.x && extent.y * s <= size.y { return }
@@ -1049,7 +1050,7 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 	d.frame_fill = d.accent
 	d.frame_fill.a = 0.12
 	d.frame_fill = ui.tuned(d.frame_fill)
-	d.radius = em * CHROME_BUTTON_RADIUS * app.ui_state.rounding
+	d.radius = em * CHROME_BUTTON_RADIUS * wnd.ui.rounding
 	d.px = max(1, math.round(ui.scale()))
 	ui.next({fixed_x = pos.x, fixed_y = pos.y, width = ui.px(box.x), height = ui.px(box.y), cursor = .Hand})
 	mb := ui.custom("###h_tree_minimap", minimap_draw, d, {.Clickable})
@@ -1059,10 +1060,10 @@ tree_minimap :: proc(app: ^App, m: ^Tree_Model, l: Tree_Layout, extent, size: [2
 		tview.going, tview.gliding = false, false
 		tview.cam.center = w
 		tview.cam = cam_clamp(tview.cam, extent, tcfg.zoom_min, tcfg.zoom_max)
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	// (a click moves the view there, a drag carries it)
-	if sig.dragging { app.ui_state.cursor_request = .Grabbing } else if sig.hovering { app.ui_state.cursor_request = .Hand }
+	if sig.dragging { wnd.ui.cursor_request = .Grabbing } else if sig.hovering { wnd.ui.cursor_request = .Hand }
 }
 
 @(private = "file")
@@ -1076,7 +1077,7 @@ tree_menu_items :: proc(app: ^App, t: ^Tab) {
 	em := ui.font_size()
 	size := draw.rect_size(tview.view_rect)
 	anims := os_animations_enabled(app) && tcfg.transition_ms > 0
-	now := app.ui_state.frame_ms
+	now := active_window(app).ui.frame_ms
 	l := tview.layout
 	if tview.menu_entry != 0 {
 		e := page.session_find(&t.session, tview.menu_entry)
@@ -1119,7 +1120,7 @@ tree_tooltip :: proc(app: ^App, t: ^Tab, m: ^Tree_Model, now: f64) {
 	if tview.hover == 0 || ui.ctx_menu_any_open() { return }
 	waited := now - tview.hover_ms
 	if waited < tcfg.tooltip_ms {
-		app.ui_state.wake_ms = max(1, int(tcfg.tooltip_ms - waited) + 5)
+		active_window(app).ui.wake_ms = max(1, int(tcfg.tooltip_ms - waited) + 5)
 		return
 	}
 	e := page.session_find(&t.session, tview.hover)

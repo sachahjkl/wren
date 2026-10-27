@@ -167,7 +167,7 @@ console_append :: proc(t: ^Tab, level: page.Log_Level, message: string) {
 	append(&m.meta, Con_Meta{at_ms = local_time_ms(), kind = kind, payload = payload})
 	m.counts[kind] += 1
 	con_trim(t)
-	if dev.visible && dev.panel == .Console { the_app.frames_requested = max(the_app.frames_requested, 2) }
+	if dev.visible && dev.panel == .Console { request_frames(the_app, 2) }
 }
 
 // A page's navigation (or a built-in page loading): the console starts over unless it is kept, with a line saying so.

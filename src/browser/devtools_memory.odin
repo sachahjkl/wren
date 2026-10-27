@@ -68,7 +68,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		dt_gap(3)
 		if dt_btn("###dt_mem_gc", .Refresh, "Collect garbage", tooltip = "Run the page's garbage collector now", enabled = t != nil && t.page != nil && t.page.js != nil && t.page.js.inst != nil).clicked {
 			if t.page != nil && t.page.js != nil && t.page.js.inst != nil { js.collect(t.page.js.inst) }
-			app.frames_requested = max(app.frames_requested, 3)
+			request_frames(app, 3)
 			clear(&m.samples)
 		}
 		if dt_btn("###dt_mem_snap", .Pin, "Take a snapshot", tooltip = "Keep these numbers to compare with the next ones").clicked { m.snapshot, m.has_snap = cur, true }
@@ -80,7 +80,7 @@ memory_panel :: proc(app: ^App, t: ^Tab) {
 		m.tick = host.set_timer(&app.loop, 1000, 0, proc(data: rawptr) {
 			a := (^App)(data)
 			dev.mem.tick = base.NIL_HANDLE
-			if dev.visible && dev.panel == .Memory && dev.mem.live { a.frames_requested = max(a.frames_requested, 2) }
+			if dev.visible && dev.panel == .Memory && dev.mem.live { request_frames(a, 2) }
 		}, app, nil)
 	}
 	tiles := [?]struct { title: string, value: f64, get: proc(s: Mem_Sample) -> f64, bytes: bool, tip: string }{
