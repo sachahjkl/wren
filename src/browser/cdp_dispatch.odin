@@ -61,7 +61,9 @@ cdp_cdp_dispatch :: proc(app: ^App, cl: ^Cdp_Client, id_text, method: string, pa
 		cdp_send_error(cl, id_text, -32600, "a message has a \"method\"", false); return
 	case "Target.setDiscoverTargets", "Page.enable", "Runtime.enable", "DOM.enable", "Network.enable",
 	     "Log.enable", "Page.setLifecycleEventsEnabled", "Runtime.runIfWaitingForDebugger", "Emulation.setTouchEmulationEnabled",
-	     "Network.setCacheDisabled", "Target.setRemoteLocations", "Performance.enable", "Inspector.enable":
+	     "Network.setCacheDisabled", "Target.setRemoteLocations", "Performance.enable", "Inspector.enable",
+	     "Page.bringToFront", "Page.setDownloadBehavior", "Page.addScriptToEvaluateOnNewDocument",
+	     "Network.setExtraHTTPHeaders", "Runtime.addBinding", "Emulation.setFocusEmulationEnabled":
 		cdp_send_result(cl, id_text, "{}"); return
 	case "Target.setAutoAttach":
 		cl.auto_attach, _ = remote.param_bool(params, "autoAttach")
@@ -100,9 +102,8 @@ cdp_to_wren :: proc(app: ^App, method: string, params: json.Object) -> (wmethod,
 	case "Page.captureScreenshot":
 		fmt.sbprintf(&b, `{{"bytes":true,"target":"window"%s}}`, cdp_tab_param(tab))
 		return "Page.captureScreenshot", strings.to_string(b), .Screenshot, true
-	case "Page.bringToFront", "Page.setDownloadBehavior", "Page.stopLoading":
-		if method == "Page.stopLoading" { return "Page.stopLoading", fmt.tprintf("{{%s}}", cdp_tab_param_bare(tab)), .Empty, true }
-		return "", "{}", .Empty, false
+	case "Page.stopLoading":
+		return "Page.stopLoading", fmt.tprintf("{{%s}}", cdp_tab_param_bare(tab)), .Empty, true
 	case "Runtime.evaluate", "Runtime.callFunctionOn":
 		expr, _ := remote.param_string(params, "expression")
 		if method == "Runtime.callFunctionOn" {
@@ -146,10 +147,6 @@ cdp_to_wren :: proc(app: ^App, method: string, params: json.Object) -> (wmethod,
 	case "Emulation.setUserAgentOverride":
 		ua, _ := remote.param_string(params, "userAgent")
 		return "Wren.setPref", fmt.tprintf(`{{"name":"net.user_agent.override","value":%s}}`, remote.quote(ua)), .Empty, true
-	case "Network.getResponseBody":
-		return "", "{}", .Empty, false   // the body store is not exposed yet
-	case "Network.setExtraHTTPHeaders":
-		return "", "{}", .Empty, false
 	case "Security.setIgnoreCertificateErrors":
 		ignore, _ := remote.param_bool(params, "ignore")
 		return "Wren.setPref", fmt.tprintf(`{{"name":"net.tls.ignore_cert_errors","value":%v,"override":true}}`, ignore), .Empty, true
