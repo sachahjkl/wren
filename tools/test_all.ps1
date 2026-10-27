@@ -278,6 +278,9 @@ Step 'back/forward cache measured end to end (tools\bfcache_e2e.ps1: a hit, a pa
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\bfcache_e2e.ps1
 } -Weight 5
+Step 'downloads end to end on both network stacks (tools\download_e2e.ps1: an attachment, a binary named by its URL, a slow body; no window shown)' {
+    powershell -NoProfile -ExecutionPolicy Bypass -File tools\download_e2e.ps1
+}
 Step 'shared workers and module workers end to end (tools\workers_e2e.ps1: two tabs share one worker, connect, ports, lifetime, close(), module imports; no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\workers_e2e.ps1
