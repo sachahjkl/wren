@@ -7,19 +7,29 @@ package wasm
 
 WASMTIME_VERSION :: "49.0.3"   // must match tools\fetch_wasmtime.ps1: part of the compiled-code cache key
 
-foreign import wasmtime_lib {
-	"../../build/wasmtime/lib/wasmtime.lib",
-	"system:ws2_32.lib",
-	"system:advapi32.lib",
-	"system:userenv.lib",
-	"system:ntdll.lib",
-	"system:shell32.lib",
-	"system:ole32.lib",
-	"system:bcrypt.lib",
-	"system:kernel32.lib",
-	"system:msvcrt.lib",
-	"system:ucrt.lib",
-	"system:libvcruntime.lib",
+when ODIN_OS == .Windows {
+	foreign import wasmtime_lib {
+		"../../build/wasmtime/lib/wasmtime.lib",
+		"system:ws2_32.lib",
+		"system:advapi32.lib",
+		"system:userenv.lib",
+		"system:ntdll.lib",
+		"system:shell32.lib",
+		"system:ole32.lib",
+		"system:bcrypt.lib",
+		"system:kernel32.lib",
+		"system:msvcrt.lib",
+		"system:ucrt.lib",
+		"system:libvcruntime.lib",
+	}
+} else {
+	// tools/fetch_wasmtime.sh: the same release's C API for Linux (glibc: libdl, libpthread and libm)
+	foreign import wasmtime_lib {
+		"../../build/wasmtime-" + ODIN_OS_STRING + "/lib/libwasmtime.a",
+		"system:dl",
+		"system:pthread",
+		"system:m",
+	}
 }
 
 wt_config     :: distinct rawptr

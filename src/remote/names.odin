@@ -27,13 +27,22 @@ valid_name :: proc(name: string) -> bool {
 	return true
 }
 
-// FNV-1a of the profile folder as the system spells it most plainly: full path, backslashes, no trailing separator, lower
-// case (Windows paths do not care).
+// FNV-1a of the profile folder as the system spells it most plainly: full path, no trailing separator; on Windows with
+// backslashes and in lower case (its paths do not care), elsewhere as it is (case matters there).
 profile_name :: proc(profile_dir: string, allocator := context.temp_allocator) -> string {
-	p, _ := strings.replace_all(full_path(profile_dir), "/", "\\", context.temp_allocator)
-	for len(p) > 3 && p[len(p) - 1] == '\\' { p = p[:len(p) - 1] }
-	p = strings.to_lower(p, context.temp_allocator)
+	p := full_path(profile_dir)
+	when ODIN_OS == .Windows {
+		p, _ = strings.replace_all(p, "/", "\\", context.temp_allocator)
+		for len(p) > 3 && p[len(p) - 1] == '\\' { p = p[:len(p) - 1] }
+		p = strings.to_lower(p, context.temp_allocator)
+	} else {
+		for len(p) > 1 && p[len(p) - 1] == '/' { p = p[:len(p) - 1] }
+	}
 	h := u64(0xcbf29ce484222325)
 	for c in transmute([]byte)p { h = (h ~ u64(c)) * 0x100000001b3 }
 	return fmt.aprintf("p%012x", h & 0xffff_ffff_ffff, allocator = allocator)
+}
+
+info_path :: proc(profile_dir: string) -> string {
+	return strings.concatenate({profile_dir, "/remote.json"}, context.temp_allocator)
 }

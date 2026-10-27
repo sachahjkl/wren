@@ -21,7 +21,6 @@ package images
 
 import "base:runtime"
 import "core:sync"
-import win "core:sys/windows"
 import "core:time"
 import "wb:base"
 import "wb:host"
@@ -146,8 +145,6 @@ codecs: struct { heif, probed: bool }
 @(private)
 codecs_ready: sync.Sema
 
-CLSID_WICHeifDecoder := GUID{0xe9a4a80a, 0x44fe, 0x4de4, {0x89, 0x71, 0x71, 0x50, 0xb1, 0x0a, 0x51, 0x99}}
-
 // Can this browser decode `f` here? Everything but HEIF always can (WIC's built-in codecs, and the built-in decoders
 // of WebP, AVIF and SVG); HEIF needs the Store's "HEIF Image Extensions" (and HEVC), known once the decoder runs.
 codec_supported :: proc(f: Format) -> bool {
@@ -174,16 +171,6 @@ format_of_mime :: proc(mime: string) -> Format {
 	case "image/svg+xml": return .Svg
 	}
 	return .Unknown
-}
-
-@(private)
-probe_codecs :: proc() {
-	unk: rawptr
-	if succeeded(win.CoCreateInstance(&CLSID_WICHeifDecoder, nil, win.CLSCTX_INPROC_SERVER, win.IUnknown_UUID, &unk)) && unk != nil {
-		codecs.heif = true
-		com_release(unk)
-	}
-	codecs.probed = true
 }
 
 // Starts the decoding threads (`threads` <= 0: one). Idempotent; the threads use the process heap. `stack_bytes`

@@ -81,6 +81,8 @@ PREFS := [?]config.Def{
 		description = "Most tiles one repeated background image draws in a box; a tiny image repeated over a huge box stops there."},
 	{name = "images.color_management", kind = .Bool, default = {b = true},
 		description = "Convert images tagged with a colour space (an ICC profile such as Display P3 or Adobe RGB, AVIF's CICP code points, EXIF's Adobe RGB) to sRGB, the space pages are composed in. Off: their pixels are taken as sRGB (colours look washed out or too saturated)."},
+	{name = "images.decode.system_codecs", kind = .Bool, default = {b = false},
+		description = "Decode PNG, JPEG, GIF, BMP, ICO and TIFF with the system's codecs (Windows Imaging Component) instead of the built-in decoders (memory-safe Rust, the same on every system: APNG animation, EXIF orientation, ICC profiles). WebP, AVIF and SVG are always built in; HEIF always needs the system. No effect where the system has none."},
 	{name = "images.decode.stack_bytes", kind = .Int, default = {i = DECODER_STACK_DEFAULT}, bounded = true, min = 1 << 20, max = 1 << 30, bytes = true, unit = "bytes", restart = true,
 		description = "Stack reserved for each image decoding thread (memory is committed only as used). Rendering an SVG document recurses once per nesting level: keep it large enough for images.svg.max_depth."},
 	{name = "images.svg.enabled", kind = .Bool, default = {b = true},
@@ -119,6 +121,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 			min_delay_ms = int(config.int_of(p, "images.animation.min_delay_ms")),
 			default_delay_ms = int(config.int_of(p, "images.animation.default_delay_ms")),
 			color_manage = config.bool_of(p, "images.color_management"),
+			system_decoders = config.bool_of(p, "images.decode.system_codecs"),
 			svg = Svg_Limits{
 				enabled = config.bool_of(p, "images.svg.enabled"),
 				max_nodes = int(config.int_of(p, "images.svg.max_nodes")),

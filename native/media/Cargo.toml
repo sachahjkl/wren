@@ -27,6 +27,11 @@ qcms = { version = "=0.3.0", default-features = false, features = ["iccv4-enable
 # WOFF2 web fonts (src/woff2.rs): Dropbox's Brotli decompressor, safe Rust (bounds checks kept: no "unsafe" feature)
 brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }
 
+# PNG / APNG, JPEG, GIF, BMP, ICO, TIFF decoding and PNG / JPEG encoding (src/raster.rs), what WIC did: the image crate's
+# own BMP / ICO / JPEG encoder, png, zune-jpeg, gif and tiff (safe Rust; png, zune-jpeg and gif are resvg's already)
+image = { version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "bmp", "ico", "tiff"] }
+gif = "=0.14.2"   # raster.rs counts frames and reads the loop count without decoding pixels
+
 [dev-dependencies]
 # tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
 skrifa = "=0.44.0"

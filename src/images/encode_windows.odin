@@ -1,13 +1,11 @@
 package images
 
-// Encoding with WIC: PNG and JPEG for toDataURL / toBlob / convertToBlob of the 2D canvas. The encoder writes to a growing
+// Encoding with WIC: PNG and JPEG, as the 2D canvas did before the built-in encoder (native.odin). The encoder writes to a growing
 // stream in memory (CreateStreamOnHGlobal), whose size is then read back. The interfaces are declared here, with their
 // methods in the order of wincodec.h and objidl.h (the slots a call does not use stay untyped).
 
 import "base:runtime"
 import win "core:sys/windows"
-
-Encode_Format :: enum u8 { Png, Jpeg }
 
 GUID_ContainerFormatPng := GUID{0x1b7cfaf4, 0x713f, 0x473c, {0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf}}
 GUID_ContainerFormatJpeg := GUID{0x19e4a5aa, 0x5662, 0x4fc5, {0xa0, 0xc0, 0x17, 0x58, 0x02, 0x8e, 0x10, 0x57}}
@@ -93,11 +91,9 @@ IWICBitmapFrameEncode_Vtbl :: struct {
 @(private)
 Create_Encoder :: #type proc "system" (this: ^IWICImagingFactory, container: ^GUID, vendor: ^GUID, out: ^^IWICBitmapEncoder) -> HRESULT
 
-// Encodes a w x h image of RGBA8 as PNG (straight alpha) or JPEG (`quality` 0 to 1; transparent areas become black).
-// `premultiplied`: the pixels are premultiplied (a canvas's): PNG gets them divided by alpha, JPEG as they are (a color
-// premultiplied by its alpha is that color over black). The bytes are allocated with `allocator`. false: the platform
-// could not encode (no WIC, no memory).
-encode_rgba :: proc(rgba: []u8, w, h: int, format: Encode_Format, quality: f32, premultiplied: bool, allocator := context.allocator) -> (out: []u8, ok: bool) {
+// encode_rgba (native.odin) through WIC instead: kept to compare the two (encode_test.odin) while the built-in
+// encoder replaces it. false: the platform could not encode (no WIC, no memory).
+encode_rgba_system :: proc(rgba: []u8, w, h: int, format: Encode_Format, quality: f32, premultiplied: bool, allocator := context.allocator) -> (out: []u8, ok: bool) {
 	if w <= 0 || h <= 0 || w > 65535 * 4 || h > 65535 * 4 || len(rgba) < w * h * 4 { return }
 	c: Codec_Context
 	if !codec_init(&c) { return }

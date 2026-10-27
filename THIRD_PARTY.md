@@ -19,6 +19,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [Public Suffix List](https://publicsuffix.org) | `src/url/public_suffix_list.dat` | MPL-2.0 | embedded |
 | [resvg / usvg / tiny-skia](https://github.com/linebender/resvg) | 0.48.1 | Apache-2.0 OR MIT (tiny-skia: BSD-3-Clause) | `native/media` |
 | [image-webp](https://github.com/image-rs/image-webp) | 0.2.4 | MIT OR Apache-2.0 | `native/media` |
+| [image](https://github.com/image-rs/image) (PNG, JPEG, GIF, BMP, ICO, TIFF; png, zune-jpeg, gif, tiff, moxcms) | 0.25.10 | MIT OR Apache-2.0 | `native/media` |
 | [zenavif-parse](https://crates.io/crates/zenavif-parse) | 0.6.2 | MPL-2.0 | `native/media` |
 | [rav1d](https://github.com/memorysafety/rav1d) | 1.1.0 | BSD-2-Clause | `native/media` |
 | [qcms](https://github.com/FirefoxGraphics/qcms) | 0.3.0 | MIT | `native/media` |

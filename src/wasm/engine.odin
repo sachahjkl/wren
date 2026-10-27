@@ -410,12 +410,6 @@ tidy_error :: proc(text: string) -> string {
 	return strings.to_string(b)
 }
 
-foreign import kernel32 "system:Kernel32.lib"
-@(default_calling_convention = "system")
-foreign kernel32 {
-	GetCurrentThreadStackLimits :: proc(low, high: ^uintptr) ---
-}
-
 // Starts a call from the host. The outermost one arms the deadline (and fuel) and wakes the ticker.
 @(private)
 wt_enter :: proc(inst: ^Instance) -> bool {
@@ -430,8 +424,7 @@ wt_enter :: proc(inst: ^Instance) -> bool {
 		return false
 	}
 	if inst.depth == 0 {
-		low, high: uintptr
-		GetCurrentThreadStackLimits(&low, &high)
+		low := thread_stack_low()
 		here := uintptr(&low)
 		need := uintptr(wt.rs.max_stack_bytes + wt.rs.host_stack_reserve)
 		if here < low || here - low < need {

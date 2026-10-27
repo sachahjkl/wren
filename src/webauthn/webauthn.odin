@@ -231,7 +231,7 @@ Cancel_Token :: struct {
 	reason:    Error,          // Abort (signal), Not_Allowed (timer, page gone, the user's click)
 	platform:  [16]u8,         // the platform's own id for the operation (WebAuthNGetCancellationId's GUID)
 	has_platform: bool,
-	event:     rawptr,         // the virtual authenticator's wake-up event
+	wake:      sync.Cond,      // the virtual authenticator's wake-up (with mu)
 }
 
 // One ceremony: everything it allocates, so that the end is a single free.

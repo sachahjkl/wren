@@ -1,8 +1,9 @@
 #+build !windows
+#+build !linux
 package instance
 
-// Other platforms: no hand-over yet (a Unix socket in the runtime directory, locked by flock, would be the way; Wren does
-// not run there yet). Every start owns its profile, as it did before this package.
+// Other platforms: no hand-over yet (instance_linux.odin's lock file and Unix socket would do on macOS and the BSDs, with
+// their own runtime directory). Every start owns its profile, as it did before this package.
 
 Owner :: struct {
 	key:     string,
