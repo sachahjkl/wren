@@ -240,17 +240,20 @@ window_state :: proc(app: ^App) -> string {
 @(private = "file")
 m_window_get :: proc(app: ^App) -> Reply {
 	wnd := active_window(app)
-	rc: win.RECT
-	win.GetWindowRect(wnd.win.hwnd, &rc)
+	// a headless window has no HWND: its outer rectangle and visibility are emulated (platform.outer_rect / is_offscreen)
+	outer := platform.outer_rect(wnd.win)
+	visible := false
+	if !platform.is_offscreen(wnd.win) { visible = bool(win.IsWindowVisible(wnd.win.hwnd)) }
 	b := builder()
 	j_begin(&b)
 	j_int(&b, "windowId", i64(app.active.id))
-	j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top))
-	j_int(&b, "outerWidth", i64(rc.right - rc.left)); j_int(&b, "outerHeight", i64(rc.bottom - rc.top))
+	j_int(&b, "left", i64(outer[0])); j_int(&b, "top", i64(outer[1]))
+	j_int(&b, "outerWidth", i64(outer[2])); j_int(&b, "outerHeight", i64(outer[3]))
 	j_int(&b, "width", i64(wnd.win.size.x)); j_int(&b, "height", i64(wnd.win.size.y))   // the client area, in pixels
 	j_str(&b, "windowState", window_state(app))
 	j_num(&b, "dpiScale", f64(wnd.win.dpi_scale)); j_num(&b, "uiScale", f64(ui_scale_of(app))); j_num(&b, "pageScale", f64(page_scale(app)))
-	j_bool(&b, "visible", bool(win.IsWindowVisible(wnd.win.hwnd)))
+	j_bool(&b, "headless", platform.is_offscreen(wnd.win))
+	j_bool(&b, "visible", visible)
 	// the page area of its last frame and what was prepared for it (page_frame.odin)
 	j_rect(&b, "pageRect", wnd.page_rect)
 	PREP_NAMES := [Page_Prep_State]string{.None = "none", .Hold = "hold", .Ready = "ready"}
@@ -285,6 +288,13 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 // top left, the size in proportion), through the window procedure as the real one goes (wren ctl window --dpi n: a machine with
 // one monitor tests a window that changes monitors, and two windows on monitors of different scales).
 window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
+	if platform.is_offscreen(w.win) {
+		// no monitor to move to: the emulated scale changes and the offscreen target follows (the renderer is resized in the frame)
+		platform.set_offscreen_dpi(w.win, dpi)
+		render.resize(&app.r, w.win.size)
+		window_request(app, w, 4)
+		return
+	}
 	hwnd := w.win.hwnd
 	rc: win.RECT
 	win.GetWindowRect(hwnd, &rc)
@@ -299,6 +309,24 @@ window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
 // the checkpoints of remote_state.odin.
 window_apply :: proc(app: ^App, state: string, has_state: bool, w, h, left, top: int, has_w, has_h, has_l, has_t: bool) {
 	wnd := active_window(app)
+	if platform.is_offscreen(wnd.win) {
+		// a headless window: the state and the rectangle are emulated, the client size is set straight (no window frame)
+		if has_state {
+			switch state {
+			case "normal":     if platform.is_fullscreen(wnd.win) { toggle_fullscreen(app) }; wnd.win.off_state = .Normal
+			case "minimized":  wnd.win.off_state = .Minimized
+			case "maximized":  wnd.win.off_state = .Maximized
+			case "fullscreen": wnd.win.off_state = .Fullscreen
+			}
+		}
+		if has_l || has_t { platform.move_window(wnd.win, has_l ? left : wnd.win.off_place[0], has_t ? top : wnd.win.off_place[1]) }
+		if has_w || has_h {
+			platform.set_size(wnd.win, {has_w ? w : wnd.win.size.x, has_h ? h : wnd.win.size.y})
+			render.resize(&app.r, wnd.win.size)
+		}
+		request_frames(app, 4)
+		return
+	}
 	hwnd := wnd.win.hwnd
 	if has_state {
 		switch state {
@@ -391,14 +419,14 @@ m_windows :: proc(app: ^App) -> Reply {
 	j_begin(&b)
 	j_key(&b, "windows"); j_begin(&b, '[')
 	for w in app.windows {
-		rc: win.RECT
-		win.GetWindowRect(w.win.hwnd, &rc)
+		outer := platform.outer_rect(w.win)   // emulated for a headless window (no HWND)
 		j_key(&b, ""); j_begin(&b)
 		j_int(&b, "windowId", i64(w.id)); j_bool(&b, "front", w == window_front(app)); j_int(&b, "tabs", i64(len(window_tabs(app, w))))
 		j_int(&b, "hwnd", i64(uintptr(w.win.hwnd)))   // (a UI Automation client reads one window: tools\a11y_e2e.ps1)
+		j_bool(&b, "headless", platform.is_offscreen(w.win))
 		cur := window_current_tab(app, w)
 		j_int(&b, "currentTabId", cur != nil ? i64(cur.id) : 0)
-		j_int(&b, "left", i64(rc.left)); j_int(&b, "top", i64(rc.top)); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
+		j_int(&b, "left", i64(outer[0])); j_int(&b, "top", i64(outer[1])); j_int(&b, "width", i64(w.win.size.x)); j_int(&b, "height", i64(w.win.size.y))
 		j_str(&b, "windowState", platform.is_fullscreen(w.win) ? "fullscreen" : platform.is_minimized(w.win) ? "minimized" : platform.is_maximized(w.win) ? "maximized" : "normal")
 		j_num(&b, "dpiScale", f64(w.win.dpi_scale))
 		co := platform.client_origin(w.win)
@@ -431,8 +459,11 @@ m_windows :: proc(app: ^App) -> Reply {
 @(private = "file")
 m_window_activate :: proc(app: ^App) -> Reply {
 	window_focus(app, app.active)
-	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top
-	win.SetWindowPos(app.active.win.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE | win.SWP_NOACTIVATE)
+	// above the others (without taking the system's focus, shown or not): a drag across windows finds it on top. A
+	// headless window has no z-order.
+	if !platform.is_offscreen(app.active.win) {
+		win.SetWindowPos(app.active.win.hwnd, win.HWND_TOP, 0, 0, 0, 0, win.SWP_NOMOVE | win.SWP_NOSIZE | win.SWP_NOACTIVATE)
+	}
 	return done()
 }
 
@@ -732,8 +763,9 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 	settle, has := remote.param_int(c.params, "settle")
 	if !has { settle = the_remote.cfg.settle_frames }
 	op.until = the_remote.frame_no + u64(max(settle, 0)) + 1
-	// a window on the taskbar draws nothing: it comes back without taking the focus, and goes back after
-	if platform.is_minimized(active_window(app).win) {
+	// a real window on the taskbar draws nothing: it comes back without taking the focus, and goes back after. A headless
+	// window renders whatever its emulated state, so nothing to do there.
+	if !platform.is_offscreen(active_window(app).win) && platform.is_minimized(active_window(app).win) {
 		win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWNOACTIVATE)
 		op.stage = -1
 	}
@@ -744,7 +776,7 @@ m_capture :: proc(app: ^App, c: ^Call) -> Reply {
 capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 	r := &the_remote
 	finish :: proc(app: ^App, op: ^Remote_Op, rep: Reply) {
-		if op.stage == -2 { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
+		if op.stage == -2 && !platform.is_offscreen(active_window(app).win) { win.ShowWindow(active_window(app).win.hwnd, win.SW_SHOWMINNOACTIVE) }
 		if op.asked && rep.code != 0 { render.capture_cancel(&app.r) }   // (asked, not taken: the next capture may start)
 		if op.asked { the_remote.capture_window = 0 }
 		op_finish(op, rep)
@@ -782,7 +814,6 @@ capture_step :: proc(app: ^App, op: ^Remote_Op, t: ^Tab, timed_out: bool) {
 			if x1 <= x0 || y1 <= y0 { finish(app, op, fail(remote.ERR_FAILED, "the element is outside the page's visible area (scroll to it first)")); return }
 			rect = {int(math.floor(x0)), int(math.floor(y0)), int(math.ceil(x1 - x0)), int(math.ceil(y1 - y0))}
 		}
-		when render.USE_WGPU { finish(app, op, fail(remote.ERR_FAILED, "this renderer cannot capture its frame (the wgpu backend)")); return }
 		// the renderer copies the next frame it ends, whichever window's: asked for in this window's own frame (remote_capture_arm)
 		r.capture_window, r.capture_rect = active_window(app).id, rect
 		op.asked = true

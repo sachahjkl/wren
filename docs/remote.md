@@ -118,7 +118,11 @@ The channel is **off by default**; a Wren that was not asked for it has no pipe,
   and a throwaway profile (removed afterwards; a profile given by `--profile` is never removed). A throwaway profile starts with
   `blocker.update.enabled=false` (a Wren that lives 15 s would download the content blocker's lists, 24 MB, from the internet),
   unless `--pref blocker.update.enabled=...` says otherwise.
-- `--headless`: the window is never shown. It renders all the same (the capture reads the renderer's frame).
+- `--headless`: a window with **no HWND at all**, not a hidden one, so it runs where there is no desktop session (a
+  service in session 0, an SSH login, a CI runner). It renders to an offscreen target the capture reads; its size,
+  place, state and DPI are emulated and resize the target (`window --size WxH --dpi n`); input comes through the same
+  synthetic-event path as a real device's (`platform.inject_event`). `wren --headless <url>` and `wren ctl run` /
+  `start` use it. (`wren ctl stats` reports `headless: true` for such a window, and `window` / `windows` carry it.)
 - A driven Wren never hands its addresses to the user's running Wren (`--remote` implies `--no-single-instance`).
 - A status bar item "remote" shows that the channel listens (`browser.remote.indicator`).
 
@@ -158,8 +162,9 @@ pixels; the page area, a rectangle or an element are parts of it. The interface 
 previous command are in it; `--settle n` changes that for one call. For a page that loads things, `nav` waits for the load, then
 `wait idle` (network quiet for `browser.remote.idle_ms`) or `wait stable` (idle, no frame wanted, every image in).
 
-**One capture at a time** per window; others queue. A minimized window is restored without taking the focus for the capture and
-minimized again. The wgpu render backend cannot read its frame back: `shot` answers an error there.
+**One capture at a time** per window; others queue. A real minimized window is restored without taking the focus for the capture and
+minimized again (a headless window renders whatever its emulated state, so there is nothing to restore). Both render backends read
+their frame back now: `shot` works with Direct3D 11 and with wgpu.
 
 **Elements** are found with the document's own selector engine, with no script engine involved (a Wasm-only page works); `eval`,
 `style` and the `readyState` check need the page's JavaScript.
@@ -238,14 +243,23 @@ that carry it have been drawn.
 ### Capture
 
 The toolkit's `render.capture_request(r, rect)` marks the next frame; `frame_end` copies that frame's render target (or a part of
-it) into a staging texture just before the present, and `render.capture_poll` maps it once the GPU is done, with
-`D3D11_MAP_FLAG_DO_NOT_WAIT` (never a stall; a timer looks again every `browser.remote.poll_ms`). The copy costs one GPU command
-in that one frame. It works with the window covered, off the screen, hidden or minimized, and does not depend on the monitor's DPI.
+it) just before the present — into a staging texture on Direct3D 11, into a mappable buffer on wgpu — and `render.capture_poll`
+maps it once the GPU is done, without waiting (a timer looks again every `browser.remote.poll_ms`). The copy costs one GPU command
+in that one frame. It works on both backends, with the window covered, off the screen, hidden, minimized or headless (no window at
+all), and does not depend on the monitor's DPI.
 
 ## Preferences
 
 `browser.remote.enabled`, `.name`, `.max_message_bytes`, `.max_clients`, `.indicator`, `.timeout_ms` (30 s, waits),
 `.settle_frames` (2), `.poll_ms` (4), `.idle_ms` (400), `.quiet_ms` (400), `.quiet_cpu_ms` (20), `.max_checkpoints` (16).
+
+## Driving Wren with Puppeteer, Playwright or Chrome DevTools
+
+The channel above is Wren's own, over a pipe. For standard tools there is a **Chrome DevTools Protocol / WebDriver BiDi
+adapter**: a local WebSocket server that translates onto this same command engine. Turn it on with
+`--remote-debugging-port=N` (or the preference `remote.cdp.enabled`), then connect a tool to `ws://127.0.0.1:N`. It is
+off by default, binds `127.0.0.1` only, and refuses any handshake whose `Host` or `Origin` is not loopback. See
+`docs/cdp.md` for the endpoints, the methods covered and how to connect in one line.
 
 ## Tests
 
