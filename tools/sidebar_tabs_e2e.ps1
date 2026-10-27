@@ -51,9 +51,11 @@ function Page($title, $body = '') {
     return 'file:///' + ($f -replace '\\', '/')
 }
 
-$null = Start-Wren -Size 1100x700 -Pref 'browser.tabs.position=left', 'browser.ui.animations=on' -Url (Page 'Alpha')
+$null = Start-Wren -Size 1100x700 -Pref 'browser.ui.animations=on' -Url (Page 'Alpha')
 try {
     Wren-Ctl wait load | Out-Null
+    # (set as the user does: one given on the command line would stay above what the test sets later)
+    Wren-Ctl pref set browser.tabs.position left | Out-Null
     foreach ($n in 'Bravo', 'Charlie', 'Delta', 'Echo') { Wren-Ctl tab new (Page $n) | Out-Null }
     Wren-Ctl wait frames 3 | Out-Null
     Shot 'barre laterale ouverte'
