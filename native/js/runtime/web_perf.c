@@ -63,11 +63,11 @@ typedef struct perf_entry { JSValue name, detail, data; int type; double start, 
 
 /* the values of PerformanceEntryType (api/performance.widl) */
 enum { KIND_MARK = 1, KIND_MEASURE, KIND_NAVIGATION, KIND_RESOURCE, KIND_PAINT, KIND_EVENT, KIND_FIRST_INPUT, KIND_LONG_TASK,
-       KIND_LCP, KIND_LAYOUT_SHIFT, KIND_ELEMENT, KIND_VISIBILITY_STATE, KIND_END };
+       KIND_LCP, KIND_LAYOUT_SHIFT, KIND_ELEMENT, KIND_VISIBILITY_STATE, KIND_LOAF, KIND_SCRIPT, KIND_END };
 #define TIMELINE_KINDS ((1u << KIND_NAVIGATION) | (1u << KIND_RESOURCE) | (1u << KIND_PAINT) | (1u << KIND_EVENT) | (1u << KIND_FIRST_INPUT) | (1u << KIND_LONG_TASK) | \
-                        (1u << KIND_LCP) | (1u << KIND_LAYOUT_SHIFT) | (1u << KIND_ELEMENT) | (1u << KIND_VISIBILITY_STATE))
+                        (1u << KIND_LCP) | (1u << KIND_LAYOUT_SHIFT) | (1u << KIND_ELEMENT) | (1u << KIND_VISIBILITY_STATE) | (1u << KIND_LOAF))
 static const char *const kind_names[KIND_END] = { "", "mark", "measure", "navigation", "resource", "paint", "event", "first-input", "longtask",
-    "largest-contentful-paint", "layout-shift", "element", "visibility-state" };
+    "largest-contentful-paint", "layout-shift", "element", "visibility-state", "long-animation-frame", "script" };
 
 static void entry_free(void *p)
 {
@@ -151,7 +151,8 @@ static JSValue timeline_entry_new(JSContext *ctx, int kind, JSValue data)
 {
     static const int ifaces[KIND_END] = { 0, 0, 0, WJ_IFACE_PerformanceNavigationTiming, WJ_IFACE_PerformanceResourceTiming,
         WJ_IFACE_PerformancePaintTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceEventTiming, WJ_IFACE_PerformanceLongTaskTiming,
-        WJ_IFACE_LargestContentfulPaint, WJ_IFACE_LayoutShift, WJ_IFACE_PerformanceElementTiming, WJ_IFACE_VisibilityStateEntry };
+        WJ_IFACE_LargestContentfulPaint, WJ_IFACE_LayoutShift, WJ_IFACE_PerformanceElementTiming, WJ_IFACE_VisibilityStateEntry,
+        WJ_IFACE_PerformanceLongAnimationFrameTiming, WJ_IFACE_PerformanceScriptTiming };
     perf_entry *e = malloc(sizeof *e);
     if (!e) { JS_FreeValue(ctx, data); return JS_ThrowOutOfMemory(ctx); }
     JSValue nm = JS_GetPropertyStr(ctx, data, "name");
@@ -506,6 +507,86 @@ JSValue wjr_VisibilityStateEntry_get_entryType(JSContext *ctx, JSValueConst this
 JSValue wjr_VisibilityStateEntry_get_startTime(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_startTime(ctx, this_val); }
 JSValue wjr_VisibilityStateEntry_get_duration(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_duration(ctx, this_val); }
 
+/* ---- Long Animation Frames (src/page/timeline_loaf.odin) ----
+ * The browser gives the frame as JSON (startTime, duration, renderStart, styleAndLayoutStart, styleDuration,
+ * layoutDuration, blockingDuration, firstUIEventTimestamp) with a nested "scripts" array; each script object has the
+ * members of PerformanceScriptTiming. The scripts FrozenArray is made on demand and kept in the entry's unused `detail`,
+ * like PerformanceLongTaskTiming.attribution. A PerformanceScriptTiming wraps one script object as its own data. */
+
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_startTime(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_startTime(ctx, this_val); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_duration(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_duration(ctx, this_val); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_name(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_name(ctx, this_val); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_entryType(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_entryType(ctx, this_val); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_renderStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "renderStart"); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_styleAndLayoutStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "styleAndLayoutStart"); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_styleDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "styleDuration"); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_layoutDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "layoutDuration"); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_blockingDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "blockingDuration"); }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_firstUIEventTimestamp(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "firstUIEventTimestamp"); }
+/* PaintTimingMixin on the LoAF entry: Wren times the frame by its loop clock, not a composited present, so paintTime is
+ * 0 (duration then runs to the frame end) and presentationTime is null, as the mixin allows. */
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_paintTime(JSContext *ctx, JSValueConst this_val) { return entry_this(ctx, this_val) ? JS_NewFloat64(ctx, 0) : JS_EXCEPTION; }
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_presentationTime(JSContext *ctx, JSValueConst this_val) { return entry_this(ctx, this_val) ? JS_NULL : JS_EXCEPTION; }
+JSValue wjr_PerformanceLongAnimationFrameTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
+JSValue wjr_PerformanceLongAnimationFrameTiming_get_scripts(JSContext *ctx, JSValueConst this_val)
+{
+    perf_entry *e = web_this_impl(ctx, this_val, WJ_IFACE_PerformanceLongAnimationFrameTiming);
+    if (!e) { return JS_EXCEPTION; }
+    if (JS_IsArray(e->detail)) { return JS_DupValue(ctx, e->detail); }
+    JSValue arr = JS_NewArray(ctx);
+    if (JS_IsException(arr)) { return arr; }
+    JSValue src = JS_IsUndefined(e->data) ? JS_UNDEFINED : JS_GetPropertyStr(ctx, e->data, "scripts");
+    int64_t n = 0;
+    if (JS_IsArray(src)) { JS_GetLength(ctx, src, &n); }
+    uint32_t k = 0;
+    for (int64_t i = 0; i < n; i++) {
+        JSValue s = JS_GetPropertyInt64(ctx, src, i);   /* the script's plain object becomes its entry's data */
+        JSValue so = timeline_entry_new(ctx, KIND_SCRIPT, s);
+        if (JS_IsException(so)) { JS_FreeValue(ctx, src); JS_FreeValue(ctx, arr); return so; }
+        wj_array_set(ctx, arr, k++, so);
+    }
+    JS_FreeValue(ctx, src);
+    if (!web_freeze(ctx, arr)) { JS_FreeValue(ctx, arr); return JS_EXCEPTION; }
+    JS_FreeValue(ctx, e->detail);
+    e->detail = JS_DupValue(ctx, arr);
+    return arr;
+}
+
+/* PerformanceScriptTiming: one script object (its own entry data). name and entryType are constant ("script"). */
+JSValue wjr_PerformanceScriptTiming_get_startTime(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_startTime(ctx, this_val); }
+JSValue wjr_PerformanceScriptTiming_get_duration(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_duration(ctx, this_val); }
+JSValue wjr_PerformanceScriptTiming_get_name(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "name"); }
+JSValue wjr_PerformanceScriptTiming_get_entryType(JSContext *ctx, JSValueConst this_val) { return wjr_PerformanceEntry_get_entryType(ctx, this_val); }
+JSValue wjr_PerformanceScriptTiming_get_invokerType(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "invokerType"); }
+JSValue wjr_PerformanceScriptTiming_get_invoker(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "invoker"); }
+JSValue wjr_PerformanceScriptTiming_get_executionStart(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "executionStart"); }
+JSValue wjr_PerformanceScriptTiming_get_sourceURL(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "sourceURL"); }
+JSValue wjr_PerformanceScriptTiming_get_sourceFunctionName(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "sourceFunctionName"); }
+JSValue wjr_PerformanceScriptTiming_get_sourceCharPosition(JSContext *ctx, JSValueConst this_val) { JSValue v = tl_num(ctx, this_val, "sourceCharPosition"); if (!JS_IsNumber(v)) { return v; } double d = 0; JS_ToFloat64(ctx, &d, v); JS_FreeValue(ctx, v); return JS_NewInt64(ctx, (int64_t)d); }
+JSValue wjr_PerformanceScriptTiming_get_sourceLine(JSContext *ctx, JSValueConst this_val) { JSValue v = tl_num(ctx, this_val, "sourceLine"); if (!JS_IsNumber(v)) { return v; } double d = 0; JS_ToFloat64(ctx, &d, v); JS_FreeValue(ctx, v); return JS_NewInt64(ctx, (int64_t)d); }
+JSValue wjr_PerformanceScriptTiming_get_sourceColumn(JSContext *ctx, JSValueConst this_val) { JSValue v = tl_num(ctx, this_val, "sourceColumn"); if (!JS_IsNumber(v)) { return v; } double d = 0; JS_ToFloat64(ctx, &d, v); JS_FreeValue(ctx, v); return JS_NewInt64(ctx, (int64_t)d); }
+JSValue wjr_PerformanceScriptTiming_get_pauseDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "pauseDuration"); }
+JSValue wjr_PerformanceScriptTiming_get_forcedStyleDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "forcedStyleDuration"); }
+JSValue wjr_PerformanceScriptTiming_get_forcedLayoutDuration(JSContext *ctx, JSValueConst this_val) { return tl_num(ctx, this_val, "forcedLayoutDuration"); }
+JSValue wjr_PerformanceScriptTiming_get_forcedStyleAndLayoutDuration(JSContext *ctx, JSValueConst this_val)
+{
+    JSValue a = tl_num(ctx, this_val, "forcedStyleDuration"), b = tl_num(ctx, this_val, "forcedLayoutDuration");
+    double x = 0, y = 0;
+    if (JS_IsNumber(a)) { JS_ToFloat64(ctx, &x, a); }
+    if (JS_IsNumber(b)) { JS_ToFloat64(ctx, &y, b); }
+    JS_FreeValue(ctx, a); JS_FreeValue(ctx, b);
+    return JS_NewFloat64(ctx, x + y);
+}
+JSValue wjr_PerformanceScriptTiming_get_windowAttribution(JSContext *ctx, JSValueConst this_val) { return tl_str(ctx, this_val, "windowAttribution"); }
+/* The script's window: Wren has one window per page, so the script's window is this realm's window (the global). */
+JSValue wjr_PerformanceScriptTiming_get_window(JSContext *ctx, JSValueConst this_val)
+{
+    if (!entry_this(ctx, this_val)) { return JS_EXCEPTION; }
+    return JS_GetGlobalObject(ctx);   /* owned reference */
+}
+JSValue wjr_PerformanceScriptTiming_toJSON(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) { WJ_UNUSED(argc); WJ_UNUSED(argv); return tl_to_json(ctx, this_val); }
+
 /* the structured clone of a detail (null when absent) */
 static bool clone_detail(JSContext *ctx, JSValueConst opt, JSValue *out)
 {
@@ -813,6 +894,7 @@ static JSValue buffered_entries(JSContext *ctx, int type)
     switch (type) {
     case KIND_EVENT: case KIND_FIRST_INPUT: case KIND_LONG_TASK:
     case KIND_LCP: case KIND_LAYOUT_SHIFT: case KIND_ELEMENT: case KIND_VISIBILITY_STATE:
+    case KIND_LOAF: case KIND_SCRIPT:
         return JS_NewArray(ctx);
     }
     if (type >= KIND_NAVIGATION) { return timeline_entries(ctx, type, 0, NULL); }
@@ -1340,7 +1422,7 @@ JSValue wjr_PerformanceObserver_static_get_supportedEntryTypes(JSContext *ctx, J
 {
     WJ_UNUSED(this_val);
     if (!supported_made) {
-        static const char src[] = "Object.freeze(['element', 'event', 'first-input', 'largest-contentful-paint', 'layout-shift', 'longtask', 'mark', 'measure', 'navigation', 'paint', 'resource', 'visibility-state'])";
+        static const char src[] = "Object.freeze(['element', 'event', 'first-input', 'largest-contentful-paint', 'layout-shift', 'long-animation-frame', 'longtask', 'mark', 'measure', 'navigation', 'paint', 'resource', 'visibility-state'])";
         JSValue v = JS_Eval(ctx, src, sizeof src - 1, "<performance>", JS_EVAL_TYPE_GLOBAL);
         if (JS_IsException(v)) { return v; }
         supported_types = v;
