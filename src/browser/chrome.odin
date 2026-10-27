@@ -208,6 +208,7 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 		seg_inset := inset
 		if ui.focus_key() == window_own(app).address_key { seg_inset = max(math.ceil(1.5 * ui.scale()), inset) }
 		security_chip(app, t, seg_inset, h - 2 * seg_inset, max(field_radius - seg_inset, 0))
+		zoom_overlay(app, t, res.box, h)
 	}
 	if bw := active_window(app); bw.focus_address {
 		bw.focus_address = false
@@ -237,20 +238,47 @@ address_bar :: proc(app: ^App, t: ^Tab) {
 	}
 }
 
-// What follows the address bar only while it applies: the page zoom, a passkey dialog.
+// What follows the address bar only while it applies: a passkey dialog.
 address_chips :: proc(app: ^App, t: ^Tab) {
+	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
+}
+
+// The page zoom, when it is not 100 %: a translucent pill over the end of the address field (it pushes nothing, the text
+// shows through), "-" 110 % "+" ; the number resets the zoom (Ctrl+0). `field` is the address field (its width is last
+// frame's: the pill follows a resize one frame late).
+zoom_overlay :: proc(app: ^App, t: ^Tab, field: ^ui.Box, bar_h: f32) {
+	if t == nil || zoom_percent(t) == 100 || field == nil { return }
 	em := ui.font_size()
-	// page zoom, when not 100 %: click to reset
-	if t != nil && zoom_percent(t) != 100 {
-		ui.spacer(ui.px(em * 0.3))
-		ui.next({width = ui.text_size(em * 0.4), height = ui.px(ui.dense(em * 1.8)), radius = em * CHROME_BUTTON_RADIUS})
+	btn, label := em * 1.5, em * 3.1
+	pw, ph := 2 * btn + label, em * 1.5
+	field_w := field.rect.max.x - field.rect.min.x
+	if field_w < pw + em * 6 { return }   // a bar too narrow to leave room for the address
+	bg := ui.color("background")
+	bd := ui.color("border")
+	ui.next({
+		fixed_x = field_w - pw - em * 0.45, fixed_y = (bar_h - ph) * 0.5, width = ui.px(pw), height = ui.px(ph), radius = ph * 0.5,
+		bg = ui.tuned(draw.Color{bg.r, bg.g, bg.b, 0.82}), border = ui.tuned(draw.Color{bd.r, bd.g, bd.b, 0.7}),
+	})
+	if ui.row(.Center, {.Draw_Background, .Draw_Border}, "###zoom_pill") {
+		ui.next({width = ui.px(btn), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
+		if ui.tags("ghost_button") {
+			out := ui.button("−###zoom_out")
+			tip(out, "Zoom out (Ctrl+-)")
+			if out.clicked { zoom_step(app, t, -1) }
+		}
+		ui.next({width = ui.px(label), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
 		if ui.tags("ghost_button") {
 			z := ui.button(fmt.aprintf("%d %%###zoom_chip", zoom_percent(t), allocator = ui.frame_allocator()))
 			tip(z, "Page zoom: click to reset (Ctrl+0)")
 			if z.clicked { zoom_set(app, t, 1) }
 		}
+		ui.next({width = ui.px(btn), height = ui.pct(1), radius = ph * 0.5, text_pad = 0})
+		if ui.tags("ghost_button") {
+			in_ := ui.button("+###zoom_in")
+			tip(in_, "Zoom in (Ctrl++)")
+			if in_.clicked { zoom_step(app, t, 1) }
+		}
 	}
-	webauthn_chip(app, t)   // a passkey dialog is open for the page (webauthn_shell.odin)
 }
 
 // Makes tab `i` the current one.
