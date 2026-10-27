@@ -83,6 +83,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_font_prefs(p)
 	register_web_face_prefs(p)   // web_font_faces.odin
 	register_frame_prefs(p)    // pacing.odin
+	register_gpu_prefs(p)      // partial_redraw.odin
 	register_scroll_prefs(p)   // smooth_scroll.odin
 	register_autoscroll_prefs(p)   // page_autoscroll.odin
 	register_cursor_prefs(p)   // page_cursor.odin

@@ -93,6 +93,12 @@ Comp_Chunk :: struct {
 	clips:    [dynamic]i32,            // clips recorded into the picture (their radii are watched)
 	screen:   lay.Rect,                // this frame: what its items paint (before the filters of their groups)
 	visible:  bool,
+	// partial redraw (browser.gpu.partial_redraw): what the chunk looked like last frame, to damage only what moved.
+	// `dmg_hash` folds its content version, its screen bounds and its slot matrices; `dmg_screen` is the bounds it was
+	// last drawn at (grown by the group's reach), so a change damages the union of the old and new positions.
+	dmg_hash:   u64,
+	dmg_screen: lay.Rect,
+	dmg_seen:   bool,
 }
 
 @(private)
@@ -194,6 +200,15 @@ raster_props :: proc() -> style.Prop_Set {
 mix :: #force_inline proc(h, v: u64) -> u64 {
 	x := (h ~ v) * 0x100000001B3
 	return x ~ (x >> 31)
+}
+
+// Folds a slot's index and its matrix into the damage hash of a chunk (partial redraw): the hash changes exactly when
+// a scroll offset, a sticky shift or a transform moved the slot's pixels.
+@(private = "file")
+chunk_mat_hash :: proc(h: u64, slot: u32, m: draw.Affine) -> u64 {
+	x := mix(h, u64(slot))
+	for v in ([6]f32{m.a, m.b, m.c, m.d, m.e, m.f}) { x = mix(x, u64(transmute(u32)v)) }
+	return x
 }
 
 @(private = "file")
@@ -776,6 +791,13 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 				off := v.offsets[it.space] + e.origin
 				paint_item(l, dc, d, &v, it, draw.Rect{it.rect.min + off, it.rect.max + off}, off, e.origin)
 				composite_stats.immediate_items += 1
+				// immediate items (images that may animate, form controls, scroll bars, blurred text) are drawn every
+				// frame: their ink is damaged, grown by the group's reach for any effect that bleeds past it.
+				if draw.partial_redraw(dc) {
+					ink := item_ink(&e, it)
+					reach: f32 = ch.group != lay.NONE ? l.groups[ch.group].reach : 0
+					draw.damage(dc, draw.Rect{ink.min - reach, ink.max + reach})
+				}
 			}
 			continue
 		}
@@ -784,10 +806,14 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 		m := draw.Affine{1, 0, 0, 1, root[4] + e.origin.x, root[5] + e.origin.y}
 		ras := draw.affine_scale_factor(draw.current_transform(dc))   // (a plane layer is rasterized denser or sparser than 1)
 		if !ch.recorded { record_chunk(c, l, dc, d, &v, &ch, ras) }
-		// the space matrices of this frame (scroll offsets, sticky shifts, transforms)
+		// the space matrices of this frame (scroll offsets, sticky shifts, transforms). A damage hash folds the
+		// picture's content version and every slot matrix: it changes exactly when the chunk's pixels would move.
+		dmg := mix(0xcbf29ce484222325, draw.picture_version(ch.pic))
 		for b in ch.slots {
-			draw.picture_set_slot(ch.pic, b.slot, slot_matrix(&v, ch.root, b.space))
+			sm := slot_matrix(&v, ch.root, b.space)
+			draw.picture_set_slot(ch.pic, b.slot, sm)
 			composite_stats.slots_set += 1
+			dmg = chunk_mat_hash(dmg, b.slot, sm)
 		}
 		pop_chain_to(&e, clip_floor(&e))
 		e.clip = -2   // the next item re-pushes its own clips
@@ -801,6 +827,17 @@ composite_paint :: proc(l: ^Layout, dc: ^draw.Context, d: ^dom.Document, origin,
 			res = draw.replay(dc, ch.pic, m)
 		}
 		if res == .Drawn { composite_stats.replayed += 1 }
+		// partial redraw: damage the chunk's region when its pixels moved since last frame (content, scroll, transform,
+		// or a new effect reach), as the union of where it was and where it is now, grown by the group's filter reach.
+		if draw.partial_redraw(dc) && res == .Drawn {
+			reach: f32 = ch.group != lay.NONE ? l.groups[ch.group].reach : 0
+			now := lay.Rect{ch.screen.min - reach, ch.screen.max + reach}
+			if !ch.dmg_seen || dmg != ch.dmg_hash {
+				r := ch.dmg_seen ? lay.rect_union(ch.dmg_screen, now) : now
+				draw.damage(dc, draw.Rect{r.min, r.max})
+			}
+			ch.dmg_hash, ch.dmg_screen, ch.dmg_seen = dmg, now, true
+		}
 	}
 	effects_end(&e)
 	return true
