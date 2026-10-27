@@ -206,6 +206,9 @@ shaders.odin CARD_FOIL_ARGS process  # a table
 shaders.odin SHADERS process  # a table
 shell_frames.odin SHELL_FRAME_PREFS process  # a table
 shell_frames.odin chrome_frames process
+page_autoscroll.odin AUTOSCROLL_PREFS process  # a table
+page_autoscroll.odin autoscroll_cfg process  # preferences read once and on change
+page_autoscroll.odin autoscroll_watch process  # preferences read once and on change
 smooth_scroll.odin SCROLL_PREFS process  # a table
 smooth_scroll.odin smooth_cfg process  # preferences read once and on change
 smooth_scroll.odin smooth_watch process  # preferences read once and on change
