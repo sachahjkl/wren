@@ -399,6 +399,7 @@ window_cursor_apply :: proc(app: ^App) {
 		wc.keyword = .Progress   // (nothing laid out yet: a document on its way)
 	}
 	if c, dragging := dnd_cursor(); dragging { wc = Window_Cursor{keyword = c} }   // dnd_shell.odin: the drag's operation
+	if c, on := autoscroll_page_cursor(app); on { wc = Window_Cursor{keyword = c} }   // page_autoscroll.odin: the direction while autoscrolling
 	if wc.custom != 0 && !platform.custom_cursor_valid(active_window(app).win, wc.custom) { wc.custom = 0 }
 	if wc.custom != 0 {
 		platform.set_cursor_custom(active_window(app).win, wc.custom, wc.keyword, wc.scale)
