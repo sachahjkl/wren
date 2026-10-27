@@ -62,6 +62,37 @@ Linux end to end: `tools/crash_e2e.sh` (8 ways of dying, each with its report or
 the slice: the unit tests of every package touched, `nettest` and `wsclosetest` on both stacks, `remote_e2e`,
 `crash_e2e`, the dev build.
 
+## Slice 3 (2026-10-27, night): what it adds
+
+The counts do not move (78 / 153; the engine 35 / 37): no package that was blocked passes now — the blocked ones are
+`browser` and the toolkit's `platform` / `render`, the shell and the window, a later chantier. Slice 3 fills the
+behaviour behind packages that already passed `odin check` for Linux:
+
+- **Audio** (`media`): real sound, not silence. `native/media` gains `audio.rs` (Symphonia for AAC-LC, MP3, FLAC,
+  Vorbis, PCM; libopus for Opus) and `aout.rs` (cpal: ALSA, which PipeWire and PulseAudio serve), behind `wm_audio_*`
+  and `wm_aout_*`. The Odin side (`audio_decode_rust.odin`, `audio_out_cpal.odin`) wires them to `Audio_Decoder` /
+  `Audio_Output`; `backend_linux.odin` picks cpal or the null output by `media.audio.backend`. The new crates are
+  target-gated to non-Windows (Opus' C and cpal's ALSA stay out of the Windows build).
+- **H.264** (`media`): `h264_linux.odin` decodes through Cisco's **openh264**, `dlopen`ed at run time (never built from
+  source: the patent licence covers only Cisco's binaries, `tools/fetch_openh264.sh`), behind `Video_Decoder`.
+  `vaapi_linux.odin` probes the GPU's VA-API H.264 support (libva / libva-drm by `dlopen`, a DRM render node) and is
+  preferred when `media.h264.backend` allows; the VA-API decode path itself (slice-level) is not written, so it falls
+  back to openh264 — the first thing to try under WSL is openh264.
+- **Desktop** (`desktop`): `watch_linux.odin` watches the integration directories (applications, icons, `~/.local/bin`)
+  with **inotify** (an eventfd to stop, retries when a place is missing). `xdg_linux.odin` centralises the XDG base
+  directories. The Linux backend gains a **PATH** part: a symlink in `~/.local/bin` (the "Add to PATH" of Linux).
+- **Web Authentication** (`webauthn`): `platform_fido2_linux.odin` reaches USB / NFC security keys through
+  **libfido2** (`dlopen`), behind the same `Platform` as Windows' webauthn.dll. Client PINs, on-device user
+  verification and hybrid (a phone) are reported unsupported until the toolkit has a prompt.
+- **`build.sh`**: a `wren` target with the Linux link flags (`--build-id`, `-lpthread`, `-ldl`, `-lm`, a
+  non-executable stack); it links as far as it can and states what still blocks (the toolkit's Linux window and the
+  shell).
+
+To try under WSL (NixOS): `cargo build` once (new crates: Symphonia, opus, cpal, libc — `native/Cargo.lock` and
+`native/rust-crates.txt` regenerate; symphonia is MPL-2.0, cpal Apache-2.0, libopus BSD-3-Clause); then the unit tests
+of `media`, `desktop` and `webauthn` for Linux, a page with `<audio>` / `<video>` (H.264 after
+`tools/fetch_openh264.sh`), and a security key for `navigator.credentials`.
+
 ## Media on Linux: decisions
 
 - **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media
