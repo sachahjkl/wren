@@ -55,6 +55,7 @@ Host_Rules :: struct {
 	replace: [dynamic]Replace_Rule,
 	xml:     [dynamic]Xml_Rule,
 	embed:   [dynamic]Embed_Rule,
+	html:    [dynamic]Html_Rule,   // `##^` HTML filters of the host (html_filter.odin)
 	refs:    int,           // filters of requests in flight that point at the rules
 	dead:    bool,          // replaced by a newer entry: destroyed when the last filter lets go
 }
@@ -75,6 +76,8 @@ host_rules_destroy :: proc(h: ^Host_Rules) {
 	delete(h.xml)
 	for &r in h.embed { embed_destroy(&r) }
 	delete(h.embed)
+	for &r in h.html { html_rule_destroy(&r) }
+	delete(h.html)
 	free(h)
 }
 
@@ -197,6 +200,15 @@ host_rules_for :: proc(b: ^Blocker, host: string, pf: adblock.Page_Flags) -> ^Ho
 				}
 				append(&h.embed, er)
 			}
+		}
+	}
+	// `##^` HTML filters of the host (deleted from the document's markup, html_filter.odin). Gated by `no_html` (the
+	// `#@#^` exceptions), independent of the scriptlets switch.
+	if !cos.no_html && b.cfg.html_filters {
+		for id in cos.active {
+			v := adblock.cosmetic_filter(e, id)
+			if .Html not_in v.flags { continue }
+			if r, ok := html_rule_parse(v.selector); ok { append(&h.html, r) }
 		}
 	}
 	if b.net_rules == nil { b.net_rules = make(map[string]^Host_Rules) }
@@ -815,11 +827,14 @@ html_filter_make :: proc(rules: []Embed_Rule) -> fetch.Body_Filter {
 rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf: adblock.Page_Flags, headers: http.Headers, scriptlets: bool, replace: []string) -> fetch.Body_Filter {
 	first := replace_filter_make(replace)
 	second: fetch.Body_Filter
-	if scriptlets {
+	nav := q.destination == .Document || fetch.is_frame_destination(q.destination)
+	// the HTML filters (`##^`) run on a document / frame response even when scriptlets are off, as long as the blocker and
+	// the HTML-filters switch are on; the scriptlet rewrites below still need `scriptlets`
+	want_rules := scriptlets || (nav && b.cfg.html_filters && b.cfg.enabled)
+	if want_rules {
 		if h := host_rules_for(b, host, pf); h != nil {
-			nav := q.destination == .Document || fetch.is_frame_destination(q.destination)
 			switch {
-			case q.destination == .Empty && !q.ping:
+			case scriptlets && q.destination == .Empty && !q.ping:
 				if len(h.prune) + len(h.replace) + len(h.xml) > 0 {
 					f := new(Buf_Filter)
 					for &r in h.prune { if needle_test(&r.url, q.url) { append(&f.prune, &r) } }
@@ -836,9 +851,19 @@ rewrite_filter :: proc(b: ^Blocker, q: ^fetch.Intercept_Query, host: string, pf:
 					}
 				}
 			case nav:
-				if len(h.embed) > 0 {
-					ct, _ := http.get_header(headers, "content-type")
-					if strings.contains(ct, "html") { second = html_filter_make(h.embed[:]) }
+				// only for HTML answers (never JSON, images, other types)
+				ct, _ := http.get_header(headers, "content-type")
+				is_html := strings.contains(ct, "html") || (ct == "" && q.destination == .Document)
+				if is_html {
+					embed_f: fetch.Body_Filter
+					if scriptlets && len(h.embed) > 0 { embed_f = html_filter_make(h.embed[:]) }
+					html_f: fetch.Body_Filter
+					if b.cfg.html_filters && len(h.html) > 0 {
+						html_f = html_doc_filter_make(h.html[:], b.cfg.html_max_body, q.url, html_hit_cb, b)
+					}
+					// the embed rewrite (JSON literals) before the HTML element removal: removing an element never changes a
+					// JSON literal, and the embed scan only holds a few bytes while the HTML filter holds the whole body
+					second = chain_make(embed_f, html_f)
 				}
 			}
 		}
