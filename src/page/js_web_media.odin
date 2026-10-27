@@ -10,7 +10,6 @@ package page
 
 import "core:mem/virtual"
 import "core:strings"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:css"
 import "wb:dom"
@@ -181,23 +180,23 @@ MediaQueryList_matches :: proc(c: ^Call, list: Api_MediaQueryList) -> bool {
 }
 
 // The screen of the page: the primary monitor (the page does not know which monitor shows its tab), in CSS pixels.
+// Without one the system can name (screen_other.odin), the screen is the page's viewport, the whole of it available.
 Screen_get :: proc(c: ^Call, field: Api_ScreenField) -> i32 {
-	dppx := media_env(c.page).dppx
+	env := media_env(c.page)
+	dppx := env.dppx
 	if dppx <= 0 { dppx = 1 }
-	work: win.RECT
+	screen, work, ok := primary_screen()
+	if !ok {
+		w, h := i32(f64(env.width) * dppx), i32(f64(env.height) * dppx)
+		screen, work = {0, 0, w, h}, {0, 0, w, h}
+	}
 	switch field {
-	case .Width: return i32(f64(win.GetSystemMetrics(win.SM_CXSCREEN)) / dppx)
-	case .Height: return i32(f64(win.GetSystemMetrics(win.SM_CYSCREEN)) / dppx)
-	case .Avail_Width, .Avail_Height, .Avail_Left, .Avail_Top:
-		if win.SystemParametersInfoW(win.SPI_GETWORKAREA, 0, &work, 0) == win.FALSE {
-			work = {0, 0, win.GetSystemMetrics(win.SM_CXSCREEN), win.GetSystemMetrics(win.SM_CYSCREEN)}
-		}
-		#partial switch field {
-		case .Avail_Width: return i32(f64(work.right - work.left) / dppx)
-		case .Avail_Height: return i32(f64(work.bottom - work.top) / dppx)
-		case .Avail_Left: return i32(f64(work.left) / dppx)
-		case .Avail_Top: return i32(f64(work.top) / dppx)
-		}
+	case .Width: return i32(f64(screen[2] - screen[0]) / dppx)
+	case .Height: return i32(f64(screen[3] - screen[1]) / dppx)
+	case .Avail_Width: return i32(f64(work[2] - work[0]) / dppx)
+	case .Avail_Height: return i32(f64(work[3] - work[1]) / dppx)
+	case .Avail_Left: return i32(f64(work[0]) / dppx)
+	case .Avail_Top: return i32(f64(work[1]) / dppx)
 	case .Color_Depth:
 		bits := media_env(c.page).color_bits
 		return i32(bits > 0 ? bits : 24)

@@ -15,6 +15,7 @@
 use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
+mod av1video;
 mod avif;
 mod color;
 mod raster;
@@ -362,6 +363,70 @@ pub unsafe extern "C" fn wm_raster_encode(format: u32, rgba: *const u8, w: u32, 
         let px = std::slice::from_raw_parts(rgba, w as usize * h as usize * 4);
         raster::encode(format, px, w, h, quality, premultiplied != 0, &*sink)
     })
+}
+
+////////////////////////////////
+// AV1 video (the media player: src/media/av1_soft.odin)
+
+fn guard_value(f: impl FnOnce() -> Result<i32, i32>) -> i32 {
+    match catch_unwind(AssertUnwindSafe(f)) {
+        Ok(Ok(v)) => v,
+        Ok(Err(e)) => e,
+        Err(_) => ERR_INTERNAL,
+    }
+}
+
+/// # Safety
+/// `out` is a valid slot.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_open(threads: u32, max_pixels: u64, out: *mut *mut c_void) -> i32 {
+    guard(|| {
+        *out = Box::into_raw(av1video::Decoder::open(threads, max_pixels)?) as *mut c_void;
+        Ok(())
+    })
+}
+
+/// 0 taken, 1 refused (take pictures first), else an error.
+/// # Safety
+/// `d` comes from wm_av1_open; `data` points at `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_send(d: *mut c_void, data: *const u8, len: usize, pts: i64) -> i32 {
+    guard_value(|| {
+        let bytes = if len == 0 || data.is_null() { &[][..] } else { std::slice::from_raw_parts(data, len) };
+        (*(d as *mut av1video::Decoder)).send(bytes, pts)
+    })
+}
+
+/// 0 a picture in `pic`, 1 none yet (more input), else an error.
+/// # Safety
+/// `d` comes from wm_av1_open; `pic` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_get(d: *mut c_void, pic: *mut av1video::Picture) -> i32 {
+    guard_value(|| (*(d as *mut av1video::Decoder)).get(&mut *pic))
+}
+
+/// # Safety
+/// `handle` is a picture's, released once.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_release(handle: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| av1video::release(handle)));
+}
+
+/// # Safety
+/// `d` comes from wm_av1_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_flush(d: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(d as *mut av1video::Decoder)).flush()));
+}
+
+/// # Safety
+/// `d` comes from wm_av1_open; closed once, after every picture was released.
+#[no_mangle]
+pub unsafe extern "C" fn wm_av1_close(d: *mut c_void) {
+    if d.is_null() {
+        return;
+    }
+    let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(d as *mut av1video::Decoder))));
 }
 
 /// Versions of the libraries, for about: pages ("resvg 0.48.1, ..."), NUL-terminated, static.

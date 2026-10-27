@@ -174,3 +174,6 @@ jobs:
 
       - name: odin check and unit tests (tools/linux_ci.sh)
         run: tools/linux_ci.sh odin
+
+      - name: Crash reports end to end (tools/crash_e2e.sh)
+        run: tools/crash_e2e.sh odin

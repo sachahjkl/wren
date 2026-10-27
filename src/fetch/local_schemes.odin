@@ -109,19 +109,31 @@ process_data_url :: proc(u: url.URL, allocator := context.allocator) -> (d: Data
 ////////////////////////////////
 // file: URLs
 
-// "/C:/dir/a b.txt" (URL path) -> "C:\dir\a b.txt"; UNC hosts become \\host\share\...
+// The separator of the paths file_path_from_url makes (and the file: code joins).
+FILE_SEP     :: '\\' when ODIN_OS == .Windows else '/'
+FILE_SEP_STR :: "\\" when ODIN_OS == .Windows else "/"
+
+// "/C:/dir/a b.txt" (URL path) -> "C:\dir\a b.txt"; UNC hosts become \\host\share\... Elsewhere the URL's path is the
+// file's ("/home/a b.txt"), and a host other than localhost names no local file.
 file_path_from_url :: proc(u: url.URL, allocator := context.allocator) -> (path: string, ok: bool) {
 	if u.scheme != "file" { return "", false }
 	raw := percent_decode(u.path, context.temp_allocator)
 	p := string(raw)
 	if strings.contains(p, "\x00") { return "", false }
-	// "/C:/x" -> "C:/x"
-	if len(p) >= 3 && p[0] == '/' && p[2] == ':' && ((p[1] >= 'a' && p[1] <= 'z') || (p[1] >= 'A' && p[1] <= 'Z')) { p = p[1:] }
-	if u.host != "" && u.host != "localhost" { p = strings.concatenate({"//", u.host, p}, context.temp_allocator) }
-	if !file_path_safe(p) { return "", false }
-	out, allocated := strings.replace_all(p, "/", "\\", allocator)
-	if !allocated { out = strings.clone(out, allocator) }   // ("C:" has no '/': the result would be the temporary decoding)
-	return out, true
+	when ODIN_OS != .Windows {
+		if u.host != "" && u.host != "localhost" { return "", false }
+		if p == "" { p = "/" }
+		if !file_path_safe(p) { return "", false }
+		return strings.clone(p, allocator), true
+	} else {
+		// "/C:/x" -> "C:/x"
+		if len(p) >= 3 && p[0] == '/' && p[2] == ':' && ((p[1] >= 'a' && p[1] <= 'z') || (p[1] >= 'A' && p[1] <= 'Z')) { p = p[1:] }
+		if u.host != "" && u.host != "localhost" { p = strings.concatenate({"//", u.host, p}, context.temp_allocator) }
+		if !file_path_safe(p) { return "", false }
+		out, allocated := strings.replace_all(p, "/", "\\", allocator)
+		if !allocated { out = strings.clone(out, allocator) }   // ("C:" has no '/': the result would be the temporary decoding)
+		return out, true
+	}
 }
 
 // Whether a decoded file: path names the file it says, as Windows will open it. Refused, whoever asks:
@@ -131,7 +143,13 @@ file_path_from_url :: proc(u: url.URL, allocator := context.allocator) -> (path:
 //   * segments Windows rewrites: trailing dots or spaces ("a.txt." opens a.txt), device names (CON, NUL, COM1, LPT1...,
 //     with an extension or not, which open devices instead of files);
 //   * device paths (\\?\, \\.\), which skip the normalization these rules rely on.
+// Elsewhere only the first and the control characters apply: the system opens every other name as it is written.
 file_path_safe :: proc(p: string) -> bool {
+	when ODIN_OS != .Windows {
+		for c in transmute([]u8)p { if c < 0x20 || c == 0x7f { return false } }
+		for seg in strings.split(p, "/", context.temp_allocator) { if seg == "." || seg == ".." { return false } }
+		return true
+	}
 	for c, i in transmute([]u8)p {
 		if c < 0x20 || c == 0x7f || c == '<' || c == '>' || c == '"' || c == '|' || c == '?' || c == '*' { return false }
 		if c == ':' && !(i == 1 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z'))) { return false }
@@ -174,15 +192,17 @@ is_device_name :: proc(seg: string) -> bool {
 file_directory :: proc(u: url.URL, allocator := context.allocator) -> string {
 	p, ok := file_path_from_url(u, context.temp_allocator)
 	if !ok { return "" }
-	if i := strings.last_index_byte(p, '\\'); i >= 0 { return strings.clone(p[:i], allocator) }
+	if i := strings.last_index_byte(p, FILE_SEP); i >= 0 { return strings.clone(p[:i], allocator) }
 	return strings.clone(p, allocator)
 }
 
-// Is `path` inside the directory tree `root` (case-insensitive, on a separator boundary)?
+// Is `path` inside the directory tree `root` (on a separator boundary; case-insensitive where the file system is,
+// Windows)?
 path_within :: proc(root, path: string) -> bool {
-	if root == "" { return false }
-	if len(path) < len(root) || !strings.equal_fold(path[:len(root)], root) { return false }
-	return len(path) == len(root) || path[len(root)] == '\\' || strings.has_suffix(root, "\\")
+	if root == "" || len(path) < len(root) { return false }
+	same := strings.equal_fold(path[:len(root)], root) when ODIN_OS == .Windows else path[:len(root)] == root
+	if !same { return false }
+	return len(path) == len(root) || path[len(root)] == FILE_SEP || strings.has_suffix(root, FILE_SEP_STR)
 }
 
 mime_for_extension :: proc(path: string) -> string {

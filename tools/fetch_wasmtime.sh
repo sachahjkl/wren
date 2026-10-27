@@ -15,7 +15,8 @@ NAME="wasmtime-v$VERSION-$ARCH-linux-c-api"
 URL="https://github.com/bytecodealliance/wasmtime/releases/download/v$VERSION/$NAME.tar.xz"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/build/wasmtime-linux"
-if [ "${1:-}" != "--force" ] && [ -f "$OUT/lib/libwasmtime.a" ] && [ "$(cat "$OUT/VERSION" 2>/dev/null)" = "$VERSION-$ARCH" ]; then
+STAMP="$VERSION-$ARCH-sealed"
+if [ "${1:-}" != "--force" ] && [ -f "$OUT/lib/libwasmtime.a" ] && [ "$(cat "$OUT/VERSION" 2>/dev/null)" = "$STAMP" ]; then
   echo "wasmtime $VERSION already in $OUT"; exit 0
 fi
 TMP="$(mktemp -d)"
@@ -27,6 +28,17 @@ if [ "$GOT" != "$SHA256" ]; then echo "SHA-256 mismatch for $NAME.tar.xz: expect
 tar -xJf "$TMP/$NAME.tar.xz" -C "$TMP"
 rm -rf "$OUT"
 mkdir -p "$OUT"
-cp -r "$TMP/$NAME/include" "$TMP/$NAME/lib" "$OUT/"
-echo "$VERSION-$ARCH" > "$OUT/VERSION"
+cp -r "$TMP/$NAME/include" "$OUT/"
+mkdir -p "$OUT/lib"
+# Sealed: the archive carries its own copy of Rust's standard library, and so does build/native-linux/libwren_native.a.
+# GNU ld pulls members of both and stops on the symbols they share unmangled (rust_eh_personality, the allocator and
+# panic shims); and two standard libraries of different compilers must never call into each other anyway. So the
+# archive is linked into one relocatable object and every symbol but the C API's (wasm_*, wasmtime_*, wasi_*, wat_*)
+# made local: the program sees the C API only, each Rust keeps its own runtime. (On Windows the MSVC toolchain has no
+# such shared symbol: wasmtime.lib links as shipped.)
+ld -r --whole-archive "$TMP/$NAME/lib/libwasmtime.a" -o "$TMP/wasmtime.o"
+nm -g --defined-only "$TMP/wasmtime.o" | awk '{print $3}' | grep -E '^(wasm_|wasmtime_|wasi_|wat_)' > "$TMP/keep.txt"
+objcopy --keep-global-symbols="$TMP/keep.txt" "$TMP/wasmtime.o"
+ar rcs "$OUT/lib/libwasmtime.a" "$TMP/wasmtime.o"
+echo "$STAMP" > "$OUT/VERSION"
 echo "wasmtime $VERSION ($ARCH) in $OUT"
