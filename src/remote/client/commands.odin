@@ -510,6 +510,11 @@ cmd_window :: proc(ctx: ^Context) -> int {
 		fmt.sbprintf(&b, `%s"left":%d,"top":%d`, sep, int(v[0]), int(v[1])); sep = ","
 	}
 	if s := opt(&ctx.o, "state"); s != "" { fmt.sbprintf(&b, `%s"windowState":%s`, sep, q(s)); sep = "," }
+	if s := opt(&ctx.o, "dpi"); s != "" {   // (the window as if moved to a monitor of that scale: WM_DPICHANGED)
+		v, ok := parse_float(s)
+		if !ok || v <= 0 { return usage("window", "--dpi n (96 = 100 %, 144 = 150 %)") }
+		fmt.sbprintf(&b, `%s"dpi":%d`, sep, int(v + 0.5)); sep = ","
+	}
 	strings.write_byte(&b, '}')
 	method := sep == "" ? "Browser.getWindowBounds" : "Browser.setWindowBounds"
 	return simple(ctx, method, strings.to_string(b))

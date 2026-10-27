@@ -50,6 +50,14 @@ window the user is in (the front one).
 * The caret of a focused field shows and blinks only in the front window (`window_is_front`; the chrome's fields through
   `ui.Build_Params.inactive`); each window's caret and validation bubble have timers of their own (`Forms_View.blink_timer`,
   naming the window by its id). `window_set_front` repaints the window that was in front and the new one.
+* Scale (DPI): each window has its monitor's (`platform.Window.dpi_scale`, changed by the system's `WM_DPICHANGED` when it moves
+  to a monitor of another scale, with the rectangle the system suggests). Its chrome is built at it (`ui_scale_of(app, w)`), its
+  page laid out at it (`page_scale` reads the window's scale, not the last build's: no frame at the old one), and its document
+  stays where it was scrolled to (`tab_scale_follow`: `Tab.scroll` is in device pixels, rescaled when the scale it was in
+  changed, also for a tab moved to a window of another scale). A developer tools' window has its own. Tab icons are decoded for
+  the largest scale of the windows and decoded again when a window's grows (`favicon_decode_px`). `wren ctl window --dpi n`
+  sends the window a `WM_DPICHANGED` (a machine with one monitor tests it: `tools\window_dpi_e2e.ps1`); what the screen shows
+  while a window straddles two monitors of different scales is the system's and is not tested.
 * Remote calls with `--win-id` (or a tab of that window) act on that window until they answer: their waits count its frames,
   and a capture is of its frame (`remote_capture_arm`: the renderer copies the next frame it ends, so it is asked for in that
   window's frame).
