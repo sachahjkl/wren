@@ -633,11 +633,15 @@ wj_val wj_wrap_node(wj_ctx *ctx, uint64_t node)
     return obj;
 }
 
+/* An interface a host handle is wrapped as instead of another (-1: none): the abstract TextTrackCue the browser hands out is a VTTCue. */
+int wj_wrap_remap_from = -1, wj_wrap_remap_to = -1;
+
 wj_val wj_wrap_host(wj_ctx *ctx, uint64_t handle, int iface)
 {
     if (!handle) { return JS_NULL; }
     JSValue v = wj_map_get(&wj_hosts, handle);
     if (!JS_IsUndefined(v)) { return JS_DupValue(ctx, v); }
+    if (iface == wj_wrap_remap_from) { iface = wj_wrap_remap_to; }   /* e.g. every cue of the browser is a WebVTT one: web_tracks.c */
     JSValue obj = wj_make(ctx, iface, WJ_KIND_HOST, handle, JS_UNDEFINED);
     if (JS_IsException(obj)) { return obj; }
     if (!wj_map_put(&wj_hosts, handle, obj)) { JS_FreeValue(ctx, obj); return JS_ThrowOutOfMemory(ctx); }
