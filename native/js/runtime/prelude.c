@@ -7,23 +7,9 @@
 #include "qjs_internal.h"
 #include "prelude_sources.h"   /* wj_prelude_sources[], wj_prelude_count */
 
-/* __wren_intl_host(): { locale, timeZone } of the browser, read when Intl first needs them (at run time) */
-static JSValue wj_intl_host(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
-{
-    WJ_UNUSED(this_val); WJ_UNUSED(argc); WJ_UNUSED(argv);
-    JSValue o = JS_NewObject(ctx);
-    int32_t n;
-    WJ_FETCH_STRING(n, wr_Engine_locale(wj_scratch.data, wj_scratch.cap));
-    JS_DefinePropertyValueStr(ctx, o, "locale", n > 0 ? JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n) : JS_NewString(ctx, "en-US"), JS_PROP_C_W_E);
-    WJ_FETCH_STRING(n, wr_Engine_timeZone(wj_scratch.data, wj_scratch.cap));
-    JS_DefinePropertyValueStr(ctx, o, "timeZone", n > 0 ? JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)n) : JS_NewString(ctx, "UTC"), JS_PROP_C_W_E);
-    return o;
-}
-
 int wj_run_preludes(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_intl_host", JS_NewCFunction(ctx, wj_intl_host, "__wren_intl_host", 0));
     extern JSValue wj_ce_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_ce_host", wj_ce_host_object(ctx));
     extern JSValue wj_shadow_host_object(JSContext *ctx);

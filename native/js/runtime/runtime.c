@@ -19,6 +19,9 @@ int wj_runtime_preinit(JSContext *ctx)
 {
     wj_realm *r = &wj_the_realm;
     if (wj_interface_find("console") < 0) { wj_install_console(ctx, r->global); }
+    /* Intl (ECMA-402): a native namespace built into the image, in place of the old prelude/intl.js */
+    extern void wj_install_intl(JSContext *ctx);
+    wj_install_intl(ctx);
     if (wj_dom_preinit(ctx) < 0) { return -1; }
     extern int wj_run_preludes(JSContext *ctx);
     if (wj_run_preludes(ctx) != 0) { return -1; }
