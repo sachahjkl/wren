@@ -189,6 +189,7 @@ render.odin page_render process
 render_settings.odin RENDER_PREFS process  # a table
 render_settings.odin render_settings process  # preferences read once and on change
 render_settings.odin render_watch process  # preferences read once and on change
+search_engines.odin BUILTIN_ENGINES process  # a table
 selection_shell.odin ix process
 selection_shell.odin ix_watch process  # preferences read once and on change
 selection_shell.odin spaint page  # the painted selection of a page

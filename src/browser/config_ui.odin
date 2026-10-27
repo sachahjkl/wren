@@ -13,7 +13,9 @@ package browser
 //     K / M / G, restart) are behind the row's details fold (the chevron, or Right / Left);
 //   * the editor in a fixed column: a switch, a choice, a field with its unit; the reset button beside it.
 //
-// The desktop integration is a row of the Browser category (desktop_shell.odin fills it in).
+// The desktop integration is a row of the Browser category (desktop_shell.odin fills it in); the search engines' list
+// and its editor are a row of the Search category (search_engines_ui.odin), whose default engine is a choice of their
+// names.
 //
 // The list is virtualized (ui.vlist): only the rows in view are built, whatever the number of preferences. The rows
 // themselves (which preferences, in which order, under which headers) and the category counts are worked out again only
@@ -45,9 +47,9 @@ Row_State :: struct {
 	expanded: bool,      // the details are open
 }
 
-Config_Row_Kind :: enum u8 { Header, Pref, Desktop }
+Config_Row_Kind :: enum u8 { Header, Pref, Desktop, Engines }
 
-// A row of the list: a group header, a preference or the desktop integration.
+// A row of the list: a group header, a preference, the desktop integration or the search engines' list.
 Config_Row :: struct {
 	kind:  Config_Row_Kind,
 	ref:   config.Ref,   // Pref
@@ -92,6 +94,8 @@ Config_View :: struct {
 	shown:         int,                 // preferences the search and filter keep, over all categories
 	modified:      int,                 // preferences not at their default
 	desktop_row:   int,                 // index of the desktop row in `model` (-1: none)
+	engines_row:   int,                 // index of the search engines' row in `model` (-1: none)
+	engines:       Engines_Editor,      // its editor (search_engines_ui.odin)
 	model_query:   string,              // owned
 	model_key:     [6]u64,              // prefs version, entries, serial, modified_only, category, desktop row
 	model_valid:   bool,
@@ -114,6 +118,7 @@ config_view_destroy :: proc(v: ^Config_View) {
 	delete(v.cats)
 	delete(v.model_query)
 	delete(v.category)
+	engines_editor_destroy(&v.engines)
 }
 
 @(private)
@@ -196,13 +201,14 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 	clear(&v.model); clear(&v.ids); clear(&v.selectable); clear(&v.cats)
 	for s in v.labels { delete(s) }
 	clear(&v.labels)
-	v.shown, v.modified, v.desktop_row = 0, 0, -1
+	v.shown, v.modified, v.desktop_row, v.engines_row = 0, 0, -1, -1
 
 	// by category, then name (a category is not always the name's first segment: "testing" gathers several)
-	Item :: struct { cat, name: string, index: int }   // index -1: the desktop row
-	items := make([dynamic]Item, 0, len(prefs.entries) + 1, context.temp_allocator)
+	Item :: struct { cat, name: string, index: int }   // index -1: the desktop row, -2: the search engines' row
+	items := make([dynamic]Item, 0, len(prefs.entries) + 2, context.temp_allocator)
 	for e, i in prefs.entries { append(&items, Item{e.def.category, e.def.name, i}) }
 	if with_desktop { append(&items, Item{"browser", "", -1}) }   // (first of its category)
+	if r := config.ref_of(prefs, SEARCH_ENGINE_PREF); r != config.NO_REF { append(&items, Item{config.entry(prefs, r).def.category, "", -2}) }
 	slice.sort_by(items[:], proc(a, b: Item) -> bool { return a.cat != b.cat ? a.cat < b.cat : a.name < b.name })
 
 	// titles two preferences of a category share once their unit word is dropped: those keep it
@@ -228,7 +234,7 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 			if changed { c.modified += 1; v.modified += 1 }
 			if v.modified_only && !changed { continue }
 		} else {
-			def = desktop_search_def()
+			def = it.index == -1 ? desktop_search_def() : engines_search_def()
 			if v.modified_only { continue }
 		}
 		if !config.matches(def, query) { continue }
@@ -245,6 +251,14 @@ config_model :: proc(v: ^Config_View, prefs: ^config.Prefs, query: string, with_
 		}
 		if header >= 0 && it.index >= 0 { v.model[header].count += 1 }
 		if folded { continue }
+		if it.index == -2 {
+			v.engines_row = len(v.model)
+			append(&v.model, Config_Row{kind = .Engines, name = CONFIG_ENGINES_ROW, group = it.cat})
+			append(&v.ids, 0)   // config_page: from the list and the editor's state, at every frame
+			append(&v.labels, config.title_of(def, context.allocator))
+			append(&v.selectable, true)
+			continue
+		}
 		if it.index < 0 {
 			v.desktop_row = len(v.model)
 			append(&v.model, Config_Row{kind = .Desktop, name = CONFIG_DESKTOP_ROW, group = it.cat})
@@ -289,6 +303,7 @@ config_page :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 		note, _ := desktop_config_note()
 		v.ids[v.desktop_row] = cfg_hash(CFG_HASH_SEED, "\x00desktop:") ~ cfg_hash(0x84222325cbf29ce4, note)
 	}
+	if v.engines_row >= 0 { v.ids[v.engines_row] = engines_row_id(&v.engines) }
 
 	// the layout follows the page's width (last frame's: the same unless the window was resized)
 	em := ui.font_size()
@@ -450,6 +465,7 @@ config_list :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 			case .Header:  group_header(v, i, row)
 			case .Pref:    config_row(v, prefs, row.ref, config.entry(prefs, row.ref), i)
 			case .Desktop: desktop_row(v, i)
+			case .Engines: engines_row(v, i)
 			}
 		}
 		if len(v.model) == 0 {
@@ -543,6 +559,10 @@ config_list_keys :: proc(v: ^Config_View, prefs: ^config.Prefs) {
 		return
 	case .Desktop:
 		if v.list.activated && !desktop_config_busy() { desktop_toggle(the_app) }
+		if v.list.focused && ui.key_press(.Left) { config_to_header(v, sel) }
+		return
+	case .Engines:
+		if v.list.activated && v.engines.edit == 0 { engines_edit_start(&v.engines, -1) }
 		if v.list.focused && ui.key_press(.Left) { config_to_header(v, sel) }
 		return
 	case .Pref:
@@ -764,13 +784,17 @@ config_editor :: proc(v: ^Config_View, prefs: ^config.Prefs, r: config.Ref, e: ^
 				if sig.clicked { config_apply(v, prefs, st, name, val ? "true" : "false") }
 				ui.spacer(ui.fill())
 			case .String:
-				if len(e.def.choices) > 0 {
+				// the default search engine: a choice of the list's names (its value is the engine's id)
+				items, values := e.def.choices, e.def.choices
+				if name == SEARCH_ENGINE_PREF { items, values = engines_choices() }
+				if len(items) > 0 {
 					sel := 0
-					for c, i in e.def.choices { if c == e.value.s { sel = i } }
+					for c, i in values { if c == e.value.s { sel = i } }
+					if name == SEARCH_ENGINE_PREF { sel = max(search_default_index(), 0) }
 					ui.next({width = ui.fill(), height = ui.px(ui.dense(em * 2))})
 					dd_id := fmt.tprintf("%s###dd", id)
 					if b := ui.prev_box(dd_id); b != nil { st.editor = b.key }
-					if ui.dropdown(dd_id, e.def.choices, &sel) { config_apply(v, prefs, st, name, e.def.choices[sel]); v.focus_list = st.focused }
+					if ui.dropdown(dd_id, items, &sel) { config_apply(v, prefs, st, name, values[sel]); v.focus_list = st.focused }
 					if st.want_focus && st.editor != 0 { st.want_focus = false; ui.set_focus(st.editor) }
 					st.focused = ui.focus_key() == st.editor && st.editor != 0
 					if st.focused && ui.key_press(.Escape) { v.focus_list = true }
