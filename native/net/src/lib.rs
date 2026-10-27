@@ -190,12 +190,35 @@ pub(crate) struct Shared {
     pub tls_h1: Arc<rustls::ClientConfig>,     // ALPN http/1.1 (WebSockets, HTTP/2 turned off)
     pub tls_h3: Arc<rustls::ClientConfig>,     // ALPN h3
     pub proxy: Option<hyper_util::client::proxy::matcher::Matcher>,
+    /// per origin: connections being opened, and when the last one came up (the head timeout starts from there)
+    pub track: Mutex<HashMap<String, (usize, Option<Instant>)>>,
 }
 
 impl Shared {
     pub fn settings(&self) -> Settings {
         self.settings.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
+
+    pub fn tracked(&self, key: &str) -> (usize, Option<Instant>) {
+        self.track.lock().unwrap_or_else(|e| e.into_inner()).get(key).copied().unwrap_or((0, None))
+    }
+
+    pub fn track_start(&self, key: &str) {
+        self.track.lock().unwrap_or_else(|e| e.into_inner()).entry(key.to_string()).or_insert((0, None)).0 += 1;
+    }
+
+    pub fn track_end(&self, key: &str, ok: bool) {
+        let mut t = self.track.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(e) = t.get_mut(key) {
+            e.0 = e.0.saturating_sub(1);
+            if ok { e.1 = Some(Instant::now()); }
+        }
+    }
+}
+
+/// "scheme://authority": what the pool keys connections by.
+pub(crate) fn origin_of(uri: &::http::Uri) -> String {
+    format!("{}://{}", uri.scheme_str().unwrap_or(""), uri.authority().map(|a| a.as_str()).unwrap_or(""))
 }
 
 pub(crate) struct Inner {
@@ -240,14 +263,64 @@ pub struct Client {
     current: Option<Ev>,
 }
 
+/// The system's verdict (rustls-platform-verifier: the OS trust store, enterprise roots and policy, revocation), and
+/// for the authorities of network.tls.extra_ca_file a second opinion: the platform verifier looks at them only when the
+/// system cannot build a chain at all, not when a server sends the (untrusted to the system) root along.
+#[derive(Debug)]
+struct Verifier {
+    platform: rustls_platform_verifier::Verifier,
+    extra: Option<Arc<rustls::client::WebPkiServerVerifier>>,
+}
+
+impl rustls::client::danger::ServerCertVerifier for Verifier {
+    fn verify_server_cert(
+        &self,
+        end_entity: &rustls::pki_types::CertificateDer<'_>,
+        intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        server_name: &rustls::pki_types::ServerName<'_>,
+        ocsp: &[u8],
+        now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        let r = self.platform.verify_server_cert(end_entity, intermediates, server_name, ocsp, now);
+        match (&r, &self.extra) {
+            (Err(rustls::Error::InvalidCertificate(rustls::CertificateError::UnknownIssuer)), Some(extra)) => {
+                extra.verify_server_cert(end_entity, intermediates, server_name, ocsp, now)
+            }
+            _ => r,
+        }
+    }
+    fn verify_tls12_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        self.platform.verify_tls12_signature(message, cert, dss)
+    }
+    fn verify_tls13_signature(
+        &self,
+        message: &[u8],
+        cert: &rustls::pki_types::CertificateDer<'_>,
+        dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        self.platform.verify_tls13_signature(message, cert, dss)
+    }
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        self.platform.supported_verify_schemes()
+    }
+}
+
 fn build_tls(extra: &[u8], alpn: &[&[u8]]) -> Result<rustls::ClientConfig, rustls::Error> {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let verifier = if extra.is_empty() {
-        rustls_platform_verifier::Verifier::new(provider.clone())?
+        Verifier { platform: rustls_platform_verifier::Verifier::new(provider.clone())?, extra: None }
     } else {
         use rustls::pki_types::pem::PemObject;
         let roots: Vec<_> = rustls::pki_types::CertificateDer::pem_slice_iter(extra).filter_map(|c| c.ok()).collect();
-        rustls_platform_verifier::Verifier::new_with_extra_roots(roots, provider.clone())?
+        let mut store = rustls::RootCertStore::empty();
+        store.add_parsable_certificates(roots.iter().cloned());
+        let extra = rustls::client::WebPkiServerVerifier::builder_with_provider(Arc::new(store), provider.clone()).build().ok();
+        Verifier { platform: rustls_platform_verifier::Verifier::new_with_extra_roots(roots, provider.clone())?, extra }
     };
     let mut cfg = rustls::ClientConfig::builder_with_provider(provider)
         .with_protocol_versions(&[&rustls::version::TLS13, &rustls::version::TLS12])?
@@ -288,6 +361,7 @@ pub unsafe extern "C" fn wn_net_create(cfg: *const WnConfig, notify: NotifyFn, u
             tls_h1: Arc::new(tls_h1),
             tls_h3: Arc::new(tls_h3),
             proxy,
+            track: Mutex::new(HashMap::new()),
         });
         let http = {
             let _g = rt.enter();

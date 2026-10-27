@@ -659,14 +659,15 @@ timing_of :: proc(m: ^Marks) -> Timing {
 	}
 }
 
-// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte).
+// The text of an address WinHTTP reports (ANSI or UTF-16, whichever it is: a wide string has a zero second byte; its
+// length is then in characters, not bytes: halving it cut "127.0.0.1" to "127.0").
 @(private)
 remember_address :: proc(m: ^Marks, info: rawptr, info_len: win.DWORD) {
 	b := ([^]u8)(info)
 	n := 0
 	if info_len >= 2 && b[1] == 0 && b[0] != 0 {
 		w := ([^]u16)(info)
-		for i in 0 ..< int(info_len) / 2 {
+		for i in 0 ..< int(info_len) {
 			if w[i] == 0 || n >= len(m.ip) - 8 { break }
 			if w[i] > 127 { n = 0; break }
 			m.ip[n] = u8(w[i])
@@ -829,6 +830,7 @@ error_text :: proc(code, secure_flags: u32, allocator := context.temp_allocator)
 	case 12157, 12175:
 		if t := secure_failure_text(secure_flags); t != "" { return fmt.aprintf("secure connection failed: %s", t, allocator = allocator) }
 		return "secure connection failed"
+	case 12037: return "secure connection failed: certificate expired or not yet valid"
 	case 12038: return "secure connection failed: certificate name does not match the host"
 	case 12045: return "secure connection failed: certificate issued by an untrusted authority"
 	}

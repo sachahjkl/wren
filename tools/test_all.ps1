@@ -498,6 +498,21 @@ try {
         $o = Get-Content build\nat.txt | Out-String; $o
         $global:LASTEXITCODE = if ($o -match '(?m)^0 failure\(s\)') { 0 } else { 1 }
     } -Light
+    Step 'network transport test on both stacks (nettest: heads, bodies, gzip, caps, cancel, timeouts, refused / unresolved / cut / garbage answers, certificates; built-in stack: HTTP/2, HTTP/3 from Alt-Svc and the fall back to TCP when QUIC is blocked, TLS 1.3 only, expired and misnamed certificates, wss, the proxy)' {
+        odin build src/tools/nettest -use-separate-modules -collection:wb=src -vet $Track -out:build/nettest.exe $Stack
+        if ($LASTEXITCODE -ne 0) { return }
+        $bad = 0
+        foreach ($b in 'winhttp', 'rust') {
+            $env:WREN_NET_BACKEND = $b
+            $p = Start-Process .\build\nettest.exe -NoNewWindow -PassThru -RedirectStandardOutput "build\nt_$b.txt"
+            $ok = $p.WaitForExit(180000 * $slow)
+            if (-not $ok) { $p.Kill() }
+            $o = Get-Content "build\nt_$b.txt" | Out-String; $o
+            if (-not $ok -or $o -notmatch '(?m)^0 failure\(s\)') { $bad++ }
+        }
+        Remove-Item Env:\WREN_NET_BACKEND
+        $global:LASTEXITCODE = $bad
+    } -Light
     Step 'WebSocket closing handshake test (wsclosetest: close right after a message or the upgrade, late, missing and crossing close frames, server cutting TCP; repeated)' {
         odin build src/tools/wsclosetest -use-separate-modules -collection:wb=src -vet $Track -out:build/wsclosetest.exe
         if ($LASTEXITCODE -ne 0) { return }
