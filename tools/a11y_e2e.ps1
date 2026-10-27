@@ -17,17 +17,13 @@ function Check([string]$name, [bool]$ok, [string]$detail = '') {
     if ($ok) { "PASS  $name" } else { "FAIL  $name  $detail"; $script:fail++ }
 }
 
-# the probe: built when stale (under the build lock shared by every compilation of the machine)
+# the probe: built when stale
 $probe = Join-Path $root 'build\uia_probe.exe'
 $srcs = @(Get-ChildItem (Join-Path $root 'ext\gui_toolkit\tools\uia_probe'), (Join-Path $root 'ext\gui_toolkit\tools\uia') -Filter *.odin)
 $stale = -not (Test-Path $probe) -or ($srcs | Where-Object { $_.LastWriteTimeUtc -gt (Get-Item $probe).LastWriteTimeUtc })
 if ($stale) {
-    $m = New-Object System.Threading.Mutex($false, 'Global\wren_build')
-    try { [void]$m.WaitOne() } catch [System.Threading.AbandonedMutexException] {}
-    try {
-        $o = cmd /c "odin build `"$root\ext\gui_toolkit\tools\uia_probe`" -vet -out:`"$probe`" 2>&1" | Out-String
-        if ($LASTEXITCODE -ne 0) { $o; 'FAIL building the probe'; exit 1 }
-    } finally { $m.ReleaseMutex() }
+    $o = cmd /c "odin build `"$root\ext\gui_toolkit\tools\uia_probe`" -vet -out:`"$probe`" 2>&1" | Out-String
+    if ($LASTEXITCODE -ne 0) { $o; 'FAIL building the probe'; exit 1 }
 }
 
 # Runs the probe; returns its stdout, exit code in $script:ProbeExit.
