@@ -32,6 +32,9 @@ export default defineConfig(({ mode }) => {
 			env: {
 				// no id: the first deploy creates the namespace
 				LICENSES: bindings.kv({}),
+				// One LicenseOrder Durable Object per transaction: atomic idempotence, the mail retry queue (its alarm),
+				// the RGPD purge. SQLite-backed, declared as a new_sqlite_classes migration (keep wrangler.jsonc alike).
+				ORDERS: bindings.durableObject({ className: "LicenseOrder" }),
 				// Cloudflare Email Service (the mail of the licence): sending to anyone needs the Workers Paid plan
 				EMAIL: bindings.sendEmail({}),
 
@@ -48,11 +51,22 @@ export default defineConfig(({ mode }) => {
 				WEBHOOK_TOLERANCE_SECONDS: bindings.text("300"),
 				RESEND_ENABLED: bindings.text("false"),
 				RESEND_MAX_PER_HOUR: bindings.text("3"),
+				RESEND_REQUIRE_TOKEN: bindings.text("false"),
+				// the mail retry queue: the backoff ladder (minutes), the number of tries before the dead-letter
+				MAIL_BACKOFF_MINUTES: bindings.text("1,5,30,120,720,2880"),
+				MAIL_MAX_ATTEMPTS: bindings.text("7"),
+				// RGPD: days the buyer's name and address are kept after the mail is settled, then purged (0 = never)
+				PII_RETENTION_DAYS: bindings.text("90"),
 
 				LICENSE_PRIVATE_KEY: bindings.secret(),
 				PADDLE_WEBHOOK_SECRET: bindings.secret(),
 				PADDLE_API_KEY: bindings.secret(),
+				// optional: a bearer token for /admin/* and (when RESEND_REQUIRE_TOKEN) /resend; a shared secret for the
+				// mail provider's bounce webhook. Leave them out of the secrets file to keep those endpoints closed.
+				ADMIN_TOKEN: bindings.secret(),
+				MAIL_BOUNCE_SECRET: bindings.secret(),
 			},
+			migrations: [{ tag: "v1", newSqliteClasses: ["LicenseOrder"] }],
 		},
 	};
 });
