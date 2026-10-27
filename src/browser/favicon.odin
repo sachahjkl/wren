@@ -147,6 +147,8 @@ Favicon :: struct {
 	tex:       render.Texture,
 	w, h:      int,
 	used:      u64,             // frame count when last drawn
+	px:        int,             // the size it was decoded for (the largest of the windows' scales then)
+	blob:      ^images.Blob,    // its bytes (small: browser.tabs.icon_max_bytes), decoded again when a window's scale grows past `px`
 }
 
 Favicons :: struct {
@@ -189,7 +191,8 @@ favicon_free :: proc(app: ^App, e: ^Favicon) {
 		fetch.cancel(&app.loader, e.task)
 	}
 	images.job_cancel(e.job)
-	if e.state == .Ready { render.destroy_texture(&app.r, e.tex) }
+	if e.tex != 0 { render.destroy_texture(&app.r, e.tex) }
+	if e.blob != nil { images.blob_release(e.blob) }
 	delete(e.url)
 	free(e)
 }
@@ -390,7 +393,23 @@ favicon_texture :: proc(address: string) -> (tex: render.Texture, ok: bool) {
 	e := favs.entries[address]
 	if e == nil || e.state != .Ready { return {}, false }
 	e.used = favs.frame
+	// a window's scale grew past what it was decoded for (it moved to another monitor): decoded again at that size, the picture it
+	// has drawn meanwhile
+	if e.job == 0 && e.blob != nil && favs.app != nil && favs.port != 0 {
+		if px := favicon_decode_px(favs.app); px > e.px { favicon_decode(favs.app, e, px) }
+	}
 	return e.tex, true
+}
+
+@(private = "file")
+favicon_decode :: proc(app: ^App, e: ^Favicon, px: int) {
+	lim := app.page_settings.images.limits
+	lim.max_dimension = min(lim.max_dimension, favs.cfg.icon_max_dim)
+	lim.max_pixels = min(lim.max_pixels, i64(favs.cfg.icon_max_dim) * i64(favs.cfg.icon_max_dim))
+	lim.max_encoded_bytes = min(lim.max_encoded_bytes, favs.cfg.icon_max_bytes)
+	opts := images.Decode_Options{limits = lim, target_w = px, target_h = px, downscale_below = 0.99, first_frame_only = true}
+	e.px = px
+	e.job = images.submit(favs.port, images.job_make(.Decode, e.blob, opts, user = e))
 }
 
 favicon_frame :: proc() { favs.frame += 1 }
@@ -439,16 +458,9 @@ favicon_event :: proc(user: rawptr, task: base.Handle, ev: ^fetch.Event) {
 		if favs.port == 0 { e.state = .Failed; return }
 		bytes := make([]byte, len(ev.data))
 		copy(bytes, ev.data)
-		blob := images.blob_make(bytes)
-		defer images.blob_release(blob)
-		lim := app.page_settings.images.limits
-		lim.max_dimension = min(lim.max_dimension, favs.cfg.icon_max_dim)
-		lim.max_pixels = min(lim.max_pixels, i64(favs.cfg.icon_max_dim) * i64(favs.cfg.icon_max_dim))
-		lim.max_encoded_bytes = min(lim.max_encoded_bytes, favs.cfg.icon_max_bytes)
-		px := tab_icon_px(app)
-		opts := images.Decode_Options{limits = lim, target_w = px, target_h = px, downscale_below = 0.99, first_frame_only = true}
+		e.blob = images.blob_make(bytes)   // (kept: decoded again for a window of a larger scale)
 		e.state = .Decoding
-		e.job = images.submit(favs.port, images.job_make(.Decode, blob, opts, user = e))
+		favicon_decode(app, e, favicon_decode_px(app))
 		if e.job == 0 { e.state = .Failed }
 	case .Failed:
 		base.forget_cleanup(e.scope, e.cleanup)
@@ -464,7 +476,11 @@ favicon_decoded :: proc(user: rawptr, j: ^images.Job) {
 	app := favs.app
 	e.job = 0
 	img := j.image
-	if j.err != .None || img == nil || len(img.frames) == 0 || img.width <= 0 || img.height <= 0 { e.state = .Failed; return }
+	if j.err != .None || img == nil || len(img.frames) == 0 || img.width <= 0 || img.height <= 0 {
+		if e.state != .Ready { e.state = .Failed }   // (a decode again at another size that failed: the picture it had stays)
+		return
+	}
+	if e.tex != 0 { render.destroy_texture(&app.r, e.tex) }   // (decoded again at a larger size)
 	e.tex = render.create_texture_rgba(&app.r, img.width, img.height)
 	render.update_texture_rgba(&app.r, e.tex, 0, 0, img.width, img.height, img.frames[0].pixels, img.stride)
 	e.w, e.h = img.width, img.height
@@ -487,5 +503,13 @@ favicon_evict :: proc(app: ^App) {
 	}
 }
 
-// Size of a tab's icon in physical pixels.
+// Size of a tab's icon in physical pixels (in the active window).
 tab_icon_px :: proc(app: ^App) -> int { return int(16 * ui_scale_of(app) + 0.5) }
+
+// The size icons are decoded at: the largest scale of the windows (an icon is the process's, drawn in any window: smaller in one
+// of a lower scale rather than blurred in one of a higher).
+favicon_decode_px :: proc(app: ^App) -> int {
+	sc := ui_scale_of(app)
+	for w in app.windows { sc = max(sc, ui_scale_of(app, w.win)) }
+	return int(16 * sc + 0.5)
+}

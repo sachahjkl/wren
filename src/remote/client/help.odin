@@ -41,7 +41,7 @@ HELP := [?]Help_Entry{
 	{"tabs", "tabs", "Lists the tabs (id, * for the current one)."},
 	{"tab", "tab new [url] | tab activate <id> | tab close <id> | tab move <id> --to new|<window id> [--index n]", "Opens, selects or closes a tab, or moves it to another window (a new one, or by its id) with its page as it is; prints the window it is in."},
 	{"windows", "windows", "Lists the browser windows (id, * for the front one, tabs, current tab, size). `--win-id <id>` on any command makes it about that window (a tab's own window is the one used for `--tab-id`)."},
-	{"window", "window [--size WxH] [--pos x,y] [--state normal|minimized|maximized|fullscreen] | window --front | window --close", "Reads or changes the window (size is the client area in pixels); --front makes it the one the user is in, --close closes it with its tabs (--win-id: which window)."},
+	{"window", "window [--size WxH] [--pos x,y] [--state normal|minimized|maximized|fullscreen] [--dpi n] | window --front | window --close", "Reads or changes the window (size is the client area in pixels; --dpi: as if it moved to a monitor of that scale, 96 = 100 %); --front makes it the one the user is in, --close closes it with its tabs (--win-id: which window)."},
 	{"cmds", "cmds [filter]", "The browser's commands (the registry the menu, the palette and the shortcuts use), with their shortcuts."},
 	{"cmd", "cmd <name>", "Runs any of those commands: tab.new, devtools.toggle, zoom.in... as the interface would."},
 	{"devtools", "devtools [console|elements|network|none] [--dock bottom|right|left|floating|window]", "Opens the developer tools of the window (each window has its own; window: in a window of their own)."},

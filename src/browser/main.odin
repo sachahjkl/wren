@@ -99,6 +99,7 @@ Tab :: struct {
 	conlog:   Con_Log,         // what the Console tab keeps beside the lines: their times, kinds, counts (devtools_console_log.odin)
 	layout:   Layout,
 	scroll:   f32,
+	scroll_dpi: f32,            // the window scale `scroll` was in (zoom.odin tab_scale_follow; 0: not known yet)
 	scroll_target: base.Handle, // what keyboard scrolling moves: the last element pressed in the page (its scroll container)
 	fragment_seen: string,       // the document URL whose fragment the view last scrolled to (owned)
 	web_fonts: int,              // faces of the page's @font-face already handed to the font registry
@@ -1107,6 +1108,7 @@ frame :: proc(app: ^App, idled := false) {
 	prof_end(.Wait)
 	prof_begin(.Events)
 	events := platform.poll_events(active_window(app).win, false)
+	tab_scale_follow(app, current_tab(app))   // zoom.odin: the window changed monitor, or the tab came from a window of another scale
 	platform.frame_gate_stage(gate, .Work)   // the page phase (chrome frames may be made in it: shell_frames.odin)
 	// back from another window (the Windows settings, say): the desktop integration may have changed there
 	for e in events {

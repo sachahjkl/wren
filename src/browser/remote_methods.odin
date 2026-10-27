@@ -270,7 +270,25 @@ m_window_set :: proc(app: ^App, c: ^Call) -> Reply {
 	left, has_l := remote.param_int(c.params, "left")
 	top, has_t := remote.param_int(c.params, "top")
 	window_apply(app, state, has_state, w, h, left, top, has_w, has_h, has_l, has_t)
+	if dpi, has_dpi := remote.param_int(c.params, "dpi"); has_dpi {
+		if dpi < 48 || dpi > 960 { return fail(remote.ERR_PARAMS, "dpi: 48 to 960 (96 = 100 %)") }
+		window_simulate_dpi(app, active_window(app), dpi)
+	}
 	return m_window_get(app)
+}
+
+// The window as if it had moved to a monitor of `dpi`: the system's WM_DPICHANGED, with the rectangle the system suggests (the same
+// top left, the size in proportion), through the window procedure as the real one goes (wren ctl window --dpi n: a machine with
+// one monitor tests a window that changes monitors, and two windows on monitors of different scales).
+window_simulate_dpi :: proc(app: ^App, w: ^Browser_Window, dpi: int) {
+	hwnd := w.win.hwnd
+	rc: win.RECT
+	win.GetWindowRect(hwnd, &rc)
+	old := max(w.win.dpi_scale, 0.25) * 96
+	k := f32(dpi) / old
+	r := win.RECT{rc.left, rc.top, rc.left + i32(f32(rc.right - rc.left) * k + 0.5), rc.top + i32(f32(rc.bottom - rc.top) * k + 0.5)}
+	win.SendMessageW(hwnd, win.WM_DPICHANGED, win.WPARAM(uint(dpi) | uint(dpi) << 16), win.LPARAM(uintptr(&r)))
+	window_request(app, w, 4)
 }
 
 // The window's state and rectangle as asked (the parts that are not asked for stay): `Browser.setWindowBounds`, and the reset and
