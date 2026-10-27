@@ -37,6 +37,7 @@ webmessaging only=.,without-ports,with-ports,message-channels
 html/browsers/sandboxing
 html/browsers/windows only=.,nested-browsing-contexts
 css/css-transforms only=.,parsing,animation
+css/cssom only=.
 html/semantics/embedded-content/media-elements only=.,crashtests,error-codes,interfaces,loading-the-media-resource,location-of-the-media-resource,media-playback-while-not-visible-permission-policy,mime-types,offsets-into-the-media-resource,playing-the-media-resource,ready-states,seeking,user-interface
 media-source
 IndexedDB

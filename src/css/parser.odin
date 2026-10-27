@@ -133,6 +133,21 @@ parse_stylesheet :: proc(source: string, opt: Parse_Options) -> ^Stylesheet {
 	return s
 }
 
+// CSSOM "parse a CSS rule" (insertRule): `text` holds one rule, whitespace around it. The rule is made in the memory of
+// `s` and lives as long as the sheet; it is not added to `s.rules` (the caller places it). nil when `text` is not
+// exactly one valid rule. Positions (`pos`) are offsets in `text`, not in the sheet's source.
+parse_rule_into :: proc(s: ^Stylesheet, text: string, opt: Parse_Options) -> ^Rule {
+	scratch: virtual.Arena
+	_ = virtual.arena_init_growing(&scratch)
+	defer virtual.arena_destroy(&scratch)
+	sa := virtual.arena_allocator(&scratch)
+	toks, runes := tokenize_with_source(text, s.alloc, sa)
+	errors := make([dynamic]string, sa)
+	p := Parser{toks = toks, a = s.alloc, opt = opt, errors = &errors, runes = runes, scratch = sa}
+	rules := parse_rule_list(&p, true)
+	return len(rules) == 1 ? rules[0] : nil
+}
+
 ////////////////////////////////
 // Component values
 

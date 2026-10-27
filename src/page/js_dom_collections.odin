@@ -30,6 +30,7 @@ Js_Dom_State :: struct {
 	style_probes: Decl_Cache,            // validated setProperty values
 	ce:           Custom_Elements,       // js_custom_elements.odin
 	shadow:       Js_Shadow,             // js_shadow.odin
+	cssom:        Js_Cssom,              // js_cssom.odin
 }
 
 @(private)
@@ -56,6 +57,7 @@ js_dom_state :: proc(p: ^Page) -> ^Js_Dom_State {
 		decl_cache_destroy(&s.style_probes)
 		ce_destroy(p, &s.ce)
 		js_shadow_destroy(p, &s.shadow)
+		js_cssom_destroy(p, &s.cssom)
 		free(s)
 		p.jsdom = nil
 	}, p)

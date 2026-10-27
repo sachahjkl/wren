@@ -308,6 +308,100 @@ Raises: returns an `Error` (see [web](web.md)).
 
 Host: `HTMLIFrameElement_set_srcdoc :: proc(c: ^Call, element: Api_Element, value: string) -> Api_Error`
 
+### `LinkStyle_sheetOf`
+
+```
+u64 LinkStyle_sheetOf(Node node)
+```
+
+element.sheet of a <style> or <link rel=stylesheet> (any other node: 0, null): its CSSStyleSheet, the same
+object for as long as the element keeps that sheet. A <style> gets its sheet brought up to date first (HTML
+"update a style block"); a <link>'s is there once loaded.
+
+Host: `LinkStyle_sheetOf :: proc(c: ^Call, node: Api_Node) -> u64`
+
+### `DocumentOrShadowRoot_sheetCount`
+
+```
+u32 DocumentOrShadowRoot_sheetCount(Node root)
+```
+
+document.styleSheets / shadowRoot.styleSheets: how many sheets the tree of `root` has (its <style> and loaded
+<link> elements, in tree order) ...
+
+Host: `DocumentOrShadowRoot_sheetCount :: proc(c: ^Call, root: Api_Node) -> u32`
+
+### `DocumentOrShadowRoot_sheetAt`
+
+```
+u64 DocumentOrShadowRoot_sheetAt(Node root, u32 index)
+```
+
+... and the one at `index` (0 past the end).
+
+Host: `DocumentOrShadowRoot_sheetAt :: proc(c: ^Call, root: Api_Node, index: u32) -> u64`
+
+### `CSSStyleSheet_isSheet`
+
+```
+bool CSSStyleSheet_isSheet(u64 sheet)
+```
+
+Whether `sheet` is a CSSStyleSheet of this page, constructed or an element's.
+
+Host: `CSSStyleSheet_isSheet :: proc(c: ^Call, sheet: u64) -> bool`
+
+### `CSSStyleSheet_ownerNodeOf`
+
+```
+u64 CSSStyleSheet_ownerNodeOf(u64 sheet)
+```
+
+sheet.ownerNode: the element of an element's sheet while it has it (0: null).
+
+Host: `CSSStyleSheet_ownerNodeOf :: proc(c: ^Call, sheet: u64) -> u64`
+
+### `CSSStyleSheet_hrefOf`
+
+```
+string CSSStyleSheet_hrefOf(u64 sheet)
+```
+
+sheet.href: the URL of a <link>'s sheet ("" for null).
+
+Host: `CSSStyleSheet_hrefOf :: proc(c: ^Call, sheet: u64) -> string`
+
+### `CSSStyleSheet_titleOf`
+
+```
+string CSSStyleSheet_titleOf(u64 sheet)
+```
+
+sheet.title: the title attribute of its element ("" for null).
+
+Host: `CSSStyleSheet_titleOf :: proc(c: ^Call, sheet: u64) -> string`
+
+### `CSSStyleSheet_rulesVersion`
+
+```
+u32 CSSStyleSheet_rulesVersion(u64 sheet)
+```
+
+A number that changes with every change of the sheet's rules (the rule list's items are made again then).
+
+Host: `CSSStyleSheet_rulesVersion :: proc(c: ^Call, sheet: u64) -> u32`
+
+### `CSSStyleSheet_ruleId`
+
+```
+u32 CSSStyleSheet_ruleId(u64 sheet, u32 index)
+```
+
+The identity of cssRules[index], a number never given to another rule of the page (0 past the end): the rule
+list gives a rule the same object across insertions and deletions around it.
+
+Host: `CSSStyleSheet_ruleId :: proc(c: ^Call, sheet: u64, index: u32) -> u32`
+
 ### `CustomElements_define`
 
 ```
