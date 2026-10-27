@@ -175,12 +175,22 @@ function Test-IdleTimers($server) {
     Section '6 idle timer: ticks that change nothing draw no frame'
     $null = Wren-Ctl nav "$($server.Origin)/site/remote/idle-timer.htm" --wait idle
     $null = Wren-Ctl wait quiet
+    $sw = [Diagnostics.Stopwatch]::StartNew()
     $t0 = [int](Wren-Eval 'window.ticks'); $f0 = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
     $enough = "window.ticks >= $($t0 + 100)"
     $null = Wren-Ctl wait function $enough --timeout 20000
     $t1 = [int](Wren-Eval 'window.ticks'); $f1 = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
     Check "a script ran $($t1 - $t0) times" (($t1 - $t0) -ge 100)
-    Check "and drew $($f1 - $f0) frames for them (a frame per tick before: now a few at most)" ((($f1 - $f0) * 5) -le ($t1 - $t0)) "$($f1 - $f0) frames for $($t1 - $t0) ticks"
+    # (the shell redraws by itself a few times a second, its status bar: that is counted against the same time on a page with no timer)
+    $dur = $sw.ElapsedMilliseconds
+    $null = Wren-Ctl nav 'about:blank' --wait idle
+    $null = Wren-Ctl wait quiet
+    $fb0 = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn
+    Start-Sleep -Milliseconds $dur
+    $fb = (Wren-Ctl stats --json | ConvertFrom-Json).framesDrawn - $fb0
+    $extra = ($f1 - $f0) - $fb
+    Check "and drew $($f1 - $f0) frames for them, $fb on a page with no timer in the same $dur ms ($extra more for $($t1 - $t0) ticks: a frame per tick before, now a few at most)" ($extra * 5 -le ($t1 - $t0)) "$($f1 - $f0) frames for $($t1 - $t0) ticks, $fb without a timer"
+    $null = Wren-Ctl nav "$($server.Origin)/site/remote/idle-timer.htm" --wait idle
     $png = Join-Path $env:TEMP 'idle-timer-box.png'
     $null = Wren-Eval 'window.paint(); 1'
     $null = Wren-Ctl wait function 'document.getElementById("box").style.background === "rgb(0, 0, 255)"' --timeout 10000
