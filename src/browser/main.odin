@@ -1555,6 +1555,8 @@ main :: proc() {
 	font.set_color_ready_callback(&app.fonts, nil, nil)   // the color glyph thread no longer posts to the loop
 	host.shutdown_step("page.compile_shutdown")
 	page.compile_shutdown()   // the script compile threads post to the loop: stopped before it goes
+	host.shutdown_step("page.discard_page_tasks")
+	page.discard_page_tasks(&app.loop)   // the tasks of pages that were queued and never ran free their data
 	host.shutdown_step("host.loop_destroy")
 	host.loop_destroy(&app.loop)
 	host.shutdown_step("page.js_shutdown")

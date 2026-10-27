@@ -37,7 +37,7 @@ PREFS := [?]config.Def{
 	{name = "network.timeout.receive_ms", kind = .Int, default = {i = 60_000}, bounded = true, min = 0, max = 3_600_000, unit = "ms",
 		description = "Timeout waiting for response data. 0 = no timeout."},
 	{name = "network.http2.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Use HTTP/2 when the server offers it."},
-	{name = "network.http3.enabled", kind = .Bool, default = {b = true}, restart = true, description = "Use HTTP/3 when the server and the OS support it."},
+	{name = "network.http3.enabled", kind = .Bool, default = {b = false}, restart = true, description = "Use HTTP/3 when the server and the OS support it. Off by default: for a site that announces HTTP/3 WinHTTP tries QUIC first and, where UDP does not get through (a firewall, a network), never falls back to TCP: the page stays on Connecting for ever (odin-lang.org)."},
 	{name = "network.proxy.mode", kind = .String, default = {s = "system"}, choices = {"system", "none"}, restart = true,
 		description = "system: the operating system's proxy settings (auto-detection included). none: connect directly."},
 	{name = "network.user_agent", kind = .String, default = {s = ""}, restart = true,

@@ -242,3 +242,27 @@ timer_delays_saturate_and_cleared_timers_go :: proc(t: ^testing.T) {
 	run_ready(&l)
 	testing.expect_value(t, c.n, 2)
 }
+
+@(private = "file")
+count_discarded :: proc(data: rawptr) { (^Counter)(data).n += 1 }
+
+// The tasks nobody will run: the ones of one function are handed to the discarder, the others stay for the loop.
+@(test)
+posted_tasks_that_will_not_run_are_discarded :: proc(t: ^testing.T) {
+	l: Loop
+	loop_init(&l)
+	defer loop_destroy(&l)
+	ran, discarded: Counter
+	post(&l, bump, &ran)
+	post(&l, record, &Tagged{&ran, 7})
+	post(&l, bump, &ran)
+	post(&l, bump, &ran)
+	discard_posted(&l, bump, count_discarded)
+	// (the discarder counted into the data of each task: the same counter here)
+	testing.expect_value(t, ran.n, 3)
+	testing.expect_value(t, run_ready(&l), 1)   // the one task of the other function is still there
+	testing.expect_value(t, len(ran.order), 1)
+	testing.expect_value(t, ran.n, 3)           // and the discarded ones never ran as tasks
+	_ = discarded
+	delete(ran.order)
+}
