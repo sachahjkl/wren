@@ -92,6 +92,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	register_local_path_prefs(p)   // local_paths.odin
 	register_dnd_prefs(p)          // dnd_shell.odin
 	register_tab_prefs(p)   // favicon.odin, tab_strip.odin
+	register_newtab_art_prefs(p)   // newtab_art.odin
 	register_download_prefs(p)   // download.odin
 	register_print_prefs(p)   // print.odin
 	register_session_prefs(p)   // session.odin
