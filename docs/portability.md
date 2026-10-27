@@ -26,9 +26,58 @@ Shared building blocks, use them rather than a new copy:
 | Temporary directory | `base.temp_dir` (TEMP, else the system's) |
 | Hashes, HMAC, random bytes, ECDSA P-256, RSA verification | `core:crypto` (no BCrypt) |
 | Path separator in built paths | `filepath.SEPARATOR_STRING` |
-| Native libraries | `build/<lib>-<os>/...`: `tools/fetch_wasmtime.sh`, `tools/build_lexbor.sh`, `tools/build_native.sh` |
+| Native libraries | `build/<lib>-<os>/...`: `./build.sh deps` (`tools/fetch_wasmtime.sh`, `tools/build_lexbor.sh`, `tools/build_native.sh`) |
+| A file: path from a URL, its separator, the tree check | `fetch.file_path_from_url`, `fetch.FILE_SEP_STR`, `fetch.path_within` (POSIX paths off Windows) |
+| A Unix socket of this user's only | `remote.socket_dir`, `remote.unix_connect` |
+| Starting, telling again and ending a child process | `remote/client`: `process_start`, `identity_of`, `same_process`, `process_wait`, `process_kill` |
+| Crash reports | `crashtrace` (`crashtrace_linux.odin`: signals, backtrace, build id; `tools/crash_symbolize.sh`) |
 
-## Inventory (2026-10-27)
+The Wasmtime archive for Linux is sealed by `tools/fetch_wasmtime.sh` (one relocatable object, only the C API's symbols
+global): it carries its own copy of Rust's standard library, as `libwren_native.a` does, and GNU ld stops on the symbols
+the two share. The Windows archive links as shipped.
+
+## Slice 2 (2026-10-27, later): before / after
+
+Before: master `4c37924` (slice 1 and the Rust network stack merged). After: `feat/linux`.
+
+| | Before | After |
+|---|---|---|
+| Every package (Wren and the toolkit) passing `odin check` for Linux | 45 / 152 | 78 / 153 |
+| The engine's (`src\` without `src\tools`) | 30 / 36 | 35 / 37 (left: `browser`, and `a11y` through the toolkit's platform) |
+| Unit tests passing on Linux (`tools/linux_ci.sh`) | 27 packages | 33 packages (+ net, fetch, media, page, blocker, remote/client, tools/crashtrace) |
+
+| Package | Before | After | How |
+|---|---|---|---|
+| net | own 23 | ok | WinHTTP in `client_winhttp_windows.odin`, `websocket_winhttp_windows.odin`; `winhttp_other.odin`: the Rust stack only |
+| fetch | own 27 | ok | `file:` paths POSIX off Windows (`directory_unix.odin`: stat, realpath, readdir; natural name order; dot files hidden) |
+| page | own 6 | ok | `screen` from `primary_screen` (Win32; the viewport elsewhere until the toolkit has a display API) |
+| blocker, httpcache | deps | ok | (net, fetch, page) |
+| media | own 21 | ok | `backend_linux.odin`: AV1 by the built-in rav1d decoder (`av1_soft.odin`), the null audio output |
+| remote/client | own 40 | ok | `conn_linux.odin` (Unix socket), `spawn_linux.odin` (posix_spawn, /proc) |
+| remote | ok (no server) | ok, server | `server_linux.odin` on a Unix socket |
+| tools/crashtrace | own 116 | ok | `crashtrace_linux.odin` |
+| tools/crashmodes, pagetest and most headless tools | deps | ok | (their packages) |
+
+Linux end to end: `tools/crash_e2e.sh` (8 ways of dying, each with its report or an unclean-exit report). Windows after
+the slice: the unit tests of every package touched, `nettest` and `wsclosetest` on both stacks, `remote_e2e`,
+`crash_e2e`, the dev build.
+
+## Media on Linux: decisions
+
+- **AV1**: rav1d (already linked for AVIF), in software, on every system (`av1_soft.odin`); Windows keeps Media
+  Foundation (and could fall back to it when MF has no AV1 decoder: not wired).
+- **Audio, next**: `symphonia` (AAC-LC, MP3, FLAC, Vorbis, PCM; pure Rust) for decoding, Opus by libopus (`opus` crate,
+  C built by cc: no pure-Rust decoder is mature), `cpal` (ALSA, which PipeWire and PulseAudio serve) for the output, in
+  `native/media`, behind `Audio_Decoder` / `Audio_Output`. New crates: pinned, `THIRD_PARTY.md`, `native/rust-crates.txt`.
+  WMF / WASAPI stay the Windows default, the Rust path selectable by a preference until parity is measured.
+- **H.264**: not in this slice. The choice to make: `openh264` (Cisco's decoder, BSD, built from source by the crate:
+  but the patent licence Cisco pays covers only its own binaries, downloaded at run time) or the system's decoders
+  (VA-API directly, or GStreamer / FFmpeg, out of scope by the brief). Proposal: VA-API for H.264 / HEVC / VP9 where the
+  GPU has it (the Linux counterpart of DXVA), and openh264's downloaded binary as the software fallback, behind a
+  preference, the way Firefox does.
+- **VP8 / VP9**: libvpx (C) or VA-API; nothing in pure Rust is ready.
+
+## Inventory of slice 1 (2026-10-27)
 
 Before: the state of `feat/linux` at `da1c927`. After: this branch. "ok" passes `odin check` for Linux; "own n" has n
 errors in its own files; "deps" fails only through the packages it imports.
@@ -67,7 +116,11 @@ webfont, images (23 of 24: SVG text needs system fonts in the test distribution)
 
 ## Order recommended, in slices
 
-1. **Done here**: the engine's core (threads, files, crypto, clocks, Wasm runtime, JavaScript time zone, storage, HTTP
+0. **Slice 2, done**: net, fetch, page, blocker; the remote channel and `wren ctl` on a Unix socket; crash reports;
+   AV1 video; `build.sh`. **Left of slice 2's list**: media audio (symphonia, libopus, cpal) and H.264 (above);
+   `desktop`'s file watching by inotify and XDG paths; Web Authentication through libfido2 (loaded with dlopen so that the
+   library stays optional); the accessibility of Wren's side (`src/a11y`, blocked by the toolkit's platform).
+1. **Done in slice 1**: the engine's core (threads, files, crypto, clocks, Wasm runtime, JavaScript time zone, storage, HTTP
    cache, images, Web Authentication's crypto, one instance per profile), Lexbor, Wasmtime and the Rust library built
    for Linux, `tools\portability.ps1`.
 2. **After the network branch lands** (net, fetch on Rust): `page`, `blocker` and every headless tool (`pagetest`,
@@ -99,5 +152,11 @@ thread priorities and `instance` have a Linux-only file to extend.
 - Linux's thread priorities are nice values: lowering one again (the boost on join) needs CAP_SYS_NICE, so it is best
   effort there.
 - The Wasm compiled-code cache key is not wrapped by a keyring on Linux (a file readable by its owner only).
+- `tools/linux_ci.sh` as a whole takes more than 8 minutes in WSL on a Windows drive (/mnt/s): run it by package
+  (`tools/linux_ci.sh odin net fetch ...`) there; the CI runner (native ext4) is well inside its 45 minutes.
+- An executable linked without `--build-id` gives crash reports without a build line's id (`build.sh` and
+  `tools/crash_e2e.sh` ask for it; the browser's Linux link must too).
+- core:sys/linux's `getsockopt` passes the size of the pointer, not of the value: `remote.same_user` calls the system
+  call itself.
 - The Wasm unit tests must run on one thread on every system (`-define:ODIN_TEST_THREADS=1`), as `test_all` does: the
   runtime is process-wide.

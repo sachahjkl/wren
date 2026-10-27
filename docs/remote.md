@@ -122,7 +122,8 @@ The channel is **off by default**; a Wren that was not asked for it has no pipe,
 - A driven Wren never hands its addresses to the user's running Wren (`--remote` implies `--no-single-instance`).
 - A status bar item "remote" shows that the channel listens (`browser.remote.indicator`).
 
-The pipe is `\\.\pipe\wren-remote-<name>`. The name is given, or `p` + a hash of the profile folder, so the same folder always
+The pipe is `\\.\pipe\wren-remote-<name>` (on Linux the Unix socket `$XDG_RUNTIME_DIR/wren/remote-<name>.sock`, else
+`/tmp/wren-<uid>/...`: a folder only this user may enter, the socket 0600, a client of another user closed at once). The name is given, or `p` + a hash of the profile folder, so the same folder always
 gives the same name and two instances with different profiles never meet. `<profile>\remote.json` has the name, the pipe, the
 pid and the protocol version; a client does not need it (`wren ctl ping` answers with the pid).
 

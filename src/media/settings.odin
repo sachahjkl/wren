@@ -73,6 +73,8 @@ MEDIA_PREFS := [?]config.Def{
 		description = "Offer VP9 when the system has a decoder for it."},
 	{name = "media.codec.av1", kind = .Bool, default = {b = true},
 		description = "Offer AV1 when a decoder is available (the system's, or the software one)."},
+	{name = "media.software.threads", kind = .Int, default = {i = 0}, bounded = true, min = 0, max = 64, unit = "threads",
+		description = "Threads of one video decoded in software (the built-in AV1 decoder). 0: half the processors, at least one."},
 	{name = "media.controls.enabled", kind = .Bool, default = {b = true},
 		description = "Draw the built-in controls (play, position, volume) of <video controls> and <audio controls>."},
 	{name = "media.controls.hide_ms", kind = .Float, default = {f = 2500}, bounded = true, min = 0, max = 60000, unit = "ms",
@@ -88,6 +90,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 	case "block": policy = .Block
 	}
 	ms :: proc(f: f64) -> Time { return Time(f * 1e6) }
+	set_software_threads(int(config.int_of(p, "media.software.threads")))
 	return Settings{
 		enabled = config.bool_of(p, "media.enabled"),
 		player = Player_Settings{

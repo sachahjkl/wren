@@ -21,8 +21,8 @@ this_process_can_be_told_again :: proc(t: ^testing.T) {
 	h := win.OpenProcess(win.PROCESS_QUERY_LIMITED_INFORMATION, false, win.GetCurrentProcessId())
 	testing.expect(t, h != nil)
 	defer win.CloseHandle(h)
-	a, ok := identity_of(h)
+	a, ok := identity_of_handle(h)
 	testing.expect(t, ok && a.created != 0 && a.image != "")
-	b, ok2 := identity_of(win.GetCurrentProcess())
+	b, ok2 := identity_of_handle(win.GetCurrentProcess())
 	testing.expect(t, ok2 && same_process(a, b), "the handle of a pid and the pseudo handle of the process say the same")
 }

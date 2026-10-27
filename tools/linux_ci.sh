@@ -3,24 +3,34 @@
 # then the unit tests of those that have tests, with the flags of tools\test_all.ps1 (-vet, the memory check; a 32 MiB
 # stack: what /STACK:33554432 is on Windows). Needs build/wasmtime-linux (tools/fetch_wasmtime.sh), build/lexbor-linux
 # (tools/build_lexbor.sh) and build/native-linux (tools/build_native.sh).
-#   tools/linux_ci.sh [odin]      ODIN: the compiler (default: odin on PATH)
+#   tools/linux_ci.sh [odin] [package...]   ODIN: the compiler (default: odin on PATH); packages: only those (of the lists)
 # Packages move from "not yet" to these lists as they are ported (docs/portability.md); tests that measure time stay out.
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 ODIN="${1:-odin}"
+[ $# -gt 0 ] && shift
+ONLY=("$@")
 COLL=(-collection:wb=src -collection:toolkit=ext/gui_toolkit)
 # (js/image is out until the JS engine's wasm can be built on Linux: it #loads build/js/wren_js.wasm. idb is checked but its tests
 # are out: two of them, a failed request and a failed write, fail on the GitHub runner and pass in WSL; not understood yet)
 CHECK=(base host config css http i18n xml adblock canvas2d license dom url html cookies csp forms style layout
-       webfont wasm js idb httpcache images webauthn instance desktop remote tools/testenv)
-# (name, extra flags): wasm and remote run on one thread, as on Windows
+       webfont wasm js idb httpcache images webauthn instance desktop remote tools/testenv
+       net fetch media page blocker remote/client tools/crashtrace)
+# (name, extra flags): wasm, remote and remote/client run on one thread, as on Windows (one channel per process)
 TESTS=(base host config css http i18n xml adblock canvas2d dom url html cookies csp forms style layout webfont js
-       httpcache webauthn instance desktop tools/testenv "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1")
+       httpcache webauthn instance desktop tools/testenv "wasm:-define:ODIN_TEST_THREADS=1" "remote:-define:ODIN_TEST_THREADS=1"
+       net fetch media blocker page "remote/client:-define:ODIN_TEST_THREADS=1" tools/crashtrace)
+wanted() {
+  [ ${#ONLY[@]} -eq 0 ] && return 0
+  for o in "${ONLY[@]}"; do [ "$o" = "$1" ] && return 0; done
+  return 1
+}
 ulimit -s 32768
 mkdir -p build/linux
 fail=0
 for p in "${CHECK[@]}"; do
+  wanted "$p" || continue
   if out=$("$ODIN" check "src/$p" -target:linux_amd64 -no-entry-point -vet "${COLL[@]}" 2>&1); then
     echo "check ok   src/$p"
   else
@@ -29,6 +39,7 @@ for p in "${CHECK[@]}"; do
 done
 for t in "${TESTS[@]}"; do
   p="${t%%:*}"; extra=""; [ "$p" != "$t" ] && extra="${t#*:}"
+  wanted "$p" || continue
   name="$(echo "$p" | tr '/' '_')"
   out=$("$ODIN" test "src/$p" -vet "${COLL[@]}" -define:ODIN_TEST_FAIL_ON_BAD_MEMORY=true $extra -out:"build/linux/${name}_test" 2>&1)
   if echo "$out" | grep -qE "All tests were successful|The test was successful"; then
