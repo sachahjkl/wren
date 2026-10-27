@@ -11,6 +11,9 @@ Settings :: struct {
 	enabled:          bool,
 	cosmetic:         bool,
 	scriptlets:       bool,
+	html_filters:     bool,    // `##^` HTML filters: elements removed from the document's markup before parsing
+	html_max_body:    int,     // largest HTML body the `##^` filters scan (bytes); a bigger one streams through
+	popup:            bool,    // `$popup`: stop popup windows / tabs the lists name
 	collapse:         bool,
 	redirects:        bool,
 	removeparam:      bool,
@@ -42,6 +45,12 @@ PREFS := [?]config.Def{
 		description = i18n.tr("Hide page elements named by cosmetic filters (the empty boxes of blocked ads, banners, cookie notices), before the first paint.")},
 	{name = "blocker.scriptlets.enabled", kind = .Bool, default = {b = true},
 		description = i18n.tr("Run the scriptlet rules (##+js(...)) of the filter lists in the page before its own scripts: they neutralize anti-blocker scripts and in-page ads (YouTube's included).")},
+	{name = "blocker.html_filters.enabled", kind = .Bool, default = {b = true},
+		description = i18n.tr("Apply HTML filters (example.com##^script:has-text(ads)): elements the lists name are removed from a document's markup before it is parsed, so an inline ad script or a tracker frame never exists. HTML answers of the visited host only.")},
+	{name = "blocker.html_filters.max_body", kind = .Int, default = {i = 8 << 20}, bounded = true, min = 64 << 10, max = 128 << 20, bytes = true, unit = "bytes",
+		description = i18n.tr("Largest HTML document the HTML filters (##^) scan; a bigger body streams through untouched (a guard against pathological pages).")},
+	{name = "blocker.popup.enabled", kind = .Bool, default = {b = true},
+		description = i18n.tr("Stop the pop-up windows and tabs the lists name ($popup filters): a window.open or a new tab a script triggers without a click of yours is not opened. Pop-ups you open with a click are never stopped unless a filter says so.")},
 	{name = "blocker.collapse.enabled", kind = .Bool, default = {b = true},
 		description = i18n.tr("Collapse the frames and images whose request was blocked, so they leave no empty box.")},
 	{name = "blocker.redirects.enabled", kind = .Bool, default = {b = true},
@@ -95,6 +104,9 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		enabled = config.bool_of(p, "blocker.enabled"),
 		cosmetic = config.bool_of(p, "blocker.cosmetic.enabled"),
 		scriptlets = config.bool_of(p, "blocker.scriptlets.enabled"),
+		html_filters = config.bool_of(p, "blocker.html_filters.enabled"),
+		html_max_body = int(config.int_of(p, "blocker.html_filters.max_body")),
+		popup = config.bool_of(p, "blocker.popup.enabled"),
 		collapse = config.bool_of(p, "blocker.collapse.enabled"),
 		redirects = config.bool_of(p, "blocker.redirects.enabled"),
 		removeparam = config.bool_of(p, "blocker.removeparam.enabled"),

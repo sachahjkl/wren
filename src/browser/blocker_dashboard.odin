@@ -40,6 +40,7 @@ Dash :: struct {
 	my_loaded:   bool,
 	my_dirty:    bool,
 	my_diag:     []string,
+	my_errors:   map[int]string,   // paragraph index (0-based) -> message, for the editor's underline and tooltip
 	my_valid, my_ignored: int,
 	my_checked:  string,
 	custom_url:  ui.Text_Field,
@@ -74,6 +75,8 @@ dash_destroy :: proc() {
 	ui.vlist_destroy(&dash.log_list)
 	delete(dash.my_diag); delete(dash.log_rows); delete(dash.log_ids); delete(dash.log_labels); delete(dash.log_sel)
 	delete(dash.log_query); delete(dash.status); delete(dash.my_checked)
+	for _, v in dash.my_errors { delete(v) }
+	delete(dash.my_errors)
 	dash = {}
 }
 
@@ -384,21 +387,28 @@ tab_lists :: proc(app: ^App, t: ^Tab) {
 @(private = "file")
 diagnose :: proc(text: string) {
 	delete(dash.my_diag)
+	for _, v in dash.my_errors { delete(v) }
+	clear(&dash.my_errors)
+	if dash.my_errors == nil { dash.my_errors = make(map[int]string) }
 	diags := make([dynamic]string)
 	valid, ignored := 0, 0
-	line_no := 0
+	line_no := 0        // 1-based, for the message
+	para := 0           // 0-based paragraph index, for the editor's underline map
 	rest := text
 	for len(rest) > 0 {
 		nl := strings.index_byte(rest, '\n')
 		line: string
 		if nl < 0 { line, rest = rest, "" } else { line, rest = rest[:nl], rest[nl + 1:] }
 		line_no += 1
+		defer para += 1
 		t := strings.trim_space(line)
-		if t == "" || t[0] == '!' || strings.has_prefix(t, "!#") { continue }
+		if t == "" || t[0] == '!' || strings.has_prefix(t, "!#") || t[0] == '[' { continue }
 		p := adblock.parse_line(t, 0, 0, context.temp_allocator)
 		if p.kind == .None {
 			ignored += 1
-			if len(diags) < 8 { append(&diags, fmt.aprintf(i18n.tr("line number, the line", "line %d: not understood or not supported: %s"), line_no, t[:min(len(t), 70)])) }
+			msg := fmt.aprintf(i18n.tr("line number, the line", "line %d: not understood or not supported: %s"), line_no, t[:min(len(t), 70)])
+			if len(diags) < 8 { append(&diags, msg) }
+			dash.my_errors[para] = strings.clone(i18n.tr("not understood or not supported (uBlock Origin ignores it too)"))
 		} else { valid += 1 }
 	}
 	dash.my_diag = diags[:]
@@ -433,10 +443,17 @@ tab_my_filters :: proc(app: ^App, t: ^Tab) {
 		}
 	}
 	ui.next({width = ui.fill(), height = ui.fill()})
-	res := ui.text_edit("###mf_edit", &dash.my, i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\n@@||example.com^$document"), line_numbers = true)
+	hl := filter_highlight()
+	res := ui.text_edit("###mf_edit", &dash.my, i18n.tr("! One filter per line. Examples:\n||ads.example.com^\nexample.com##.banner\nexample.com##+js(set-constant, adsEnabled, false)\nexample.com##^script:has-text(ads)\n@@||example.com^$document"), line_numbers = true, highlight = &hl)
 	if res.changed {
 		dash.my_dirty = true
 		diagnose(ui.area_string(&dash.my))
+	}
+	// a tooltip over an invalid line: the engine's reason for dropping it
+	if res.hover_line >= 0 {
+		if msg, bad := dash.my_errors[res.hover_line]; bad {
+			if ui.tooltip() { ui.label(label_text(msg)) }
+		}
 	}
 	if res.focused && ui.key_press(.S, {.Ctrl}) && dash.my_dirty { dash_apply_filters(app) }
 	if len(dash.my_diag) > 0 {
@@ -619,6 +636,8 @@ outcome_name :: proc(o: blocker.Outcome) -> string {
 	case .Site_Off: return i18n.tr("site off")
 	case .Policy: return i18n.tr("blocked (policy)")
 	case .Header: return i18n.tr("blocked (header)")
+	case .Html_Filtered: return i18n.tr("element removed (HTML filter)")
+	case .Popup: return i18n.tr("popup blocked")
 	}
 	return ""
 }
@@ -626,8 +645,8 @@ outcome_name :: proc(o: blocker.Outcome) -> string {
 @(private = "file")
 outcome_color :: proc(o: blocker.Outcome) -> (c: ui.Color, tone: bool) {
 	#partial switch o {
-	case .Blocked, .Dyn_Blocked, .Policy, .Header: return BLOCK_RED, true
-	case .Redirected, .Rewritten: return SHIELD_AMBER, true
+	case .Blocked, .Dyn_Blocked, .Policy, .Header, .Popup: return BLOCK_RED, true
+	case .Redirected, .Rewritten, .Html_Filtered: return SHIELD_AMBER, true
 	case .Excepted, .Dyn_Allowed: return SHIELD_GREEN, true
 	}
 	return {}, false
