@@ -332,6 +332,7 @@ navigate :: proc(app: ^App, t: ^Tab, address: string, from: ^page.Page = nil, us
 	if is_history_address(target) { show_history(app, t, target); return }
 	if is_blocker_address(target) { show_blocker(app, t, target); return }   // blocker_dashboard.odin
 	if target == HOME_URL { show_home(app, t); return }
+	if strings.has_prefix(target, HOME_URL + "?") { show_home(app, t, strings.contains(target, "art=next")); return }
 	if target == DEMOS_URL { show_demos(app, t); return }
 	if target == ABOUT_URL { show_about_pages(app, t); return }
 	if is_wren_address(target) { show_wren_page(app, t, target, verdict.acts); return }   // about_wren.odin
@@ -1424,6 +1425,7 @@ main :: proc() {
 	window_chrome_init(app)
 	chrome_style_init(app)   // chrome_style.odin
 	favicons_init(app)   // favicon.odin
+	art_init(app)   // newtab_art.odin: the artistic new tab (no network until the first art new tab is shown)
 	downloads_init(app)   // download.odin
 	webauthn_shell_init(app)   // webauthn_shell.odin
 	fullscreen_shell_init(app)   // fullscreen_shell.odin: the Fullscreen API
@@ -1496,6 +1498,8 @@ main :: proc() {
 	host.shutdown_step("webauthn_shell_destroy")
 	clipboard_js_destroy()
 	webauthn_shell_destroy(app)   // passkey requests: their threads joined
+	host.shutdown_step("art_destroy")
+	art_destroy(app)   // newtab_art.odin: its requests cancelled, its cache files kept (temporary folder)
 	host.shutdown_step("favicons_destroy")
 	favicons_destroy(app)
 	host.shutdown_step("images_shell_destroy")

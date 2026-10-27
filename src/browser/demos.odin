@@ -447,5 +447,5 @@ builtin_document :: proc(p: ^page.Page) -> bool {
 // The addresses of the browser's own pages that are built from HTML (builtin_document, and the pages' permission to use
 // -wren-shader: page.Settings.internal_address).
 is_builtin_href :: proc(h: string) -> bool {
-	return h == HOME_URL || h == DEMOS_URL || h == ABOUT_URL || is_wren_address(h)
+	return is_home_address(h) || h == DEMOS_URL || h == ABOUT_URL || is_wren_address(h)
 }
