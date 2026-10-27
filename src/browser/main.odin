@@ -1311,7 +1311,8 @@ main :: proc() {
 	if info := cli_info_of(args); info != .None { desktop.console_write(cli_info_text(info)); os.exit(0) }
 	profile_override, a1 := extract_flag(args, "--profile")
 	policy_file, a2 := extract_flag(a1[:], "--policy")
-	cli_mode, a3, cli_bad := desktop.parse_cli(a2[:])   // --desktop-integration=install|remove|status (desktop_shell.odin)
+	purge_requested, a2b := extract_switch(a2[:], "--purge")   // with --uninstall: also delete the profile (desktop_shell.odin)
+	cli_mode, a3, cli_bad := desktop.parse_cli(a2b[:])   // --desktop-integration=install|remove|status|uninstall, --uninstall (desktop_shell.odin)
 	setup_requested, a4 := extract_switch(a3[:], "--setup")   // opens the Setup dialog (setup.odin)
 	new_window, a5 := extract_switch(a4[:], "--new-window")   // a window of its own, not a tab of the Wren that runs (instance_shell.odin)
 	no_single, a6 := extract_switch(a5[:], "--no-single-instance")
@@ -1334,14 +1335,14 @@ main :: proc() {
 	app.cfg = settings_from_prefs(&app.prefs)
 	memory_trim_settings(&app.prefs)   // memory_trim.odin
 	prof_mark(.Prefs)
-	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove or status)\n", cli_bad)); os.exit(2) }
+	if cli_bad != "" { desktop.console_write(fmt.tprintf("--desktop-integration: unknown mode %q (install, remove, status or uninstall)\n", cli_bad)); os.exit(2) }
 	// `ctl` as an address is nearly always `wren ctl ...` meant for the remote control client that did not run as such (an option before it:
 	// `ctl` is only the first argument; or a wren.exe from before the client existed): it would open https://ctl, and in the user's Wren, not here
 	if len(rest) > 0 && is_info_word(rest[0]) {
 		desktop.console_write(fmt.tprintf("`%s` is a command only as the first argument (wren ctl <command>, wren help, wren version). To open a file or host named %s, write ./%s\n", rest[0], rest[0], rest[0]))
 		os.exit(2)
 	}
-	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode)) }   // no window: a script's call
+	if cli_mode != .None { os.exit(desktop_cli(app, cli_mode, purge_requested)) }   // no window: a script's call
 	instance_early(app, rest[:], setup_requested, new_window || no_single || remote_asked || headless_mode)   // (a driven window is its own: it never hands its addresses to the user's Wren)   // instance_shell.odin: a second start hands over to the first and ends here
 	desktop_early_init()   // the windows' AppUserModelID, before the first one exists
 	recovery_start(app)   // crash_recovery.odin: how the last run ended, and this run's marker
