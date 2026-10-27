@@ -95,6 +95,10 @@ JSValue wjr_ByteLengthQueuingStrategy_constructor(JSContext *ctx, JSValueConst t
 JSValue wjr_ByteLengthQueuingStrategy_get_highWaterMark(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_ByteLengthQueuingStrategy_get_size(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_CSSAnimation_get_animationName(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSRuleList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_CSSRuleList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_CSSRuleList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_CSSRuleList_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_CSSStyleDeclaration_getPropertyPriority(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSSStyleDeclaration_getPropertyValue(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_CSSStyleDeclaration_get_cssText(JSContext *ctx, JSValueConst this_val);
@@ -419,6 +423,7 @@ JSValue wjr_DecompressionStream_get_writable(JSContext *ctx, JSValueConst this_v
 JSValue wjr_DedicatedWorkerGlobalScope_postMessage(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DocumentFragment_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_DocumentOrShadowRoot_getAnimations(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_DocumentOrShadowRoot_get_styleSheets(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_DocumentTimeline_constructor(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_close(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Document_createAttribute(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
@@ -931,6 +936,7 @@ JSValue wjr_KeyframeEffect_set_composite(JSContext *ctx, JSValueConst this_val, 
 JSValue wjr_KeyframeEffect_set_iterationComposite(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_KeyframeEffect_set_pseudoElement(JSContext *ctx, JSValueConst this_val, JSValueConst v);
 JSValue wjr_KeyframeEffect_set_target(JSContext *ctx, JSValueConst this_val, JSValueConst v);
+JSValue wjr_LinkStyle_get_sheet(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Location_assign(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Location_get_ancestorOrigins(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_Location_get_hash(JSContext *ctx, JSValueConst this_val);
@@ -1453,6 +1459,10 @@ int wjr_Storage_named_keys(JSContext *ctx, JSValueConst obj, JSValue array);
 int wjr_Storage_named_set(JSContext *ctx, JSValueConst obj, const char *name, size_t len, JSValueConst value);
 JSValue wjr_Storage_removeItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 JSValue wjr_Storage_setItem(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+JSValue wjr_StyleSheetList_get_length(JSContext *ctx, JSValueConst this_val);
+JSValue wjr_StyleSheetList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found);
+JSValue wjr_StyleSheetList_item(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
+uint32_t wjr_StyleSheetList_length_hook(JSContext *ctx, JSValueConst obj);
 JSValue wjr_StyleSheet_get_disabled(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_StyleSheet_get_href(JSContext *ctx, JSValueConst this_val);
 JSValue wjr_StyleSheet_get_ownerNode(JSContext *ctx, JSValueConst this_val);
@@ -12415,8 +12425,8 @@ static const wj_member wj_m_CSSViewTransitionRule[] = {
     { "types", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 15, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_CSSRuleList[] = {
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_CSSRuleList_item, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSRuleList_get_length, NULL, 0 },
 };
 static const wj_member wj_m_CSSStyleDeclaration[] = {
     { "cssText", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_CSSStyleDeclaration_get_cssText, wjr_CSSStyleDeclaration_set_cssText, 0 },
@@ -14011,7 +14021,7 @@ static const wj_member wj_m_ProcessingInstruction[] = {
     { "removeAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "toggleAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "hasAttribute", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_LinkStyle_get_sheet, NULL, 0 },
 };
 static const wj_member wj_m_Text[] = {
     { "splitText", WJ_M_METHOD, 0, 1, wjg_Text_splitText, NULL, NULL, 0 },
@@ -14128,7 +14138,7 @@ static const wj_member wj_m_Document[] = {
     { "convertRectFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "convertPointFromNode", WJ_M_METHOD, 0, 2, NULL, NULL, NULL, 0 },
     { "getElementById", WJ_M_METHOD, 0, 1, wjr_Document_getElementById, NULL, NULL, 0 },
-    { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 59, NULL, NULL, NULL, 0 },
+    { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 59, NULL, wjr_DocumentOrShadowRoot_get_styleSheets, NULL, 0 },
     { "adoptedStyleSheets", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_Document_get_adoptedStyleSheets, wjr_Document_set_adoptedStyleSheets, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_Document_get_fullscreenElement, wj_lenient_setter, 0 },
@@ -14282,7 +14292,7 @@ static const wj_member wj_m_ShadowRoot[] = {
     { "prependHTMLUnsafe", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
     { "getHTML", WJ_M_METHOD, 0, 0, wjr_ShadowRoot_getHTML, NULL, NULL, 0 },
     { "innerHTML", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ShadowRoot_get_innerHTML, wjg_ShadowRoot_set_innerHTML, 0 },
-    { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 62, NULL, NULL, NULL, 0 },
+    { "styleSheets", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 62, NULL, wjr_DocumentOrShadowRoot_get_styleSheets, NULL, 0 },
     { "adoptedStyleSheets", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_ShadowRoot_get_adoptedStyleSheets, wjr_ShadowRoot_set_adoptedStyleSheets, 0 },
     { "customElementRegistry", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
     { "fullscreenElement", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_ShadowRoot_get_fullscreenElement, wj_lenient_setter, 0 },
@@ -14994,7 +15004,7 @@ static const wj_member wj_m_HTMLLinkElement[] = {
     { "charset", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_charset, wjg_HTMLLinkElement_set_charset, 0 },
     { "rev", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_rev, wjg_HTMLLinkElement_set_rev, 0 },
     { "target", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLLinkElement_get_target, wjg_HTMLLinkElement_set_target, 0 },
-    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_LinkStyle_get_sheet, NULL, 0 },
 };
 static const wj_member wj_m_HTMLMapElement[] = {
     { "name", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLMapElement_get_name, wjg_HTMLMapElement_set_name, 0 },
@@ -15256,7 +15266,7 @@ static const wj_member wj_m_HTMLStyleElement[] = {
     { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLStyleElement_get_media, wjg_HTMLStyleElement_set_media, 0 },
     { "blocking", WJ_M_ATTRIBUTE, WJ_F_SAME_OBJECT, 88, NULL, NULL, wjg_HTMLStyleElement_set_blocking, 0 },
     { "type", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLStyleElement_get_type, wjg_HTMLStyleElement_set_type, 0 },
-    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_LinkStyle_get_sheet, NULL, 0 },
 };
 static const wj_member wj_m_HTMLTableCaptionElement[] = {
     { "align", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_HTMLTableCaptionElement_get_align, wjg_HTMLTableCaptionElement_set_align, 0 },
@@ -15914,7 +15924,7 @@ static const wj_member wj_m_SVGStyleElement[] = {
     { "media", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGStyleElement_get_media, wjg_SVGStyleElement_set_media, 0 },
     { "title", WJ_M_ATTRIBUTE, 0, 0, NULL, wjg_SVGStyleElement_get_title, wjg_SVGStyleElement_set_title, 0 },
     { "disabled", WJ_M_ATTRIBUTE, 0 | WJ_F_SETTER_UNSUPPORTED, 0, NULL, NULL, NULL, 0 },
-    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "sheet", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_LinkStyle_get_sheet, NULL, 0 },
 };
 static const wj_member wj_m_SVGTitleElement[] = {
     { NULL, 0, 0, 0, NULL, NULL, NULL, 0 },
@@ -17759,8 +17769,8 @@ static const wj_member wj_m_CSSStyleSheet[] = {
     { "removeRule", WJ_M_METHOD, 0, 0, NULL, NULL, NULL, 0 },
 };
 static const wj_member wj_m_StyleSheetList[] = {
-    { "item", WJ_M_METHOD, 0, 1, NULL, NULL, NULL, 0 },
-    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, NULL, NULL, 0 },
+    { "item", WJ_M_METHOD, 0, 1, wjr_StyleSheetList_item, NULL, NULL, 0 },
+    { "length", WJ_M_ATTRIBUTE, 0, 0, NULL, wjr_StyleSheetList_get_length, NULL, 0 },
 };
 static const wj_member wj_m_SubtleCrypto[] = {
     { "encrypt", WJ_M_METHOD, WJ_F_SECURE, 3, wjr_SubtleCrypto_encrypt, NULL, NULL, 0 },
@@ -18278,9 +18288,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CSSViewTransitionRule, .n_members = 2, .subtree_end = 41,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "CSSRuleList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "CSSRuleList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CSSRuleList, .n_members = 2, .subtree_end = 42,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_CSSRuleList_index_get, .length_get = wjr_CSSRuleList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "CSSStyleDeclaration", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_CSSStyleDeclaration, .n_members = 8, .subtree_end = 45,
@@ -20282,9 +20292,9 @@ const wj_interface wj_interfaces[] = {
       .members = wj_m_CSSStyleSheet, .n_members = 9, .subtree_end = 542,
       .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
-    { .name = "StyleSheetList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_UNSUPPORTED | WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
+    { .name = "StyleSheetList", .parent = -1, .exposed = WJ_EXPOSE_WINDOW, .flags = WJ_I_INDEXED_ITERATOR, .class_kind = WJ_CLASS_INDEXED, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_StyleSheetList, .n_members = 2, .subtree_end = 543,
-      .index_get = NULL, .length_get = NULL, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
+      .index_get = wjr_StyleSheetList_index_get, .length_get = wjr_StyleSheetList_length_hook, .named_get = NULL, .named_set = NULL, .named_delete = NULL, .named_keys = NULL,
       .legacy_alias = NULL, .factory_name = NULL, .factory = NULL, .factory_length = 0 },
     { .name = "SubtleCrypto", .parent = -1, .exposed = WJ_EXPOSE_WINDOW | WJ_EXPOSE_WORKER | WJ_EXPOSE_SHARED_WORKER | WJ_EXPOSE_SERVICE_WORKER, .flags = WJ_I_SECURE, .class_kind = WJ_CLASS_PLAIN, .ctor_length = 0, .ctor = NULL,
       .members = wj_m_SubtleCrypto, .n_members = 12, .subtree_end = 544,

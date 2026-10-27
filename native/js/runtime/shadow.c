@@ -452,16 +452,15 @@ JSValue wjr_CustomStateSet_forEach(JSContext *ctx, JSValueConst t, int argc, JSV
     return JS_UNDEFINED;
 }
 
-/* ---- constructable stylesheets ---- */
+/* ---- stylesheets: constructed ones and those of <style> / <link> elements (src/page/js_cssom.odin) ---- */
 
-static void rules_refresh(JSContext *ctx, uint64_t h, JSValueConst t);
-
+/* `this` of a CSSStyleSheet member: any sheet of the page (0 with a TypeError pending otherwise) */
 static uint64_t sheet_this(JSContext *ctx, JSValueConst t)
 {
     wj_obj *o = wj_this(ctx, t, I(CSSStyleSheet));
     if (!o) { return 0; }
-    if (!o->handle || !wr_CSSStyleSheet_isConstructed(o->handle)) {
-        JS_ThrowTypeError(ctx, "Illegal invocation: not a constructed stylesheet");
+    if (!o->handle || !wr_CSSStyleSheet_isSheet(o->handle)) {
+        JS_ThrowTypeError(ctx, "Illegal invocation: not a stylesheet of this document");
         return 0;
     }
     return o->handle;
@@ -507,7 +506,6 @@ JSValue wjr_CSSStyleSheet_replaceSync(JSContext *ctx, JSValueConst t, int argc, 
     int32_t st = sheet_replace(ctx, h, argv[0]);
     if (st == INT32_MIN) { return JS_EXCEPTION; }
     if (st < 0) { return wj_throw_status(ctx, st, "CSSStyleSheet.replaceSync"); }
-    rules_refresh(ctx, h, t);
     return JS_UNDEFINED;
 }
 
@@ -519,7 +517,6 @@ JSValue wjr_CSSStyleSheet_replace(JSContext *ctx, JSValueConst t, int argc, JSVa
     int32_t st = sheet_replace(ctx, h, wj_arg(argc, (JSValue *)argv, 0));
     if (st == INT32_MIN) { return web_promise_reject_pending(ctx); }
     if (st < 0) { wj_throw_status(ctx, st, "CSSStyleSheet.replace"); return web_promise_reject_pending(ctx); }
-    rules_refresh(ctx, h, t);
     return web_promise_resolved(ctx, t);
 }
 
@@ -536,7 +533,6 @@ JSValue wjr_CSSStyleSheet_insertRule(JSContext *ctx, JSValueConst t, int argc, J
     int32_t st = wr_CSSStyleSheet_insertRuleAt(h, (const uint8_t *)(s.ptr ? s.ptr : ""), (uint32_t)s.len, index, &r);
     wj_str_free(ctx, &s);
     if (st < 0) { return wj_throw_status(ctx, st, "CSSStyleSheet.insertRule"); }
-    rules_refresh(ctx, h, t);
     return JS_NewUint32(ctx, r);
 }
 
@@ -549,23 +545,75 @@ JSValue wjr_CSSStyleSheet_deleteRule(JSContext *ctx, JSValueConst t, int argc, J
     if (JS_ToUint32(ctx, &index, argv[0]) < 0) { return JS_EXCEPTION; }
     int32_t st = wr_CSSStyleSheet_deleteRuleAt(h, index);
     if (st < 0) { return wj_throw_status(ctx, st, "CSSStyleSheet.deleteRule"); }
-    rules_refresh(ctx, h, t);
     return JS_UNDEFINED;
 }
 
-/* Fills `arr` with the rules of sheet `h`, each an object with its cssText (and selectorText for a style rule):
- * CSSRule is not otherwise modelled. */
-static void rules_fill(JSContext *ctx, uint64_t h, JSValueConst arr, JSValueConst t)
+/* cssRules ([SameObject]): a CSSRuleList whose length is the browser's; its items (objects with cssText, selectorText
+ * for a style rule, parentStyleSheet: CSSRule is not otherwise modelled) are made when one is read, again only after
+ * the sheet's rules changed (CSSStyleSheet_rulesVersion). insertRule(rule, sheet.cssRules.length) in a loop, as
+ * CSS-in-JS libraries do, makes no rule object at all. */
+typedef struct rules_impl {
+    JSValue  sheet;     /* the CSSStyleSheet (counted) */
+    JSValue  items;     /* an array of the rule objects (counted), undefined until read */
+    JSValue  by_id;     /* the same objects by rule identity (CSSStyleSheet_ruleId; counted): kept across changes */
+    uint32_t version;
+} rules_impl;
+
+static void rules_free(void *p)
 {
-    uint32_t n = wr_CSSStyleSheet_ruleCount(h);
-    JS_SetPropertyStr(ctx, arr, "length", JS_NewUint32(ctx, 0));
+    rules_impl *r = p;
+    JSRuntime *rt = JS_GetRuntime(wj_the_realm.ctx);
+    JS_FreeValueRT(rt, r->sheet);
+    JS_FreeValueRT(rt, r->items);
+    JS_FreeValueRT(rt, r->by_id);
+    free(r);
+}
+
+static void rules_mark(void *rt, void *p, void *mark_func)
+{
+    rules_impl *r = p;
+    wj_mark(rt, r->sheet, mark_func);
+    wj_mark(rt, r->items, mark_func);
+    wj_mark(rt, r->by_id, mark_func);
+}
+
+static rules_impl *rules_of(JSValueConst obj)
+{
+    wj_obj *o = wj_unwrap(obj, I(CSSRuleList));
+    return o && o->impl_free == rules_free ? o->impl : NULL;
+}
+
+static uint64_t rules_sheet(rules_impl *r)
+{
+    wj_obj *o = r ? wj_unwrap(r->sheet, I(CSSStyleSheet)) : NULL;
+    return o && o->handle && wr_CSSStyleSheet_isSheet(o->handle) ? o->handle : 0;
+}
+
+/* the rule objects, made again when the sheet's rules changed since */
+static JSValue rules_items(JSContext *ctx, rules_impl *r)
+{
+    uint64_t h = rules_sheet(r);
+    uint32_t v = h ? wr_CSSStyleSheet_rulesVersion(h) : 0;
+    if (JS_IsArray(r->items) && r->version == v) { return r->items; }
+    JSValue arr = JS_NewArray(ctx);
+    if (JS_IsException(arr)) { return arr; }
+    JSValue by_id = JS_NewObject(ctx);
+    if (JS_IsException(by_id)) { JS_FreeValue(ctx, arr); return by_id; }
+    uint32_t n = h ? wr_CSSStyleSheet_ruleCount(h) : 0;
     for (uint32_t i = 0; i < n; i++) {
+        uint32_t id = wr_CSSStyleSheet_ruleId(h, i);
+        JSValue kept = JS_IsObject(r->by_id) && id ? JS_GetPropertyUint32(ctx, r->by_id, id) : JS_UNDEFINED;
+        if (JS_IsObject(kept)) {
+            JS_SetPropertyUint32(ctx, by_id, id, JS_DupValue(ctx, kept));
+            wj_array_set(ctx, arr, i, kept);
+            continue;
+        }
+        JS_FreeValue(ctx, kept);
         int32_t len;
         WJ_FETCH_STRING(len, wr_CSSStyleSheet_ruleText(h, i, wj_scratch.data, wj_scratch.cap));
         if (len < 0) { break; }
         JSValue rule = JS_NewObject(ctx);
-        JSValue text = JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)len);
-        JS_DefinePropertyValueStr(ctx, rule, "cssText", text, JS_PROP_ENUMERABLE);
+        JS_DefinePropertyValueStr(ctx, rule, "cssText", JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)len), JS_PROP_ENUMERABLE);
         /* a style rule's selector: what comes before its block */
         const char *b = memchr(wj_scratch.data, '{', (size_t)len);
         if (b && wj_scratch.data[0] != '@') {
@@ -573,30 +621,70 @@ static void rules_fill(JSContext *ctx, uint64_t h, JSValueConst arr, JSValueCons
             while (sl > 0 && (wj_scratch.data[sl - 1] == ' ' || wj_scratch.data[sl - 1] == '\n' || wj_scratch.data[sl - 1] == '\t')) { sl--; }
             JS_DefinePropertyValueStr(ctx, rule, "selectorText", JS_NewStringLen(ctx, (const char *)wj_scratch.data, sl), JS_PROP_ENUMERABLE);
         }
-        JS_DefinePropertyValueStr(ctx, rule, "parentStyleSheet", JS_DupValue(ctx, t), 0);
+        JS_DefinePropertyValueStr(ctx, rule, "parentStyleSheet", JS_DupValue(ctx, r->sheet), 0);
+        if (id) { JS_SetPropertyUint32(ctx, by_id, id, JS_DupValue(ctx, rule)); }
         wj_array_set(ctx, arr, i, rule);
     }
-}
-
-/* cssRules ([SameObject]): one list per sheet, brought up to date by every change of the sheet (rules_refresh) */
-JSValue wjr_CSSStyleSheet_get_cssRules(JSContext *ctx, JSValueConst t)
-{
-    uint64_t h = sheet_this(ctx, t);
-    if (!h) { return JS_EXCEPTION; }
-    JSValue arr = JS_NewArray(ctx);
-    rules_fill(ctx, h, arr, t);
+    JS_FreeValue(ctx, r->items);
+    JS_FreeValue(ctx, r->by_id);
+    r->items = arr;
+    r->by_id = by_id;
+    r->version = v;
     return arr;
 }
 
-static void rules_refresh(JSContext *ctx, uint64_t h, JSValueConst t)
+JSValue wjr_CSSStyleSheet_get_cssRules(JSContext *ctx, JSValueConst t)
 {
-    JSValue arr = JS_GetPropertyStr(ctx, t, "cssRules");
-    if (JS_IsException(arr)) { JS_FreeValue(ctx, JS_GetException(ctx)); return; }
-    if (JS_IsObject(arr)) { rules_fill(ctx, h, arr, t); }
-    JS_FreeValue(ctx, arr);
+    if (!sheet_this(ctx, t)) { return JS_EXCEPTION; }
+    rules_impl *r = calloc(1, sizeof *r);
+    if (!r) { return JS_ThrowOutOfMemory(ctx); }
+    r->sheet = JS_DupValue(ctx, t);
+    r->items = JS_UNDEFINED;
+    r->by_id = JS_UNDEFINED;
+    JSValue obj = wj_new_object(ctx, I(CSSRuleList), r, rules_free);
+    if (JS_IsException(obj)) { return obj; }
+    wj_obj_of(obj)->impl_mark = rules_mark;
+    return obj;
 }
 
 JSValue wjr_CSSStyleSheet_get_rules(JSContext *ctx, JSValueConst t) { return JS_GetPropertyStr(ctx, t, "cssRules"); }
+
+uint32_t wjr_CSSRuleList_length_hook(JSContext *ctx, JSValueConst obj)
+{
+    WJ_UNUSED(ctx);
+    uint64_t h = rules_sheet(rules_of(obj));
+    return h ? wr_CSSStyleSheet_ruleCount(h) : 0;
+}
+
+JSValue wjr_CSSRuleList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found)
+{
+    *found = false;
+    rules_impl *r = rules_of(obj);
+    if (!r) { return JS_UNDEFINED; }
+    JSValue arr = rules_items(ctx, r);
+    if (JS_IsException(arr)) { return arr; }
+    JSValue v = JS_GetPropertyUint32(ctx, arr, index);
+    *found = !JS_IsUndefined(v);
+    return v;
+}
+
+JSValue wjr_CSSRuleList_get_length(JSContext *ctx, JSValueConst t)
+{
+    if (!wj_this(ctx, t, I(CSSRuleList))) { return JS_EXCEPTION; }
+    return JS_NewUint32(ctx, wjr_CSSRuleList_length_hook(ctx, t));
+}
+
+JSValue wjr_CSSRuleList_item(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
+{
+    if (!wj_this(ctx, t, I(CSSRuleList))) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "CSSRuleList.item", 1, argc); }
+    uint32_t i;
+    if (!wj_to_uint32(ctx, argv[0], &i, 32, 0)) { return JS_EXCEPTION; }
+    bool found;
+    JSValue v = wjr_CSSRuleList_index_get(ctx, t, i, &found);
+    if (JS_IsException(v) || found) { return v; }
+    return JS_NULL;
+}
 
 JSValue wjr_StyleSheet_get_disabled(JSContext *ctx, JSValueConst t)
 {
@@ -613,12 +701,117 @@ JSValue wjr_StyleSheet_set_disabled(JSContext *ctx, JSValueConst t, JSValueConst
     return JS_UNDEFINED;
 }
 
+/* a string of the browser's, null when empty */
+static JSValue sheet_string_or_null(JSContext *ctx, int32_t len)
+{
+    if (len < 0) { return wj_throw_status(ctx, len, "StyleSheet"); }
+    return len == 0 ? JS_NULL : JS_NewStringLen(ctx, (const char *)wj_scratch.data, (size_t)len);
+}
+
 JSValue wjr_StyleSheet_get_type(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NewString(ctx, "text/css") : JS_EXCEPTION; }
-JSValue wjr_StyleSheet_get_href(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NULL : JS_EXCEPTION; }
-JSValue wjr_StyleSheet_get_ownerNode(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NULL : JS_EXCEPTION; }
+
+JSValue wjr_StyleSheet_get_href(JSContext *ctx, JSValueConst t)
+{
+    uint64_t h = sheet_this(ctx, t);
+    if (!h) { return JS_EXCEPTION; }
+    int32_t len;
+    WJ_FETCH_STRING(len, wr_CSSStyleSheet_hrefOf(h, wj_scratch.data, wj_scratch.cap));
+    return sheet_string_or_null(ctx, len);
+}
+
+JSValue wjr_StyleSheet_get_title(JSContext *ctx, JSValueConst t)
+{
+    uint64_t h = sheet_this(ctx, t);
+    if (!h) { return JS_EXCEPTION; }
+    int32_t len;
+    WJ_FETCH_STRING(len, wr_CSSStyleSheet_titleOf(h, wj_scratch.data, wj_scratch.cap));
+    return sheet_string_or_null(ctx, len);
+}
+
+JSValue wjr_StyleSheet_get_ownerNode(JSContext *ctx, JSValueConst t)
+{
+    uint64_t h = sheet_this(ctx, t);
+    if (!h) { return JS_EXCEPTION; }
+    return wj_wrap_node(ctx, wr_CSSStyleSheet_ownerNodeOf(h));
+}
+
 JSValue wjr_StyleSheet_get_parentStyleSheet(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NULL : JS_EXCEPTION; }
-JSValue wjr_StyleSheet_get_title(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NULL : JS_EXCEPTION; }
 JSValue wjr_CSSStyleSheet_get_ownerRule(JSContext *ctx, JSValueConst t) { return sheet_this(ctx, t) ? JS_NULL : JS_EXCEPTION; }
+
+/* element.sheet (LinkStyle: <style>, <link>, SVG <style>) */
+JSValue wjr_LinkStyle_get_sheet(JSContext *ctx, JSValueConst t)
+{
+    wj_obj *o = wj_this(ctx, t, I(Node));
+    if (!o) { return JS_EXCEPTION; }
+    return wj_wrap_host(ctx, wr_LinkStyle_sheetOf(o->handle), I(CSSStyleSheet));
+}
+
+/* document.styleSheets / shadowRoot.styleSheets ([SameObject]): a live StyleSheetList of the tree's sheets */
+typedef struct sheets_impl {
+    JSValue  root;      /* the document or shadow root (counted) */
+    uint64_t handle;
+} sheets_impl;
+
+static void sheets_free(void *p)
+{
+    sheets_impl *s = p;
+    JS_FreeValueRT(JS_GetRuntime(wj_the_realm.ctx), s->root);
+    free(s);
+}
+
+static void sheets_mark(void *rt, void *p, void *mark_func) { wj_mark(rt, ((sheets_impl *)p)->root, mark_func); }
+
+static sheets_impl *sheets_of(JSValueConst obj)
+{
+    wj_obj *o = wj_unwrap(obj, I(StyleSheetList));
+    return o && o->impl_free == sheets_free ? o->impl : NULL;
+}
+
+JSValue wjr_DocumentOrShadowRoot_get_styleSheets(JSContext *ctx, JSValueConst t)
+{
+    wj_obj *o = wj_this(ctx, t, I(Node));
+    if (!o) { return JS_EXCEPTION; }
+    sheets_impl *s = calloc(1, sizeof *s);
+    if (!s) { return JS_ThrowOutOfMemory(ctx); }
+    s->root = JS_DupValue(ctx, t);
+    s->handle = o->handle;
+    JSValue obj = wj_new_object(ctx, I(StyleSheetList), s, sheets_free);
+    if (JS_IsException(obj)) { return obj; }
+    wj_obj_of(obj)->impl_mark = sheets_mark;
+    return obj;
+}
+
+uint32_t wjr_StyleSheetList_length_hook(JSContext *ctx, JSValueConst obj)
+{
+    WJ_UNUSED(ctx);
+    sheets_impl *s = sheets_of(obj);
+    return s ? wr_DocumentOrShadowRoot_sheetCount(s->handle) : 0;
+}
+
+JSValue wjr_StyleSheetList_index_get(JSContext *ctx, JSValueConst obj, uint32_t index, bool *found)
+{
+    sheets_impl *s = sheets_of(obj);
+    uint64_t h = s ? wr_DocumentOrShadowRoot_sheetAt(s->handle, index) : 0;
+    *found = h != 0;
+    return h ? wj_wrap_host(ctx, h, I(CSSStyleSheet)) : JS_UNDEFINED;
+}
+
+JSValue wjr_StyleSheetList_get_length(JSContext *ctx, JSValueConst t)
+{
+    if (!wj_this(ctx, t, I(StyleSheetList))) { return JS_EXCEPTION; }
+    return JS_NewUint32(ctx, wjr_StyleSheetList_length_hook(ctx, t));
+}
+
+JSValue wjr_StyleSheetList_item(JSContext *ctx, JSValueConst t, int argc, JSValueConst *argv)
+{
+    if (!wj_this(ctx, t, I(StyleSheetList))) { return JS_EXCEPTION; }
+    if (argc < 1) { return wj_throw_arity(ctx, "StyleSheetList.item", 1, argc); }
+    uint32_t i;
+    if (!wj_to_uint32(ctx, argv[0], &i, 32, 0)) { return JS_EXCEPTION; }
+    bool found;
+    JSValue v = wjr_StyleSheetList_index_get(ctx, t, i, &found);
+    return found ? v : JS_NULL;
+}
 
 /* ---- adoptedStyleSheets (prelude/shadow.js keeps the arrays) ---- */
 

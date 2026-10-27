@@ -58,6 +58,15 @@ foreign _m_dom {
 	@(link_name = "Element_removeAttribute") _Element_removeAttribute :: proc(element: u64, name: [^]u8, name_len: u32) -> Error ---
 	@(link_name = "HTMLIFrameElement_srcdoc") _HTMLIFrameElement_srcdoc :: proc(element: u64, _buf: [^]u8, _cap: u32) -> i32 ---
 	@(link_name = "HTMLIFrameElement_set_srcdoc") _HTMLIFrameElement_set_srcdoc :: proc(element: u64, value: [^]u8, value_len: u32) -> Error ---
+	@(link_name = "LinkStyle_sheetOf") _LinkStyle_sheetOf :: proc(node: u64) -> u64 ---
+	@(link_name = "DocumentOrShadowRoot_sheetCount") _DocumentOrShadowRoot_sheetCount :: proc(root: u64) -> u32 ---
+	@(link_name = "DocumentOrShadowRoot_sheetAt") _DocumentOrShadowRoot_sheetAt :: proc(root: u64, index: u32) -> u64 ---
+	@(link_name = "CSSStyleSheet_isSheet") _CSSStyleSheet_isSheet :: proc(sheet: u64) -> i32 ---
+	@(link_name = "CSSStyleSheet_ownerNodeOf") _CSSStyleSheet_ownerNodeOf :: proc(sheet: u64) -> u64 ---
+	@(link_name = "CSSStyleSheet_hrefOf") _CSSStyleSheet_hrefOf :: proc(sheet: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_titleOf") _CSSStyleSheet_titleOf :: proc(sheet: u64, _buf: [^]u8, _cap: u32) -> i32 ---
+	@(link_name = "CSSStyleSheet_rulesVersion") _CSSStyleSheet_rulesVersion :: proc(sheet: u64) -> u32 ---
+	@(link_name = "CSSStyleSheet_ruleId") _CSSStyleSheet_ruleId :: proc(sheet: u64, index: u32) -> u32 ---
 	@(link_name = "CustomElements_define") _CustomElements_define :: proc(name: [^]u8, name_len: u32) ---
 	@(link_name = "CustomElements_pending") _CustomElements_pending :: proc() -> u32 ---
 	@(link_name = "CustomElements_take") _CustomElements_take :: proc(_buf: [^]u8, _cap: u32) -> i32 ---
@@ -624,6 +633,103 @@ HTMLIFrameElement_srcdoc_alloc :: proc(element: $T_element, allocator: runtime.A
 // iframe.srcdoc = value
 HTMLIFrameElement_set_srcdoc :: proc "contextless" (element: $T_element, value: string) -> Error where intrinsics.type_is_integer(intrinsics.type_core_type(T_element)) && size_of(T_element) == 8 {
 	return _HTMLIFrameElement_set_srcdoc(u64(element), raw_data(value), u32(len(value)))
+}
+
+// element.sheet of a <style> or <link rel=stylesheet> (any other node: 0, null): its CSSStyleSheet, the same
+// object for as long as the element keeps that sheet. A <style> gets its sheet brought up to date first (HTML
+// "update a style block"); a <link>'s is there once loaded.
+LinkStyle_sheetOf :: proc "contextless" (node: $T_node) -> u64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_node)) && size_of(T_node) == 8 {
+	return _LinkStyle_sheetOf(u64(node))
+}
+
+// document.styleSheets / shadowRoot.styleSheets: how many sheets the tree of `root` has (its <style> and loaded
+// <link> elements, in tree order) ...
+DocumentOrShadowRoot_sheetCount :: proc "contextless" (root: $T_root) -> u32 where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _DocumentOrShadowRoot_sheetCount(u64(root))
+}
+
+// ... and the one at `index` (0 past the end).
+DocumentOrShadowRoot_sheetAt :: proc "contextless" (root: $T_root, index: u32) -> u64 where intrinsics.type_is_integer(intrinsics.type_core_type(T_root)) && size_of(T_root) == 8 {
+	return _DocumentOrShadowRoot_sheetAt(u64(root), index)
+}
+
+// Whether `sheet` is a CSSStyleSheet of this page, constructed or an element's.
+CSSStyleSheet_isSheet :: proc "contextless" (sheet: u64) -> bool {
+	return _CSSStyleSheet_isSheet(sheet) != 0
+}
+
+// sheet.ownerNode: the element of an element's sheet while it has it (0: null).
+CSSStyleSheet_ownerNodeOf :: proc "contextless" (sheet: u64) -> u64 {
+	return _CSSStyleSheet_ownerNodeOf(sheet)
+}
+
+// sheet.href: the URL of a <link>'s sheet ("" for null).
+CSSStyleSheet_hrefOf :: proc "contextless" (sheet: u64, buf: []u8) -> (string, Error) {
+	n := _CSSStyleSheet_hrefOf(sheet, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CSSStyleSheet_hrefOf's result.
+CSSStyleSheet_hrefOf_len :: proc "contextless" (sheet: u64) -> (int, Error) {
+	n := _CSSStyleSheet_hrefOf(sheet, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CSSStyleSheet_hrefOf's result in a buffer allocated to fit.
+CSSStyleSheet_hrefOf_alloc :: proc(sheet: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CSSStyleSheet_hrefOf(sheet, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// sheet.title: the title attribute of its element ("" for null).
+CSSStyleSheet_titleOf :: proc "contextless" (sheet: u64, buf: []u8) -> (string, Error) {
+	n := _CSSStyleSheet_titleOf(sheet, raw_data(buf), u32(len(buf)))
+	if n < 0 { return {}, Error(n) }
+	if int(n) > len(buf) { return string(buf), .Truncated }
+	return string(buf[:n]), .None
+}
+
+// The full length of CSSStyleSheet_titleOf's result.
+CSSStyleSheet_titleOf_len :: proc "contextless" (sheet: u64) -> (int, Error) {
+	n := _CSSStyleSheet_titleOf(sheet, nil, 0)
+	if n < 0 { return 0, Error(n) }
+	return int(n), .None
+}
+
+// CSSStyleSheet_titleOf's result in a buffer allocated to fit.
+CSSStyleSheet_titleOf_alloc :: proc(sheet: u64, allocator: runtime.Allocator) -> (string, Error) {
+	cap := 64
+	for _ in 0 ..< 4 {
+		buf := make([]u8, cap, allocator)
+		n := _CSSStyleSheet_titleOf(sheet, raw_data(buf), u32(len(buf)))
+		if n < 0 { delete(buf, allocator); return {}, Error(n) }
+		if int(n) <= cap { return string(buf[:n]), .None }
+		delete(buf, allocator)
+		cap = int(n)
+	}
+	return {}, .Truncated
+}
+
+// A number that changes with every change of the sheet's rules (the rule list's items are made again then).
+CSSStyleSheet_rulesVersion :: proc "contextless" (sheet: u64) -> u32 {
+	return _CSSStyleSheet_rulesVersion(sheet)
+}
+
+// The identity of cssRules[index], a number never given to another rule of the page (0 past the end): the rule
+// list gives a rule the same object across insertions and deletions around it.
+CSSStyleSheet_ruleId :: proc "contextless" (sheet: u64, index: u32) -> u32 {
+	return _CSSStyleSheet_ruleId(sheet, index)
 }
 
 // customElements.define(name, ...) succeeded: elements of that local name now queue reactions.

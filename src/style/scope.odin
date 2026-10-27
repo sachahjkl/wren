@@ -146,6 +146,7 @@ engine_constructed_replace :: proc(e: ^Engine, id: u64, text: string) -> bool {
 	if s == nil || !s.constructed { return false }
 	t := text
 	if len(t) > e.settings.max_sheet_bytes { t = "" }
+	cssom_list_free(s)
 	css.stylesheet_destroy(s.sheet)
 	free(s.sheet)
 	s.sheet = css.parse_stylesheet(t, parse_options(&e.settings))
@@ -244,7 +245,7 @@ fnv64 :: proc(s: string) -> u64 {
 // What a sheet contributes to a set's key: its contents and those of what it imports.
 @(private = "file")
 sheet_key :: proc(sb: ^strings.Builder, s: ^Sheet, depth := 0) {
-	src := s.sheet != nil ? s.sheet.source : ""
+	src := sheet_rules_text(s)
 	fmt.sbprintf(sb, "{%x:%d|%s|%v%s|%s", fnv64(src), len(src), s.media_text, s.in_layer, s.layer, s.base_url)
 	if depth < 16 {
 		for &slot in s.imports {
@@ -258,7 +259,7 @@ sheet_key :: proc(sb: ^strings.Builder, s: ^Sheet, depth := 0) {
 @(private = "file")
 sheet_copy :: proc(e: ^Engine, s: ^Sheet, depth := 0) -> ^Sheet {
 	c := new(Sheet)
-	src := s.sheet != nil ? s.sheet.source : ""
+	src := sheet_rules_text(s)
 	c.sheet = css.parse_stylesheet(src, parse_options(&e.settings))
 	c.origin, c.depth, c.order = s.origin, s.depth, s.order
 	c.media_text = strings.clone(s.media_text)
@@ -315,7 +316,7 @@ scopes_resolve :: proc(e: ^Engine, doc: ^dom.Document) {
 	// the sheets of each shadow tree, in tree order (owners' positions in their tree)
 	per_root := make(map[base.Handle][dynamic]^Sheet, 16, context.temp_allocator)
 	for s in e.sheets {
-		if s.origin != .Author || s.scope == base.NIL_HANDLE || s.constructed { continue }
+		if s.origin != .Author || s.scope == base.NIL_HANDLE || s.constructed || s.disabled { continue }
 		l := per_root[s.scope]
 		if l == nil { l = make([dynamic]^Sheet, context.temp_allocator) }
 		append(&l, s)

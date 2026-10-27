@@ -11641,6 +11641,164 @@ _t_js_Node_treeRoots :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.R
 	return nil
 }
 
+// LinkStyle_sheetOf :: proc(c: ^Call, node: Api_Node) -> u64
+@(private = "file")
+_t_dom_LinkStyle_sheetOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.LinkStyle_sheetOf: argument node is not a live Node") }
+		return wasm.trap_new("dom.LinkStyle_sheetOf: argument node is not a live Node")
+	}
+	_r := LinkStyle_sheetOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// DocumentOrShadowRoot_sheetCount :: proc(c: ^Call, root: Api_Node) -> u32
+@(private = "file")
+_t_dom_DocumentOrShadowRoot_sheetCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentOrShadowRoot_sheetCount: argument root is not a live Node") }
+		return wasm.trap_new("dom.DocumentOrShadowRoot_sheetCount: argument root is not a live Node")
+	}
+	_r := DocumentOrShadowRoot_sheetCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// DocumentOrShadowRoot_sheetAt :: proc(c: ^Call, root: Api_Node, index: u32) -> u64
+@(private = "file")
+_t_dom_DocumentOrShadowRoot_sheetAt :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_Node{handle = u64(a[0].i64)}
+	_p0.data = lookup_Node(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "dom.DocumentOrShadowRoot_sheetAt: argument root is not a live Node") }
+		return wasm.trap_new("dom.DocumentOrShadowRoot_sheetAt: argument root is not a live Node")
+	}
+	_p1 := u32(a[1].i32)
+	_r := DocumentOrShadowRoot_sheetAt(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CSSStyleSheet_isSheet :: proc(c: ^Call, sheet: u64) -> bool
+@(private = "file")
+_t_dom_CSSStyleSheet_isSheet :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_isSheet(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// CSSStyleSheet_ownerNodeOf :: proc(c: ^Call, sheet: u64) -> u64
+@(private = "file")
+_t_dom_CSSStyleSheet_ownerNodeOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_ownerNodeOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// CSSStyleSheet_hrefOf :: proc(c: ^Call, sheet: u64) -> string
+@(private = "file")
+_t_dom_CSSStyleSheet_hrefOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_hrefOf", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_hrefOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_titleOf :: proc(c: ^Call, sheet: u64) -> string
+@(private = "file")
+_t_dom_CSSStyleSheet_titleOf :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[2])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[1]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "dom.CSSStyleSheet_titleOf", "result buffer") }
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_titleOf(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// CSSStyleSheet_rulesVersion :: proc(c: ^Call, sheet: u64) -> u32
+@(private = "file")
+_t_dom_CSSStyleSheet_rulesVersion :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_r := CSSStyleSheet_rulesVersion(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
+// CSSStyleSheet_ruleId :: proc(c: ^Call, sheet: u64, index: u32) -> u32
+@(private = "file")
+_t_dom_CSSStyleSheet_ruleId :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_p1 := u32(a[1].i32)
+	_r := CSSStyleSheet_ruleId(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = i32(_r)
+	return nil
+}
+
 // CustomElements_define :: proc(c: ^Call, name: string)
 @(private = "file")
 _t_dom_CustomElements_define :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -27581,6 +27739,15 @@ api_imports := [?]wasm.Import{
 	{module = "js", name = "Node_wrap", fn = _t_js_Node_wrap, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "js", name = "Node_unpin", fn = _t_js_Node_unpin, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "js", name = "Node_treeRoots", fn = _t_js_Node_treeRoots, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{}},
+	{module = "dom", name = "LinkStyle_sheetOf", fn = _t_dom_LinkStyle_sheetOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "DocumentOrShadowRoot_sheetCount", fn = _t_dom_DocumentOrShadowRoot_sheetCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "DocumentOrShadowRoot_sheetAt", fn = _t_dom_DocumentOrShadowRoot_sheetAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_isSheet", fn = _t_dom_CSSStyleSheet_isSheet, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_ownerNodeOf", fn = _t_dom_CSSStyleSheet_ownerNodeOf, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_hrefOf", fn = _t_dom_CSSStyleSheet_hrefOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_titleOf", fn = _t_dom_CSSStyleSheet_titleOf, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "dom", name = "CSSStyleSheet_rulesVersion", fn = _t_dom_CSSStyleSheet_rulesVersion, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "dom", name = "CSSStyleSheet_ruleId", fn = _t_dom_CSSStyleSheet_ruleId, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CustomElements_define", fn = _t_dom_CustomElements_define, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{}},
 	{module = "dom", name = "CustomElements_pending", fn = _t_dom_CustomElements_pending, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "CustomElements_take", fn = _t_dom_CustomElements_take, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},

@@ -87,9 +87,10 @@ Sheet :: struct {
 	scope:   base.Handle,              // the shadow root whose tree the owner is in; NIL: the document (scope.odin)
 	constructed: bool,                 // a constructable stylesheet (new CSSStyleSheet()): applies where it is adopted
 	version: u64,                      // constructed: bumped by every change of its text
-	disabled: bool,                    // constructed: CSSStyleSheet.disabled
+	disabled: bool,                    // CSSStyleSheet.disabled (a script set it: engine_sheet_set_disabled)
 	parent:  ^Sheet,                   // an imported sheet: the sheet that imports it
 	injected: bool,                    // added by the embedder (the content blocker's element hiding): kept when the built-in sheets are rebuilt
+	cssom:   ^Cssom_List,              // the rule list scripts see and change (cssom.odin); nil until one asks
 }
 
 Engine :: struct {
@@ -131,6 +132,7 @@ Engine :: struct {
 	user:      ^Sheet,
 	anon_layers: int,
 	next_sheet_id: u64,
+	next_rule_id:  u32,                // CSSOM rule lists: the identity of each rule (cssom.odin)
 	viewport_units:  bool,             // some value uses vw/vh/vmin/vmax: a viewport change restyles
 	restyle_needed:  bool,             // set by `engine_set_environment`; the page clears it after restyling
 	journal_max:     int,              // > 0: passes keep a layout journal of at most this many entries (journal.odin)
@@ -202,6 +204,7 @@ engine_destroy :: proc(e: ^Engine) {
 sheet_free :: proc(s: ^Sheet) {
 	for &slot in s.imports { if slot.child != nil { sheet_free(slot.child) } }
 	delete(s.imports)
+	cssom_list_free(s)
 	if s.sheet != nil { css.stylesheet_destroy(s.sheet); free(s.sheet) }
 	delete(s.base_url)
 	delete(s.layer)
@@ -892,7 +895,7 @@ engine_rebuild :: proc(e: ^Engine, doc: ^dom.Document = nil) {
 	}
 	// the document's own sheets, then those it adopted (CSSOM: after the document's sheets, in their order)
 	for s in e.sheets {
-		if s.scope != base.NIL_HANDLE || s.constructed { continue }
+		if s.scope != base.NIL_HANDLE || s.constructed || s.disabled { continue }
 		flatten_sheet(e, s, LayerCtx{rank = UNLAYERED})
 	}
 	for id in e.shadow.doc_adopted {

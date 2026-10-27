@@ -232,6 +232,8 @@ enum wr_ConsoleLevel {
 
 /* module dom (partial): types */
 
+/* module dom (partial): types */
+
 /* module dnd: types */
 typedef uint64_t wr_DataTransfer;
 typedef uint64_t wr_LocalFile;
@@ -1162,6 +1164,28 @@ WR_IMPORT("dom", "Element_removeAttribute") int32_t wr_Element_removeAttribute(u
 WR_IMPORT("dom", "HTMLIFrameElement_srcdoc") int32_t wr_HTMLIFrameElement_srcdoc(uint64_t element, uint8_t *_buf, uint32_t _cap);
 // iframe.srcdoc = value
 WR_IMPORT("dom", "HTMLIFrameElement_set_srcdoc") int32_t wr_HTMLIFrameElement_set_srcdoc(uint64_t element, const uint8_t *value, uint32_t value_len);
+// element.sheet of a <style> or <link rel=stylesheet> (any other node: 0, null): its CSSStyleSheet, the same
+// object for as long as the element keeps that sheet. A <style> gets its sheet brought up to date first (HTML
+// "update a style block"); a <link>'s is there once loaded.
+WR_IMPORT("dom", "LinkStyle_sheetOf") uint64_t wr_LinkStyle_sheetOf(uint64_t node);
+// document.styleSheets / shadowRoot.styleSheets: how many sheets the tree of `root` has (its <style> and loaded
+// <link> elements, in tree order) ...
+WR_IMPORT("dom", "DocumentOrShadowRoot_sheetCount") uint32_t wr_DocumentOrShadowRoot_sheetCount(uint64_t root);
+// ... and the one at `index` (0 past the end).
+WR_IMPORT("dom", "DocumentOrShadowRoot_sheetAt") uint64_t wr_DocumentOrShadowRoot_sheetAt(uint64_t root, uint32_t index);
+// Whether `sheet` is a CSSStyleSheet of this page, constructed or an element's.
+WR_IMPORT("dom", "CSSStyleSheet_isSheet") int32_t wr_CSSStyleSheet_isSheet(uint64_t sheet);
+// sheet.ownerNode: the element of an element's sheet while it has it (0: null).
+WR_IMPORT("dom", "CSSStyleSheet_ownerNodeOf") uint64_t wr_CSSStyleSheet_ownerNodeOf(uint64_t sheet);
+// sheet.href: the URL of a <link>'s sheet ("" for null).
+WR_IMPORT("dom", "CSSStyleSheet_hrefOf") int32_t wr_CSSStyleSheet_hrefOf(uint64_t sheet, uint8_t *_buf, uint32_t _cap);
+// sheet.title: the title attribute of its element ("" for null).
+WR_IMPORT("dom", "CSSStyleSheet_titleOf") int32_t wr_CSSStyleSheet_titleOf(uint64_t sheet, uint8_t *_buf, uint32_t _cap);
+// A number that changes with every change of the sheet's rules (the rule list's items are made again then).
+WR_IMPORT("dom", "CSSStyleSheet_rulesVersion") uint32_t wr_CSSStyleSheet_rulesVersion(uint64_t sheet);
+// The identity of cssRules[index], a number never given to another rule of the page (0 past the end): the rule
+// list gives a rule the same object across insertions and deletions around it.
+WR_IMPORT("dom", "CSSStyleSheet_ruleId") uint32_t wr_CSSStyleSheet_ruleId(uint64_t sheet, uint32_t index);
 // customElements.define(name, ...) succeeded: elements of that local name now queue reactions.
 WR_IMPORT("dom", "CustomElements_define") void wr_CustomElements_define(const uint8_t *name, uint32_t name_len);
 // The size CustomElements_take needs now (0: nothing queued): the engine sizes its buffer with it, as the take
