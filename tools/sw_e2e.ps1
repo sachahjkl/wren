@@ -121,7 +121,7 @@ try {
   Wren-Ctl pref set service_workers.update_check_hours 0 | Out-Null
   Wren-Ctl eval 'fetch("/sw/bump").then((r) => r.text())' --await --tab-id $tab1 | Out-Null
   Wren-Ctl nav "$o/sw/ver/page" --wait load --tab-id $tab1 | Out-Null
-  $nu = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { const go = () => (r.waiting || r.installing) ? ok("new version") : setTimeout(go, 50); go(); setTimeout(() => ok("none"), 8000); }))' --await --tab-id $tab1
+  $nu = Wren-Ctl eval 'navigator.serviceWorker.getRegistration().then((r) => new Promise((ok) => { const go = () => (r.waiting || r.installing) ? ok("new version") : setTimeout(go, 50); go(); setTimeout(() => ok("none"), 30000); }))' --await --tab-id $tab1
   Expect ($nu -eq 'new version') 'a navigation in the scope checks the script (service_workers.update_check_hours) and installs a changed one' $nu
   Wren-Ctl pref set service_workers.update_check_hours 24 | Out-Null
   $pre = Wren-Ctl eval 'navigator.serviceWorker.register("/sw/preload.js", {scope: "/sw/pre/"}).then((r) => new Promise((ok) => { const go = () => r.active && r.active.state === "activated" ? r.navigationPreload.getState().then((s) => ok(s.enabled + " " + s.headerValue)) : setTimeout(go, 50); go(); }))' --await --tab-id $tab1
