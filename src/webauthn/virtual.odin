@@ -2,10 +2,10 @@ package webauthn
 
 import "core:strings"
 import "core:sync"
-import win "core:sys/windows"
+import "core:time"
 
 // A software authenticator for automated tests (WebDriver's "virtual authenticator" does not exist here): a platform
-// authenticator with user verification that keeps ES256 keys (BCrypt, process memory) until the process ends or
+// authenticator with user verification that keeps ES256 keys (core:crypto, process memory) until the process ends or
 // `virtual_reset`. It answers at once, or after Settings.virtual_delay_ms (cancellable), as its "user" decides
 // (Settings.virtual_mode). Attestation: "none", or "packed" self attestation when the Relying Party asks for one.
 // Selected only by the security.webauthn.testing.* preferences given on the command line, or by tools that set
@@ -77,28 +77,30 @@ v_capabilities :: proc(pl: ^Platform) -> Capabilities {
 }
 
 @(private="file")
-v_prepare_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
-	sync.mutex_lock(&token.mu)
-	if token.event == nil { token.event = rawptr(win.CreateEventW(nil, true, win.BOOL(token.cancelled), nil)) }
-	sync.mutex_unlock(&token.mu)
-}
+v_prepare_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {}   // (the token's condition needs no setting up)
 
 @(private="file")
 v_cancel :: proc(pl: ^Platform, token: ^Cancel_Token) {
 	sync.mutex_lock(&token.mu)
-	if token.event != nil { win.SetEvent(win.HANDLE(token.event)) }
+	sync.cond_broadcast(&token.wake)
 	sync.mutex_unlock(&token.mu)
 }
 
-// The user's time to answer; false when the operation was cancelled meanwhile. Closes the token's event.
+// The user's time to answer; false when the operation was cancelled meanwhile. A "stuck" user does not hear the cancel.
 @(private="file")
 v_wait :: proc(token: ^Cancel_Token, delay_ms: int, stuck := false) -> bool {
+	if stuck {
+		time.sleep(time.Duration(delay_ms) * time.Millisecond)
+	} else if delay_ms > 0 {
+		deadline := time.tick_add(time.tick_now(), time.Duration(delay_ms) * time.Millisecond)
+		sync.mutex_lock(&token.mu)
+		for !token.cancelled {
+			left := time.tick_diff(time.tick_now(), deadline)
+			if left <= 0 || !sync.cond_wait_with_timeout(&token.wake, &token.mu, left) { break }
+		}
+		sync.mutex_unlock(&token.mu)
+	}
 	sync.mutex_lock(&token.mu)
-	ev := token.event
-	sync.mutex_unlock(&token.mu)
-	if stuck { win.Sleep(win.DWORD(delay_ms)) } else if ev != nil && delay_ms > 0 { win.WaitForSingleObject(win.HANDLE(ev), win.DWORD(delay_ms)) }
-	sync.mutex_lock(&token.mu)
-	if token.event != nil { win.CloseHandle(win.HANDLE(token.event)); token.event = nil }
 	c := token.cancelled
 	sync.mutex_unlock(&token.mu)
 	return !c

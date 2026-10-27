@@ -469,10 +469,6 @@ full_path :: proc(p: string) -> string {
 	return err == nil ? s : p
 }
 
-info_path :: proc(profile_dir: string) -> string {
-	return strings.concatenate({profile_dir, "/remote.json"}, context.temp_allocator)
-}
-
 // <profile>\remote.json: what a client reads to find this instance.
 write_info :: proc(profile_dir, name, version: string) -> bool {
 	pid := int(win.GetCurrentProcessId())

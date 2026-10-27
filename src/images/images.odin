@@ -1,14 +1,15 @@
 // Package images: image files into pixels, on threads of this package (pool.odin), never on the UI thread unless a
 // caller asks for the synchronous entry points (tests, tools). Two decoders:
 //
+//   * the built-in decoders (native.odin: a Rust static library, native\media), the same on every system and
+//     memory-safe: PNG and APNG, JPEG (EXIF orientation applied), GIF (every frame composed onto the logical screen
+//     with its delay and disposal method, plus the loop count), BMP, ICO / CUR (the size that fits), TIFF (first page),
+//     WebP (lossy, lossless, alpha, animation), AVIF (8 / 10 / 12 bits, alpha, grids, image sequences, nclx / ICC
+//     colour, irot / imir / clap) and SVG (rasterised by resvg at the size it is shown, in the secure static mode of
+//     SVG images: no external resource, no script, no animation);
 //   * the platform, Windows Imaging Component (decode_windows.odin; each decoding thread joins the COM multithreaded
-//     apartment): PNG (first frame: WIC does not animate APNG), JPEG (EXIF orientation applied, reduced decoding in
-//     the DCT), GIF (every frame of an animation composed onto the logical screen with its delay and disposal method,
-//     plus the loop count), BMP, ICO / CUR (the best size), TIFF (first page), HEIF when the Windows codec is there;
-//   * the built-in decoders (native.odin: a Rust static library, native\media), always available whatever Windows
-//     has installed, and memory-safe for these complex formats: WebP (lossy, lossless, alpha, animation), AVIF (8 / 10
-//     / 12 bits, alpha, grids, image sequences, nclx / ICC colour, irot / imir / clap) and SVG (rasterised by resvg at
-//     the size it is shown, in the secure static mode of SVG images: no external resource, no script, no animation).
+//     apartment): HEIF when the Windows codec is there, and PNG, JPEG, GIF, BMP, ICO, TIFF with
+//     images.decode.system_codecs (Limits.system_decoders), as before the built-in ones (decode_other.odin elsewhere).
 //
 // What comes out is always RGBA8 with straight (non-premultiplied) alpha, in sRGB, rows top-down, `stride` bytes apart:
 // the byte order R, G, B, A. That is the layout the graphics toolkit uploads (render.update_texture_rgba). Colour
@@ -27,6 +28,9 @@ import "base:runtime"
 import "core:strings"
 
 Format :: enum u8 { Unknown, Png, Jpeg, Gif, Webp, Bmp, Ico, Tiff, Avif, Heif, Svg }
+
+// What encode_rgba writes.
+Encode_Format :: enum u8 { Png, Jpeg }
 
 Error :: enum u8 {
 	None,
@@ -94,6 +98,7 @@ Limits :: struct {
 	min_delay_ms:      int,   // animation frames shorter than this get default_delay_ms (what browsers do with 0 / 10 ms)
 	default_delay_ms:  int,
 	color_manage:      bool,  // convert tagged images (ICC, CICP, EXIF Adobe RGB) to sRGB
+	system_decoders:   bool,  // PNG, JPEG, GIF, BMP, ICO, TIFF through the system's codecs (WIC) where there are; else built in
 	svg:               Svg_Limits,
 }
 

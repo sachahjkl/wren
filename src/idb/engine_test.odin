@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:testing"
 import "core:time"
-import win "core:sys/windows"
+import "wb:base"
 
 // The engine under the manager: values read from the journal, checkpoints, the stores that come into memory when needed, and
 // compaction (with commits going on meanwhile).
@@ -192,10 +192,7 @@ compaction_in_the_background_with_commits_meanwhile :: proc(t: ^testing.T) {
 
 @(private)
 working_set :: proc() -> i64 {
-	c: win.PROCESS_MEMORY_COUNTERS
-	c.cb = size_of(c)
-	win.GetProcessMemoryInfo(win.GetCurrentProcess(), &c, size_of(c))
-	return i64(c.WorkingSetSize)
+	return base.process_memory().resident
 }
 
 // The target database: 1,000,000 records and 1 GiB of values. Run with WREN_IDB_BIG=1 (WREN_IDB_BIG_RECORDS=n for another count):

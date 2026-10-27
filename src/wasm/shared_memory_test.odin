@@ -10,7 +10,12 @@ import "core:testing"
 import "core:thread"
 import "core:time"
 
-foreign import wasmtime_shm "../../build/wasmtime/lib/wasmtime.lib"
+// (a foreign import belongs to its file: the library of wasmtime.odin, its system libraries come with it there)
+when ODIN_OS == .Windows {
+	foreign import wasmtime_shm "../../build/wasmtime/lib/wasmtime.lib"
+} else {
+	foreign import wasmtime_shm { "../../build/wasmtime-" + ODIN_OS_STRING + "/lib/libwasmtime.a" }
+}
 
 @(default_calling_convention = "c")
 foreign wasmtime_shm {
