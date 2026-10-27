@@ -400,12 +400,14 @@ font_info_paint :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 @(private = "file")
 preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 	pv := &d.pv
-	if !pv.font_ok { dt_empty("###dt_pv_fonterr", .File_Font, "No preview", pv.err); return }
-	// The bar: the file's name, format and size, and (for a collection) a face selector.
+	// A single face that could not be read has no selector to recover with: show the message alone.
+	if !pv.font_ok && pv.font_faces <= 1 { dt_empty("###dt_pv_fonterr", .File_Font, "No preview", pv.err); return }
+	// The bar: the file's name, format and size, and (for a collection) a face selector that stays visible even when
+	// the chosen face failed, so another face can be picked.
 	if dt_bar("###dt_pf_bar", dtm.bar - dt_px(4)) {
 		dt_gap(6)
 		if pv.font_faces > 1 {
-			font_face_selector(app, d, e, pv)
+			font_face_selector(app, e, pv)
 			dt_gap(4)
 		}
 		ui.next({width = ui.fill(), height = ui.pct(1)})
@@ -413,6 +415,8 @@ preview_font :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry) {
 			dt_text(dc, dtm.ui_font, dtm.fs, b.rect.min.x, (b.rect.min.y + b.rect.max.y) * 0.5, dtc.weak, (^string)(user)^, b.rect.max.x - b.rect.min.x - dt_px(8))
 		}, new_clone(dt_frame_str(font_bar_text(pv, e)), ui.frame_allocator()))
 	}
+	// A collection whose chosen face failed: keep the selector above, show the message in the body.
+	if !pv.font_ok { dt_empty("###dt_pv_fonterr2", .File_Font, "This face could not be read", pv.err); return }
 	// The facts (family, style, version, license, axes, glyph count), each on its own line if present.
 	lines := font_info_lines(pv)
 	if len(lines) > 0 {
@@ -486,7 +490,7 @@ font_trim_line :: proc(s: string) -> string {
 // The face selector of a collection: a row of chips when they are few, a dropdown otherwise. Picking a face reloads
 // the specimen and the facts.
 @(private = "file")
-font_face_selector :: proc(app: ^App, d: ^Net_Detail, e: ^Net_Entry, pv: ^Preview_State) {
+font_face_selector :: proc(app: ^App, e: ^Net_Entry, pv: ^Preview_State) {
 	body := e.body[:]
 	if pv.font_faces <= 6 {
 		for i in 0 ..< pv.font_faces {
