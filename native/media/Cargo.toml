@@ -1,6 +1,7 @@
-# Wren's built-in image decoders, linked statically into wren.exe (tools\build_media.ps1 -> build\media\wren_media.lib).
+# Wren's built-in image decoders and WOFF2, a library of the native/ workspace: linked into wren.exe through the
+# assembly crate native/wren_native (tools\build_native.ps1 -> build\native\wren_native.lib).
 # Every dependency is safe Rust except rav1d's assembly kernels (the same as dav1d's); versions are pinned exactly here
-# and by Cargo.lock (SHA-256 of every crate), and the build runs with --locked.
+# and by native/Cargo.lock (SHA-256 of every crate), and the build runs with --locked.
 [package]
 name = "wren_media"
 version = "0.1.0"
@@ -9,7 +10,6 @@ publish = false
 license = "MIT"
 
 [lib]
-crate-type = ["staticlib"]
 path = "src/lib.rs"
 
 [dependencies]
@@ -27,27 +27,6 @@ qcms = { version = "=0.3.0", default-features = false, features = ["iccv4-enable
 # WOFF2 web fonts (src/woff2.rs): Dropbox's Brotli decompressor, safe Rust (bounds checks kept: no "unsafe" feature)
 brotli-decompressor = { version = "=6.1.0", default-features = false, features = ["std"] }
 
-# The toolkit's native text backend (Fontations, HarfRust, ICU4X), built into this library when Wren is built with
-# WREN_TEXT=native: a program links one Rust static library at most (each carries Rust's standard library). Its gt_*
-# functions stay exported; the toolkit is then built with -define:FONT_NATIVE_LINK=false.
-gt_text = { path = "../../ext/gui_toolkit/native/text", optional = true }
-# The toolkit's accessibility adapter (AccessKit and its UI Automation adapter: screen readers read the chrome and the
-# pages), built in for the same reason; the toolkit is then built with -define:A11Y_ACCESSKIT=true
-# -define:A11Y_NATIVE_LINK=false.
-gt_a11y = { path = "../../ext/gui_toolkit/native/a11y", optional = true }
-
-[features]
-text = ["dep:gt_text"]
-a11y = ["dep:gt_a11y"]
-
 [dev-dependencies]
 # tests only: outlines of decoded WOFF2 fonts compared with the same fonts served as TrueType (already a dependency of resvg)
 skrifa = "=0.44.0"
-
-[profile.release]
-opt-level = 3
-codegen-units = 1
-lto = "fat"
-debug = false
-panic = "unwind"   # every entry point catches panics: a decoder bug is a broken image, not a dead browser
-incremental = false

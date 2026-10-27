@@ -1,40 +1,42 @@
-# Builds Wren's built-in image decoders (native\media: resvg, image-webp, zenavif-parse, rav1d, qcms) into
-# build\media\wren_media.lib, a static library linked into wren.exe (no DLL to ship).
-#   powershell -NoProfile -File tools\build_media.ps1 [-Force]
-# Pinned inputs: every crate by exact version in native\media\Cargo.toml and by SHA-256 in native\media\Cargo.lock (the
-# build runs with --locked); NASM (rav1d's assembly kernels, the same as dav1d's) by version and SHA-256 below, fetched
-# once into build\tools. Rust: the stable toolchain of rustup (rust-version of the crates: 1.93).
-# The script does nothing when build\media\STAMP matches the hash of the sources, Cargo.lock and this script.
+# Builds Wren's Rust code (the native\ workspace) into build\native\wren_native.lib, the one Rust static library linked
+# into wren.exe (no DLL to ship): the image decoders and WOFF2 (native\media: resvg, image-webp, zenavif-parse, rav1d,
+# qcms, brotli), the toolkit's native text backend (ext\gui_toolkit\native\text) and its accessibility adapter
+# (ext\gui_toolkit\native\a11y), picked by the assembly crate native\wren_native. See native\Cargo.toml.
+#   powershell -NoProfile -File tools\build_native.ps1 [-Force]
+# Pinned inputs: every crate by exact version in the crates' Cargo.toml and by SHA-256 in native\Cargo.lock (the build
+# runs with --locked); NASM (rav1d's assembly kernels, the same as dav1d's) by version and SHA-256 below, fetched once
+# into build\tools. Rust: the stable toolchain of rustup (the CI pins its version).
+# The script does nothing when build\native\STAMP matches the hash of the sources, Cargo.lock and this script. Cargo's
+# target directory (build\native\target) keeps every crate built: a change in one crate rebuilds that crate and what
+# depends on it.
+# WREN_TEXT=dwrite: a build that shapes with DirectWrite, without the text backend (feature `text` left out).
 param([switch]$Force)
 $ErrorActionPreference = 'Stop'
 $NasmVersion = '2.16.03'
 $NasmSha256 = '3ee4782247bcb874378d02f7eab4e294a84d3d15f3f6ee2de2f47a46aa7226e6'
 
 $root = Split-Path $PSScriptRoot -Parent
-$crate = Join-Path $root 'native\media'
-$out = Join-Path $root 'build\media'
-$lib = Join-Path $out 'wren_media.lib'
+$ws = Join-Path $root 'native'
+$out = Join-Path $root 'build\native'
+$lib = Join-Path $out 'wren_native.lib'
 $stampFile = Join-Path $out 'STAMP'
+$text = $env:WREN_TEXT -ne 'dwrite'
+$features = @('a11y')
+if ($text) { $features = @('text') + $features }
 
 # what the library is made of: change any of it and it is built again
-$inputs = @(Get-ChildItem (Join-Path $crate 'src') -Recurse -File) + @(Get-Item (Join-Path $crate 'Cargo.toml'), (Join-Path $crate 'Cargo.lock'), $PSCommandPath)
-# the toolkit's native text backend (ext\gui_toolkit\native\text) is built into the library (feature `text`: one Rust
-# static library per program), unless WREN_TEXT=dwrite (a build that shapes with DirectWrite)
-$text = $env:WREN_TEXT -ne 'dwrite'
-if ($text) {
-    $textCrate = Join-Path $root 'ext\gui_toolkit\native\text'
-    $inputs += @(Get-ChildItem (Join-Path $textCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $textCrate 'Cargo.toml'))
-}
-# the toolkit's accessibility adapter (ext\gui_toolkit\native\a11y: AccessKit), built in the same way (feature `a11y`)
-$a11yCrate = Join-Path $root 'ext\gui_toolkit\native\a11y'
-$inputs += @(Get-ChildItem (Join-Path $a11yCrate 'src') -Recurse -File) + @(Get-Item (Join-Path $a11yCrate 'Cargo.toml'))
+$crates = @((Join-Path $ws 'media'), (Join-Path $ws 'wren_native'), (Join-Path $root 'ext\gui_toolkit\native\a11y'))
+if ($text) { $crates += Join-Path $root 'ext\gui_toolkit\native\text' }
+$inputs = @(Get-Item (Join-Path $ws 'Cargo.toml'), (Join-Path $ws 'Cargo.lock'), $PSCommandPath)
+foreach ($c in $crates) { $inputs += @(Get-ChildItem (Join-Path $c 'src') -Recurse -File) + @(Get-Item (Join-Path $c 'Cargo.toml')) }
 $sha = [Security.Cryptography.SHA256]::Create()
 $all = New-Object IO.MemoryStream
-if ($text) { $all.Write([byte[]](116, 101, 120, 116), 0, 4) }   # "text": the two builds have different stamps
+$tag = [Text.Encoding]::UTF8.GetBytes("features=$($features -join ',')`n")   # two feature sets, two stamps
+$all.Write($tag, 0, $tag.Length)
 foreach ($f in ($inputs | Sort-Object FullName)) { $b = [IO.File]::ReadAllBytes($f.FullName); $all.Write($b, 0, $b.Length) }
 $stamp = ([BitConverter]::ToString($sha.ComputeHash($all.ToArray())) -replace '-', '').ToLower()
 if (-not $Force -and (Test-Path $lib) -and (Test-Path $stampFile) -and ((Get-Content $stampFile -Raw).Trim() -eq $stamp)) {
-    "wren_media up to date in $out"
+    "wren_native up to date in $out"
     exit 0
 }
 
@@ -81,15 +83,15 @@ if (-not $env:VCINSTALLDIR) {
 
 $target = Join-Path $out 'target'
 $t0 = Get-Date
-$features = @('--features', $(if ($text) { 'text,a11y' } else { 'a11y' }))
-& cargo build --release --locked --manifest-path (Join-Path $crate 'Cargo.toml') --target-dir $target @features
+& cargo build --release --locked --manifest-path (Join-Path $ws 'Cargo.toml') --target-dir $target -p wren_native --features ($features -join ',')
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed ($LASTEXITCODE)" }
 New-Item -ItemType Directory -Force $out | Out-Null
-Copy-Item (Join-Path $target 'release\wren_media.lib') $lib -Force
+Copy-Item (Join-Path $target 'release\wren_native.lib') $lib -Force
 
-# Wasmtime's library carries its own Rust standard library: both define the unmangled rust_eh_personality (a no-op on
-# MSVC, where unwinding goes through __CxxFrameHandler3). Ours is renamed in the object that defines it (with fat LTO,
-# the crate's single object) so that the two link together.
+# Wasmtime's library carries its own Rust standard library (built by another compiler: its mangled symbols differ), and
+# both define the unmangled rust_eh_personality (a no-op on MSVC, where unwinding goes through __CxxFrameHandler3). Ours
+# is renamed in the object that defines it (with fat LTO, the assembly crate's single object) so that the two link
+# together. This is the only symbol renamed: the libraries of this workspace share one standard library.
 $sysroot = (& rustc --print sysroot).Trim()
 $bin = Join-Path $sysroot 'lib\rustlib\x86_64-pc-windows-msvc\bin'
 if (-not (Test-Path (Join-Path $bin 'llvm-objcopy.exe'))) {
@@ -97,16 +99,18 @@ if (-not (Test-Path (Join-Path $bin 'llvm-objcopy.exe'))) {
     if ($LASTEXITCODE -ne 0) { throw 'rustup component add llvm-tools failed' }
 }
 $ar = Join-Path $bin 'llvm-ar.exe'
+$nm = Join-Path $bin 'llvm-nm.exe'
 $objcopy = Join-Path $bin 'llvm-objcopy.exe'
+$defs = @(& $nm --defined-only --print-file-name $lib 2>$null | Where-Object { $_ -match '\.lib:(.+\.o): +[0-9a-fA-F]+ T rust_eh_personality$' } | ForEach-Object { $Matches[1] })
+if ($defs.Count -ne 1) { throw "wren_native.lib: expected one object defining rust_eh_personality, found $($defs.Count)" }
+$member = $defs[0]
 $work = Join-Path $out 'rename'
 if (Test-Path $work) { [IO.Directory]::Delete($work, $true) }
 New-Item -ItemType Directory -Force $work | Out-Null
-$member = (& $ar t $lib) | Where-Object { $_ -like 'wren_media-*.rcgu.o' } | Select-Object -First 1
-if (-not $member) { throw 'wren_media.lib: the crate object was not found' }
 Push-Location $work
 try {
     & $ar x $lib $member
-    & $objcopy --redefine-sym=rust_eh_personality=wren_media_rust_eh_personality $member
+    & $objcopy --redefine-sym=rust_eh_personality=wren_native_rust_eh_personality $member
     if ($LASTEXITCODE -ne 0) { throw 'llvm-objcopy failed' }
     & $ar r $lib $member
     if ($LASTEXITCODE -ne 0) { throw 'llvm-ar failed' }

@@ -54,7 +54,7 @@ LICENSE_TEXTS := [?]License_Text{
 	{"cloudlibc", "cloudlibc", #load("../../native/js/licenses/cloudlibc-LICENSE.txt", string), "wasi-libc", ""},
 	{"emmalloc", "emmalloc", #load("../../native/js/licenses/emmalloc-LICENSE.txt", string), "wasi-libc", ""},
 	{"webref", "webref", #load("../../native/js/licenses/webref-LICENSE.txt", string), "webref", "The Web IDL the JavaScript bindings are generated from."},
-	{"rust-crates", "Rust libraries of the image decoders", #load("../../native/media/rust-crates.txt", string), "image decoders", "Every Rust crate linked into the image decoders (resvg, image-webp, rav1d, qcms and what they use), with its license and source."},
+	{"rust-crates", "Rust libraries of the image decoders", #load("../../native/rust-crates.txt", string), "image decoders", "Every Rust crate linked into the image decoders (resvg, image-webp, rav1d, qcms and what they use), with its license and source."},
 }
 
 // The rows of THIRD_PARTY.md's table (temporary allocator). Empty when the file has no table.
