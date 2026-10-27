@@ -13,6 +13,7 @@ $env:WREN_EXE = (Resolve-Path $Exe).Path
 $fail = 0
 function Pass($m) { "PASS  $m" }
 function Fail($m) { "FAIL  $m"; $script:fail++ }
+$Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 function Want($name) { return $Only.Count -eq 0 -or $Only -contains $name }
 $script:shot = 0
 function Shot($what) {
@@ -32,7 +33,15 @@ function Wait-Width {
     }
     return $last
 }
-function Tabs { return @((Wren-Ctl tabs --json | ConvertFrom-Json).targetInfos) }
+function Targets { return (Wren-Ctl tabs --json | ConvertFrom-Json) }
+function Tabs { return @((Targets).targetInfos) }
+function Groups { return @((Targets).tabGroups) }
+function Tab($title) { return (Tabs | Where-Object { $_.title -eq $title } | Select-Object -First 1) }
+function Order { return ((Tabs | ForEach-Object { if ($_.pinned) { "[$($_.title)]" } else { $_.title } }) -join ' ') }
+function Center($r) { return '{0},{1}' -f [int]($r[0] + $r[2] / 2), [int]($r[1] + $r[3] / 2) }
+function Select-Tab($title) { Wren-Ctl tab activate (Tab $title).targetId | Out-Null; Wren-Ctl wait frames 2 | Out-Null }
+function Drag($from, $to) { Wren-Ctl drag $from $to --steps 12 --window | Out-Null; Wren-Ctl wait frames 6 | Out-Null }
+function Expect($what, $got, $want) { if ($got -eq $want) { Pass "$what ($got)" } else { Fail "$what`: '$got', not '$want'" } }
 $tmp = Join-Path $env:TEMP "wren-sidebar-tabs-e2e-$PID"
 New-Item -ItemType Directory -Force $tmp | Out-Null
 # a page of its own per title (file: pages; a top-level data: address is refused)
@@ -79,6 +88,112 @@ try {
         Wren-Ctl pref set browser.tabs.sidebar_animation_ms 180 | Out-Null
         Wren-Ctl wait frames 3 | Out-Null
     }
+
+    if (Want 'pins') {
+        Select-Tab 'Bravo'; Wren-Ctl cmd tab.pin | Out-Null
+        Select-Tab 'Delta'; Wren-Ctl cmd tab.pin | Out-Null
+        Wren-Ctl wait frames 3 | Out-Null
+        Expect 'pinned tabs go first, in the order they were pinned' (Order) '[Bravo] [Delta] Alpha Charlie Echo'
+        Shot 'onglets epingles'
+        Drag (Center (Tab 'Delta').rect) (Center (Tab 'Bravo').rect)
+        Expect 'a pinned tab dragged onto another takes its place' (Order) '[Delta] [Bravo] Alpha Charlie Echo'
+        Drag (Center (Tab 'Echo').rect) (Center (Tab 'Bravo').rect)
+        Expect 'a tab of the list dragged up to the pinned tabs is pinned' (Order) '[Delta] [Echo] [Bravo] Alpha Charlie'
+        Drag (Center (Tab 'Echo').rect) (Center (Tab 'Charlie').rect)
+        $o = Order
+        if ($o -match '^\[Delta\] \[Bravo\]' -and $o -match ' Echo' -and $o -notmatch '\[Echo\]') { Pass "a pinned tab dragged down into the list is no longer pinned ($o)" } else { Fail "after dragging Echo down: $o" }
+        Select-Tab 'Bravo'; Wren-Ctl cmd tab.pin | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+        $o = Order
+        if ($o -match '^\[Delta\] Bravo ') { Pass "unpinned, it is the first of the others ($o)" } else { Fail "after unpinning Bravo: $o" }
+        Wren-Ctl pref set browser.tabs.sidebar_collapsed true | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        Shot 'epingles, barre reduite'
+        Wren-Ctl pref set browser.tabs.sidebar_collapsed false | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        Wren-Ctl pref set browser.tabs.position top | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        Shot 'epingles, onglets en haut'
+        Wren-Ctl pref set browser.tabs.position left | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        # (back to no pinned tab for the next sections)
+        foreach ($p in @(Tabs | Where-Object { $_.pinned })) { Wren-Ctl tab activate $p.targetId | Out-Null; Wren-Ctl cmd tab.pin | Out-Null }
+        Wren-Ctl wait frames 2 | Out-Null
+    }
+
+    if (Want 'groups') {
+        Select-Tab 'Alpha'; Wren-Ctl cmd tab.group_new | Out-Null; Wren-Ctl wait frames 3 | Out-Null
+        $g = @(Groups)
+        Expect 'a new group' $g.Count 1
+        Expect 'the tab is in it' ((Tab 'Alpha').group) $g[0].id
+        $before = Order
+        Drag (Center (Tab 'Charlie').rect) (Center (Tab 'Alpha').rect)
+        Expect 'a tab dragged onto a tab of the group joins it' ((Tab 'Charlie').group) $g[0].id
+        Select-Tab 'Alpha'
+        Wren-Ctl cmd tab.group_rename | Out-Null; Wren-Ctl wait frames 3 | Out-Null
+        Wren-Ctl type 'Work' | Out-Null; Wren-Ctl key Enter | Out-Null; Wren-Ctl wait frames 3 | Out-Null
+        Expect 'renamed in its header' (Groups)[0].name 'Work'
+        Wren-Ctl cmd tab.group_color.green | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+        Expect 'its colour' (Groups)[0].color 'green'
+        Shot 'groupe Work'
+        $order = @(Tabs | ForEach-Object { $_.group })
+        $runs = 0; $prev = -1; foreach ($x in $order) { if ($x -ne $prev -and $x -ne 0) { $runs++ }; $prev = $x }
+        Expect 'the group''s tabs are next to each other' $runs 1
+        Wren-Ctl click (Center (Groups)[0].rect) --window | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        Expect 'a click on the header collapses the group' ((Groups)[0].collapsed) $true
+        $cur = Tabs | Where-Object { $_.active }
+        if ($cur.group -ne (Groups)[0].id) { Pass "the current tab left the collapsed group ($($cur.title))" } else { Fail 'the current tab is hidden in the collapsed group' }
+        if (-not (Tab 'Alpha').rect) { Pass 'its tabs are not drawn' } else { Fail 'a tab of the collapsed group is still drawn' }
+        Shot 'groupe Work replie'
+        Wren-Ctl click (Center (Groups)[0].rect) --window | Out-Null; Wren-Ctl wait frames 4 | Out-Null
+        Expect 'a second click expands it' ((Groups)[0].collapsed) $false
+        $below = Tabs | Where-Object { $_.group -eq 0 -and -not $_.pinned } | Select-Object -Last 1
+        Drag (Center (Tab 'Charlie').rect) (Center $below.rect)
+        Expect 'dragged onto a tab outside the group, it leaves the group' ((Tab 'Charlie').group) 0
+        Select-Tab 'Alpha'; Wren-Ctl cmd tab.group_leave | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+        Expect 'its last tab gone, the group goes' @(Groups).Count 0
+    }
 } finally { Stop-Wren | Out-Null; Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue }
+
+# Saved in the profile: the pinned tabs come back without the session, the groups with it.
+if (Want 'persist') {
+    $prof = Join-Path $env:TEMP "wren-sidebar-tabs-profile-$PID"
+    New-Item -ItemType Directory -Force $prof | Out-Null
+    $tmp2 = Join-Path $env:TEMP "wren-sidebar-tabs-e2e2-$PID"
+    New-Item -ItemType Directory -Force $tmp2 | Out-Null
+    $tmp = $tmp2
+    try {
+        $null = Start-Wren -Size 1100x700 -ProfileDir $prof -Pref 'browser.tabs.position=left' -Url (Page 'One')
+        try {
+            Wren-Ctl wait load | Out-Null
+            Wren-Ctl tab new (Page 'Two') | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+            Select-Tab 'One'; Wren-Ctl cmd tab.pin | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+        } finally { Stop-Wren | Out-Null }
+        $null = Start-Wren -Size 1100x700 -ProfileDir $prof -Pref 'browser.tabs.position=left' -Url (Page 'Three')
+        try {
+            Wren-Ctl wait load | Out-Null
+            $o = Order
+            if ($o -match '^\[(One|.*One\.html)\] ') { Pass "the pinned tab came back without the session ($o)" } else { Fail "after a restart the pinned tab is not there: $o" }
+            Wren-Ctl pref set browser.session.restore true | Out-Null
+            Select-Tab (Tabs | Where-Object { -not $_.pinned } | Select-Object -First 1).title
+            Wren-Ctl cmd tab.group_new | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+            Wren-Ctl cmd tab.group_color.purple | Out-Null; Wren-Ctl wait frames 2 | Out-Null
+        } finally { Stop-Wren | Out-Null }
+        # (started by hand: `wren ctl start` gives an address, and a session is restored only when none is given)
+        $name = "side-tabs-$PID"
+        $proc = Start-Process -PassThru -FilePath $env:WREN_EXE -ArgumentList "--remote=$name", '--profile', "`"$prof`"", '--headless', '--no-single-instance', '--pref', 'browser.tabs.position=left', '--pref', 'browser.session.restore=true'
+        $env:WREN_REMOTE = $name
+        try {
+            $until = (Get-Date).AddSeconds(30)
+            while ((Get-Date) -lt $until) { Wren-Ctl ping | Out-Null; if ($WrenExit -eq 0) { break }; Start-Sleep -Milliseconds 200 }
+            Wren-Ctl wait frames 4 | Out-Null
+            $g = @(Groups)
+            if ($g.Count -eq 1 -and $g[0].color -eq 'purple' -and @(Tabs | Where-Object { $_.group -eq $g[0].id }).Count -eq 1) { Pass "the group came back with the session ($(Order))" } else { Fail "after a restart with the session: groups $($g | ConvertTo-Json -Compress), tabs $(Order)" }
+            if ((Tabs)[0].pinned) { Pass 'and the pinned tab with it' } else { Fail "the pinned tab did not come back with the session: $(Order)" }
+        } finally {
+            Wren-Ctl quit | Out-Null
+            if (-not $proc.WaitForExit(30000)) { Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }
+            $env:WREN_REMOTE = ''
+        }
+    } finally {
+        Remove-Item -Recurse -Force $prof -ErrorAction SilentlyContinue
+        Remove-Item -Recurse -Force $tmp2 -ErrorAction SilentlyContinue
+    }
+}
 if ($fail) { "sidebar_tabs_e2e: $fail check(s) failed"; exit 1 }
 'sidebar_tabs_e2e: all checks passed'

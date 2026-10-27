@@ -181,10 +181,17 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - own.strip.offset) }   // a tab carried over this bar
 		}
 		if move_from >= 0 {
-			wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
-			own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
-			request_frames(app, 2)
-			recovery_touch(app)
+			// pinned tabs stay among themselves; a tab takes the group of the one whose place it takes (tab_groups.odin)
+			np := pinned_count(wnd.tabs[:])
+			mt := wnd.tabs[move_from]
+			move_to = mt.pinned ? clamp(move_to, 0, np - 1) : clamp(move_to, np, len(wnd.tabs) - 1)
+			if move_to != move_from {
+				if !mt.pinned { mt.group = wnd.tabs[move_to].group }
+				wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
+				tabs_fix(app, wnd)
+				own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
+				request_frames(app, 2)
+			}
 		}
 		any_turning := false
 		for t in wnd.tabs {
@@ -217,6 +224,7 @@ Tab_Look :: struct {
 	hover:     draw.Color,
 	hot:       bool,
 	divide:    bool,         // a divider on its right (between two tabs that are neither selected nor hovered)
+	group:     draw.Color,   // its group's colour, a line along its top (a = 0: in no group)
 }
 
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
@@ -274,6 +282,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		look.hot = inside
 		next_on := i + 1 == wnd.current
 		look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
+		if gi := group_index(wnd.groups[:], t.group); gi >= 0 { look.group = group_color(wnd.groups[gi].color) }
 		b.custom, b.custom_user = tab_look_draw, look
 	}
 	b.cursor = .Arrow
@@ -289,12 +298,13 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			side = d.ext + max(cg.overlap - d.run * 0.5, d.run * 0.5)
 		}
 		pad := classic ? side + math.round(em * 0.35) : math.round(em * 0.65)
-		ui.spacer(ui.px(pad))
 		isz := f32(tab_icon_px(app))
+		if t.pinned { pad = max(math.round((w - isz) * 0.5), pad) }   // a pinned tab: its icon alone, in the middle (tab_groups.odin)
+		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
 		ui.spacer(ui.px(math.round(em * 0.5)))
-		title := t.title
+		title := t.pinned ? "" : t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
 		if classic {
 			// the title is cut by its box (clip) and fades out into the tab's gradient instead of ending in dots
@@ -313,7 +323,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
 		}
-		show_close := on || inside || w >= favs.cfg.close_min_em * em
+		show_close := !t.pinned && (on || inside || w >= favs.cfg.close_min_em * em)
 		if show_close {
 			cs := math.round(em * 1.45)
 			if ui.tab_stops(false) {
@@ -378,6 +388,10 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		lw := max(math.round(ui.scale()), 1)
 		inset := (r.max.y - r.min.y) * 0.3
 		draw.rect(dc, {{r.max.x - lw, r.min.y + inset}, {r.max.x, r.max.y - inset}}, l.divider)
+	}
+	if l.group.a > 0 {
+		gh := max(math.round(2 * ui.scale()), 2)
+		draw.rect(dc, {{r.min.x + b.radius * 0.5, r.min.y + gh}, {r.max.x - b.radius * 0.5, r.min.y + gh * 2}}, l.group, gh * 0.5)
 	}
 	if l.selected < 0.01 { return }
 	// the current tab: an accent underline growing from the middle
