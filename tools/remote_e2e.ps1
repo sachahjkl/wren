@@ -779,7 +779,7 @@ public static class PipeStorm {
 
     # the pipe is for this user only
     # (the server makes the next instance of its pipe a moment after it ended a connection: a path that does not exist for an instant on a slow machine)
-    $acl = $null; for ($try = 0; $try -lt 30 -and -not $acl; $try++) { try { $acl = (Get-Acl "\\.\pipe\wren-remote-$name" -ErrorAction Stop).Access } catch { Start-Sleep -Milliseconds 100 } }
+    $acl = $null; for ($try = 0; $try -lt 200 -and -not $acl; $try++) { try { $acl = (Get-Acl "\\.\pipe\wren-remote-$name" -ErrorAction Stop).Access } catch { Start-Sleep -Milliseconds 100 } }
     if (-not $acl) { $acl = @() }
     $me = [Security.Principal.WindowsIdentity]::GetCurrent().User
     $others = @($acl | Where-Object { try { $_.IdentityReference.Translate([Security.Principal.SecurityIdentifier]) -ne $me } catch { $true } })
