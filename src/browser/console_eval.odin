@@ -52,7 +52,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 	if focused { box.border = dtc.accent }
 	res := var_res
 	if res.focused {
-		forms_page_blur()
+		forms_page_blur(app)
 		console_eval_keys(app, t, c)
 	}
 	if res.changed { console_eval_update(c) }
@@ -68,7 +68,7 @@ console_eval_row :: proc(app: ^App, t: ^Tab, row_h: f32) {
 			dev.con.evaluating = true
 			page.js_console_eval(console_target(t), source)
 			dev.con.evaluating = false
-			app.frames_requested = max(app.frames_requested, 3)
+			request_frames(app, 3)
 		}
 	}
 	if res.cancelled { if c.open { c.open = false } else { ui.field_clear(&c.field); c.cursor = len(c.history) } }

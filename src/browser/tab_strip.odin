@@ -22,6 +22,7 @@ import "toolkit:ui"
 import "wb:base"
 import "wb:i18n"
 
+// A window's row (or sidebar) of tabs from frame to frame (Window_Own.strip).
 Tab_Strip :: struct {
 	offset:       f32,    // scroll of the tabs when they do not fit (physical pixels)
 	follow_id:    u64,    // the current tab the offset was last brought to (a new current tab is scrolled into view)
@@ -33,14 +34,13 @@ Tab_Strip :: struct {
 // The tab that has the keyboard, -1 when none (by key: works before the strip is built).
 focused_tab_index :: proc(app: ^App) -> int {
 	k := ui.focus_key()
-	if k == 0 || strip.area_key == 0 { return -1 }
-	for t, i in app.tabs {
-		if ui.key_from_string(strip.area_key, fmt.tprintf("###tab_%d", t.id)) == k { return i }
+	own := window_own(app)
+	if k == 0 || own.strip.area_key == 0 { return -1 }
+	for t, i in active_window(app).tabs {
+		if ui.key_from_string(own.strip.area_key, fmt.tprintf("###tab_%d", t.id)) == k { return i }
 	}
 	return -1
 }
-
-strip: Tab_Strip
 
 ////////////////////////////////
 // Geometry: the toolkit's list of items reordered by dragging (ui/reorder.odin), under the names the shell and its
@@ -79,11 +79,13 @@ spinner_turning :: proc(t: ^Tab) -> bool {
 
 // The row of tabs. Returns true when a tab closed (the build stops: the tab list changed under it).
 tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
+	wnd := active_window(app)
+	own := &wnd.own
 	em := ui.font_size()
 	dpi := ui_scale_of(app)
 	h := ui.dense(em * 2.6)
 	if integrated { h = max(h, math.round(32 * dpi)) }   // never lower than the system's title bar
-	ui.reorder_frame(&strip.drag)   // the button went up (wherever): no drag
+	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
 	classic := classic_on()
@@ -121,28 +123,28 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 		if classic { _, _, _, plus_pull = classic_plus_metrics(&cg, em, dpi, plus_w) }
 		plus_room := classic ? plus_w - plus_pull : new_w + em * 0.3
 		fixed := lead + plus_room + buttons + (integrated ? wchrome.cfg.min_drag_em * em : em * 0.4) + extra
-		avail := max(f32(app.win.size.x) - fixed, em * 4)
-		n := len(app.tabs)
+		avail := max(f32(active_window(app).win.size.x) - fixed, em * 4)
+		n := len(wnd.tabs)
 		w := math.round(tab_width(avail - cg.overlap, n, favs.cfg.min_w_em * em, favs.cfg.max_w_em * em))
 		vis := min(f32(n) * w + cg.overlap, avail)   // what the tabs show of the strip, flares apart
 		view_w := vis - cg.overlap                   // (what strip_offset calls the width: the pitches' share)
 		area_w := vis + extra
-		cur_id := app.tabs[app.current].id
-		follow := cur_id != strip.follow_id || n != strip.follow_n
-		strip.follow_id, strip.follow_n = cur_id, n
-		strip.offset = strip_offset(strip.offset, n, w, view_w, app.current, follow)
+		cur_id := wnd.tabs[wnd.current].id
+		follow := cur_id != own.strip.follow_id || n != own.strip.follow_n
+		own.strip.follow_id, own.strip.follow_n = cur_id, n
+		own.strip.offset = strip_offset(own.strip.offset, n, w, view_w, wnd.current, follow)
 
 		// (classic: the area also holds the new-tab button, which reaches back under the last tab)
 		ui.next({width = ui.px(classic ? area_w + plus_w - plus_pull : area_w), height = ui.pct(1), axis = .X})
 		area := ui.build_box({.Clip, .Scroll_Self}, "###tabs_area")
 		tab_list_a11y(area, false)
 		add: ui.Signal
-		strip.area_key = area.key
-		if app.active != nil { app.active.zone = {rect = area.rect, offset = strip.offset, pitch = w, n = n, valid = true} }
+		own.strip.area_key = area.key
+		if app.active != nil { app.active.zone = {rect = area.rect, offset = own.strip.offset, pitch = w, n = n, valid = true} }
 		if s := ui.signal(area); s.scrolled != {} {
 			// the wheel scrolls the strip by about a tab per notch
-			strip.offset = strip_offset(strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, app.current, false)
-			app.frames_requested = max(app.frames_requested, 2)
+			own.strip.offset = strip_offset(own.strip.offset + (s.scrolled.y + s.scrolled.x) * w, n, w, view_w, wnd.current, false)
+			request_frames(app, 2)
 		}
 		move_from, move_to := -1, -1
 		if ui.parent(area) {
@@ -157,17 +159,17 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			// the dragged tab is built last: it draws over the others (classic: the current one just before it, as it
 			// is the one in front of the others, and the clicks go to what is drawn on top)
 			dragged := -1
-			for t, i in app.tabs {
-				if ui.reorder_dragging(&strip.drag, t.id) { dragged = i; break }
+			for t, i in wnd.tabs {
+				if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
 			}
 			if classic {
 				order := make([dynamic]int, 0, n, context.temp_allocator)
-				tab_stack_order(n, app.current, dragged, &order)
+				tab_stack_order(n, wnd.current, dragged, &order)
 				for i in order {
 					if tab_box(app, i, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			} else {
-				for _, i in app.tabs {
+				for _, i in wnd.tabs {
 					if i == dragged { continue }
 					r := tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
 					if r == .Closed { return true }
@@ -176,16 +178,16 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 					if tab_box(app, dragged, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			}
-			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - strip.offset) }   // a tab carried over this bar
+			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - own.strip.offset) }   // a tab carried over this bar
 		}
 		if move_from >= 0 {
-			app.current = list_move(app.tabs[:], move_from, move_to, app.current)
-			strip.follow_id = app.tabs[app.current].id   // no jump of the scroll while dragging
-			app.frames_requested = max(app.frames_requested, 2)
+			wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
+			own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
+			request_frames(app, 2)
 			recovery_touch(app)
 		}
 		any_turning := false
-		for t in app.tabs {
+		for t in wnd.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
 			any_turning ||= tab_busy(t) && spinner_turning(t)
 		}
@@ -220,18 +222,20 @@ Tab_Look :: struct {
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
 @(private = "file")
 tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^int, cg: ^Classic_Geom, cc: ^Classic_Colors) -> Tab_Result {
+	wnd := active_window(app)
+	own := &wnd.own
 	classic := cc != nil
-	t := app.tabs[i]
-	n := len(app.tabs)
+	t := wnd.tabs[i]
+	n := len(wnd.tabs)
 	em := ui.font_size()
 	dpi := ui_scale_of(app)
-	on := i == app.current
+	on := i == wnd.current
 	id := fmt.tprintf("###tab_%d", t.id)
-	slot := f32(i) * w - strip.offset
+	slot := f32(i) * w - own.strip.offset
 	// (the release slides from where the pointer left it)
-	x, dragging := ui.reorder_item_pos(&strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
-		ui.mouse_pos().x - area.rect.min.x, -strip.offset, f32(n - 1) * w - strip.offset)
-	if dragging { drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + strip.drag.grab) }
+	x, dragging := ui.reorder_item_pos(&own.strip.drag, ui.key_from_string(area.key, fmt.tprintf("x%d", t.id)), t.id, slot,
+		ui.mouse_pos().x - area.rect.min.x, -own.strip.offset, f32(n - 1) * w - own.strip.offset)
+	if dragging { drag_probe_note(ui.mouse_pos().x, x + area.rect.min.x + own.strip.drag.grab) }
 	prev := ui.prev_box(id)
 	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
 
@@ -268,7 +272,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		look.accent = ui.color("accent")
 		look.divider = ui.color("border")
 		look.hot = inside
-		next_on := i + 1 == app.current
+		next_on := i + 1 == wnd.current
 		look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
 		b.custom, b.custom_user = tab_look_draw, look
 	}
@@ -335,19 +339,19 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
 	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
 	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return .Closed }
-	if !(classic && strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
+	if !(classic && own.strip.drag.active) { tip(sig, t.title) }   // (classic: the title's tip does not cover the tab being dragged)
 	// drag to reorder (straight down starts a drag too: it may leave the bar)
 	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		ui.reorder_begin(&strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
+		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .X, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
 			ui.mouse_pos().x - sig.drag_delta.x - area.rect.min.x, slot)
-		if ui.reorder_dragging(&strip.drag, t.id) {
-			to := drag_slot(x + strip.offset, w, n)
+		if ui.reorder_dragging(&own.strip.drag, t.id) {
+			to := drag_slot(x + own.strip.offset, w, n)
 			if to != i { move_from^, move_to^ = i, to }
-			app.frames_requested = max(app.frames_requested, 2)
+			request_frames(app, 2)
 			// far enough below (or above) the row: the tab leaves for a window of its own (tab_drag.odin)
 			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), false, favs.cfg.detach_distance_em * em) {
-				strip.drag.active = false
-				if tab_drag_begin(app, t, ui.mouse_pos()) && len(app.tabs) != n { return .Closed }
+				own.strip.drag.active = false
+				if tab_drag_begin(app, t, ui.mouse_pos()) && len(wnd.tabs) != n { return .Closed }
 			}
 		}
 	}

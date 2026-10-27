@@ -45,7 +45,7 @@ page_render_init :: proc(app: ^App) {
 	effects_init(app)
 	page_render.watch_layout = config.watch(&app.prefs, "layout.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_render.settings = lay.settings_from_prefs(p)
-		for t in (^App)(user).tabs { t.layout.valid = false }
+		for t in active_window((^App)(user)).tabs { t.layout.valid = false }
 	}, app)
 	page_render.watch_font = config.watch(&app.prefs, "font.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		page_fonts_forget(&page_render.fonts)

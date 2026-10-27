@@ -215,6 +215,7 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 	hcfg = {global = true, max_visits = 1000, max_url_bytes = 8192, save_delay_ms = 1}
 	ub = {}
 	ub.cfg = {enabled = true, history = true, tabs = true, search = true, autofill = true, max_rows = 8, max_tab_rows = 3, min_chars = 1}
+	uv := urlbar_view(app)
 	dir := strings.concatenate({os.get_env("TEMP", context.temp_allocator), "/wren_urlbar_test"}, context.temp_allocator)
 	_ = os.make_directory_all(dir)
 	path := strings.concatenate({dir, "/history.txt"}, context.temp_allocator)
@@ -234,47 +235,47 @@ urlbar_rows_and_removal :: proc(t: ^testing.T) {
 		visits_destroy(&ghist.visits)
 		delete(ghist.path)
 		url_index_destroy(&ub.idx)
-		delete(ub.rows); delete(ub.typed); delete(ub.fill_text); delete(ub.fill_address)
-		delete(app.address.buf)
+		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
+		delete(active_window(app).address.buf)
 	}
 
 	// "git" typed: completed to github.com/, the completion's row first, gitlab and gitea after it, a search last
-	ub.typed = strings.clone("git")
+	uv.typed = strings.clone("git")
 	urlbar_refresh(app, .New)
-	testing.expect(t, ub.open, "open")
-	testing.expect_value(t, string(app.address.buf[:]), "github.com/")
-	testing.expect(t, app.address.mark == 3 && app.address.cursor == len("github.com/"), "the completed part is selected")
+	testing.expect(t, uv.open, "open")
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")
+	testing.expect(t, active_window(app).address.mark == 3 && active_window(app).address.cursor == len("github.com/"), "the completed part is selected")
 	kinds := make([dynamic]Urlbar_Row_Kind, context.temp_allocator)
-	for r in ub.rows { append(&kinds, r.kind) }
-	testing.expectf(t, len(ub.rows) == 3 && ub.rows[0].fill && kinds[1] == .History && kinds[2] == .History, "%v", kinds)
-	for r in ub.rows { if r.kind == .History { testing.expect(t, !strings.has_prefix(ub.idx.entries[r.entry].url, "data:"), "no data:") } }
+	for r in uv.rows { append(&kinds, r.kind) }
+	testing.expectf(t, len(uv.rows) == 3 && uv.rows[0].fill && kinds[1] == .History && kinds[2] == .History, "%v", kinds)
+	for r in uv.rows { if r.kind == .History { testing.expect(t, !strings.has_prefix(ub.idx.entries[r.entry].url, "data:"), "no data:") } }
 
 	// words: the typed row first ("Search")
-	delete(ub.typed); ub.typed = strings.clone("gitea notes")
+	delete(uv.typed); uv.typed = strings.clone("gitea notes")
 	urlbar_refresh(app, .New)
-	testing.expect(t, len(ub.rows) == 2 && ub.rows[0].kind == .Search && ub.rows[1].kind == .History, "a search, then the page")
+	testing.expect(t, len(uv.rows) == 2 && uv.rows[0].kind == .Search && uv.rows[1].kind == .History, "a search, then the page")
 	// an address: Go first, a search last
-	delete(ub.typed); ub.typed = strings.clone("gitlab.co")
+	delete(uv.typed); uv.typed = strings.clone("gitlab.co")
 	urlbar_refresh(app, .None)
-	testing.expect(t, len(ub.rows) == 3 && ub.rows[0].kind == .Go && ub.rows[1].kind == .History && ub.rows[2].kind == .Search, "go, the page, search")
+	testing.expect(t, len(uv.rows) == 3 && uv.rows[0].kind == .Go && uv.rows[1].kind == .History && uv.rows[2].kind == .Search, "go, the page, search")
 
 	// the cross on gitlab's row (chosen with Down): removed from the history, the next row chosen, the text kept
-	delete(ub.typed); ub.typed = strings.clone("git")
+	delete(uv.typed); uv.typed = strings.clone("git")
 	urlbar_refresh(app, .None)   // (no completion: Backspace removed it)
-	testing.expect_value(t, string(app.address.buf[:]), "github.com/")   // (the field is the app's: left as it was)
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "github.com/")   // (the field is the app's: left as it was)
 	at := -1
-	for r, i in ub.rows { if r.kind == .History && ub.idx.entries[r.entry].url == "https://gitlab.com/" { at = i } }
+	for r, i in uv.rows { if r.kind == .History && ub.idx.entries[r.entry].url == "https://gitlab.com/" { at = i } }
 	testing.expect(t, at > 0, "gitlab is listed")
 	urlbar_choose(app, at)
-	testing.expect_value(t, string(app.address.buf[:]), "https://gitlab.com/")
-	n := len(ub.rows)
+	testing.expect_value(t, string(active_window(app).address.buf[:]), "https://gitlab.com/")
+	n := len(uv.rows)
 	urlbar_remove_row(app, at)
-	testing.expect(t, ub.open, "the list stays open")
-	testing.expect_value(t, len(ub.rows), n - 1)
-	testing.expect_value(t, ub.typed, "git")
-	for r in ub.rows { if r.kind == .History { testing.expect(t, ub.idx.entries[r.entry].url != "https://gitlab.com/", "gone from the list") } }
+	testing.expect(t, uv.open, "the list stays open")
+	testing.expect_value(t, len(uv.rows), n - 1)
+	testing.expect_value(t, uv.typed, "git")
+	for r in uv.rows { if r.kind == .History { testing.expect(t, ub.idx.entries[r.entry].url != "https://gitlab.com/", "gone from the list") } }
 	for v in ghist.visits { testing.expect(t, v.url != "https://gitlab.com/", "gone from the history") }
-	testing.expect_value(t, ub.sel, min(at, len(ub.rows) - 1))
+	testing.expect_value(t, uv.sel, min(at, len(uv.rows) - 1))
 	// written at once: wait for the background write
 	deadline := time.tick_now()
 	for ghist.saving && time.duration_seconds(time.tick_since(deadline)) < 10 { host.run_ready(&app.loop); time.sleep(5 * time.Millisecond) }
@@ -301,6 +302,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	hcfg = {global = true, max_visits = 100_000, max_url_bytes = 8192}
 	ub = {app = app}
 	ub.cfg = {enabled = true, history = true, max_rows = 8, min_chars = 1}
+	uv := urlbar_view(app)
 	ghist = {app = app}
 	now := time.time_to_unix_nano(time.now()) / 1e6
 	for i in 0 ..< URLBAR_THREAD_VISITS + 100 {
@@ -310,13 +312,13 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	ghist.serial = 1
 	defer {
 		visits_destroy(&ghist.visits)
-		delete(ub.rows); delete(ub.typed); delete(ub.fill_text); delete(ub.fill_address)
-		delete(app.address.buf)
+		delete(uv.rows); delete(uv.typed); delete(uv.fill_text); delete(uv.fill_address)
+		delete(active_window(app).address.buf)
 	}
-	ub.typed = strings.clone("site12")
+	uv.typed = strings.clone("site12")
 	urlbar_refresh(app, .None)
 	testing.expect(t, ub.job.state != .Idle, "a build on the pool")
-	for r in ub.rows { testing.expect(t, r.kind != .History, "no history rows before the index is built") }
+	for r in uv.rows { testing.expect(t, r.kind != .History, "no history rows before the index is built") }
 	// meanwhile: a visit deleted, one appended
 	ids := []u64{ghist.visits[0].id}
 	history_delete(&ghist.visits, ids)
@@ -328,7 +330,7 @@ urlbar_thread_build :: proc(t: ^testing.T) {
 	testing.expect(t, ub.job.state == .Idle, "the build came back")
 	urlbar_refresh(app, .None)
 	urls := make([dynamic]string, context.temp_allocator)
-	for r in ub.rows { if r.kind == .History { append(&urls, ub.idx.entries[r.entry].url) } }
+	for r in uv.rows { if r.kind == .History { append(&urls, ub.idx.entries[r.entry].url) } }
 	testing.expectf(t, len(urls) >= 2, "history rows: %v", urls)
 	testing.expect_value(t, len(url_index_query(&ub.idx, "site12-new", 5)), 1)   // appended during the build: there
 	testing.expect_value(t, len(ub.idx.vis), len(ghist.visits))

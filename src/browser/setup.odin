@@ -338,7 +338,7 @@ setup_job_done :: proc(data: rawptr) {
 			ui.toast(.Good, "%s is uninstalled", APP_NAME)
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private)
@@ -381,7 +381,7 @@ setup_open :: proc(app: ^App, reason := Setup_Reason.Command) {
 		if cpal.open { palette_close(app) }
 	}
 	setup_job_start(app, .Read, reason)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // While the dialog is open, the disk is read again when the system watcher (desktop_shell.odin) says the integration
@@ -400,7 +400,7 @@ setup_dismiss :: proc(app: ^App) {
 	stp.open = false
 	stp.confirm_uninstall = false
 	if stp.reason == .Startup { setup_choice_write(app, "dismissed") }
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // "Use standalone": carry on without installing, and do not ask again.
@@ -408,7 +408,7 @@ setup_use_standalone :: proc(app: ^App) {
 	stp.open = false
 	setup_choice_write(app, "standalone")
 	ui.toast(.Info, "%s runs standalone. Setup is in the menu if you change your mind.", APP_NAME)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -480,7 +480,7 @@ setup_apply :: proc(app: ^App) {
 	stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 	setup_note("Working…", "weak")
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 @(private)
@@ -503,7 +503,7 @@ setup_uninstall :: proc(app: ^App) {
 	stp.busy += 1
 	host.run_blocking(&app.blocking, setup_job_work, setup_job_done, job)
 	setup_note("Working…", "weak")
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // The dialog's checkboxes and field follow the disk (or the preferences when nothing is installed).

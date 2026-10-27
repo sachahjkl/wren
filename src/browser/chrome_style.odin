@@ -61,7 +61,7 @@ chrome_style_init :: proc(app: ^App) {
 	chrome_watch = config.watch(&app.prefs, "browser.ui.", proc(user: rawptr, name: string, p: ^config.Prefs) {
 		chrome_cfg = chrome_settings_from_prefs(p)
 		app := (^App)(user)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	}, app)
 }
 

@@ -63,7 +63,7 @@ clear_site :: proc(app: ^App, host: string, kinds: Clear_Kinds) -> string {
 			entries = httpcache.delete_for_host(app.profile.cache, host)
 		}
 	}
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 	names := make([dynamic]string, context.temp_allocator)
 	if .Local in kinds { append(&names, i18n.tr("local storage")) }
 	if .Session in kinds { append(&names, i18n.tr("session storage")) }

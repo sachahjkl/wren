@@ -168,7 +168,7 @@ devtools_toggle :: proc(app: ^App) {
 	dev.visible = !dev.visible
 	if !dev.visible { dev.picking = false } else { devtools_claim(app) }
 	set_pref_bool(app, "browser.devtools.visible", dev.visible)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 devtools_open :: proc(app: ^App, panel: Dev_Panel) {
@@ -176,7 +176,7 @@ devtools_open :: proc(app: ^App, panel: Dev_Panel) {
 	if !dev.visible { devtools_claim(app) }
 	dev.visible, dev.panel = true, panel
 	if changed { devtools_save(app) }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // The panel closes if it is open on `panel`, else opens on it (Ctrl+Shift+J).
@@ -189,26 +189,26 @@ devtools_set_dock :: proc(app: ^App, dock: Dev_Dock) {
 	if !dev.visible { devtools_claim(app) }
 	dev.visible = true
 	devtools_save(app)
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Ctrl+Shift+C: opens the Elements tab and starts (or stops) picking an element in the page.
 devtools_pick :: proc(app: ^App) {
 	if !dev.visible || dev.panel != .Elements { devtools_open(app, .Elements) }
 	dev.picking = !dev.picking
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }
 
 // Ctrl and + / - / 0: the text of the panel larger, smaller, as it was.
 devtools_zoom :: proc(app: ^App, step: f32) {
 	pt := step == 0 ? 12 : clamp(dev.font_pt + step, 8, 24)
 	dev_set_pref(app, "browser.devtools.font_size", fmt.tprintf("%g", pt))
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // Whether the panel is shown for `t` (a web page), and where.
 devtools_dock :: proc(app: ^App, t: ^Tab) -> (Dev_Dock, bool) {
-	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(app.win) || devtools_detached() { return {}, false }
+	if !dev.visible || t == nil || t.kind != .Web || platform.is_fullscreen(active_window(app).win) || devtools_detached() { return {}, false }
 	if app.active != nil {
 		if dev.window == 0 || window_by_id(app, dev.window) == nil { dev.window = app.active.id }
 		if dev.window != app.active.id { return {}, false }
@@ -430,7 +430,7 @@ devtools_header :: proc(app: ^App, t: ^Tab, floating: bool) {
 				dev.panel = p
 				if p != .Elements { dev.picking = false }
 				devtools_save(app)
-				app.frames_requested = max(app.frames_requested, 2)
+				request_frames(app, 2)
 			}
 			dt_tip(sig, DEV_PANEL_TITLES[p])
 		}
@@ -524,7 +524,7 @@ devtools_reset_layout :: proc(app: ^App) {
 	dev_set_pref(app, "browser.devtools.density", "compact")
 	network_reset_layout(app)
 	elements_reset_layout(app)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 ////////////////////////////////
@@ -532,19 +532,19 @@ devtools_reset_layout :: proc(app: ^App) {
 
 // The room the panel takes (physical px): its size, but never more than 70 % of the window along its axis.
 devtools_extent :: proc(app: ^App, vertical: bool) -> f32 {
-	room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
+	room := vertical ? f32(active_window(app).win.size.x) : f32(active_window(app).win.size.y)
 	return clamp(dev.size * ui.scale(), 80, math.max(room * 0.7, 80))
 }
 
 // A bar between the page and the panel: dragging it resizes the panel (the toolkit's splitter; the panel is after the bar
 // unless it is docked on the left). Not a Tab stop: the page's and the panel's focus order stay as they were.
 devtools_splitter :: proc(app: ^App, vertical: bool) {
-	room := vertical ? f32(app.win.size.x) : f32(app.win.size.y)
+	room := vertical ? f32(active_window(app).win.size.x) : f32(active_window(app).win.size.y)
 	r := ui.splitter("###dt_split", vertical ? .X : .Y, &dev.size, 80, math.max(room / ui.scale() - 160, 80),
 		{after = dev.dock != .Left, thickness = dt_px(5), no_keyboard = true})
 	if r.dragging {
 		dev.drag = .Size
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if !r.dragging && dev.drag == .Size {
 		dev.drag = .None
@@ -562,13 +562,13 @@ devtools_float_drag :: proc(app: ^App, sig: ui.Signal, what: Dev_Drag) {
 	}
 	if sig.dragging && dev.drag == what {
 		d := sig.drag_delta / sc
-		win := [2]f32{f32(app.win.size.x), f32(app.win.size.y)} / sc
+		win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
 		if what == .Move {
 			dev.float_pos = {clamp(dev.drag_from[0] + d.x, 0, math.max(win.x - 120, 0)), clamp(dev.drag_from[1] + d.y, 0, math.max(win.y - 60, 0))}
 		} else {
 			dev.float_size = {clamp(dev.drag_from[0] + d.x, 260, math.max(win.x - dev.float_pos[0], 260)), clamp(dev.drag_from[1] + d.y, 160, math.max(win.y - dev.float_pos[1], 160))}
 		}
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if !sig.dragging && dev.drag == what { dev.drag = .None }
 }
@@ -582,7 +582,7 @@ devtools_floating :: proc(app: ^App, t: ^Tab) {
 		return
 	}
 	sc := ui.scale()
-	win := [2]f32{f32(app.win.size.x), f32(app.win.size.y)} / sc
+	win := [2]f32{f32(active_window(app).win.size.x), f32(active_window(app).win.size.y)} / sc
 	if !dev.float_set {
 		dev.float_size = {math.max(win.x * 0.55, 360), math.max(win.y * 0.5, 240)}
 		dev.float_pos = {win.x - dev.float_size[0] - 24, win.y - dev.float_size[1] - 40}

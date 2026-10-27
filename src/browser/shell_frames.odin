@@ -232,17 +232,17 @@ shell_page_phase_end :: proc(app: ^App, events: []platform.Event) -> []platform.
 	if chrome_frames.pending_scroll != 0 {
 		for t in tabs_all(app) {
 			if t.id != chrome_frames.pending_tab || t.kind != .Web || t.page == nil { continue }
-			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(app.page_rect).y, 0)), false)
+			scroll_document_to(app, t, clamp(t.scroll + chrome_frames.pending_scroll, 0, max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0)), false)
 		}
 		chrome_frames.pending_scroll = 0
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 	}
 	if len(chrome_frames.actions) > 0 {
 		todo := make([]Shell_Action, len(chrome_frames.actions), context.temp_allocator)
 		copy(todo, chrome_frames.actions[:])
 		clear(&chrome_frames.actions)
 		for a in todo { shell_run_action(app, a); delete(a.text) }
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 	}
 	return out
 }
@@ -252,8 +252,8 @@ shell_presented :: proc() { chrome_frames.last_present = time.tick_now() }
 
 // Before the full frame draws: a chrome frame used the screen's slot; wait for the next one as a frame does.
 shell_before_draw :: proc(app: ^App) {
-	if app.presented && !pacer.slot_held {
-		if platform.wait_handle(app.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
+	if active_window(app).presented && !pacer.slot_held {
+		if platform.wait_handle(active_window(app).win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms) { pacer.slot_held = true }
 	}
 }
 
@@ -264,7 +264,8 @@ shell_before_draw :: proc(app: ^App) {
 // pass waits for its threads: host.set_parallel_wait_hook) and the page thread's (a layout pass runs there).
 shell_preempt :: proc(user: rawptr) {
 	app := (^App)(user)
-	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !app.presented || platform.is_closed(app.win) { return }
+	wnd := active_window(app)
+	if !chrome_frames.cfg.preempt || chrome_frames.phase == .None || chrome_frames.nested || !wnd.presented || platform.is_closed(wnd.win) { return }
 	now := time.tick_now()
 	if time.duration_milliseconds(time.tick_diff(chrome_frames.phase_start, now)) < chrome_frames.cfg.after_ms { return }
 	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
@@ -275,7 +276,7 @@ shell_preempt :: proc(user: rawptr) {
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
 	unseen := (chrome_frames.phase == .Loop || chrome_frames.phase == .Anim) && !chrome_frames.outer_taken && len(chrome_frames.outer) > 0   // the frame's own input, not drawn yet
-	if !unseen && !shell_input_pending() && !ui.needs_frame(app.ui_state) && !(ui.wake_ms(app.ui_state) > 0 && since >= f64(ui.wake_ms(app.ui_state))) { return }
+	if !unseen && !shell_input_pending() && !ui.needs_frame(wnd.ui) && !(ui.wake_ms(wnd.ui) > 0 && since >= f64(ui.wake_ms(wnd.ui))) { return }
 	shell_chrome_frame(app)
 }
 
@@ -322,15 +323,16 @@ foreign user32_shell {
 // thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
+	wnd := active_window(app)
 	if !chrome_frames.nested {
 		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
 		frame(app)
 		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
 		return
 	}
-	resized := app.win.size != pacer.size
-	pacer.size = app.win.size
-	pacer.resizing = resized && app.presented && pacer.cfg.resize_immediate
+	resized := wnd.win.size != pacer.size
+	pacer.size = wnd.win.size
+	pacer.resizing = resized && wnd.presented && pacer.cfg.resize_immediate
 	pacer.resize_held = false
 	shell_chrome_frame(app)
 }
@@ -338,6 +340,12 @@ window_frame :: proc(app: ^App) {
 // A frame of the chrome alone, made while the page holds the thread.
 @(private = "file")
 shell_chrome_frame :: proc(app: ^App) {
+	wnd := active_window(app)
+	// a Light frame of the gate (windows.odin): in a full frame's page phase, or in a chrome frame's poll
+	gate := platform.frame_gate()
+	gate_token, admitted := platform.frame_gate_begin(gate, .Light)
+	if !admitted { return }
+	defer platform.frame_gate_end(gate, gate_token)
 	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
 	// resize step skips it: its frame is presented at once, whatever the screen is doing
 	if !pacer.slot_held && !pacer.resizing {
@@ -359,41 +367,40 @@ shell_chrome_frame :: proc(app: ^App) {
 	saved_probe := latency_probe_save()
 	defer latency_probe_restore(saved_probe)
 
-	// (windows.odin: Frame_Stage. The poll may begin a loop of the system, whose frames are chrome frames: window_frame.)
-	outer_stage := frame_stage
-	frame_stage = .Poll
-	polled := platform.poll_events(app.win, false)   // (nil inside the system's resize loop: nothing new to read)
-	frame_stage = .Busy
-	defer frame_stage = outer_stage
+	// (the gate's Polling: the poll may begin a loop of the system, whose frames are chrome frames: window_frame)
+	polled := platform.poll_events(wnd.win, false)   // (nil inside the system's resize loop: nothing new to read)
+	platform.frame_gate_stage(gate, .Building)
 	chrome := shell_split_input(app, polled)
 	pacer_begin_frame(app, chrome)
-	render.resize(&app.r, app.win.size)
-	size := draw.Vec2{f32(app.win.size.x), f32(app.win.size.y)}
+	render.resize(&app.r, wnd.win.size)
+	size := draw.Vec2{f32(wnd.win.size.x), f32(wnd.win.size.y)}
 	base_style := chrome_frame_style(app)
 	window_chrome_frame(app)
-	ui.begin_build(app.ui_state, {
+	ui.begin_build(wnd.ui, {
 		window_size = size, events = chrome, dt = pacer.dt, animations = os_animations_enabled(app),
 		dpi_scale = ui_scale_of(app), base = base_style, clipboard_get = clip_get, clipboard_set = clip_set,
-		disable_zoom = true, window = app.win, frame_ms = pacer.frame_ms,
+		disable_zoom = true, window = wnd.win, frame_ms = pacer.frame_ms,
 	})
 	build_ui(app)
 	ui.end_build()
 	// the chrome's cursor over the chrome; over the page, the page's as the last full frame set it (page_cursor.odin
 	// hit-tests the layout, which is not read here)
 	pos := ui.mouse_pos()
-	if !draw.rect_contains(app.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
-		platform.set_cursor(app.win, ui.cursor(app.ui_state))
+	if !draw.rect_contains(wnd.page_rect, pos) || ui.hot_key() != 0 || ui.active_key() != 0 || ui.ctx_menu_any_open() {
+		platform.set_cursor(wnd.win, ui.cursor(wnd.ui))
 	}
+	platform.frame_gate_stage(gate, .Drawing)
 	draw.begin_frame(&app.dc, size)
 	render.frame_begin(&app.r, {0, 0, 0, 1})
-	ui.draw_tree(app.ui_state, &app.dc)
+	ui.draw_tree(wnd.ui, &app.dc)
 	draw.end_frame(&app.dc)
+	platform.frame_gate_stage(gate, .Presenting)
 	render.frame_end(&app.r, !pacer_at_once())   // a resize step, the frames right after it, or an input frame are shown at once
 	frame_log_presented()
 	pacer_end_frame(app)
 	latency_probe_presented(app, 1)
 	// the full frame draws again after the page phase: whatever the chrome frames showed is drawn then too
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 // The input of a chrome frame: what is the chrome's goes to its build; what is the page's waits (`deferred`). The
@@ -422,9 +429,10 @@ shell_split_input :: proc(app: ^App, polled: []platform.Event) -> []platform.Eve
 
 @(private = "file")
 shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Event, hold_buttons_and_keys: bool) {
+	wnd := active_window(app)
 	t := current_tab(app)
 	page_shown := t != nil && t.kind == .Web
-	over_page := page_shown && draw.rect_contains(app.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(ev.pos)
+	over_page := page_shown && draw.rect_contains(wnd.page_rect, ev.pos) && !ui.ctx_menu_any_open() && !hud_captures(app, ev.pos)
 	button := int(ev.button) % len(chrome_frames.press_to_page)
 	#partial switch ev.kind {
 	case .Mouse_Move:
@@ -449,7 +457,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 		append(chrome, ev)
 	case .Scroll:
 		if over_page && .Ctrl not_in ev.mods && t.page != nil {
-			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (app.page_rect.max - app.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
+			shell_async_scroll(app, t, ev.delta.y * wheel_step(app, (wnd.page_rect.max - wnd.page_rect.min) / max(page_scale(app), 0.01)).y * page_scale(app))
 			return
 		}
 		if over_page { append(&chrome_frames.deferred, ev); return }   // zoom: the page's layout
@@ -467,7 +475,7 @@ shell_route :: proc(app: ^App, ev: platform.Event, chrome: ^[dynamic]platform.Ev
 shell_async_scroll :: proc(app: ^App, t: ^Tab, dy: f32) {
 	if chrome_frames.pending_tab != t.id { chrome_frames.pending_scroll, chrome_frames.pending_tab = 0, t.id }
 	limit: f32
-	if !chrome_frames.page_locked { limit = max(t.layout.height - draw.rect_size(app.page_rect).y, 0) }   // (page thread: not read)
+	if !chrome_frames.page_locked { limit = max(t.layout.height - draw.rect_size(active_window(app).page_rect).y, 0) }   // (page thread: not read)
 	if s := shell_snapshot_of(t.id); s != nil { limit = max(limit, s.limit) }
 	to := clamp(t.scroll + chrome_frames.pending_scroll + dy, 0, limit)
 	chrome_frames.pending_scroll = to - t.scroll
@@ -521,13 +529,10 @@ shell_snapshot_of :: proc(tab: u64) -> ^Page_Snapshot {
 	return nil
 }
 
-// Whether the page's pixels are worth keeping this frame: scripts ran, a layout is behind the document, or animations
-// are on (set by the frame); a scroll alone changes no pixel.
-page_snapshot_wanted: bool
-
-// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames.
+// After the page was painted (page_draw, in its clip): its pixels are kept for chrome frames, when the frame found them
+// worth keeping (Window_Own.page_snapshot_wanted).
 shell_capture :: proc(app: ^App, t: ^Tab, dc: ^draw.Context, rect: draw.Rect, canvas: draw.Color) {
-	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt || !page_snapshot_wanted { return }
+	if !chrome_frames.cfg.snapshot || !chrome_frames.cfg.preempt || !window_own(app).page_snapshot_wanted { return }
 	bd := draw.backdrop_capture(dc, rect, nil)
 	if bd.image.tex == 0 { return }
 	if !render.keep_target(dc.renderer, bd.image.tex) { render.release_target(dc.renderer, bd.image.tex); return }

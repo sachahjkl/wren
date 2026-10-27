@@ -349,9 +349,10 @@ recovery_open :: proc(app: ^App, rest: []string) -> bool {
 		recovery.stable_timer = host.set_timer(&app.loop, f64(config.int_of(&app.prefs, "browser.session.crash_stable_ms")), 0, recovery_stable, app)
 	}
 	if handled && len(rest) > 0 {
-		first := len(app.tabs)
+		wnd := active_window(app)   // (the front one: session_open_windows made the others)
+		first := len(wnd.tabs)
 		for a in rest { tab_open(app, command_line_address(a), origin = .User) }
-		app.current = first
+		wnd.current = first
 	}
 	return handled
 }
@@ -446,7 +447,7 @@ recovery_destroy :: proc() {
 // "Start fresh": the tabs that were restored are closed (the last one closed leaves the homepage).
 recovery_start_fresh :: proc(app: ^App) {
 	recovery.banner = .None
-	n := len(app.tabs)
+	n := len(active_window(app).tabs)
 	for _ in 0 ..< n { tab_close(app, 0) }
 }
 
@@ -462,16 +463,17 @@ recovery_show_details :: proc(app: ^App) {
 
 // "Restore tabs": the tabs a twice-crashed session left in its backup file are opened (the blank page this start opened makes way).
 recovery_restore_backup :: proc(app: ^App) -> bool {
+	wnd := active_window(app)
 	if recovery.backup == "" { return false }
 	text, ok := read_bounded(recovery.backup, SNAPSHOT_MAX_BYTES)
 	if !ok { return false }
 	l := recovery_limits(app)
 	tabs, current, pok := session_parse_tabs(text, l.max_tabs, l.max_url_bytes, context.temp_allocator, l.max_entries)
 	if !pok || len(tabs) == 0 { return false }
-	blank := len(app.tabs) == 1 && app.tabs[0].url == "about:blank"
+	blank := len(wnd.tabs) == 1 && wnd.tabs[0].url == "about:blank"
 	first := session_open_tabs(app, tabs, current)
 	if blank && first == 1 {
-		app.current -= 1   // (tab_close keeps the index: the tabs shift down by one)
+		wnd.current -= 1   // (tab_close keeps the index: the tabs shift down by one)
 		tab_close(app, 0)
 	}
 	recovery.restored = len(tabs)

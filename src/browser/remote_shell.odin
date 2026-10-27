@@ -254,7 +254,7 @@ remote_run_line :: proc(app: ^App, conn: u64, line: []byte) {
 	req, code, message := remote.parse_request(line)
 	if code != 0 { remote_send(conn, remote.response_error(req.id, code, message)); return }
 	c := Call{conn = conn, id = req.id, method = req.method, params = req.params}
-	if !remote_reads_only(c.method) { app.frames_requested = max(app.frames_requested, 2) }
+	if !remote_reads_only(c.method) { request_frames(app, 2) }
 	rep := remote_dispatch(app, &c)
 	if rep.deferred { return }
 	remote_answer(conn, c.id, rep)
@@ -544,7 +544,7 @@ tab_idle :: proc(app: ^App, t: ^Tab) -> bool {
 // Idle, and the picture is no longer changing: no frame wanted, the layout is the document's, the images are in.
 tab_stable :: proc(app: ^App, t: ^Tab) -> bool {
 	if !tab_idle(app, t) { return false }
-	if app.frames_requested > 1 || ui_needs_frame(app) { return false }
+	if active_window(app).frames_requested > 1 || ui_needs_frame(app) { return false }
 	if t.page != nil && t.kind == .Web {
 		if t.layout.mutations != t.page.doc.mutations { return false }
 		if page_has_script(t) {
@@ -570,7 +570,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 	timed_out := now >= op.deadline
 	switch op.kind {
 	case .Frames:
-		app.frames_requested = max(app.frames_requested, 2)
+		request_frames(app, 2)
 		if r.frame_no >= op.until { op_finish(op, done(op.result == "" ? "{}" : op.result)) }
 	case .Eval:
 		if timed_out { op_finish(op, fail(remote.ERR_TIMEOUT, "timed out waiting for the script's promise")) }
@@ -606,7 +606,7 @@ op_step :: proc(app: ^App, op: ^Remote_Op, now: i64) {
 		} else if timed_out {
 			op_finish(op, fail(remote.ERR_TIMEOUT, fmt.tprintf("timed out waiting for %s", op.what)))
 		} else if op.wait == .Idle || op.wait == .Stable {
-			app.frames_requested = max(app.frames_requested, 0)   // (nothing is asked of the loop: the timer looks again)
+			request_frames(app, 0)   // (nothing is asked of the loop: the timer looks again)
 		}
 	case .Capture: capture_step(app, op, t, timed_out)
 	case .Replay:  replay_step(app, op, now)

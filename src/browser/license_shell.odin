@@ -207,7 +207,7 @@ Choose_Job :: struct {
 
 license_choose_file :: proc(app: ^App, t: ^Tab) {
 	job := new(Choose_Job)
-	job.app, job.tab, job.owner = app, t.id, app.win.hwnd
+	job.app, job.tab, job.owner = app, t.id, active_window(app).win.hwnd
 	host.run_blocking(&app.blocking, proc(data: rawptr) {
 		job := (^Choose_Job)(data)
 		_ = win.CoInitializeEx(nil, .APARTMENTTHREADED)
@@ -234,7 +234,7 @@ license_choose_file :: proc(app: ^App, t: ^Tab) {
 			if tab.id != job.tab { continue }
 			notice := license_install_file(app, job.path)
 			show_wren_page(app, tab, WREN_URL, notice = notice)
-			app.frames_requested = max(app.frames_requested, 3)
+			request_frames(app, 3)
 			break
 		}
 	}, job)

@@ -101,7 +101,7 @@ Dropped :: struct { paths: [dynamic]string }
 @(private = "file") drop_hwnd: win.HWND
 
 drop_files_init :: proc(app: ^App) {
-	hwnd := app.win.hwnd
+	hwnd := active_window(app).win.hwnd
 	if hwnd == nil { return }
 	dnd_init(app)   // dnd_shell.odin: the OLE drop target (drags with their events to the page); WM_DROPFILES stays for an elevated browser
 	win.SetWindowSubclass(hwnd, drop_subclass, DROP_SUBCLASS_ID, 0)   // (core:sys/windows declares it without its result)
@@ -116,12 +116,12 @@ drop_files_init :: proc(app: ^App) {
 @(private = "file")
 drop_files_apply :: proc(app: ^App) {
 	// (with the OLE target, OLE takes the drops: WM_DROPFILES is not asked for)
-	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(app.win))) }
+	if drop_hwnd != nil { win.DragAcceptFiles(drop_hwnd, win.BOOL(config.bool_of(&app.prefs, "browser.drop.open_files") && !platform.drop_target_enabled(active_window(app).win))) }
 }
 
 drop_files_destroy :: proc(app: ^App) {
 	dnd_destroy(app)
-	page_input_destroy()
+	page_input_destroy(app)
 	if drop_hwnd == nil { return }
 	win.DragAcceptFiles(drop_hwnd, false)
 	RemoveWindowSubclass(drop_hwnd, drop_subclass, DROP_SUBCLASS_ID)
@@ -171,21 +171,22 @@ drop_open :: proc(data: rawptr) {
 
 // Files and folders dropped on the window: the first in the current tab, the others in new tabs (in the background).
 open_dropped_paths :: proc(app: ^App, paths: []string) {
+	wnd := active_window(app)
 	first := -1
 	for p, i in paths {
 		address := fetch.file_url_from_path(p, false, context.temp_allocator)   // a folder is redirected to its URL with '/'
 		if i == 0 && current_tab(app) != nil {
-			first = app.current
+			first = wnd.current
 			navigate(app, current_tab(app), address, origin = .User)
 		} else {
 			tab_open(app, address, origin = .User)
-			if first < 0 { first = app.current }
+			if first < 0 { first = wnd.current }
 		}
 	}
 	// the first one is shown (the others wait in their tabs, as when links open in the background)
-	if first >= 0 && first < len(app.tabs) {
-		app.current = first
-		if t := current_tab(app); t != nil { ui.field_set(&app.address, t.url) }
+	if first >= 0 && first < len(wnd.tabs) {
+		wnd.current = first
+		if t := current_tab(app); t != nil { ui.field_set(&wnd.address, t.url) }
 	}
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 }

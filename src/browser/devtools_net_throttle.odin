@@ -82,7 +82,7 @@ net_profile_active :: proc(p: Net_Profile) -> bool { return p.offline || p.down_
 net_profile_set :: proc(app: ^App, t: ^Tab, id: string) {
 	if t != nil { delete(t.net.profile); t.net.profile = strings.clone(id) }
 	dev_set_pref(app, "browser.devtools.network.throttle", id)
-	app.frames_requested = max(app.frames_requested, 2)
+	request_frames(app, 2)
 }
 
 net_profile_text :: proc(p: Net_Profile) -> string {

@@ -156,12 +156,14 @@ checkpoint_free :: proc(c: ^Checkpoint) {
 }
 
 window_capture :: proc(app: ^App) -> Window_State {
+	wnd := active_window(app)
 	rc: win.RECT
-	win.GetWindowRect(app.win.hwnd, &rc)
-	return {int(rc.left), int(rc.top), int(app.win.size.x), int(app.win.size.y), window_state(app)}
+	win.GetWindowRect(wnd.win.hwnd, &rc)
+	return {int(rc.left), int(rc.top), int(wnd.win.size.x), int(wnd.win.size.y), window_state(app)}
 }
 
 checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> ^Checkpoint {
+	wnd := active_window(app)
 	c := new(Checkpoint)
 	c.name = strings.clone(name)
 	c.prefs = config.snapshot(&app.prefs)
@@ -169,9 +171,9 @@ checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> 
 	if with_tabs {
 		c.has_tabs = true
 		list := make([dynamic]Checkpoint_Tab)
-		for t, i in app.tabs {
+		for t, i in wnd.tabs {
 			if t.frame != nil { continue }
-			if i == app.current { c.current = len(list) }
+			if i == wnd.current { c.current = len(list) }
 			append(&list, Checkpoint_Tab{url = strings.clone(t.url), zoom = t.zoom > 0 ? t.zoom : 1})
 		}
 		c.tabs = list[:]
@@ -237,23 +239,24 @@ chrome_reset :: proc(app: ^App) {
 	if blocker_picker_active() { blocker_picker_cancel(app) }
 	if devtools_detached() { devtools_attach(app) }
 	if dev.visible { devtools_toggle(app) }
-	if platform.is_fullscreen(app.win) { toggle_fullscreen(app) }
+	if platform.is_fullscreen(active_window(app).win) { toggle_fullscreen(app) }
 	downloads_cancel_all()
 }
 
 // One blank tab (or one at `address`) and no other: returns it. The tabs that stand in for a frame are not tabs.
 tabs_reset :: proc(app: ^App, address: string, closed: ^int) -> ^Tab {
+	wnd := active_window(app)
 	fresh := tab_open(app, address == "" ? "about:blank" : address, origin = .User)
-	for i := len(app.tabs) - 1; i >= 0; i -= 1 {
-		t := app.tabs[i]
+	for i := len(wnd.tabs) - 1; i >= 0; i -= 1 {
+		t := wnd.tabs[i]
 		if t == fresh || t.frame != nil { continue }
 		tab_close(app, i)
 		closed^ += 1
 	}
-	for t, i in app.tabs { if t == fresh { app.current = i } }
-	ui.field_set(&app.address, fresh.url)
+	for t, i in wnd.tabs { if t == fresh { wnd.current = i } }
+	ui.field_set(&wnd.address, fresh.url)
 	closed_tabs_destroy()
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	return fresh
 }
 
@@ -308,7 +311,7 @@ m_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	if .Window not_in keep && r.baseline != nil { sum.window = window_restore(app, r.baseline.window) }
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = tab_loaded(app, t) }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, tab, what, reset_summary_json(sum, tab != nil ? fmt.tprintf(`,"tabId":%d`, tab.id) : ""))
 }
@@ -380,6 +383,7 @@ sort_strings :: proc(list: []string) {
 
 @(private = "file")
 checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
+	wnd := active_window(app)
 	sum: Reset_Summary
 	sum.ops = remote_cancel_ops("cancelled by a restore")
 	chrome_reset(app)
@@ -393,19 +397,19 @@ checkpoint_restore :: proc(app: ^App, c: ^Call, cp: ^Checkpoint) -> Reply {
 	remote_reload_settings(app)
 	sum.window = window_restore(app, cp.window)
 	// the tabs again, then the blank one that held the place goes
-	blank := app.tabs[app.current]
+	blank := wnd.tabs[wnd.current]
 	for t in cp.tabs {
 		nt := tab_open(app, t.url, origin = .Replay)
 		zoom_set(app, nt, t.zoom)
 	}
-	for t, i in app.tabs { if t == blank { tab_close(app, i); break } }
-	app.current = clamp(cp.current, 0, len(app.tabs) - 1)
+	for t, i in wnd.tabs { if t == blank { tab_close(app, i); break } }
+	wnd.current = clamp(cp.current, 0, len(wnd.tabs) - 1)
 	cur := current_tab(app)
-	if cur != nil { ui.field_set(&app.address, cur.url) }
+	if cur != nil { ui.field_set(&wnd.address, cur.url) }
 	r := &the_remote
 	clear(&r.loaded)
 	for t in tabs_all(app) { r.loaded[t.id] = false }
-	app.frames_requested = max(app.frames_requested, 3)
+	request_frames(app, 3)
 	what, _ := remote.param_string(c.params, "wait", "load")
 	return start_wait(app, c, cur, what, reset_summary_json(sum, fmt.tprintf(`,"tabs":%d`, len(cp.tabs))))
 }
@@ -418,7 +422,7 @@ m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
 	if all, _ := remote.param_bool(c.params, "all"); all {
 		n := config.restore(&app.prefs, r.baseline.prefs)
 		remote_reload_settings(app)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		return done(fmt.tprintf(`{{"restored":%d}}`, n))
 	}
 	name, bad := need_string(c, "name")
@@ -427,7 +431,7 @@ m_pref_reset :: proc(app: ^App, c: ^Call) -> Reply {
 		if st.name != name { continue }
 		config.restore(&app.prefs, r.baseline.prefs[i:i + 1])
 		remote_reload_settings(app)
-		app.frames_requested = max(app.frames_requested, 3)
+		request_frames(app, 3)
 		s, _ := pref_json(app, name)
 		return done(s)
 	}
