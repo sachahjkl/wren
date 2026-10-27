@@ -118,6 +118,24 @@ by the same compiler define the same symbols. So all of Wren's Rust code is one 
 - `native/wren_native`, the assembly crate (a `staticlib` with no code): it picks the libraries, and their C functions
   (`wm_*`, `gt_*`) are exported from it.
 
+Two Cargo profiles, with the same code generation for each crate (`opt-level = 3`, one codegen unit, `panic =
+"unwind"`: every entry point catches panics):
+
+- `release` (`build.bat release` and `profile`: what is shipped, and measured as shipped): fat LTO, the whole graph
+  optimized as one module. A change in any crate runs that step again over all of them (a minute or more).
+- `quick` (`build.bat`, `debug`, `check`, the CI): no LTO, each crate's objects go into the archive as they are. A
+  change in one crate rebuilds that crate and the archive: touching the accessibility adapter recompiles neither the
+  decoders nor the text backend (7 s against 65 s). Measured against `release` on 2026-10-27: decoding as fast (WebP,
+  AVIF, SVG, WOFF2 within 3 %), shaping 2 to 5 % slower, the exe 0.6 MB larger.
+
+Both stay compiled in `build\native\target`; switching between them copies the library. The CI caches the compiled
+crates by profile and `Cargo.lock` (`.github/actions/setup`): a run whose `Cargo.lock` did not change compiles only
+the workspace's and the toolkit's crates.
+
+Why not a DLL per library (`cdylib`): measured, the adapter's DLL is 0.6 MB and the text backend's 2.4 MB (each with
+its own standard library), loading one costs 2 to 3 ms (40 ms the first time a new file is scanned), and each DLL is
+one more file to sign, ship and keep in step with the exe; `wren.exe` needs no file beside it, and stays so.
+
 Every crate is pinned by exact version in its `Cargo.toml` and by SHA-256 in `native\Cargo.lock` (`--locked`);
 `tools\rust_crates.ps1` writes the list `about:licenses` shows (`native\rust-crates.txt`). Wasmtime's library carries
 a standard library of another compiler: its mangled symbols differ, and the one unmangled symbol both define
