@@ -9,6 +9,7 @@ package page
 // getImageData, toDataURL and toBlob raise a SecurityError.
 
 import "core:fmt"
+import "core:math"
 import "wb:base"
 import "wb:canvas2d"
 import "wb:dom"
@@ -223,7 +224,43 @@ canvas_bitmap_object :: proc(c: ^Call, w, h: int) -> (o: ^Canvas_Obj, handle: u6
 	return o, handle, true
 }
 
-Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, flip_y: bool) -> (u64, Api_Error) {
+// The ImageBitmapOptions a createImageBitmap call carries, as the binding passes them (see api/canvas.widl).
+@(private)
+Bitmap_Options :: struct {
+	flip_y:      bool,   // orient == 1
+	resize_w:    int,    // 0: keep this axis
+	resize_h:    int,
+	quality:     canvas2d.Resize_Quality,
+}
+
+@(private)
+bitmap_options :: proc(orient, premul, colorspace, resize_w, resize_h, resize_q: i32) -> Bitmap_Options {
+	// premul and colorspace do not change our premultiplied-sRGB storage (see the widl note), so they need no work here.
+	return Bitmap_Options{
+		flip_y   = orient == 1,
+		resize_w = int(max(resize_w, 0)),
+		resize_h = int(max(resize_h, 0)),
+		quality  = canvas2d.Resize_Quality(clamp(resize_q, 0, 3)),
+	}
+}
+
+// The destination size after resizeWidth / resizeHeight (0 keeps an axis; one given keeps the aspect ratio of the other).
+@(private)
+bitmap_target_size :: proc(sw, sh: int, opt: Bitmap_Options) -> (int, int) {
+	w, h := opt.resize_w, opt.resize_h
+	if w == 0 && h == 0 { return sw, sh }
+	if w == 0 { w = sh > 0 ? int(math_round(f64(sw) * f64(h) / f64(sh))) : sw }
+	if h == 0 { h = sw > 0 ? int(math_round(f64(sh) * f64(w) / f64(sw))) : sh }
+	return max(w, 1), max(h, 1)
+}
+
+@(private = "file")
+math_round :: proc(x: f64) -> f64 {
+	return x < 0 ? -math.floor(-x + 0.5) : math.floor(x + 0.5)
+}
+
+Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, sw: f64, sh: f64, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error) {
+	opt := bitmap_options(orient, premul, colorspace, resize_w, resize_h, resize_q)
 	src := canvas_source(c.page, source)
 	switch src.status {
 	case .Ok:
@@ -242,37 +279,68 @@ Canvas_createBitmap :: proc(c: ^Call, source: u64, form: i32, sx: f64, sy: f64, 
 		if rh < 0 { ry += rh; rh = -rh }
 		x, y, w, h = int(rx), int(ry), max(int(rw), 1), max(int(rh), 1)
 	}
-	o, handle, ok := canvas_bitmap_object(c, w, h)
-	if !ok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
-	o.tainted = src.tainted
+	return bitmap_from_source_rect(c, sbmp, x, y, w, h, src.tainted, opt)
+}
+
+// Copies the w x h rectangle at (x, y) of `sbmp` into a fresh bitmap object, flipping and resizing per `opt`.
+@(private)
+bitmap_from_source_rect :: proc(c: ^Call, sbmp: ^canvas2d.Bitmap, x, y, w, h: int, tainted: bool, opt: Bitmap_Options) -> (u64, Api_Error) {
+	// the cropped rectangle, premultiplied, in its own storage so a resize can read it with a simple stride
+	crop, cok := canvas2d.bitmap_create(w, h, c.page.settings.canvas.max_page_bytes, context.temp_allocator)
+	if !cok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
 	for dy in 0 ..< h {
 		sy_ := y + dy
-		row := flip_y ? h - 1 - dy : dy
+		row := opt.flip_y ? h - 1 - dy : dy
 		if sy_ < 0 || sy_ >= sbmp.h { continue }
 		for dx in 0 ..< w {
 			sx_ := x + dx
 			if sx_ < 0 || sx_ >= sbmp.w { continue }
-			copy(o.bmp.pix[(row * w + dx) * 4:][:4], sbmp.pix[(sy_ * sbmp.w + sx_) * 4:][:4])
+			copy(crop.pix[(row * w + dx) * 4:][:4], sbmp.pix[(sy_ * sbmp.w + sx_) * 4:][:4])
 		}
 	}
+	tw, th := bitmap_target_size(w, h, opt)
+	o, handle, ok := canvas_bitmap_object(c, tw, th)
+	if !ok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	o.tainted = tainted
+	if tw == w && th == h {
+		copy(o.bmp.pix, crop.pix)
+	} else {
+		resized, rok := canvas2d.bitmap_resize_to(&crop, tw, th, opt.quality, c.page.settings.canvas.max_page_bytes, context.temp_allocator)
+		if !rok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+		copy(o.bmp.pix, resized.pix)
+	}
+	canvas2d.bitmap_touch_all(&o.bmp)
 	return handle, .None
 }
 
-Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, flip_y: bool) -> (u64, Api_Error) {
+Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error) {
 	if width <= 0 || height <= 0 || int(width) * int(height) * 4 > len(data) { return 0, fail(c, .Index_Size, "The source width or height is 0.") }
-	o, handle, ok := canvas_bitmap_object(c, int(width), int(height))
-	if !ok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	opt := bitmap_options(orient, premul, colorspace, resize_w, resize_h, resize_q)
 	w, h := int(width), int(height)
-	canvas2d.bitmap_write_straight(&o.bmp, data, w, 0, 0, w, h, 0, 0)
-	if flip_y {
+	// write the straight pixels into a premultiplied scratch bitmap, flip, then resize into the owned object
+	src, sok := canvas2d.bitmap_create(w, h, c.page.settings.canvas.max_page_bytes, context.temp_allocator)
+	if !sok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	canvas2d.bitmap_write_straight(&src, data, w, 0, 0, w, h, 0, 0)
+	if opt.flip_y {
 		row := make([]u8, w * 4, context.temp_allocator)
 		for y in 0 ..< h / 2 {
-			a, b := o.bmp.pix[y * w * 4:][:w * 4], o.bmp.pix[(h - 1 - y) * w * 4:][:w * 4]
+			a, b := src.pix[y * w * 4:][:w * 4], src.pix[(h - 1 - y) * w * 4:][:w * 4]
 			copy(row, a)
 			copy(a, b)
 			copy(b, row)
 		}
 	}
+	tw, th := bitmap_target_size(w, h, opt)
+	o, handle, ok := canvas_bitmap_object(c, tw, th)
+	if !ok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+	if tw == w && th == h {
+		copy(o.bmp.pix, src.pix)
+	} else {
+		resized, rok := canvas2d.bitmap_resize_to(&src, tw, th, opt.quality, c.page.settings.canvas.max_page_bytes, context.temp_allocator)
+		if !rok { return 0, fail(c, .Quota, "Not enough memory for the bitmap.") }
+		copy(o.bmp.pix, resized.pix)
+	}
+	canvas2d.bitmap_touch_all(&o.bmp)
 	return handle, .None
 }
 
