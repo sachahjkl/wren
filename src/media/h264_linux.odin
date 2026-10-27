@@ -156,9 +156,11 @@ openh264_once: sync.Once
 @(private)
 openh264_ok: bool
 
-// The library names tried, newest soname first, then a Wren-managed copy. media.h264.openh264_path overrides the list.
+// The names tried in order: a Wren-managed copy (tools/fetch_openh264.sh), then the system's by soname (newest first).
+// media.h264.openh264_path overrides the list with one path.
 @(private)
 OPENH264_SONAMES :: [?]string{
+	"build/openh264-linux/libopenh264.so.7",
 	"libopenh264.so.7", "libopenh264.so.6", "libopenh264.so.5", "libopenh264.so.2", "libopenh264.so",
 }
 
