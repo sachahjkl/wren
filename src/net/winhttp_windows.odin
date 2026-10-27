@@ -8,8 +8,6 @@ import win "core:sys/windows"
 
 foreign import winhttp "system:winhttp.lib"
 
-HINTERNET :: distinct rawptr
-
 Status_Callback :: #type proc "system" (h: HINTERNET, ctx: win.DWORD_PTR, status: win.DWORD, info: rawptr, info_len: win.DWORD)
 
 Async_Result :: struct {

@@ -2,7 +2,6 @@ package fetch
 
 import "core:os"
 import "core:strings"
-import win "core:sys/windows"
 import "core:testing"
 import "wb:config"
 import "wb:url"
@@ -18,20 +17,33 @@ round_trip :: proc(t: ^testing.T, path, want_url: string, directory := false, wa
 	testing.expectf(t, back == expect, "%s -> %s -> %s", path, got, back)
 }
 
+// The system's paths: Windows' drive letters, UNC and \\?\ forms; elsewhere POSIX paths, where '\' is a name's.
 @(test)
-windows_paths_become_file_urls :: proc(t: ^testing.T) {
-	round_trip(t, `C:\dir\page.html`, "file:///C:/dir/page.html")
-	round_trip(t, `C:\my dir\a b#1%.html`, "file:///C:/my%20dir/a%20b%231%25.html")
-	round_trip(t, `D:\Privé\été ☃.txt`, "file:///D:/Priv%C3%A9/%C3%A9t%C3%A9%20%E2%98%83.txt")
-	round_trip(t, `S:\a%b;c&d.html`, "file:///S:/a%25b%3Bc%26d.html")
-	round_trip(t, `\\server\share\x y\f.txt`, "file://server/share/x%20y/f.txt")
-	round_trip(t, `C:\site`, "file:///C:/site/", directory = true, want_path = `C:\site\`)
-	round_trip(t, `C:\site\`, "file:///C:/site/", want_path = `C:\site\`)
-	round_trip(t, `C:`, "file:///C:/", want_path = `C:\`)
-	round_trip(t, `C:\`, "file:///C:/")
-	round_trip(t, `\\?\C:\very\long`, "file:///C:/very/long", want_path = `C:\very\long`)
-	round_trip(t, `\\?\UNC\srv\s\f`, "file://srv/s/f", want_path = `\\srv\s\f`)
-	round_trip(t, `C:/forward/slashes`, "file:///C:/forward/slashes", want_path = `C:\forward\slashes`)
+system_paths_become_file_urls :: proc(t: ^testing.T) {
+	when ODIN_OS == .Windows {
+		round_trip(t, `C:\dir\page.html`, "file:///C:/dir/page.html")
+		round_trip(t, `C:\my dir\a b#1%.html`, "file:///C:/my%20dir/a%20b%231%25.html")
+		round_trip(t, `D:\Privé\été ☃.txt`, "file:///D:/Priv%C3%A9/%C3%A9t%C3%A9%20%E2%98%83.txt")
+		round_trip(t, `S:\a%b;c&d.html`, "file:///S:/a%25b%3Bc%26d.html")
+		round_trip(t, `\\server\share\x y\f.txt`, "file://server/share/x%20y/f.txt")
+		round_trip(t, `C:\site`, "file:///C:/site/", directory = true, want_path = `C:\site\`)
+		round_trip(t, `C:\site\`, "file:///C:/site/", want_path = `C:\site\`)
+		round_trip(t, `C:`, "file:///C:/", want_path = `C:\`)
+		round_trip(t, `C:\`, "file:///C:/")
+		round_trip(t, `\\?\C:\very\long`, "file:///C:/very/long", want_path = `C:\very\long`)
+		round_trip(t, `\\?\UNC\srv\s\f`, "file://srv/s/f", want_path = `\\srv\s\f`)
+		round_trip(t, `C:/forward/slashes`, "file:///C:/forward/slashes", want_path = `C:\forward\slashes`)
+	} else {
+		round_trip(t, "/home/a/page.html", "file:///home/a/page.html")
+		round_trip(t, "/my dir/a b#1%.html", "file:///my%20dir/a%20b%231%25.html")
+		round_trip(t, "/Privé/été ☃.txt", "file:///Priv%C3%A9/%C3%A9t%C3%A9%20%E2%98%83.txt")
+		round_trip(t, `/a\b.txt`, "file:///a%5Cb.txt")
+		round_trip(t, "/site", "file:///site/", directory = true, want_path = "/site/")
+		round_trip(t, "/", "file:///")
+		u, _ := url.parse_absolute("file://server/share/f.txt", context.temp_allocator)
+		_, remote := file_path_from_url(u, context.temp_allocator)
+		testing.expect(t, !remote, "a host other than localhost is not a local file")
+	}
 }
 
 @(test)
@@ -43,22 +55,29 @@ listing_links_and_redirects :: proc(t: ^testing.T) {
 	testing.expect_value(t, listing_href("q?.txt", false), "q%3F.txt")
 
 	// every href resolves inside the folder, to the file it names (of the names Windows allows: "C:x" and "q?.txt" are refused as paths)
-	base, _ := url.parse_absolute("file:///C:/my%20dir/", context.temp_allocator)
+	base_url := "file:///C:/my%20dir/" when ODIN_OS == .Windows else "file:///my%20dir/"
+	folder := `C:\my dir\` when ODIN_OS == .Windows else "/my dir/"
+	base, _ := url.parse_absolute(base_url, context.temp_allocator)
 	for name in ([]string{"a b#1%.txt", "été ☃", "..x", "-"}) {
 		r, ok := url.parse(listing_href(name, false), &base, context.temp_allocator)
 		testing.expectf(t, ok, "%s resolves", name)
 		p, _ := file_path_from_url(r, context.temp_allocator)
-		testing.expectf(t, p == strings.concatenate({`C:\my dir\`, name}, context.temp_allocator), "%s -> %s -> %s", name, r.href, p)
+		testing.expectf(t, p == strings.concatenate({folder, name}, context.temp_allocator), "%s -> %s -> %s", name, r.href, p)
 	}
 
 	testing.expect_value(t, directory_redirect_href("file", "", "/C:/site", "", "", false, false, context.temp_allocator), "file:///C:/site/")
 	testing.expect_value(t, directory_redirect_href("file", "srv", "/share/d", "sort=size", "top", true, true, context.temp_allocator), "file://srv/share/d/?sort=size#top")
 
-	testing.expect(t, path_is_root(`C:\`))
-	testing.expect(t, path_is_root(`C:`))
-	testing.expect(t, path_is_root(`\\srv\share\`))
-	testing.expect(t, !path_is_root(`\\srv\share\d\`))
-	testing.expect(t, !path_is_root(`C:\site\`))
+	when ODIN_OS == .Windows {
+		testing.expect(t, path_is_root(`C:\`))
+		testing.expect(t, path_is_root(`C:`))
+		testing.expect(t, path_is_root(`\\srv\share\`))
+		testing.expect(t, !path_is_root(`\\srv\share\d\`))
+		testing.expect(t, !path_is_root(`C:\site\`))
+	} else {
+		testing.expect(t, path_is_root("/"))
+		testing.expect(t, !path_is_root("/site/"))
+	}
 
 	s := File_Settings{sort = .Name}
 	so, desc := listing_order("sort=size&order=desc", &s)
@@ -115,7 +134,7 @@ U2 :: proc(s: string) -> url.URL {
 folder_listing :: proc(t: ^testing.T) {
 	dir := "build/dirlist_test"
 	_ = os.make_directory_all("build/dirlist_test/Sub dir")
-	files := []string{"b.txt", "a10.txt", "a2.txt", "x#y 1%.html", "a&b'c.txt", "hidden.txt", "big.bin"}
+	files := []string{"b.txt", "a10.txt", "a2.txt", "x#y 1%.html", "a&b'c.txt", HIDDEN_NAME, "big.bin"}
 	for f in files { _ = os.write_entire_file(strings.concatenate({dir, "/", f}, context.temp_allocator), transmute([]byte)string("12345")) }
 	_ = os.write_entire_file("build/dirlist_test/big.bin", make([]byte, 5000, context.temp_allocator))
 	defer {
@@ -123,9 +142,9 @@ folder_listing :: proc(t: ^testing.T) {
 		_ = os.remove("build/dirlist_test/Sub dir")
 		_ = os.remove(dir)
 	}
-	win.SetFileAttributesW(win.utf8_to_wstring("build/dirlist_test/hidden.txt"), win.FILE_ATTRIBUTE_HIDDEN)
+	mark_hidden(strings.concatenate({dir, "/", HIDDEN_NAME}, context.temp_allocator))
 	cwd, _ := os.get_working_directory(context.temp_allocator)
-	abs, _ := strings.replace_all(strings.concatenate({cwd, "\\build\\dirlist_test\\"}, context.temp_allocator), "/", "\\", context.temp_allocator)
+	abs, _ := strings.replace_all(strings.concatenate({cwd, "/build/dirlist_test/"}, context.temp_allocator), "/", FILE_SEP_STR, context.temp_allocator)
 
 	s := File_Settings{max_entries = 100, folders_first = true}
 	l, st := read_directory(abs, &s)
@@ -153,13 +172,13 @@ folder_listing :: proc(t: ^testing.T) {
 		w := []u16{'<', 'i', '>', 0}
 		fake := Dir_Listing{entries = make([dynamic]Dir_Entry, context.temp_allocator)}
 		append(&fake.entries, Dir_Entry{name = "<i>.txt", wide = w})
-		h := directory_listing_html(`C:\x\`, &fake, .Name, false, context.temp_allocator)
+		h := directory_listing_html(abs, &fake, .Name, false, context.temp_allocator)
 		testing.expect(t, strings.contains(h, `&lt;i&gt;.txt`) && strings.contains(h, `href="%3Ci%3E.txt"`) && !strings.contains(h, "<i>"), "no markup from a file name")
 	}
 	testing.expect(t, strings.contains(html, `href="../"`), "a parent link")
 	testing.expect(t, strings.contains(html, `href="?sort=size&amp;order=asc"`), "the current column flips the order")
 	testing.expect(t, strings.contains(html, `color-scheme`), "light and dark")
-	testing.expect(t, !strings.contains(html, "hidden.txt"), "hidden files are left out")
+	testing.expect(t, !strings.contains(html, HIDDEN_NAME), "hidden files are left out")
 	testing.expect(t, !strings.contains(html, "<script"), "no script")
 
 	s.max_entries = 3
@@ -170,7 +189,7 @@ folder_listing :: proc(t: ^testing.T) {
 	html2 := directory_listing_html(abs, &l2, .Name, false, context.temp_allocator)
 	testing.expect(t, strings.contains(html2, "Showing 3 of 8"), "the cap is said")
 
-	_, missing := read_directory(strings.concatenate({abs, "nope\\"}, context.temp_allocator), &s)
+	_, missing := read_directory(strings.concatenate({abs, "nope", FILE_SEP_STR}, context.temp_allocator), &s)
 	testing.expect_value(t, missing, File_Status.Not_Found)
 	_, ast := file_attributes(strings.concatenate({abs, "nope"}, context.temp_allocator))
 	testing.expect_value(t, ast, File_Status.Not_Found)

@@ -213,25 +213,42 @@ data_urls :: proc(t: ^testing.T) {
 
 @(test)
 file_urls_and_access :: proc(t: ^testing.T) {
-	p, ok := file_path_from_url(U("file:///C:/Dir%20One/a.html"), context.temp_allocator)
-	testing.expect(t, ok)
-	testing.expect_value(t, p, `C:\Dir One\a.html`)
-	p, _ = file_path_from_url(U("file://server/share/f.txt"), context.temp_allocator)
-	testing.expect_value(t, p, `\\server\share\f.txt`)
-
-	env := environment_make(U("file:///C:/site/pages/index.html"))
-	defer environment_destroy(&env)
-	testing.expect_value(t, env.file_root, `C:\site\pages`)
-	testing.expect(t, env.origin.opaque)
-	testing.expect(t, file_access_allowed(&env, `C:\site\pages\app.wasm`, .Own_Tree))
-	testing.expect(t, file_access_allowed(&env, `c:\SITE\pages\sub\deep\x.png`, .Own_Tree), "case-insensitive, subdirectories")
-	testing.expect(t, !file_access_allowed(&env, `C:\site\other.txt`, .Own_Tree))
-	testing.expect(t, !file_access_allowed(&env, `C:\site\pages2\x`, .Own_Tree), "sibling with a common prefix")
-	testing.expect(t, file_access_allowed(nil, `C:\anything`, .Own_Tree), "the browser UI may open any file")
-
 	web := environment_make(U("https://example.com/"))
 	defer environment_destroy(&web)
-	testing.expect(t, !file_access_allowed(&web, `C:\site\pages\app.wasm`, .Own_Tree), "web pages never read local files")
+	when ODIN_OS == .Windows {
+		p, ok := file_path_from_url(U("file:///C:/Dir%20One/a.html"), context.temp_allocator)
+		testing.expect(t, ok)
+		testing.expect_value(t, p, `C:\Dir One\a.html`)
+		p, _ = file_path_from_url(U("file://server/share/f.txt"), context.temp_allocator)
+		testing.expect_value(t, p, `\\server\share\f.txt`)
+
+		env := environment_make(U("file:///C:/site/pages/index.html"))
+		defer environment_destroy(&env)
+		testing.expect_value(t, env.file_root, `C:\site\pages`)
+		testing.expect(t, env.origin.opaque)
+		testing.expect(t, file_access_allowed(&env, `C:\site\pages\app.wasm`, .Own_Tree))
+		testing.expect(t, file_access_allowed(&env, `c:\SITE\pages\sub\deep\x.png`, .Own_Tree), "case-insensitive, subdirectories")
+		testing.expect(t, !file_access_allowed(&env, `C:\site\other.txt`, .Own_Tree))
+		testing.expect(t, !file_access_allowed(&env, `C:\site\pages2\x`, .Own_Tree), "sibling with a common prefix")
+		testing.expect(t, file_access_allowed(nil, `C:\anything`, .Own_Tree), "the browser UI may open any file")
+		testing.expect(t, !file_access_allowed(&web, `C:\site\pages\app.wasm`, .Own_Tree), "web pages never read local files")
+	} else {
+		p, ok := file_path_from_url(U("file:///Dir%20One/a.html"), context.temp_allocator)
+		testing.expect(t, ok)
+		testing.expect_value(t, p, "/Dir One/a.html")
+
+		env := environment_make(U("file:///site/pages/index.html"))
+		defer environment_destroy(&env)
+		testing.expect_value(t, env.file_root, "/site/pages")
+		testing.expect(t, env.origin.opaque)
+		testing.expect(t, file_access_allowed(&env, "/site/pages/app.wasm", .Own_Tree))
+		testing.expect(t, file_access_allowed(&env, "/site/pages/sub/deep/x.png", .Own_Tree), "subdirectories")
+		testing.expect(t, !file_access_allowed(&env, "/SITE/pages/x.png", .Own_Tree), "case-sensitive")
+		testing.expect(t, !file_access_allowed(&env, "/site/other.txt", .Own_Tree))
+		testing.expect(t, !file_access_allowed(&env, "/site/pages2/x", .Own_Tree), "sibling with a common prefix")
+		testing.expect(t, file_access_allowed(nil, "/anything", .Own_Tree), "the browser UI may open any file")
+		testing.expect(t, !file_access_allowed(&web, "/site/pages/app.wasm", .Own_Tree), "web pages never read local files")
+	}
 }
 
 @(test)
