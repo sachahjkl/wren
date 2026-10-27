@@ -1,7 +1,6 @@
 # The globals of src\browser and their class (tools\lint_globals.ps1 fails on one that is not here). "<file> <name> <class>  # why".
 # process: the process's; window: one window's (to move into Browser_Window); page: one page's or tab's (to move into Page / Tab);
 # test: a test's. Inventory of 2026-10-27 (refactor T4); see windows.odin.
-a11y_page.odin pa page  # the accessibility tree of the page shown
 about_card_relief.odin GLYPHS process  # a table
 about_card_seal.odin SEAL_TICK process  # a table
 about_pages.odin ABOUT_PAGES process  # a table

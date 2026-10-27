@@ -87,6 +87,7 @@ Window_Own :: struct {
 	devices:             Device_Input,        // page_input.odin: the fingers and pens over the page
 	page_prep:           Page_Prep,           // page_frame.odin: the page as prepared in the page phase, for its paint
 	page_snapshot_wanted: bool,               // shell_frames.odin: the frame keeps the page's pixels for chrome frames
+	a11y:                Page_A11y,           // a11y_page.odin: the accessibility trees of the page shown and its frames
 	// what a command, a menu or the page asked of the next build (a popup opened from the chrome)
 	page_info_request:     bool,              // chrome.odin: the security chip's page information
 	main_menu_request:     bool,              // chrome.odin: the main menu (Alt+F / Alt+E)
@@ -109,6 +110,7 @@ window_own_destroy :: proc(own: ^Window_Own) {
 	forms_shell_destroy(&own.forms)
 	context_menu_state_destroy(&own.ctx_menu)
 	device_input_destroy(&own.devices)
+	page_a11y_destroy(&own.a11y)
 }
 
 ////////////////////////////////
