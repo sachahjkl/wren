@@ -184,6 +184,11 @@ frame_prepare :: proc(app: ^App, fv: ^Frame_View, size: draw.Vec2, scale: f32) {
 	if !p.render.painted { page.first_paint_done(p) }
 	t.scroll = clamp(t.scroll, 0, max(0, t.layout.height - size.y))
 	fv.ready = true
+	// Performance Timeline entries that depend on the real paint (timeline_lcp.odin): the largest contentful element and
+	// the element-timing entries from the layout just settled, and the layout shifts against the previous frame.
+	vp := page.Viewport{width = f64(size.x) / f64(scale), height = f64(size.y) / f64(scale), scale = f64(scale), scroll_y = f64(t.scroll) / f64(scale)}
+	page.timeline_present(p, &t.layout, vp)
+	page.timeline_layout_shift_check(p, &t.layout, vp)
 	frames_prepare(app, t, size, scale)
 }
 

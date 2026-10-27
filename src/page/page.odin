@@ -300,6 +300,7 @@ dispatch_event :: proc(p: ^Page, target: base.Handle, ev: dom.Event) -> bool {
 	webauthn_note_input(p, ev)   // HTML transient activation (bindings_webauthn.odin)
 	media_note_input(p, ev)      // sticky activation for autoplay (media_element.odin)
 	ev := ev
+	if timeline_is_discrete_input(ev.type) { timeline_layout_shift_input(p) }   // stops LCP, marks layout shifts near input
 	timed := timeline_event_begin(p, &ev)   // Event Timing (timeline.odin)
 	ok := dom.dispatch(p.doc, &p.dp, target, ev)
 	if timed != 0 { timeline_event_end(p, &ev, timed) }
