@@ -25,6 +25,9 @@ package browser
 // With several windows (version 3) each one starts with a line `window <left> <top> <width> <height> <state>` (its outer rectangle on
 // the screen in pixels, state 0 normal, 1 maximized) followed by its own `current` and tabs; a file of one window is the version 2
 // above, and a version 1 or 2 file is read as one window without a rectangle.
+//
+// Pinned tabs and groups (tab_groups.odin), lines an older reader skips: after a window's `current`, one line per group,
+// `tgroup	<id>	<colour>	<collapsed 0|1>	<name>`; after a `tab` line, `pin` for a pinned tab and `group <id>` for a tab in a group.
 
 import "base:runtime"
 import "core:fmt"
@@ -66,6 +69,7 @@ Session_Window :: struct {
 	maximized: bool,
 	tabs:      []Session_Tab,
 	current:   int,
+	groups:    []Session_Group,
 }
 
 // One tab of a session file.
@@ -73,6 +77,16 @@ Session_Tab :: struct {
 	url:     string,
 	entries: []page.Saved_Entry,   // parents first
 	current: u64,                  // id of the current entry (0: the last one)
+	pinned:  bool,
+	group:   u64,                  // the id of its group among its window's (0: none)
+}
+
+// One tab group of a window (tab_groups.odin).
+Session_Group :: struct {
+	id:        u64,
+	name:      string,
+	color:     Group_Color,
+	collapsed: bool,
 }
 
 @(private = "file")
@@ -95,13 +109,13 @@ session_serialize_windows :: proc(windows: []Session_Window, max_url_bytes, max_
 			r := w.has_rect ? w.rect : {}
 			fmt.sbprintf(&sb, "window %d %d %d %d %d\n", r[0], r[1], r[2], r[3], w.maximized ? 1 : 0)
 		}
-		session_write_tabs(&sb, w.tabs, w.current, max_url_bytes, max_state_bytes)
+		session_write_tabs(&sb, w.tabs, w.current, max_url_bytes, max_state_bytes, w.groups)
 	}
 	return strings.to_string(sb)
 }
 
 @(private = "file")
-session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: int, max_url_bytes, max_state_bytes: int) {
+session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: int, max_url_bytes, max_state_bytes: int, groups: []Session_Group = nil) {
 	kept := make([dynamic]int, context.temp_allocator)
 	cur := 0
 	for t, i in tabs {
@@ -110,11 +124,18 @@ session_write_tabs :: proc(sb: ^strings.Builder, tabs: []Session_Tab, current: i
 		append(&kept, i)
 	}
 	fmt.sbprintf(sb, "current %d\n", cur)
+	for g in groups {
+		fmt.sbprintf(sb, "tgroup\t%d\t%s\t%d\t", g.id, GROUP_COLOR_NAMES[g.color], g.collapsed ? 1 : 0)
+		field_escape(sb, g.name)
+		strings.write_byte(sb, '\n')
+	}
 	for i in kept {
 		t := tabs[i]
 		strings.write_string(sb, "tab ")
 		strings.write_string(sb, t.url)
 		strings.write_byte(sb, '\n')
+		if t.pinned { strings.write_string(sb, "pin\n") }
+		if t.group != 0 { fmt.sbprintf(sb, "group %d\n", t.group) }
 		dropped := make(map[u64]u64, 8, context.temp_allocator)   // id -> its parent, for entries not written
 		for e in t.entries {
 			parent := e.parent
@@ -168,13 +189,16 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 		entries^ = make([dynamic]page.Saved_Entry, allocator)
 	}
 	// the tabs read so far belong to the last window (the first one is there from the first line that needs it)
-	close_window :: proc(wins: ^[dynamic]Session_Window, out: ^[dynamic]Session_Tab, entries: ^[dynamic]page.Saved_Entry, allocator: runtime.Allocator) {
+	grps := make([dynamic]Session_Group, allocator)
+	close_window :: proc(wins: ^[dynamic]Session_Window, out: ^[dynamic]Session_Tab, entries: ^[dynamic]page.Saved_Entry, grps: ^[dynamic]Session_Group, allocator: runtime.Allocator) {
 		flush(out, entries, allocator)
 		if len(wins) == 0 { return }
 		w := &wins[len(wins) - 1]
 		w.tabs = out[:]
 		w.current = len(out) == 0 ? 0 : clamp(w.current, 0, len(out) - 1)
+		w.groups = grps[:]
 		out^ = make([dynamic]Session_Tab, allocator)
+		grps^ = make([dynamic]Session_Group, allocator)
 	}
 	need_window :: proc(wins: ^[dynamic]Session_Window) { if len(wins) == 0 { append(wins, Session_Window{}) } }
 	for line_raw in strings.split_lines_iterator(&rest) {
@@ -187,7 +211,7 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 		}
 		switch {
 		case strings.has_prefix(line, "window "):
-			close_window(&wins, &out, &entries, allocator)
+			close_window(&wins, &out, &entries, &grps, allocator)
 			skipping = true   // (until a tab line of this window)
 			drop_window = max_windows > 0 && len(wins) >= max_windows
 			if drop_window { continue }
@@ -219,6 +243,22 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 			append(&out, Session_Tab{url = strings.clone(u, allocator)})
 			total += 1
 			skipping = false
+		case strings.has_prefix(line, "tgroup\t"):
+			if drop_window { continue }
+			need_window(&wins)
+			f := strings.split(line[len("tgroup\t"):], "\t", context.temp_allocator)
+			if len(f) < 4 { continue }
+			id, iok := strconv.parse_u64(f[0])
+			col, cok := group_color_of(f[1])
+			if !iok || id == 0 || len(grps) >= max_tabs { continue }
+			if !cok { col = .Grey }
+			append(&grps, Session_Group{id = id, color = col, collapsed = f[2] == "1", name = field_unescape(f[3], allocator)})
+		case line == "pin":
+			if skipping || len(out) == 0 { continue }
+			out[len(out) - 1].pinned = true
+		case strings.has_prefix(line, "group "):
+			if skipping || len(out) == 0 { continue }
+			if id, gok := strconv.parse_u64(strings.trim_space(line[len("group "):])); gok { out[len(out) - 1].group = id }
 		case strings.has_prefix(line, "e\t"):
 			if skipping || len(out) == 0 || (max_entries > 0 && len(entries) >= max_entries) { continue }
 			f := strings.split(line[2:], "\t", context.temp_allocator)
@@ -246,7 +286,7 @@ session_parse_windows :: proc(text: string, max_tabs, max_url_bytes: int, alloca
 		}
 	}
 	if first { return nil, false }
-	close_window(&wins, &out, &entries, allocator)
+	close_window(&wins, &out, &entries, &grps, allocator)
 	return wins[:], true
 }
 // Addresses only (the first version's view).
@@ -266,7 +306,7 @@ session_parse :: proc(text: string, max_tabs, max_url_bytes: int, allocator := c
 
 // The saved form of a tab's tree.
 session_tab_of :: proc(t: ^Tab) -> Session_Tab {
-	st := Session_Tab{url = t.url == "" && t.kind == .Web ? HOME_URL : t.url}
+	st := Session_Tab{url = t.url == "" && t.kind == .Web ? HOME_URL : t.url, pinned = t.pinned, group = t.group}
 	flat := page.session_flatten(&t.session)
 	entries := make([]page.Saved_Entry, len(flat), context.temp_allocator)
 	for e, i in flat {
@@ -294,7 +334,7 @@ session_text :: proc(app: ^App) -> string {
 				tabs[i] = session_tab_of(t)
 			}
 			rect, maximized := window_placement(w)
-			windows[wi] = {has_rect = true, rect = rect, maximized = maximized, tabs = tabs, current = window_current(app, w)^}
+			windows[wi] = {has_rect = true, rect = rect, maximized = maximized, tabs = tabs, current = window_current(app, w)^, groups = session_groups_of(w.groups[:])}
 		}
 		return session_serialize_windows(windows, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 	}
@@ -303,12 +343,21 @@ session_text :: proc(app: ^App) -> string {
 		entry_capture_current(app, t)
 		tabs[i] = session_tab_of(t)
 	}
-	return session_serialize_tabs(tabs, wnd.current, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+	return session_serialize_windows([]Session_Window{{tabs = tabs, current = wnd.current, groups = session_groups_of(wnd.groups[:])}},
+		int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+}
+
+// A window's groups as a session file keeps them (temporary allocator, the names borrowed).
+session_groups_of :: proc(groups: []Tab_Group) -> []Session_Group {
+	out := make([]Session_Group, len(groups), context.temp_allocator)
+	for g, i in groups { out[i] = {id = g.id, name = g.name, color = g.color, collapsed = g.collapsed} }
+	return out
 }
 
 // Writes the session when it changed (profile_save: autosave and exit).
 session_save :: proc(app: ^App) {
-	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.session.restore") { return }
+	if !app.cfg.persist_profile { return }
+	if !config.bool_of(&app.prefs, "browser.session.restore") { pinned_save(app); return }
 	text := session_text(app)
 	if text == session_last { return }
 	path := session_path(app)
@@ -348,7 +397,7 @@ session_restore :: proc(app: ^App) -> bool {
 session_open_windows :: proc(app: ^App, windows: []Session_Window, text: string) -> bool {
 	if len(windows) == 0 || (len(windows) == 1 && len(windows[0].tabs) == 0) { return false }
 	first := windows[0]
-	if len(first.tabs) > 0 { session_open_tabs(app, first.tabs, first.current) } else { tab_open(app) }
+	if len(first.tabs) > 0 { session_open_tabs(app, first.tabs, first.current, first.groups) } else { tab_open(app) }
 	if first.has_rect && app.active != nil { window_placement_set(app.active, first.rect, first.maximized) }
 	if len(windows) > 1 {
 		delete(rest_text)
@@ -371,7 +420,7 @@ session_open_other_windows :: proc(app: ^App) {
 		if w.has_rect { window_placement_set(nw, w.rect, w.maximized) }
 		prev := app.active
 		window_activate(app, nw)
-		if len(w.tabs) > 0 { session_open_tabs(app, w.tabs, w.current) } else { tab_open(app) }
+		if len(w.tabs) > 0 { session_open_tabs(app, w.tabs, w.current, w.groups) } else { tab_open(app) }
 		window_activate(app, prev)
 		if !app.headless { window_show(nw) }
 	}
@@ -379,12 +428,24 @@ session_open_other_windows :: proc(app: ^App) {
 
 // Adds a tab for each saved one after the tabs there are (crash_recovery.odin uses it for a snapshot too); `current` is
 // the index, among `tabs`, of the one to show. Returns the index of the first tab added.
-session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int) -> (first: int) {
+session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int, groups: []Session_Group = nil) -> (first: int) {
 	wnd := active_window(app)
 	first = len(wnd.tabs)
 	w := &app.page_settings.web
+	// the groups take ids of their own in the window (it may have groups already: a crashed session added to it)
+	ids := make(map[u64]u64, len(groups), context.temp_allocator)
+	next: u64 = 1
+	for g in wnd.groups { next = max(next, g.id + 1) }
+	for g in groups {
+		if g.id in ids { continue }
+		ids[g.id] = next
+		append(&wnd.groups, Tab_Group{id = next, name = group_name_clone(app, g.name), color = g.color, collapsed = g.collapsed})
+		next += 1
+	}
 	for st in tabs {
 		t := tab_new(app)
+		t.pinned = st.pinned
+		t.group = ids[st.group] or_else 0
 		delete(t.url); t.url = strings.clone(st.url)
 		delete(t.title); t.title = default_tab_title(st.url, context.allocator)
 		t.lazy = true
@@ -399,6 +460,10 @@ session_open_tabs :: proc(app: ^App, tabs: []Session_Tab, current: int) -> (firs
 		if page.session_current(&t.session) == nil { history_push(t, st.url) }
 	}
 	wnd.current = first + clamp(current, 0, max(len(tabs) - 1, 0))
+	if app.active != nil { tabs_fix(app, app.active) } else {
+		wnd.current = tabs_normalize(wnd.tabs[:], wnd.current)
+		tab_groups_prune(wnd.tabs[:], &wnd.groups)
+	}
 	session_lazy_load(app)
 	return
 }
@@ -409,6 +474,46 @@ session_lazy_load :: proc(app: ^App) {
 	if t == nil || !t.lazy { return }
 	t.lazy = false
 	navigate(app, t, strings.clone(t.url, context.temp_allocator), record = false, restore = true, origin = .Replay)
+}
+
+////////////////////////////////
+// The pinned tabs without the session (browser.tabs.restore_pinned)
+
+pinned_path :: proc(app: ^App) -> string { return strings.concatenate({app.profile_dir, "/pinned.txt"}, context.temp_allocator) }
+
+// Writes the pinned tabs of every window to pinned.txt (a session file of one window) when they changed; none: the file goes.
+pinned_save :: proc(app: ^App) {
+	path := pinned_path(app)
+	pins := make([dynamic]Session_Tab, context.temp_allocator)
+	if config.bool_of(&app.prefs, "browser.tabs.restore_pinned") {
+		for w in app.windows {
+			for t in window_tabs(app, w) {
+				if !t.pinned { continue }
+				entry_capture_current(app, t)
+				append(&pins, session_tab_of(t))
+			}
+		}
+	}
+	if len(pins) == 0 {
+		if os.exists(path) { _ = os.remove(path) }
+		return
+	}
+	text := session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
+	if old, err := os.read_entire_file(path, context.temp_allocator); err == nil && string(old) == text { return }
+	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
+	if os.write_entire_file(tmp, transmute([]byte)text) != nil { return }
+	_ = win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING)
+}
+
+// At start-up, when the session was not restored: the pinned tabs saved by pinned_save, before the first tab.
+pinned_restore :: proc(app: ^App) {
+	if !app.cfg.persist_profile || !config.bool_of(&app.prefs, "browser.tabs.restore_pinned") { return }
+	data, err := os.read_entire_file(pinned_path(app), context.temp_allocator)
+	if err != nil { return }
+	tabs, _, ok := session_parse_tabs(string(data), int(config.int_of(&app.prefs, "browser.session.max_tabs")), int(config.int_of(&app.prefs, "browser.session.max_url_bytes")))
+	if !ok || len(tabs) == 0 { return }
+	for &t in tabs { t.pinned, t.group = true, 0 }
+	session_open_tabs(app, tabs, 0)
 }
 
 session_destroy :: proc() {

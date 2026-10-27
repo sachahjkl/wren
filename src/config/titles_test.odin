@@ -15,6 +15,8 @@ titles_read_as_phrases :: proc(t: ^testing.T) {
 		{{name = "security.webauthn.testing.virtual_mode", kind = .String, category = "testing"}, "WebAuthn testing virtual mode"},
 		{{name = "text.ms", kind = .Int, category = "text"}, "Ms"},                               // a unit alone stays
 		{{name = "solo", kind = .Int}, "Solo"},
+		{{name = "browser.tabs.sidebar_width", kind = .Int, category = "tabs"}, "Sidebar width"},   // the category is the second segment
+		{{name = "browser.tabs", kind = .Bool, category = "tabs"}, "Tabs"},                        // (nothing after it: kept)
 	}
 	for c in cases { testing.expect_value(t, title_of(c.d), c.want) }
 	testing.expect_value(t, category_title("devtools"), "DevTools")

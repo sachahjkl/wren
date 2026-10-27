@@ -152,6 +152,17 @@ j_int :: proc(b: ^strings.Builder, key: string, v: i64) { j_key(b, key); fmt.sbp
 j_num :: proc(b: ^strings.Builder, key: string, v: f64) { j_key(b, key); fmt.sbprintf(b, "%.3f", v) }
 j_bool :: proc(b: ^strings.Builder, key: string, v: bool) { j_key(b, key); strings.write_string(b, v ? "true" : "false") }
 j_raw :: proc(b: ^strings.Builder, key, v: string) { j_key(b, key); strings.write_string(b, v) }
+j_rect :: proc(b: ^strings.Builder, key: string, r: draw.Rect) {
+	j_raw(b, key, fmt.tprintf("[%d,%d,%d,%d]", int(r.min.x), int(r.min.y), int(r.max.x - r.min.x), int(r.max.y - r.min.y)))
+}
+
+// Where window `w`'s last frame drew the box `id` built under the box `parent` (window pixels); false: not drawn then.
+chrome_box_rect :: proc(w: ^Browser_Window, parent: ui.Key, id: string) -> (r: draw.Rect, ok: bool) {
+	if w.ui == nil || parent == 0 { return }
+	b, found := w.ui.boxes[ui.key_from_string(parent, id)]
+	if !found || b.last_build + 1 < w.ui.build_index { return }
+	return b.rect, true
+}
 
 builder :: proc() -> strings.Builder { return strings.builder_make(context.temp_allocator) }
 
@@ -309,6 +320,26 @@ m_targets :: proc(app: ^App) -> Reply {
 			j_int(&b, "targetId", i64(t.id)); j_str(&b, "type", "page"); j_str(&b, "title", t.title); j_str(&b, "url", t.url)
 			j_int(&b, "windowId", i64(w.id))
 			j_bool(&b, "active", i == window_current(app, w)^); j_bool(&b, "loading", !tab_loaded(app, t)); j_bool(&b, "attached", true)
+			// the sidebar's state of the tab (tab_groups.odin), and where the last frame drew it in the tab bar
+			j_bool(&b, "pinned", t.pinned); j_int(&b, "group", i64(t.group))
+			j_bool(&b, "playing", t.sound.playing); j_bool(&b, "audible", tab_speaker(app, t) == .Sound); j_bool(&b, "muted", t.muted)   // tab_sound.odin
+			if gi := group_index(w.groups[:], t.group); gi >= 0 {
+				g := w.groups[gi]
+				j_str(&b, "groupName", g.name); j_str(&b, "groupColor", GROUP_COLOR_NAMES[g.color]); j_bool(&b, "groupCollapsed", g.collapsed)
+			}
+			id := fmt.tprintf("###tab_%d", t.id)
+			if r, ok := chrome_box_rect(w, t.pinned && favs.cfg.position != .Top ? w.own.sidebar.pins_key : w.own.strip.area_key, id); ok { j_rect(&b, "rect", r) }
+			j_end(&b)
+		}
+	}
+	j_end(&b, ']')
+	j_key(&b, "tabGroups"); j_begin(&b, '[')
+	for w in app.windows {
+		for g in w.groups {
+			j_key(&b, ""); j_begin(&b)
+			j_int(&b, "windowId", i64(w.id)); j_int(&b, "id", i64(g.id)); j_str(&b, "name", g.name)
+			j_str(&b, "color", GROUP_COLOR_NAMES[g.color]); j_bool(&b, "collapsed", g.collapsed)
+			if r, ok := chrome_box_rect(w, w.own.strip.area_key, fmt.tprintf("###grp_%d", g.id)); ok { j_rect(&b, "rect", r) }
 			j_end(&b)
 		}
 	}

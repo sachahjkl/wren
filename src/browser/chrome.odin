@@ -283,9 +283,11 @@ tab_move_current :: proc(app: ^App, delta: int) {
 	wnd := active_window(app)
 	to := wnd.current + delta
 	if to < 0 || to >= len(wnd.tabs) { return }
+	t := wnd.tabs[wnd.current]
+	if wnd.tabs[to].pinned != t.pinned { return }   // (pinned tabs stay among themselves: tab_groups.odin)
+	if !t.pinned { t.group = wnd.tabs[to].group }   // into the group it moves into, out of its own past its ends
 	wnd.current = list_move(wnd.tabs[:], wnd.current, to, wnd.current)
-	request_frames(app, 2)
-	recovery_touch(app)
+	tabs_fix(app, wnd)
 }
 
 ////////////////////////////////

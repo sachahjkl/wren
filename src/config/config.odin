@@ -130,14 +130,15 @@ prefs_destroy :: proc(p: ^Prefs) {
 // Registration
 
 // Adds definitions. Registering a name again with the same kind is a no-op; a different kind is a programming error.
-register :: proc(p: ^Prefs, defs: []Def) {
+// `category`: the about:config category of the definitions that name none (else their name's first segment).
+register :: proc(p: ^Prefs, defs: []Def, category := "") {
 	for d in defs {
 		if i, exists := p.index[d.name]; exists {
 			assert(p.entries[i].def.kind == d.kind, "preference registered twice with different kinds")
 			continue
 		}
 		e := Entry{def = d, value = d.default}
-		if e.def.category == "" { e.def.category = first_segment(d.name) }
+		if e.def.category == "" { e.def.category = category != "" ? category : first_segment(d.name) }
 		e.value.s = strings.clone(d.default.s, p.allocator)
 		idx := len(p.entries)
 		append(&p.entries, e)

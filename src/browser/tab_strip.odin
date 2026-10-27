@@ -46,6 +46,15 @@ focused_tab_index :: proc(app: ^App) -> int {
 // Geometry: the toolkit's list of items reordered by dragging (ui/reorder.odin), under the names the shell and its
 // tests use (tab_strip_test.odin)
 
+// The tabs of a row scrolled by `offset` that show in `view` (`pitch` apart, `n` of them), and `margin` more on either side:
+// [first, last).
+strip_visible_tabs :: proc(offset, view, pitch: f32, n, margin: int) -> (first, last: int) {
+	if n <= 0 || pitch <= 0 { return 0, 0 }
+	first = clamp(int(math.floor(offset / pitch)) - margin, 0, n)
+	last = clamp(int(math.ceil((offset + view) / pitch)) + margin, first, n)
+	return
+}
+
 tab_width :: ui.reorder_item_size   // each tab's width: an equal share between the minimum and the maximum
 strip_offset :: ui.reorder_offset   // the scroll, in range, following the current tab when it changes
 drag_slot :: ui.reorder_slot        // the slot a dragged tab's middle is over
@@ -147,6 +156,9 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			request_frames(app, 2)
 		}
 		move_from, move_to := -1, -1
+		// only the tabs in view and two on either side are built (with 1000 tabs a frame built them all: 11 ms of CPU, 30 at
+		// the 95th percentile), and those that must be: the current one, the one dragged, the one that has the keyboard
+		first, last := strip_visible_tabs(own.strip.offset, view_w + cg.overlap, w, n, 2)
 		if ui.parent(area) {
 			if classic {
 				// the button first: the tabs draw over its left foot as each draws over the one before it, and take the clicks;
@@ -162,15 +174,20 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			for t, i in wnd.tabs {
 				if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
 			}
+			focused := focused_tab_index(app)
+			built :: proc(i, first, last, current, dragged, focused: int) -> bool {
+				return (i >= first && i < last) || i == current || i == dragged || i == focused
+			}
 			if classic {
 				order := make([dynamic]int, 0, n, context.temp_allocator)
 				tab_stack_order(n, wnd.current, dragged, &order)
 				for i in order {
+					if !built(i, first, last, wnd.current, dragged, focused) { continue }
 					if tab_box(app, i, w, area, &move_from, &move_to, &cg, cc) == .Closed { return true }
 				}
 			} else {
 				for _, i in wnd.tabs {
-					if i == dragged { continue }
+					if i == dragged || !built(i, first, last, wnd.current, dragged, focused) { continue }
 					r := tab_box(app, i, w, area, &move_from, &move_to, &cg, cc)
 					if r == .Closed { return true }
 				}
@@ -181,15 +198,25 @@ tab_strip :: proc(app: ^App, integrated: bool) -> (closed: bool) {
 			if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, false, f32(app.active.drop_hint - 1) * w - own.strip.offset) }   // a tab carried over this bar
 		}
 		if move_from >= 0 {
-			wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
-			own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
-			request_frames(app, 2)
-			recovery_touch(app)
+			// pinned tabs stay among themselves; a tab takes the group of the one whose place it takes (tab_groups.odin)
+			np := pinned_count(wnd.tabs[:])
+			mt := wnd.tabs[move_from]
+			move_to = mt.pinned ? clamp(move_to, 0, np - 1) : clamp(move_to, np, len(wnd.tabs) - 1)
+			if move_to != move_from {
+				if !mt.pinned { mt.group = wnd.tabs[move_to].group }
+				wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
+				tabs_fix(app, wnd)
+				own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
+				request_frames(app, 2)
+			}
 		}
+		tab_sound_frame(app)   // tab_sound.odin
 		any_turning := false
-		for t in wnd.tabs {
+		for t, i in wnd.tabs {
 			tab_refresh(app, t, tab_icon_px(app))
 			any_turning ||= tab_busy(t) && spinner_turning(t)
+			// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
+			if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(t.icon.url) }
 		}
 		if any_turning { spinner_wake(app) }
 
@@ -217,6 +244,7 @@ Tab_Look :: struct {
 	hover:     draw.Color,
 	hot:       bool,
 	divide:    bool,         // a divider on its right (between two tabs that are neither selected nor hovered)
+	group:     draw.Color,   // its group's colour, a line along its top (a = 0: in no group)
 }
 
 // One tab. Positions are the slot's, animated when tabs move; a dragged tab follows the pointer.
@@ -274,6 +302,7 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 		look.hot = inside
 		next_on := i + 1 == wnd.current
 		look.divide = !on && !next_on && !inside && i + 1 < n && !dragging
+		if gi := group_index(wnd.groups[:], t.group); gi >= 0 { look.group = group_color(wnd.groups[gi].color) }
 		b.custom, b.custom_user = tab_look_draw, look
 	}
 	b.cursor = .Arrow
@@ -289,12 +318,15 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			side = d.ext + max(cg.overlap - d.run * 0.5, d.run * 0.5)
 		}
 		pad := classic ? side + math.round(em * 0.35) : math.round(em * 0.65)
-		ui.spacer(ui.px(pad))
 		isz := f32(tab_icon_px(app))
+		if t.pinned { pad = max(math.round((w - isz) * 0.5), pad) }   // a pinned tab: its icon alone, in the middle (tab_groups.odin)
+		ui.spacer(ui.px(pad))
 		ui.next({width = ui.px(isz), height = ui.pct(1)})
 		ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
+		speaker := tab_speaker(app, t)
+		if t.pinned { tab_speaker_badge(speaker, {pad + isz * 0.45, math.round((b.size.y - isz) * 0.5 + isz * 0.45)}, math.round(isz * 0.8), "###speaker_badge") }
 		ui.spacer(ui.px(math.round(em * 0.5)))
-		title := t.title
+		title := t.pinned ? "" : t.title
 		if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
 		if classic {
 			// the title is cut by its box (clip) and fades out into the tab's gradient instead of ending in dots
@@ -313,7 +345,10 @@ tab_box :: proc(app: ^App, i: int, w: f32, area: ^ui.Box, move_from, move_to: ^i
 			ui.a11y({ignore = true})   // (the tab's name)
 			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
 		}
-		show_close := on || inside || w >= favs.cfg.close_min_em * em
+		if speaker != .None && !t.pinned {
+			if ui.tab_stops(false) { _ = tab_speaker_button(app, t, speaker, math.round(em * 1.45), "###speaker") }
+		}
+		show_close := !t.pinned && (on || inside || w >= favs.cfg.close_min_em * em)
 		if show_close {
 			cs := math.round(em * 1.45)
 			if ui.tab_stops(false) {
@@ -378,6 +413,10 @@ tab_look_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 		lw := max(math.round(ui.scale()), 1)
 		inset := (r.max.y - r.min.y) * 0.3
 		draw.rect(dc, {{r.max.x - lw, r.min.y + inset}, {r.max.x, r.max.y - inset}}, l.divider)
+	}
+	if l.group.a > 0 {
+		gh := max(math.round(2 * ui.scale()), 2)
+		draw.rect(dc, {{r.min.x + b.radius * 0.5, r.min.y + gh}, {r.max.x - b.radius * 0.5, r.min.y + gh * 2}}, l.group, gh * 0.5)
 	}
 	if l.selected < 0.01 { return }
 	// the current tab: an accent underline growing from the middle

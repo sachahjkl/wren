@@ -26,7 +26,6 @@ package browser
 
 import "core:fmt"
 import "core:math"
-import "core:strings"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
@@ -45,6 +44,10 @@ SIDEBAR_PREFS := [?]config.Def{
 		description = i18n.tr("The tab sidebar shows only the icons of the tabs (the button at the top of the sidebar, or Ctrl+Shift+Comma, toggles it).")},
 	{name = "browser.tabs.sidebar_collapsed_width", kind = .Int, default = {i = 48}, bounded = true, min = 32, max = 96, unit = "px",
 		description = i18n.tr("Width of the tab sidebar when it shows only icons (interface pixels, times the display scale).")},
+	{name = "browser.tabs.sidebar_animation_ms", kind = .Int, default = {i = 180}, bounded = true, min = 0, max = 2000, unit = "ms",
+		description = i18n.tr("How long the tab sidebar takes to open or close to its icons (the titles fade in or out while its width changes). 0: at once. The system's setting to reduce animations turns it off too.")},
+	{name = "browser.tabs.sidebar_pins_max", kind = .Float, default = {f = 0.4}, bounded = true, min = 0.1, max = 0.9,
+		description = i18n.tr("Most of the window's height the pinned tabs take at the top of the tab sidebar (a share: 0.4 is 40 %); beyond, they scroll.")},
 	{name = "browser.tabs.sidebar_row_em", kind = .Float, default = {f = 2.4}, bounded = true, min = 1.6, max = 5, unit = "em",
 		description = i18n.tr("Height of a tab in the sidebar.")},
 	{name = "browser.tabs.sidebar_address_min_em", kind = .Float, default = {f = 10}, bounded = true, min = 4, max = 40, unit = "em",
@@ -76,6 +79,19 @@ Tab_Sidebar :: struct {
 	handle:    ui.Key, // the width handle's box
 	resizing:  bool,
 	shown:     bool,   // built last frame (else the current tab is scrolled into view when it appears)
+	pin_grab:  [2]f32, // a pinned tab dragged: where the pointer holds it (pointer minus its top-left)
+	pins_key:  ui.Key, // the pinned tabs' box (their keys derive from it)
+	renaming:  u64,    // the group whose name is being edited in its header (0: none)
+	rename_field:   ui.Text_Field,
+	rename_focused: bool,   // the name's field had the keyboard (losing it commits the name)
+	items:     [dynamic]Side_Item,   // the list's rows, this frame (kept to reuse its memory)
+}
+
+sidebar_destroy :: proc(s: ^Tab_Sidebar) {
+	ui.field_destroy(&s.rename_field)
+	delete(s.items)
+	s.items = nil
+	s.renaming, s.rename_focused = 0, false
 }
 
 ////////////////////////////////
@@ -111,6 +127,36 @@ sidebar_split :: proc(body: draw.Rect, pos: Tabs_Position, extent: f32) -> (bar,
 	case .Top:
 		page = body
 	}
+	return
+}
+
+// The rate of ui.anim (halvings per second) that goes 95 % of the way in `ms`; 0 ms: at once.
+sidebar_open_rate :: proc(ms: f32) -> f32 { return ms <= 0 ? 1e9 : 4321 / ms }
+
+// The sidebar's width while it opens or closes: from its icons-only width (`open` 0) to its own (1).
+sidebar_open_extent :: proc(closed, opened, open: f32) -> f32 { return math.round(math.lerp(closed, opened, clamp(open, 0, 1))) }
+
+// How much the titles show at `open`: nothing while the rows are too narrow for any of a title, all of it when open.
+side_title_alpha :: proc(open: f32) -> f32 { return clamp((open - 0.25) / 0.75, 0, 1) }
+
+// Where a row's icon starts: centred in the row when closed, at the row's padding when open, and between while it moves.
+side_icon_x :: proc(row_w, icon, pad, open: f32) -> f32 {
+	return math.round(math.lerp(max((row_w - icon) * 0.5, 0), pad, clamp(open, 0, 1)))
+}
+
+// The header's two buttons (`bw` x `bh`): one above the other in the narrow column, side by side when open (the toggle at the
+// start, the new-tab button at the end), each going in a straight line from one place to the other while the sidebar moves.
+Side_Header_Layout :: struct {
+	h:           f32,
+	toggle, add: [2]f32,   // top-left corners in the header
+}
+
+side_header_layout :: proc(extent, bw, bh, inset, open: f32) -> (l: Side_Header_Layout) {
+	o := clamp(open, 0, 1)
+	mid := (extent - bw) * 0.5
+	l.h = math.round(math.lerp(inset * 3 + bh * 2, bh + inset * 2, o))
+	l.toggle = {math.round(math.lerp(mid, inset * 2, o)), inset}
+	l.add = {math.round(math.lerp(mid, extent - inset * 2 - bw, o)), math.round(math.lerp(inset * 2 + bh, inset, o))}
 	return
 }
 
@@ -279,14 +325,23 @@ sidebar_titlebar :: proc(app: ^App, t: ^Tab) {
 tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 	own := window_own(app)
 	dpi := ui_scale_of(app)
-	collapsed := favs.cfg.side_collapsed
 	// the held handle's width from this frame's pointer, before anything is built: the sidebar and the page are laid out at
 	// the width the pointer asks for now, not at the one of the frame before (the handle's signal comes after them)
 	if own.sidebar.resizing && own.sidebar.handle != 0 && ui.active_key() == own.sidebar.handle {
 		own.sidebar.live_w = sidebar_drag_width(own.sidebar.grab_w, own.sidebar.press_x, ui.mouse_pos().x, dpi, pos)
 	}
 	width_css := own.sidebar.live_w > 0 ? own.sidebar.live_w : favs.cfg.side_w
-	extent := sidebar_extent(f32(active_window(app).win.size.x), width_css, dpi, collapsed, favs.cfg.side_collapsed_w)
+	win_w := f32(active_window(app).win.size.x)
+	closed_e := sidebar_extent(win_w, width_css, dpi, true, favs.cfg.side_collapsed_w)
+	opened_e := sidebar_extent(win_w, width_css, dpi, false, favs.cfg.side_collapsed_w)
+	// 0: icons only, 1: the titles; eased between when the preference changes (the toolkit's animation: it asks for the
+	// frames while it moves, and none after), and done once the width is within half a pixel of its end (the ease's tail
+	// would ask for frames that change nothing)
+	akey := ui.key_from_string(0, "###side_open")
+	target: f32 = favs.cfg.side_collapsed ? 0 : 1
+	open := ui.anim(akey, target, sidebar_open_rate(favs.cfg.side_anim_ms))
+	if abs(open - target) * abs(opened_e - closed_e) < 0.5 { open = ui.anim(akey, target, sidebar_open_rate(0)) }
+	extent := sidebar_open_extent(closed_e, opened_e, open)
 	ui.reorder_frame(&own.strip.drag)   // the button went up (wherever): no drag
 	favicon_frame()
 
@@ -305,10 +360,10 @@ tab_sidebar :: proc(app: ^App, pos: Tabs_Position) -> (closed: bool) {
 		bar.custom, bar.custom_user = classic_side_panel_draw, panel
 	}
 	if ui.parent(bar) {
-		sidebar_header(app, pos, collapsed)
-		if sidebar_list(app, pos, collapsed, extent, cc) { return true }
+		sidebar_header(app, pos, open, extent)
+		if sidebar_list(app, pos, open, extent, cc) { return true }
 	}
-	if !collapsed { sidebar_handle(app, pos, bar, extent, dpi) }
+	if open >= 1 { sidebar_handle(app, pos, bar, extent, dpi) }
 	return false
 }
 
@@ -336,14 +391,17 @@ side_toggle_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
 	draw.rect(dc, {{px0, frame.min.y}, {px0 + panel_w, frame.max.y}}, col, h * 0.18)
 }
 
+// The header: the toggle and the new-tab button, placed by side_header_layout (no jump while the sidebar opens or closes).
 @(private = "file")
-sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
+sidebar_header :: proc(app: ^App, pos: Tabs_Position, open, extent: f32) {
 	em := ui.font_size()
 	bw := math.round(em * 2.4)
 	bh := ui.dense(em * 2.2)
 	inset := math.round(em * 0.35)
-	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32) {
-		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
+	collapsed := favs.cfg.side_collapsed
+	l := side_header_layout(extent, bw, bh, inset, open)
+	toggle := proc(app: ^App, pos: Tabs_Position, collapsed: bool, bw, bh, em: f32, at: [2]f32) {
+		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		tb: ^ui.Box
 		if ui.tags("icon_button") {
 			tb = ui.build_box({.Clickable, .Focusable, .Draw_Background, .Draw_Hot_Effects}, "###side_toggle")
@@ -357,268 +415,18 @@ sidebar_header :: proc(app: ^App, pos: Tabs_Position, collapsed: bool) {
 		if sig.clicked { set_pref_bool(app, "browser.tabs.sidebar_collapsed", !collapsed) }
 	}
 	// the glyph alone, lit under the pointer as the toolbar's buttons (the toggle's size), in either style
-	add := proc(app: ^App, bw, bh, em: f32) {
-		ui.next({width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
+	add := proc(app: ^App, bw, bh, em: f32, at: [2]f32) {
+		ui.next({fixed_x = at.x, fixed_y = at.y, width = ui.px(bw), height = ui.px(bh), radius = em * CHROME_BUTTON_RADIUS})
 		sig := ui.icon_button("###newtab", GLYPH_ADD)
 		tip(sig, i18n.tr("New tab (Ctrl+T)"))
 		if sig.clicked { tab_open_new(app) }
 	}
-
-	if collapsed {
-		ui.next({width = ui.fill(), height = ui.children_sum(), axis = .Y, cross = .Center})
-		hdr := ui.build_box({}, "###side_head")
-		if ui.parent(hdr) {
-			ui.spacer(ui.px(inset))
-			toggle(app, pos, collapsed, bw, bh, em)
-			ui.spacer(ui.px(inset))
-			add(app, bw, bh, em)
-			ui.spacer(ui.px(inset))
-		}
-		return
-	}
-	ui.next({width = ui.fill(), height = ui.px(bh + inset * 2), axis = .X, cross = .Center})
+	ui.next({width = ui.fill(), height = ui.px(l.h), axis = .Y})
 	hdr := ui.build_box({}, "###side_head")
 	if ui.parent(hdr) {
-		ui.spacer(ui.px(inset * 2))
-		toggle(app, pos, collapsed, bw, bh, em)
-		ui.spacer(ui.fill())
-		add(app, bw, bh, em)
-		ui.spacer(ui.px(inset * 2))
+		toggle(app, pos, collapsed, bw, bh, em, l.toggle)
+		add(app, bw, bh, em, l.add)
 	}
-}
-
-// The list of tabs: a vertical scroll box, `rh` high per tab, whose rows are floating boxes placed by slot. Returns true
-// when a tab closed.
-@(private = "file")
-sidebar_list :: proc(app: ^App, pos: Tabs_Position, collapsed: bool, extent: f32, cc: ^Classic_Colors) -> (closed: bool) {
-	wnd := active_window(app)
-	own := &wnd.own
-	em := ui.font_size()
-	n := len(wnd.tabs)
-	rh := ui.dense(math.round(em * favs.cfg.side_row_em))
-
-	ui.next({width = ui.fill(), height = ui.fill(), axis = .Y})
-	area_flags := ui.Box_Flags{.Clip, .View_Scroll_Y, .View_Clamp_Y, .Allow_Overflow_Y}
-	if cc != nil && pos == .Left { area_flags += {.Scrollbar_Left} }   // (classic: the inner edge is the current tab's)
-	area := ui.build_box(area_flags, "###tabs_area")
-	tab_list_a11y(area, true)
-	_ = ui.signal(area)   // the wheel
-	own.strip.area_key = area.key
-	if app.active != nil { app.active.zone = {rect = area.rect, vertical = true, offset = area.view_off.y, pitch = rh, n = n, valid = true} }
-	view_h := area.size.y > 0 ? area.size.y : f32(active_window(app).win.size.y)
-	limit := max(f32(n) * rh - view_h, 0)
-
-	// a new current tab is scrolled into view (not while one is dragged: the list follows the pointer then)
-	cur_id := wnd.tabs[wnd.current].id
-	if cur_id != own.strip.follow_id || n != own.strip.follow_n || !own.sidebar.shown {
-		area.view_target.y = strip_offset(area.view_target.y, n, rh, view_h, wnd.current, true)
-	}
-	own.strip.follow_id, own.strip.follow_n, own.sidebar.shown = cur_id, n, true
-	area.view_target.y = clamp(area.view_target.y, 0, limit)
-
-	inset := math.round(em * 0.35)
-	bar_w := math.round(max(6, em * 0.5)) + inset   // what the scroll bar takes when the list overflows
-	row_w := extent - inset * 2 - (limit > 0 ? bar_w - inset : 0) - 1
-	row_x := inset
-	if cc != nil {
-		// classic: from the outer side (past the scroll bar, which is there) to the inner edge
-		outer := limit > 0 ? bar_w : inset
-		row_w = extent - outer
-		row_x = pos == .Left ? outer : 0
-	}
-	first, last := side_visible_rows(area.view_off.y, area.view_target.y, view_h, rh, n, rh * 2)
-	dragged := -1
-	for t, i in wnd.tabs {
-		if ui.reorder_dragging(&own.strip.drag, t.id) { dragged = i; break }
-	}
-	focused := focused_tab_index(app)
-	// classic: the current tab is built after the others (its feet flare over its neighbours' rows)
-	late := cc != nil && wnd.current != dragged ? wnd.current : -1
-
-	move_from, move_to := -1, -1
-	if ui.parent(area) {
-		ui.spacer(ui.px(f32(n) * rh), exact = true)   // the content's height: the scroll range
-		for i in first ..< last {
-			if i == dragged || i == late { continue }
-			if sidebar_row(app, i, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
-		}
-		if late >= first && late < last {
-			if sidebar_row(app, late, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
-		}
-		// a row that has the keyboard stays built when it scrolls out of view
-		if focused >= 0 && (focused < first || focused >= last) && focused != dragged {
-			if sidebar_row(app, focused, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
-		}
-		if dragged >= 0 {   // built last: it draws over the others and takes the clicks
-			if sidebar_row(app, dragged, rh, row_x, row_w, inset, collapsed, area, limit, cc, &move_from, &move_to) { return true }
-		}
-		if app.active != nil && app.active.drop_hint > 0 { drop_hint_mark(area, true, f32(app.active.drop_hint - 1) * rh - area.view_off.y) }   // a tab carried over this list
-	}
-	if move_from >= 0 {
-		wnd.current = list_move(wnd.tabs[:], move_from, move_to, wnd.current)
-		own.strip.follow_id = wnd.tabs[wnd.current].id   // no jump of the scroll while dragging
-		request_frames(app, 2)
-		recovery_touch(app)
-	}
-	any_turning := false
-	for t, i in wnd.tabs {
-		tab_refresh(app, t, tab_icon_px(app))
-		any_turning ||= tab_busy(t) && spinner_turning(t)
-		// (an icon not drawn this frame is still in use: the cache keeps what its tabs show)
-		if (i < first || i >= last) && t.icon.url != "" { _, _ = favicon_texture(t.icon.url) }
-	}
-	if any_turning { spinner_wake(app) }
-	return false
-}
-
-@(private = "file")
-Side_Look :: struct {
-	selected: f32,   // 0..1, animated
-	accent:   draw.Color,
-	left:     bool,
-}
-
-// One tab's row. Its place is its slot's, animated when tabs move; a dragged row follows the pointer.
-@(private = "file")
-sidebar_row :: proc(app: ^App, i: int, rh, row_x, row_w, inset: f32, collapsed: bool, area: ^ui.Box, limit: f32, cc: ^Classic_Colors, move_from, move_to: ^int) -> (closed: bool) {
-	wnd := active_window(app)
-	own := &wnd.own
-	t := wnd.tabs[i]
-	n := len(wnd.tabs)
-	em := ui.font_size()
-	dpi := ui_scale_of(app)
-	on := i == wnd.current
-	id := fmt.tprintf("###tab_%d", t.id)
-	slot := f32(i) * rh
-	akey := ui.key_from_string(area.key, fmt.tprintf("y%d", t.id))
-	// (list coordinates: the scroll box places the rows; the release slides from where the pointer left it)
-	y, dragging := ui.reorder_item_pos(&own.strip.drag, akey, t.id, slot, ui.mouse_pos().y - area.rect.min.y + area.view_off.y, 0, f32(n - 1) * rh)
-	prev := ui.prev_box(id)
-	inside := prev != nil && ui.box_contains(prev, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos())
-
-	if !on { ui.push_tags("weak") }
-	defer if !on { ui.pop_tags() }
-	ui.next({fixed_x = row_x, fixed_y = y, width = ui.px(row_w), height = ui.px(rh), axis = .X, cross = .Center, radius = em * 0.45})
-	ui.push_tags("tab")
-	b: ^ui.Box
-	if cc != nil {
-		// classic (chrome_style.odin): not clipped, the current tab's feet flare past its row
-		b = ui.build_box({.Clickable, .Focusable, .Hot_Within}, id)
-		pos := favs.cfg.position
-		look := ui.frame_new(Classic_Side_Tab)
-		look^ = {c = cc, pos = pos, m = side_tab_metrics(em, dpi, rh, row_w), dragging = dragging, inset = math.round(em * 0.6), gap = math.round(em * 0.3)}
-		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
-		look.hover = ui.anim(ui.key_from_string(b.key, "hov"), (inside || dragging) && !on ? 1 : 0, 40)
-		// an engraved line under it, between two tabs that are neither current nor under the pointer
-		if !collapsed && !on && !inside && !dragging && i + 1 < n && i + 1 != wnd.current {
-			nb := ui.prev_box(fmt.tprintf("###tab_%d", wnd.tabs[i + 1].id))
-			look.rule = !(nb != nil && ui.box_contains(nb, ui.mouse_pos()) && draw.rect_contains(area.rect, ui.mouse_pos()))
-		}
-		b.custom, b.custom_user = classic_side_tab_draw, look
-	} else {
-		b = ui.build_box({.Clickable, .Focusable, .Draw_Hot_Effects, .Hot_Within, .Clip}, id)
-		look := ui.frame_new(Side_Look)
-		look.selected = ui.anim(ui.key_from_string(b.key, "sel"), on ? 1 : 0, 34)
-		look.accent = ui.color("accent")
-		look.left = favs.cfg.position == .Left
-		b.custom, b.custom_user = side_row_draw, look
-	}
-	ui.pop_tags()
-	b.cursor = .Arrow
-	tab_a11y(b, t, i, n, on)
-
-	if ui.parent(b) {
-		isz := f32(tab_icon_px(app))
-		if collapsed {
-			ui.spacer(ui.fill())
-			ui.next({width = ui.px(isz), height = ui.pct(1)})
-			ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
-			ui.spacer(ui.fill())
-		} else {
-			ui.spacer(ui.px(math.round(em * 0.65)))
-			ui.next({width = ui.px(isz), height = ui.pct(1)})
-			ui.custom("###icon", tab_icon_draw, tab_icon_of(app, t, isz))
-			ui.spacer(ui.px(math.round(em * 0.5)))
-			title := t.title
-			if strings.contains(title, "###") { title, _ = strings.replace_all(title, "###", "# # #", context.temp_allocator) }
-			ui.next({width = ui.fill(), height = ui.pct(1), text_pad = 0})
-			ui.a11y({ignore = true})   // (the tab's name)
-			ui.build_box({.Draw_Text}, fmt.aprintf("%s###title", title, allocator = ui.frame_allocator()))
-			if on || inside {
-				cs := math.round(em * 1.45)
-				if ui.tab_stops(false) {
-					ui.next({width = ui.px(cs), height = ui.px(cs), radius = cs * 0.5})
-					cb: ^ui.Box
-					if ui.tags("icon_button") {
-						cb = ui.build_box({.Clickable, .Draw_Background, .Draw_Hot_Effects}, "###close")
-						cross := ui.frame_new(draw.Color)
-						cross^ = ui.color("text")
-						cb.custom, cb.custom_user = close_cross_draw, cross
-					}
-					c := ui.signal(cb)
-					tip(c, i18n.tr("Close tab (Ctrl+W)"))
-					if c.clicked { closed = true }
-				}
-			}
-			ui.spacer(ui.px(math.round(em * 0.35)))
-		}
-	}
-	if closed { tab_close(app, i); return true }
-	sig := ui.signal(b)
-	if (sig.pressed || sig.clicked) && !on { tab_select(app, i) }   // the press selects; Enter / Space too
-	if sig.right_clicked { tab_context_menu(app, i, ui.mouse_pos()) }
-	if sig.middle_clicked && favs.cfg.middle_close { tab_close(app, i); return true }
-	if !own.strip.drag.active { sidebar_tip(sig, t) }
-
-	// drag to reorder, along Y (straight out sideways starts a drag too: it may leave the bar)
-	if sig.dragging && favs.cfg.drag_reorder && (n > 1 || favs.cfg.drag_detach) {
-		ui.reorder_begin(&own.strip.drag, t.id, ui.reorder_moved(sig.drag_delta, .Y, favs.cfg.drag_detach), favs.cfg.drag_threshold * dpi,
-			ui.mouse_pos().y - sig.drag_delta.y - area.rect.min.y + area.view_off.y, slot)
-		if ui.reorder_dragging(&own.strip.drag, t.id) {
-			to := drag_slot(y, rh, n)
-			if to != i { move_from^, move_to^ = i, to }
-			// the list follows the pointer to its ends: a row held past the edge scrolls it
-			area.view_target.y = ui.reorder_edge_scroll(y, rh, area.view_off.y, area.size.y, limit, area.view_target.y)
-			request_frames(app, 2)
-			// far enough beside the list: the tab leaves for a window of its own (tab_drag.odin)
-			if favs.cfg.drag_detach && detach_wanted(area.rect, ui.mouse_pos(), true, favs.cfg.detach_distance_em * em) {
-				own.strip.drag.active = false
-				if tab_drag_begin(app, t, ui.mouse_pos()) && len(wnd.tabs) != n { return true }
-			}
-		}
-	}
-	return false
-}
-
-// A tip beside the row: the title and, under it, the address.
-@(private = "file")
-sidebar_tip :: proc(sig: ui.Signal, t: ^Tab) {
-	if !ui.hovered_for(sig, 0.45) { return }
-	if ui.tooltip_beside() {
-		em := ui.font_size()
-		ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 1.7))})
-		ui.label(fmt.aprintf("%s###tip", t.title, allocator = ui.frame_allocator()))
-		if t.url != "" && t.url != t.title {
-			ui.next({width = ui.text_size(em * 0.7), height = ui.px(ui.dense(em * 1.5))})
-			if ui.tags("weak") { ui.label(fmt.aprintf("%s###tip_url", t.url, allocator = ui.frame_allocator())) }
-		}
-	}
-}
-
-// The current row: an accent wash and a bar on its outer edge, growing in.
-@(private = "file")
-side_row_draw :: proc(b: ^ui.Box, user: rawptr, dc: ^draw.Context) {
-	l := (^Side_Look)(user)
-	if l.selected < 0.01 { return }
-	r := b.rect
-	wash := l.accent
-	wash.a *= 0.16 * l.selected
-	draw.rect(dc, r, wash, b.radius)
-	th := max(math.round(2.5 * ui.scale()), 2)
-	h := (r.max.y - r.min.y) * 0.5 * l.selected
-	cy := (r.min.y + r.max.y) * 0.5
-	x0 := l.left ? r.min.x : r.max.x - th
-	draw.rect(dc, {{x0, cy - h * 0.5}, {x0 + th, cy + h * 0.5}}, l.accent, th * 0.5)
 }
 
 // The inner edge: a strip over the sidebar's edge toward the page that resizes it. The width is kept while the button is

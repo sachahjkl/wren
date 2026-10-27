@@ -112,6 +112,10 @@ Tab :: struct {
 	smooth:   Smooth_Scroll,     // scroll animations and scroll bar drags (smooth_scroll.odin)
 	nav_state: Tab_Nav,          // restoring entries, leaving pages, the back/forward cache (history_restore.odin, bfcache.odin)
 	frame:    ^Frame_View,       // non-nil: the stand-in tab of a frame's document, not a tab (frames_shell.odin)
+	pinned:   bool,              // tab_groups.odin: at the start of the window's tabs, its icon alone
+	group:    u64,               // tab_groups.odin: the id of its group in its window (0: none)
+	muted:    bool,              // tab_sound.odin: its pages make no sound (they are not told)
+	sound:    Tab_Sound,         // tab_sound.odin: whether it plays sound, as the last frame saw
 }
 
 Session_History :: page.Session_History   // (a field named `page` hides the package in the struct above)
@@ -216,6 +220,7 @@ tab_close_in :: proc(app: ^App, w: ^Browser_Window, index: int) {
 	if shell_defer({kind = .Close_Tab, tab = t.id}) { return }   // (shell_frames.odin: its page may be the one running)
 	closed_tabs_push(t.url)
 	ordered_remove(tabs, index)
+	tab_groups_prune(tabs[:], &w.groups)   // tab_groups.odin: its group goes with its last tab
 	key := strings.clone(tab_key(t), context.temp_allocator)
 	tab_free(app, t)
 	page.storage_drop_session(&app.storage, key)   // (once its page is gone)
@@ -1361,7 +1366,10 @@ main :: proc() {
 	address := len(rest) > 0 ? command_line_address(rest[0]) : ""   // (a relative path of a file or folder: local_paths.odin)
 	prof_mark(.Navigation)
 	if !recovery_open(app, rest[:]) {   // crash_recovery.odin: the tabs of a session that ended abnormally (the command line's addresses follow them)
-		if !(len(rest) == 0 && session_restore(app)) { tab_open(app, address, origin = .User) }   // session.odin
+		if !(len(rest) == 0 && session_restore(app)) {   // session.odin
+			pinned_restore(app)   // (the pinned tabs come back without the session: browser.tabs.restore_pinned)
+			tab_open(app, address, origin = .User)
+		}
 		if len(rest) > 1 {   // (an address each: the first is the first tab, the others follow it, as a second start's would)
 			for a in rest[1:] { tab_open(app, command_line_address(a), origin = .User) }
 			wnd := active_window(app)
@@ -1468,6 +1476,7 @@ main :: proc() {
 	windows_forget_tabs(app)
 	host.shutdown_step("urlbar_destroy")
 	urlbar_destroy(app)   // urlbar.odin
+	sidebar_destroy(&window_own(app).sidebar)   // tab_sidebar.odin
 	host.shutdown_step("global_history_shutdown")
 	global_history_shutdown(app)
 	host.shutdown_step("history_ui_destroy")

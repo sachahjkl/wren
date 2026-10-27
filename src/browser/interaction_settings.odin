@@ -60,7 +60,7 @@ INTERACTION_PREFS := [?]config.Def{
 		description = "Search engine of the context menu's \"Search for\" and of addresses that are not URLs. custom: browser.search.custom_url."},
 	{name = "browser.search.custom_url", kind = .String, default = {s = "https://duckduckgo.com/?q=%s"},
 		description = "Search URL when browser.search.engine is custom: %s is replaced by the words searched (percent-encoded)."},
-	{name = "browser.tabs.closed_max", kind = .Int, default = {i = 25}, bounded = true, min = 0, max = 1000,
+	{name = "browser.tabs.closed_max", kind = .Int, default = {i = 25}, bounded = true, min = 0, max = 1000, category = "tabs",
 		description = "Closed tabs Ctrl+Shift+T can reopen (most recent first)."},
 	{name = "browser.view_source.colors", kind = .Bool, default = {b = true},
 		description = "view-source: pages color tags, attributes and comments."},
