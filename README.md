@@ -1,4 +1,6 @@
 <p align="center"><img src="assets/logo_256.png" width="128" alt="Wren logo"></p>
+<p align="center"><b>My personal GUI toolkit in Odin: immediate-mode UI on Direct3D 11, with a widget gallery and a todo app.</b></p>
+
 
 <h1 align="center">Wren</h1>
 

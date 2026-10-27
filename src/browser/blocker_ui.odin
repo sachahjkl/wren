@@ -229,7 +229,7 @@ blocker_button :: proc(app: ^App, t: ^Tab) {
 	if !bl.b.conf.first_run && state != .Off {
 		bl.b.conf.first_run = true
 		blocker.conf_save(&bl.b)
-		ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel"))
+		if bl.b.cfg.welcome_toast { ui.toast(.Info, i18n.tr("Content blocker is on: click the shield for its panel")) }
 	}
 	blocker_theme()
 	d := ui.frame_new(Shield_Draw)

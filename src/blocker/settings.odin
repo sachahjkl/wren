@@ -27,6 +27,7 @@ Settings :: struct {
 	max_selectors:    int,
 	engine_cache:     bool,
 	badge:            bool,
+	welcome_toast:    bool,    // the notice of a new profile ("Content blocker is on")
 	native_hooks:     bool,    // the API-changing scriptlets are engine hooks (else the JavaScript fallback)
 	badge_inside:     bool,    // the count goes inside the shield, in place of the state's glyph
 	max_hosts_per_tab: int,
@@ -75,6 +76,8 @@ PREFS := [?]config.Def{
 		description = i18n.tr("Install the scriptlets that change what a JavaScript API does (set-constant, timers, fetch, listeners...) as native hooks of the engine, with no JavaScript run in the page. Off: they run as JavaScript (a fallback; slower).")},
 	{name = "blocker.badge.enabled", kind = .Bool, default = {b = true},
 		description = i18n.tr("Show the number of blocked requests on the blocker icon of the address row.")},
+	{name = "blocker.welcome_toast", kind = .Bool, default = {b = true},
+		description = i18n.tr("Tell a new profile, once, that the content blocker is on (a notice over the page). Off: nothing is shown; the blocker works the same. Automation and screenshots turn it off with --pref blocker.welcome_toast=false.")},
 	{name = "blocker.badge.style", kind = .String, default = {s = "corner"}, choices = {"corner", "inside"},
 		description = i18n.tr("Where the blocked count goes on the blocker icon: in a small badge at the top right corner (corner), or inside the shield in place of its check mark (inside).")},
 	{name = "blocker.matrix.max_hosts", kind = .Int, default = {i = 1500}, bounded = true, min = 50, max = 100_000,
@@ -108,6 +111,7 @@ settings_from_prefs :: proc(p: ^config.Prefs) -> Settings {
 		max_selectors = int(config.int_of(p, "blocker.cosmetic.max_selectors")),
 		engine_cache = config.bool_of(p, "blocker.engine.cache"),
 		badge = config.bool_of(p, "blocker.badge.enabled"),
+		welcome_toast = config.bool_of(p, "blocker.welcome_toast"),
 		native_hooks = config.bool_of(p, "blocker.hooks.native"),
 		badge_inside = config.string_of(p, "blocker.badge.style") == "inside",
 		max_hosts_per_tab = int(config.int_of(p, "blocker.matrix.max_hosts")),

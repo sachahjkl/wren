@@ -100,7 +100,7 @@ launch :: proc(ctx: ^Context, name, profile: string, hidden: bool, extra: []stri
 	}
 	// a Wren of a throwaway profile is for automation: it does not download the content blocker's lists (a few seconds of CPU a little after
 	// the start, which a measure of an idle Wren takes for the Wren's own, and a request in flight at the end); --pref below may turn it on
-	if l.temp { append(&args, "--pref", "blocker.update.enabled=false") }
+	if l.temp { append(&args, "--pref", "blocker.update.enabled=false", "--pref", "blocker.welcome_toast=false") }
 	for p in ctx.o.prefs { append(&args, "--pref", p) }
 	// a throwaway profile has no lists and no reason to download them (24 MB from the internet, 15 s after the start, in a Wren that
 	// lives long enough: a test session that reuses its Wren): unless --pref says otherwise
