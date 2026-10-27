@@ -43,10 +43,10 @@
 <section class="section alt">
   <div class="wrap">
     <h2>The layers</h2>
-    <div class="diagram" role="img" aria-label="Layers of Wren: the shell on top; the page with its DOM, its Wasm instances and the JavaScript engine compiled to Wasm; the engine from HTML parsing to the compositor; loading through Fetch and WinHTTP; the platform: Direct3D 11, DirectWrite and Windows codecs.">
+    <div class="diagram" role="img" aria-label="Layers of Wren: the shell on top; the page with its DOM, its Wasm instances and the JavaScript engine compiled to Wasm; the engine from HTML parsing to the compositor; loading through Fetch and the network transport; the Rust library with the network stack, the image decoders, the text engine and the accessibility adapter; the platform: Direct3D 11 or wgpu, Win32 and UI Automation, Media Foundation and WASAPI, with DirectWrite, WIC and WinHTTP kept as options.">
       <div class="layer"><div class="name">Shell</div><div class="boxes">
-        <div class="box"><b>browser</b><span>window, tabs, address bar, about:config, status bar</span></div>
-        <div class="box ext"><b>gui_toolkit ui</b><span>retained-state immediate-mode UI</span></div>
+        <div class="box"><b>browser</b><span>window, tabs and sidebar, address bar, about:config, status bar; the state of each window lives in the window</span></div>
+        <div class="box ext"><b>gui_toolkit ui</b><span>retained-state immediate-mode UI; one gate and one cadence model for the frames of a thread</span></div>
       </div></div>
       <div class="arrow">▼</div>
       <div class="layer"><div class="name">Page</div><div class="boxes">
@@ -65,17 +65,26 @@
       <div class="arrow">▼</div>
       <div class="layer"><div class="name">Loading</div><div class="boxes">
         <div class="box"><b>fetch</b><span>policy: CORS, cookies, CSP, HSTS, redirects</span></div>
-        <div class="box"><b>net</b><span>transport only, on WinHTTP</span></div>
+        <div class="box"><b>net</b><span>transport only: queues, limits, cancellation; WinHTTP stays selectable</span></div>
         <div class="box"><b>images</b><span>decoders on their own threads</span></div>
       </div></div>
       <div class="arrow">▼</div>
+      <div class="layer"><div class="name">Rust</div><div class="boxes">
+        <div class="box ext"><b>wren_net</b><span>hyper, rustls, quinn, tungstenite: HTTP/1.1, 2 and 3, WebSockets, the system's trust store</span></div>
+        <div class="box ext"><b>wren_media</b><span>image, resvg, image-webp, rav1d: PNG to AVIF, SVG, WOFF2</span></div>
+        <div class="box ext"><b>gt_text</b><span>Fontations, HarfRust, ICU4X: fonts, shaping, line breaks</span></div>
+        <div class="box ext"><b>gt_a11y</b><span>AccessKit: the tree screen readers read</span></div>
+      </div></div>
+      <div class="arrow">▼</div>
       <div class="layer"><div class="name">Platform</div><div class="boxes">
-        <div class="box ext"><b>Direct3D 11</b><span>through gui_toolkit render</span></div>
-        <div class="box ext"><b>DirectWrite · Direct2D</b><span>text, colour glyphs</span></div>
-        <div class="box ext"><b>WinHTTP · WIC · BCrypt</b><span>network, codecs, crypto</span></div>
+        <div class="box ext"><b>Direct3D 11 / wgpu</b><span>drawing, through gui_toolkit render</span></div>
+        <div class="box ext"><b>Win32 · UI Automation</b><span>windows, input, the bridge to screen readers</span></div>
+        <div class="box ext"><b>Media Foundation · WASAPI</b><span>video and audio</span></div>
+        <div class="box ext"><b>DirectWrite · WIC · WinHTTP</b><span>kept as options (HEIF still decodes through WIC)</span></div>
       </div></div>
     </div>
-    <p class="legend"><i></i> Wren's own code · <i class="wasm"></i> the WebAssembly boundary · <i class="ext"></i> a library or a Windows service</p>
+    <p class="legend"><i></i> Wren's own code · <i class="wasm"></i> the WebAssembly boundary · <i class="ext"></i> a library or a system service</p>
+    <p class="legend">All the Rust is one static library, <code>wren_native.lib</code>, linked into <code>wren.exe</code>: nothing sits beside the executable.</p>
   </div>
 </section>
 
@@ -88,7 +97,7 @@
         <tbody>
           <tr><td class="n">base</td><td>Scopes (an ownership tree with cleanups) and generational handles with stable pointers.</td></tr>
           <tr><td class="n">host</td><td>The event loop: thread-safe posts with coalesced wake-ups, timers, a pool for blocking work.</td></tr>
-          <tr><td class="n">net</td><td>Transport only: HTTP(S) on asynchronous WinHTTP, per-host and global queues, back-pressure, cancellation.</td></tr>
+          <tr><td class="n">net</td><td>Transport only: HTTP(S), HTTP/3 and WebSockets on a Rust stack (WinHTTP stays selectable), per-host and global queues, back-pressure, cancellation.</td></tr>
           <tr><td class="n">fetch</td><td>The policy layer of the Fetch Standard: modes, CORS and preflights, credentials, redirects, HSTS, referrer policy, mixed content, MIME checks.</td></tr>
           <tr><td class="n">url · cookies · csp · http</td><td>WHATWG URLs and the Public Suffix List, the cookie jar (RFC 6265bis), Content Security Policy 3, headers and MIME types.</td></tr>
           <tr><td class="n">html · dom</td><td>HTML parsing with Lexbor, charset sniffing, quirks mode; the document tree, shadow trees and slots, event dispatch with retargeting.</td></tr>
@@ -97,7 +106,7 @@
           <tr><td class="n">wasm</td><td>Wasmtime: instances, imports defined on the linker with address checks, deadlines, limits, compiled-code caches, the WASI subset the JavaScript engine needs, pre-initialization of its image.</td></tr>
           <tr><td class="n">js · native/js</td><td>The JavaScript engine: QuickJS-ng compiled to WebAssembly, bindings generated from the specifications' Web IDL, hand-written members; on the browser side, its preferences and the bytecode cache.</td></tr>
           <tr><td class="n">page</td><td>One document: its DOM, Wasm instances, JavaScript realm and script loading, requests, timers, origin and CSP; the implementations behind the generated imports.</td></tr>
-          <tr><td class="n">images · webfont</td><td>Image decoding on threads (WIC, and Rust decoders for SVG, WebP and AVIF), WOFF and WOFF2.</td></tr>
+          <tr><td class="n">images · webfont</td><td>Image decoding on threads (Rust crates for every format; WIC for HEIF and on request), WOFF and WOFF2.</td></tr>
           <tr><td class="n">browser</td><td>The shell: window, tabs, navigation, address bar, painter and compositor, about:config, status bar, profiling.</td></tr>
         </tbody>
       </table>
@@ -114,7 +123,7 @@
         outlives what it points to.</li>
       <li><b>Handles, never pointers, cross boundaries.</b> A handle is a generation and an index. A destroyed or
         recycled slot fails to resolve: late network events and callbacks for dead objects are dropped.</li>
-      <li><b>One UI thread, everything else posts.</b> WinHTTP's threads, the blocking pool, image decoders and the
+      <li><b>One UI thread, everything else posts.</b> The network stack's threads, the blocking pool, image decoders and the
         colour glyph renderer only post results back. The DOM and the Wasm instances of a page live on the UI thread;
         text measurement runs in parallel on layout threads.</li>
       <li><b>Mechanism and policy are separate.</b> <code>net</code> moves bytes and never follows a redirect or
@@ -244,6 +253,10 @@
       <li><a href="https://github.com/WebAssembly/wasi-libc">wasi-libc</a> and <a href="https://ziglang.org">Zig</a>, its C library and compiler.</li>
       <li><a href="https://github.com/w3c/webref">webref</a>, the Web IDL of the specifications.</li>
       <li><a href="https://github.com/lexbor/lexbor">Lexbor</a>, HTML parsing, URLs and encodings.</li>
+      <li><a href="https://github.com/hyperium/hyper">hyper</a>, <a href="https://github.com/rustls/rustls">rustls</a>, <a href="https://github.com/quinn-rs/quinn">quinn</a> and <a href="https://github.com/snapview/tungstenite-rs">tungstenite</a>, the network stack.</li>
+      <li><a href="https://github.com/googlefonts/fontations">Fontations</a>, <a href="https://github.com/harfbuzz/harfrust">HarfRust</a> and <a href="https://github.com/unicode-org/icu4x">ICU4X</a>, fonts, shaping and line breaks.</li>
+      <li><a href="https://github.com/AccessKit/accesskit">AccessKit</a>, the accessibility tree.</li>
+      <li><a href="https://github.com/image-rs/image">image</a>, PNG, JPEG, GIF and TIFF.</li>
       <li><a href="https://github.com/linebender/resvg">resvg</a>, SVG rendering.</li>
       <li><a href="https://github.com/memorysafety/rav1d">rav1d</a> and zenavif-parse, AVIF.</li>
       <li><a href="https://github.com/image-rs/image-webp">image-webp</a>, WebP.</li>
@@ -251,7 +264,7 @@
       <li><a href="https://github.com/dropbox/rust-brotli-decompressor">brotli-decompressor</a>, WOFF2 fonts.</li>
       <li><a href="https://publicsuffix.org">Public Suffix List</a>, sites and cookies.</li>
       <li><a href="https://github.com/tc39/test262">test262</a> and <a href="https://github.com/web-platform-tests/wpt">web-platform-tests</a>, the conformance suites.</li>
-      <li>Windows: Direct3D 11, DirectWrite, Direct2D, WinHTTP, WIC, BCrypt.</li>
+      <li>Windows: Direct3D 11, Media Foundation, WASAPI, UI Automation; DirectWrite, WinHTTP and WIC as options.</li>
       <li>The web standards of the WHATWG, the W3C, TC39 and the WebAssembly Community Group.</li>
     </ul>
   </div>
