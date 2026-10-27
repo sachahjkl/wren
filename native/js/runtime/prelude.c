@@ -16,8 +16,9 @@ int wj_run_preludes(JSContext *ctx)
     wj_install_custom_elements(ctx);
     extern JSValue wj_shadow_host_object(JSContext *ctx);
     JS_SetPropertyStr(ctx, global, "__wren_shadow_host", wj_shadow_host_object(ctx));
-    extern JSValue wj_frames_host_object(JSContext *ctx);
-    JS_SetPropertyStr(ctx, global, "__wren_frames_host", wj_frames_host_object(ctx));
+    /* other windows (WindowProxy) are native exotic objects (runtime/frames.c), in place of prelude/frames.js */
+    extern void wj_install_frames(JSContext *ctx);
+    wj_install_frames(ctx);
     JS_FreeValue(ctx, global);
     for (int i = 0; i < wj_prelude_count; i++) {
         const char *src = wj_prelude_sources[i].source;
