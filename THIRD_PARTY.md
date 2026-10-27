@@ -24,6 +24,10 @@ components below; their license texts are in the executable (bout:licenses) and
 | [rav1d](https://github.com/memorysafety/rav1d) | 1.1.0 | BSD-2-Clause | `native/media` |
 | [qcms](https://github.com/FirefoxGraphics/qcms) | 0.3.0 | MIT | `native/media` |
 | [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) | 6.1.0 | BSD-3-Clause OR MIT | `native/media` |
+| [Symphonia](https://github.com/pdeljanov/Symphonia) (AAC-LC, MP3, FLAC, Vorbis, PCM audio decoding) | 0.5.4 | MPL-2.0 | `native/media` (Linux / macOS audio) |
+| [opus](https://github.com/SpaceManiac/opus-rs) (bindings to Xiph's [libopus](https://opus-codec.org), built from source by `cc`) | 0.3.0 (libopus 1.x) | MIT (libopus: BSD-3-Clause) | `native/media` (Opus audio) |
+| [cpal](https://github.com/RustAudio/cpal) (audio output: ALSA on Linux, served by PipeWire / PulseAudio) | 0.15.3 | Apache-2.0 | `native/media` (Linux / macOS audio output) |
+| [openh264](https://github.com/cisco/openh264) (Cisco's H.264 decoder, downloaded at run time, `dlopen`ed; never built from source — the patent licence covers only Cisco's own binaries) | binary release pinned by `tools/fetch_openh264.sh` | BSD-2-Clause | optional, loaded at run time on Linux (`media.h264.backend`) |
 | [tokio](https://github.com/tokio-rs/tokio), [hyper](https://github.com/hyperium/hyper), [hyper-util](https://github.com/hyperium/hyper-util), [h2](https://github.com/hyperium/h2), [h3 / h3-quinn](https://github.com/hyperium/h3) | 1.54.1, 1.12.0, 0.1.21, 0.4.20, 0.0.8 / 0.0.10 | MIT | `native/net` (the built-in network stack) |
 | [quinn](https://github.com/quinn-rs/quinn) (QUIC), [tungstenite / tokio-tungstenite](https://github.com/snapview/tungstenite-rs) (WebSocket) | 0.11.12, 0.30.0 | MIT OR Apache-2.0 (tokio-tungstenite: MIT) | `native/net` |
 | [rustls](https://github.com/rustls/rustls), [rustls-platform-verifier](https://github.com/rustls/rustls-platform-verifier), [tokio-rustls](https://github.com/rustls/tokio-rustls) | 0.23.46, 0.6.2, 0.26.6 | Apache-2.0 OR ISC OR MIT (the verifier and tokio-rustls: MIT OR Apache-2.0) | `native/net` (TLS) |
