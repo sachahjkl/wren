@@ -40,6 +40,39 @@ Walk :: struct {
 	truncated:  bool,    // max_nodes was reached
 	live:       ^Live,   // incremental.odin: every node written is recorded (nil: a plain build)
 	reuse:      bool,    // ... a patch: nodes recorded and not changed are taken as they are
+	text_items: map[base.Handle][dynamic]int,   // text node -> the display items showing it (made on first need)
+	text_indexed: bool,
+}
+
+// The bounds of a text node: the union of the display items that show it (its lines); ok false: none.
+@(private)
+text_bounds :: proc(w: ^Walk, h: base.Handle) -> (r: [4]f32, ok: bool) {
+	if !w.has_lview { return }
+	l := w.v.layout
+	if !w.text_indexed {
+		w.text_indexed = true
+		w.text_items = make(map[base.Handle][dynamic]int, 256, context.temp_allocator)
+		for i in 0 ..< len(l.items) {
+			n, _, _, iok := lay.item_source(l, w.v.doc, i)
+			if !iok { continue }
+			if lst, found := &w.text_items[n]; found {
+				append(lst, i)
+			} else {
+				d := make([dynamic]int, 0, 2, context.temp_allocator)
+				append(&d, i)
+				w.text_items[n] = d
+			}
+		}
+	}
+	items, found := w.text_items[h]
+	if !found { return }
+	for i in items {
+		b := lay.item_rect(l, &w.lview, &l.items[i])
+		if b.max.x <= b.min.x && b.max.y <= b.min.y { continue }
+		if !ok { r = {b.min.x, b.min.y, b.max.x, b.max.y}; ok = true; continue }
+		r = {min(r[0], b.min.x), min(r[1], b.min.y), max(r[2], b.max.x), max(r[3], b.max.y)}
+	}
+	return
 }
 
 // The id of a document node's text run (an input's text), and back.
@@ -231,11 +264,14 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32, pb_s
 emit_text :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32, pb_src: base.Handle) -> bool {
 	t := collapse(n.text)
 	if t == "" { return false }
+	// its own lines' bounds, else its parent's
+	bounds, own := text_bounds(w, h)
+	if !own { bounds = parent_bounds }
 	index := platform.a11y_node(w.u, u64(h), .Label)
-	if parent_bounds != {} { platform.a11y_bounds(w.u, f64(parent_bounds[0]), f64(parent_bounds[1]), f64(parent_bounds[2]), f64(parent_bounds[3])) }
+	if bounds != {} { platform.a11y_bounds(w.u, f64(bounds[0]), f64(bounds[1]), f64(bounds[2]), f64(bounds[3])) }
 	platform.a11y_children(w.u, nil)
 	platform.a11y_str(w.u, .Value, t)
-	if w.live != nil { live_record(w, u64(h), Rec{el = h, kind = .Text, role = .Label, pb_src = pb_src, bounds = parent_bounds}, nil, index) }
+	if w.live != nil { live_record(w, u64(h), Rec{el = h, kind = .Text, role = .Label, own_box = own, pb_src = pb_src, bounds = bounds}, nil, index) }
 	return true
 }
 
