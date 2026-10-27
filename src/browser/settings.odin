@@ -1,6 +1,7 @@
 package browser
 
 import "core:strings"
+import "wb:a11y"
 import "wb:config"
 import "wb:blocker"
 import "wb:cookies"
@@ -71,6 +72,7 @@ register_all_prefs :: proc(p: ^config.Prefs) {
 	httpcache.register_prefs(p)
 	cookies.register_prefs(p)
 	page.register_prefs(p)
+	a11y.register_prefs(p)   // a11y_page.odin
 	register_layout_prefs(p)
 	register_effects_prefs(p)
 	register_render_prefs(p)

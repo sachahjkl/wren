@@ -22,6 +22,10 @@ View :: struct {
 	focus:      base.Handle,   // the focused element (NIL: none)
 	title, url: string,
 	max_nodes:  int,           // 0: no limit (a huge document stops there: what follows is left out)
+	// the tree of the document of a frame element (an iframe), grafted under its node; nil or false: the frame's node
+	// has no subtree
+	frame_tree: proc(user: rawptr, element: base.Handle) -> (platform.A11y_Tree_Id, bool),
+	frame_user: rawptr,
 }
 
 @(private)
@@ -33,39 +37,96 @@ Walk :: struct {
 	lview:      lay.View,
 	has_lview:  bool,
 	nodes:      int,
+	truncated:  bool,    // max_nodes was reached
+	live:       ^Live,   // incremental.odin: every node written is recorded (nil: a plain build)
+	reuse:      bool,    // ... a patch: nodes recorded and not changed are taken as they are
 }
 
-// The id of a document node's text run (an input's text).
+// The id of a document node's text run (an input's text), and back.
 run_id :: proc(h: base.Handle) -> u64 { return u64(h) ~ 0xa11e_0000_0000_0001 }
+run_owner :: proc(id: u64) -> u64 { return id ~ 0xa11e_0000_0000_0001 }
 
-// Writes the whole tree of the document into `u` (u.root, u.focus and the nodes; u.tree is the caller's). Returns how
-// many nodes.
-build :: proc(v: ^View, u: ^platform.A11y_Update) -> int {
-	w := Walk{v = v, u = u}
+// The byte offset of character `index` of `s` (clamped to its length), and back.
+char_to_byte :: proc(s: string, index: int) -> int {
+	i := 0
+	for _, off in s {
+		if i == index { return off }
+		i += 1
+	}
+	return len(s)
+}
+// The index of the character each word of `s` starts at (a word: what follows white space).
+@(private)
+word_starts :: proc(s: string) -> []u8 {
+	out := make([dynamic]u8, 0, 16, context.temp_allocator)
+	i := 0
+	space := true
+	for r in s {
+		is_space := r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == 0xA0
+		if !is_space && space && i < 256 { append(&out, u8(i)) }
+		space = is_space
+		i += 1
+	}
+	return out[:]
+}
+
+byte_to_char :: proc(s: string, off: int) -> int {
+	i := 0
+	for _, o in s {
+		if o >= off { return i }
+		i += 1
+	}
+	return i
+}
+
+@(private)
+walk_make :: proc(v: ^View, u: ^platform.A11y_Update, live: ^Live = nil) -> Walk {
+	w := Walk{v = v, u = u, live = live}
 	w.kids = make([dynamic]u64, 0, 256, context.temp_allocator)
 	if v.layout != nil && v.layout.valid {
 		w.lview = lay.view_make(v.layout, v.viewport, 0, cull = false)
 		w.has_lview = true
 	}
+	return w
+}
+
+// Writes the whole tree of the document into `u` (u.root, u.focus and the nodes; u.tree is the caller's). Returns how
+// many nodes.
+build :: proc(v: ^View, u: ^platform.A11y_Update) -> int {
+	w := walk_make(v, u)
+	return build_walk(&w)
+}
+
+@(private)
+build_walk :: proc(w: ^Walk) -> int {
+	v, u := w.v, w.u
 	root := v.doc.root
 	rn := dom.get(v.doc, root)
 	if rn == nil { return 0 }
 	for c := rn.first_child; c != base.NIL_HANDLE; {
 		cn := dom.get(v.doc, c)
 		if cn == nil { break }
-		walk(&w, c, cn, {})
+		walk(w, c, cn, {}, base.NIL_HANDLE)
 		c = cn.next
 	}
-	platform.a11y_node(u, u64(root), .Document, {}, {.Scroll_Into_View})
+	emit_root(w, w.kids[:])
+	u.root = u64(root)
+	u.focus = w.focus_node != 0 ? w.focus_node : u.root
+	return w.nodes + 1
+}
+
+// The document's node.
+@(private)
+emit_root :: proc(w: ^Walk, kids: []u64) {
+	v, u := w.v, w.u
+	index := platform.a11y_node(u, u64(v.doc.root), .Document, {}, {.Scroll_Into_View})
 	platform.a11y_bounds(u, 0, f64(v.doc_scroll), f64(v.viewport.x), f64(v.doc_scroll + v.viewport.y))
-	platform.a11y_children(u, w.kids[:])
+	platform.a11y_children(u, kids)
 	platform.a11y_str(u, .Label, v.title)
 	platform.a11y_str(u, .Url, v.url)
 	// document coordinates -> the window: the scroll and the page area's place (one node changes when the page scrolls)
 	platform.a11y_floats(u, .Transform, {1, 0, 0, 1, v.origin.x, v.origin.y - v.doc_scroll})
-	u.root = u64(root)
-	u.focus = w.focus_node != 0 ? w.focus_node : u.root
-	return w.nodes + 1
+	if w.live != nil { live_record(w, u64(v.doc.root), Rec{el = v.doc.root, kind = .Root}, kids, index) }
 }
 
 @(private)
@@ -78,30 +139,56 @@ skipped_tag :: proc(name: string) -> bool {
 }
 
 @(private)
-bounds_of :: proc(w: ^Walk, h: base.Handle) -> (r: [4]f32, ok: bool) {
-	if !w.has_lview { return }
+bounds_of :: proc(w: ^Walk, h: base.Handle) -> (r: [4]f32, ok: bool, fixed: bool) {
+	if !w.has_lview || h == base.NIL_HANDLE { return }
 	br, found := lay.box_of_view(w.v.layout, &w.lview, h)
 	if !found { return }
 	b := br.bounds
 	if br.fixed { b.min.y += w.v.doc_scroll; b.max.y += w.v.doc_scroll }   // (fixed boxes move with the viewport)
-	return {b.min.x, b.min.y, b.max.x, b.max.y}, true
+	return {b.min.x, b.min.y, b.max.x, b.max.y}, true, br.fixed
 }
 
-// The nodes of `h`'s subtree; the ids of the nodes directly under it go to w.kids. `parent_bounds`: for text.
+// The role an element has in the tree (Unknown: none, its nodes hang under the nearest node above).
 @(private)
-walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
+element_role :: proc(src: ^Source, h: base.Handle, n: ^dom.Node, invisible: bool) -> Role {
+	if invisible { return .Unknown }
+	role := role_of(src, h, n)
+	if role == .Unknown && (is_focusable(src, h, n) || has_own_name(src, h) || live_of(src, h, .Unknown) != .Off) { role = .Generic_Container }
+	return role
+}
+
+// The nodes of `h`'s subtree; the ids of the nodes directly under it go to w.kids. `parent_bounds`: for text and the
+// elements without a box of their own, from the box of `pb_src`.
+@(private)
+walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32, pb_src: base.Handle) {
 	v := w.v
-	if v.max_nodes > 0 && w.nodes >= v.max_nodes { return }
+	if v.max_nodes > 0 && w.nodes >= v.max_nodes { w.truncated = true; return }
+	// a patch (incremental.odin): a node written already, or recorded and not changed, is taken as it is
+	deep := false
+	if w.reuse {
+		l := w.live
+		if l.emitted[u64(h)] { append(&w.kids, u64(h)); return }
+		if r, ok := l.recs[u64(h)]; ok {
+			forced, is_forced := l.force[u64(h)]
+			if !is_forced {
+				#partial switch r.kind {
+				case .Text:
+					if n.kind == .Text { append(&w.kids, u64(h)); return }
+				case .Element:
+					if same_role(v, h, n, r) { append(&w.kids, u64(h)); return }
+				}
+			}
+			deep = forced
+		} else {
+			deep = l.force[u64(h)] or_else false
+		}
+	}
 	#partial switch n.kind {
 	case .Text:
-		t := collapse(n.text)
-		if t == "" { return }
-		platform.a11y_node(w.u, u64(h), .Label)
-		if parent_bounds != {} { platform.a11y_bounds(w.u, f64(parent_bounds[0]), f64(parent_bounds[1]), f64(parent_bounds[2]), f64(parent_bounds[3])) }
-		platform.a11y_children(w.u, nil)
-		platform.a11y_str(w.u, .Value, t)
-		append(&w.kids, u64(h))
-		w.nodes += 1
+		if emit_text(w, h, n, parent_bounds, pb_src) {
+			append(&w.kids, u64(h))
+			w.nodes += 1
+		}
 		return
 	case .Element:
 	case:
@@ -110,27 +197,55 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
 	if skipped_tag(n.name) { return }
 	gone, invisible := hidden_self(&v.src, h, n)
 	if gone { return }
-	bounds, has_bounds := bounds_of(w, h)
+	if w.live != nil { live_saw_element(w, h, n) }
+	bounds, has_bounds, _ := bounds_of(w, h)
 	if !has_bounds { bounds = parent_bounds }
-
-	role := Role.Unknown
-	focusable := is_focusable(&v.src, h, n)
-	if !invisible {
-		role = role_of(&v.src, h, n)
-		if role == .Unknown && (focusable || has_own_name(&v.src, h) || live_of(&v.src, h, .Unknown) != .Off) { role = .Generic_Container }
-	}
+	role := element_role(&v.src, h, n, invisible)
 
 	// the children: the shadow tree's when it has one (slots: their assigned nodes)
 	mark := len(w.kids)
 	if role == .Unknown || !children_presentational(role) {
-		walk_children(w, h, n, bounds)
+		// (below a node inserted or whose attributes changed, nothing is taken as it was)
+		saved := w.reuse
+		if deep { w.reuse = false }
+		walk_children(w, h, n, bounds, has_bounds ? h : pb_src)
+		w.reuse = saved
 	}
 	if role == .Unknown { return }   // (not a node: its nodes hang under the nearest node above)
 
 	kids := make([]u64, len(w.kids) - mark, context.temp_allocator)
 	copy(kids, w.kids[mark:])
 	resize(&w.kids, mark)
+
+	// the focus: this element, or the node nearest above the focused one (reached after the nodes below)
+	if v.focus != base.NIL_HANDLE && w.focus_node == 0 {
+		if h == v.focus || dom.contains(v.doc, h, v.focus) { w.focus_node = u64(h) }
+	}
+	emit_element(w, h, n, role, kids, bounds, has_bounds, pb_src)
+	append(&w.kids, u64(h))
+	w.nodes += 1
+}
+
+// A text node's node; false when it has none (only white space).
+@(private)
+emit_text :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32, pb_src: base.Handle) -> bool {
+	t := collapse(n.text)
+	if t == "" { return false }
+	index := platform.a11y_node(w.u, u64(h), .Label)
+	if parent_bounds != {} { platform.a11y_bounds(w.u, f64(parent_bounds[0]), f64(parent_bounds[1]), f64(parent_bounds[2]), f64(parent_bounds[3])) }
+	platform.a11y_children(w.u, nil)
+	platform.a11y_str(w.u, .Value, t)
+	if w.live != nil { live_record(w, u64(h), Rec{el = h, kind = .Text, role = .Label, pb_src = pb_src, bounds = parent_bounds}, nil, index) }
+	return true
+}
+
+// An element's node (and its text run), `kids` the nodes found under it. The same whether the tree is walked whole
+// or one node is written again (incremental.odin).
+@(private)
+emit_element :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, role: Role, kids: []u64, bounds: [4]f32, has_bounds: bool, pb_src: base.Handle) {
+	v := w.v
 	id := u64(h)
+	focusable := is_focusable(&v.src, h, n)
 
 	// text fields: their text as a run (reading by character and word)
 	text_field := is_text_field(role)
@@ -140,28 +255,29 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
 	}
 	password := role == .Password_Input
 	run_kids := kids
+	run_index := -1
 	if text_field {
 		run := run_id(h)
 		shown := value
 		if password { shown = strings.repeat("\u2022", strings.rune_count(value), context.temp_allocator) }
 		lens := make([dynamic]u8, 0, len(shown), context.temp_allocator)
 		for r in shown { append(&lens, u8(utf8.rune_size(r))) }
-		platform.a11y_node(w.u, run, .Text_Run)
+		run_index = platform.a11y_node(w.u, run, .Text_Run)
 		if has_bounds { platform.a11y_bounds(w.u, f64(bounds[0]), f64(bounds[1]), f64(bounds[2]), f64(bounds[3])) }
 		platform.a11y_children(w.u, nil)
 		platform.a11y_str(w.u, .Value, shown, keep_empty = true)
 		platform.a11y_bytes(w.u, .Character_Lengths, lens[:])
+		platform.a11y_bytes(w.u, .Word_Starts, word_starts(shown))
 		run_kids = make([]u64, 1, context.temp_allocator)
 		run_kids[0] = run
 	}
 
-	// the focus: this element, or the node nearest above the focused one (reached after the nodes below)
-	if v.focus != base.NIL_HANDLE && w.focus_node == 0 {
-		if h == v.focus {
-			w.focus_node = id
-		} else if dom.contains(v.doc, h, v.focus) {
-			w.focus_node = id
-		}
+	// a frame's document: a tree of its own, grafted here (a graft node has no children)
+	graft: platform.A11y_Tree_Id
+	grafted := false
+	if role == .Iframe && v.frame_tree != nil {
+		graft, grafted = v.frame_tree(v.frame_user, h)
+		if grafted { run_kids = nil }
 	}
 
 	flags: platform.A11y_Flags
@@ -171,6 +287,16 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
 	if focusable && !disabled { actions += {.Focus} }
 	if clickable(&v.src, h, n, role) && !disabled { actions += {.Click} }
 	if text_field && !disabled && !has_attr(&v.src, h, "readonly") { actions += {.Set_Value, .Replace_Selected_Text} }
+	// the caret and the selection of a text field, in characters of its run
+	sel_ok := false
+	sel: [2]int
+	if text_field && v.forms != nil && forms.selection_applies(v.forms, h) && forms.control_peek(v.forms, h) != nil {
+		a, b, dir := forms.selection(v.forms, h)
+		if dir == .Backward { a, b = b, a }
+		sel = {byte_to_char(value, a), byte_to_char(value, b)}
+		sel_ok = true
+		if !disabled { actions += {.Set_Text_Selection} }
+	}
 	if (role == .Slider || role == .Spin_Button) && !disabled { actions += {.Increment, .Decrement, .Set_Value} }
 	if has_attr(&v.src, h, "required") || aria_true(&v.src, h, "aria-required") { flags += {.Required} }
 	if has_attr(&v.src, h, "readonly") || aria_true(&v.src, h, "aria-readonly") { flags += {.Read_Only} }
@@ -190,9 +316,11 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
 		if _, visited := attr(&v.src, h, "data-visited"); visited { flags += {.Visited} }
 	}
 
-	platform.a11y_node(w.u, id, role, flags, actions)
+	index := platform.a11y_node(w.u, id, role, flags, actions)
 	if has_bounds { platform.a11y_bounds(w.u, f64(bounds[0]), f64(bounds[1]), f64(bounds[2]), f64(bounds[3])) }
 	platform.a11y_children(w.u, run_kids)
+	if grafted { platform.a11y_graft(w.u, graft) }
+	if sel_ok { platform.a11y_selection(w.u, run_id(h), sel[0], run_id(h), sel[1]) }
 
 	name, from_title := name_of(&v.src, h, role)
 	live := live_of(&v.src, h, role)
@@ -262,12 +390,16 @@ walk :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, parent_bounds: [4]f32) {
 	}
 	table_props(w, h, n, role)
 
-	append(&w.kids, id)
-	w.nodes += 1
+	if w.live != nil {
+		fixed := false
+		if has_bounds { _, _, fixed = bounds_of(w, h) }
+		if text_field { live_record(w, run_id(h), Rec{el = h, kind = .Run, role = .Text_Run, own_box = has_bounds, fixed = fixed, pb_src = pb_src, bounds = bounds}, nil, run_index) }
+		live_record(w, id, Rec{el = h, kind = .Element, role = role, own_box = has_bounds, fixed = fixed, pb_src = pb_src, bounds = bounds, click = .Click in actions, graft = grafted}, run_kids, index)
+	}
 }
 
 @(private)
-walk_children :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, bounds: [4]f32) {
+walk_children :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, bounds: [4]f32, pb_src: base.Handle) {
 	d := w.v.doc
 	first := n.first_child
 	if n.shadow != base.NIL_HANDLE {
@@ -276,7 +408,7 @@ walk_children :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, bounds: [4]f32) {
 	if n.name == "slot" {
 		if assigned, ok := d.assigned[h]; ok && len(assigned) > 0 {
 			for c in assigned {
-				if cn := dom.get(d, c); cn != nil { walk(w, c, cn, bounds) }
+				if cn := dom.get(d, c); cn != nil { walk(w, c, cn, bounds, pb_src) }
 			}
 			return
 		}
@@ -284,7 +416,7 @@ walk_children :: proc(w: ^Walk, h: base.Handle, n: ^dom.Node, bounds: [4]f32) {
 	for c := first; c != base.NIL_HANDLE; {
 		cn := dom.get(d, c)
 		if cn == nil { break }
-		walk(w, c, cn, bounds)
+		walk(w, c, cn, bounds, pb_src)
 		c = cn.next
 	}
 }

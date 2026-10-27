@@ -1548,7 +1548,7 @@ main :: proc() {
 	measure_destroy(&app.measure)
 	host.shutdown_step("forms_shell_destroy")
 	forms_shell_destroy(forms_view(app))
-	a11y_page_destroy()
+	page_a11y_destroy(&window_own(app).a11y)
 	host.shutdown_step("page_render_destroy")
 	page_render_destroy()
 	host.shutdown_step("config_view_destroy")
