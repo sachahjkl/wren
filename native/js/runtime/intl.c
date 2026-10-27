@@ -19,6 +19,7 @@
 
 /* forward declarations for the few helpers used before their definition */
 static JSValue nf_parts(JSContext *ctx, JSValueConst state, JSValueConst value);
+static JSValue dtf_join_parts(JSContext *ctx, JSValue parts);
 static JSValue seg_result_iterator(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 static JSValue seg_result_containing(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv);
 
@@ -650,11 +651,12 @@ static JSValue nf_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
 /* format(value): reads _o, returns the joined string */
 static JSValue nf_format_value(JSContext *ctx, JSValueConst state, JSValueConst value)
 {
+    /* BigInt: join the exact-digit parts from nf_parts (never convert to a double, which would give NaN or lose
+     * precision for large values). The old code kept BigInt as integer digits. */
+    if (JS_IsBigInt(value)) { return dtf_join_parts(ctx, nf_parts(ctx, state, value)); }
     nf_opts n;
     nf_read(ctx, state, &n);
     buf b = {0};
-    /* BigInt: format its decimal string via the same path by converting to double when small, else by its digits.
-     * The old code kept BigInt as integer digits; here we take the double which matches for the ranges sites use. */
     double d;
     if (JS_ToFloat64(ctx, &d, value) < 0) { JS_FreeValue(ctx, JS_GetException(ctx)); d = NAN; }
     nf_format_double(&n, d, &b);
@@ -726,12 +728,97 @@ static JSValue nf_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSVa
 /* nf_parts: the formatToParts array. We build it from the formatted string by re-running the pieces; to stay simple
  * and faithful to the shapes sites rely on, we emit the sign, integer groups, decimal, fraction and the style suffix
  * as typed parts. */
+/* group a (possibly long) integer-digit string into a freshly malloc'd ',' grouped string. Caller frees. */
+static char *group_digits_alloc(const char *digits)
+{
+    size_t len = strlen(digits);
+    char *out = malloc(len + len / 3 + 2);
+    if (!out) { return NULL; }
+    size_t oi = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (i && (len - i) % 3 == 0) { out[oi++] = ','; }
+        out[oi++] = digits[i];
+    }
+    out[oi] = 0;
+    return out;
+}
+
 static JSValue nf_parts(JSContext *ctx, JSValueConst state, JSValueConst value)
 {
     /* Reproduce numberParts(o, value) exactly enough for format() consumers: the common case returns
      * integer/group/decimal/fraction parts; we build them here. */
     nf_opts n;
     nf_read(ctx, state, &n);
+    /* BigInt path: the old numberParts kept `digits = x.toString()` (exact decimal digits), never converting to a
+     * double (which would lose precision or give NaN for huge values). Integer padding, grouping and the style
+     * suffixes still apply; notation and fraction digits are skipped (the old `!big` guards). */
+    if (JS_IsBigInt(value)) {
+        JSValue arr = JS_NewArray(ctx);
+        uint32_t k = 0;
+#define PART(type, val) do { JSValue p = JS_NewObject(ctx); JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, type)); JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, val)); JS_SetPropertyUint32(ctx, arr, k++, p); } while (0)
+        JSValue sv = JS_ToString(ctx, value);
+        const char *raw = JS_ToCString(ctx, sv);
+        char *digits = strdup(raw ? raw : "0");
+        if (raw) { JS_FreeCString(ctx, raw); }
+        JS_FreeValue(ctx, sv);
+        bool negative = digits[0] == '-';
+        const char *mag = negative ? digits + 1 : digits;
+        bool zero = strcmp(mag, "0") == 0;
+        if (negative && strcmp(n.signDisplay, "never") != 0 && !(strcmp(n.signDisplay, "exceptZero") == 0 && zero)) { PART("minusSign", "-"); }
+        else if (!negative && (strcmp(n.signDisplay, "always") == 0 || (strcmp(n.signDisplay, "exceptZero") == 0 && !zero))) { PART("plusSign", "+"); }
+        if (strcmp(n.style, "currency") == 0) {
+            char codebuf[16]; const char *sym;
+            if (strcmp(n.currencyDisplay, "code") == 0) { snprintf(codebuf, sizeof codebuf, "%s\u00a0", n.currency); sym = codebuf; }
+            else if (strcmp(n.currencyDisplay, "name") == 0) { sym = ""; }
+            else { const char *cs = currency_symbol(n.currency); if (cs) { sym = cs; } else { snprintf(codebuf, sizeof codebuf, "%s\u00a0", n.currency); sym = codebuf; } }
+            if (sym[0]) { PART("currency", sym); }
+        }
+        /* integer digits, left-padded to minimumIntegerDigits */
+        char *intpart;
+        size_t ml = strlen(mag);
+        if ((int)ml < n.minimumIntegerDigits) {
+            size_t pad = (size_t)n.minimumIntegerDigits - ml;
+            intpart = malloc(pad + ml + 1);
+            for (size_t i = 0; i < pad; i++) { intpart[i] = '0'; }
+            memcpy(intpart + pad, mag, ml + 1);
+        } else {
+            intpart = strdup(mag);
+        }
+        bool grouping;
+        if (strcmp(n.useGrouping, "always") == 0) { grouping = true; }
+        else if (strcmp(n.useGrouping, "false") == 0 || n.groupingFalse) { grouping = false; }
+        else if (strcmp(n.useGrouping, "min2") == 0) { grouping = strlen(intpart) > 4; }
+        else { grouping = true; }
+        if (grouping) {
+            char *g = group_digits_alloc(intpart);
+            if (g) {
+                char piece[8]; size_t pi = 0; bool first = true;
+                for (size_t gi = 0; ; gi++) {
+                    if (g[gi] == ',' || g[gi] == 0) {
+                        piece[pi] = 0;
+                        if (!first) { PART("group", ","); }
+                        PART("integer", piece);
+                        first = false; pi = 0;
+                        if (g[gi] == 0) { break; }
+                    } else if (pi < sizeof piece - 1) { piece[pi++] = g[gi]; }
+                }
+                free(g);
+            } else { PART("integer", intpart); }
+        } else { PART("integer", intpart); }
+        free(intpart);
+        if (strcmp(n.style, "percent") == 0) { PART("percentSign", "%"); }
+        if (strcmp(n.style, "currency") == 0 && strcmp(n.currencyDisplay, "name") == 0) { PART("literal", " "); PART("currency", n.currency); }
+        if (strcmp(n.style, "unit") == 0) {
+            const unit_name *u = unit_find(n.unit);
+            /* the old code's unit long/short pluralization used Number(value); a non-1 BigInt is plural */
+            bool one = strcmp(mag, "1") == 0 && !negative;
+            if (strcmp(n.unitDisplay, "long") == 0) { PART("literal", " "); char ub[64]; snprintf(ub, sizeof ub, "%s%s", u ? u->lng : n.unit, one ? "" : "s"); PART("unit", ub); }
+            else { bool narrow = strcmp(n.unit, "percent") == 0 || strcmp(n.unitDisplay, "narrow") == 0; PART("literal", narrow ? "" : " "); PART("unit", u ? u->shrt : n.unit); }
+        }
+#undef PART
+        free(digits);
+        return arr;
+    }
     double dv;
     if (JS_ToFloat64(ctx, &dv, value) < 0) { JS_FreeValue(ctx, JS_GetException(ctx)); dv = NAN; }
     JSValue arr = JS_NewArray(ctx);
@@ -897,8 +984,11 @@ static int field_int(JSContext *ctx, JSValueConst o, const char *name, int dflt)
     return r;
 }
 
-/* build the date string. `need`: "", "date", "time", "any" — the default fields when none were set (as the old code). */
-static JSValue dtf_format_value(JSContext *ctx, JSValueConst state, JSValueConst date, const char *need)
+/* build the typed parts array. `need`: "", "date", "time", "any" — the default fields when none were set (as the old
+ * code). Returns a JS array of {type, value} objects, matching the old dateParts() exactly (year, month, day, weekday,
+ * era, hour, minute, second, fractionalSecond, dayPeriod, timeZoneName and the literals that join them). format() and
+ * the toLocale* methods read it back through dtf_join_parts(). */
+static JSValue dtf_build_parts(JSContext *ctx, JSValueConst state, JSValueConst date, const char *need)
 {
     bool utc = field_bool(ctx, state, "utc");
     /* resolve the time: a Date or a number of ms; undefined -> now */
@@ -969,9 +1059,11 @@ static JSValue dtf_format_value(JSContext *ctx, JSValueConst state, JSValueConst
         }
     }
 #undef SET
-    buf out = {0};
+    JSValue parts = JS_NewArray(ctx);
+    uint32_t pk = 0;
     char tmp[64];
-#define LIT(s) buf_str(&out, s)
+#define PART(type, val) do { JSValue p = JS_NewObject(ctx); JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, type)); JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, val)); JS_SetPropertyUint32(ctx, parts, pk++, p); } while (0)
+#define LIT(s) PART("literal", s)
 #define P2(n) (snprintf(tmp, sizeof tmp, "%02d", (n)), tmp)
 #define NUM(n) (snprintf(tmp, sizeof tmp, "%d", (n)), tmp)
     bool textMonth = month && (strcmp(month, "long") == 0 || strcmp(month, "short") == 0 || strcmp(month, "narrow") == 0);
@@ -986,56 +1078,82 @@ static JSValue dtf_format_value(JSContext *ctx, JSValueConst state, JSValueConst
     char dayText[16]; if (day) { if (strcmp(day, "2-digit") == 0) { snprintf(dayText, sizeof dayText, "%02d", gd); } else { snprintf(dayText, sizeof dayText, "%d", gd); } }
     char yearText[16]; if (year) { if (strcmp(year, "2-digit") == 0) { snprintf(yearText, sizeof yearText, "%02d", ((gy % 100) + 100) % 100); } else { snprintf(yearText, sizeof yearText, "%d", gy); } }
     if (weekday) {
-        if (strcmp(weekday, "long") == 0) { LIT(DAYS[gw]); }
-        else if (strcmp(weekday, "short") == 0) { snprintf(tmp, sizeof tmp, "%.3s", DAYS[gw]); LIT(tmp); }
-        else { snprintf(tmp, sizeof tmp, "%.1s", DAYS[gw]); LIT(tmp); }
+        if (strcmp(weekday, "long") == 0) { PART("weekday", DAYS[gw]); }
+        else if (strcmp(weekday, "short") == 0) { snprintf(tmp, sizeof tmp, "%.3s", DAYS[gw]); PART("weekday", tmp); }
+        else { snprintf(tmp, sizeof tmp, "%.1s", DAYS[gw]); PART("weekday", tmp); }
         if (month || day || year) { LIT(", "); }
     }
     if (textMonth) {
-        if (month) { LIT(monthText); }
-        if (day) { if (month) { LIT(" "); } LIT(dayText); }
-        if (year) { if (day) { LIT(", "); } else if (month) { LIT(" "); } LIT(yearText); }
+        if (month) { PART("month", monthText); }
+        if (day) { if (month) { LIT(" "); } PART("day", dayText); }
+        if (year) { if (day) { LIT(", "); } else if (month) { LIT(" "); } PART("year", yearText); }
     } else {
         bool first = true;
-        if (month) { if (!first) { LIT("/"); } LIT(monthText); first = false; }
-        if (day) { if (!first) { LIT("/"); } LIT(dayText); first = false; }
-        if (year) { if (!first) { LIT("/"); } LIT(yearText); first = false; }
+        if (month) { PART("month", monthText); first = false; }
+        if (day) { if (!first) { LIT("/"); } PART("day", dayText); first = false; }
+        if (year) { if (!first) { LIT("/"); } PART("year", yearText); first = false; }
     }
-    if (era) { LIT(" "); if (gy > 0) { LIT(strcmp(era, "long") == 0 ? "Anno Domini" : strcmp(era, "narrow") == 0 ? "A" : "AD"); } else { LIT(strcmp(era, "long") == 0 ? "Before Christ" : strcmp(era, "narrow") == 0 ? "B" : "BC"); } }
+    if (era) { LIT(" "); PART("era", gy > 0 ? (strcmp(era, "long") == 0 ? "Anno Domini" : strcmp(era, "narrow") == 0 ? "A" : "AD") : (strcmp(era, "long") == 0 ? "Before Christ" : strcmp(era, "narrow") == 0 ? "B" : "BC")); }
     bool hasTime = hour || minute || second || fracDigits;
     if (hasTime) {
-        if (out.n) { LIT((dateStyle && (strcmp(dateStyle, "full") == 0 || strcmp(dateStyle, "long") == 0)) ? " at " : ", "); }
+        if (pk) { LIT((dateStyle && (strcmp(dateStyle, "full") == 0 || strcmp(dateStyle, "long") == 0)) ? " at " : ", "); }
         bool h12 = hourCycle && (strcmp(hourCycle, "h11") == 0 || strcmp(hourCycle, "h12") == 0);
         int h = gh;
         if (h12) { h = h % 12; if (h == 0 && hourCycle && strcmp(hourCycle, "h12") == 0) { h = 12; } }
         else if (hourCycle && strcmp(hourCycle, "h24") == 0 && h == 0) { h = 24; }
         bool first = true;
-        if (hour) { bool two = strcmp(hour, "2-digit") == 0 || (!h12 && minute); LIT(two ? P2(h) : NUM(h)); first = false; }
-        if (minute) { if (!first) { LIT(":"); } bool two = hour || strcmp(minute, "2-digit") == 0; LIT(two ? P2(gmi) : NUM(gmi)); first = false; }
-        if (second) { if (!first) { LIT(":"); } bool two = minute || strcmp(second, "2-digit") == 0; LIT(two ? P2(gs) : NUM(gs)); first = false; }
-        if (fracDigits) { LIT("."); char fsb[8]; snprintf(fsb, sizeof fsb, "%03d", gms); fsb[fracDigits] = 0; LIT(fsb); }
-        if (h12 && hour) { LIT(" "); LIT(gh < 12 ? "AM" : "PM"); }
+        if (hour) { bool two = strcmp(hour, "2-digit") == 0 || (!h12 && minute); PART("hour", two ? P2(h) : NUM(h)); first = false; }
+        if (minute) { if (!first) { LIT(":"); } bool two = hour || strcmp(minute, "2-digit") == 0; PART("minute", two ? P2(gmi) : NUM(gmi)); first = false; }
+        if (second) { if (!first) { LIT(":"); } bool two = minute || strcmp(second, "2-digit") == 0; PART("second", two ? P2(gs) : NUM(gs)); first = false; }
+        if (fracDigits) { LIT("."); char fsb[8]; snprintf(fsb, sizeof fsb, "%03d", gms); fsb[fracDigits] = 0; PART("fractionalSecond", fsb); }
+        if (h12 && hour) { LIT(" "); PART("dayPeriod", gh < 12 ? "AM" : "PM"); }
     }
     if (timeZoneName) {
         LIT(" ");
-        if (utc) { LIT(strcmp(timeZoneName, "long") == 0 ? "Coordinated Universal Time" : "UTC"); }
+        if (utc) { PART("timeZoneName", strcmp(timeZoneName, "long") == 0 ? "Coordinated Universal Time" : "UTC"); }
         else {
             double off = -tzoff;
             int a = (int)fabs(off);
             char gmt[32];
             if (off == 0) { snprintf(gmt, sizeof gmt, "GMT"); }
             else { int hh = a / 60, mm = a % 60; if (mm) { snprintf(gmt, sizeof gmt, "GMT%c%d:%02d", off < 0 ? '-' : '+', hh, mm); } else { snprintf(gmt, sizeof gmt, "GMT%c%d", off < 0 ? '-' : '+', hh); } }
-            LIT(gmt);
+            PART("timeZoneName", gmt);
         }
     }
 #undef LIT
 #undef P2
 #undef NUM
+#undef PART
     free(weekday); free(era); free(year); free(month); free(day); free(hour); free(minute); free(second);
     free(timeZoneName); free(dateStyle); free(timeStyle); free(hourCycle);
-    JSValue res = JS_NewString(ctx, out.p ? out.p : "");
+    return parts;
+}
+
+/* join the `value` of each part into one string (the old `.map(p => p.value).join("")`). Frees `parts`. On an exception
+ * part (JS_EXCEPTION), it is returned as-is. */
+static JSValue dtf_join_parts(JSContext *ctx, JSValue parts)
+{
+    if (JS_IsException(parts)) { return parts; }
+    uint32_t n = 0; JSValue lenv = JS_GetPropertyStr(ctx, parts, "length"); JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
+    buf out = {0};
+    for (uint32_t i = 0; i < n; i++) {
+        JSValue p = JS_GetPropertyUint32(ctx, parts, i);
+        JSValue vv = JS_GetPropertyStr(ctx, p, "value");
+        const char *s = JS_ToCString(ctx, vv);
+        buf_str(&out, s ? s : "");
+        if (s) { JS_FreeCString(ctx, s); }
+        JS_FreeValue(ctx, vv); JS_FreeValue(ctx, p);
+    }
+    JS_FreeValue(ctx, parts);
+    JSValue r = JS_NewString(ctx, out.p ? out.p : "");
     buf_free(&out);
-    return res;
+    return r;
+}
+
+/* format the date to a joined string: the parts' values concatenated. */
+static JSValue dtf_format_value(JSContext *ctx, JSValueConst state, JSValueConst date, const char *need)
+{
+    return dtf_join_parts(ctx, dtf_build_parts(ctx, state, date, need));
 }
 
 static JSValue dtf_format_call(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv, int magic, JSValue *func_data)
@@ -1066,19 +1184,16 @@ static JSValue dtf_format(JSContext *ctx, JSValueConst this_val, int argc, JSVal
     JS_FreeValue(ctx, state);
     return r;
 }
-/* formatToParts: a one-element [{type:"literal", value}] with the formatted text. The old file produced typed parts
- * (year/month/day/literal...); scripts that only read the joined value are unaffected, those that walk typed parts get
- * a single literal. A fully typed parts list is a known follow-up (see the note). */
+/* formatToParts: the typed parts list (year/month/day/weekday/era/hour/minute/second/fractionalSecond/dayPeriod/
+ * timeZoneName and the literals that join them), as the old file produced. */
 static JSValue dtf_format_to_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    JSValue str = dtf_format(ctx, this_val, argc, argv);
-    if (JS_IsException(str)) { return str; }
-    JSValue arr = JS_NewArray(ctx);
-    JSValue p = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal"));
-    JS_SetPropertyStr(ctx, p, "value", str);
-    JS_SetPropertyUint32(ctx, arr, 0, p);
-    return arr;
+    JSValue state = intl_state(ctx, this_val);
+    if (JS_IsException(state)) { return state; }
+    bool defaults = field_bool(ctx, this_val, "_defaults");
+    JSValue r = dtf_build_parts(ctx, state, wj_arg(argc, (JSValue *)argv, 0), defaults ? "date" : "");
+    JS_FreeValue(ctx, state);
+    return r;
 }
 /* formatRange(a, b): `${format(a)} \u2013 ${format(b)}` (the old spacing) */
 static JSValue dtf_format_range(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -1336,8 +1451,10 @@ static JSValue rtf_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValue
     JS_FreeValue(ctx, o);
     return obj;
 }
-/* build "in N units" / "N units ago" into a string */
-static JSValue rtf_do(JSContext *ctx, JSValueConst state, JSValueConst valuev, JSValueConst unitv)
+/* build the typed parts for the relative time. Mirrors the old rtParts(): numeric:"auto" specials are a single
+ * {type:"literal"}; otherwise the number's formatToParts (each part tagged with the `unit`) wrapped by "in "/" ago"
+ * literals. Returns a JS array of parts, or JS_EXCEPTION. */
+static JSValue rtf_build_parts(JSContext *ctx, JSValueConst state, JSValueConst valuev, JSValueConst unitv)
 {
     double value;
     if (JS_ToFloat64(ctx, &value, valuev) < 0) { return JS_EXCEPTION; }
@@ -1349,9 +1466,8 @@ static JSValue rtf_do(JSContext *ctx, JSValueConst state, JSValueConst valuev, J
     if (!known) { return JS_ThrowRangeError(ctx, "Invalid unit argument for format() '%s'", unit); }
     char *numeric = field_str(ctx, state, "numeric");
     char *style = field_str(ctx, state, "style");
-    buf out = {0};
     if (numeric && strcmp(numeric, "auto") == 0) {
-        /* the special words for -1/0/1 */
+        /* the special words for -1/0/1 -> one literal part */
         int iv = (value == 0 && signbit(value)) ? 0 : (int)value;
         const char *special = NULL;
         if (value == (double)iv) {
@@ -1364,7 +1480,15 @@ static JSValue rtf_do(JSContext *ctx, JSValueConst state, JSValueConst valuev, J
             else if (strcmp(unit, "minute") == 0) { special = iv == 0 ? "this minute" : NULL; }
             else if (strcmp(unit, "hour") == 0) { special = iv == 0 ? "this hour" : NULL; }
         }
-        if (special) { buf_str(&out, special); JSValue r = JS_NewString(ctx, out.p ? out.p : ""); buf_free(&out); free(numeric); free(style); return r; }
+        if (special) {
+            JSValue arr = JS_NewArray(ctx);
+            JSValue p = JS_NewObject(ctx);
+            JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal"));
+            JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, special));
+            JS_SetPropertyUint32(ctx, arr, 0, p);
+            free(numeric); free(style);
+            return arr;
+        }
     }
     double a = fabs(value);
     const char *name;
@@ -1380,7 +1504,7 @@ static JSValue rtf_do(JSContext *ctx, JSValueConst state, JSValueConst valuev, J
         else { abbr = "sec."; }
         name = abbr;
     }
-    /* number via new NumberFormat("en") */
+    /* number parts via new NumberFormat("en").formatToParts(a), each tagged with `unit` */
     JSValue intl = JS_GetPropertyStr(ctx, wj_the_realm.global, "Intl");
     JSValue nfctor = JS_GetPropertyStr(ctx, intl, "NumberFormat");
     JS_FreeValue(ctx, intl);
@@ -1390,39 +1514,44 @@ static JSValue rtf_do(JSContext *ctx, JSValueConst state, JSValueConst valuev, J
     JSValue nstate = JS_GetPropertyStr(ctx, nf, "_o");
     JS_FreeValue(ctx, nf);
     JSValue av = JS_NewFloat64(ctx, a);
-    JSValue numstr = nf_format_value(ctx, nstate, av);
+    JSValue num = nf_parts(ctx, nstate, av);
     JS_FreeValue(ctx, av); JS_FreeValue(ctx, nstate);
-    const char *num = JS_ToCString(ctx, numstr);
-    JS_FreeValue(ctx, numstr);
+    uint32_t nn = 0; JSValue lenv = JS_GetPropertyStr(ctx, num, "length"); JS_ToUint32(ctx, &nn, lenv); JS_FreeValue(ctx, lenv);
+    for (uint32_t i = 0; i < nn; i++) { JSValue p = JS_GetPropertyUint32(ctx, num, i); JS_SetPropertyStr(ctx, p, "unit", JS_NewString(ctx, unit)); JS_FreeValue(ctx, p); }
     bool past = value < 0 || (value == 0 && signbit(value));
-    if (past) { buf_str(&out, num ? num : ""); buf_str(&out, " "); buf_str(&out, name); buf_str(&out, " ago"); }
-    else { buf_str(&out, "in "); buf_str(&out, num ? num : ""); buf_str(&out, " "); buf_str(&out, name); }
-    if (num) { JS_FreeCString(ctx, num); }
+    JSValue arr = JS_NewArray(ctx);
+    uint32_t k = 0;
+    if (past) {
+        for (uint32_t i = 0; i < nn; i++) { JS_SetPropertyUint32(ctx, arr, k++, JS_GetPropertyUint32(ctx, num, i)); }
+        char litbuf[48]; snprintf(litbuf, sizeof litbuf, " %s ago", name);
+        JSValue p = JS_NewObject(ctx); JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal")); JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, litbuf)); JS_SetPropertyUint32(ctx, arr, k++, p);
+    } else {
+        JSValue p = JS_NewObject(ctx); JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal")); JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, "in ")); JS_SetPropertyUint32(ctx, arr, k++, p);
+        for (uint32_t i = 0; i < nn; i++) { JS_SetPropertyUint32(ctx, arr, k++, JS_GetPropertyUint32(ctx, num, i)); }
+        char litbuf[48]; snprintf(litbuf, sizeof litbuf, " %s", name);
+        JSValue q = JS_NewObject(ctx); JS_SetPropertyStr(ctx, q, "type", JS_NewString(ctx, "literal")); JS_SetPropertyStr(ctx, q, "value", JS_NewString(ctx, litbuf)); JS_SetPropertyUint32(ctx, arr, k++, q);
+    }
+    JS_FreeValue(ctx, num);
     free(numeric); free(style);
-    JSValue r = JS_NewString(ctx, out.p ? out.p : "");
-    buf_free(&out);
-    return r;
+    return arr;
 }
 static JSValue rtf_format(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     JSValue state = intl_state(ctx, this_val);
     if (JS_IsException(state)) { return state; }
-    JSValue r = rtf_do(ctx, state, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1));
+    JSValue parts = rtf_build_parts(ctx, state, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1));
     JS_FreeValue(ctx, state);
-    return r;
+    return dtf_join_parts(ctx, parts);
 }
-/* formatToParts(value, unit): a one-element [{type:"literal", value}] with the formatted text (the old file split it
- * into number and literal parts; callers reading the joined value are unaffected). */
+/* formatToParts(value, unit): the typed parts (integer/group/decimal/fraction tagged with `unit`, plus the "in "/
+ * " ago" literals), as the old file produced. */
 static JSValue rtf_format_to_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    JSValue str = rtf_format(ctx, this_val, argc, argv);
-    if (JS_IsException(str)) { return str; }
-    JSValue arr = JS_NewArray(ctx);
-    JSValue p = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "literal"));
-    JS_SetPropertyStr(ctx, p, "value", str);
-    JS_SetPropertyUint32(ctx, arr, 0, p);
-    return arr;
+    JSValue state = intl_state(ctx, this_val);
+    if (JS_IsException(state)) { return state; }
+    JSValue r = rtf_build_parts(ctx, state, wj_arg(argc, (JSValue *)argv, 0), wj_arg(argc, (JSValue *)argv, 1));
+    JS_FreeValue(ctx, state);
+    return r;
 }
 static JSValue rtf_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
@@ -1457,7 +1586,9 @@ static JSValue lf_ctor(JSContext *ctx, JSValueConst this_val, int argc, JSValueC
     JS_FreeValue(ctx, o);
     return obj;
 }
-static JSValue lf_format(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+/* build the typed parts for a list: {type:"element"} for each item, {type:"literal"} for the separators, exactly as
+ * the old listParts() did. Returns a JS array of parts, or JS_EXCEPTION. */
+static JSValue lf_build_parts(JSContext *ctx, JSValueConst this_val, JSValueConst listarg)
 {
     JSValue state = intl_state(ctx, this_val);
     if (JS_IsException(state)) { return state; }
@@ -1467,47 +1598,43 @@ static JSValue lf_format(JSContext *ctx, JSValueConst this_val, int argc, JSValu
     /* Array.from(list) with a string check */
     JSValue arrayc = JS_GetPropertyStr(ctx, wj_the_realm.global, "Array");
     JSValue from = JS_GetPropertyStr(ctx, arrayc, "from");
-    JSValueConst a1 = wj_arg(argc, (JSValue *)argv, 0);
-    JSValue list = JS_Call(ctx, from, arrayc, 1, &a1);
+    JSValue list = JS_Call(ctx, from, arrayc, 1, (JSValueConst *)&listarg);
     JS_FreeValue(ctx, from); JS_FreeValue(ctx, arrayc);
     if (JS_IsException(list)) { free(type); free(style); return list; }
     uint32_t n = 0; JSValue lenv = JS_GetPropertyStr(ctx, list, "length"); JS_ToUint32(ctx, &n, lenv); JS_FreeValue(ctx, lenv);
     const char *word = (strcmp(type, "conjunction") == 0) ? (strcmp(style, "long") == 0 ? "and" : "&") : (strcmp(type, "disjunction") == 0 ? "or" : "");
-    buf out = {0};
+    JSValue parts = JS_NewArray(ctx);
+    uint32_t k = 0;
+#define PART(t, v) do { JSValue p = JS_NewObject(ctx); JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, t)); JS_SetPropertyStr(ctx, p, "value", JS_NewString(ctx, v)); JS_SetPropertyUint32(ctx, parts, k++, p); } while (0)
     for (uint32_t i = 0; i < n; i++) {
         JSValue item = JS_GetPropertyUint32(ctx, list, i);
-        if (!JS_IsString(item)) { JS_FreeValue(ctx, item); JS_FreeValue(ctx, list); free(type); free(style); buf_free(&out); return JS_ThrowTypeError(ctx, "Iterable yielded a value that is not a string"); }
+        if (!JS_IsString(item)) { JS_FreeValue(ctx, item); JS_FreeValue(ctx, list); JS_FreeValue(ctx, parts); free(type); free(style); return JS_ThrowTypeError(ctx, "Iterable yielded a value that is not a string"); }
         if (i) {
             bool last = i == n - 1;
             const char *sep = ", ";
             char sepbuf[16];
             if (last && word[0]) { if (n == 2) { snprintf(sepbuf, sizeof sepbuf, " %s ", word); } else { snprintf(sepbuf, sizeof sepbuf, ", %s ", word); } sep = sepbuf; }
             if (strcmp(type, "unit") == 0 && strcmp(style, "narrow") == 0) { sep = " "; }
-            buf_str(&out, sep);
+            PART("literal", sep);
         }
         const char *s = JS_ToCString(ctx, item);
-        buf_str(&out, s ? s : "");
+        PART("element", s ? s : "");
         if (s) { JS_FreeCString(ctx, s); }
         JS_FreeValue(ctx, item);
     }
+#undef PART
     JS_FreeValue(ctx, list);
     free(type); free(style);
-    JSValue r = JS_NewString(ctx, out.p ? out.p : "");
-    buf_free(&out);
-    return r;
+    return parts;
 }
-/* formatToParts(list): a one-element [{type:"element", value}] with the formatted text (the old file produced element
- * and literal parts; callers reading the joined value are unaffected). */
+static JSValue lf_format(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    return dtf_join_parts(ctx, lf_build_parts(ctx, this_val, wj_arg(argc, (JSValue *)argv, 0)));
+}
+/* formatToParts(list): the typed parts (element / literal), as the old file produced. */
 static JSValue lf_format_to_parts(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
-    JSValue str = lf_format(ctx, this_val, argc, argv);
-    if (JS_IsException(str)) { return str; }
-    JSValue arr = JS_NewArray(ctx);
-    JSValue p = JS_NewObject(ctx);
-    JS_SetPropertyStr(ctx, p, "type", JS_NewString(ctx, "element"));
-    JS_SetPropertyStr(ctx, p, "value", str);
-    JS_SetPropertyUint32(ctx, arr, 0, p);
-    return arr;
+    return lf_build_parts(ctx, this_val, wj_arg(argc, (JSValue *)argv, 0));
 }
 static JSValue lf_resolved(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
