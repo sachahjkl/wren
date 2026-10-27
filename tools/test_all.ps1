@@ -223,7 +223,7 @@ foreach ($pkg in 'base', 'host', 'dom', 'html', 'url', 'http', 'cookies', 'csp',
 
 # the pipe server is one per process, so its tests run one at a time; the client's tests link the image encoder
 Step 'unit tests: remote (protocol, pipe server: requests, answers, limits, vanishing clients, stopping with clients connected)' { odin test src/remote -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
-Step 'unit tests: remote client (wren ctl: options, help, picture diff)' { odin test src/remote/client -use-separate-modules $MemCheck -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
+Step 'unit tests: remote client (wren ctl: options, help, picture diff, a call through the channel and back)' { odin test src/remote/client -use-separate-modules $MemCheck -define:ODIN_TEST_THREADS=1 -collection:wb=src -vet -out:build/remote_client_test.exe $Stack 2>&1 | Out-String | Tee-Object -Variable o | Out-Null; $o; if ($o -match 'All tests were successful') { $global:LASTEXITCODE = 0 } else { $global:LASTEXITCODE = 1 } }
 Step 'developer tools docked: the page area follows the size of the panel, at the bottom and at the side (tools\devtools_resize_e2e.ps1 -NoDesktop: no window shown)' {
     if (-not (Ensure-WrenBuild)) { $global:WrenBuildOutput; return }
     powershell -NoProfile -ExecutionPolicy Bypass -File tools\devtools_resize_e2e.ps1 -NoDesktop
