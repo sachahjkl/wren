@@ -13,7 +13,7 @@
 # With no -Remote a Wren with a throwaway profile is started and stopped at the end. A window that is never shown has no refresh
 # to be shown at (no `shown` times): -Ghost shows it at 1 % opacity, click-through and never activated (for a run that must not
 # disturb anyone); -Visible shows it as it is (the user's own screen: the monitor rate is the `hz` the report starts with).
-# -Pref a=1,b=2 sets preferences (e.g. browser.frame.input_idle_periods=0: the old behaviour, to compare), -StartPref the ones that
+# -Pref a=1,b=2 sets preferences (e.g. browser.frame.target_hz=60 or browser.frame.variable_refresh=off, to compare), -StartPref the ones that
 # need a restart (browser.window.fixed_surface=false), -Dump / -DumpShown / -Timeline n print the raw frames, -Single the cost
 # of lone pointer moves with the window at rest.
 param(

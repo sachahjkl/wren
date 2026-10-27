@@ -197,7 +197,6 @@ video_update_target :: proc(app: ^App, key: Video_Key, view: ^page.Media_View) -
 // the thread got to run.
 @(private = "file")
 screen_ahead_ns :: proc() -> i64 {
-	if !pacer.cfg.video_at_vblank { return 0 }
 	app := the_app
 	now_ms := loop_ms(app, time.tick_now())
 	show_ms := pacer.frame_ms + pacer.period_ms

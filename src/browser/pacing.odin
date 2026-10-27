@@ -51,24 +51,23 @@ FRAME_PREFS := [?]config.Def{
 		description = "Longest wait for the screen to take the next frame (a monitor that stopped refreshing, a locked session)."},
 	{name = "browser.frame.swap_buffers", kind = .Int, default = {i = 3}, bounded = true, min = 2, max = 4, restart = true,
 		description = "Back buffers of the window's swap chain. 3 lets a frame be presented while the desktop compositor still holds the previous one (no wait in Present when frames come faster than the monitor refreshes: tearing mode, a variable refresh monitor); the time from input to screen does not grow (one frame in flight at most). 2 saves one window-sized buffer of GPU memory."},
-	{name = "browser.frame.vblank_clock", kind = .Bool, default = {b = true},
-		description = "The time each frame shows (requestAnimationFrame timestamps, CSS animations, smooth scrolling) is the vblank it starts at, so motion advances by whole refresh periods. Off: the time the frame starts computing."},
-	{name = "browser.frame.input_immediate", kind = .Bool, default = {b = true},
-		description = "A frame woken by input (a click, a wheel notch, a key) is drawn and shown at once, without waiting for the swap chain's slot nor for a refresh: the interface answers within the next composition instead of one or two refreshes later. Off: frames keep their pacing. On a display without variable refresh, the frame may tear."},
-	{name = "browser.frame.input_idle_periods", kind = .Float, default = {f = 1.5}, bounded = true, min = 0, max = 100, unit = "refreshes",
-		description = "With input_immediate, only the frame that starts an answer to input is shown at once: one made after no frame was presented for this many refresh periods (the interface was at rest). While frames follow one another (a drag, a wheel, a pointer sweeping the window: input every millisecond) each waits for the screen's slot and is shown at the next refresh, one per refresh: the motion advances evenly. 0: every frame woken by input is shown at once (hundreds a second during a drag, which pile up in the swap chain and are shown a refresh each: the picture advances in jumps)."},
 	{name = "browser.frame.latency_probe", kind = .Bool, default = {b = false},
 		description = "Measures the time from each input event to the refresh that showed it, stage by stage (wait for the frame, build and draw, Present, scan-out): p50 / p95 / max in the `latency` field of `wren ctl stats` (`stats --reset-latency` starts a new measure). The environment variable WREN_LATENCY=1 turns it on for one run. Off: nothing is recorded."},
 	{name = "browser.frame.drag_probe", kind = .Bool, default = {b = false},
 		description = "Records, for each frame made while a tab is dragged, the pointer it was built from, where the tab was drawn and the refresh that showed it: `dragSamples` in `wren ctl stats` (`stats --reset-frames` starts a new run). Off: nothing is recorded."},
-	{name = "browser.frame.video_at_vblank", kind = .Bool, default = {b = true},
-		description = "The picture of a playing video is the one that is due when the screen shows the frame (the next refresh), not the one due at the instant the frame was made: on a 60 Hz screen a 60 fps video is then exactly one picture per refresh whatever the jitter of the thread's wake-ups, and a 30 fps one two refreshes each. Off: the picture due now."},
-	{name = "browser.frame.resize_immediate", kind = .Bool, default = {b = true},
-		description = "While the window is resized, or the splitter or the floating panel of the developer tools is dragged, a frame made at the new size is drawn and shown at once, without waiting for the screen's next refresh nor for the swap chain's slot: the desktop composer would otherwise show the previous frame, drawn for the old size, stretched over the new one until this one reaches the screen. Off: frames keep their pacing during a resize."},
-	{name = "browser.frame.resize_hold_ms", kind = .Int, default = {i = 120}, bounded = true, min = 0, max = 2000, unit = "ms",
-		description = "After a size change, the frames that follow within this time (the frame that settles the last step, one made for a timer or a message between two steps) are shown at once as the resize step is, with no wait for the screen's refresh in Present. A program that resizes the window itself, such as AltSnap (Alt + right button), calls the window's thread at every step and waits for it: a frame blocked in Present for a refresh made every step wait that long. 0: only the frame that sees the new size."},
-	{name = "browser.frame.resize_skip_echoes", kind = .Bool, default = {b = true},
-		description = "Within browser.frame.resize_hold_ms of a size change, a frame with nothing new to show (no input, no task run, nothing of the page or of the interface waiting for a frame, the page laid out at its size) is not made: one picture per step of the resize instead of three (the step, then the frames still asked for after it). Off: every frame asked for is drawn and presented."},
+}
+
+// Preferences of the pacing that the cadence model (toolkit platform/pacing.odin) replaced: what they chose is the model's
+// own behaviour now (their defaults). A profile that still sets them is read without error: config keeps a value of a name
+// nobody registers and applies it to nothing.
+RETIRED_FRAME_PREFS :: [?]string{
+	"browser.frame.vblank_clock",        // the frame's time is always its vblank (or its slot on a timed cadence)
+	"browser.frame.input_immediate",     // the frame that starts an answer to input is always shown at once (Input_Answer)
+	"browser.frame.input_idle_periods",  // platform.CADENCE_INPUT_REST_PERIODS (1.5)
+	"browser.frame.video_at_vblank",     // a video's picture is always the one due when the frame is shown
+	"browser.frame.resize_immediate",    // a resize step is always shown at once (Resize_Step)
+	"browser.frame.resize_hold_ms",      // platform.CADENCE_RESIZE_HOLD_NS (120 ms, Resize_Burst)
+	"browser.frame.resize_skip_echoes",  // a burst's frame with nothing new is never made (platform.cadence_echo)
 }
 
 register_frame_prefs :: proc(p: ^config.Prefs) { config.register(p, FRAME_PREFS[:]) }
@@ -78,33 +77,17 @@ Pacer_Settings :: struct {
 	max_hz:     f64,                   // 0 = none
 	mode:       render.Present_Mode,
 	timeout_ms: int,
-	vblank_clock: bool,
-	resize_immediate: bool,
-	resize_hold_ms: int,
-	resize_skip_echoes: bool,
-	input_immediate: bool,
-	video_at_vblank: bool,
 	latency_probe: bool,
 	drag_probe: bool,
-	input_idle_periods: f64,
-	variable:   Variable_Refresh,
+	variable:   platform.Variable_Refresh,
 }
-
-Variable_Refresh :: enum u8 { Auto, On, Off }
 
 pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	s := Pacer_Settings{
 		max_hz = config.float_of(p, "browser.frame.max_hz"),
 		mode = config.string_of(p, "browser.frame.present_mode") == "tearing" ? .Tearing : .Vsync,
 		timeout_ms = int(config.int_of(p, "browser.frame.wait_timeout_ms")),
-		vblank_clock = config.bool_of(p, "browser.frame.vblank_clock"),
-		resize_immediate = config.bool_of(p, "browser.frame.resize_immediate"),
-		resize_hold_ms = int(config.int_of(p, "browser.frame.resize_hold_ms")),
-		resize_skip_echoes = config.bool_of(p, "browser.frame.resize_skip_echoes"),
-		input_immediate = config.bool_of(p, "browser.frame.input_immediate"),
-		video_at_vblank = config.bool_of(p, "browser.frame.video_at_vblank"),
 		drag_probe = config.bool_of(p, "browser.frame.drag_probe"),
-		input_idle_periods = config.float_of(p, "browser.frame.input_idle_periods"),
 		latency_probe = config.bool_of(p, "browser.frame.latency_probe") || os.get_env("WREN_LATENCY", context.temp_allocator) == "1",
 	}
 	s.target_hz = parse_target_hz(config.string_of(p, "browser.frame.target_hz"))
@@ -113,16 +96,6 @@ pacer_settings_from_prefs :: proc(p: ^config.Prefs) -> Pacer_Settings {
 	case "off": s.variable = .Off
 	}
 	return s
-}
-
-// Whether the screen is taken for one that shows frames above the rate it reports (browser.frame.variable_refresh).
-variable_plan :: proc(mode: Variable_Refresh, hz, max_hz: f64) -> bool {
-	switch mode {
-	case .On:   return hz > 0
-	case .Off:  return false
-	case .Auto: return platform.refresh_is_variable(hz, max_hz)
-	}
-	return false
 }
 
 // "auto" (or anything that is no rate) = 0; a number of hertz, clamped to 10 .. 1000.
@@ -134,36 +107,10 @@ parse_target_hz :: proc(s: string) -> f64 {
 	return clamp(f, 10, 1000)
 }
 
-// The rate frames aim for: the target (0: the display's, or its top rate when it is variable: `top_hz`), under the ceiling
-// (0: none).
-target_rate :: proc(display_hz, target_hz, max_hz: f64, top_hz: f64 = 0) -> f64 {
-	hz := target_hz > 0 ? target_hz : (top_hz > display_hz ? top_hz : display_hz)
-	if hz <= 0 { hz = 60 }
-	if max_hz > 0 { hz = min(hz, max_hz) }
-	return hz
-}
-
-// How a rate is reached on a display: vsync refreshes per frame, and whether the browser times the frames itself
-// (`timed`). A rate within 1 % of display / n (n = 1..4) is every n-th refresh; any other one is timed, and so is
-// everything in tearing mode and on a variable refresh screen (its rate now says nothing about the rate frames are shown at).
-// A rate above the display's cannot be shown with vsync: every refresh.
-pacing_plan :: proc(display_hz, hz: f64, tearing: bool, variable := false) -> (interval: int, timed: bool) {
-	if tearing || variable { return 1, true }
-	if display_hz <= 0 || hz >= display_hz * 0.99 { return 1, false }
-	for n in 1 ..= 4 {
-		if abs(display_hz / f64(n) - hz) <= hz * 0.01 { return n, false }
-	}
-	return 1, true
-}
-
-// The vblank a frame starting at `now` belongs to: the latest one of the grid (`last` + k periods) not after `now`.
-// Without a grid (period 0), `now`.
-vblank_at_or_before :: proc(now, last, period: f64) -> f64 {
-	if period <= 0 { return now }
-	k := math.floor((now - last) / period)
-	return last + k * period
-}
-
+// The browser's side of the cadence model (toolkit platform/pacing.odin, docs/pacing.md): the model decides, from the screen,
+// the preferences and what happened since the last frame, when a frame starts, whether it waits for the screen and how it
+// is shown; pacer_wait and pacer_begin_frame execute that decision (a high-resolution timer, the swap chain's latency
+// object, the frame's time) and pacer_end_frame tells the model about the present.
 Pacer :: struct {
 	cfg:        Pacer_Settings,
 	watch:      int,
@@ -171,32 +118,25 @@ Pacer :: struct {
 	hz:         f64,          // the rate aimed for
 	period_ms:  f64,          // 1000 / hz: the frame budget
 	interval:   int,          // vsync refreshes per frame
-	timed:      bool,         // frames are timed by the browser (pacing_plan)
+	timed:      bool,         // frames are timed by the browser (platform.cadence_sync)
 	tearing:    bool,         // presenting with tearing (asked for and supported)
 	timer:      win.HANDLE,   // the timing of timed frames (high resolution waitable timer)
-	variable:   bool,         // the screen shows frames above the rate it reports (variable_plan): the target is its top rate
-	slots:      platform.Frame_Slots,   // the cap on the cadence: no frame starts before its slot (toolkit platform/frame_slots.odin)
-	slot_ns:    i64,          // the slot this frame was timed for (0: none)
+	variable:   bool,         // the screen shows frames above the rate it reports: the target is its top rate
+	cadence:    platform.Cadence,          // the model's memory: its clock (slots), the last frame's state
+	decision:   platform.Frame_Decision,   // this frame's (pacer_wait)
+	using clock: platform.Frame_Clock,     // this frame's time (frame_ms, on the event loop clock), the previous one's, dt
 	live_hz:    f64,          // the highest rate the compositor reported during the current run of frames (display_live_hz; 0: none)
 	live_ns:    i64,          // tick of the last such measure
-	frame_ms:   f64,          // this frame's time, on the event loop clock (ms)
-	prev_ms:    f64,
-	dt:         f32,          // seconds since the previous frame's time (UI animations)
 	continuous: bool,         // this frame follows the previous one without idling
 	waited_ms:  f64,          // time spent waiting for the screen (or the timer) at the start of this frame
 	missed_timeouts: int,     // waits that ran into wait_timeout_ms
 	slot_held:  bool,         // the latency object was waited for and no frame was presented since (pacer_wait)
 	size:       [2]int,       // the window's size at the last frame (another one: the window is being resized)
-	resizing:   bool,         // this frame follows a size change: drawn and shown at once (pacer_wait)
-	resize_ns:  i64,          // tick of the last size change seen (0: none yet)
-	resize_held: bool,        // this frame comes within browser.frame.resize_hold_ms of one: shown at once, paced as any frame (resize_burst)
 	echoes_skipped: int,      // frames of a resize burst not made (resize_echo_frame)
 	resize_causes: [Resize_Frame_Cause]int,                  // why the frames of a resize burst were made
 	resize_event_kinds: [platform.Event_Kind]int,            // the events of those made for events
-	input_frame: bool,        // this frame was woken by input: shown at once (browser.frame.input_immediate)
-	latency:    int,          // frames the swap chain may queue (1, or 2 during a resize or an input frame)
+	latency:    int,          // frames the swap chain may queue (the decision's: 1, or 2 for a frame shown at once)
 	read_tick:  i64,          // tick this frame had read its input (the key of its Displayed_Frame)
-	present_ns: i64,          // tick of the last present (pacer_end_frame)
 }
 
 pacer: Pacer
@@ -223,6 +163,11 @@ pacer_destroy :: proc(app: ^App) {
 	pacer = {}
 }
 
+// The model's choices from the preferences (`tearing`: asked for and supported).
+pacer_choices :: proc(cfg: Pacer_Settings, tearing: bool) -> platform.Cadence_Choices {
+	return {target_hz = cfg.target_hz, max_hz = cfg.max_hz, variable = cfg.variable, tearing = tearing}
+}
+
 // The monitor's rate and the preferences, turned into a plan: once per frame (cheap unless something changed).
 pacer_update :: proc(app: ^App) {
 	// the page's idle periods leave room for a frame of this length (timers.frame_budget_ms = 0); apply_prefs makes the
@@ -232,65 +177,20 @@ pacer_update :: proc(app: ^App) {
 	if d.serial == pacer.display.serial && pacer.hz > 0 { return }
 	pacer.display = d
 	pacer.tearing = pacer.cfg.mode == .Tearing && render.tearing_supported(&app.r)
-	plan := frame_plan(d, pacer.cfg, pacer.tearing)
-	pacer.variable, pacer.hz, pacer.period_ms, pacer.interval, pacer.timed, pacer.slots = plan.variable, plan.hz, plan.period_ms, plan.interval, plan.timed, plan.slots
+	plan := platform.cadence_plan(d, pacer_choices(pacer.cfg, pacer.tearing))
+	pacer.variable, pacer.hz, pacer.period_ms, pacer.interval, pacer.timed = plan.variable, plan.hz, plan.period_ms, plan.interval, plan.timed
+	pacer.cadence.slots = plan.slots
 	render.set_present_mode(&app.r, pacer.tearing ? .Tearing : .Vsync)
 	render.set_sync_interval(&app.r, pacer.interval)
 	// missed refreshes of timed frames (a variable screen has no fixed refresh to miss)
 	render.set_expected_refreshes(&app.r, pacer.timed && !pacer.tearing && !pacer.variable && pacer.hz > 0 ? d.hz / pacer.hz : 0)
-	pacer.slot_ns = 0
-}
-
-// What the monitor and the preferences make of the frames' cadence.
-Frame_Plan :: struct {
-	variable:  bool,
-	hz:        f64,
-	period_ms: f64,
-	interval:  int,
-	timed:     bool,
-	slots:     platform.Frame_Slots,
-}
-
-frame_plan :: proc(d: platform.Display_Info, cfg: Pacer_Settings, tearing: bool) -> (p: Frame_Plan) {
-	p.variable = variable_plan(cfg.variable, d.hz, d.max_hz)
-	p.hz = target_rate(d.hz, cfg.target_hz, cfg.max_hz, p.variable ? d.max_hz : 0)
-	p.period_ms = 1000 / p.hz
-	p.interval, p.timed = pacing_plan(d.hz, p.hz, tearing, p.variable)
-	// The cap: the period itself where the browser is what paces the frames (timed: a rate the screen does not divide, tearing,
-	// a variable screen); a loose safety net where the screen's refresh does (platform.Frame_Slots)
-	p.slots = {period_ns = i64(p.period_ms * 1e6), strict = p.timed}
-	return
-}
-
-// Whether a frame is a resize step (drawn and shown at once): the window changed size; never before the first frame is on
-// screen, and not when the preference is off. (A panel dragged to a new size inside the window is not: pacer_wait.)
-resize_step :: proc(window_resized, presented, enabled: bool) -> bool {
-	return window_resized && presented && enabled
-}
-
-// Whether `now_ns` is within `hold_ms` after the last size change (`last_ns`, 0: none): the frames of a resize that are
-// not made for a new size (the one that settles the last step, a wake between two steps of a program that resizes the
-// window from outside) are shown like its steps, or the one blocked in Present for a refresh stalls the next step.
-resize_burst :: proc(now_ns, last_ns: i64, hold_ms: int) -> bool {
-	return hold_ms > 0 && last_ns != 0 && now_ns - last_ns < i64(hold_ms) * 1_000_000
-}
-
-// Whether a frame woken by input starts an answer to it (shown at once) rather than continues one (waits for the slot like any
-// frame): the loop idled before it, or nothing was presented for `periods` refresh periods (0: every frame does).
-input_starts_answer :: proc(idled: bool, since_present_ns: i64, period_ms, periods: f64) -> bool {
-	return idled || periods <= 0 || f64(since_present_ns) > period_ms * periods * 1e6
-}
-
-// A frame of the burst after a resize step that would only show the step's picture again: nothing came (events, tasks),
-// nothing waits for a frame (the page, the interface, a scroll animation) and the page is laid out at its area's size.
-// Pure: frame() skips it (resize_echo_frame) instead of presenting a copy at once.
-resize_echo :: proc(held, resizing, enabled: bool, events, ran: int, wants: bool) -> bool {
-	return enabled && held && !resizing && events == 0 && ran == 0 && !wants
+	pacer.decision.slot_ns = 0
 }
 
 Resize_Frame_Cause :: enum u8 { Step, Events, Tasks, Page, Ui_Animation, Ui_Timer, Scrolling, Layout_Size }
 
-// frame() (main.odin): whether this frame is such an echo; it is then not made (frames asked for are forgotten).
+// frame() (main.odin): whether this frame is an echo of a resize step (platform.cadence_echo); it is then not made (frames
+// asked for are forgotten): one picture per step of a resize instead of three.
 resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wants: bool) -> bool {
 	wnd := active_window(app)
 	// (a repaint the system asks for after a step is not a reason: the step's frame was drawn at the new size and the swap
@@ -308,10 +208,9 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 		if len(t.smooth.anims) > 0 { wants = true; cause = .Scrolling }
 		if pp := &window_own(app).page_prep; pp.tab == t && pp.size != draw.rect_size(wnd.page_rect) { wants = true; cause = .Layout_Size }   // laid out at another size: the next frame settles it
 	}
-	held := pacer.resize_held || pacer.resizing
-	if !resize_echo(held, step, pacer.cfg.resize_skip_echoes, len(events), ran, wants) {
+	if !platform.cadence_echo(&pacer.cadence, step, len(events), ran, wants) {
 		// why a frame of a resize was made (wren ctl stats: resizeFrameCauses)
-		if held && pacer.cfg.resize_skip_echoes {
+		if platform.cadence_resizing(&pacer.cadence) {
 			c := &pacer.resize_causes
 			switch {
 			case step: c[.Step] += 1
@@ -329,15 +228,21 @@ resize_echo_frame :: proc(app: ^App, events: []platform.Event, ran: int, page_wa
 	return true
 }
 
-// Present and the swap chain's latency for a frame: the resize step, a frame of the burst after it, an input frame.
-pacer_at_once :: proc() -> bool { return pacer.resizing || pacer.resize_held || pacer.input_frame }
+// Present without waiting for a refresh: the resize step, a frame of the burst after it, the frame that answers input.
+pacer_at_once :: proc() -> bool { return platform.cadence_at_once(&pacer.cadence) }
+
+// The frame is a step of a resize: made at once, whatever the screen and the cadence (chrome frames too).
+pacer_resize_step :: proc() -> bool { return pacer.cadence.state == .Resize_Step }
+
+// The frame belongs to a resize (its step or its burst).
+pacer_resizing :: proc() -> bool { return platform.cadence_resizing(&pacer.cadence) }
 
 // The frame budget in ms: what one frame may take at the target rate.
 frame_budget_ms :: proc() -> f32 { return pacer.period_ms > 0 ? f32(pacer.period_ms) : 1000.0 / 60 }
 
-// The most frames the swap chain in use may queue: two for a step of a resize or an input frame (see pacer_wait), else one.
-// `latency` is the window's own memory of it (the swap chain in use is the renderer's current one: the main window's, or
-// a surface made current by devtools_window.odin).
+// The most frames the swap chain in use may queue: two for a frame shown at once (see pacer_wait), else one. `latency` is
+// the window's own memory of it (the swap chain in use is the renderer's current one: the main window's, or a surface made
+// current by devtools_window.odin).
 pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
 	want := two ? 2 : 1
 	if want != latency^ {
@@ -346,80 +251,64 @@ pacer_latency :: proc(app: ^App, latency: ^int, two: bool) {
 	}
 }
 
-// At the start of a frame: wait for its time (a timed rate), then for the swap chain to take a frame, taking input
-// meanwhile. `idled`: the loop slept before this frame (nothing moved): it starts a new run of frames.
+// At the start of a frame: the model's decision (platform.frame_decision), executed: the wait for the frame's slot (a
+// high-resolution timer), then for the swap chain to take a frame, taking input meanwhile. `idled`: the loop slept before
+// this frame (nothing moved): it starts a new run of frames.
 pacer_wait :: proc(app: ^App, idled: bool) {
 	wnd := active_window(app)
 	t0 := time.tick_now()
 	defer pacer.waited_ms = time.duration_milliseconds(time.tick_since(t0))
 	pacer.continuous = !idled
-	presented := wnd.presented
-	// The window changed size since the last frame: this frame is a resize step. It is drawn and shown at once, without
-	// the timer nor the wait for the swap chain's slot (below): the desktop composer would otherwise show the previous
-	// frame, drawn for the old size, stretched over the new one until this frame reaches the screen
-	// (browser.frame.resize_immediate).
 	resized := wnd.win.size != pacer.size
 	pacer.size = wnd.win.size
-	// A drag of the developer tools' splitter or floating panel, or of the tab sidebar's width handle, is not: the window
-	// keeps its size (nothing is stretched by the composer), and its frames are those of any drag, one per slot (a step of
-	// a resize skips the slot: at the pointer's 1 kHz that was a frame a millisecond, hundreds a second the screen never
-	// showed, and the ones it did advanced unevenly). Each of them lays the panel and the page out at the pointer it read.
-	pacer.resizing = resize_step(resized, presented, pacer.cfg.resize_immediate)
-	tick := time.tick_now()._nsec
-	pacer.resize_held = !pacer.resizing && presented && pacer.cfg.resize_immediate && resize_burst(tick, pacer.resize_ns, pacer.cfg.resize_hold_ms)
-	if resized { pacer.resize_ns = tick }
-	input := shell_user_input_pending()
-	// Only the frame that starts an answer to input is shown at once: while frames follow one another (a drag, the wheel,
-	// a pointer sweeping the page: input every millisecond) every frame waits for the screen's slot, one per refresh.
-	// Shown at once, each of the hundreds of frames a second was presented over the one before and the swap chain's
-	// three buffers filled with frames a millisecond apart that the screen then showed one per refresh: the picture
-	// advanced a millisecond for three refreshes, then jumped (see tools\drag_fluidity.ps1).
-	pacer.input_frame = input && presented && pacer.cfg.input_immediate && input_starts_answer(idled, tick - pacer.present_ns, pacer.period_ms, pacer.cfg.input_idle_periods)
-	// During a resize step or an input frame, two frames may queue: a present is not made to wait behind the previous
-	// one when frames come faster than the screen (the answer shows sooner). 1 the rest of the time.
-	pacer_latency(app, &pacer.latency, pacer_at_once())
-	// The slot of this frame (platform.Frame_Slots): no frame starts before it, input or not. Only the frame that starts an
-	// answer to input (a click after a rest) and a step of a resize are made at once: the pointer's hover state follows the hand,
-	// not a refresh later. The frames of a drag (input every millisecond) wait for their slot, taking the input that comes
-	// meanwhile: one frame per period shows all of it, whatever the screen does with the swap chain's latency object (a variable
-	// refresh display releases it at once: nothing else paced the browser, and a mouse at 1 kHz made 1000 frames a second).
-	wait, slot := platform.frame_slot_wait(&pacer.slots, tick, idled, pacer.resizing || pacer.input_frame)
-	pacer.slot_ns = slot
-	if pacer.resizing { return }
-	if wait > 0 && pacer.timer != nil {
-		due := win.LARGE_INTEGER(-(wait / 100))   // relative, in 100 ns units
+	d := platform.frame_decision(&pacer.cadence, {
+		now_ns = time.tick_now()._nsec, idled = idled,
+		// (the user's input, not other threads' wake-ups: shell_user_input_pending)
+		input = shell_user_input_pending(), presented = wnd.presented, resized = resized,
+		// a splitter, the sidebar's handle, a tab: paced one frame per slot, never as a resize step
+		dragging = ui.active_key() != 0 || tab_dragging(),
+		slot_held = pacer.slot_held,
+	})
+	pacer.decision = d
+	pacer_latency(app, &pacer.latency, d.latency == 2)
+	if d.wait_ns > 0 && pacer.timer != nil {
+		due := win.LARGE_INTEGER(-(d.wait_ns / 100))   // relative, in 100 ns units
 		if win.SetWaitableTimerEx(pacer.timer, &due, 0, nil, nil, nil, 0) {
-			platform.wait_handle(wnd.win, rawptr(pacer.timer), int(wait / 1_000_000) + 50)
+			platform.wait_handle(wnd.win, rawptr(pacer.timer), int(d.wait_ns / 1_000_000) + 50)
 		}
 	}
-	// nothing is queued before the first present: the latency object of a swap chain not yet shown is not signaled,
-	// waiting would only run into the timeout
 	// The latency object is a semaphore released once per frame the screen takes: a wake that ends without a frame
 	// (frame's early return) keeps the slot it took, or the next frame would wait for a present that never came, until
 	// the timeout (100 ms of input latency after any wake of no consequence).
-	if wnd.presented && !pacer.slot_held && !pacer.input_frame {   // (the timer's wait above takes messages)
+	if d.wait_swap_chain {   // (the timer's wait above takes messages)
 		ok := platform.wait_handle(wnd.win, render.frame_waitable(&app.r), pacer.cfg.timeout_ms)
 		if ok { pacer.slot_held = true } else { pacer.missed_timeouts += 1 }
 		when PACING_DEBUG { fmt.eprintln("wait", ok, idled, time.duration_milliseconds(time.tick_since(t0)), wnd.frames_requested) }
 	}
 }
 
+// A frame made inside another one's work or a loop of the system (shell_frames.odin window_frame): only a new size changes
+// its state (platform.cadence_inner_frame).
+pacer_inner_frame :: proc(app: ^App) {
+	wnd := active_window(app)
+	resized := wnd.win.size != pacer.size
+	pacer.size = wnd.win.size
+	platform.cadence_inner_frame(&pacer.cadence, resized, wnd.presented)
+}
+
 // After the frame's events are read: its time, its dt, and what the renderer should credit it with.
 pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 	now_ms := loop_ms(app, time.tick_now())
-	t := now_ms
-	// (a variable refresh screen has no grid of vblanks to land on: the frames' own slots are the clock)
-	if pacer.cfg.vblank_clock && !pacer.tearing && !pacer.variable {
-		if last, per, ok := render.vblank_grid(&app.r); ok { t = vblank_at_or_before(now_ms, loop_ms(app, last), per / 1e6) }
-	} else if pacer.timed && pacer.slot_ns != 0 {
-		t = min(loop_ms(app, time.Tick{_nsec = pacer.slot_ns}), now_ms)   // the slot this frame was timed for
+	// the vblank the frame starts at, on the swap chain's grid; a variable refresh screen (or tearing) has no grid of vblanks
+	// to land on: the frames' own slots are the clock
+	grid_last, grid_period: f64
+	has_slot := false
+	if !pacer.tearing && !pacer.variable {
+		if last, per, ok := render.vblank_grid(&app.r); ok { grid_last, grid_period = loop_ms(app, last), per / 1e6 }
+	} else {
+		has_slot = pacer.timed && pacer.decision.slot_ns != 0
 	}
-	if t <= pacer.prev_ms { t = min(now_ms, pacer.prev_ms + pacer.period_ms) }   // never backwards
-	if t <= pacer.prev_ms { t = pacer.prev_ms }
-	pacer.dt = pacer.prev_ms > 0 ? f32((t - pacer.prev_ms) / 1000) : f32(pacer.period_ms / 1000)
-	if pacer.dt <= 0 { pacer.dt = f32(pacer.period_ms / 1000) }
-	pacer.dt = clamp(pacer.dt, 0.0005, 0.1)
-	pacer.prev_ms, pacer.frame_ms = t, t
+	platform.frame_clock_advance(&pacer.clock, now_ms, pacer.period_ms, grid_last, grid_period, loop_ms(app, time.Tick{_nsec = pacer.decision.slot_ns}), has_slot)
 	latency_probe_polled(len(events))   // shell_latency.odin (profile build)
 	// the earliest input of the frame: its latency is measured to the vblank the frame shows at
 	first: time.Tick
@@ -438,13 +327,14 @@ pacer_begin_frame :: proc(app: ^App, events: []platform.Event) {
 pacer_end_frame :: proc(app: ^App) {
 	pacer.slot_held = false   // the present used it
 	shell_presented()
-	pacer.present_ns = time.tick_now()._nsec
+	now := time.tick_now()._nsec
+	platform.cadence_presented(&pacer.cadence, now)
 	// the compositor's rate during a run of frames (a dynamic refresh rate goes up while something moves): the highest one seen,
 	// read every 100 ms of the run and started afresh after a rest (primary monitor only: platform.display_live_hz)
 	if !pacer.continuous { pacer.live_hz = 0 }
-	if pacer.present_ns - pacer.live_ns >= 100_000_000 {
+	if now - pacer.live_ns >= 100_000_000 {
 		if hz, ok := platform.display_live_hz(active_window(app).win); ok { pacer.live_hz = max(pacer.live_hz, hz) }
-		pacer.live_ns = pacer.present_ns
+		pacer.live_ns = now
 	}
 	drag_probe_presented()
 	for d in render.take_displayed(&app.r) { hud_displayed(d); drag_probe_displayed(d) }

@@ -271,7 +271,7 @@ shell_preempt :: proc(user: rawptr) {
 	// one chrome frame per refresh: a little early, the wait for the screen's slot below does the rest (a resize step
 	// has no such rate: the chrome must show at the new size before the composer stretches the last frame)
 	since := time.duration_milliseconds(time.tick_diff(chrome_frames.last_present, now))
-	if !pacer.resizing && since < pacer.period_ms * 0.75 { return }
+	if !pacer_resize_step() && since < pacer.period_ms * 0.75 { return }
 	// and only when the chrome has something new to show: input (or a message: a resize, a repaint), an animation of its
 	// own, a wake it asked for (a caret's blink). Otherwise the page keeps the thread: no cost to a busy page nobody
 	// touches.
@@ -323,17 +323,13 @@ foreign user32_shell {
 // thread owns the layout; the script is between two instructions). Then the frame made is a chrome frame, which is what can be made
 // there, at the size the window has now.
 window_frame :: proc(app: ^App) {
-	wnd := active_window(app)
 	if !chrome_frames.nested {
 		app.pass_first = true   // (the system's loop holds the thread: this frame also runs the process's tasks)
 		frame(app)
 		devtools_window_tick(app)   // the panel's own window is drawn from here too: the system's loop holds the thread, and the main loop's call does not run
 		return
 	}
-	resized := wnd.win.size != pacer.size
-	pacer.size = wnd.win.size
-	pacer.resizing = resized && wnd.presented && pacer.cfg.resize_immediate
-	pacer.resize_held = false
+	pacer_inner_frame(app)   // (pacing.odin: a new size makes it a resize step)
 	shell_chrome_frame(app)
 }
 
@@ -348,7 +344,7 @@ shell_chrome_frame :: proc(app: ^App) {
 	defer platform.frame_gate_end(gate, gate_token)
 	// the screen's slot: a frame only when the swap chain can take one now (the guest is not kept waiting for it). A
 	// resize step skips it: its frame is presented at once, whatever the screen is doing
-	if !pacer.slot_held && !pacer.resizing {
+	if !pacer.slot_held && !pacer_resize_step() {
 		if win.WaitForSingleObject(win.HANDLE(render.frame_waitable(&app.r)), 0) != win.WAIT_OBJECT_0 { chrome_frames.skipped += 1; return }
 		pacer.slot_held = true
 	}
