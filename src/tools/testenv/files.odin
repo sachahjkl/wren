@@ -1,7 +1,7 @@
 package testenv
 
 import "core:os"
-import "toolkit:fsx"
+import "../../../ext/gui_toolkit/fsx"
 
 // Deletes `path` and everything under it, file by file (core:os.remove_all goes through the shell's SHFileOperationW
 // for a folder: not thread-safe, which tests running side by side are not, and it crashes a shell thread under

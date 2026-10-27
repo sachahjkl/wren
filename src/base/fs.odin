@@ -5,7 +5,7 @@ package base
 // follows a junction or symbolic link to a directory (fsx uses path_kind, not os.is_dir): the link is removed, its
 // target is left alone.
 
-import "toolkit:fsx"
+import "../../ext/gui_toolkit/fsx"
 
 temp_dir :: fsx.temp_dir
 remove_tree :: fsx.remove_tree

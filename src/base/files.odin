@@ -4,7 +4,7 @@ package base
 // live in the toolkit's platform-neutral fsx package (toolkit:fsx); base keeps the historic names (base.file_*) as
 // aliases so callers do not change. See fsx for the guarantees each one gives, on every system.
 
-import "toolkit:fsx"
+import "../../ext/gui_toolkit/fsx"
 
 Dir_File :: fsx.Dir_File
 
