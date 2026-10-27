@@ -5,7 +5,8 @@
 #   powershell -File tools\rsz_headless_bench.ps1 -Url https://sacha.house [-Mode win|split|both] [-Steps 120] [-Tag x] [-Pref a=b] [-Tab console] [-Out dir]
 # -Url may be repeated by commas (about:home,https://sacha.house). Needs no desktop.lock: nothing is shown, nothing takes the focus.
 param([string]$Url = 'about:home', [string]$Mode = 'both', [int]$Steps = 120, [string]$Tag = '', [string[]]$Pref = @(), [string]$Tab = 'console',
-      [string]$Out = '', [string]$Exe = 'wren_prof.exe', [string]$Size = '1280x800', [string]$Dock = 'right')
+      [string]$Out = '', [string]$Exe = 'wren_prof.exe', [string]$Size = '1280x800', [string]$Dock = 'right', [switch]$Sample)
+# -Sample: the profiler's sampler on the UI thread, with stacks (WREN_SAMPLE=1, WREN_SAMPLE_STACK=1): <Out>\<run>.txt
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 . (Join-Path $PSScriptRoot 'test_env.ps1')
@@ -22,7 +23,7 @@ function Rnd($x, $n = 2) { [math]::Round([double]$x, $n) }
 function Run-One([string]$name, [string]$url, [string]$what) {
     $prefix = Join-Path $Out "$name$Tag"
     Remove-Item "$prefix.*" -ErrorAction SilentlyContinue
-    $env:WREN_PROF = $prefix; $env:WREN_SAMPLE = '0'
+    $env:WREN_PROF = $prefix; $env:WREN_SAMPLE = if ($Sample) { '1' } else { '0' }; $env:WREN_SAMPLE_STACK = if ($Sample) { '1' } else { '' }
     $prefs = if ($what -eq 'split') { @('browser.devtools.visible=true', "browser.devtools.tab=$Tab", "browser.devtools.dock=$Dock") } else { @('browser.devtools.visible=false') }
     $prefs = @($prefs) + @($Pref)
     $clock = [Diagnostics.Stopwatch]::StartNew()
