@@ -420,6 +420,8 @@ typedef uint64_t wr_SourceBuffer;
 typedef uint64_t wr_SourceBufferList;
 typedef uint64_t wr_MediaSourceHandle;
 
+/* module navigation: types */
+
 /* module net: types */
 // A request and, once it arrived, its response.
 typedef uint64_t wr_Fetch;
@@ -1693,6 +1695,14 @@ WR_IMPORT("dom", "DOMImplementation_createHTMLDocument") int32_t wr_DOMImplement
 // new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
 // the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
 WR_IMPORT("dom", "DOMParser_parseHTMLNode") int32_t wr_DOMParser_parseHTMLNode(const uint8_t *html, uint32_t html_len, uint64_t *_ret);
+// parseFromString(text, type) for the XML types (text/xml, application/xml, application/xhtml+xml, image/svg+xml):
+// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
+// type, Quota past dom.max_fragment_nodes.
+WR_IMPORT("dom", "DOMParser_parseXMLNode") int32_t wr_DOMParser_parseXMLNode(const uint8_t *text, uint32_t text_len, const uint8_t *type, uint32_t type_len, uint64_t *_ret);
+// processingInstruction.target
+WR_IMPORT("dom", "ProcessingInstruction_target") int32_t wr_ProcessingInstruction_target(uint64_t node, uint8_t *_buf, uint32_t _cap);
+// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
+WR_IMPORT("dom", "Document_xmlContentType") int32_t wr_Document_xmlContentType(uint64_t document, uint8_t *_buf, uint32_t _cap);
 // document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
 WR_IMPORT("dom", "DOMImplementation_createDocumentType") int32_t wr_DOMImplementation_createDocumentType(const uint8_t *name, uint32_t name_len, const uint8_t *public_id, uint32_t public_id_len, const uint8_t *system_id, uint32_t system_id_len, uint64_t *_ret);
 // A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
@@ -2707,6 +2717,30 @@ WR_IMPORT("mse", "SourceBuffer_appendBuffer") int32_t wr_SourceBuffer_appendBuff
 WR_IMPORT("mse", "SourceBuffer_abort") int32_t wr_SourceBuffer_abort(uint64_t buffer);
 WR_IMPORT("mse", "SourceBuffer_changeType") int32_t wr_SourceBuffer_changeType(uint64_t buffer, const uint8_t *type, uint32_t type_len);
 WR_IMPORT("mse", "SourceBuffer_remove") int32_t wr_SourceBuffer_remove(uint64_t buffer, double start, double end);
+
+/* module navigation */
+// navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin
+// entries around the current one; none for an opaque origin, current index -1).
+WR_IMPORT("navigation", "Navigation_entries") int32_t wr_Navigation_entries(uint8_t *_buf, uint32_t _cap);
+// Changes with every change of the session history (the engine reads the entries again only then).
+WR_IMPORT("navigation", "Navigation_serial") int64_t wr_Navigation_serial(void);
+// entry.getState(): the state of the entry `key` while its id is `id`; Not_Found when it has none.
+WR_IMPORT("navigation", "Navigation_getState") int32_t wr_Navigation_getState(int64_t key, int64_t id, uint8_t *_buf, uint32_t _cap);
+// navigation.updateCurrentEntry({state}): Data_Clone past history.max_state_bytes, Invalid_State without entries.
+WR_IMPORT("navigation", "Navigation_updateCurrentEntry") int32_t wr_Navigation_updateCurrentEntry(const uint8_t *state, uint32_t state_len);
+// navigation.navigate(url, {state, history}) (history: 0 auto, 1 push, 2 replace): Syntax for an invalid URL,
+// Not_Supported for a push to a javascript: URL, Data_Clone for a state too big. navigate fires inside the call.
+WR_IMPORT("navigation", "Navigation_navigate") int32_t wr_Navigation_navigate(const uint8_t *url, uint32_t url_len, const uint8_t *state, uint32_t state_len, int32_t history);
+// navigation.reload({state}): without a state the entry keeps its own.
+WR_IMPORT("navigation", "Navigation_reload") int32_t wr_Navigation_reload(const uint8_t *state, uint32_t state_len);
+// navigation.traverseTo(key), back(), forward(): Invalid_State when no entry has this key. From a task of its own.
+WR_IMPORT("navigation", "Navigation_traverseTo") int32_t wr_Navigation_traverseTo(int64_t key);
+// The navigation whose navigate event is being fired: "<type> <flags> <key> <id> <index> <url>" (type: 0 push,
+// 1 replace, 2 reload, 3 traverse; flags: 1 same document, 2 user initiated, 4 hash change, 8 can intercept,
+// 16 cancelable, 32 has a state). Not_Found outside the firing.
+WR_IMPORT("navigation", "Navigation_pending") int32_t wr_Navigation_pending(uint8_t *_buf, uint32_t _cap);
+// destination.getState() of that navigation: Not_Found when it has none.
+WR_IMPORT("navigation", "Navigation_pendingState") int32_t wr_Navigation_pendingState(uint8_t *_buf, uint32_t _cap);
 
 /* module net */
 // fetch(url, {method, headers, body, ...}) with a callback. `headers` are "Name: value" lines (CR LF or LF). A

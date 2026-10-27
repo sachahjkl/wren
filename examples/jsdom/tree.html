@@ -284,7 +284,7 @@ section("DOMParser", () => {
   const sh = p.parseFromString("<div><template shadowrootmode=open><i></i></template></div>", "text/html");
   t("no declarative shadow roots", sh.body.firstChild.shadowRoot === null && sh.querySelector("template") !== null);
   eq("the page is untouched", document.querySelectorAll("#a").length, 0);
-  throws("XML types are not supported", () => p.parseFromString("<x/>", "application/xml"), "NotSupportedError");
+  eq("an XML type makes an XMLDocument", p.parseFromString("<x/>", "application/xml") instanceof XMLDocument, true);
   throws("a type outside the enumeration", () => p.parseFromString("x", "text/plain"), "TypeError");
 });
 

@@ -1,0 +1,28 @@
+/// The Navigation API (HTML): window.navigation over the tab's session history. The browser keeps the entries, their
+/// states and every navigation; the engine fires navigate (wj_nav_fire, reading Navigation_pending) before the browser
+/// commits a navigation, and the rest (wj_nav_commit) after a same-document commit. Keys and ids are numbers here.
+[Exposed=Window]
+module navigation {
+  /// navigation.entries(): "<current index>\n" then "<key> <id> <same document 0|1> <url>\n" per entry (the same-origin
+  /// entries around the current one; none for an opaque origin, current index -1).
+  string Navigation_entries();
+  /// Changes with every change of the session history (the engine reads the entries again only then).
+  i64 Navigation_serial();
+  /// entry.getState(): the state of the entry `key` while its id is `id`; Not_Found when it has none.
+  string Navigation_getState(i64 key, i64 id) raises;
+  /// navigation.updateCurrentEntry({state}): Data_Clone past history.max_state_bytes, Invalid_State without entries.
+  void Navigation_updateCurrentEntry(string state) raises;
+  /// navigation.navigate(url, {state, history}) (history: 0 auto, 1 push, 2 replace): Syntax for an invalid URL,
+  /// Not_Supported for a push to a javascript: URL, Data_Clone for a state too big. navigate fires inside the call.
+  void Navigation_navigate(string url, optional string state, i32 history = 0) raises;
+  /// navigation.reload({state}): without a state the entry keeps its own.
+  void Navigation_reload(optional string state) raises;
+  /// navigation.traverseTo(key), back(), forward(): Invalid_State when no entry has this key. From a task of its own.
+  void Navigation_traverseTo(i64 key) raises;
+  /// The navigation whose navigate event is being fired: "<type> <flags> <key> <id> <index> <url>" (type: 0 push,
+  /// 1 replace, 2 reload, 3 traverse; flags: 1 same document, 2 user initiated, 4 hash change, 8 can intercept,
+  /// 16 cancelable, 32 has a state). Not_Found outside the firing.
+  string Navigation_pending() raises;
+  /// destination.getState() of that navigation: Not_Found when it has none.
+  string Navigation_pendingState() raises;
+}

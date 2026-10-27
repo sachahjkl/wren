@@ -53,20 +53,22 @@ Nav_Task :: struct {
 	kind:  Navigate_Kind,
 	url:   string,
 	delta: int,
+	nav_state: string,
+	has_nav_state: bool,
 }
 
-// Hands a navigation to the embedder from a task of its own.
+// Hands a navigation to the embedder from a task of its own (`nav_state`: the Navigation API state of its entry).
 @(private)
-request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta := 0) {
+request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta := 0, nav_state := "", has_nav_state := false) {
 	t := new(Nav_Task)
-	t^ = Nav_Task{kind = kind, url = strings.clone(href), delta = delta}
+	t^ = Nav_Task{kind = kind, url = strings.clone(href), delta = delta, nav_state = strings.clone(nav_state), has_nav_state = has_nav_state}
 	post_page_task(p, proc(pg: ^Page, data: rawptr) {
 		t := (^Nav_Task)(data)
-		defer { delete(t.url); free(t) }
+		defer { delete(t.url); delete(t.nav_state); free(t) }
 		if pg == nil { return }
 		if t.kind == .Traverse {
 			switch history_traverse(pg, t.delta) {
-			case .None: return
+			case .None, .Canceled: return
 			case .Same_Document: notify_url_changed(pg); return
 			case .Other_Document:
 			}
@@ -76,7 +78,7 @@ request_navigation :: proc(p: ^Page, kind: Navigate_Kind, href: string, delta :=
 			log(pg, .Warn, "navigation requested, but this document has no browsing context to navigate")
 			return
 		}
-		emb.navigate(emb.user, pg, Navigate_Request{kind = t.kind, url = t.url, delta = t.delta})
+		emb.navigate(emb.user, pg, Navigate_Request{kind = t.kind, url = t.url, delta = t.delta, nav_state = t.nav_state, has_nav_state = t.has_nav_state})
 	}, t)
 }
 
@@ -124,23 +126,41 @@ queue_hashchange :: proc(p: ^Page, old_url, new_url: string) {
 follow_fragment_link :: proc(p: ^Page, target: url.URL) -> bool {
 	if p == nil || p.web == nil || !target.has_fragment { return false }
 	if url.without_fragment(target) != url.without_fragment(p.env.location) { return false }
-	navigate_fragment(p, target, false)
+	location_navigate(p, target, false, user = true)
 	return true
 }
 
-// location.assign / replace / href setter: a fragment navigation stays in the document, anything else goes to the embedder.
+// location.assign / replace / href setter, navigation.navigate (`opts`), a fragment link (`user`): the navigate event
+// first (navigation.odin); then a fragment navigation stays in the document, anything else goes to the embedder.
 @(private)
-location_navigate :: proc(p: ^Page, target: url.URL, replace: bool) {
+location_navigate :: proc(p: ^Page, target: url.URL, replace: bool, user := false, opts: Nav_Options = {}) {
 	if follow_javascript_url(p, target) { return }   // javascript: runs in this document (js_load_realm.odin)
 	cur := p.env.location
-	if target.has_fragment && url.without_fragment(target) == url.without_fragment(cur) {
+	fragment := target.has_fragment && url.without_fragment(target) == url.without_fragment(cur)
+	pend := Nav_Pending{
+		type = replace ? .Replace : .Push, url = target.href, same_document = fragment, user_initiated = user,
+		hash_change = fragment && (target.fragment != cur.fragment || !cur.has_fragment),
+		can_intercept = can_rewrite_url(cur, target), cancelable = true, state = opts.state, has_state = opts.has_state,
+	}
+	switch navigation_fire(p, &pend) {
+	case .Canceled: return
+	case .Intercepted:
+		navigation_commit_url(p, target.href, replace, opts)
+		navigation_committed(p, pend.type, true)
+		return
+	case .Proceed:
+	}
+	if fragment {
 		navigate_fragment(p, target, replace)
+		session_set_nav_state(p.web.session, opts.state, opts.has_state)
+		navigation_committed(p, pend.type, false)
 		return
 	}
-	request_navigation(p, replace ? .Replace : .Assign, target.href)
+	request_navigation(p, replace ? .Replace : .Assign, target.href, nav_state = opts.state, has_nav_state = opts.has_state)
 }
 
-Traverse_Result :: enum u8 { None, Same_Document, Other_Document }
+// Canceled: a listener of navigate cancelled the traversal (nothing changed).
+Traverse_Result :: enum u8 { None, Same_Document, Other_Document, Canceled }
 
 // The embedder saves what the current entry shows before the document moves to another of its entries.
 @(private)
@@ -154,24 +174,41 @@ entry_leaving :: proc(p: ^Page) {
 // back / forward buttons, the page asks the embedder for history.go).
 history_traverse :: proc(p: ^Page, delta: int) -> Traverse_Result {
 	if p == nil || p.closed || delta == 0 { return .None }
-	return history_traverse_to(p, session_peek(p.web.session, delta))
+	return history_traverse_to(p, session_peek(p.web.session, delta), user = false)
 }
 
 // The same towards any entry of the tab's history tree (the interface's tree view): it becomes the current one, and the
-// path to it the active one, when it belongs to this document.
-history_traverse_to :: proc(p: ^Page, target: ^History_Entry) -> Traverse_Result {
+// path to it the active one, when it belongs to this document. `user`: the browser's buttons (navigate's userInitiated).
+history_traverse_to :: proc(p: ^Page, target: ^History_Entry, user := true) -> Traverse_Result {
 	if p == nil || p.closed || target == nil { return .None }
 	sh := p.web.session
 	if target == session_current(sh) { return .None }
 	if target.doc != p.web.id { return .Other_Document }
 	old := strings.clone(p.env.location.href, context.temp_allocator)
-	entry_leaving(p)
-	session_goto(sh, target)
+	target := target
+	{
+		ou, _ := url.parse(old, nil, context.temp_allocator)
+		tu, _ := url.parse(target.url, nil, context.temp_allocator)
+		pend := Nav_Pending{
+			type = .Traverse, url = strings.clone(target.url, context.temp_allocator), dest = target, same_document = true, user_initiated = user,
+			hash_change = url.without_fragment(ou) == url.without_fragment(tu) && ou.fragment != tu.fragment,
+			can_intercept = true, cancelable = true, state = strings.clone(target.nav_state, context.temp_allocator), has_state = target.has_nav_state,
+		}
+		id := target.id
+		verdict := navigation_fire(p, &pend)
+		if verdict == .Canceled { return .Canceled }
+		// (a listener may have changed the history: the entry is looked up again)
+		if target = session_find(sh, id); target == nil || target == session_current(sh) || target.doc != p.web.id { return .None }
+		entry_leaving(p)
+		session_goto(sh, target)
+		set_document_url(p, target.url)
+		set_history_state(p, target.state, target.has_state)
+		navigation_committed(p, .Traverse, verdict == .Intercepted)   // currententrychange before popstate (HTML)
+		if p.closed || session_current(sh) != target { return .Same_Document }
+	}
 	href := strings.clone(target.url, context.temp_allocator)
 	state := strings.clone(target.state, context.temp_allocator)
 	has_state := target.has_state
-	set_document_url(p, href)
-	set_history_state(p, state, has_state)
 	push_event_detail(p, Event_Detail{type = "popstate", new_value = state, flags = has_state ? 0 : 4})
 	fire_window_event(p, dom.Event{type = "popstate", data = state, code = has_state ? 1 : 0})
 	if p.closed { return .Same_Document }
@@ -216,10 +253,7 @@ location_assign :: proc(c: ^Call, s: string, replace: bool) -> Api_Error {
 Location_assign :: proc(c: ^Call, target: string) -> Api_Error { return location_assign(c, target, false) }
 Location_replace :: proc(c: ^Call, target: string) -> Api_Error { return location_assign(c, target, true) }
 
-Location_reload :: proc(c: ^Call) {
-	p := c.page
-	request_navigation(p, .Reload, p.env.location.href)
-}
+Location_reload :: proc(c: ^Call) { navigation_reload(c.page, {}) }
 
 // location.protocol = ..., location.hash = ... (href behaves like assign).
 Location_set :: proc(c: ^Call, component: Api_URLComponent, value: string) -> Api_Error {
@@ -263,15 +297,25 @@ history_change :: proc(c: ^Call, state_arg, url_arg: Maybe(string), replace: boo
 	}
 	href := strings.clone(target.href, context.temp_allocator)
 	sh := p.web.session
+	// the navigate event first (cancelable, interceptable); the new entry keeps the Navigation API state of the current one
+	state = strings.clone(state, context.temp_allocator)   // (guest memory: the listeners may grow it)
+	nav_state: string
+	has_nav_state: bool
+	if cur := session_current(sh); cur != nil { nav_state, has_nav_state = strings.clone(cur.nav_state, context.temp_allocator), cur.has_nav_state }
+	pend := Nav_Pending{type = replace ? .Replace : .Push, url = href, same_document = true, can_intercept = true, cancelable = true, state = nav_state, has_state = has_nav_state}
+	verdict := navigation_fire(p, &pend)
+	if verdict == .Canceled || p.closed { return .None }
 	if replace {
 		session_replace(sh, href, state, has_state)
 	} else {
 		entry_leaving(p)
 		session_push(sh, href, p.web.id, state, has_state, dedupe = false, max_entries = s.history_max_entries)
 	}
+	session_set_nav_state(sh, nav_state, has_nav_state)
 	set_document_url(p, href)
 	set_history_state(p, state, has_state)
 	notify_url_changed(p)
+	navigation_committed(p, pend.type, verdict == .Intercepted)
 	return .None
 }
 
@@ -293,7 +337,7 @@ History_set_scrollRestoration :: proc(c: ^Call, mode: Api_ScrollRestoration) {
 History_go :: proc(c: ^Call, delta: i32) {
 	p := c.page
 	if delta == 0 {
-		request_navigation(p, .Reload, p.env.location.href)
+		navigation_reload(p, {})
 	} else {
 		request_navigation(p, .Traverse, "", int(delta))
 	}

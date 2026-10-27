@@ -400,10 +400,14 @@ go_entry :: proc(app: ^App, t: ^Tab, e: ^page.History_Entry) {
 	if t == nil || e == nil || e == page.session_current(&t.session) { return }
 	if shell_defer({kind = .Entry, tab = t.id, entry = e.id}) { return }   // (shell_frames.odin)
 	// an entry of the current document: popstate, no load
-	if t.page != nil && t.kind == .Web && page.history_traverse_to(t.page, e) == .Same_Document {
-		sync_history(t)
-		same_document_url(app, t, t.page.env.location.href)
-		return
+	if t.page != nil && t.kind == .Web {
+		#partial switch page.history_traverse_to(t.page, e) {
+		case .Canceled: return   // (a navigate listener of the document refused it)
+		case .Same_Document:
+			sync_history(t)
+			same_document_url(app, t, t.page.env.location.href)
+			return
+		}
 	}
 	leave_page(app, t)
 	page.session_goto(&t.session, e)
@@ -429,7 +433,7 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 	if t.page != p { return }
 	switch req.kind {
 	case .Assign:
-		navigate(app, t, strings.clone(req.url, context.temp_allocator), p)
+		if navigate(app, t, strings.clone(req.url, context.temp_allocator), p) && req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
 	case .Replace:
 		// judged before the entry changes: a refused address (nav_trust.odin) must not replace the page's entry
 		v := nav_judge(.Page, &p.env, app.loader.profile.settings.file_access, normalize_address(req.url))
@@ -440,9 +444,11 @@ page_navigate :: proc(user: rawptr, p: ^page.Page, req: page.Navigate_Request) {
 		leave_page(app, t, keep = false, save = false)
 		if cur := page.session_current(&t.session); cur != nil { page.persisted_clear(&cur.persisted) }   // another document in the entry
 		page.session_replace(&t.session, v.address)
+		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
 		sync_history(t)
 		navigate(app, t, strings.clone(req.url, context.temp_allocator), p, record = false)
 	case .Reload:
+		if req.has_nav_state { page.session_set_nav_state(&t.session, req.nav_state, true) }
 		reload(app, t)
 	case .Traverse:
 		go_history(app, t, req.delta)
@@ -980,6 +986,7 @@ route_page_input :: proc(app: ^App, events: []platform.Event) {
 					if page.follow_fragment_link(t.page, resolved) { continue }   // same document: page_draw scrolls to the target
 					if page.follow_javascript_url(t.page, resolved) { continue }  // javascript: runs in the page (js_load_realm.odin)
 					if frames_link_target(app, t, target, resolved.href) { continue }   // target="a frame's name" (frames_shell.odin)
+					if page.navigation_link(t.page, resolved) { continue }   // the document's navigate listener took it (Navigation API)
 					navigate(app, t, resolved.href, t.page, user_activation = true)
 					have_move = false
 					return   // the page is gone: the rest of this frame's events belong to the old one

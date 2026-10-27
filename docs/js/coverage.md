@@ -13,9 +13,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | | count |
 |---|---:|
 | interfaces, namespaces in the table | 581 |
-| exposed by default | 317 |
+| exposed by default | 323 |
 | members | 5131 |
-| members implemented | 3480 (67.8 %) |
+| members implemented | 3528 (68.8 %) |
 
 ## By specification
 
@@ -39,7 +39,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `css-view-transitions.idl` | 3 (0) | 0 / 10 |
 | `cssom-view.idl` | 5 (4) | 24 / 28 |
 | `cssom.idl` | 16 (5) | 37 / 149 |
-| `dom.idl` | 35 (31) | 584 / 699 |
+| `dom.idl` | 35 (31) | 585 / 699 |
 | `encoding.idl` | 4 (4) | 19 / 19 |
 | `entries-api.idl` | 5 (5) | 13 / 13 |
 | `event-timing.idl` | 2 (1) | 6 / 8 |
@@ -48,7 +48,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (118) | 1467 / 1827 |
+| `html.idl` | 161 (124) | 1514 / 1827 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
 | `is-input-pending.idl` | 1 (0) | 0 / 1 |
 | `largest-contentful-paint.idl` | 1 (0) | 0 / 9 |
@@ -1063,6 +1063,33 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly ports`: C `wjr_MessageEvent_get_ports`
 - `initMessageEvent()`: C `wjr_MessageEvent_initMessageEvent`
 
+### NavigateEvent : Event
+
+14 / 14 members.
+
+- `constructor()`: C `wjr_NavigateEvent_constructor`
+- `readonly navigationType`: C `wjr_NavigateEvent_get_navigationType`
+- `readonly destination`: C `wjr_NavigateEvent_get_destination`
+- `readonly canIntercept`: C `wjr_NavigateEvent_get_canIntercept`
+- `readonly userInitiated`: C `wjr_NavigateEvent_get_userInitiated`
+- `readonly hashChange`: C `wjr_NavigateEvent_get_hashChange`
+- `readonly signal`: C `wjr_NavigateEvent_get_signal`
+- `readonly formData`: C `wjr_NavigateEvent_get_formData`
+- `readonly downloadRequest`: C `wjr_NavigateEvent_get_downloadRequest`
+- `readonly info`: C `wjr_NavigateEvent_get_info`
+- `readonly hasUAVisualTransition`: C `wjr_NavigateEvent_get_hasUAVisualTransition`
+- `readonly sourceElement`: C `wjr_NavigateEvent_get_sourceElement`
+- `intercept()`: C `wjr_NavigateEvent_intercept`
+- `scroll()`: C `wjr_NavigateEvent_scroll`
+
+### NavigationCurrentEntryChangeEvent : Event
+
+3 / 3 members.
+
+- `constructor()`: C `wjr_NavigationCurrentEntryChangeEvent_constructor`
+- `readonly navigationType`: C `wjr_NavigationCurrentEntryChangeEvent_get_navigationType`
+- `readonly from`: C `wjr_NavigationCurrentEntryChangeEvent_get_from`
+
 ### PageTransitionEvent : Event
 
 2 / 2 members.
@@ -1435,6 +1462,39 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `onmessage` (MessageEventTarget): generic (event handler)
 - `onmessageerror` (MessageEventTarget): generic (event handler)
 
+### Navigation : EventTarget
+
+16 / 16 members.
+
+- `entries()`: C `wjr_Navigation_entries`
+- `readonly currentEntry`: C `wjr_Navigation_get_currentEntry`
+- `updateCurrentEntry()`: C `wjr_Navigation_updateCurrentEntry`
+- `readonly transition`: C `wjr_Navigation_get_transition`
+- `readonly activation`: C `wjr_Navigation_get_activation`
+- `readonly canGoBack`: C `wjr_Navigation_get_canGoBack`
+- `readonly canGoForward`: C `wjr_Navigation_get_canGoForward`
+- `navigate()`: C `wjr_Navigation_navigate`
+- `reload()`: C `wjr_Navigation_reload`
+- `traverseTo()`: C `wjr_Navigation_traverseTo`
+- `back()`: C `wjr_Navigation_back`
+- `forward()`: C `wjr_Navigation_forward`
+- `onnavigate`: generic (event handler)
+- `onnavigatesuccess`: generic (event handler)
+- `onnavigateerror`: generic (event handler)
+- `oncurrententrychange`: generic (event handler)
+
+### NavigationHistoryEntry : EventTarget
+
+7 / 7 members.
+
+- `readonly url`: C `wjr_NavigationHistoryEntry_get_url`
+- `readonly key`: C `wjr_NavigationHistoryEntry_get_key`
+- `readonly id`: C `wjr_NavigationHistoryEntry_get_id`
+- `readonly index`: C `wjr_NavigationHistoryEntry_get_index`
+- `readonly sameDocument`: C `wjr_NavigationHistoryEntry_get_sameDocument`
+- `getState()`: C `wjr_NavigationHistoryEntry_getState`
+- `ondispose`: generic (event handler)
+
 ### Node : EventTarget
 
 47 / 47 members.
@@ -1531,10 +1591,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### ProcessingInstruction : CharacterData
 
-0 / 10 members.
+1 / 10 members.
 
 - `constructor()`: not supported
-- `readonly target`: not supported
+- `readonly target`: import `dom.ProcessingInstruction_target`
 - `hasAttributes()`: not supported
 - `getAttributeNames()`: not supported
 - `getAttribute()`: not supported
@@ -1581,7 +1641,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly characterSet`: import `dom.Document_characterSet`
 - `readonly charset`: import `dom.Document_charset`
 - `readonly inputEncoding`: import `dom.Document_inputEncoding`
-- `readonly contentType`: import `dom.Document_contentType`
+- `readonly contentType`: C `wjr_Document_get_contentType`
 - `readonly doctype`: C `wjr_Document_get_doctype`
 - `readonly documentElement`: C `wjr_Document_get_documentElement`
 - `getElementsByTagName()`: C `wjr_Document_getElementsByTagName`
@@ -4021,7 +4081,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-200 / 223 members.
+201 / 223 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -4062,7 +4122,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `name`: import `frames.Window_get_name`
 - `readonly location`: C `wjr_Window_get_location`
 - `readonly history`: C `wjr_Window_get_history`
-- `readonly navigation`: not supported
+- `readonly navigation`: C `wjr_Window_get_navigation`
 - `readonly customElements`: C `wjr_Window_get_customElements`
 - `readonly locationbar`: not supported
 - `readonly menubar`: not supported
@@ -4661,6 +4721,17 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `removeNamedItem()`: C `wjr_NamedNodeMap_removeNamedItem`
 - `removeNamedItemNS()`: C `wjr_NamedNodeMap_removeNamedItemNS`
 
+### NavigationDestination
+
+6 / 6 members.
+
+- `readonly url`: C `wjr_NavigationDestination_get_url`
+- `readonly key`: C `wjr_NavigationDestination_get_key`
+- `readonly id`: C `wjr_NavigationDestination_get_id`
+- `readonly index`: C `wjr_NavigationDestination_get_index`
+- `readonly sameDocument`: C `wjr_NavigationDestination_get_sameDocument`
+- `getState()`: C `wjr_NavigationDestination_getState`
+
 ### NavigationPreloadManager
 
 4 / 4 members.
@@ -4669,6 +4740,16 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `disable()`: C `wjr_NavigationPreloadManager_disable`
 - `setHeaderValue()`: C `wjr_NavigationPreloadManager_setHeaderValue`
 - `getState()`: C `wjr_NavigationPreloadManager_getState`
+
+### NavigationTransition
+
+5 / 5 members.
+
+- `readonly navigationType`: C `wjr_NavigationTransition_get_navigationType`
+- `readonly from`: C `wjr_NavigationTransition_get_from`
+- `readonly to`: C `wjr_NavigationTransition_get_to`
+- `readonly committed`: C `wjr_NavigationTransition_get_committed`
+- `readonly finished`: C `wjr_NavigationTransition_get_finished`
 
 ### Navigator
 
@@ -5555,5 +5636,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, NavigateEvent, NavigationCurrentEntryChangeEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, TrackEvent, TextEvent, EventCounts, TaskSignal, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, Navigation, NavigationHistoryEntry, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationActivation, NavigationDestination, NavigationPrecommitController, NavigationTransition, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextTrackCueList, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+TaskController, AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, AudioTrack, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSRuleList, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, BufferedChangeEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, TrackEvent, TextEvent, EventCounts, TaskSignal, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, AudioTrackList, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, ManagedMediaSource, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, TextTrack, TextTrackCue, TextTrackList, VideoTrackList, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationActivation, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, LargestContentfulPaint, VisibilityStateEntry, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, StyleSheetList, TextTrackCueList, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, UserActivation, VideoTrack, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 

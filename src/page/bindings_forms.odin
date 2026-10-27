@@ -79,6 +79,7 @@ forms_attach :: proc(p: ^Page) {
 		popover_invoke = proc(user: rawptr, invoker: base.Handle) { popover_invoke((^Page)(user), invoker) },
 		popover_dismiss = proc(user: rawptr, target: base.Handle) { popover_light_dismiss((^Page)(user), target) },
 		close_request = proc(user: rawptr) -> bool { return popover_close_request((^Page)(user)) },
+		follow_link = proc(user: rawptr, link: base.Handle) { navigation_follow_script_link((^Page)(user), link) },
 	})
 	p.style_state.controls = style.Control_Provider{query = forms_style_query, user = p}
 }

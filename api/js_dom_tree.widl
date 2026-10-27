@@ -164,6 +164,14 @@ partial module dom {
   /// new DOMParser().parseFromString(html, "text/html"): a new inert document (as createHTMLDocument makes) holding
   /// the whole document parsed from `html` (no declarative shadow roots, nothing loads or runs in it).
   Node DOMParser_parseHTMLNode(string html) raises;
+  /// parseFromString(text, type) for the XML types (text/xml, application/xml, application/xhtml+xml, image/svg+xml):
+  /// a new inert XML document; one whose element is <parsererror> when the text is not well-formed. Type for another
+  /// type, Quota past dom.max_fragment_nodes.
+  Node DOMParser_parseXMLNode(string text, string type) raises;
+  /// processingInstruction.target
+  string ProcessingInstruction_target(Node node);
+  /// document.contentType of an XML document (DOMParser's type); Not_Found for an HTML one.
+  string Document_xmlContentType(Node document) raises;
   /// document.implementation.createDocumentType(name, publicId, systemId): Invalid_Character for a bad name.
   Node DOMImplementation_createDocumentType(string name, string public_id, string system_id) raises;
   /// A part of a document node (the page's or one createHTMLDocument made): 0 documentElement, 1 head, 2 body,
