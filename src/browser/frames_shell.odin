@@ -222,6 +222,11 @@ frames_paint_begin :: proc(p: ^page.Page) {
 	append(&paint_stack, p)
 }
 
+// Empties the paint stack: for a paint that has no live page under it (an inert document rendered on its own, such as the
+// Network tab's HTML preview: with nothing on the stack, frames_paint_content leaves every replaced box to the default
+// painter). frames_paint_begin would push a page; this pushes none.
+frames_paint_reset :: proc() { clear(&paint_stack) }
+
 // The content box of a frame element: its document, painted there. False when `node` is not a frame with a document
 // ready to paint (the default painter leaves the box empty).
 frames_paint_content :: proc(app: ^App, dc: ^draw.Context, d: ^dom.Document, node: base.Handle, content: draw.Rect, container: ^style.Computed) -> bool {
