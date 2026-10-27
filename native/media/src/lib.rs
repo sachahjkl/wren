@@ -21,6 +21,7 @@ mod color;
 mod raster;
 mod scale;
 mod svg;
+mod vp9video;
 mod webp;
 mod woff2;
 
@@ -429,8 +430,64 @@ pub unsafe extern "C" fn wm_av1_close(d: *mut c_void) {
     let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(d as *mut av1video::Decoder))));
 }
 
+////////////////////////////////
+// VP9 video (the media player: src/media/vp9_soft.odin)
+
+/// # Safety
+/// `out` is a valid slot.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_open(max_pixels: u64, out: *mut *mut c_void) -> i32 {
+    guard(|| {
+        *out = Box::into_raw(vp9video::Decoder::open(max_pixels)?) as *mut c_void;
+        Ok(())
+    })
+}
+
+/// 0 taken, 1 refused (take pictures first), else an error.
+/// # Safety
+/// `d` comes from wm_vp9_open; `data` points at `len` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_send(d: *mut c_void, data: *const u8, len: usize, pts: i64) -> i32 {
+    guard_value(|| {
+        let bytes = if len == 0 || data.is_null() { &[][..] } else { std::slice::from_raw_parts(data, len) };
+        (*(d as *mut vp9video::Decoder)).send(bytes, pts)
+    })
+}
+
+/// 0 a picture in `pic`, 1 none yet (more input), else an error.
+/// # Safety
+/// `d` comes from wm_vp9_open; `pic` is valid.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_get(d: *mut c_void, pic: *mut vp9video::Picture) -> i32 {
+    guard_value(|| (*(d as *mut vp9video::Decoder)).get(&mut *pic))
+}
+
+/// # Safety
+/// `handle` is a picture's, released once.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_release(handle: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| vp9video::release(handle)));
+}
+
+/// # Safety
+/// `d` comes from wm_vp9_open.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_flush(d: *mut c_void) {
+    let _ = catch_unwind(AssertUnwindSafe(|| (*(d as *mut vp9video::Decoder)).flush()));
+}
+
+/// # Safety
+/// `d` comes from wm_vp9_open; closed once, after every picture was released.
+#[no_mangle]
+pub unsafe extern "C" fn wm_vp9_close(d: *mut c_void) {
+    if d.is_null() {
+        return;
+    }
+    let _ = catch_unwind(AssertUnwindSafe(|| drop(Box::from_raw(d as *mut vp9video::Decoder))));
+}
+
 /// Versions of the libraries, for about: pages ("resvg 0.48.1, ..."), NUL-terminated, static.
 #[no_mangle]
 pub extern "C" fn wm_versions() -> *const u8 {
-    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, qcms 0.3.0, brotli-decompressor 6.1.0, image 0.25.10 (png 0.18.1, zune-jpeg 0.5.15, gif 0.14.2, tiff)\0".as_ptr()
+    b"resvg 0.48.1, image-webp 0.2.4, zenavif-parse 0.6.2, rav1d 1.1.0, vp9dec 0.1.1, qcms 0.3.0, brotli-decompressor 6.1.0, image 0.25.10 (png 0.18.1, zune-jpeg 0.5.15, gif 0.14.2, tiff)\0".as_ptr()
 }

@@ -22,6 +22,7 @@ components below; their license texts are in the executable (bout:licenses) and
 | [image](https://github.com/image-rs/image) (PNG, JPEG, GIF, BMP, ICO, TIFF; png, zune-jpeg, gif, tiff, moxcms) | 0.25.10 | MIT OR Apache-2.0 | `native/media` |
 | [zenavif-parse](https://crates.io/crates/zenavif-parse) | 0.6.2 | MPL-2.0 | `native/media` |
 | [rav1d](https://github.com/memorysafety/rav1d) | 1.1.0 | BSD-2-Clause | `native/media` |
+| [vp9dec](https://github.com/ChanyaVRC/vp9dec) | 0.1.1 | MIT | `native/media` (software VP9) |
 | [qcms](https://github.com/FirefoxGraphics/qcms) | 0.3.0 | MIT | `native/media` |
 | [brotli-decompressor](https://github.com/dropbox/rust-brotli-decompressor) | 6.1.0 | BSD-3-Clause OR MIT | `native/media` |
 | [tokio](https://github.com/tokio-rs/tokio), [hyper](https://github.com/hyperium/hyper), [hyper-util](https://github.com/hyperium/hyper-util), [h2](https://github.com/hyperium/h2), [h3 / h3-quinn](https://github.com/hyperium/h3) | 1.54.1, 1.12.0, 0.1.21, 0.4.20, 0.0.8 / 0.0.10 | MIT | `native/net` (the built-in network stack) |
