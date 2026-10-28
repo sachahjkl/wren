@@ -95,7 +95,9 @@ function Build-Asan($verb, $path, $name, [string[]]$extra = @(), $subsystem = 'C
     if (Test-Path $objDir) { Get-ChildItem $objDir -File | Remove-Item -Force } else { New-Item -ItemType Directory $objDir | Out-Null }
     $exe = Join-Path $Out "$name.exe"
     $common = @($verb, $path) + $Coll + @('-sanitize:address', '-debug') + $extra
-    & odin @common -build-mode:obj "-out:$objDir\$name.obj" 2>&1 | Out-Host
+    $prevEap2 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'   # (warnings of the compiler go to stderr)
+& odin @common -build-mode:obj "-out:$objDir\$name.obj" 2>&1 | Out-Host
+$ErrorActionPreference = $prevEap2
     if ($LASTEXITCODE) { throw "compiling $path failed" }
     $objs = @(Get-ChildItem $objDir -Filter *.obj | ForEach-Object { $_.FullName })
     & $link /nologo @objs "/OUT:$exe" /DEBUG /ENTRY:mainCRTStartup "/SUBSYSTEM:$subsystem" /MACHINE:X64 /INCREMENTAL:NO $Stack /NODEFAULTLIB:libcmt /DEFAULTLIB:msvcrt @libpaths $asanLib $asanThunk @libs 2>&1 | Out-Host
