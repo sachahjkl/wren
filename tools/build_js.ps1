@@ -176,6 +176,11 @@ $odinified = @(
     'web_strategy.c',
     'web_tracks.c',
     'web_url.c',
+    'web_scheduler.c',
+    'web_navigator.c',
+    'web_locks.c',
+    'web_devtools.c',
+    'web_compat.c',
     'web_urlpattern.c',
     'window.c',
     'worker_scope.c'
