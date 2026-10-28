@@ -144,7 +144,10 @@ export class LicenseOrder {
 	private async webhook(txn: Transaction): Promise<Response> {
 		return await this.state.blockConcurrencyWhile(async () => {
 			const s = await this.load();
-			const fresh = s.status === "received" && !s.stored;
+			// A licence is owed as long as none was issued yet. An earlier delivery that was "invalid" (no customer
+			// e-mail then) left `failed` with no `stored`; a later delivery may carry what was missing, so we try the
+			// build again rather than treat the id as settled.
+			const fresh = !s.stored;
 
 			if (fresh) {
 				const built = await buildStored(this.env, this.deps, txn);
@@ -160,7 +163,7 @@ export class LicenseOrder {
 			}
 
 			// issued (or already mailed): try the mail now, synchronously, so the common case needs no alarm at all.
-			await this.pump(s, "webhook");
+			if (s.stored) await this.pump(s, "webhook");
 			await this.save(s);
 			return this.answer(s, fresh);
 		});
