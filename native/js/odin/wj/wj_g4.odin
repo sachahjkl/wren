@@ -108,7 +108,37 @@ foreign {
 	// jobs (microtasks) and eval
 	JS_EnqueueJob :: proc(ctx: ^Context, job_func: Job_Func, argc: i32, argv: [^]JSValue) -> i32 ---
 	JS_Eval2      :: proc(ctx: ^Context, input: [^]u8, input_len: uint, options: ^Eval_Options) -> JSValue ---
+	JS_Eval       :: proc(ctx: ^Context, input: [^]u8, input_len: uint, filename: cstring, eval_flags: i32) -> JSValue ---
+
+	// buffers / typed arrays
+	JS_GetPrototype      :: proc(ctx: ^Context, val: JSValue) -> JSValue ---
+	JS_GetOwnProperty    :: proc(ctx: ^Context, desc: ^Property_Descriptor, obj: JSValue, prop: Atom) -> i32 ---
+	JS_GetArrayBuffer    :: proc(ctx: ^Context, psize: ^uint, obj: JSValue) -> [^]u8 ---
+	JS_GetTypedArrayType :: proc(obj: JSValue) -> i32 ---
+	JS_GetTypedArrayBuffer :: proc(ctx: ^Context, obj: JSValue, pbyte_offset: ^uint, pbyte_length: ^uint, pbytes_per_element: ^uint) -> JSValue ---
+	JS_NewArrayBuffer    :: proc(ctx: ^Context, buf: [^]u8, len: uint, max_len: uint, realloc_func: Realloc_AB_Func, opaque: rawptr, is_shared: bool) -> JSValue ---
+	JS_NewTypedArray     :: proc(ctx: ^Context, argc: i32, argv: [^]JSValue, array_type: i32) -> JSValue ---
+
+	// the engine's heap (js_malloc / js_free and the runtime variants): what an ArrayBuffer's bytes come from.
+	js_malloc     :: proc(ctx: ^Context, size: uint) -> rawptr ---
+	js_free       :: proc(ctx: ^Context, ptr: rawptr) ---
+	js_free_rt    :: proc(rt: ^Runtime, ptr: rawptr) ---
+	js_realloc_rt :: proc(rt: ^Runtime, ptr: rawptr, size: uint) -> rawptr ---
 }
+
+// quickjs.h JSPropertyDescriptor { int flags; JSValue value, getter, setter; }.
+Property_Descriptor :: struct {
+	flags:  i32,
+	value:  JSValue,
+	getter: JSValue,
+	setter: JSValue,
+}
+
+// quickjs.h JSReallocArrayBufferDataFunc (rt, opaque, ptr, size) -> ptr.
+Realloc_AB_Func :: #type proc "c" (rt: ^Runtime, opaque: rawptr, ptr: rawptr, size: uint) -> rawptr
+
+// JSTypedArrayEnum: the value of JS_TYPED_ARRAY_UINT8 (quickjs.h: UINT8C=0, INT8, UINT8, ...).
+TYPED_ARRAY_UINT8 :: 2
 
 // quickjs.h JSToUint32 is a static inline over JS_ToInt32; reimplement as the engine does (same bits).
 JS_ToUint32 :: #force_inline proc "contextless" (ctx: ^Context, pres: ^u32, val: JSValue) -> i32 {
@@ -168,9 +198,7 @@ foreign {
 	web_error_value      :: proc(ctx: ^Context, code: i32, msg: [^]u8, len: uint) -> JSValue ---
 	web_settle           :: proc(ctx: ^Context, func: JSValue, v: JSValue) ---
 
-	// buffers from a host buffer handle (web.h), used by promise.c's ARRAYBUFFER/UINT8ARRAY kinds.
-	wj_arraybuffer_from_host :: proc(ctx: ^Context, buffer: u64) -> JSValue ---
-	wj_uint8array_from_host  :: proc(ctx: ^Context, buffer: u64) -> JSValue ---
+	// (wj_arraybuffer_from_host / wj_uint8array_from_host live in buffer.odin, same odin_glue package as the callers.)
 
 	// scratch buffer growth + the console sink + the stack-budget entry (engine).
 	wj_scratch_grow :: proc(need: u32) -> bool ---
@@ -296,6 +324,9 @@ foreign m_async {
 	@(link_name = "Promise_value")  wr_Promise_value  :: proc(promise: u64) -> i64 ---
 	@(link_name = "Promise_text")   wr_Promise_text   :: proc(promise: u64, buf: [^]u8, cap: u32) -> i32 ---
 	@(link_name = "Object_release") wr_Object_release :: proc(object: u64) -> i32 ---
+	@(link_name = "Buffer_create")  wr_Buffer_create  :: proc(data: [^]u8, data_len: u32, ret: ^u64) -> i32 ---
+	@(link_name = "Buffer_length")  wr_Buffer_length  :: proc(buffer: u64) -> i64 ---
+	@(link_name = "Buffer_read")    wr_Buffer_read    :: proc(buffer: u64, offset: i64, destination: [^]u8, destination_cap: u32) -> i32 ---
 }
 
 @(default_calling_convention = "c")
