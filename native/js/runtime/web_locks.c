@@ -286,7 +286,8 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     pending_callback_set(ctx, slot, callback);
 
     int64_t packed = wr_LockManager_request((const uint8_t *)(name.ptr ? name.ptr : ""), (uint32_t)name.len,
-                                             mode, if_available ? 1 : 0, steal ? 1 : 0, lock_callback_index(), (int32_t)req_user(slot), lock_broken_index());
+                                             mode, if_available ? 1 : 0, steal ? 1 : 0, lock_callback_index(), (int32_t)req_user(slot), lock_broken_index(),
+                                             JS_IsObject(signal) ? 1 : 0);
     wj_str_free(ctx, &name);
     bool available = (packed & 1) != 0;
     bool granted_now = (packed & 2) != 0;
@@ -304,6 +305,7 @@ static JSValue lock_request(JSContext *ctx, JSValueConst this_val, int argc, JSV
     }
     if (granted_now) {
         r->id = id;
+        r->granted = true;
         JSValue cb = JS_DupValue(ctx, callback);
         pending_callback_clear(ctx, slot);
         const char *nm = JS_ToCString(ctx, r->name);

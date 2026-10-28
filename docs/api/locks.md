@@ -25,7 +25,7 @@ A lock mode (LockMode).
 ### `LockManager_request`
 
 ```
-i64 LockManager_request(string name, LockMode mode, bool if_available, bool steal, u32 callback, i32 user, u32 broken_callback)
+i64 LockManager_request(string name, LockMode mode, bool if_available, bool steal, u32 callback, i32 user, u32 broken_callback, bool has_signal)
 ```
 
 navigator.locks.request(name, {mode, ifAvailable, steal, signal}, callback). The result is packed: bit 0 is
@@ -34,7 +34,7 @@ callback with the Lock immediately), and the rest (>> 2) is the lock id used to 
 not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
 record for that notification).
 
-Host: `LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_callback: u32) -> i64`
+Host: `LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_callback: u32, has_signal: bool) -> i64`
 
 ### `LockManager_release`
 

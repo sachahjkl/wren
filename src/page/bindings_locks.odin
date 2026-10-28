@@ -138,7 +138,7 @@ lock_pump :: proc(key: string, granted: ^[dynamic]Pending_Lock) {
 //   the id is the rest (result >> 2). When granted-now is clear but available is set, the request waits in the queue
 //   and the engine will be told later (wj_cb_lock_granted). When available is clear the engine runs the callback with
 //   null (ifAvailable) and no lock is held.
-LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_cb: u32) -> i64 {
+LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32, broken_cb: u32, has_signal: bool) -> i64 {
 	p := c.page
 	key := lock_key(p, name)
 	if key == "" { return 0 }   // opaque origin: not available
@@ -152,11 +152,12 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 	id := lock_registry.next_id
 	pack :: proc(id: u64, granted, available: bool) -> i64 { return i64(id << 2) | (granted ? 2 : 0) | (available ? 1 : 0) }
 
-	// A grant is always delivered on a later event-loop turn (lock task queue), never synchronously in request(): a
-	// synchronous abort of the signal must be able to beat the grant, and the engine ignores an abort once granted.
 	this_held := Held_Lock{id = id, name = strings.clone(key, base.process_allocator()), mode = m, client = page_id(p),
 		client_tag = strings.clone(tag, base.process_allocator()), broken_cb = broken_cb, user = u32(user), instance = c.owner, page = page_id(p)}
 
+	// When a signal is present the grant is delivered on a later event-loop turn (never synchronously in request()):
+	// a synchronous abort of the signal must be able to beat the grant, and the engine ignores an abort once granted.
+	// Without a signal the engine runs the callback inline (granted-now), as the common case and as before.
 	if steal {
 		// take every held lock on this key away from its owner; its request promise must reject with AbortError
 		broken := make([dynamic]Broken_Lock, context.temp_allocator)
@@ -174,15 +175,18 @@ LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_avail
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
 		for b in broken { lock_deliver_broken(b) }
-		lock_deliver_grant_held(p, this_held, callback)
-		return pack(id, false, true)
+		// steal cannot be combined with a signal, so this grant is always synchronous
+		return pack(id, true, true)
 	}
 	if lock_grantable(key, m) {
 		append(&lock_registry.held, this_held)
 		lock_note_held(p, id)
 		delete(key, base.process_allocator())
-		lock_deliver_grant_held(p, this_held, callback)
-		return pack(id, false, true)
+		if has_signal {
+			lock_deliver_grant_held(p, this_held, callback)
+			return pack(id, false, true)
+		}
+		return pack(id, true, true)
 	}
 	delete(this_held.name, base.process_allocator()); delete(this_held.client_tag, base.process_allocator())
 	if if_available {
