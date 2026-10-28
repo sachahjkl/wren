@@ -257,7 +257,7 @@ call :: #force_inline proc(ctx: ^wj.Context, c: ^abi.Cells, $D: typeid, imp: $R,
 // Call declaration D through import imp with the given arguments; D's value result (if any) in out (a ^abi.Nothing
 // when D has none). Returns D's Api_Error, .None when D raises nothing. A string result lives in the realm's scratch
 // buffer until the next host call.
-host :: proc{host0, host1, host2, host3, host4}
+host :: proc{host0, host1, host2, host3, host4, host5, host6, host7, host8, host9, host10, host11, host12, host13, host14}
 
 host0 :: proc(out: ^$O, $D: typeid, imp: $R) -> abi.Api_Error {
 	c: abi.Cells = ---
@@ -377,7 +377,8 @@ lower :: #force_inline proc "contextless" (c, w: ^abi.Cells, $D, $R: typeid, $i,
 			w[j] = {c[i].a, 0}; w[j + 1] = {c[i].b, 0}
 			return lower(c, w, D, R, i + 1, nd, j + 2)
 		} else when intrinsics.type_is_union(T) {
-			#assert(intrinsics.type_variant_type_of(T, 0) == string, "jsb: only Maybe(string) lowers onto today's wire")
+			V :: intrinsics.type_variant_type_of(T, 0)
+			#assert(V == string || V == abi.Bytes || V == []u8, "jsb: only Maybe(string) / Maybe(bytes) lower onto today's wire")
 			#assert(intrinsics.type_is_multi_pointer(intrinsics.type_proc_parameter_type(R, j)), "jsb: an optional string lowers to (pointer, length)")
 			absent := c[i].b == abi.ABSENT_LEN
 			w[j] = {absent ? 0 : c[i].a, 0}; w[j + 1] = {absent ? u64(wj.WR_ABSENT) : c[i].b, 0}

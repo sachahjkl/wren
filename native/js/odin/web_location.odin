@@ -182,9 +182,9 @@ wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 // the serialized state as text (malloc'ed, NUL-terminated); nil with a DataCloneError pending
 @(private = "file") state_encode :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out_len: ^uint) -> [^]u8 {
 	n: uint
-	p := wj.web_clone_serialize(ctx, v, &n)
+	p := web_clone_serialize(ctx, v, &n)
 	if p == nil { return nil }
-	defer wj.web_clone_free(ctx, p)
+	defer web_clone_free(ctx, p)
 	prefix := transmute([]u8)string(STATE_PREFIX)
 	pl := uint(len(prefix))
 	s := ([^]u8)(_malloc(pl + (n + 2) / 3 * 4 + 1))
@@ -234,7 +234,7 @@ wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 		bits += 6
 		if bits >= 8 { bits -= 8; p[w] = u8(acc >> u32(bits)); w += 1 }
 	}
-	return wj.web_clone_deserialize(ctx, p, w)
+	return web_clone_deserialize(ctx, p, w)
 }
 
 @(export, link_name = "web_state_encode")
@@ -403,7 +403,7 @@ wjr_PageTransitionEvent_get_persisted :: proc "c" (ctx: ^wj.Context, this_val: w
 
 @(export, link_name = "wjr_PageTransitionEvent_constructor")
 wjr_PageTransitionEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, pagetransition_iface(), "PageTransitionEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, pagetransition_iface(), "PageTransitionEvent")
 	if wj.is_exception(ev) { return ev }
 	init := PageTransition_Init{}
 	if !wjd_PageTransitionEventInit_from(ctx, wj.arg(argc, argv, 1), &init) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
@@ -446,7 +446,7 @@ wjr_PopStateEvent_get_hasUAVisualTransition :: proc "c" (ctx: ^wj.Context, this_
 
 @(export, link_name = "wjr_PopStateEvent_constructor")
 wjr_PopStateEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, popstate_iface(), "PopStateEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, popstate_iface(), "PopStateEvent")
 	if wj.is_exception(ev) { return ev }
 	st: wj.JSValue
 	if !wj.web_dict_get(ctx, wj.arg(argc, argv, 1), "state", &st) { wj.JS_FreeValue(ctx, ev); return wj.EXCEPTION }
@@ -481,7 +481,7 @@ wjr_HashChangeEvent_get_newURL :: proc "c" (ctx: ^wj.Context, this_val: wj.JSVal
 
 @(export, link_name = "wjr_HashChangeEvent_constructor")
 wjr_HashChangeEvent_constructor :: proc "c" (ctx: ^wj.Context, new_target: wj.JSValue, argc: i32, argv: [^]wj.JSValue) -> wj.JSValue {
-	ev := wj.wj_event_construct(ctx, new_target, argc, argv, hashchange_iface(), "HashChangeEvent")
+	ev := wj_event_construct(ctx, new_target, argc, argv, hashchange_iface(), "HashChangeEvent")
 	if wj.is_exception(ev) { return ev }
 	names := [2]cstring{ "oldURL", "newURL" }
 	for i in 0 ..< 2 {
