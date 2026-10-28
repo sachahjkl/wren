@@ -25,16 +25,15 @@ package browser
 
 import "core:fmt"
 import "core:os"
-import "core:slice"
 import "core:strconv"
 import "core:strings"
-import win "core:sys/windows"
 import "core:time"
 import "wb:base"
 import "wb:js"
 import "wb:page"
 import "wb:wasm"
 import "wb:webfont"
+import "toolkit:platform"
 import "toolkit:render"
 
 // `profile_dir` is a copy the caller keeps until this returns (the app's is freed before).
@@ -71,154 +70,25 @@ Process_Counters :: struct {
 	handles, gdi, user:         i64,
 }
 
-foreign import kernel32_mem "system:Kernel32.lib"
-foreign import user32_mem "system:User32.lib"
-
-Mem_Heap_Summary :: struct {
-	cb:                                            u32,
-	allocated, committed, reserved, max_reserved: uint,
-}
-
-Mem_Basic_Info :: struct {
-	base, alloc_base:  uintptr,
-	alloc_protect:     u32,
-	region_size:       uint,
-	state, protect, kind: u32,
-}
-
-@(default_calling_convention = "system")
-foreign kernel32_mem {
-	@(link_name = "GetProcessHandleCount") mem_GetProcessHandleCount :: proc(process: win.HANDLE, count: ^u32) -> win.BOOL ---
-	@(link_name = "GetProcessHeaps") mem_GetProcessHeaps :: proc(n: u32, heaps: [^]win.HANDLE) -> u32 ---
-	@(link_name = "HeapSummary") mem_HeapSummary :: proc(heap: win.HANDLE, flags: u32, s: ^Mem_Heap_Summary) -> win.BOOL ---
-	@(link_name = "HeapLock") mem_HeapLock :: proc(heap: win.HANDLE) -> win.BOOL ---
-	@(link_name = "HeapUnlock") mem_HeapUnlock :: proc(heap: win.HANDLE) -> win.BOOL ---
-	@(link_name = "HeapWalk") mem_HeapWalk :: proc(heap: win.HANDLE, e: ^Mem_Heap_Entry) -> win.BOOL ---
-	@(link_name = "VirtualQuery") mem_VirtualQuery :: proc(address: uintptr, info: ^Mem_Basic_Info, length: uint) -> uint ---
-}
-
 // Where the private bytes are, as the system sees them (any build): what the process heaps hold (Odin, Rust, C
 // libraries all allocate from them) against what they have committed, and the private committed pages outside the
-// heaps by kind: read-write (arenas, linear memories, stacks) and executable (compiled code).
+// heaps by kind: read-write (arenas, linear memories, stacks) and executable (compiled code). The reader lives in the
+// toolkit's testkit (process_<os>.odin); Windows fills every field, Linux leaves the heap / VM split zero for now.
 Memory_Split :: struct {
 	heap_allocated, heap_committed: i64,
-	vm_rw, vm_exec:                 i64,   // MEM_PRIVATE | MEM_COMMIT pages, all of them (the heaps' segments included)
+	vm_rw, vm_exec:                 i64,
 }
-
-MEM_COMMIT :: 0x1000
-MEM_PRIVATE :: 0x20000
 
 memory_split :: proc() -> (m: Memory_Split) {
-	heaps: [64]win.HANDLE
-	n := min(int(mem_GetProcessHeaps(len(heaps), &heaps[0])), len(heaps))
-	for i in 0 ..< n {
-		s := Mem_Heap_Summary{cb = size_of(Mem_Heap_Summary)}
-		if mem_HeapSummary(heaps[i], 0, &s) { m.heap_allocated += i64(s.allocated); m.heap_committed += i64(s.committed) }
-	}
-	mbi: Mem_Basic_Info
-	addr: uintptr
-	for mem_VirtualQuery(addr, &mbi, size_of(mbi)) != 0 {
-		if mbi.state == MEM_COMMIT && mbi.kind == MEM_PRIVATE {
-			if mbi.protect & 0xF0 != 0 { m.vm_exec += i64(mbi.region_size) } else { m.vm_rw += i64(mbi.region_size) }
-		}
-		next := mbi.base + uintptr(mbi.region_size)
-		if next <= addr { break }
-		addr = next
-	}
-	return
+	s := base.memory_split()
+	return {heap_allocated = s.heap_allocated, heap_committed = s.heap_committed, vm_rw = s.vm_rw, vm_exec = s.vm_exec}
 }
 
-Mem_Heap_Entry :: struct {
-	data:                  rawptr,
-	size:                  u32,
-	overhead, region:      u8,
-	flags:                 u16,
-	_:                     [3]uintptr,   // the block / region union
-}
-
-// The live blocks of the process heaps grouped by exact size (the biggest groups first): what the native libraries
-// hold that the tracker does not see. Slow; a diagnostic for the endurance run.
-memory_heap_report :: proc(file: string, top := 40) {
-	heaps: [64]win.HANDLE
-	n := min(int(mem_GetProcessHeaps(len(heaps), &heaps[0])), len(heaps))
-	sizes := make(map[u32][2]i64, 4096, context.temp_allocator)   // size -> {count, bytes}
-	for i in 0 ..< n {
-		e: Mem_Heap_Entry
-		mem_HeapLock(heaps[i])
-		for mem_HeapWalk(heaps[i], &e) {
-			if e.flags & 0x4 == 0 { continue }   // PROCESS_HEAP_ENTRY_BUSY
-			v := sizes[e.size]
-			v[0] += 1
-			v[1] += i64(e.size)
-			sizes[e.size] = v
-		}
-		mem_HeapUnlock(heaps[i])
-	}
-	Group :: struct { size: u32, count, bytes: i64 }
-	list := make([dynamic]Group, 0, len(sizes), context.temp_allocator)
-	for s, v in sizes { append(&list, Group{s, v[0], v[1]}) }
-	slice.sort_by(list[:], proc(a, b: Group) -> bool { return a.bytes > b.bytes })
-	b := strings.builder_make(context.temp_allocator)
-	total: i64
-	for g in list { total += g.bytes }
-	fmt.sbprintf(&b, "total %.2f MB in %d sizes\n", f64(total) / 1048576, len(list))
-	for g, i in list {
-		if i >= top { break }
-		fmt.sbprintf(&b, "%d bytes\tx %d\t%.2f MB\n", g.size, g.count, f64(g.bytes) / 1048576)
-	}
-	_ = os.write_entire_file(file, transmute([]byte)strings.to_string(b))
-}
-
-// The biggest private committed allocations (one line each: base, committed MB, kind), to find what a number is made of.
-memory_map_report :: proc(file: string, top := 40) {
-	Region :: struct { base: uintptr, committed: i64, reserved: i64, exec: bool }
-	regions := make(map[uintptr]Region, 256, context.temp_allocator)
-	mbi: Mem_Basic_Info
-	addr: uintptr
-	for mem_VirtualQuery(addr, &mbi, size_of(mbi)) != 0 {
-		if mbi.kind == MEM_PRIVATE && mbi.alloc_base != 0 {
-			r := regions[mbi.alloc_base]
-			r.base = mbi.alloc_base
-			r.reserved += i64(mbi.region_size)
-			if mbi.state == MEM_COMMIT {
-				r.committed += i64(mbi.region_size)
-				if mbi.protect & 0xF0 != 0 { r.exec = true }
-			}
-			regions[mbi.alloc_base] = r
-		}
-		next := mbi.base + uintptr(mbi.region_size)
-		if next <= addr { break }
-		addr = next
-	}
-	list := make([dynamic]Region, 0, len(regions), context.temp_allocator)
-	for _, r in regions { if r.committed > 0 { append(&list, r) } }
-	slice.sort_by(list[:], proc(a, b: Region) -> bool { return a.committed > b.committed })
-	b := strings.builder_make(context.temp_allocator)
-	for r, i in list {
-		if i >= top { break }
-		fmt.sbprintf(&b, "%x\t%.2f MB committed\t%.2f MB reserved\t%s\n", r.base, f64(r.committed) / 1048576, f64(r.reserved) / 1048576, r.exec ? "exec" : "rw")
-	}
-	_ = os.write_entire_file(file, transmute([]byte)strings.to_string(b))
-}
-
-@(default_calling_convention = "system")
-foreign user32_mem {
-	@(link_name = "GetGuiResources") mem_GetGuiResources :: proc(process: win.HANDLE, flags: u32) -> u32 ---
-}
-
-// What the system counts for this process (any build).
+// What the system counts for this process (any build): the memory above, the open kernel handles, and (Windows) the GDI
+// and USER objects. From base.process_counters (toolkit:testkit), the same numbers Windows reported directly before.
 process_counters :: proc() -> (c: Process_Counters) {
-	proc_h := win.GetCurrentProcess()
-	pmc: win.PROCESS_MEMORY_COUNTERS_EX
-	pmc.cb = size_of(pmc)
-	if win.GetProcessMemoryInfo(proc_h, (^win.PROCESS_MEMORY_COUNTERS)(&pmc), size_of(pmc)) {
-		c.private_bytes, c.working_set = i64(pmc.PrivateUsage), i64(pmc.WorkingSetSize)
-	}
-	n: u32
-	if mem_GetProcessHandleCount(proc_h, &n) { c.handles = i64(n) }
-	c.gdi = i64(mem_GetGuiResources(proc_h, 0))    // GR_GDIOBJECTS
-	c.user = i64(mem_GetGuiResources(proc_h, 1))   // GR_USEROBJECTS
-	return
+	pc := base.process_counters()
+	return {private_bytes = pc.private, working_set = pc.resident, handles = pc.handles, gdi = pc.gdi, user = pc.user}
 }
 
 ////////////////////////////////
@@ -370,7 +240,7 @@ driver_step :: proc(app: ^App) {
 			memory_trim(app)
 		case .Quit:
 			driver.active = false
-			win.PostMessageW(active_window(app).win.hwnd, win.WM_CLOSE, 0, 0)
+			platform.request_close(active_window(app).win)
 			return
 		}
 		driver.next += 1

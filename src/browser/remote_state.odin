@@ -17,9 +17,9 @@ package browser
 import "core:encoding/json"
 import "core:fmt"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:platform"
 import "toolkit:ui"
+import "wb:base"
 import "wb:config"
 import "wb:cookies"
 import "wb:fetch"
@@ -55,39 +55,23 @@ keep_parse :: proc(v: json.Value) -> (keep: Keep, bad: string) {
 ////////////////////////////////
 // The process's numbers
 
-// CPU time of the process (all threads), in milliseconds. The system counts in ticks of 100 ns but adds them up at its clock's
-// resolution (about 15.6 ms): a difference smaller than a tick is 0 or one tick.
+// CPU time of the process (all threads), in milliseconds (base.process_times, neutral: GetProcessTimes on Windows,
+// /proc/self/stat on Linux). The system counts coarsely (Windows adds the 100 ns ticks up at its clock's ~15.6 ms
+// resolution; Linux counts in clock ticks): a difference smaller than one tick is 0 or one tick.
 process_cpu_ms :: proc() -> (total, user, kernel: f64) {
-	c, e, k, u: win.FILETIME
-	win.GetProcessTimes(win.GetCurrentProcess(), &c, &e, &k, &u)
-	ms :: proc(f: win.FILETIME) -> f64 { return f64(u64(f.dwHighDateTime) << 32 | u64(f.dwLowDateTime)) / 10000 }
-	return ms(k) + ms(u), ms(u), ms(k)
+	t := base.process_times()
+	return t.user_ms + t.kernel_ms, t.user_ms, t.kernel_ms
 }
 
 process_uptime_ms :: proc() -> f64 {
-	c, e, k, u, now: win.FILETIME
-	win.GetProcessTimes(win.GetCurrentProcess(), &c, &e, &k, &u)
-	win.GetSystemTimeAsFileTime(&now)
-	ticks :: proc(f: win.FILETIME) -> u64 { return u64(f.dwHighDateTime) << 32 | u64(f.dwLowDateTime) }
-	return f64(ticks(now) - ticks(c)) / 10000
+	return base.process_times().uptime_ms
 }
 
-// Threads of this process, from the system's list of processes (each entry carries its thread count): -1 when the system will not
-// say. Not from the list of threads: that one has every thread of the machine (thousands, and the more on a busy runner), and
-// walking it cost `wren ctl stats` 16 to 47 ms of the browser's own CPU time (more than a whole second of an idle Wren's).
+// Threads of this process: -1 when the system will not say. From base.process_threads (toolkit's testkit does not carry
+// this, so base reads it per system: a cheap read of /proc/self/status on Linux; on Windows the process's own entry of
+// the process snapshot, never the machine-wide thread list, which cost `wren ctl stats` 16 to 47 ms of CPU to walk).
 process_thread_count :: proc() -> int {
-	snap := win.CreateToolhelp32Snapshot(win.TH32CS_SNAPPROCESS, 0)
-	if snap == win.INVALID_HANDLE_VALUE { return -1 }
-	defer win.CloseHandle(snap)
-	e := win.PROCESSENTRY32W{dwSize = size_of(win.PROCESSENTRY32W)}
-	pid := win.GetCurrentProcessId()
-	ok := win.Process32FirstW(snap, &e)
-	for ok {
-		if e.th32ProcessID == pid { return int(e.cntThreads) }
-		e.dwSize = size_of(win.PROCESSENTRY32W)
-		ok = win.Process32NextW(snap, &e)
-	}
-	return -1
+	return base.process_threads()
 }
 
 ////////////////////////////////
@@ -157,9 +141,8 @@ checkpoint_free :: proc(c: ^Checkpoint) {
 
 window_capture :: proc(app: ^App) -> Window_State {
 	wnd := active_window(app)
-	rc: win.RECT
-	win.GetWindowRect(wnd.win.hwnd, &rc)
-	return {int(rc.left), int(rc.top), int(wnd.win.size.x), int(wnd.win.size.y), window_state(app)}
+	r := platform.outer_rect(wnd.win)   // {left, top, width, height}; the client size stays what the window reports
+	return {r[0], r[1], int(wnd.win.size.x), int(wnd.win.size.y), window_state(app)}
 }
 
 checkpoint_take :: proc(app: ^App, name: string, with_tabs, with_data: bool) -> ^Checkpoint {
