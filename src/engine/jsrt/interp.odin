@@ -1184,6 +1184,20 @@ interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> 
 					if is_builtin_array_iter(stack[itp], stack[itp + 1]) {
 						// no result object for the built-in array iterator (unobservable)
 						v, d, ok = array_iterator_step(ctx, as_obj(stack[itp]).data.(^Iter_State))
+					} else if is_builtin_generator_next(stack[itp], stack[itp + 1]) {
+						// no result object for the built-in generator `next` (unobservable); yield* hands one through
+						co, is_co := as_obj(stack[itp]).data.(^Coro)
+						if !is_co {
+							throw_type_error(ctx, "not a generator")
+							ok = false
+						} else {
+							gv, gd, gs := generator_step_raw(ctx, co, UNDEFINED, GEN_NEXT)
+							switch gs {
+							case .ok: v, d, ok = gv, gd, true
+							case .exception: ok = false
+							case .raw: v, d, ok = iter_result_unpack(ctx, gv)
+							}
+						}
 					} else {
 						v, d, ok = iterator_step_value(ctx, stack[itp], stack[itp + 1])
 					}

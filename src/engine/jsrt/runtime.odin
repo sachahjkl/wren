@@ -290,6 +290,7 @@ Context :: struct {
 	typed_array_ctors: [12]^Object,
 	global_cache:    [GLOBAL_CACHE_SIZE]Global_Cache_Entry, // see globals.odin
 	match_shape:     ^Shape, // a RegExp match result: length, index, input, groups (b_regexp.odin)
+	iter_result_shape: ^Shape, // {value, done} (iterator.odin: iter_result)
 	rx_snap:         [32]Prop_Slot, // RegExp.prototype as the realm built it (regexp_pristine)
 	rx_snap_shape:   ^Shape,
 	rx_snap_n:       int,
