@@ -51,3 +51,12 @@ void    *wj_shim_impl(const void *obj)   { return obj ? ((const wj_obj *)obj)->i
 /* The impl of a wj_obj*, named as the ported C read it (wj_obj_impl). Same as wj_shim_impl; kept because a ported
  * domain (web_broadcast) calls wj_obj_impl by that name. */
 void *wj_obj_impl(wj_obj *o) { return o ? o->impl : NULL; }
+
+/* web_set_impl is a `static inline` in web.h (it writes three fields of wj_obj: impl, impl_free, impl_mark), so it has
+ * no symbol for wasm-ld; the ported domains (web_broadcast, web_location/History, shared_workers) that set a platform
+ * object's engine-owned data need it as a real function. A thin wrapper around the inline keeps the behaviour (and the
+ * wj_obj layout) in one place. */
+void wj_shim_set_impl(JSValueConst obj, void *impl, void (*impl_free)(void *), void (*impl_mark)(void *, void *, void *))
+{
+    web_set_impl(obj, impl, impl_free, impl_mark);
+}
