@@ -52,6 +52,9 @@ Special_Object :: enum u8 {
 	null_proto,
 }
 
+// The reader verified every operand index, jump target and the operand stack height of each
+// instruction (serialize.odin, verify_function / verify_stack); the bounds checks stay on (turning
+// them off measured slower with the current code generation).
 interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, Exit_Kind) {
 	rt := ctx.rt
 	b := f.bc
@@ -74,6 +77,179 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 
 	for {
 		if !exc {
+			// The hot loop: the commonest instructions on their fast paths only, in a small loop of
+			// its own (fewer live values than the full dispatch below, so they stay in registers).
+			// Anything else leaves with pc on the instruction, for the full dispatch.
+			hot: for {
+				hop := Opcode(code[pc])
+				#partial switch hop {
+				case .get_loc0, .get_loc1, .get_loc2, .get_loc3:
+					stack[sp] = locals[int(hop) - int(Opcode.get_loc0)]
+					sp += 1
+					pc += 1
+				case .put_loc0, .put_loc1, .put_loc2, .put_loc3:
+					sp -= 1
+					locals[int(hop) - int(Opcode.put_loc0)] = stack[sp]
+					pc += 1
+				case .set_loc0, .set_loc1, .set_loc2, .set_loc3:
+					locals[int(hop) - int(Opcode.set_loc0)] = stack[sp - 1]
+					pc += 1
+				case .get_loc8:
+					stack[sp] = locals[code[pc + 1]]
+					sp += 1
+					pc += 2
+				case .put_loc8:
+					sp -= 1
+					locals[code[pc + 1]] = stack[sp]
+					pc += 2
+				case .get_loc:
+					stack[sp] = locals[rd_u16(code, pc + 1)]
+					sp += 1
+					pc += 3
+				case .put_loc:
+					sp -= 1
+					locals[rd_u16(code, pc + 1)] = stack[sp]
+					pc += 3
+				case .get_arg0, .get_arg1, .get_arg2, .get_arg3:
+					stack[sp] = args[int(hop) - int(Opcode.get_arg0)]
+					sp += 1
+					pc += 1
+				case .get_var_ref0, .get_var_ref1, .get_var_ref2, .get_var_ref3:
+					stack[sp] = var_refs[int(hop) - int(Opcode.get_var_ref0)].pvalue^
+					sp += 1
+					pc += 1
+				case .push_minus1, .push_0, .push_1, .push_2, .push_3, .push_4, .push_5, .push_6, .push_7:
+					stack[sp] = mk_int(i32(hop) - i32(Opcode.push_0))
+					sp += 1
+					pc += 1
+				case .push_i8:
+					stack[sp] = mk_int(i32(i8(code[pc + 1])))
+					sp += 1
+					pc += 2
+				case .push_const8:
+					stack[sp] = b.cpool[code[pc + 1]]
+					sp += 1
+					pc += 2
+				case .undefined:
+					stack[sp] = UNDEFINED
+					sp += 1
+					pc += 1
+				case .drop:
+					sp -= 1
+					pc += 1
+				case .dup:
+					stack[sp] = stack[sp - 1]
+					sp += 1
+					pc += 1
+				case .inc_loc, .dec_loc:
+					idx := code[pc + 1]
+					v := locals[idx]
+					if v.tag != .int || v.u.i == max(i32) || v.u.i == min(i32) {break hot}
+					locals[idx] = mk_int(hop == .inc_loc ? v.u.i + 1 : v.u.i - 1)
+					pc += 2
+				case .inc, .dec:
+					v := stack[sp - 1]
+					if v.tag != .int || v.u.i == max(i32) || v.u.i == min(i32) {break hot}
+					stack[sp - 1] = mk_int(hop == .inc ? v.u.i + 1 : v.u.i - 1)
+					pc += 1
+				case .add, .sub:
+					x, y := stack[sp - 2], stack[sp - 1]
+					if x.tag == .int && y.tag == .int {
+						r := hop == .add ? i64(x.u.i) + i64(y.u.i) : i64(x.u.i) - i64(y.u.i)
+						stack[sp - 2] = mk_i64(r)
+					} else if x.tag == .float && y.tag == .float {
+						stack[sp - 2] = mk_float(hop == .add ? x.u.f + y.u.f : x.u.f - y.u.f)
+					} else {
+						break hot
+					}
+					sp -= 1
+					pc += 1
+				case .op_and, .op_or, .xor, .shl, .sar:
+					x, y := stack[sp - 2], stack[sp - 1]
+					if x.tag != .int || y.tag != .int {break hot}
+					r: i32
+					#partial switch hop {
+					case .op_and: r = x.u.i & y.u.i
+					case .op_or: r = x.u.i | y.u.i
+					case .xor: r = x.u.i ~ y.u.i
+					case .shl: r = i32(u32(x.u.i) << (u32(y.u.i) & 31))
+					case: r = x.u.i >> (u32(y.u.i) & 31)
+					}
+					stack[sp - 2] = mk_int(r)
+					sp -= 1
+					pc += 1
+				case .lt, .lte, .gt, .gte, .strict_eq, .strict_neq:
+					x, y := stack[sp - 2], stack[sp - 1]
+					if x.tag != .int || y.tag != .int {break hot}
+					res: bool
+					#partial switch hop {
+					case .lt: res = x.u.i < y.u.i
+					case .lte: res = x.u.i <= y.u.i
+					case .gt: res = x.u.i > y.u.i
+					case .gte: res = x.u.i >= y.u.i
+					case .strict_eq: res = x.u.i == y.u.i
+					case: res = x.u.i != y.u.i
+					}
+					stack[sp - 2] = mk_bool(res)
+					sp -= 1
+					pc += 1
+				case .if_true8, .if_false8:
+					v := stack[sp - 1]
+					if v.tag != .bool {break hot}
+					d := int(i8(code[pc + 1]))
+					if v.u.b == (hop == .if_true8) {
+						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+						pc += 1 + d
+					} else {
+						pc += 2
+					}
+					sp -= 1
+				case .if_true, .if_false:
+					v := stack[sp - 1]
+					if v.tag != .bool {break hot}
+					d := rd_i32(code, pc + 1)
+					if v.u.b == (hop == .if_true) {
+						if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+						pc += 1 + d
+					} else {
+						pc += 5
+					}
+					sp -= 1
+				case .goto8:
+					d := int(i8(code[pc + 1]))
+					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+					pc += 1 + d
+				case .goto16:
+					d := int(i16(u16(rd_u16(code, pc + 1))))
+					if d < 0 && !back_edge_cheap(rt, root_base) {break hot}
+					pc += 1 + d
+				case .get_array_el:
+					o, k := stack[sp - 2], stack[sp - 1]
+					if o.tag != .object || k.tag != .int || k.u.i < 0 {break hot}
+					p := as_obj(o)
+					if !p.fast_array {break hot}
+					ad := &p.data.(Array_Data)
+					if u32(k.u.i) >= ad.count {break hot}
+					stack[sp - 2] = ad.values[k.u.i]
+					sp -= 1
+					pc += 1
+				case .get_field, .get_field2:
+					o := stack[sp - 1]
+					if o.tag != .object {break hot}
+					p := as_obj(o)
+					i := shape_find(p.shape, Atom(rd_u32(code, pc + 1)))
+					if i < 0 || p.shape.props[i].kind != .data {break hot}
+					if hop == .get_field2 {
+						stack[sp] = p.slots[i].value
+						sp += 1
+					} else {
+						stack[sp - 1] = p.slots[i].value
+					}
+					pc += 5
+				case:
+					break hot
+				}
+			}
 			op := Opcode(code[pc])
 			pc += 1
 			#partial switch op {
@@ -638,6 +814,8 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					if p.fast_array {
 						ad := &p.data.(Array_Data)
 						if u32(k.u.i) < ad.count {v = ad.values[k.u.i]; fast = true}
+					} else if is_typed_array_class(p.class) {
+						v, fast = ta_fast_get(p, u32(k.u.i))
 					}
 				}
 				if !fast {
@@ -667,6 +845,8 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 							array_push_fast(rt, p, stack[sp - 1])
 							done = true
 						}
+					} else if is_typed_array_class(p.class) {
+						done = ta_fast_set(p, u32(k.u.i), stack[sp - 1])
 					}
 				}
 				if !done {
@@ -915,22 +1095,19 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				d := rd_i32(code, pc)
 				pc += d
 				if d < 0 {
-					temp_reset(rt, root_base)
-					if poll_interrupt(ctx) || !gc_safepoint(ctx) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true}
 				}
 			case .goto16:
 				d := int(i16(u16(rd_u16(code, pc))))
 				pc += d
 				if d < 0 {
-					temp_reset(rt, root_base)
-					if poll_interrupt(ctx) || !gc_safepoint(ctx) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true}
 				}
 			case .goto8:
 				d := int(i8(code[pc]))
 				pc += d
 				if d < 0 {
-					temp_reset(rt, root_base)
-					if poll_interrupt(ctx) || !gc_safepoint(ctx) {exc = true}
+					if !back_edge(ctx, root_base) {exc = true}
 				}
 			case .if_true, .if_false:
 				d := rd_i32(code, pc)
@@ -941,8 +1118,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				if t == (op == .if_true) {
 					pc += d - 4
 					if d < 0 {
-						temp_reset(rt, root_base)
-						if poll_interrupt(ctx) || !gc_safepoint(ctx) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true}
 					}
 				}
 			case .if_true8, .if_false8:
@@ -954,8 +1130,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				if t == (op == .if_true8) {
 					pc += d - 1
 					if d < 0 {
-						temp_reset(rt, root_base)
-						if poll_interrupt(ctx) || !gc_safepoint(ctx) {exc = true}
+						if !back_edge(ctx, root_base) {exc = true}
 					}
 				}
 			case .op_catch:
@@ -1096,7 +1271,14 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				value := UNDEFINED
 				done := true
 				if !is_undefined(stack[itp]) {
-					v, d, ok := iterator_step_value(ctx, stack[itp], stack[itp + 1])
+					v: Value
+					d, ok: bool
+					if is_builtin_array_iter(stack[itp], stack[itp + 1]) {
+						// no result object for the built-in array iterator (unobservable)
+						v, d, ok = array_iterator_step(ctx, as_obj(stack[itp]).data.(^Iter_State))
+					} else {
+						v, d, ok = iterator_step_value(ctx, stack[itp], stack[itp + 1])
+					}
 					if !ok {
 						stack[itp] = UNDEFINED
 						exc = true

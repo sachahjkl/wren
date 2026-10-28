@@ -319,7 +319,13 @@ object_make_dict :: proc(rt: ^Runtime, o: ^Object) {
 slots_reserve :: proc(rt: ^Runtime, o: ^Object, n: int) {
 	if u32(n) <= o.slot_cap {return}
 	new_cap := max(n, int(o.slot_cap) * 3 / 2, 4)
-	o.slots = cast([^]Prop_Slot)mem_resize(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot), new_cap * size_of(Prop_Slot))
+	if slots_are_inline(o) {
+		ns := cast([^]Prop_Slot)mem_alloc(rt, new_cap * size_of(Prop_Slot))
+		for i in 0 ..< int(o.slot_cap) {ns[i] = o.slots[i]}
+		o.slots = ns
+	} else {
+		o.slots = cast([^]Prop_Slot)mem_resize(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot), new_cap * size_of(Prop_Slot))
+	}
 	for i in int(o.slot_cap) ..< new_cap {o.slots[i] = {}}
 	o.slot_cap = u32(new_cap)
 }
@@ -404,17 +410,38 @@ object_proto :: #force_inline proc "contextless" (o: ^Object) -> ^Object {return
 
 // --- creation ---
 
+// Plain objects carry their first slots inline, after the Object (one allocation for `new C()`).
+INLINE_SLOTS :: 4
+
 object_new_shape :: proc(rt: ^Runtime, sh: ^Shape, class: Class_ID) -> ^Object {
+	n := len(sh.props)
+	if class == .object && n <= INLINE_SLOTS {
+		o := cell_new(rt, Object, .object, INLINE_SLOTS * size_of(Prop_Slot))
+		o.class = class
+		o.extensible = true
+		o.shape = sh
+		o.slots = inline_slots(o)
+		o.slot_cap = INLINE_SLOTS
+		return o
+	}
 	o := cell_new(rt, Object, .object)
 	o.class = class
 	o.extensible = true
 	o.shape = sh
-	n := len(sh.props)
 	if n > 0 {
 		o.slots = cast([^]Prop_Slot)mem_alloc(rt, n * size_of(Prop_Slot))
 		o.slot_cap = u32(n)
 	}
 	return o
+}
+
+inline_slots :: #force_inline proc "contextless" (o: ^Object) -> [^]Prop_Slot {
+	return cast([^]Prop_Slot)(uintptr(o) + size_of(Object))
+}
+
+// Are o's slots the inline ones (not a separate allocation)?
+slots_are_inline :: #force_inline proc "contextless" (o: ^Object) -> bool {
+	return o.slots == inline_slots(o) && o.size > size_of(Object)
 }
 
 object_new_proto :: proc(ctx: ^Context, proto: ^Object, class: Class_ID = .object) -> ^Object {
@@ -473,7 +500,7 @@ array_push_fast :: proc(rt: ^Runtime, o: ^Object, v: Value) {
 // --- finalization ---
 
 object_finalize :: proc(rt: ^Runtime, o: ^Object) {
-	if o.slots != nil {mem_free(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot))}
+	if o.slots != nil && !slots_are_inline(o) {mem_free(rt, o.slots, int(o.slot_cap) * size_of(Prop_Slot))}
 	o.slots = nil
 	switch d in o.data {
 	case Array_Data:

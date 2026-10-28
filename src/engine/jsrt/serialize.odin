@@ -553,8 +553,123 @@ verify_function :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
 		}
 		pos += int(info.size)
 	}
-	for &cv in b.closure_vars {
-		_ = cv
+	return verify_stack(r, b)
+}
+
+// The operand stack height at every instruction (QuickJS's compute_stack_size): no underflow, the
+// same height on every path into an instruction, never above stack_size. With this, and the operand
+// checks above, the interpreter may index the frame without bounds checks.
+@(private = "file")
+verify_stack :: proc(r: ^Reader, b: ^Function_Bytecode) -> bool {
+	code := b.code
+	n := len(code)
+	if n == 0 {return true}
+	rt := r.ctx.rt
+	level := make([]i32, n, tmp(rt))
+	catch_tab := make([]i32, n, tmp(rt))
+	for i in 0 ..< n {level[i] = -1}
+	work := make([dynamic]int, 0, 64, tmp(rt))
+	max_len := 0
+	limit := int(b.stack_size)
+	bad :: proc(r: ^Reader, msg: string) -> bool {fail(r, msg); return false}
+	check :: proc(level, catch_tab: []i32, work: ^[dynamic]int, pos, stack_len, catch_pos: int) -> int {
+		if pos < 0 || pos >= len(level) {return 1}
+		if level[pos] >= 0 {
+			if int(level[pos]) != stack_len || int(catch_tab[pos]) != catch_pos {return 2}
+			return 0
+		}
+		level[pos] = i32(stack_len)
+		catch_tab[pos] = i32(catch_pos)
+		append(work, pos)
+		return 0
+	}
+	rd32 :: proc(c: []u8, p: int) -> int {return int(i32(u32(c[p]) | u32(c[p + 1]) << 8 | u32(c[p + 2]) << 16 | u32(c[p + 3]) << 24))}
+	rd16 :: proc(c: []u8, p: int) -> int {return int(c[p]) | int(c[p + 1]) << 8}
+	if check(level, catch_tab, &work, 0, 0, -1) != 0 {return bad(r, "invalid bytecode")}
+	for len(work) > 0 {
+		pos := pop(&work)
+		stack_len := int(level[pos])
+		catch_pos := int(catch_tab[pos])
+		op := Opcode(code[pos])
+		info := opcode_info[op]
+		pos_next := pos + int(info.size)
+		n_pop := int(info.n_pop)
+		#partial switch info.fmt {
+		case .npop, .npop_u16: n_pop += rd16(code, pos + 1)
+		case .npopx: n_pop += int(op) - int(Opcode.call0)
+		}
+		if stack_len < n_pop {return bad(r, "bytecode stack underflow")}
+		// instructions that reach below their own operands (the for-of record)
+		#partial switch op {
+		case .for_of_next:
+			k := int(i8(code[pos + 1]))
+			if k < 0 || stack_len < 3 + k {return bad(r, "bytecode stack underflow")}
+		case .iterator_get_value_done:
+			if stack_len < 4 {return bad(r, "bytecode stack underflow")}
+		}
+		stack_len += int(info.n_push) - n_pop
+		max_len = max(max_len, stack_len)
+		if max_len > limit {return bad(r, "bytecode stack overflow")}
+		branch := -1
+		has_branch := false
+		branch_len := stack_len
+		terminal := false
+		#partial switch op {
+		case .tail_call, .tail_call_method, .op_return, .return_undef, .return_async, .op_throw, .throw_error, .ret:
+			terminal = true
+		case .goto: pos_next = pos + 1 + rd32(code, pos + 1)
+		case .goto16: pos_next = pos + 1 + int(i16(u16(rd16(code, pos + 1))))
+		case .goto8: pos_next = pos + 1 + int(i8(code[pos + 1]))
+		case .if_true8, .if_false8:
+			branch, has_branch = pos + 1 + int(i8(code[pos + 1])), true
+		case .if_true, .if_false:
+			branch, has_branch = pos + 1 + rd32(code, pos + 1), true
+		case .gosub:
+			branch, has_branch = pos + 1 + rd32(code, pos + 1), true
+			branch_len = stack_len + 1
+		case .with_get_var, .with_delete_var:
+			branch, has_branch = pos + 5 + rd32(code, pos + 5), true
+			branch_len = stack_len + 1
+		case .with_make_ref, .with_get_ref, .with_get_ref_undef:
+			branch, has_branch = pos + 5 + rd32(code, pos + 5), true
+			branch_len = stack_len + 2
+		case .with_put_var:
+			branch, has_branch = pos + 5 + rd32(code, pos + 5), true
+			branch_len = stack_len - 1
+		case .op_catch:
+			branch, has_branch = pos + 1 + rd32(code, pos + 1), true
+		case .for_of_start, .for_await_of_start:
+		case .drop, .nip, .nip1, .iterator_close:
+		case .nip_catch:
+			if catch_pos < 0 {return bad(r, "nip_catch without catch")}
+			stack_len = int(level[catch_pos])
+			if Opcode(code[catch_pos]) != .op_catch {stack_len += 1}
+			stack_len += 1
+			catch_pos = int(catch_tab[catch_pos])
+		}
+		// the catch bookkeeping of QuickJS (which catch is innermost after an instruction)
+		#partial switch op {
+		case .op_catch, .for_of_start, .for_await_of_start:
+			catch_pos = pos
+		case .drop, .nip, .nip1, .iterator_close:
+			catch_level := stack_len
+			#partial switch op {
+			case .nip, .nip1: catch_level = stack_len - 1
+			case .iterator_close: catch_level = stack_len + 2
+			}
+			if catch_pos >= 0 {
+				lv := int(level[catch_pos])
+				if Opcode(code[catch_pos]) != .op_catch {lv += 1}
+				if catch_level == lv {catch_pos = int(catch_tab[catch_pos])}
+			}
+		}
+		if has_branch {
+			if branch_len < 0 || branch_len > limit {return bad(r, "bytecode stack overflow")}
+			bc := op == .op_catch ? int(catch_tab[pos]) : catch_pos
+			if check(level, catch_tab, &work, branch, branch_len, bc) != 0 {return bad(r, "invalid bytecode branch")}
+		}
+		if terminal {continue}
+		if check(level, catch_tab, &work, pos_next, stack_len, catch_pos) != 0 {return bad(r, "inconsistent bytecode stack")}
 	}
 	return true
 }

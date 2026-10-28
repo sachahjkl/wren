@@ -347,6 +347,55 @@ write_elem :: proc(e: Elem, p: rawptr, v: Elem_Val) {
 	}
 }
 
+// The interpreter's element fast paths: a fixed-length view over a live buffer, an in-range index
+// and a Number element type. Anything else answers false and takes the generic path.
+@(private = "file")
+ta_fast_ptr :: #force_inline proc(o: ^Object, idx: u32) -> (rawptr, Elem, bool) {
+	ta, ok := o.data.(^Typed_Array)
+	if !ok || ta.track_rab || idx >= u32(ta.length) {return nil, .u8, false}
+	ab, ok2 := ta.buffer.data.(^Array_Buffer)
+	if !ok2 || ab.detached {return nil, .u8, false}
+	e := class_elem(o.class)
+	es := elem_size[e]
+	if ta.offset + ta.length * es > ab.byte_length {return nil, e, false}
+	return &ab.data[ta.offset + int(idx) * es], e, true
+}
+
+ta_fast_get :: proc(o: ^Object, idx: u32) -> (Value, bool) {
+	p, e, ok := ta_fast_ptr(o, idx)
+	if !ok {return UNDEFINED, false}
+	#partial switch e {
+	case .u8c, .u8: return mk_int(i32((cast(^u8)p)^)), true
+	case .i8: return mk_int(i32((cast(^i8)p)^)), true
+	case .i16: return mk_int(i32((cast(^i16)p)^)), true
+	case .u16: return mk_int(i32((cast(^u16)p)^)), true
+	case .i32: return mk_int((cast(^i32)p)^), true
+	case .u32: return mk_u32((cast(^u32)p)^), true
+	case .f32: return mk_number(f64((cast(^f32)p)^)), true
+	case .f64: return mk_number((cast(^f64)p)^), true
+	}
+	return UNDEFINED, false
+}
+
+ta_fast_set :: proc(o: ^Object, idx: u32, v: Value) -> bool {
+	if v.tag != .int && v.tag != .float {return false}
+	p, e, ok := ta_fast_ptr(o, idx)
+	if !ok || elem_is_bigint(e) {return false}
+	ta := o.data.(^Typed_Array)
+	if ta.buffer.data.(^Array_Buffer).immutable {return false}
+	if v.tag == .int {
+		x := v.u.i
+		#partial switch e {
+		case .u8, .i8: (cast(^u8)p)^ = u8(x); return true
+		case .u16, .i16: (cast(^u16)p)^ = u16(x); return true
+		case .u32, .i32: (cast(^u32)p)^ = u32(x); return true
+		case .f64: (cast(^f64)p)^ = f64(x); return true
+		}
+	}
+	write_elem(e, p, Elem_Val{d = as_f64(v)})
+	return true
+}
+
 typed_array_get_index :: proc(ctx: ^Context, o: ^Object, n: f64) -> (Value, bool) {
 	if !f64_is_integer(n) || (n == 0 && math.sign_bit(n)) || n < 0 {return UNDEFINED, false}
 	l := typed_array_length(ctx, o)
