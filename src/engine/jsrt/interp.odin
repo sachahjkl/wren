@@ -71,34 +71,67 @@ fmt_opcode :: proc(op: Opcode) -> string {
 // The reader verified every operand index, jump target and the operand stack height of each
 // instruction (serialize.odin, verify_function / verify_stack); the bounds checks stay on (turning
 // them off measured slower with the current code generation).
-interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, Exit_Kind) {
+//
+// A plain JS-to-JS call (call*, call_method on a non-generator, non-async bytecode function) does not
+// recurse natively: the callee's Frame is pushed on the value stack (frame_push) and this same activation
+// continues with it (`frames` loop reloads the per-frame registers from `f`); returning or an uncaught
+// exception pops it (frame_pop) and resumes the caller. Only the base frame (the one interp_call or the
+// coroutine driver gave us) leaves through `return`.
+interp_run :: proc(ctx_in: ^Context, f_in: ^Frame, var_refs_in: [^]^Var_Ref) -> (Value, Exit_Kind) {
+	ctx := ctx_in
+	f := f_in
 	rt := ctx.rt
-	b := f.bc
-	code := b.code
-	stack := f.stack[:max(int(b.stack_size), 1)]
-	locals := f.locals
-	args := f.args
-	sp := f.sp
-	pc := f.pc
-	root_base := temp_mark(rt)
-	strict := b.is_strict_mode
-	is_coro := b.func_kind != .normal
+	f.closure_refs = var_refs_in
+	f.stackless = false
+	f.root_base = temp_mark(rt)
+
+	// the registers of the frame being run, loaded from `f` at the top of `frames`
+	b: ^Function_Bytecode
+	code: []u8
+	stack: []Value
+	locals, args: [^]Value
+	var_refs: [^]^Var_Ref
+	sp, pc, root_base: int
+	strict, is_coro, returning: bool
+	caller_ctx: ^Context
 	ret_val: Value
-	caller_ctx := f.caller_ctx != nil ? f.caller_ctx : ctx
 	prev_op := Opcode.invalid
 
 	// a coroutine resumed with throw() enters straight into the unwinder with the exception pending
 	exc := f.pending_throw
 	f.pending_throw = false
-	if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {return EXCEPTION, .exception}
 
-	for {
+	frames: for {
+		b = f.bc
+		code = b.code
+		stack = f.stack[:max(int(b.stack_size), 1)]
+		locals = f.locals
+		args = f.args
+		sp = f.sp
+		pc = f.pc
+		root_base = f.root_base
+		strict = b.is_strict_mode
+		is_coro = b.func_kind != .normal
+		caller_ctx = f.caller_ctx != nil ? f.caller_ctx : ctx
+		var_refs = f.closure_refs
+		ctx = f.ctx
+		if !exc && pc == 0 && gc_should_run(rt) && !gc_safepoint(ctx) {exc = true}
+		for {
 		if !exc {
 			// The commonest instructions run in interp_hot (interp_hot.odin), a procedure of its own whose
 			// few live values stay in registers. It returns with pc on the first instruction it does not
 			// handle (or whose fast path does not apply), for the full dispatch below.
 			when JSRT_TRACE_LAST_OP {trace_last_bc = b}
-			pc, sp = interp_hot(ctx, rt, raw_data(code), pc, raw_data(stack), sp, locals, args, var_refs, raw_data(b.cpool), root_base)
+			nf: ^Frame
+			moved: bool
+			nf, pc, sp, moved = interp_hot(ctx, rt, f, pc, sp)
+			if moved {
+				// the hot loop moved to another frame (a call or a return); reload the registers
+				f = nf
+				f.pc = pc
+				f.sp = sp
+				continue frames
+			}
 			if pc >= len(code) {
 				// only reachable with inconsistent bytecode: fail the call rather than the process
 				throw_internal_error(ctx, cat(ctx, "bytecode ran past its end in ", atom_utf8(rt, b.func_name), " after ", fmt_opcode(prev_op)))
@@ -318,9 +351,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				}
 				f.pc = pc
 				base := sp - argc
+				if op != .tail_call && stack[base - 1].tag == .object {
+					fo := as_obj(stack[base - 1])
+					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
+						f.sp = base - 1 // the result goes here when the callee returns
+						f = frame_push(ctx, fo, UNDEFINED, stack[base:sp])
+						continue frames
+					}
+				}
 				r := call_internal(ctx, stack[base - 1], UNDEFINED, UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call {ret_val = r; return finish(f, rt, ret_val, root_base)}
+				if op == .tail_call {ret_val = r; returning = true; break}
 				sp = base - 1
 				stack[sp] = r
 				sp += 1
@@ -329,9 +370,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				pc += 2
 				f.pc = pc
 				base := sp - argc
+				if op != .tail_call_method && stack[base - 1].tag == .object {
+					fo := as_obj(stack[base - 1])
+					if fo.class == .bytecode_function && fo.data.(Func_Data).bc.func_kind == .normal && rt.stack_depth < rt.config.max_stack_depth {
+						f.sp = base - 2
+						f = frame_push(ctx, fo, stack[base - 2], stack[base:sp])
+						continue frames
+					}
+				}
 				r := call_internal(ctx, stack[base - 1], stack[base - 2], UNDEFINED, stack[base:sp], false)
 				if is_exception(r) {exc = true; break}
-				if op == .tail_call_method {ret_val = r; return finish(f, rt, ret_val, root_base)}
+				if op == .tail_call_method {ret_val = r; returning = true; break}
 				sp = base - 2
 				stack[sp] = r
 				sp += 1
@@ -375,7 +424,7 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					temp_reset(rt, root_base)
 					return UNDEFINED, .coro_return
 				}
-				return finish(f, rt, ret_val, root_base)
+				returning = true
 			case .return_undef:
 				if is_coro {
 					stack[sp] = UNDEFINED
@@ -385,7 +434,8 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 					temp_reset(rt, root_base)
 					return UNDEFINED, .coro_return
 				}
-				return finish(f, rt, UNDEFINED, root_base)
+				ret_val = UNDEFINED
+				returning = true
 			case .return_async:
 				f.sp = sp
 				f.pc = pc
@@ -1540,6 +1590,17 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 				throw_internal_error(ctx, "invalid opcode")
 				exc = true
 			}
+			if returning {
+				returning = false
+				if f.stackless {
+					// resume the caller: the result takes the place of the callee and its arguments
+					f = frame_pop(rt, f)
+					f.stack[f.sp] = ret_val
+					f.sp += 1
+					continue frames
+				}
+				return finish(f, rt, ret_val, root_base)
+			}
 			if !exc {continue}
 		}
 
@@ -1572,9 +1633,16 @@ interp_run :: proc(ctx: ^Context, f: ^Frame, var_refs: [^]^Var_Ref) -> (Value, E
 			}
 		}
 		if caught {continue}
+		if f.stackless {
+			// uncaught in a frame this activation pushed: pop it and unwind the caller from its call site
+			f = frame_pop(rt, f)
+			exc = true
+			continue frames
+		}
 		f.sp = sp
 		temp_reset(rt, root_base)
 		return EXCEPTION, .exception
+		}
 	}
 }
 
