@@ -130,8 +130,7 @@ $cflags = @(
 if (-not $NoLto) { $cflags += '-flto' }
 $cflags += $ExtraFlags
 $sources = if ($Engine -eq 'jsrt') { @() } else { @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Object { Join-Path $qjs $_ } }   # (jsrt: the engine is Odin, in the glue object)
-$sources += @(Get-ChildItem (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
-# The glue is Odin (native\js\odin, linked below); the C left is QuickJS, the generated gen\bindings.c and a shim of layout asserts.
+# The glue and its generated bindings are Odin (native\js\odin, linked below); the C left is QuickJS and a shim of layout asserts.
 $sources += (Join-Path $native 'odin\wj_shim.c')
 if ($Allocator -eq 'mimalloc') {
     # the engine's heap through mimalloc (pinned), the C library's own through wasi-libc's dlmalloc

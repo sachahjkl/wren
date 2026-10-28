@@ -11,18 +11,7 @@ import "../odin_abi/api_decl"
 import "../odin/jsb"
 import "../odin/wj"
 
-// the generated FullscreenOptions dictionary (bindings.h): { keyboardLock, navigationUI } as wj_str, in that order.
-@(private = "file")
-Fullscreen_Options :: struct {
-	keyboardLock: wj.Str,
-	navigationUI: wj.Str,
-}
 
-@(default_calling_convention = "c")
-foreign {
-	wjd_FullscreenOptions_from :: proc(ctx: ^wj.Context, v: wj.JSValue, out: ^Fullscreen_Options) -> bool ---
-	wjd_FullscreenOptions_free :: proc(ctx: ^wj.Context, d: ^Fullscreen_Options) ---
-}
 
 @(private = "file") iface_element := i32(-2)
 @(private = "file")
@@ -36,7 +25,7 @@ wjr_Element_requestFullscreen :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValu
 	context = jsb.glue_context()
 	o := (^wj.Obj)(wj.wj_this(ctx, this_val, element_iface()))
 	if o == nil { return wj.web_promise_reject_pending(ctx) }
-	opt: Fullscreen_Options
+	opt: wjd_FullscreenOptions
 	if !wjd_FullscreenOptions_from(ctx, wj.arg(argc, argv, 0), &opt) { return wj.web_promise_reject_pending(ctx) }
 	nav := api_decl.Fullscreen_Navigation.Auto
 	if opt.navigationUI.len == 4 {

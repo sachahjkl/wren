@@ -139,11 +139,8 @@ dom_live_list :: proc "c" (ctx: ^Context, owner: JSValue, root: u64, kind: i32, 
 	return obj
 }
 
-@(default_calling_convention = "c")
-foreign {
 	// the number of [SameObject] slots of the generated bindings (bindings.c): a wrapper's `same` past it is the glue's
-	wj_same_object_count: i32
-}
+wj_same_object_count: i32
 
 // The name / text a Dom_Impl keeps (malloc'd by dom_strndup), as an Odin string.
 dom_name :: #force_inline proc "contextless" (d: ^Dom_Impl) -> string {
