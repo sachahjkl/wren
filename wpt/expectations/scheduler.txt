@@ -79,10 +79,10 @@
 	Tests delay when changing a delayed task's priority: PASS
 /scheduler/task-controller-setPriority-delayed-task.any.worker.html: OK
 	Tests delay when changing a delayed task's priority: PASS
-/scheduler/task-controller-setPriority-recursive.any.html: TIMEOUT
-	Test that TaskController.setPriority() throws an error if called recursively: TIMEOUT
-/scheduler/task-controller-setPriority-recursive.any.worker.html: TIMEOUT
-	Test that TaskController.setPriority() throws an error if called recursively: TIMEOUT
+/scheduler/task-controller-setPriority-recursive.any.html: OK
+	Test that TaskController.setPriority() throws an error if called recursively: PASS
+/scheduler/task-controller-setPriority-recursive.any.worker.html: OK
+	Test that TaskController.setPriority() throws an error if called recursively: PASS
 /scheduler/task-controller-setPriority-repeated.any.html: OK
 	TaskController.setPriority() changes the priority of all associated tasks when called repeatedly: FAIL
 	TaskController.setPriority() changes the priority of all associated tasks when called repeatedly before tasks run: FAIL
@@ -90,23 +90,23 @@
 	TaskController.setPriority() changes the priority of all associated tasks when called repeatedly: FAIL
 	TaskController.setPriority() changes the priority of all associated tasks when called repeatedly before tasks run: FAIL
 /scheduler/task-controller-setPriority1.any.html: OK
-	Test that TaskController.setPriority() changes the priority of all associated tasks: FAIL
+	Test that TaskController.setPriority() changes the priority of all associated tasks: PASS
 /scheduler/task-controller-setPriority1.any.worker.html: OK
-	Test that TaskController.setPriority() changes the priority of all associated tasks: FAIL
+	Test that TaskController.setPriority() changes the priority of all associated tasks: PASS
 /scheduler/task-controller-setPriority2.any.html: OK
-	Test TaskController.setPriority() affects task order.: FAIL
+	Test TaskController.setPriority() affects task order.: PASS
 /scheduler/task-controller-setPriority2.any.worker.html: OK
-	Test TaskController.setPriority() affects task order.: FAIL
+	Test TaskController.setPriority() affects task order.: PASS
 /scheduler/task-signal-any-abort.tentative.any.html: ERROR
 /scheduler/task-signal-any-abort.tentative.any.worker.html: ERROR
 /scheduler/task-signal-any-post-task-run-order.tentative.any.html: OK
-	scheduler.postTask() tasks run in priority order with a composite signal whose source has fixed priority: FAIL
+	scheduler.postTask() tasks run in priority order with a composite signal whose source has fixed priority: PASS
 	scheduler.postTask() tasks run in priority order with a dynamic priority composite signal: FAIL
-	scheduler.postTask() tasks run in priority order with a fixed priority composite signal: FAIL
+	scheduler.postTask() tasks run in priority order with a fixed priority composite signal: PASS
 /scheduler/task-signal-any-post-task-run-order.tentative.any.worker.html: OK
-	scheduler.postTask() tasks run in priority order with a composite signal whose source has fixed priority: FAIL
+	scheduler.postTask() tasks run in priority order with a composite signal whose source has fixed priority: PASS
 	scheduler.postTask() tasks run in priority order with a dynamic priority composite signal: FAIL
-	scheduler.postTask() tasks run in priority order with a fixed priority composite signal: FAIL
+	scheduler.postTask() tasks run in priority order with a fixed priority composite signal: PASS
 /scheduler/task-signal-any-priority.tentative.any.html: OK
 	Priority change events fire for composite signals: FAIL
 	Priority change events fire for composite signals with intermediate sources: FAIL
@@ -116,9 +116,9 @@
 	TaskSignal.any() propagates abort and priority: FAIL
 	TaskSignal.any() propagates priority after returning an aborted signal: FAIL
 	TaskSignal.any() returns a signal with dynamic priority: FAIL
-	TaskSignal.any() returns a signal with the correct priority when intialized with a TaskSignal: FAIL
-	TaskSignal.any() returns a signal with the correct priority when intialized with a string: FAIL
-	TaskSignal.any() returns a user-visible TaskSignal when no priority is specified: FAIL
+	TaskSignal.any() returns a signal with the correct priority when intialized with a TaskSignal: PASS
+	TaskSignal.any() returns a signal with the correct priority when intialized with a string: PASS
+	TaskSignal.any() returns a user-visible TaskSignal when no priority is specified: PASS
 /scheduler/task-signal-any-priority.tentative.any.worker.html: OK
 	Priority change events fire for composite signals: FAIL
 	Priority change events fire for composite signals with intermediate sources: FAIL
@@ -128,20 +128,20 @@
 	TaskSignal.any() propagates abort and priority: FAIL
 	TaskSignal.any() propagates priority after returning an aborted signal: FAIL
 	TaskSignal.any() returns a signal with dynamic priority: FAIL
-	TaskSignal.any() returns a signal with the correct priority when intialized with a TaskSignal: FAIL
-	TaskSignal.any() returns a signal with the correct priority when intialized with a string: FAIL
-	TaskSignal.any() returns a user-visible TaskSignal when no priority is specified: FAIL
-/scheduler/task-signal-onprioritychange.any.html: TIMEOUT
-	Test that TaskSignal.onprioritychange listens for prioritychange events: TIMEOUT
-/scheduler/task-signal-onprioritychange.any.worker.html: TIMEOUT
-	Test that TaskSignal.onprioritychange listens for prioritychange events: TIMEOUT
+	TaskSignal.any() returns a signal with the correct priority when intialized with a TaskSignal: PASS
+	TaskSignal.any() returns a signal with the correct priority when intialized with a string: PASS
+	TaskSignal.any() returns a user-visible TaskSignal when no priority is specified: PASS
+/scheduler/task-signal-onprioritychange.any.html: OK
+	Test that TaskSignal.onprioritychange listens for prioritychange events: PASS
+/scheduler/task-signal-onprioritychange.any.worker.html: OK
+	Test that TaskSignal.onprioritychange listens for prioritychange events: PASS
 /scheduler/tentative/yield/yield-abort.any.html: OK
-	yield() aborted by AbortController in a separate task: FAIL
-	yield() aborted by TaskController in a separate task: FAIL
+	yield() aborted by AbortController in a separate task: PASS
+	yield() aborted by TaskController in a separate task: PASS
 	yield() with an aborted signal: FAIL
 /scheduler/tentative/yield/yield-abort.any.worker.html: OK
-	yield() aborted by AbortController in a separate task: FAIL
-	yield() aborted by TaskController in a separate task: FAIL
+	yield() aborted by AbortController in a separate task: PASS
+	yield() aborted by TaskController in a separate task: PASS
 	yield() with an aborted signal: FAIL
 /scheduler/tentative/yield/yield-cross-origin-propagation.html: TIMEOUT
 	Test scheduler.yield() does not use propagated state in cross origin frames: TIMEOUT
@@ -153,7 +153,7 @@
 	yield() inherits abort in a chained then() on a settled promise: FAIL
 	yield() inherits abort in a thenable then(): FAIL
 	yield() inherits abort in then() on a settled promise: FAIL
-	yield() inherits abort with no intervening promise: FAIL
+	yield() inherits abort with no intervening promise: PASS
 /scheduler/tentative/yield/yield-inherit-abort-across-settled-promises.any.worker.html: OK
 	yield() inherits abort across a pending promise: FAIL
 	yield() inherits abort across an await of a non-promise: FAIL
@@ -162,7 +162,7 @@
 	yield() inherits abort in a chained then() on a settled promise: FAIL
 	yield() inherits abort in a thenable then(): FAIL
 	yield() inherits abort in then() on a settled promise: FAIL
-	yield() inherits abort with no intervening promise: FAIL
+	yield() inherits abort with no intervening promise: PASS
 /scheduler/tentative/yield/yield-inherit-across-promises.any.html: OK
 	yield() inherits .then() context, not resolve context: PASS
 	yield() inherits abort across promises: FAIL

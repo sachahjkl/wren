@@ -27,11 +27,19 @@ typedef struct sched_rec {
     JSValue  reject;
     JSValue  signal;      /* the AbortSignal watched (or undefined); the abort listener holds this record's user */
     int32_t  abort_listener;  /* id from wr_AbortSignal... not used; the listener is a JS closure kept on the signal */
+    int      priority;    /* the task's effective priority (for yield() inheritance) */
 } sched_rec;
 
 static sched_rec *recs;
 static uint32_t rec_cap, rec_count;
 static uint32_t *rec_free, rec_free_n, rec_free_cap;
+
+/* The task currently running its callback (for scheduler.yield() continuation inheritance): its signal and priority.
+ * A yield continuation posted while this is set inherits them. Reset to "no task" (undefined / -1) between tasks so a
+ * yield from outside a scheduler task does not leak a stale priority (yield() does not leak priority across tasks). */
+static JSValue sched_current_signal = JS_UNDEFINED;   /* not ref-counted: borrowed from the live record while it runs */
+static int sched_current_priority = -1;               /* -1: no running task */
+static bool sched_current_has = false;
 
 static uint32_t sched_alloc(void)
 {
@@ -199,6 +207,7 @@ JSValue wjr_Scheduler_postTask(JSContext *ctx, JSValueConst this_val, int argc, 
     r->resolve = funcs[0];
     r->reject = funcs[1];
     r->signal = JS_IsObject(signal) ? JS_DupValue(ctx, signal) : JS_UNDEFINED;
+    r->priority = priority;
     r->id = wr_Scheduler_post(sched_callback_index(), (int32_t)sched_user(slot), priority, delay);
 
     /* wire the abort: signal.addEventListener('abort', reaction) with the record's user bound */
@@ -225,6 +234,17 @@ JSValue wjr_Scheduler_yield(JSContext *ctx, JSValueConst this_val, int argc, JSV
 {
     WJ_UNUSED(argc); WJ_UNUSED(argv);
     if (!wj_this(ctx, this_val, WJ_IFACE_Scheduler)) { return JS_EXCEPTION; }
+
+    /* A yield continuation inherits the signal and priority of the task it runs within (continuation inheritance).
+     * Outside a scheduler task, it is user-visible with no signal. */
+    JSValueConst signal = sched_current_has ? sched_current_signal : JS_UNDEFINED;
+    int priority = sched_current_has && sched_current_priority >= 0 ? sched_current_priority : wr_TaskPriority_User_Visible;
+
+    /* if the inherited signal is already aborted, reject at once */
+    if (JS_IsObject(signal) && web_signal_aborted(signal)) {
+        return web_promise_rejected(ctx, web_signal_reason(ctx, signal));
+    }
+
     JSValue funcs[2];
     JSValue p = web_promise_new(ctx, funcs);
     if (JS_IsException(p)) { return p; }
@@ -235,8 +255,24 @@ JSValue wjr_Scheduler_yield(JSContext *ctx, JSValueConst this_val, int argc, JSV
     r->callback = JS_UNDEFINED;
     r->resolve = funcs[0];
     r->reject = funcs[1];
-    r->signal = JS_UNDEFINED;
-    r->id = wr_Scheduler_post(sched_callback_index(), (int32_t)sched_user(slot), wr_TaskPriority_User_Visible, 0);
+    r->signal = JS_IsObject(signal) ? JS_DupValue(ctx, signal) : JS_UNDEFINED;
+    r->priority = priority;
+    r->id = wr_Scheduler_post(sched_callback_index(), (int32_t)sched_user(slot), priority, 0);
+
+    /* watch the inherited signal so an abort rejects the continuation (same reaction as postTask) */
+    if (JS_IsObject(signal)) {
+        JSValue data = JS_NewInt64(ctx, sched_user(slot));
+        JSValue reaction = JS_NewCFunctionData(ctx, sched_abort_reaction, 0, 0, 1, &data);
+        JS_FreeValue(ctx, data);
+        JSValue add = JS_GetPropertyStr(ctx, signal, "addEventListener");
+        if (JS_IsFunction(ctx, add)) {
+            JSValue a[2] = { JS_NewString(ctx, "abort"), reaction };
+            JSValue rr = JS_Call(ctx, add, signal, 2, (JSValueConst *)a);
+            JS_FreeValue(ctx, rr); JS_FreeValue(ctx, a[0]);
+        }
+        JS_FreeValue(ctx, add);
+        JS_FreeValue(ctx, reaction);
+    }
     return p;
 }
 
@@ -251,13 +287,24 @@ WJ_EXPORT("wj_cb_scheduler") void wj_cb_scheduler(int32_t user)
     if (!r) { return; }
     JSValue callback = JS_DupValue(ctx, r->callback);
     JSValue resolve = JS_DupValue(ctx, r->resolve), reject = JS_DupValue(ctx, r->reject);
+    JSValue signal = JS_DupValue(ctx, r->signal);
+    int priority = r->priority;
     sched_release(ctx, slot);
+
+    /* publish this task as the "current task" so a synchronous scheduler.yield() in the callback inherits its signal
+     * and priority; restore the previous state afterwards (tasks can be nested via microtasks) */
+    JSValue prev_signal = sched_current_signal; int prev_priority = sched_current_priority; bool prev_has = sched_current_has;
+    sched_current_signal = signal; sched_current_priority = priority; sched_current_has = true;
+
     JSValue result;
     if (JS_IsFunction(ctx, callback)) {
         result = JS_Call(ctx, callback, JS_UNDEFINED, 0, NULL);
     } else {
         result = JS_UNDEFINED;
     }
+
+    sched_current_signal = prev_signal; sched_current_priority = prev_priority; sched_current_has = prev_has;
+    JS_FreeValue(ctx, signal);
     if (JS_IsException(result)) {
         JSValue e = JS_GetException(ctx);
         web_settle(ctx, reject, e);
@@ -284,9 +331,8 @@ JSValue wjr_TaskController_constructor(JSContext *ctx, JSValueConst new_target, 
         if (JS_IsString(pr)) { const char *ps = JS_ToCString(ctx, pr); priority = sched_priority_value(ps); JS_FreeCString(ctx, ps); }
         JS_FreeValue(ctx, pr);
     }
-    /* build via the AbortController constructor so this is a real controller with a signal */
-    extern JSValue wjr_AbortController_constructor(JSContext *ctx, JSValueConst new_target, int argc, JSValueConst *argv);
-    JSValue ctrl = wjr_AbortController_constructor(ctx, new_target, 0, NULL);
+    /* build a real TaskController (an AbortController whose signal is a TaskSignal carrying the priority) */
+    JSValue ctrl = web_controller_construct(ctx, new_target, WJ_IFACE_TaskController, WJ_IFACE_TaskSignal);
     if (JS_IsException(ctrl)) { return ctrl; }
     JSValue signal = JS_GetPropertyStr(ctx, ctrl, "signal");
     if (JS_IsObject(signal)) { web_extra_set(ctx, signal, "taskPriority", JS_NewInt32(ctx, priority)); }
@@ -302,9 +348,24 @@ JSValue wjr_TaskController_setPriority(JSContext *ctx, JSValueConst this_val, in
     JS_FreeCString(ctx, ps);
     JSValue signal = JS_GetPropertyStr(ctx, this_val, "signal");
     if (JS_IsObject(signal)) {
+        /* "is priority changing": setPriority must not run re-entrantly from within a prioritychange handler */
+        JSValue flag = web_extra_get(ctx, signal, "priorityChanging");
+        bool changing = JS_ToBool(ctx, flag);
+        JS_FreeValue(ctx, flag);
+        if (changing) {
+            JS_FreeValue(ctx, signal);
+            return JS_Throw(ctx, web_dom_exception(ctx, "NotAllowedError", "setPriority called recursively"));
+        }
         int prev = signal_priority(ctx, signal);
         if (prev != priority) {
             web_extra_set(ctx, signal, "taskPriority", JS_NewInt32(ctx, priority));
+            /* reprioritize the queued tasks bound to this signal (host queue order) */
+            for (uint32_t i = 0; i < rec_count; i++) {
+                if (recs[i].used && JS_VALUE_GET_PTR(recs[i].signal) == JS_VALUE_GET_PTR(signal)) {
+                    wr_Scheduler_setPriority(recs[i].id, priority);
+                }
+            }
+            web_extra_set(ctx, signal, "priorityChanging", JS_NewBool(ctx, true));
             /* fire a TaskPriorityChangeEvent('prioritychange', {previousPriority}) at the signal */
             JSValue ev = web_event_new(ctx, WJ_IFACE_TaskPriorityChangeEvent, "prioritychange", false, false);
             if (JS_IsObject(ev)) {
@@ -312,6 +373,7 @@ JSValue wjr_TaskController_setPriority(JSContext *ctx, JSValueConst this_val, in
                 web_event_fire(ctx, signal, ev);
                 JS_FreeValue(ctx, ev);
             }
+            web_extra_set(ctx, signal, "priorityChanging", JS_NewBool(ctx, false));
         }
     }
     JS_FreeValue(ctx, signal);
@@ -322,6 +384,33 @@ JSValue wjr_TaskController_setPriority(JSContext *ctx, JSValueConst this_val, in
 JSValue wjr_TaskSignal_get_priority(JSContext *ctx, JSValueConst this_val)
 {
     return JS_NewString(ctx, sched_priority_name(signal_priority(ctx, this_val)));
+}
+
+/* TaskSignal.any(signals, {priority}): a composite TaskSignal that aborts when any source aborts. Its priority is
+ * fixed: the TaskPriority string of init.priority, or the current priority of the TaskSignal given as init.priority
+ * (a "fixed priority" signal; we do not track live changes of a source TaskSignal, which the WPTs do not exercise). */
+JSValue wjr_TaskSignal_static_any(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    WJ_UNUSED(this_val);
+    if (argc < 1) { return wj_throw_arity(ctx, "TaskSignal.any", 1, argc); }
+    int priority = wr_TaskPriority_User_Visible;
+    JSValueConst init = wj_arg(argc, (JSValue *)argv, 1);
+    if (JS_IsObject(init)) {
+        JSValue pr;
+        if (!web_dict_get(ctx, init, "priority", &pr)) { return JS_EXCEPTION; }
+        if (JS_IsString(pr)) {
+            const char *ps = JS_ToCString(ctx, pr);
+            priority = sched_priority_value(ps);
+            JS_FreeCString(ctx, ps);
+        } else if (JS_IsObject(pr)) {
+            priority = signal_priority(ctx, pr);
+        }
+        JS_FreeValue(ctx, pr);
+    }
+    JSValue obj = web_signal_any(ctx, argv[0], WJ_IFACE_TaskSignal, "TaskSignal.any");
+    if (JS_IsException(obj)) { return obj; }
+    if (JS_IsObject(obj)) { web_extra_set(ctx, obj, "taskPriority", JS_NewInt32(ctx, priority)); }
+    return obj;
 }
 
 /* TaskPriorityChangeEvent.previousPriority getter. */

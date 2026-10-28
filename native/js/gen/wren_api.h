@@ -2745,7 +2745,7 @@ WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
 // callback with the Lock immediately), and the rest (>> 2) is the lock id used to release it. When available but
 // not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
 // record for that notification).
-WR_IMPORT("locks", "LockManager_request") int64_t wr_LockManager_request(const uint8_t *name, uint32_t name_len, int32_t mode, int32_t if_available, int32_t steal, uint32_t callback, int32_t user);
+WR_IMPORT("locks", "LockManager_request") int64_t wr_LockManager_request(const uint8_t *name, uint32_t name_len, int32_t mode, int32_t if_available, int32_t steal, uint32_t callback, int32_t user, uint32_t broken_callback, int32_t has_signal);
 // The callback's returned promise settled, the callback was null, or a pending request was aborted: release the
 // lock (or drop the queued request) and grant whatever waits.
 WR_IMPORT("locks", "LockManager_release") void wr_LockManager_release(uint64_t id);
