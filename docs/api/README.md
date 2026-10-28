@@ -52,7 +52,7 @@ function not exposed to workers is not instantiated.
 | [`animations`](animations.md) | 30 | Window | Web Animations (src/page/web_animations.odin): Element.animate, Animation, KeyframeEffect, document.timeline. The |
 | [`async`](async.md) | 17 | Window, Worker | Promises, microtasks, buffers and host objects: the asynchronous core every other module builds on. |
 | [`caches`](caches.md) | 11 | Window, Worker | The Cache API (Service Workers §5: CacheStorage, Cache) on the browser's storage (src/page/cache_store.odin): named |
-| [`canvas`](canvas.md) | 137 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
+| [`canvas`](canvas.md) | 141 | Window, Worker | Canvas 2D (HTML §4.12.5): the 2D rendering context of <canvas> and OffscreenCanvas, drawn by a software rasterizer |
 | [`compression`](compression.md) | 4 | Window, Worker | CompressionStream and DecompressionStream (Compression Standard; src/page/compression.odin, the streams themselves: |
 | [`console`](console.md) | 3 | Window, Worker | The console of the page (or of the worker): messages appear in the browser's console. Invalid UTF-8 is shown as |
 | [`credentials`](credentials.md) | 16 | Window | Web Authentication Level 3 (passkeys, security keys) and the Credential Management container it hangs off |
@@ -77,6 +77,7 @@ function not exposed to workers is not instantiated.
 | [`storageaccess`](storageaccess.md) | 2 | Window | The Storage Access API (src/page/storage_access.odin): a frame of another site than its tab's, whose storage and |
 | [`navigator`](navigator.md) | 10 | Window, Worker | What the web APIs of JavaScript need beyond the modules Wasm pages use (native/js/runtime/web*.c): the browser's |
 | [`media`](media.md) | 4 | Window |  |
+| [`locks`](locks.md) | 6 | Window, Worker | The Web Locks API (src/page/bindings_locks.odin): navigator.locks.request / query, held per origin and shared |
 | [`htmlmedia`](htmlmedia.md) | 37 | Window | HTMLMediaElement (<video>, <audio>): the media element state machine of HTML §4.8.11 (src/page/media_element.odin) on the |
 | [`mse`](mse.md) | 35 | Window, Worker | Media Source Extensions: MediaSource, SourceBuffer and SourceBufferList (src/page/media_source.odin). A SourceBuffer holds |
 | [`mediatracks`](mediatracks.md) | 49 | Window | The track lists of a media element (src/page/media_tracks.odin, media_texttracks.odin): AudioTrackList, VideoTrackList |
@@ -85,12 +86,13 @@ function not exposed to workers is not instantiated.
 | [`performance`](performance.md) | 20 | Window, Worker | High Resolution Time and User Timing: performance.now() and timeOrigin on the page's own timeline, mark / measure, |
 | [`popover`](popover.md) | 5 | Window | The Popover API (src/page/popover.odin): the `popover` attribute, showPopover / hidePopover / togglePopover, the |
 | [`ports`](ports.md) | 10 | Window, Worker | MessagePorts between realms (src/page/ports.odin; native/js/runtime/web_message.c, workers.c): a port whose other |
+| [`scheduler`](scheduler.md) | 4 | Window, Worker | Prioritized Task Scheduling (src/page/bindings_scheduler.odin): scheduler.postTask / scheduler.yield, TaskController |
 | [`serviceworker`](serviceworker.md) | 21 | Window, Worker | Service workers (src/page/service_worker.odin; native/js/runtime/web_sw.c): registrations kept by the browser, each |
 | [`storage`](storage.md) | 8 | Window | localStorage and sessionStorage (Web Storage). Security for an opaque origin or disabled storage, Quota for a write |
 | [`timers`](timers.md) | 11 | Window, Worker | Timers and the rendering-related scheduling of HTML: setTimeout / setInterval (with the HTML nesting clamp and |
-| [`url`](url.md) | 18 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
+| [`url`](url.md) | 30 | Window, Worker | URL and URLSearchParams (WHATWG URL Standard) as host objects. A URL's searchParams is linked to it both ways: |
 | [`web`](web.md) | 2 | Window, Worker | What every other module shares: the error codes (Web IDL exceptions and DOMException names), the exception record |
 | [`websocket`](websocket.md) | 12 | Window | WebSocket and CloseEvent. Messages arrive as "message" events: text in Event_data, or a buffer in Event_object. |
 | [`workers`](workers.md) | 11 | Window, Worker | Dedicated workers (HTML). A message event carries the text in Event_data, the number of transferred buffers in |
 
-1294 imports in 1195 functions.
+1320 imports in 1221 functions.

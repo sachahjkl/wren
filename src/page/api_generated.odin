@@ -140,6 +140,12 @@ Api_ImageBitmap :: struct {
 	data:   ^Canvas_Obj,
 }
 
+// A live ImageBitmapRenderingContext: its handle and what lookup_ImageBitmapRenderingContext found.
+Api_ImageBitmapRenderingContext :: struct {
+	handle: u64,
+	data:   ^Canvas_Obj,
+}
+
 // What a fill or stroke style currently is.
 Api_StyleKind :: enum i32 {
 	Color = 0,
@@ -496,6 +502,12 @@ Api_ScreenField :: enum i32 {
 	Color_Depth = 6,
 }
 
+// A lock mode (LockMode).
+Api_LockMode :: enum i32 {
+	Shared = 0,
+	Exclusive = 1,
+}
+
 // A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 // A live HTMLMediaElement: its handle and what lookup_HTMLMediaElement found.
 Api_HTMLMediaElement :: struct {
@@ -688,6 +700,13 @@ Api_PerformanceEntryType :: enum i32 {
 	Script = 14,
 }
 
+// A task priority (TaskPriority), highest first.
+Api_TaskPriority :: enum i32 {
+	User_Blocking = 0,
+	User_Visible = 1,
+	Background = 2,
+}
+
 // What the current event of a service worker's realm is (kind 0: none waits).
 Api_SwEventInfo :: struct {
 	kind: i32,
@@ -736,6 +755,12 @@ Api_URLSearchParams :: struct {
 	data:   ^Params_Object,
 }
 
+// A live URLPattern: its handle and what lookup_URLPattern found.
+Api_URLPattern :: struct {
+	handle: u64,
+	data:   ^Pattern_Object,
+}
+
 // A component of a URL (also used by Location).
 Api_URLComponent :: enum i32 {
 	Href = 0,
@@ -749,6 +774,18 @@ Api_URLComponent :: enum i32 {
 	Search = 8,
 	Hash = 9,
 	Origin = 10,
+}
+
+// A component of a URLPattern (the eight pattern components, in the spec's order).
+Api_URLPatternComponent :: enum i32 {
+	Protocol = 0,
+	Username = 1,
+	Password = 2,
+	Hostname = 3,
+	Port = 4,
+	Pathname = 5,
+	Search = 6,
+	Hash = 7,
 }
 
 // The status of a function that raises: 0, or what went wrong. Promise rejections use the same codes.
@@ -873,6 +910,9 @@ _valid_NavigatorField :: #force_inline proc "contextless" (v: i32) -> bool { swi
 _valid_ScreenField :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6: return true }; return false }
 
 @(private = "file")
+_valid_LockMode :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
+
+@(private = "file")
 _valid_FetchState :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3: return true }; return false }
 
 @(private = "file")
@@ -897,6 +937,9 @@ _valid_RequestCache :: #force_inline proc "contextless" (v: u32) -> bool { switc
 _valid_PerformanceEntryType :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14: return true }; return false }
 
 @(private = "file")
+_valid_TaskPriority :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2: return true }; return false }
+
+@(private = "file")
 _valid_StorageArea :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1: return true }; return false }
 
 @(private = "file")
@@ -907,6 +950,9 @@ _valid_VisibilityState :: #force_inline proc "contextless" (v: i32) -> bool { sw
 
 @(private = "file")
 _valid_URLComponent :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10: return true }; return false }
+
+@(private = "file")
+_valid_URLPatternComponent :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, 1, 2, 3, 4, 5, 6, 7: return true }; return false }
 
 @(private = "file")
 _valid_Error :: #force_inline proc "contextless" (v: i32) -> bool { switch v { case 0, -1, -2, -3, -4, -5, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20, -21, -22, -23, -24, -40, -41, -42, -43, -44, -45, -46: return true }; return false }
@@ -5748,6 +5794,102 @@ _t_canvas_Canvas_bitmapFromPixels :: proc "c" (env: rawptr, caller: wasm.Caller,
 		return _fail_status(&c, a, _err, c.message)
 	}
 	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// HTMLCanvasElement_bitmapRenderer :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, alpha: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_HTMLCanvasElement_bitmapRenderer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.HTMLCanvasElement_bitmapRenderer", "result pointer") }
+	_p0 := Api_HTMLCanvasElement{handle = u64(a[0].i64)}
+	_p0.data = lookup_HTMLCanvasElement(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.HTMLCanvasElement_bitmapRenderer: argument canvas is not a live HTMLCanvasElement")
+	}
+	_p1 := a[1].i32 != 0
+	_r, _err := HTMLCanvasElement_bitmapRenderer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// OffscreenCanvas_bitmapRenderer :: proc(c: ^Call, canvas: Api_OffscreenCanvas, alpha: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_canvas_OffscreenCanvas_bitmapRenderer :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[2]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "canvas.OffscreenCanvas_bitmapRenderer", "result pointer") }
+	_p0 := Api_OffscreenCanvas{handle = u64(a[0].i64)}
+	_p0.data = lookup_OffscreenCanvas(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.OffscreenCanvas_bitmapRenderer: argument canvas is not a live OffscreenCanvas")
+	}
+	_p1 := a[1].i32 != 0
+	_r, _err := OffscreenCanvas_bitmapRenderer(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// ImageBitmapRenderingContext_canvas :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext) -> u64
+@(private = "file")
+_t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_canvas: argument context is not a live ImageBitmapRenderingContext") }
+		return wasm.trap_new("canvas.ImageBitmapRenderingContext_canvas: argument context is not a live ImageBitmapRenderingContext")
+	}
+	_r := ImageBitmapRenderingContext_canvas(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error
+@(private = "file")
+_t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
+	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_transferFromImageBitmap: argument context is not a live ImageBitmapRenderingContext")
+	}
+	_p1 := u64(a[1].i64)
+	_p2 := a[2].i32 != 0
+	_err := ImageBitmapRenderingContext_transferFromImageBitmap(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
 	a[0] = {}
 	a[0].i32 = 0
 	return nil
@@ -22694,6 +22836,132 @@ _t_dom_XMLSerializer_serialize :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// LockManager_request :: proc(c: ^Call, name: string, mode: Api_LockMode, if_available: bool, steal: bool, callback: u32, user: i32) -> i64
+@(private = "file")
+_t_locks_LockManager_request :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "locks.LockManager_request", "name") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "locks.LockManager_request: argument name is not valid UTF-8") }
+		return wasm.trap_new("locks.LockManager_request: argument name is not valid UTF-8")
+	}
+	_e1 := i32(a[2].i32)
+	if !_valid_LockMode(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "locks.LockManager_request: argument mode is not a LockMode") }
+		return wasm.trap_new("locks.LockManager_request: argument mode is not a LockMode")
+	}
+	_p1 := Api_LockMode(_e1)
+	_p2 := a[3].i32 != 0
+	_p3 := a[4].i32 != 0
+	_p4 := u32(a[5].i32)
+	_p5 := a[6].i32
+	_r := LockManager_request(&c, _p0, _p1, _p2, _p3, _p4, _p5)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = _r
+	return nil
+}
+
+// LockManager_release :: proc(c: ^Call, id: u64)
+@(private = "file")
+_t_locks_LockManager_release :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	LockManager_release(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	return nil
+}
+
+// LockManager_queryCount :: proc(c: ^Call, held: bool) -> i32
+@(private = "file")
+_t_locks_LockManager_queryCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32 != 0
+	_r := LockManager_queryCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// LockManager_queryName :: proc(c: ^Call, held: bool, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_locks_LockManager_queryName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryName", "result buffer") }
+	_p0 := a[0].i32 != 0
+	_p1 := a[1].i32
+	_r, _err := LockManager_queryName(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LockManager_queryMode :: proc(c: ^Call, held: bool, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_locks_LockManager_queryMode :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryMode", "result buffer") }
+	_p0 := a[0].i32 != 0
+	_p1 := a[1].i32
+	_r, _err := LockManager_queryMode(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// LockManager_queryClient :: proc(c: ^Call, held: bool, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_locks_LockManager_queryClient :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "locks.LockManager_queryClient", "result buffer") }
+	_p0 := a[0].i32 != 0
+	_p1 := a[1].i32
+	_r, _err := LockManager_queryClient(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // HTMLMediaElement_currentSrc :: proc(c: ^Call, element: Api_HTMLMediaElement) -> string
 @(private = "file")
 _t_htmlmedia_HTMLMediaElement_currentSrc :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -26723,6 +26991,85 @@ _t_ports_MessageEvent_portEnds :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// Scheduler_post :: proc(c: ^Call, callback: u32, user: i32, priority: Api_TaskPriority, delay_ms: f64) -> u64
+@(private = "file")
+_t_scheduler_Scheduler_post :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u32(a[0].i32)
+	_p1 := a[1].i32
+	_e2 := i32(a[2].i32)
+	if !_valid_TaskPriority(_e2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "scheduler.Scheduler_post: argument priority is not a TaskPriority") }
+		return wasm.trap_new("scheduler.Scheduler_post: argument priority is not a TaskPriority")
+	}
+	_p2 := Api_TaskPriority(_e2)
+	_p3 := a[3].f64
+	_r := Scheduler_post(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i64 = i64(_r)
+	return nil
+}
+
+// Scheduler_cancel :: proc(c: ^Call, id: u64) -> Api_Error
+@(private = "file")
+_t_scheduler_Scheduler_cancel :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_err := Scheduler_cancel(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Scheduler_setPriority :: proc(c: ^Call, id: u64, priority: Api_TaskPriority) -> Api_Error
+@(private = "file")
+_t_scheduler_Scheduler_setPriority :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := u64(a[0].i64)
+	_e1 := i32(a[1].i32)
+	if !_valid_TaskPriority(_e1) {
+		return _fail_status(&c, a, .Invalid_Argument, "scheduler.Scheduler_setPriority: argument priority is not a TaskPriority")
+	}
+	_p1 := Api_TaskPriority(_e1)
+	_err := Scheduler_setPriority(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// Scheduler_isInputPending :: proc(c: ^Call, include_continuous: bool) -> bool
+@(private = "file")
+_t_scheduler_Scheduler_isInputPending :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := a[0].i32 != 0
+	_r := Scheduler_isInputPending(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
 // ServiceWorker_register :: proc(c: ^Call, script: string, scope: Maybe(string), update_via_cache: string, module: bool) -> (u64, Api_Error)
 @(private = "file")
 _t_serviceworker_ServiceWorker_register :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -28067,6 +28414,476 @@ _t_url_URLSearchParams_valueAt :: proc "c" (env: rawptr, caller: wasm.Caller, a:
 	return nil
 }
 
+// URLPattern_createString :: proc(c: ^Call, input: string, base: string, has_base: bool, ignore_case: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_url_URLPattern_createString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "url.URLPattern_createString", "input") }
+	_n1 := wasm.addr(&f, a[3])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[2]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "url.URLPattern_createString", "base") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[6]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "url.URLPattern_createString", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createString: argument input is not valid UTF-8")
+	}
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createString: argument base is not valid UTF-8")
+	}
+	_p2 := a[4].i32 != 0
+	_p3 := a[5].i32 != 0
+	_r, _err := URLPattern_createString(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// URLPattern_createInit :: proc(c: ^Call, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool, base: string, has_base: bool, ignore_case: bool) -> (u64, Api_Error)
+@(private = "file")
+_t_url_URLPattern_createInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n0 := wasm.addr(&f, a[1])
+	_s0, _k0 := wasm.span(&f, wasm.addr(&f, a[0]), _n0)
+	if !_k0 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "protocol") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "username") }
+	_n4 := wasm.addr(&f, a[7])
+	_s4, _k4 := wasm.span(&f, wasm.addr(&f, a[6]), _n4)
+	if !_k4 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "password") }
+	_n6 := wasm.addr(&f, a[10])
+	_s6, _k6 := wasm.span(&f, wasm.addr(&f, a[9]), _n6)
+	if !_k6 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "hostname") }
+	_n8 := wasm.addr(&f, a[13])
+	_s8, _k8 := wasm.span(&f, wasm.addr(&f, a[12]), _n8)
+	if !_k8 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "port") }
+	_n10 := wasm.addr(&f, a[16])
+	_s10, _k10 := wasm.span(&f, wasm.addr(&f, a[15]), _n10)
+	if !_k10 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "pathname") }
+	_n12 := wasm.addr(&f, a[19])
+	_s12, _k12 := wasm.span(&f, wasm.addr(&f, a[18]), _n12)
+	if !_k12 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "search") }
+	_n14 := wasm.addr(&f, a[22])
+	_s14, _k14 := wasm.span(&f, wasm.addr(&f, a[21]), _n14)
+	if !_k14 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "hash") }
+	_n16 := wasm.addr(&f, a[25])
+	_s16, _k16 := wasm.span(&f, wasm.addr(&f, a[24]), _n16)
+	if !_k16 { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "base") }
+	_rs, _rk := wasm.span(&f, wasm.addr(&f, a[28]), 8)
+	if !_rk { return wasm.trap_bounds(&f, "url.URLPattern_createInit", "result pointer") }
+	_p0 := string(_s0[:_n0])
+	if !wasm.valid_utf8(_p0) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument protocol is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument username is not valid UTF-8")
+	}
+	_p4 := string(_s4[:_n4])
+	if !wasm.valid_utf8(_p4) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument password is not valid UTF-8")
+	}
+	_p6 := string(_s6[:_n6])
+	if !wasm.valid_utf8(_p6) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument hostname is not valid UTF-8")
+	}
+	_p8 := string(_s8[:_n8])
+	if !wasm.valid_utf8(_p8) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument port is not valid UTF-8")
+	}
+	_p10 := string(_s10[:_n10])
+	if !wasm.valid_utf8(_p10) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument pathname is not valid UTF-8")
+	}
+	_p12 := string(_s12[:_n12])
+	if !wasm.valid_utf8(_p12) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument search is not valid UTF-8")
+	}
+	_p14 := string(_s14[:_n14])
+	if !wasm.valid_utf8(_p14) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument hash is not valid UTF-8")
+	}
+	_p16 := string(_s16[:_n16])
+	if !wasm.valid_utf8(_p16) {
+		return _fail_status(&c, a, .Type, "url.URLPattern_createInit: argument base is not valid UTF-8")
+	}
+	_p1 := a[2].i32 != 0
+	_p3 := a[5].i32 != 0
+	_p5 := a[8].i32 != 0
+	_p7 := a[11].i32 != 0
+	_p9 := a[14].i32 != 0
+	_p11 := a[17].i32 != 0
+	_p13 := a[20].i32 != 0
+	_p15 := a[23].i32 != 0
+	_p17 := a[26].i32 != 0
+	_p18 := a[27].i32 != 0
+	_r, _err := URLPattern_createInit(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16, _p17, _p18)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_status(&c, a, _err, c.message)
+	}
+	intrinsics.unaligned_store((^u64)(_rs), u64(_r))
+	a[0] = {}
+	a[0].i32 = 0
+	return nil
+}
+
+// URLPattern_component :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> string
+@(private = "file")
+_t_url_URLPattern_component :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_component", "result buffer") }
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_component: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_component: argument pattern is not a live URLPattern")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_URLPatternComponent(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "url.URLPattern_component: argument component is not a URLPatternComponent") }
+		return wasm.trap_new("url.URLPattern_component: argument component is not a URLPatternComponent")
+	}
+	_p1 := Api_URLPatternComponent(_e1)
+	_r := URLPattern_component(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// URLPattern_hasRegExpGroups :: proc(c: ^Call, pattern: Api_URLPattern) -> bool
+@(private = "file")
+_t_url_URLPattern_hasRegExpGroups :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_hasRegExpGroups: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_hasRegExpGroups: argument pattern is not a live URLPattern")
+	}
+	_r := URLPattern_hasRegExpGroups(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = 1 if _r else 0
+	return nil
+}
+
+// URLPattern_execString :: proc(c: ^Call, pattern: Api_URLPattern, input: string, base: string, has_base: bool) -> i32
+@(private = "file")
+_t_url_URLPattern_execString :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "url.URLPattern_execString", "input") }
+	_n2 := wasm.addr(&f, a[4])
+	_s2, _k2 := wasm.span(&f, wasm.addr(&f, a[3]), _n2)
+	if !_k2 { return wasm.trap_bounds(&f, "url.URLPattern_execString", "base") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execString: argument input is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execString: argument input is not valid UTF-8")
+	}
+	_p2 := string(_s2[:_n2])
+	if !wasm.valid_utf8(_p2) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execString: argument base is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execString: argument base is not valid UTF-8")
+	}
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_execString: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_execString: argument pattern is not a live URLPattern")
+	}
+	_p3 := a[5].i32 != 0
+	_r := URLPattern_execString(&c, _p0, _p1, _p2, _p3)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// URLPattern_execInit :: proc(c: ^Call, pattern: Api_URLPattern, protocol: string, has_protocol: bool, username: string, has_username: bool, password: string, has_password: bool, hostname: string, has_hostname: bool, port: string, has_port: bool, pathname: string, has_pathname: bool, search: string, has_search: bool, hash: string, has_hash: bool) -> i32
+@(private = "file")
+_t_url_URLPattern_execInit :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_n1 := wasm.addr(&f, a[2])
+	_s1, _k1 := wasm.span(&f, wasm.addr(&f, a[1]), _n1)
+	if !_k1 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "protocol") }
+	_n3 := wasm.addr(&f, a[5])
+	_s3, _k3 := wasm.span(&f, wasm.addr(&f, a[4]), _n3)
+	if !_k3 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "username") }
+	_n5 := wasm.addr(&f, a[8])
+	_s5, _k5 := wasm.span(&f, wasm.addr(&f, a[7]), _n5)
+	if !_k5 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "password") }
+	_n7 := wasm.addr(&f, a[11])
+	_s7, _k7 := wasm.span(&f, wasm.addr(&f, a[10]), _n7)
+	if !_k7 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "hostname") }
+	_n9 := wasm.addr(&f, a[14])
+	_s9, _k9 := wasm.span(&f, wasm.addr(&f, a[13]), _n9)
+	if !_k9 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "port") }
+	_n11 := wasm.addr(&f, a[17])
+	_s11, _k11 := wasm.span(&f, wasm.addr(&f, a[16]), _n11)
+	if !_k11 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "pathname") }
+	_n13 := wasm.addr(&f, a[20])
+	_s13, _k13 := wasm.span(&f, wasm.addr(&f, a[19]), _n13)
+	if !_k13 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "search") }
+	_n15 := wasm.addr(&f, a[23])
+	_s15, _k15 := wasm.span(&f, wasm.addr(&f, a[22]), _n15)
+	if !_k15 { return wasm.trap_bounds(&f, "url.URLPattern_execInit", "hash") }
+	_p1 := string(_s1[:_n1])
+	if !wasm.valid_utf8(_p1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument protocol is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument protocol is not valid UTF-8")
+	}
+	_p3 := string(_s3[:_n3])
+	if !wasm.valid_utf8(_p3) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument username is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument username is not valid UTF-8")
+	}
+	_p5 := string(_s5[:_n5])
+	if !wasm.valid_utf8(_p5) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument password is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument password is not valid UTF-8")
+	}
+	_p7 := string(_s7[:_n7])
+	if !wasm.valid_utf8(_p7) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument hostname is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument hostname is not valid UTF-8")
+	}
+	_p9 := string(_s9[:_n9])
+	if !wasm.valid_utf8(_p9) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument port is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument port is not valid UTF-8")
+	}
+	_p11 := string(_s11[:_n11])
+	if !wasm.valid_utf8(_p11) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument pathname is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument pathname is not valid UTF-8")
+	}
+	_p13 := string(_s13[:_n13])
+	if !wasm.valid_utf8(_p13) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument search is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument search is not valid UTF-8")
+	}
+	_p15 := string(_s15[:_n15])
+	if !wasm.valid_utf8(_p15) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Type, "url.URLPattern_execInit: argument hash is not valid UTF-8") }
+		return wasm.trap_new("url.URLPattern_execInit: argument hash is not valid UTF-8")
+	}
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_execInit: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_execInit: argument pattern is not a live URLPattern")
+	}
+	_p2 := a[3].i32 != 0
+	_p4 := a[6].i32 != 0
+	_p6 := a[9].i32 != 0
+	_p8 := a[12].i32 != 0
+	_p10 := a[15].i32 != 0
+	_p12 := a[18].i32 != 0
+	_p14 := a[21].i32 != 0
+	_p16 := a[24].i32 != 0
+	_r := URLPattern_execInit(&c, _p0, _p1, _p2, _p3, _p4, _p5, _p6, _p7, _p8, _p9, _p10, _p11, _p12, _p13, _p14, _p15, _p16)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// URLPattern_resultInputCount :: proc(c: ^Call, pattern: Api_URLPattern) -> i32
+@(private = "file")
+_t_url_URLPattern_resultInputCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_resultInputCount: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_resultInputCount: argument pattern is not a live URLPattern")
+	}
+	_r := URLPattern_resultInputCount(&c, _p0)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// URLPattern_resultInput :: proc(c: ^Call, pattern: Api_URLPattern, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_url_URLPattern_resultInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_resultInput", "result buffer") }
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLPattern_resultInput: argument pattern is not a live URLPattern")
+	}
+	_p1 := a[1].i32
+	_r, _err := URLPattern_resultInput(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// URLPattern_componentInput :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> string
+@(private = "file")
+_t_url_URLPattern_componentInput :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[3])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[2]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_componentInput", "result buffer") }
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_componentInput: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_componentInput: argument pattern is not a live URLPattern")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_URLPatternComponent(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "url.URLPattern_componentInput: argument component is not a URLPatternComponent") }
+		return wasm.trap_new("url.URLPattern_componentInput: argument component is not a URLPatternComponent")
+	}
+	_p1 := Api_URLPatternComponent(_e1)
+	_r := URLPattern_componentInput(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// URLPattern_groupCount :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent) -> i32
+@(private = "file")
+_t_url_URLPattern_groupCount :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "url.URLPattern_groupCount: argument pattern is not a live URLPattern") }
+		return wasm.trap_new("url.URLPattern_groupCount: argument pattern is not a live URLPattern")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_URLPatternComponent(_e1) {
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Argument, "url.URLPattern_groupCount: argument component is not a URLPatternComponent") }
+		return wasm.trap_new("url.URLPattern_groupCount: argument component is not a URLPatternComponent")
+	}
+	_p1 := Api_URLPatternComponent(_e1)
+	_r := URLPattern_groupCount(&c, _p0, _p1)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	a[0] = {}
+	a[0].i32 = _r
+	return nil
+}
+
+// URLPattern_groupName :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_url_URLPattern_groupName :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupName", "result buffer") }
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLPattern_groupName: argument pattern is not a live URLPattern")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_URLPatternComponent(_e1) {
+		return _fail_size(&c, &f, a, .Invalid_Argument, "url.URLPattern_groupName: argument component is not a URLPatternComponent")
+	}
+	_p1 := Api_URLPatternComponent(_e1)
+	_p2 := a[2].i32
+	_r, _err := URLPattern_groupName(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
+// URLPattern_groupValue :: proc(c: ^Call, pattern: Api_URLPattern, component: Api_URLPatternComponent, index: i32) -> (string, Api_Error)
+@(private = "file")
+_t_url_URLPattern_groupValue :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	c := api_begin(f.inst)
+	_on := wasm.addr(&f, a[4])
+	_os, _ok := wasm.span(&f, wasm.addr(&f, a[3]), _on)
+	if !_ok { return wasm.trap_bounds(&f, "url.URLPattern_groupValue", "result buffer") }
+	_p0 := Api_URLPattern{handle = u64(a[0].i64)}
+	_p0.data = lookup_URLPattern(&c, _p0.handle)
+	if _p0.data == nil {
+		return _fail_size(&c, &f, a, .Invalid_Handle, "url.URLPattern_groupValue: argument pattern is not a live URLPattern")
+	}
+	_e1 := i32(a[1].i32)
+	if !_valid_URLPatternComponent(_e1) {
+		return _fail_size(&c, &f, a, .Invalid_Argument, "url.URLPattern_groupValue: argument component is not a URLPatternComponent")
+	}
+	_p1 := Api_URLPatternComponent(_e1)
+	_p2 := a[2].i32
+	_r, _err := URLPattern_groupValue(&c, _p0, _p1, _p2)
+	api_end(&c)
+	if _t := wasm.take_trap(f.inst); _t != nil { return _t }
+	if _err != .None {
+		return _fail_size(&c, &f, a, _err, c.message)
+	}
+	copy(_os[:_on], transmute([]u8)_r)
+	wasm.put_size(&f, a, i64(len(_r)))
+	return nil
+}
+
 // Exception_code :: proc(c: ^Call) -> Api_Error
 @(private = "file")
 _t_web_Exception_code :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
@@ -28840,6 +29657,10 @@ api_imports := [?]wasm.Import{
 	{module = "canvas", name = "ImageBitmap_close", fn = _t_canvas_ImageBitmap_close, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
 	{module = "canvas", name = "Canvas_createBitmap", fn = _t_canvas_Canvas_createBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .F64, .F64, .F64, .F64, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "canvas", name = "Canvas_bitmapFromPixels", fn = _t_canvas_Canvas_bitmapFromPixels, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "HTMLCanvasElement_bitmapRenderer", fn = _t_canvas_HTMLCanvasElement_bitmapRenderer, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "OffscreenCanvas_bitmapRenderer", fn = _t_canvas_OffscreenCanvas_bitmapRenderer, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "canvas", name = "ImageBitmapRenderingContext_canvas", fn = _t_canvas_ImageBitmapRenderingContext_canvas, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I64}},
+	{module = "canvas", name = "ImageBitmapRenderingContext_transferFromImageBitmap", fn = _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap, realms = 3, params = []wasm.Val_Kind{.I64, .I64, .I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "compression", name = "Compression_create", fn = _t_compression_Compression_create, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "compression", name = "Compression_push", fn = _t_compression_Compression_push, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "compression", name = "Compression_finish", fn = _t_compression_Compression_finish, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -29667,6 +30488,12 @@ api_imports := [?]wasm.Import{
 	{module = "forms", name = "FormData_setBlob", fn = _t_forms_FormData_setBlob, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "forms", name = "FormData_encode", fn = _t_forms_FormData_encode, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "dom", name = "XMLSerializer_serialize", fn = _t_dom_XMLSerializer_serialize, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "locks", name = "LockManager_request", fn = _t_locks_LockManager_request, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I32, .I32, .I32, .I32}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "locks", name = "LockManager_release", fn = _t_locks_LockManager_release, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{}},
+	{module = "locks", name = "LockManager_queryCount", fn = _t_locks_LockManager_queryCount, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "locks", name = "LockManager_queryName", fn = _t_locks_LockManager_queryName, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "locks", name = "LockManager_queryMode", fn = _t_locks_LockManager_queryMode, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "locks", name = "LockManager_queryClient", fn = _t_locks_LockManager_queryClient, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "htmlmedia", name = "HTMLMediaElement_currentSrc", fn = _t_htmlmedia_HTMLMediaElement_currentSrc, realms = 1, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "htmlmedia", name = "HTMLMediaElement_networkState", fn = _t_htmlmedia_HTMLMediaElement_networkState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
 	{module = "htmlmedia", name = "HTMLMediaElement_readyState", fn = _t_htmlmedia_HTMLMediaElement_readyState, realms = 1, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
@@ -29846,6 +30673,10 @@ api_imports := [?]wasm.Import{
 	{module = "ports", name = "Broadcast_open", fn = _t_ports_Broadcast_open, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "ports", name = "Broadcast_post", fn = _t_ports_Broadcast_post, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "ports", name = "MessageEvent_portEnds", fn = _t_ports_MessageEvent_portEnds, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "scheduler", name = "Scheduler_post", fn = _t_scheduler_Scheduler_post, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .F64}, results = []wasm.Val_Kind{.I64}},
+	{module = "scheduler", name = "Scheduler_cancel", fn = _t_scheduler_Scheduler_cancel, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "scheduler", name = "Scheduler_setPriority", fn = _t_scheduler_Scheduler_setPriority, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "scheduler", name = "Scheduler_isInputPending", fn = _t_scheduler_Scheduler_isInputPending, realms = 3, params = []wasm.Val_Kind{.I32}, results = []wasm.Val_Kind{.I32}},
 	{module = "serviceworker", name = "ServiceWorker_register", fn = _t_serviceworker_ServiceWorker_register, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I64, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
 	{module = "serviceworker", name = "ServiceWorker_ready", fn = _t_serviceworker_ServiceWorker_ready, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I64}},
 	{module = "serviceworker", name = "ServiceWorker_getRegistration", fn = _t_serviceworker_ServiceWorker_getRegistration, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I64}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
@@ -29904,6 +30735,18 @@ api_imports := [?]wasm.Import{
 	{module = "url", name = "URLSearchParams_toString", fn = _t_url_URLSearchParams_toString, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "url", name = "URLSearchParams_nameAt", fn = _t_url_URLSearchParams_nameAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "url", name = "URLSearchParams_valueAt", fn = _t_url_URLSearchParams_valueAt, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "url", name = "URLPattern_createString", fn = _t_url_URLPattern_createString, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_createInit", fn = _t_url_URLPattern_createInit, realms = 3, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I32, .I64}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_component", fn = _t_url_URLPattern_component, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "url", name = "URLPattern_hasRegExpGroups", fn = _t_url_URLPattern_hasRegExpGroups, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_execString", fn = _t_url_URLPattern_execString, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_execInit", fn = _t_url_URLPattern_execInit, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32, .I64, .I64, .I32}, wide_results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_resultInputCount", fn = _t_url_URLPattern_resultInputCount, realms = 3, params = []wasm.Val_Kind{.I64}, results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_resultInput", fn = _t_url_URLPattern_resultInput, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "url", name = "URLPattern_componentInput", fn = _t_url_URLPattern_componentInput, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "url", name = "URLPattern_groupCount", fn = _t_url_URLPattern_groupCount, realms = 3, params = []wasm.Val_Kind{.I64, .I32}, results = []wasm.Val_Kind{.I32}},
+	{module = "url", name = "URLPattern_groupName", fn = _t_url_URLPattern_groupName, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
+	{module = "url", name = "URLPattern_groupValue", fn = _t_url_URLPattern_groupValue, realms = 3, params = []wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I32, .I32, .I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "web", name = "Exception_code", fn = _t_web_Exception_code, realms = 3, params = []wasm.Val_Kind{}, results = []wasm.Val_Kind{.I32}},
 	{module = "web", name = "Exception_message", fn = _t_web_Exception_message, realms = 3, params = []wasm.Val_Kind{.I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64}, wide_results = []wasm.Val_Kind{.I64}},
 	{module = "websocket", name = "WebSocket_create", fn = _t_websocket_WebSocket_create, realms = 1, params = []wasm.Val_Kind{.I32, .I32, .I32, .I32, .I32}, results = []wasm.Val_Kind{.I32}, wide_params = []wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}, wide_results = []wasm.Val_Kind{.I32}},

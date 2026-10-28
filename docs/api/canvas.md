@@ -60,6 +60,10 @@ Checked by the browser on every call (`lookup_OffscreenCanvas`).
 
 Checked by the browser on every call (`lookup_ImageBitmap`).
 
+### handle `ImageBitmapRenderingContext` : `Object`
+
+Checked by the browser on every call (`lookup_ImageBitmapRenderingContext`).
+
 ### enum `StyleKind` : i32
 
 What a fill or stroke style currently is.
@@ -1324,4 +1328,51 @@ An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFr
 Raises: returns an `Error` (see [web](web.md)).
 
 Host: `Canvas_bitmapFromPixels :: proc(c: ^Call, data: []u8, width: i32, height: i32, orient: i32, premul: i32, colorspace: i32, resize_w: i32, resize_h: i32, resize_q: i32) -> (u64, Api_Error)`
+
+### `HTMLCanvasElement_bitmapRenderer`
+
+```
+ImageBitmapRenderingContext HTMLCanvasElement_bitmapRenderer(HTMLCanvasElement canvas, bool alpha) raises
+```
+
+/////////////////////////////
+getContext("bitmaprenderer", {alpha}) on a <canvas> element / an OffscreenCanvas: 0 when a 2D context already
+holds the canvas (the kinds cannot be mixed).
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `HTMLCanvasElement_bitmapRenderer :: proc(c: ^Call, canvas: Api_HTMLCanvasElement, alpha: bool) -> (u64, Api_Error)`
+
+### `OffscreenCanvas_bitmapRenderer`
+
+```
+ImageBitmapRenderingContext OffscreenCanvas_bitmapRenderer(OffscreenCanvas canvas, bool alpha) raises
+```
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `OffscreenCanvas_bitmapRenderer :: proc(c: ^Call, canvas: Api_OffscreenCanvas, alpha: bool) -> (u64, Api_Error)`
+
+### `ImageBitmapRenderingContext_canvas`
+
+```
+u64 ImageBitmapRenderingContext_canvas(ImageBitmapRenderingContext context)
+```
+
+context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
+
+Host: `ImageBitmapRenderingContext_canvas :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext) -> u64`
+
+### `ImageBitmapRenderingContext_transferFromImageBitmap`
+
+```
+void ImageBitmapRenderingContext_transferFromImageBitmap(ImageBitmapRenderingContext context, u64 bitmap, bool has_bitmap) raises
+```
+
+transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
+`has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
+
+Raises: returns an `Error` (see [web](web.md)).
+
+Host: `ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error`
 

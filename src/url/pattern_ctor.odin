@@ -296,7 +296,7 @@ ctor_change_state :: proc(c: ^Ctor, new_state: Ctor_State, skip: int) {
 @(private = "file")
 ctor_compute_proto_special :: proc(c: ^Ctor) {
 	proto := ctor_make_component_string(c)
-	cc, ok := compile_component(proto, .Protocol, "", "", false, context.temp_allocator)
+	cc, ok := compile_component(proto, .Protocol, "", "", false)   // (default allocator: component_destroy frees with it)
 	if !ok { return }
 	defer component_destroy(&cc)
 	for scheme in ([]string{"ftp", "file", "http", "https", "ws", "wss"}) {

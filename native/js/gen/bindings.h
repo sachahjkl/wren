@@ -574,28 +574,29 @@
 #define WJ_IFACE_TrustedTypePolicy 566
 #define WJ_IFACE_TrustedTypePolicyFactory 567
 #define WJ_IFACE_URL 568
-#define WJ_IFACE_URLSearchParams 569
-#define WJ_IFACE_UserActivation 570
-#define WJ_IFACE_ValidityState 571
-#define WJ_IFACE_VideoPlaybackQuality 572
-#define WJ_IFACE_VideoTrack 573
-#define WJ_IFACE_ViewTransition 574
-#define WJ_IFACE_ViewTransitionTypeSet 575
-#define WJ_IFACE_WorkerLocation 576
-#define WJ_IFACE_WorkerNavigator 577
-#define WJ_IFACE_Worklet 578
-#define WJ_IFACE_AudioWorklet 579
-#define WJ_IFACE_WritableStream 580
-#define WJ_IFACE_FileSystemWritableFileStream 581
-#define WJ_IFACE_WritableStreamDefaultController 582
-#define WJ_IFACE_WritableStreamDefaultWriter 583
-#define WJ_IFACE_XMLSerializer 584
-#define WJ_IFACE_XPathEvaluator 585
-#define WJ_IFACE_XPathExpression 586
-#define WJ_IFACE_XPathResult 587
-#define WJ_IFACE_XSLTProcessor 588
-#define WJ_IFACE_console 589
-#define WJ_IFACE_COUNT 590
+#define WJ_IFACE_URLPattern 569
+#define WJ_IFACE_URLSearchParams 570
+#define WJ_IFACE_UserActivation 571
+#define WJ_IFACE_ValidityState 572
+#define WJ_IFACE_VideoPlaybackQuality 573
+#define WJ_IFACE_VideoTrack 574
+#define WJ_IFACE_ViewTransition 575
+#define WJ_IFACE_ViewTransitionTypeSet 576
+#define WJ_IFACE_WorkerLocation 577
+#define WJ_IFACE_WorkerNavigator 578
+#define WJ_IFACE_Worklet 579
+#define WJ_IFACE_AudioWorklet 580
+#define WJ_IFACE_WritableStream 581
+#define WJ_IFACE_FileSystemWritableFileStream 582
+#define WJ_IFACE_WritableStreamDefaultController 583
+#define WJ_IFACE_WritableStreamDefaultWriter 584
+#define WJ_IFACE_XMLSerializer 585
+#define WJ_IFACE_XPathEvaluator 586
+#define WJ_IFACE_XPathExpression 587
+#define WJ_IFACE_XPathResult 588
+#define WJ_IFACE_XSLTProcessor 589
+#define WJ_IFACE_console 590
+#define WJ_IFACE_COUNT 591
 
 extern const int wj_same_object_count;
 
@@ -2769,6 +2770,33 @@ typedef struct wjd_TrustedTypePolicyOptions {
 } wjd_TrustedTypePolicyOptions;
 bool wjd_TrustedTypePolicyOptions_from(JSContext *ctx, JSValueConst v, wjd_TrustedTypePolicyOptions *out);
 void wjd_TrustedTypePolicyOptions_free(JSContext *ctx, wjd_TrustedTypePolicyOptions *d);
+typedef struct wjd_URLPatternInit {
+    wj_str baseURL;
+    bool has_baseURL;
+    wj_str hash;
+    bool has_hash;
+    wj_str hostname;
+    bool has_hostname;
+    wj_str password;
+    bool has_password;
+    wj_str pathname;
+    bool has_pathname;
+    wj_str port;
+    bool has_port;
+    wj_str protocol;
+    bool has_protocol;
+    wj_str search;
+    bool has_search;
+    wj_str username;
+    bool has_username;
+} wjd_URLPatternInit;
+bool wjd_URLPatternInit_from(JSContext *ctx, JSValueConst v, wjd_URLPatternInit *out);
+void wjd_URLPatternInit_free(JSContext *ctx, wjd_URLPatternInit *d);
+typedef struct wjd_URLPatternOptions {
+    bool ignoreCase;
+} wjd_URLPatternOptions;
+bool wjd_URLPatternOptions_from(JSContext *ctx, JSValueConst v, wjd_URLPatternOptions *out);
+void wjd_URLPatternOptions_free(JSContext *ctx, wjd_URLPatternOptions *d);
 typedef struct wjd_WorkletOptions {
     wj_str credentials;
 } wjd_WorkletOptions;

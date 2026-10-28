@@ -12,10 +12,10 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 | | count |
 |---|---:|
-| interfaces, namespaces in the table | 590 |
-| exposed by default | 347 |
-| members | 5193 |
-| members implemented | 3662 (70.5 %) |
+| interfaces, namespaces in the table | 591 |
+| exposed by default | 356 |
+| members | 5206 |
+| members implemented | 3695 (71.0 %) |
 
 ## By specification
 
@@ -51,9 +51,9 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `gamepad.idl` | 4 (0) | 0 / 17 |
 | `geometry.idl` | 8 (8) | 126 / 126 |
 | `hr-time.idl` | 1 (1) | 15 / 17 |
-| `html.idl` | 161 (135) | 1568 / 1829 |
+| `html.idl` | 161 (136) | 1575 / 1829 |
 | `intersection-observer.idl` | 2 (2) | 20 / 20 |
-| `is-input-pending.idl` | 1 (0) | 0 / 1 |
+| `is-input-pending.idl` | 1 (1) | 1 / 1 |
 | `largest-contentful-paint.idl` | 1 (1) | 9 / 9 |
 | `layout-instability.idl` | 2 (2) | 8 / 8 |
 | `long-animation-frames.idl` | 2 (2) | 33 / 33 |
@@ -73,7 +73,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `requestidlecallback.idl` | 1 (1) | 2 / 2 |
 | `resize-observer.idl` | 3 (3) | 11 / 11 |
 | `resource-timing.idl` | 1 (1) | 25 / 29 |
-| `scheduling-apis.idl` | 4 (0) | 1 / 9 |
+| `scheduling-apis.idl` | 4 (4) | 8 / 9 |
 | `screen-orientation.idl` | 1 (0) | 1 / 5 |
 | `scroll-to-text-fragment.idl` | 1 (0) | 0 / 0 |
 | `selection-api.idl` | 1 (1) | 24 / 25 |
@@ -86,10 +86,11 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 | `ua-client-hints.idl` | 1 (0) | 0 / 5 |
 | `uievents.idl` | 6 (5) | 32 / 36 |
 | `url.idl` | 2 (2) | 29 / 29 |
+| `urlpattern.idl` | 1 (1) | 13 / 13 |
 | `user-timing.idl` | 2 (2) | 3 / 3 |
 | `web-animations-2.idl` | 4 (1) | 3 / 14 |
 | `web-animations.idl` | 5 (5) | 38 / 47 |
-| `web-locks.idl` | 2 (0) | 0 / 5 |
+| `web-locks.idl` | 2 (2) | 5 / 5 |
 | `webaudio.idl` | 37 (0) | 7 / 204 |
 | `webauthn.idl` | 4 (4) | 22 / 22 |
 | `webcrypto.idl` | 3 (2) | 15 / 19 |
@@ -107,6 +108,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `constructor()`: C `wjr_AbortController_constructor`
 - `readonly signal`: C `wjr_AbortController_get_signal`
 - `abort()`: C `wjr_AbortController_abort`
+
+### TaskController : AbortController
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_TaskController_constructor`
+- `setPriority()`: C `wjr_TaskController_setPriority`
 
 ### AbstractRange
 
@@ -1167,6 +1175,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly storageArea`: C `wjr_StorageEvent_get_storageArea`
 - `initStorageEvent()`: not supported
 
+### TaskPriorityChangeEvent : Event
+
+2 / 2 members.
+
+- `constructor()`: C `wjr_TaskPriorityChangeEvent_constructor`
+- `readonly previousPriority`: C `wjr_TaskPriorityChangeEvent_get_previousPriority`
+
 ### ToggleEvent : Event
 
 4 / 4 members.
@@ -1348,6 +1363,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly reason`: C `wjr_AbortSignal_get_reason`
 - `throwIfAborted()`: C `wjr_AbortSignal_throwIfAborted`
 - `onabort`: generic (event handler)
+
+### TaskSignal : AbortSignal
+
+2 / 3 members.
+
+- `static any()`: not supported
+- `readonly priority`: C `wjr_TaskSignal_get_priority`
+- `onprioritychange`: generic (event handler)
 
 ### Animation : EventTarget
 
@@ -4206,7 +4229,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Window : EventTarget
 
-201 / 223 members.
+202 / 223 members.
 
 - `readonly cookieStore`: not supported
 - `matchMedia()`: C `wjr_Window_matchMedia`
@@ -4423,7 +4446,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
-- `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
+- `readonly scheduler` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_scheduler`
 - `readonly caches` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_caches`
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
 - `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
@@ -4446,7 +4469,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerGlobalScope : EventTarget
 
-29 / 32 members.
+30 / 32 members.
 
 - `readonly self`: C `wjr_WorkerGlobalScope_get_self`
 - `readonly location`: C `wjr_WorkerGlobalScope_get_location`
@@ -4476,7 +4499,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `createImageBitmap()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_createImageBitmap`
 - `structuredClone()` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_structuredClone`
-- `readonly scheduler` (WindowOrWorkerGlobalScope): not supported
+- `readonly scheduler` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_scheduler`
 - `readonly caches` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_caches`
 - `readonly trustedTypes` (WindowOrWorkerGlobalScope): not supported
 - `readonly crypto` (WindowOrWorkerGlobalScope): C `wjr_WindowOrWorkerGlobalScope_get_crypto`
@@ -4726,6 +4749,13 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly height`: import `canvas.ImageBitmap_height`
 - `close()`: import `canvas.ImageBitmap_close`
 
+### ImageBitmapRenderingContext
+
+2 / 2 members.
+
+- `readonly canvas`: C `wjr_ImageBitmapRenderingContext_get_canvas`
+- `transferFromImageBitmap()`: C `wjr_ImageBitmapRenderingContext_transferFromImageBitmap`
+
 ### ImageData
 
 7 / 7 members.
@@ -4793,6 +4823,21 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `replace()`: C `wjr_Location_replace`
 - `reload()`: C `wjr_Location_reload`
 - `readonly ancestorOrigins`: C `wjr_Location_get_ancestorOrigins`
+
+### Lock
+
+2 / 2 members.
+
+- `readonly name`: C `wjr_Lock_get_name`
+- `readonly mode`: C `wjr_Lock_get_mode`
+
+### LockManager
+
+3 / 3 members.
+
+- `request()`: C `wjr_LockManager_request`
+- `request()`: C `wjr_LockManager_request`
+- `query()`: C `wjr_LockManager_query`
 
 ### MediaError
 
@@ -4894,14 +4939,14 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### Navigator
 
-25 / 43 members.
+27 / 43 members.
 
 - `sendBeacon()`: C `wjr_Navigator_sendBeacon`
 - `readonly clipboard`: C `wjr_Navigator_get_clipboard`
 - `readonly credentials`: C `wjr_Navigator_get_credentials`
 - `getGamepads()`: not supported
 - `readonly userActivation`: C `wjr_Navigator_get_userActivation`
-- `readonly scheduling`: not supported
+- `readonly scheduling`: C `wjr_Navigator_get_scheduling`
 - `readonly mediaDevices`: not supported
 - `readonly mediaSession`: not supported
 - `readonly permissions`: C `wjr_Navigator_get_permissions`
@@ -4938,7 +4983,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly connection` (NavigatorNetworkInformation): not supported
 - `readonly storage` (NavigatorStorage): not supported
 - `readonly userAgentData` (NavigatorUA): not supported
-- `readonly locks` (NavigatorLocks): not supported
+- `readonly locks` (NavigatorLocks): C `wjr_Navigator_get_locks`
 
 ### NodeFilter
 
@@ -5483,6 +5528,19 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `text()` (Body): C `wjr_Body_text`
 - `textStream()` (Body): C `wjr_Body_textStream`
 
+### Scheduler
+
+2 / 2 members.
+
+- `postTask()`: C `wjr_Scheduler_postTask`
+- `yield()`: C `wjr_Scheduler_yield`
+
+### Scheduling
+
+1 / 1 members.
+
+- `isInputPending()`: C `wjr_Scheduling_isInputPending`
+
 ### Screen
 
 6 / 7 members.
@@ -5742,6 +5800,24 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `hash`: C `wjr_URL_get_hash`
 - `toJSON()`: C `wjr_URL_toJSON`
 
+### URLPattern
+
+13 / 13 members.
+
+- `constructor()`: C `wjr_URLPattern_constructor`
+- `constructor()`: C `wjr_URLPattern_constructor`
+- `test()`: C `wjr_URLPattern_test`
+- `exec()`: C `wjr_URLPattern_exec`
+- `readonly protocol`: C `wjr_URLPattern_get_protocol`
+- `readonly username`: C `wjr_URLPattern_get_username`
+- `readonly password`: C `wjr_URLPattern_get_password`
+- `readonly hostname`: C `wjr_URLPattern_get_hostname`
+- `readonly port`: C `wjr_URLPattern_get_port`
+- `readonly pathname`: C `wjr_URLPattern_get_pathname`
+- `readonly search`: C `wjr_URLPattern_get_search`
+- `readonly hash`: C `wjr_URLPattern_get_hash`
+- `readonly hasRegExpGroups`: import `url.URLPattern_hasRegExpGroups`
+
 ### URLSearchParams
 
 11 / 11 members.
@@ -5804,7 +5880,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ### WorkerNavigator
 
-15 / 24 members.
+16 / 24 members.
 
 - `readonly permissions`: C `wjr_WorkerNavigator_get_permissions`
 - `readonly serviceWorker`: C `wjr_WorkerNavigator_get_serviceWorker`
@@ -5829,7 +5905,7 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 - `readonly connection` (NavigatorNetworkInformation): not supported
 - `readonly storage` (NavigatorStorage): not supported
 - `readonly userAgentData` (NavigatorUA): not supported
-- `readonly locks` (NavigatorLocks): not supported
+- `readonly locks` (NavigatorLocks): C `wjr_WorkerNavigator_get_locks`
 
 ### WritableStream
 
@@ -5902,5 +5978,5 @@ How a member is implemented: **C** hand-written (`native/js/runtime`), **import*
 
 ## Not exposed (nothing implemented)
 
-TaskController, AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TaskPriorityChangeEvent, TrackEvent, TextEvent, EventCounts, TaskSignal, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, ImageBitmapRenderingContext, Lock, LockManager, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, Scheduler, Scheduling, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
+AnimationNodeList, AudioBuffer, AudioListener, AudioParam, AudioParamMap, AudioPlaybackStats, AudioSinkInfo, BarProp, CSSNumericArray, CSSRule, CSSGroupingRule, CSSConditionRule, CSSMediaRule, CSSSupportsRule, CSSPageRule, CSSStartingStyleRule, CSSStyleRule, CSSImportRule, CSSKeyframeRule, CSSKeyframesRule, CSSMarginRule, CSSNamespaceRule, CSSPropertyRule, CSSViewTransitionRule, CSSPageDescriptors, CSSStyleValue, CSSColorValue, CSSColor, CSSHSL, CSSHWB, CSSLCH, CSSLab, CSSOKLCH, CSSOKLab, CSSRGB, CSSImageValue, CSSKeywordValue, CSSNumericValue, CSSMathValue, CSSMathClamp, CSSMathInvert, CSSMathMax, CSSMathMin, CSSMathNegate, CSSMathProduct, CSSMathSum, CSSUnitValue, CSSTransformValue, CSSUnparsedValue, CSSTransformComponent, CSSMatrixComponent, CSSPerspective, CSSRotate, CSSScale, CSSSkew, CSSSkewX, CSSSkewY, CSSTranslate, CSSVariableReferenceValue, CaretPosition, ChapterInformation, ClipboardItem, CookieStoreManager, FederatedCredential, PasswordCredential, CryptoKey, OverconstrainedError, QuotaExceededError, DOMStringMap, AudioProcessingEvent, BeforeUnloadEvent, ClipboardChangeEvent, ClipboardEvent, CommandEvent, CookieChangeEvent, DeviceChangeEvent, ExtendableCookieChangeEvent, NotificationEvent, FontFaceSetLoadEvent, FormDataEvent, GamepadEvent, IDBVersionChangeEvent, MediaStreamTrackEvent, OfflineAudioCompletionEvent, PageRevealEvent, PageSwapEvent, SpeechRecognitionErrorEvent, SpeechRecognitionEvent, SpeechSynthesisEvent, SpeechSynthesisErrorEvent, SubmitEvent, TrackEvent, TextEvent, EventCounts, ShadowAnimation, AudioNode, AnalyserNode, AudioDestinationNode, AudioScheduledSourceNode, AudioBufferSourceNode, ConstantSourceNode, OscillatorNode, AudioWorkletNode, BiquadFilterNode, ChannelMergerNode, ChannelSplitterNode, ConvolverNode, DelayNode, DynamicsCompressorNode, GainNode, IIRFilterNode, MediaElementAudioSourceNode, MediaStreamAudioDestinationNode, MediaStreamAudioSourceNode, MediaStreamTrackAudioSourceNode, PannerNode, ScriptProcessorNode, StereoPannerNode, WaveShaperNode, BaseAudioContext, AudioContext, OfflineAudioContext, CloseWatcher, CookieStore, IDBDatabase, IDBRequest, IDBOpenDBRequest, IDBTransaction, MediaDevices, MediaStream, MediaStreamTrack, NetworkInformation, SVGUseElementShadowRoot, HTMLSelectedContentElement, Notification, ScreenOrientation, ManagedSourceBuffer, SpeechRecognition, SpeechSynthesis, SpeechSynthesisUtterance, XMLHttpRequestUpload, External, FetchLaterResult, FileReaderSync, FontFace, FontFaceFeatures, FontFacePalette, FontFacePalettes, FontFaceVariationAxis, FontFaceVariations, FragmentDirective, Gamepad, GamepadButton, GamepadHapticActuator, GroupEffect, SequenceEffect, HTMLAllCollection, Highlight, HighlightRegistry, IDBCursor, IDBCursorWithValue, IDBFactory, IDBIndex, IDBKeyRange, IDBObjectStore, IDBRecord, MediaDeviceInfo, InputDeviceInfo, MediaList, MediaMetadata, MediaSession, MimeType, MimeTypeArray, NavigationPrecommitController, NavigatorUAData, RadioNodeList, NotRestoredReasonDetails, NotRestoredReasons, Origin, PerformanceTimingConfidence, PeriodicWave, Plugin, PluginArray, ReadableByteStreamController, ReadableStreamBYOBReader, ReadableStreamBYOBRequest, SVGAngle, SVGAnimatedAngle, SVGAnimatedBoolean, SVGAnimatedEnumeration, SVGAnimatedInteger, SVGAnimatedLength, SVGAnimatedLengthList, SVGAnimatedNumber, SVGAnimatedNumberList, SVGAnimatedPreserveAspectRatio, SVGAnimatedRect, SVGAnimatedString, SVGAnimatedTransformList, SVGLength, SVGLengthList, SVGNumber, SVGNumberList, SVGPointList, SVGPreserveAspectRatio, SVGStringList, SVGTransform, SVGTransformList, SVGUnitTypes, Sanitizer, SpeechGrammar, SpeechGrammarList, SpeechRecognitionAlternative, SpeechRecognitionPhrase, SpeechRecognitionResult, SpeechRecognitionResultList, SpeechSynthesisVoice, StorageManager, StylePropertyMapReadOnly, StylePropertyMap, TrustedHTML, TrustedHTMLParserOptions, TrustedScript, TrustedScriptURL, TrustedTypePolicy, TrustedTypePolicyFactory, ViewTransition, ViewTransitionTypeSet, WorkerLocation, Worklet, AudioWorklet, XPathEvaluator, XPathExpression, XPathResult, XSLTProcessor
 

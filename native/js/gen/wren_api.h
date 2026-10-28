@@ -63,6 +63,7 @@ typedef uint64_t wr_Path2D;
 typedef uint64_t wr_TextMetrics;
 typedef uint64_t wr_OffscreenCanvas;
 typedef uint64_t wr_ImageBitmap;
+typedef uint64_t wr_ImageBitmapRenderingContext;
 // What a fill or stroke style currently is.
 enum wr_StyleKind {
     wr_StyleKind_Color = 0,
@@ -420,6 +421,13 @@ enum wr_ScreenField {
 
 /* module dom (partial): types */
 
+/* module locks: types */
+// A lock mode (LockMode).
+enum wr_LockMode {
+    wr_LockMode_Shared = 0,
+    wr_LockMode_Exclusive = 1,
+};
+
 /* module htmlmedia: types */
 // A <video> or <audio> element; anything else is not a live HTMLMediaElement.
 typedef uint64_t wr_HTMLMediaElement;
@@ -553,6 +561,14 @@ typedef void (*wr_TimelineCallback)(int32_t user, int32_t kinds);
 
 /* module ports: types */
 
+/* module scheduler: types */
+// A task priority (TaskPriority), highest first.
+enum wr_TaskPriority {
+    wr_TaskPriority_User_Blocking = 0,
+    wr_TaskPriority_User_Visible = 1,
+    wr_TaskPriority_Background = 2,
+};
+
 /* module serviceworker: types */
 // What the current event of a service worker's realm is (kind 0: none waits).
 typedef struct wr_SwEventInfo {
@@ -596,6 +612,7 @@ enum wr_VisibilityState {
 /* module url: types */
 typedef uint64_t wr_URL;
 typedef uint64_t wr_URLSearchParams;
+typedef uint64_t wr_URLPattern;
 // A component of a URL (also used by Location).
 enum wr_URLComponent {
     wr_URLComponent_Href = 0,
@@ -609,6 +626,17 @@ enum wr_URLComponent {
     wr_URLComponent_Search = 8,
     wr_URLComponent_Hash = 9,
     wr_URLComponent_Origin = 10,
+};
+// A component of a URLPattern (the eight pattern components, in the spec's order).
+enum wr_URLPatternComponent {
+    wr_URLPatternComponent_Protocol = 0,
+    wr_URLPatternComponent_Username = 1,
+    wr_URLPatternComponent_Password = 2,
+    wr_URLPatternComponent_Hostname = 3,
+    wr_URLPatternComponent_Port = 4,
+    wr_URLPatternComponent_Pathname = 5,
+    wr_URLPatternComponent_Search = 6,
+    wr_URLPatternComponent_Hash = 7,
 };
 
 /* module web: types */
@@ -1057,6 +1085,16 @@ WR_IMPORT("canvas", "Canvas_createBitmap") int32_t wr_Canvas_createBitmap(uint64
 // An ImageBitmap of straight RGBA8 pixels (an ImageData, a decoded Blob, a VideoFrame read back). `orient`, `premul`,
 // `colorspace`, `resize_*` and `resize_q` as Canvas_createBitmap.
 WR_IMPORT("canvas", "Canvas_bitmapFromPixels") int32_t wr_Canvas_bitmapFromPixels(const uint8_t *data, uint32_t data_len, int32_t width, int32_t height, int32_t orient, int32_t premul, int32_t colorspace, int32_t resize_w, int32_t resize_h, int32_t resize_q, uint64_t *_ret);
+// /////////////////////////////
+// getContext("bitmaprenderer", {alpha}) on a <canvas> element / an OffscreenCanvas: 0 when a 2D context already
+// holds the canvas (the kinds cannot be mixed).
+WR_IMPORT("canvas", "HTMLCanvasElement_bitmapRenderer") int32_t wr_HTMLCanvasElement_bitmapRenderer(uint64_t canvas, int32_t alpha, uint64_t *_ret);
+WR_IMPORT("canvas", "OffscreenCanvas_bitmapRenderer") int32_t wr_OffscreenCanvas_bitmapRenderer(uint64_t canvas, int32_t alpha, uint64_t *_ret);
+// context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
+WR_IMPORT("canvas", "ImageBitmapRenderingContext_canvas") uint64_t wr_ImageBitmapRenderingContext_canvas(uint64_t context);
+// transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
+// `has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
+WR_IMPORT("canvas", "ImageBitmapRenderingContext_transferFromImageBitmap") int32_t wr_ImageBitmapRenderingContext_transferFromImageBitmap(uint64_t context, uint64_t bitmap, int32_t has_bitmap);
 
 /* module compression */
 // A compressor (decompress false) or a decompressor of `format`.
@@ -2701,6 +2739,22 @@ WR_IMPORT("media", "MediaQueryList_matches") int32_t wr_MediaQueryList_matches(u
 // screen.width, screen.availHeight...
 WR_IMPORT("media", "Screen_get") int32_t wr_Screen_get(int32_t field);
 
+/* module locks */
+// navigator.locks.request(name, {mode, ifAvailable, steal, signal}, callback). The result is packed: bit 0 is
+// "available" (clear only for ifAvailable on a busy lock, or an opaque origin), bit 1 is "granted now" (run the
+// callback with the Lock immediately), and the rest (>> 2) is the lock id used to release it. When available but
+// not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
+// record for that notification).
+WR_IMPORT("locks", "LockManager_request") int64_t wr_LockManager_request(const uint8_t *name, uint32_t name_len, int32_t mode, int32_t if_available, int32_t steal, uint32_t callback, int32_t user);
+// The callback's returned promise settled, the callback was null, or a pending request was aborted: release the
+// lock (or drop the queued request) and grant whatever waits.
+WR_IMPORT("locks", "LockManager_release") void wr_LockManager_release(uint64_t id);
+// navigator.locks.query(): the number of held / pending locks of the caller's origin, and the i-th entry's fields.
+WR_IMPORT("locks", "LockManager_queryCount") int32_t wr_LockManager_queryCount(int32_t held);
+WR_IMPORT("locks", "LockManager_queryName") int32_t wr_LockManager_queryName(int32_t held, int32_t index, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("locks", "LockManager_queryMode") int32_t wr_LockManager_queryMode(int32_t held, int32_t index, uint8_t *_buf, uint32_t _cap);
+WR_IMPORT("locks", "LockManager_queryClient") int32_t wr_LockManager_queryClient(int32_t held, int32_t index, uint8_t *_buf, uint32_t _cap);
+
 /* module htmlmedia */
 // element.currentSrc: the absolute URL of the resource being played ("" when none).
 WR_IMPORT("htmlmedia", "HTMLMediaElement_currentSrc") int32_t wr_HTMLMediaElement_currentSrc(uint64_t element, uint8_t *_buf, uint32_t _cap);
@@ -3038,6 +3092,17 @@ WR_IMPORT("ports", "Broadcast_post") int32_t wr_Broadcast_post(uint64_t end, con
 // The port ends that came with a worker's message event (8 bytes each), given once: the caller binds them.
 WR_IMPORT("ports", "MessageEvent_portEnds") int32_t wr_MessageEvent_portEnds(uint64_t event, uint8_t *_buf, uint32_t _cap);
 
+/* module scheduler */
+// Post a task; `callback` (a function-table index) runs with (user: i32) when the task is due. `delay_ms` 0 queues
+// it at once. Returns the task id (for cancel / setPriority), 0 when there is no page realm.
+WR_IMPORT("scheduler", "Scheduler_post") uint64_t wr_Scheduler_post(uint32_t callback, int32_t user, int32_t priority, double delay_ms);
+// Drop a queued (or delayed) task: its signal aborted, or the realm released it.
+WR_IMPORT("scheduler", "Scheduler_cancel") int32_t wr_Scheduler_cancel(uint64_t id);
+// Change a queued task's priority (TaskController.setPriority).
+WR_IMPORT("scheduler", "Scheduler_setPriority") int32_t wr_Scheduler_setPriority(uint64_t id, int32_t priority);
+// navigator.scheduling.isInputPending.
+WR_IMPORT("scheduler", "Scheduler_isInputPending") int32_t wr_Scheduler_isInputPending(int32_t include_continuous);
+
 /* module serviceworker */
 // navigator.serviceWorker.register(script, {scope, updateViaCache, type}): a promise of the registration's id,
 // resolved once the script ran (an unchanged script: at once; TypeError when it failed). Security outside a secure
@@ -3168,6 +3233,32 @@ WR_IMPORT("url", "URLSearchParams_toString") int32_t wr_URLSearchParams_toString
 WR_IMPORT("url", "URLSearchParams_nameAt") int32_t wr_URLSearchParams_nameAt(uint64_t params, int32_t index, uint8_t *_buf, uint32_t _cap);
 // The value of the pair at `index`: Not_Found past the end.
 WR_IMPORT("url", "URLSearchParams_valueAt") int32_t wr_URLSearchParams_valueAt(uint64_t params, int32_t index, uint8_t *_buf, uint32_t _cap);
+// /////////////////////////////
+// new URLPattern(patternString, baseURL?, {ignoreCase}): Type on a malformed pattern or missing protocol with no
+// base. `has_base` and `has_options` distinguish an absent argument from an empty string / default.
+WR_IMPORT("url", "URLPattern_createString") int32_t wr_URLPattern_createString(const uint8_t *input, uint32_t input_len, const uint8_t *base, uint32_t base_len, int32_t has_base, int32_t ignore_case, uint64_t *_ret);
+// new URLPattern(init, {ignoreCase}): the eight optional component strings plus an optional baseURL. A component's
+// `has_*` flag is false when the property was absent (defaults to the wildcard pattern).
+WR_IMPORT("url", "URLPattern_createInit") int32_t wr_URLPattern_createInit(const uint8_t *protocol, uint32_t protocol_len, int32_t has_protocol, const uint8_t *username, uint32_t username_len, int32_t has_username, const uint8_t *password, uint32_t password_len, int32_t has_password, const uint8_t *hostname, uint32_t hostname_len, int32_t has_hostname, const uint8_t *port, uint32_t port_len, int32_t has_port, const uint8_t *pathname, uint32_t pathname_len, int32_t has_pathname, const uint8_t *search, uint32_t search_len, int32_t has_search, const uint8_t *hash, uint32_t hash_len, int32_t has_hash, const uint8_t *base, uint32_t base_len, int32_t has_base, int32_t ignore_case, uint64_t *_ret);
+// A component's normalized pattern string (the getters protocol, username, ...).
+WR_IMPORT("url", "URLPattern_component") int32_t wr_URLPattern_component(uint64_t pattern, int32_t component, uint8_t *_buf, uint32_t _cap);
+// pattern.hasRegExpGroups
+WR_IMPORT("url", "URLPattern_hasRegExpGroups") int32_t wr_URLPattern_hasRegExpGroups(uint64_t pattern);
+// Run exec()/test() against a URL string (resolved against base when has_base). Stores the result in the object.
+// Returns 1 when it matched, 0 when it did not (exec returns null, test returns false).
+WR_IMPORT("url", "URLPattern_execString") int32_t wr_URLPattern_execString(uint64_t pattern, const uint8_t *input, uint32_t input_len, const uint8_t *base, uint32_t base_len, int32_t has_base);
+// Run exec()/test() against a per-component init. Returns 1/0 as execString.
+WR_IMPORT("url", "URLPattern_execInit") int32_t wr_URLPattern_execInit(uint64_t pattern, const uint8_t *protocol, uint32_t protocol_len, int32_t has_protocol, const uint8_t *username, uint32_t username_len, int32_t has_username, const uint8_t *password, uint32_t password_len, int32_t has_password, const uint8_t *hostname, uint32_t hostname_len, int32_t has_hostname, const uint8_t *port, uint32_t port_len, int32_t has_port, const uint8_t *pathname, uint32_t pathname_len, int32_t has_pathname, const uint8_t *search, uint32_t search_len, int32_t has_search, const uint8_t *hash, uint32_t hash_len, int32_t has_hash);
+// After a successful exec: the number of `inputs` entries, and the i-th input string.
+WR_IMPORT("url", "URLPattern_resultInputCount") int32_t wr_URLPattern_resultInputCount(uint64_t pattern);
+WR_IMPORT("url", "URLPattern_resultInput") int32_t wr_URLPattern_resultInput(uint64_t pattern, int32_t index, uint8_t *_buf, uint32_t _cap);
+// The matched input value of a component (URLPatternComponentResult.input).
+WR_IMPORT("url", "URLPattern_componentInput") int32_t wr_URLPattern_componentInput(uint64_t pattern, int32_t component, uint8_t *_buf, uint32_t _cap);
+// The number of named groups of a component, and the i-th group's name.
+WR_IMPORT("url", "URLPattern_groupCount") int32_t wr_URLPattern_groupCount(uint64_t pattern, int32_t component);
+WR_IMPORT("url", "URLPattern_groupName") int32_t wr_URLPattern_groupName(uint64_t pattern, int32_t component, int32_t index, uint8_t *_buf, uint32_t _cap);
+// The i-th group's captured value: Not_Found when the group did not participate (its value is undefined).
+WR_IMPORT("url", "URLPattern_groupValue") int32_t wr_URLPattern_groupValue(uint64_t pattern, int32_t component, int32_t index, uint8_t *_buf, uint32_t _cap);
 
 /* module web */
 // The code of the last error a function raised to this module instance (0 when none did yet).
