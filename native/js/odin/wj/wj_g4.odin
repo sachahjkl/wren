@@ -231,7 +231,14 @@ foreign {
 	@(link_name = "free")    libc_free    :: proc(p: rawptr) ---
 	strtod  :: proc(nptr: [^]u8, endptr: ^[^]u8) -> f64 ---
 	memset  :: proc(dst: rawptr, c: i32, n: uint) -> rawptr ---
+	memcpy  :: proc(dst: rawptr, src: rawptr, n: uint) -> rawptr ---
 	fmod    :: proc(x: f64, y: f64) -> f64 ---
+	trunc   :: proc(x: f64) -> f64 ---
+	strlen  :: proc(s: [^]u8) -> uint ---
+	strcmp  :: proc(a: [^]u8, b: [^]u8) -> i32 ---
+	strchr  :: proc(s: [^]u8, c: i32) -> [^]u8 ---
+	@(link_name = "strdup") libc_strdup :: proc(s: [^]u8) -> [^]u8 ---
+	snprintf :: proc(buf: [^]u8, n: uint, fmt: cstring, #c_vararg args: ..any) -> i32 ---
 }
 
 // WJ_FETCH_STRING wrappers for the specific host calls the G4 domains make (reflect.c): getAttribute and resolveURL
