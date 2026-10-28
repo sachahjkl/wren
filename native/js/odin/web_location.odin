@@ -182,9 +182,9 @@ wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 // the serialized state as text (malloc'ed, NUL-terminated); nil with a DataCloneError pending
 @(private = "file") state_encode :: proc "c" (ctx: ^wj.Context, v: wj.JSValue, out_len: ^uint) -> [^]u8 {
 	n: uint
-	p := wj.web_clone_serialize(ctx, v, &n)
+	p := web_clone_serialize(ctx, v, &n)
 	if p == nil { return nil }
-	defer wj.web_clone_free(ctx, p)
+	defer web_clone_free(ctx, p)
 	prefix := transmute([]u8)string(STATE_PREFIX)
 	pl := uint(len(prefix))
 	s := ([^]u8)(_malloc(pl + (n + 2) / 3 * 4 + 1))
@@ -234,7 +234,7 @@ wjr_Location_reload :: proc "c" (ctx: ^wj.Context, this_val: wj.JSValue, argc: i
 		bits += 6
 		if bits >= 8 { bits -= 8; p[w] = u8(acc >> u32(bits)); w += 1 }
 	}
-	return wj.web_clone_deserialize(ctx, p, w)
+	return web_clone_deserialize(ctx, p, w)
 }
 
 @(export, link_name = "web_state_encode")
