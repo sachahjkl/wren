@@ -1995,6 +1995,9 @@ static JSValue factory_open(JSContext *ctx, JSValueConst this_val, int argc, JSV
     if (ns) { JS_FreeCString(ctx, ns); }
     JSValue rep = host_call1(ctx, OP_OPEN, wr_u8array(ctx, &w));
     wr_free(&w);
+    /* the host call throws for an opaque origin or disabled storage (SecurityError): keep that exception, don't let
+     * reply_bytes replace it with a "not a buffer source" TypeError */
+    if (JS_IsException(rep)) { JS_FreeCString(ctx, name); JS_FreeValue(ctx, name_v); JS_FreeValue(ctx, F); free(bucket); return JS_EXCEPTION; }
     const uint8_t *rp; size_t rn;
     if (!reply_bytes(ctx, rep, &rp, &rn)) { JS_FreeValue(ctx, rep); JS_FreeCString(ctx, name); JS_FreeValue(ctx, name_v); JS_FreeValue(ctx, F); free(bucket); return JS_EXCEPTION; }
     int status = rn ? rp[0] : 0;
@@ -2036,6 +2039,7 @@ static JSValue factory_delete_database(JSContext *ctx, JSValueConst this_val, in
     if (ns) { JS_FreeCString(ctx, ns); }
     JSValue rep = host_call1(ctx, OP_DELETE, wr_u8array(ctx, &w));
     wr_free(&w);
+    if (JS_IsException(rep)) { JS_FreeValue(ctx, name_v); JS_FreeValue(ctx, F); free(bucket); return JS_EXCEPTION; }   /* opaque origin: keep the SecurityError */
     const uint8_t *rp; size_t rn;
     if (!reply_bytes(ctx, rep, &rp, &rn)) { JS_FreeValue(ctx, rep); JS_FreeValue(ctx, name_v); JS_FreeValue(ctx, F); free(bucket); return JS_EXCEPTION; }
     if (rn && rp[0]) { int s = rp[0]; JS_FreeValue(ctx, rep); JS_FreeValue(ctx, name_v); JS_FreeValue(ctx, F); free(bucket); return throw_fail(ctx, s, NULL); }
@@ -2061,6 +2065,8 @@ static JSValue factory_databases(JSContext *ctx, JSValueConst this_val, int argc
     wr_bytes(&w, (const uint8_t *)bucket, strlen(bucket));
     JSValue rep = host_call1(ctx, OP_LIST, wr_u8array(ctx, &w));
     wr_free(&w); free(bucket);
+    /* opaque origin: the host threw a SecurityError; databases() returns a promise, so reject with it */
+    if (JS_IsException(rep)) { JS_FreeValue(ctx, F); return web_promise_reject_pending(ctx); }
     const uint8_t *rp; size_t rn;
     if (!reply_bytes(ctx, rep, &rp, &rn)) { JS_FreeValue(ctx, rep); JS_FreeValue(ctx, F); return web_promise_reject_pending(ctx); }
     if (rn && rp[0]) { int s = rp[0]; JS_FreeValue(ctx, rep); JS_FreeValue(ctx, F); JSValue e = fail_value(ctx, s, NULL); return web_promise_rejected(ctx, e); }
