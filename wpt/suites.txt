@@ -46,3 +46,6 @@ largest-contentful-paint
 layout-instability
 element-timing
 performance-timeline
+urlpattern
+scheduler
+web-locks
