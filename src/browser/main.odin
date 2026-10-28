@@ -1440,10 +1440,10 @@ main :: proc() {
 		// on both backends). It resizes with the window (window_resize_offscreen).
 		if !render.init_offscreen(&app.r, active_window(app).win.size) { fonts_preload_finish(app, preload); fmt.eprintln("offscreen renderer init failed"); return }
 	} else {
-		if !render.init(&app.r, active_window(app).win.hwnd, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
+		if !render.init_window(&app.r, active_window(app).win, active_window(app).win.size, transparent = fixed_surface) { fonts_preload_finish(app, preload); fmt.eprintln("renderer init failed"); return }
 	}
 	fixed_size: [2]int
-	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win.hwnd) }
+	if !headless_mode { fixed_size = fixed_surface_size(app, active_window(app).win) }
 	if fixed_size.x > 0 {
 		// one surface, the monitor's size: the window shows its top-left part, 1:1, and keeps it while it is resized
 		// (browser.window.fixed_surface; render.set_fixed_surface; the developer tools' window does the same)
@@ -1505,7 +1505,11 @@ main :: proc() {
 		remote_after_frame(app)   // remote_shell.odin: the waits of remote commands
 	}
 
-	for w in app.windows { if w.win.hwnd != nil { win.ShowWindow(w.win.hwnd, win.SW_HIDE) } }   // closed means gone from the screen at once, whatever the teardown below takes (a headless window has no HWND)
+	// closed means gone from the screen at once, whatever the teardown below takes. Hiding the window first is a Win32
+	// detail (the compositor removes a destroyed window at once elsewhere); a headless window has no surface anyway.
+	when ODIN_OS == .Windows {
+		for w in app.windows { if w.win.hwnd != nil { win.ShowWindow(w.win.hwnd, win.SW_HIDE) } }
+	}
 	windows_shutdown_begin(app)   // windows.odin: the other windows give up their own state
 	host.shutdown_begin(strings.concatenate({app.profile_dir, "/shutdown.log"}, context.temp_allocator), int(config.int_of(&app.prefs, "browser.shell.shutdown_warn_ms")), int(config.int_of(&app.prefs, "browser.shell.shutdown_force_ms")))   // shutdown.odin (host): names what the teardown waits for
 	host.shutdown_step("remote_stop")

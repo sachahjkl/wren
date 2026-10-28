@@ -365,16 +365,18 @@ window_open :: proc(app: ^App, size: [2]int, at: Maybe([2]int) = nil, show := tr
 		if nw == nil { free(bw); return nil }
 		platform.set_square_corners(nw, wchrome.cfg.square_corners)
 		dnd_window_attach(nw)   // dnd_shell.odin
-		app_commands_attach(nw.hwnd)   // app_commands.odin
+		when ODIN_OS == .Windows { app_commands_attach(nw.hwnd) }   // app_commands.odin (Win32 menu commands; a no-op elsewhere)
 		if p, ok := at.?; ok { platform.move_window(nw, p.x, p.y) }
 		if nw.size.x <= 0 || nw.size.y <= 0 {
-			cr: win.RECT
-			win.GetClientRect(nw.hwnd, &cr)
-			nw.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
+			when ODIN_OS == .Windows {
+				cr: win.RECT
+				win.GetClientRect(nw.hwnd, &cr)
+				nw.size = {max(int(cr.right - cr.left), 1), max(int(cr.bottom - cr.top), 1)}
+			}
 		}
 		// straight into the window's record, never through a local: a render.Surface is kilobytes (its present ring), and a local of
 		// it is split by LLVM into thousands of scalars whose debug fragments kept `build.bat` (-o:speed -debug) codegen going for an hour
-		ok := render.surface_init(&app.r, &bw.surf, nw.hwnd, nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw.hwnd))   // (in place: see render.surface_create)
+		ok := render.surface_init(&app.r, &bw.surf, platform.native_surface_handles(nw), nw.size, transparent = fixed, fixed_size = fixed_surface_size(app, nw))   // (in place: see render.surface_create)
 		if !ok {
 			free(bw)
 			platform.destroy_window(nw)
