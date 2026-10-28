@@ -6,6 +6,9 @@ package odin_glue
 import "../odin/wj"
 import jsrt "wb:engine/jsrt"
 
+// (the import is used in both backends: an import cannot sit in a `when`)
+_jit_import :: jsrt.JIT_MAX_LOOPS
+
 when wj.WJ_JSRT {
 
 	@(export, link_name = "wj_jit_configure")
