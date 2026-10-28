@@ -1,100 +1,184 @@
 package jsrt
 
-// Realm initialisation: building the intrinsic prototype chain and the global object.
-//
-// ECMAScript defines a precise shape for each realm's intrinsics: Object.prototype at the root, every
-// other prototype chaining to it, the constructors (Object, Array, ...) as callable objects pointing
-// at their .prototype, and the global object exposing them. This wires the skeleton that the standard
-// library waves (object.js-equivalent native builtins) flesh out with methods. Only the prototypes
-// and the global object are created here; the per-prototype methods are registered by the builtin
-// files (builtins_*.odin) so each wave stays self-contained.
+// Realm creation: the intrinsic prototypes, constructors and the global object, installed by the
+// b_*.odin files in dependency order.
 
-realm_init_intrinsics :: proc(rt: ^Runtime, realm: ^Realm) {
-	// Object.prototype is the root; it has a null prototype.
-	realm.object_proto = object_new(rt, nil)
+// --- definition helpers ---
 
-	// Function.prototype chains to Object.prototype and is itself callable (a no-op function).
-	realm.function_proto = object_new(rt, realm.object_proto)
+fn_obj :: proc(ctx: ^Context, name: string, fn: Native_Proc, length: int, magic: i32 = 0, kind: Native_Kind = .function) -> ^Object {
+	return new_native_function(ctx, fn, name, length, magic, kind)
+}
 
-	// Every other prototype chains to Object.prototype.
-	realm.array_proto = object_new(rt, realm.object_proto)
-	realm.string_proto = object_new(rt, realm.object_proto)
-	realm.number_proto = object_new(rt, realm.object_proto)
-	realm.boolean_proto = object_new(rt, realm.object_proto)
-	realm.symbol_proto = object_new(rt, realm.object_proto)
-	realm.bigint_proto = object_new(rt, realm.object_proto)
-	realm.error_proto = object_new(rt, realm.object_proto)
-	realm.iterator_proto = object_new(rt, realm.object_proto)
-	realm.array_iterator_proto = object_new(rt, realm.iterator_proto)
-	realm.regexp_proto = object_new(rt, realm.object_proto)
-	realm.date_proto = object_new(rt, realm.object_proto)
-	realm.map_proto = object_new(rt, realm.object_proto)
-	realm.set_proto = object_new(rt, realm.object_proto)
-	realm.promise_proto = object_new(rt, realm.object_proto)
-	realm.generator_proto = object_new(rt, realm.iterator_proto)
-	realm.array_buffer_proto = object_new(rt, realm.object_proto)
-	realm.typed_array_proto = object_new(rt, realm.object_proto)
+def_method :: proc(ctx: ^Context, o: ^Object, name: string, fn: Native_Proc, length: int, magic: i32 = 0) -> ^Object {
+	f := new_native_function(ctx, fn, name, length, magic)
+	define_value(ctx, o, atom_from_utf8(ctx.rt, name), mk_obj(f), CW)
+	return f
+}
 
-	// Native-error prototypes chain to Error.prototype.
-	for k in Error_Kind {
-		if k == .plain {
-			realm.native_error_proto[k] = realm.error_proto
-		} else {
-			realm.native_error_proto[k] = object_new(rt, realm.error_proto)
-		}
+// A method keyed by a well-known symbol: its name is "[Symbol.x]".
+def_method_sym :: proc(ctx: ^Context, o: ^Object, w: Well_Known, fn: Native_Proc, length: int, magic: i32 = 0, flags: Prop_Flags = CW) -> ^Object {
+	a := well_known_atom(w)
+	name := function_name_value(ctx, a, "")
+	f := new_native_function(ctx, fn, "", length, magic)
+	define_value(ctx, f, pa(.A_name), name, {.configurable})
+	define_value(ctx, o, a, mk_obj(f), flags)
+	return f
+}
+
+def_value :: proc(ctx: ^Context, o: ^Object, name: string, v: Value, flags: Prop_Flags = CW) {
+	define_value(ctx, o, atom_from_utf8(ctx.rt, name), v, flags)
+}
+
+def_getter :: proc(ctx: ^Context, o: ^Object, a: Atom, getter: Native_Proc, setter: Native_Proc = nil, magic: i32 = 0, flags: Prop_Flags = {.configurable}) {
+	g := new_native_function(ctx, getter, "", 0, magic)
+	define_value(ctx, g, pa(.A_name), function_name_value(ctx, a, "get "), {.configurable})
+	sv := UNDEFINED
+	if setter != nil {
+		s := new_native_function(ctx, setter, "", 1, magic)
+		define_value(ctx, s, pa(.A_name), function_name_value(ctx, a, "set "), {.configurable})
+		sv = mk_obj(s)
+	}
+	define_own_property(ctx, o, a, accessor_desc(mk_obj(g), sv, flags), true)
+}
+
+def_getter_str :: proc(ctx: ^Context, o: ^Object, name: string, getter: Native_Proc, setter: Native_Proc = nil, magic: i32 = 0) {
+	def_getter(ctx, o, atom_from_utf8(ctx.rt, name), getter, setter, magic)
+}
+
+def_tag :: proc(ctx: ^Context, o: ^Object, tag: string) {
+	define_value(ctx, o, well_known_atom(.to_string_tag), new_string(ctx, tag), {.configurable})
+}
+
+// A constructor `name` whose prototype object is `proto`; installed on the global object.
+def_ctor :: proc(ctx: ^Context, name: string, fn: Native_Proc, length: int, proto: ^Object, kind: Native_Kind = .constructor, magic: i32 = 0, ctor_proto: ^Object = nil, global := true) -> ^Object {
+	c := new_native_function(ctx, fn, name, length, magic, kind, ctor_proto)
+	if proto != nil {
+		define_value(ctx, c, pa(.A_prototype), mk_obj(proto), {})
+		define_value(ctx, proto, pa(.A_constructor), mk_obj(c), CW)
+	}
+	if global {define_value(ctx, ctx.global_obj, atom_from_utf8(ctx.rt, name), mk_obj(c), CW)}
+	return c
+}
+
+// The `this` of a native method as an object of `class` (TypeError otherwise).
+this_class :: proc(ctx: ^Context, this: Value, class: Class_ID, what: string) -> ^Object {
+	if this.tag == .object && as_obj(this).class == class {return as_obj(this)}
+	throw_type_error(ctx, cat(ctx, "not a ", what))
+	return nil
+}
+
+// --- realm ---
+
+realm_init :: proc(ctx: ^Context) {
+	rt := ctx.rt
+	op := object_new_shape(rt, shape_root_for(rt, nil), .object)
+	ctx.class_proto[.object] = op
+	fp := object_new_proto(ctx, op, .c_function)
+	fp.data = Native_Data{fn = function_proto_call, realm = ctx}
+	ctx.function_proto = fp
+	ctx.global_obj = object_new_proto(ctx, op)
+	ctx.global_var_obj = object_new_proto(ctx, nil)
+
+	// prototypes that are plain objects of their class
+	proto_of :: proc(ctx: ^Context, c: Class_ID, parent: ^Object) -> ^Object {
+		p := object_new_proto(ctx, parent)
+		ctx.class_proto[c] = p
+		return p
+	}
+	ap := object_new_proto(ctx, op, .array)
+	ap.fast_array = true
+	ap.data = Array_Data{}
+	{
+		s := add_property(rt, ap, pa(.A_length), {.writable})
+		s.value = mk_int(0)
+	}
+	ctx.class_proto[.array] = ap
+	ctx.array_shape = ap.shape // placeholder: the real array shape is computed below
+	{
+		probe := object_new_proto(ctx, ap, .array)
+		s := add_property(rt, probe, pa(.A_length), {.writable})
+		s.value = mk_int(0)
+		ctx.array_shape = probe.shape
+	}
+	ctx.std_array_proto = true
+	proto_of(ctx, .error, op)
+	np := object_new_proto(ctx, op, .number)
+	np.data = Prim_Data{mk_int(0)}
+	ctx.class_proto[.number] = np
+	sp := new_primitive_wrapper(ctx, .string, mk_str(rt.empty_string))
+	set_object_proto(rt, sp, op)
+	ctx.class_proto[.string] = sp
+	bp := object_new_proto(ctx, op, .boolean)
+	bp.data = Prim_Data{FALSE}
+	ctx.class_proto[.boolean] = bp
+	proto_of(ctx, .symbol, op)
+	proto_of(ctx, .bigint, op)
+	ip := proto_of(ctx, .iterator, op)
+	proto_of(ctx, .async_iterator, op)
+	proto_of(ctx, .array_iterator, ip)
+	proto_of(ctx, .map_iterator, ip)
+	proto_of(ctx, .set_iterator, ip)
+	proto_of(ctx, .string_iterator, ip)
+	proto_of(ctx, .regexp_string_iterator, ip)
+	proto_of(ctx, .iterator_helper, ip)
+	proto_of(ctx, .iterator_wrap, ip)
+	proto_of(ctx, .iterator_concat, ip)
+	gp := proto_of(ctx, .generator, ip)
+	agp := proto_of(ctx, .async_generator, ctx.class_proto[.async_iterator])
+	proto_of(ctx, .async_from_sync_iterator, ctx.class_proto[.async_iterator])
+	gfp := proto_of(ctx, .generator_function, fp)
+	afp := proto_of(ctx, .async_function, fp)
+	agfp := proto_of(ctx, .async_generator_function, fp)
+	_ = gp
+	_ = agp
+	_ = gfp
+	_ = afp
+	_ = agfp
+	proto_of(ctx, .regexp, op)
+	proto_of(ctx, .date, op)
+	proto_of(ctx, .jsmap, op)
+	proto_of(ctx, .set, op)
+	proto_of(ctx, .weakmap, op)
+	proto_of(ctx, .weakset, op)
+	proto_of(ctx, .weakref, op)
+	proto_of(ctx, .finrec, op)
+	proto_of(ctx, .promise, op)
+	proto_of(ctx, .array_buffer, op)
+	proto_of(ctx, .shared_array_buffer, op)
+	proto_of(ctx, .dataview, op)
+	proto_of(ctx, .disposable_stack, op)
+	proto_of(ctx, .async_disposable_stack, op)
+
+	// arguments object shapes: length, @@iterator, callee
+	{
+		probe := object_new_proto(ctx, op, .arguments)
+		add_property(rt, probe, pa(.A_length), CW)
+		add_property(rt, probe, well_known_atom(.iterator), CW)
+		add_property(rt, probe, pa(.A_callee), {}, .accessor)
+		ctx.arguments_shape = probe.shape
 	}
 
-	// The global object. Its prototype is Object.prototype.
-	realm.global = object_new(rt, realm.object_proto)
-
-	ctx := Context{rt = rt, realm = realm, exception = UNINITIALIZED}
-	builtins_install(&ctx, realm)
-}
-
-// --- native function helpers used by the builtin installers ---
-
-// Create a native function object with the given length and name, prototype = Function.prototype.
-native_function :: proc(ctx: ^Context, fn: Native_Proc, name: string, length: int, magic: i32 = 0) -> ^Object {
-	rt := ctx.rt
-	obj := object_new(rt, ctx.realm.function_proto)
-	if obj == nil {return nil}
-	obj.exotic = Native_Data{fn = fn, magic = magic, ctor = false, realm = ctx.realm}
-	object_define_own(ctx, obj, pa(.A_length), mk_number(f64(length)), {.configurable})
-	nm := mk_heap(.string, string_from_utf8(rt, name))
-	object_define_own(ctx, obj, pa(.A_name), nm, {.configurable})
-	return obj
-}
-
-// Define a method on `target` (a prototype or object): a native function under the atom `key`.
-define_method :: proc(ctx: ^Context, target: ^Object, key: Atom, fn: Native_Proc, name: string, length: int, magic: i32 = 0) {
-	m := native_function(ctx, fn, name, length, magic)
-	if m == nil {return}
-	object_define_own(ctx, target, key, mk_heap(.object, m), {.writable, .configurable})
-}
-
-// Same as define_method but keys on an interned name (for keys not in the predefined atom table). The
-// method's displayed name is the same string.
-define_method_str :: proc(ctx: ^Context, target: ^Object, name: string, fn: Native_Proc, length: int, magic: i32 = 0) {
-	key := atom_intern_utf8(ctx.rt, name)
-	define_method(ctx, target, key, fn, name, length, magic)
-}
-
-// Create a constructor: a callable+constructable native function whose .prototype is `proto`, and
-// proto.constructor points back. Installed on the global object under `name_atom`.
-define_constructor :: proc(ctx: ^Context, name_atom: Atom, fn: Native_Proc, length: int, proto: ^Object) -> ^Object {
-	rt := ctx.rt
-	ctor := object_new(rt, ctx.realm.function_proto)
-	if ctor == nil {return nil}
-	ctor.exotic = Native_Data{fn = fn, ctor = true, realm = ctx.realm}
-	object_define_own(ctx, ctor, pa(.A_length), mk_number(f64(length)), {.configurable})
-	name_str := atom_to_string(rt, name_atom)
-	object_define_own(ctx, ctor, pa(.A_name), mk_heap(.string, name_str), {.configurable})
-	object_define_own(ctx, ctor, pa(.A_prototype), mk_heap(.object, object_ref(proto)), {})
-	object_define_own(ctx, proto, pa(.A_constructor), mk_heap(.object, object_ref(ctor)), {.writable, .configurable})
-	object_define_own(ctx, ctx.realm.global, name_atom, mk_heap(.object, object_ref(ctor)), {.writable, .configurable})
-	// The global and prototype.constructor slots each took their own reference; drop our creation
-	// reference so the only holders are reachable from the object graph. Callers that keep the
-	// pointer in a realm field must object_ref it themselves.
-	object_unref(rt, ctor)
-	return ctor
+	init_function_builtins(ctx)
+	init_object_builtins(ctx)
+	init_error_builtins(ctx)
+	init_global_builtins(ctx)
+	init_symbol_builtins(ctx)
+	init_boolean_builtins(ctx)
+	init_iterator_builtins(ctx)
+	init_array_builtins(ctx)
+	init_string_builtins(ctx)
+	init_number_builtins(ctx)
+	init_math_builtins(ctx)
+	init_bigint_builtins(ctx)
+	init_json_builtins(ctx)
+	init_regexp_builtins(ctx)
+	init_date_builtins(ctx)
+	init_mapset_builtins(ctx)
+	init_weak_builtins(ctx)
+	init_promise_builtins(ctx)
+	init_reflect_builtins(ctx)
+	init_typed_array_builtins(ctx)
+	init_atomics_builtins(ctx)
+	init_disposable_builtins(ctx)
+	clear(&rt.temp_roots)
 }

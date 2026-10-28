@@ -1,291 +1,383 @@
 package jsrt
 
-// The binary/unary operator implementations the interpreter calls: ToNumber-based arithmetic, the
-// bitwise ModRing operators, abstract and strict (relational) comparison, and the equality algorithms.
-// Each pops its operands from the frame stack, pushes the result, and returns false (with an exception
-// set) on error. BigInt mixing follows the spec (BigInt op BigInt stays BigInt; mixing with Number is
-// a TypeError except for the comparison operators).
+// The operators: arithmetic (Number and BigInt), bitwise, relational, instanceof, in. The
+// interpreter handles int/float fast paths inline and calls these for everything else.
 
 import "core:math"
 import "wb:engine/bigint"
 
-Arith_Op :: enum {sub, mul, div, mod, pow}
-Bit_Op :: enum {and, or, xor, shl, shr, sar}
-Cmp_Op :: enum {lt, lte, gt, gte}
+Arith_Op :: enum u8 {add, sub, mul, div, mod, pow, and, or, xor, shl, sar, shr}
 
-// a + b: the one operator that is string-or-number. Both operands ToPrimitive(default); if either is
-// a string, concatenate, else numeric add. BigInt + BigInt supported.
-op_add :: proc(ctx: ^Context, f: ^Call_Frame) -> bool {
+// js_add_slow: `a + b` on arbitrary values.
+op_add :: proc(ctx: ^Context, a_in, b_in: Value) -> Value {
 	rt := ctx.rt
-	b := pop(f)
-	a := pop(f)
-	pa_ := to_primitive(ctx, a, .default)
-	value_free(rt, a)
-	if is_exception(pa_) {value_free(rt, b); return false}
-	pb := to_primitive(ctx, b, .default)
-	value_free(rt, b)
-	if is_exception(pb) {value_free(rt, pa_); return false}
-
-	if is_string(pa_) || is_string(pb) {
-		sa := to_string(ctx, pa_)
-		value_free(rt, pa_)
-		if is_exception(sa) {value_free(rt, pb); return false}
-		sb := to_string(ctx, pb)
-		value_free(rt, pb)
-		if is_exception(sb) {value_free(rt, sa); return false}
-		res := string_concat(rt, as_string(sa), as_string(sb))
-		push(f, mk_heap(.string, res))
-		return true
+	a, b := a_in, b_in
+	if a.tag == .string && b.tag == .string {
+		s := str_concat(rt, as_str(a), as_str(b))
+		if s == nil {return throw_range_error(ctx, "invalid string length")}
+		return mk_str(s)
 	}
-	if is_bigint(pa_) && is_bigint(pb) {
-		r := bigint_binop(rt, as_bigint(pa_), as_bigint(pb), .sub, true) // add handled specially below
-		value_free(rt, pa_); value_free(rt, pb)
-		push(f, r)
-		return true
+	if a.tag == .object {
+		a = to_primitive(ctx, a)
+		if is_exception(a) {return EXCEPTION}
 	}
-	na, oka := to_f64_val(ctx, pa_); value_free(rt, pa_)
-	if !oka {value_free(rt, pb); return false}
-	nb, okb := to_f64_val(ctx, pb); value_free(rt, pb)
-	if !okb {return false}
-	push(f, mk_number(na + nb))
-	return true
+	if b.tag == .object {
+		b = to_primitive(ctx, b)
+		if is_exception(b) {return EXCEPTION}
+	}
+	if a.tag == .string || b.tag == .string {
+		sa := to_str(ctx, a)
+		if sa == nil {return EXCEPTION}
+		sb := to_str(ctx, b)
+		if sb == nil {return EXCEPTION}
+		s := str_concat(rt, sa, sb)
+		if s == nil {return throw_range_error(ctx, "invalid string length")}
+		return mk_str(s)
+	}
+	return op_arith(ctx, .add, a, b)
 }
 
-op_arith :: proc(ctx: ^Context, f: ^Call_Frame, kind: Arith_Op) -> bool {
-	rt := ctx.rt
-	b := pop(f)
-	a := pop(f)
-	// BigInt path.
-	if is_bigint(a) && is_bigint(b) {
-		r := bigint_binop(rt, as_bigint(a), as_bigint(b), kind, false)
-		value_free(rt, a); value_free(rt, b)
-		if is_exception(r) {return false}
-		push(f, r)
-		return true
-	}
-	na, oka := to_f64_val(ctx, a); value_free(rt, a)
-	if !oka {value_free(rt, b); return false}
-	nb, okb := to_f64_val(ctx, b); value_free(rt, b)
-	if !okb {return false}
-	r: f64
-	switch kind {
-	case .sub: r = na - nb
-	case .mul: r = na * nb
-	case .div: r = na / nb
-	case .mod: r = js_fmod(na, nb)
-	case .pow: r = js_pow(na, nb)
-	}
-	push(f, mk_number(r))
-	return true
-}
-
-op_bitwise :: proc(ctx: ^Context, f: ^Call_Frame, kind: Bit_Op) -> bool {
-	rt := ctx.rt
-	b := pop(f)
-	a := pop(f)
-	ia, oka := to_int32(ctx, a); value_free(rt, a)
-	if !oka {value_free(rt, b); return false}
-	if kind == .shl || kind == .shr || kind == .sar {
-		ub, okb := to_uint32(ctx, b); value_free(rt, b)
-		if !okb {return false}
-		sh := ub & 31
-		switch kind {
-		case .shl:
-			push(f, mk_int(ia << sh))
-		case .sar:
-			push(f, mk_int(ia >> sh))
-		case .shr:
-			push(f, mk_number(f64(u32(ia) >> sh)))
-		case .and, .or, .xor:
+op_arith :: proc(ctx: ^Context, op: Arith_Op, a_in, b_in: Value) -> Value {
+	a := to_numeric(ctx, a_in)
+	if is_exception(a) {return EXCEPTION}
+	b := to_numeric(ctx, b_in)
+	if is_exception(b) {return EXCEPTION}
+	if a.tag == .bigint || b.tag == .bigint {
+		if a.tag != .bigint || b.tag != .bigint {
+			return throw_type_error(ctx, "cannot mix BigInt and other types, use explicit conversions")
 		}
-		return true
+		return bigint_arith(ctx, op, as_big(a), as_big(b))
 	}
-	ib, okb := to_int32(ctx, b); value_free(rt, b)
-	if !okb {return false}
-	switch kind {
-	case .and: push(f, mk_int(ia & ib))
-	case .or:  push(f, mk_int(ia | ib))
-	case .xor: push(f, mk_int(ia ~ ib))
-	case .shl, .shr, .sar:
+	x, y := as_f64(a), as_f64(b)
+	switch op {
+	case .add: return mk_number(x + y)
+	case .sub: return mk_number(x - y)
+	case .mul: return mk_number(x * y)
+	case .div: return mk_number(x / y)
+	case .mod: return mk_number(js_fmod(x, y))
+	case .pow: return mk_number(js_pow(x, y))
+	case .and: return mk_int(f64_to_int32(x) & f64_to_int32(y))
+	case .or: return mk_int(f64_to_int32(x) | f64_to_int32(y))
+	case .xor: return mk_int(f64_to_int32(x) ~ f64_to_int32(y))
+	case .shl: return mk_int(i32(u32(f64_to_int32(x)) << (u32(f64_to_int32(y)) & 31)))
+	case .sar: return mk_int(f64_to_int32(x) >> (u32(f64_to_int32(y)) & 31))
+	case .shr: return mk_u32(u32(f64_to_int32(x)) >> (u32(f64_to_int32(y)) & 31))
 	}
-	return true
+	return UNDEFINED
 }
 
-// Abstract relational comparison (<, <=, >, >=).
-op_compare :: proc(ctx: ^Context, f: ^Call_Frame, kind: Cmp_Op) -> bool {
-	rt := ctx.rt
-	b := pop(f)
-	a := pop(f)
-	pa_ := to_primitive(ctx, a, .number); value_free(rt, a)
-	if is_exception(pa_) {value_free(rt, b); return false}
-	pb := to_primitive(ctx, b, .number); value_free(rt, b)
-	if is_exception(pb) {value_free(rt, pa_); return false}
+js_fmod :: proc(x, y: f64) -> f64 {
+	if math.is_nan(x) || math.is_nan(y) || math.is_inf(x) || y == 0 {return NAN}
+	if math.is_inf(y) {return x}
+	if x == 0 {return x}
+	r := math.mod(x, y)
+	if r == 0 {return math.copy_sign(0, x)}
+	return r
+}
 
-	res: bool
-	if is_string(pa_) && is_string(pb) {
-		c := string_compare(rt, as_string(pa_), as_string(pb))
-		switch kind {
-		case .lt:  res = c < 0
-		case .lte: res = c <= 0
-		case .gt:  res = c > 0
-		case .gte: res = c >= 0
+js_pow :: proc(x, y: f64) -> f64 {
+	if math.is_nan(y) {return NAN}
+	if y == 0 {return 1}
+	if (x == 1 || x == -1) && math.is_inf(y) {return NAN}
+	return math.pow(x, y)
+}
+
+// Unary operators: neg, plus, inc, dec, bitwise not.
+Unary_Op :: enum u8 {neg, plus, inc, dec, not}
+
+op_unary :: proc(ctx: ^Context, op: Unary_Op, v: Value) -> Value {
+	if op == .plus {
+		d, ok := to_number(ctx, v)
+		if !ok {return EXCEPTION}
+		return mk_number(d)
+	}
+	n := to_numeric(ctx, v)
+	if is_exception(n) {return EXCEPTION}
+	if n.tag == .bigint {
+		rt := ctx.rt
+		context.allocator = rt_allocator(rt)
+		bv := as_big(n).val
+		switch op {
+		case .neg: return mk_big(bigint_new(rt, bigint.neg(bv)))
+		case .inc:
+			one := bigint.from_i64(1)
+			defer bigint.destroy(&one)
+			return mk_big(bigint_new(rt, bigint.add(bv, one)))
+		case .dec:
+			one := bigint.from_i64(1)
+			defer bigint.destroy(&one)
+			return mk_big(bigint_new(rt, bigint.sub(bv, one)))
+		case .not: return mk_big(bigint_new(rt, bigint.bit_not(bv)))
+		case .plus:
 		}
-		value_free(rt, pa_); value_free(rt, pb)
-		push(f, mk_bool(res))
-		return true
+		return n
 	}
-	na, oka := to_f64_val(ctx, pa_); value_free(rt, pa_)
-	if !oka {value_free(rt, pb); return false}
-	nb, okb := to_f64_val(ctx, pb); value_free(rt, pb)
-	if !okb {return false}
-	if math.is_nan(na) || math.is_nan(nb) {
-		push(f, FALSE)
-		return true
+	d := as_f64(n)
+	switch op {
+	case .neg: return mk_number(-d)
+	case .inc: return mk_number(d + 1)
+	case .dec: return mk_number(d - 1)
+	case .not: return mk_int(~f64_to_int32(d))
+	case .plus:
 	}
-	switch kind {
-	case .lt:  res = na < nb
-	case .lte: res = na <= nb
-	case .gt:  res = na > nb
-	case .gte: res = na >= nb
-	}
-	push(f, mk_bool(res))
-	return true
+	return n
 }
 
-// == / != (loose) and === / !== (strict) depending on `strict`.
-op_equality :: proc(ctx: ^Context, f: ^Call_Frame, strict: bool, negate: bool) -> bool {
-	b := pop(f)
-	a := pop(f)
-	eq: bool
-	if strict {
-		eq = strict_equals(ctx.rt, a, b)
-	} else {
-		var_eq, ok := loose_equals(ctx, a, b)
-		if !ok {value_free(ctx.rt, a); value_free(ctx.rt, b); return false}
-		eq = var_eq
-	}
-	value_free(ctx.rt, a); value_free(ctx.rt, b)
-	push(f, mk_bool(negate ? !eq : eq))
-	return true
-}
+Cmp_Op :: enum u8 {lt, lte, gt, gte}
 
-// --- strict equality (SameValue without the -0/NaN special cases) ---
-
-strict_equals :: proc(rt: ^Runtime, a, b: Value) -> bool {
-	if is_number(a) && is_number(b) {
-		return as_f64(a) == as_f64(b)
-	}
-	if a.tag != b.tag {return false}
-	#partial switch a.tag {
-	case .undefined, .null:
-		return true
-	case .bool:
-		return a.payload.b == b.payload.b
-	case .string:
-		return string_equal(rt, as_string(a), as_string(b))
-	case .symbol:
-		return a.payload.ptr == b.payload.ptr
-	case .object:
-		return a.payload.ptr == b.payload.ptr
-	case .bigint:
-		return bigint_cmp_cells(as_bigint(a), as_bigint(b)) == 0
-	case .int32, .float64, .uninitialized, .exception:
-		return false
-	}
-	return false
-}
-
-// --- loose equality ---
-
-loose_equals :: proc(ctx: ^Context, a, b: Value) -> (bool, bool) {
+// Relational comparison; -1 on exception, else 0/1.
+op_compare :: proc(ctx: ^Context, op: Cmp_Op, a_in, b_in: Value) -> int {
+	a := to_primitive(ctx, a_in, .number)
+	if is_exception(a) {return -1}
+	b := to_primitive(ctx, b_in, .number)
+	if is_exception(b) {return -1}
 	rt := ctx.rt
-	if a.tag == b.tag || (is_number(a) && is_number(b)) {
-		return strict_equals(rt, a, b), true
+	if a.tag == .string && b.tag == .string {
+		c := str_cmp(rt, as_str(a), as_str(b))
+		switch op {
+		case .lt: return c < 0 ? 1 : 0
+		case .lte: return c <= 0 ? 1 : 0
+		case .gt: return c > 0 ? 1 : 0
+		case .gte: return c >= 0 ? 1 : 0
+		}
 	}
-	if is_undefined_or_null(a) && is_undefined_or_null(b) {
-		return true, true
+	if a.tag == .bigint || b.tag == .bigint {
+		// compare a BigInt with a BigInt, a Number or a numeric string
+		c, undefined_result := compare_with_bigint(ctx, a, b)
+		if c == -2 {return -1}
+		if undefined_result {return 0}
+		switch op {
+		case .lt: return c < 0 ? 1 : 0
+		case .lte: return c <= 0 ? 1 : 0
+		case .gt: return c > 0 ? 1 : 0
+		case .gte: return c >= 0 ? 1 : 0
+		}
 	}
-	// Number vs String, Boolean coercions, Object vs primitive: coerce and retry.
-	if is_number(a) && is_string(b) {
-		return as_f64(a) == string_to_number(rt, as_string(b)), true
+	x, ok := to_number(ctx, a)
+	if !ok {return -1}
+	y, ok2 := to_number(ctx, b)
+	if !ok2 {return -1}
+	switch op {
+	case .lt: return x < y ? 1 : 0
+	case .lte: return x <= y ? 1 : 0
+	case .gt: return x > y ? 1 : 0
+	case .gte: return x >= y ? 1 : 0
 	}
-	if is_string(a) && is_number(b) {
-		return string_to_number(rt, as_string(a)) == as_f64(b), true
-	}
-	if a.tag == .bool {
-		return loose_equals(ctx, mk_number(a.payload.b ? 1 : 0), b)
-	}
-	if b.tag == .bool {
-		return loose_equals(ctx, a, mk_number(b.payload.b ? 1 : 0))
-	}
-	if (is_number(a) || is_string(a) || is_bigint(a) || a.tag == .symbol) && b.tag == .object {
-		pb := to_primitive(ctx, b, .default)
-		if is_exception(pb) {return false, false}
-		r, ok := loose_equals(ctx, a, pb)
-		value_free(rt, pb)
-		return r, ok
-	}
-	if a.tag == .object && (is_number(b) || is_string(b) || is_bigint(b) || b.tag == .symbol) {
-		pa_ := to_primitive(ctx, a, .default)
-		if is_exception(pa_) {return false, false}
-		r, ok := loose_equals(ctx, pa_, b)
-		value_free(rt, pa_)
-		return r, ok
-	}
-	return false, true
+	return 0
 }
 
-// --- BigInt arithmetic bridge ---
-
+// Returns (sign of a-b, result undefined). sign -2 means an exception is pending.
 @(private = "file")
-bigint_binop :: proc(rt: ^Runtime, a, b: ^JS_BigInt, kind: Arith_Op, is_add: bool) -> Value {
-	context.allocator = rt.allocator
+compare_with_bigint :: proc(ctx: ^Context, a, b: Value) -> (int, bool) {
+	if a.tag == .bigint && b.tag == .bigint {
+		return bigint.cmp(as_big(a).val, as_big(b).val), false
+	}
+	if a.tag == .bigint {
+		if b.tag == .string {
+			bv, ok := string_to_bigint(ctx, as_str(b))
+			if !ok {return 0, true}
+			return bigint.cmp(as_big(a).val, as_big(bv).val), false
+		}
+		y, ok := to_number(ctx, b)
+		if !ok {return -2, false}
+		if math.is_nan(y) {return 0, true}
+		return bigint_cmp_f64(as_big(a), y), false
+	}
+	if a.tag == .string {
+		av, ok := string_to_bigint(ctx, as_str(a))
+		if !ok {return 0, true}
+		return bigint.cmp(as_big(av).val, as_big(b).val), false
+	}
+	x, ok := to_number(ctx, a)
+	if !ok {return -2, false}
+	if math.is_nan(x) {return 0, true}
+	return -bigint_cmp_f64(as_big(b), x), false
+}
+
+// InstanceofOperator.
+op_instanceof :: proc(ctx: ^Context, v: Value, target: Value) -> int {
+	if target.tag != .object {
+		throw_type_error(ctx, "invalid 'instanceof' right operand")
+		return -1
+	}
+	h := get(ctx, target, well_known_atom(.has_instance))
+	if is_exception(h) {return -1}
+	if !is_nullish(h) {
+		if !is_callable(h) {
+			throw_type_error(ctx, "Symbol.hasInstance is not a function")
+			return -1
+		}
+		r := call(ctx, h, target, {v})
+		if is_exception(r) {return -1}
+		return to_boolean(r) ? 1 : 0
+	}
+	if !is_callable(target) {
+		throw_type_error(ctx, "invalid 'instanceof' right operand")
+		return -1
+	}
+	return ordinary_has_instance(ctx, target, v)
+}
+
+ordinary_has_instance :: proc(ctx: ^Context, c: Value, v: Value) -> int {
+	if !is_callable(c) {return 0}
+	co := as_obj(c)
+	if co.class == .bound_function {
+		return op_instanceof(ctx, v, co.data.(^Bound_Data).target)
+	}
+	if v.tag != .object {return 0}
+	p := get(ctx, c, pa(.A_prototype))
+	if is_exception(p) {return -1}
+	if p.tag != .object {
+		throw_type_error(ctx, "'prototype' is not an object")
+		return -1
+	}
+	proto := as_obj(p)
+	o := as_obj(v)
+	count := 0
+	for {
+		pv := get_prototype_of(ctx, o)
+		if is_exception(pv) {return -1}
+		if pv.tag != .object {return 0}
+		po := as_obj(pv)
+		if po == proto {return 1}
+		o = po
+		count += 1
+		if count & 0xffff == 0 && poll_interrupt(ctx) {return -1}
+	}
+}
+
+// --- BigInt arithmetic ---
+
+bigint_arith :: proc(ctx: ^Context, op: Arith_Op, a, b: ^JS_BigInt) -> Value {
+	rt := ctx.rt
+	context.allocator = rt_allocator(rt)
+	x, y := a.val, b.val
 	r: bigint.Int
-	if is_add {
-		r = bigint.add(a.val, b.val)
-	} else {
-		switch kind {
-		case .sub: r = bigint.sub(a.val, b.val)
-		case .mul: r = bigint.mul(a.val, b.val)
-		case .div, .mod, .pow:
-			// div/mod/pow for BigInt land in the BigInt wave (needs divmod wiring); for now sub keeps
-			// the engine running. Real implementations call bigint.divmod / a pow-by-squaring loop.
-			r = bigint.sub(a.val, b.val)
+	switch op {
+	case .add: r = bigint.add(x, y)
+	case .sub: r = bigint.sub(x, y)
+	case .mul:
+		if len(x.mag) + len(y.mag) > BIGINT_MAX_LIMBS {return throw_range_error(ctx, "BigInt is too large")}
+		r = bigint.mul(x, y)
+	case .div:
+		if bigint.is_zero(y) {return throw_range_error(ctx, "Division by zero")}
+		r = bigint.div(x, y)
+	case .mod:
+		if bigint.is_zero(y) {return throw_range_error(ctx, "Division by zero")}
+		r = bigint.rem(x, y)
+	case .pow:
+		if y.neg {return throw_range_error(ctx, "negative exponent")}
+		if bigint.is_zero(y) {r = bigint.from_i64(1); break}
+		if len(y.mag) > 1 || (len(x.mag) > 0 && u64(y.mag[0]) * u64(len(x.mag) * 32) > u64(BIGINT_MAX_LIMBS) * 32) {
+			// |x| <= 1 stays small; everything else is too large
+			if bigint.is_zero(x) {r = bigint.Int{}; break}
+			if len(x.mag) == 1 && x.mag[0] == 1 {
+				r = bigint.clone(x)
+				if x.neg && y.mag[0] & 1 == 0 {r.neg = false}
+				break
+			}
+			return throw_range_error(ctx, "BigInt is too large")
+		}
+		r = bigint.pow(x, u64(y.mag[0]))
+	case .and: r = bigint.bit_and(x, y)
+	case .or: r = bigint.bit_or(x, y)
+	case .xor: r = bigint.bit_xor(x, y)
+	case .shl, .sar:
+		left := op == .shl
+		if y.neg {left = !left}
+		if len(y.mag) > 1 || (len(y.mag) == 1 && y.mag[0] > u32(BIGINT_MAX_LIMBS * 32)) {
+			if left {
+				if bigint.is_zero(x) {r = bigint.Int{}; break}
+				return throw_range_error(ctx, "BigInt is too large")
+			}
+			r = x.neg ? bigint.from_i64(-1) : bigint.Int{}
+			break
+		}
+		n := len(y.mag) == 0 ? uint(0) : uint(y.mag[0])
+		if left {
+			if len(x.mag) + int(n / 32) > BIGINT_MAX_LIMBS {return throw_range_error(ctx, "BigInt is too large")}
+			r = bigint.shl(x, n)
+		} else {
+			r = bigint.shr(x, n)
+		}
+	case .shr:
+		return throw_type_error(ctx, "BigInts have no unsigned right shift, use >> instead")
+	}
+	return mk_big(bigint_new(rt, r))
+}
+
+BIGINT_MAX_LIMBS :: (1 << 30) / 32 // ~1 Gbit, QuickJS's JS_BIGINT_MAX_SIZE order of magnitude
+
+bigint_to_string :: proc(ctx: ^Context, b: ^JS_BigInt, radix: int) -> ^JS_String {
+	rt := ctx.rt
+	context.allocator = rt_allocator(rt)
+	s := bigint.to_string(b.val, radix)
+	defer delete(s)
+	return str_from_latin1(rt, transmute([]u8)s)
+}
+
+bigint_from_i64 :: proc(ctx: ^Context, v: i64) -> Value {
+	context.allocator = rt_allocator(ctx.rt)
+	return mk_big(bigint_new(ctx.rt, bigint.from_i64(v)))
+}
+
+// StringToBigInt; ok=false when the string is not a valid BigInt literal.
+string_to_bigint :: proc(ctx: ^Context, s: ^JS_String) -> (Value, bool) {
+	rt := ctx.rt
+	text := trim_js_space(str_to_utf8(rt, s, tmp(rt)))
+	context.allocator = rt_allocator(rt)
+	if len(text) == 0 {return mk_big(bigint_new(rt, bigint.Int{})), true}
+	radix := 10
+	body := text
+	if len(text) > 2 && text[0] == '0' {
+		switch text[1] | 0x20 {
+		case 'x': radix = 16; body = text[2:]
+		case 'o': radix = 8; body = text[2:]
+		case 'b': radix = 2; body = text[2:]
 		}
 	}
-	return mk_heap(.bigint, bigint_create(rt, r))
-}
-
-// --- number helpers matching ECMAScript semantics ---
-
-js_fmod :: proc(a, b: f64) -> f64 {
-	if math.is_nan(a) || math.is_nan(b) || math.is_inf(a, 0) || b == 0 {
-		return math.nan_f64()
+	if radix != 10 && len(body) > 0 && (body[0] == '+' || body[0] == '-') {return UNDEFINED, false}
+	for c in transmute([]u8)body {
+		if c == '_' || c == '.' || c == 'e' && radix == 10 || c == 'E' && radix == 10 {return UNDEFINED, false}
 	}
-	if math.is_inf(b, 0) {return a}
-	if a == 0 {return a}
-	return math.mod(a, b)
+	v, ok := bigint.from_string(body, radix)
+	if !ok {return UNDEFINED, false}
+	return mk_big(bigint_new(rt, v)), true
 }
 
-js_pow :: proc(a, b: f64) -> f64 {
-	// ECMAScript exponentiation differs from C pow only for a few NaN edge cases handled by core.
-	if b == 0 {return 1}
-	if math.is_nan(b) {return math.nan_f64()}
-	if abs(a) == 1 && math.is_inf(b, 0) {return math.nan_f64()}
-	return math.pow(a, b)
+// Compare a BigInt with a (non-NaN) Number: sign of (a - d).
+bigint_cmp_f64 :: proc(a: ^JS_BigInt, d: f64) -> int {
+	if math.is_inf(d) {return d > 0 ? -1 : 1}
+	fl := math.floor(d)
+	bf := bigint.from_f64(fl)
+	defer bigint.destroy(&bf)
+	c := bigint.cmp(a.val, bf)
+	if c != 0 {return c}
+	return fl == d ? 0 : -1
 }
 
-// --- string comparison (lexicographic by UTF-16 code unit) ---
-
-string_compare :: proc(rt: ^Runtime, a, b: ^JS_String) -> int {
-	fa := string_flatten(rt, a)
-	fb := string_flatten(rt, b)
-	n := min(fa.len, fb.len)
-	for i in 0 ..< n {
-		ca := fa.wide ? ([^]u16)(fa.data)[i] : u16(([^]u8)(fa.data)[i])
-		cb := fb.wide ? ([^]u16)(fb.data)[i] : u16(([^]u8)(fb.data)[i])
-		if ca != cb {return ca < cb ? -1 : 1}
+// ToBigInt.
+to_bigint :: proc(ctx: ^Context, v: Value) -> Value {
+	p := to_primitive(ctx, v, .number)
+	if is_exception(p) {return EXCEPTION}
+	#partial switch p.tag {
+	case .bigint:
+		return p
+	case .bool:
+		return bigint_from_i64(ctx, p.u.b ? 1 : 0)
+	case .string:
+		r, ok := string_to_bigint(ctx, as_str(p))
+		if !ok {return throw_syntax_error(ctx, "invalid BigInt literal")}
+		return r
+	case .int, .float:
+		return throw_type_error(ctx, "cannot convert number to BigInt")
 	}
-	if fa.len == fb.len {return 0}
-	return fa.len < fb.len ? -1 : 1
+	return throw_type_error(ctx, "cannot convert to BigInt")
+}
+
+// NumberToBigInt (RangeError for non-integers).
+number_to_bigint :: proc(ctx: ^Context, d: f64) -> Value {
+	if !f64_is_integer(d) {return throw_range_error(ctx, "cannot convert non-integer number to BigInt")}
+	context.allocator = rt_allocator(ctx.rt)
+	return mk_big(bigint_new(ctx.rt, bigint.from_f64(d)))
 }
