@@ -24,18 +24,11 @@ CLAMP         :: 2
 // The Web IDL conversions themselves (wj_to_str, wj_str_free, wj_to_int32 ...) are implemented in Odin in this package
 // (convert.odin) and exported under their C names, so the C that remains links against them.
 
+// (wj_scratch_grow is qjs_realm.odin's; web_to_usv, web_to_bytestring, web_utf8_string, web_ascii_lower,
+// web_ascii_ieq and web_strndup are web_core.odin's.)
 @(default_calling_convention = "c")
 foreign {
-	// the scratch buffer (wj_scratch, engine.odin): grow to fit `need`
-	wj_scratch_grow :: proc(need: u32) -> bool ---
-
 	// runtime/web.h string helpers
-	web_to_usv        :: proc(ctx: ^Context, v: JSValue, out: ^Str) -> bool ---
-	web_to_bytestring :: proc(ctx: ^Context, v: JSValue, out: ^Str) -> bool ---
-	web_utf8_string   :: proc(ctx: ^Context, p: [^]u8, n: uint, strip_bom: bool) -> JSValue ---
-	web_ascii_lower   :: proc(p: [^]u8, n: uint) ---
-	web_ascii_ieq     :: proc(a: [^]u8, an: uint, b: cstring) -> bool ---
-	web_strndup       :: proc(p: [^]u8, n: uint) -> [^]u8 ---
 	web_resolve_url   :: proc(ctx: ^Context, s: [^]u8, n: uint, out: ^Str) -> bool ---
 	web_status_text   :: proc(status: i32) -> cstring ---
 }

@@ -19,22 +19,10 @@ BS_ALLOW_SHARED :: i32(1 << 1)
 // (The host promises — wj_promise_from_host, wj_host_promise_text — and the buffer helpers — wj_to_buffer_source,
 // wj_is_*, wj_*_from_host, wj_*_take, wj_host_buffer — are implemented in Odin: promise.odin, buffer.odin.)
 
+// (Promises as values — web_promise_*, web_settle, web_then, wj_promise_reject_pending — and web_error_value are
+// web_core.odin's.)
 @(default_calling_convention = "c")
 foreign {
-	wj_promise_reject_pending :: proc(ctx: ^Context) -> JSValue ---
-
-	// promises as values (web.h)
-	web_promise_new            :: proc(ctx: ^Context, funcs: [^]JSValue) -> JSValue ---
-	web_promise_resolved       :: proc(ctx: ^Context, v: JSValue) -> JSValue ---
-	web_promise_take           :: proc(ctx: ^Context, v: JSValue) -> JSValue ---
-	web_promise_rejected       :: proc(ctx: ^Context, reason: JSValue) -> JSValue ---
-	web_promise_reject_pending :: proc(ctx: ^Context) -> JSValue ---
-	web_settle                 :: proc(ctx: ^Context, func: JSValue, v: JSValue) ---
-	web_then                   :: proc(ctx: ^Context, promise: JSValue, on_ok: rawptr, on_err: rawptr, n: i32, data: [^]JSValue) -> JSValue ---
-
-	// errors as values (web.h)
-	web_error_value   :: proc(ctx: ^Context, code: i32, msg: [^]u8, len: uint) -> JSValue ---
-
 	// structured clone through the browser's serializer (web_clone.c)
 	web_clone_serialize   :: proc(ctx: ^Context, v: JSValue, len: ^uint) -> [^]u8 ---
 	web_clone_free        :: proc(ctx: ^Context, p: rawptr) ---

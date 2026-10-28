@@ -121,8 +121,8 @@ GPN_SYMBOL_MASK :: 1 << 1
 GPN_ENUM_ONLY   :: 1 << 4
 
 CFUNC_generic :: 0   // JSCFunctionEnum.JS_CFUNC_generic
-CFUNC_getter  :: 3   // JS_CFUNC_getter
-CFUNC_setter  :: 4   // JS_CFUNC_setter
+CFUNC_getter  :: 8   // JS_CFUNC_getter
+CFUNC_setter  :: 9   // JS_CFUNC_setter
 
 EVAL_TYPE_GLOBAL     :: 0   // JS_EVAL_TYPE_GLOBAL
 EVAL_OPTIONS_VERSION :: 1   // JSEvalOptions.version
@@ -132,7 +132,7 @@ WRITE_OBJ_REFERENCE :: 1 << 3
 READ_OBJ_REFERENCE  :: 1 << 3
 
 // JSPromiseStateEnum.
-Promise_State :: enum i32 { Undefined = 0, Pending, Fulfilled, Rejected }
+Promise_State :: enum i32 { Not_A_Promise = -1, Pending = 0, Fulfilled, Rejected }
 
 Class_ID :: u32   // JSClassID
 
