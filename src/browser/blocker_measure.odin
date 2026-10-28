@@ -3,7 +3,6 @@ package browser
 import "core:fmt"
 import "core:os"
 import "core:time"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:host"
 
@@ -44,9 +43,8 @@ enabled :: proc() -> bool {
 
 @(private = "file")
 cpu_ms :: proc() -> f64 {
-	c, e, k, u: win.FILETIME
-	win.GetProcessTimes(win.GetCurrentProcess(), &c, &e, &k, &u)
-	return f64((u64(k.dwHighDateTime) << 32 | u64(k.dwLowDateTime)) + (u64(u.dwHighDateTime) << 32 | u64(u.dwLowDateTime))) / 10000
+	t := base.process_times()
+	return t.user_ms + t.kernel_ms
 }
 
 load_measure_begin :: proc(app: ^App, t: ^Tab, address: string) {
@@ -76,11 +74,9 @@ load_measure_write :: proc(data: rawptr) {
 	if var_t == nil || var_t.page == nil { return }
 	blocked := 0
 	if ts := blocker_tab(var_t); ts != nil { blocked = ts.blocked }
-	pc: win.PROCESS_MEMORY_COUNTERS
-	pc.cb = size_of(pc)
-	win.GetProcessMemoryInfo(win.GetCurrentProcess(), &pc, size_of(pc))
+	mem := base.process_memory()
 	on := bl.started && bl.b.cfg.enabled
-	line := fmt.tprintf("%s\t%s\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%.0f\t%.1f\n", m.url, on ? "on" : "off", m.paint_ms, m.done_ms, len(var_t.net.entries), blocked, var_t.net.bytes, var_t.page.doc.nodes.count, cpu_ms() - m.cpu0, f64(pc.WorkingSetSize) / 1e6)
+	line := fmt.tprintf("%s\t%s\t%.0f\t%.0f\t%d\t%d\t%d\t%d\t%.0f\t%.1f\n", m.url, on ? "on" : "off", m.paint_ms, m.done_ms, len(var_t.net.entries), blocked, var_t.net.bytes, var_t.page.doc.nodes.count, cpu_ms() - m.cpu0, f64(mem.resident) / 1e6)
 	if f, err := os.open(report_path, {.Write, .Create, .Append}, os.Permissions_Default_File); err == nil {
 		os.write_string(f, line)
 		os.close(f)
