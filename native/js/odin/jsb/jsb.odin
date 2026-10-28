@@ -377,7 +377,8 @@ lower :: #force_inline proc "contextless" (c, w: ^abi.Cells, $D, $R: typeid, $i,
 			w[j] = {c[i].a, 0}; w[j + 1] = {c[i].b, 0}
 			return lower(c, w, D, R, i + 1, nd, j + 2)
 		} else when intrinsics.type_is_union(T) {
-			#assert(intrinsics.type_variant_type_of(T, 0) == string, "jsb: only Maybe(string) lowers onto today's wire")
+			V :: intrinsics.type_variant_type_of(T, 0)
+			#assert(V == string || V == abi.Bytes || V == []u8, "jsb: only Maybe(string) / Maybe(bytes) lower onto today's wire")
 			#assert(intrinsics.type_is_multi_pointer(intrinsics.type_proc_parameter_type(R, j)), "jsb: an optional string lowers to (pointer, length)")
 			absent := c[i].b == abi.ABSENT_LEN
 			w[j] = {absent ? 0 : c[i].a, 0}; w[j + 1] = {absent ? u64(wj.WR_ABSENT) : c[i].b, 0}

@@ -35,10 +35,8 @@ foreign {
 	// errors as values (web.h)
 	web_error_value   :: proc(ctx: ^Context, code: i32, msg: [^]u8, len: uint) -> JSValue ---
 
-	// structured clone through the browser's serializer (web_clone.c)
-	web_clone_serialize   :: proc(ctx: ^Context, v: JSValue, len: ^uint) -> [^]u8 ---
-	web_clone_free        :: proc(ctx: ^Context, p: rawptr) ---
-	web_clone_deserialize :: proc(ctx: ^Context, p: [^]u8, len: uint) -> JSValue ---
+	// (structured clone, web_clone_serialize / _free / _deserialize: Odin, native/js/odin/web_clone.odin; a domain calls
+	// them unqualified)
 
 	// FormData / Headers (web.h). (Blob / File: web_blob_* / web_file_* are Odin, package odin_glue, web_blob.odin.)
 	web_entry_wrap   :: proc(ctx: ^Context, entry: u64) -> JSValue ---

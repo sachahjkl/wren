@@ -2,19 +2,17 @@
 // and the channel's name: a posted message is serialized once and copied by the browser to every other end of the
 // channel, in any realm; it comes back here through wj_port_message (web_message.c), which finds the object by its end.
 // An open channel stays alive (it may receive); close() lets it go. Ported from native/js/runtime/web_broadcast.c;
-// same wjr_* symbols and behaviour. web_bound_add/remove and web_message_event live in web_message.c (kept as C).
+// same wjr_* symbols and behaviour. web_bound_add/remove are web_message.odin's; web_message_event lives in
+// web_socket.c (kept as C).
 package odin_glue
 
 import "../odin/wj"
 
 
 
-// defined in web_message.c (kept as C): the table of browser port ends bound to objects of this realm, and a
-// MessageEvent factory. Declared here as real symbols.
+// defined in web_socket.c (kept as C): a MessageEvent factory. Declared here as a real symbol.
 @(default_calling_convention = "c")
 foreign {
-	web_bound_add    :: proc(ctx: ^wj.Context, end: u64, obj: wj.JSValue) ---
-	web_bound_remove :: proc(end: u64) ---
 	web_message_event :: proc(ctx: ^wj.Context, data: wj.JSValue, origin: cstring, source: wj.JSValue) -> wj.JSValue ---
 }
 
@@ -79,10 +77,10 @@ wjr_BroadcastChannel_postMessage :: proc "c" (ctx: ^wj.Context, this_val: wj.JSV
 	if argc < 1 { return wj.wj_throw_arity(ctx, "BroadcastChannel.postMessage", 1, argc) }
 	if b.closed { return wj.wj_throw_dom(ctx, "InvalidStateError", "Failed to execute 'postMessage' on 'BroadcastChannel': Channel is closed") }
 	length: uint
-	data := wj.web_clone_serialize(ctx, argv[0], &length)
+	data := web_clone_serialize(ctx, argv[0], &length)
 	if data == nil { return wj.EXCEPTION }
 	st := b.end != 0 ? wj.wr_Broadcast_post(b.end, data, u32(length)) : i32(0)
-	wj.web_clone_free(ctx, data)
+	web_clone_free(ctx, data)
 	return st < 0 ? wj.wj_throw_status(ctx, st, "BroadcastChannel.postMessage") : wj.UNDEFINED
 }
 
@@ -107,7 +105,7 @@ web_broadcast_deliver :: proc "c" (ctx: ^wj.Context, channel: wj.JSValue, data: 
 	o := wj.wj_unwrap(channel, broadcast_iface())
 	b := (^Bc_Impl)(wj.impl_of(o))
 	if b == nil || b.closed { return }
-	value := wj.web_clone_deserialize(ctx, data, length)
+	value := web_clone_deserialize(ctx, data, length)
 	ev: wj.JSValue
 	if wj.is_exception(value) {
 		wj.JS_FreeValue(ctx, wj.JS_GetException(ctx))

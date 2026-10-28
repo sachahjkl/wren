@@ -2,7 +2,8 @@
 // | {name, type, credentials, extendedLifetime}) connects to the shared worker of (storage key, URL, name); worker.port
 // is a MessagePort), and the worker's realm (each connection fires `connect`, a MessageEvent whose ports[0]/source is
 // the new port). Ported from native/js/runtime/shared_workers.c; same wjr_* symbols, same wj_shared_connect export.
-// web_port_remote, web_message_event_named, web_keep_worker, web_blob_url_bytes stay in their C files.
+// web_port_remote (web_message.odin) and web_keep_worker (workers.odin) are Odin; web_message_event_named and
+// web_blob_url_bytes stay in their C files.
 package odin_glue
 
 import "../odin/wj"
@@ -14,14 +15,10 @@ import "../odin/wj"
 WORKER_TYPE_CLASSIC :: i32(0)
 WORKER_TYPE_MODULE  :: i32(1)
 
-// from web_message.c / workers.c (kept as C): a realm port bound to a browser end, a named MessageEvent, keeping a
-// worker alive, and the bytes of a blob: URL.
+// from web_socket.c / web_blob.c (kept as C): a named MessageEvent, and the bytes of a blob: URL.
 @(default_calling_convention = "c")
 foreign {
-	web_port_remote          :: proc(ctx: ^wj.Context, end: u64) -> wj.JSValue ---
 	web_message_event_named  :: proc(ctx: ^wj.Context, type: cstring, data: wj.JSValue, origin: cstring, source: wj.JSValue, ports: wj.JSValue) -> wj.JSValue ---
-	web_keep_worker          :: proc(ctx: ^wj.Context, w: wj.JSValue) ---
-	// (web_blob_url_bytes is Odin: web_blob.odin)
 }
 
 @(private = "file")
