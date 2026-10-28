@@ -17,11 +17,11 @@ package browser
 import "core:fmt"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
+import "wb:js"
 import "wb:page"
 
 HISTORY_URL :: "about:history"
@@ -219,13 +219,37 @@ nav_history_items :: proc(app: ^App, t: ^Tab, dir: int) {
 
 Local_Time :: struct { year, month, day, hour, minute, second, weekday: int }
 
+// The local calendar fields of a Unix-ms instant, in the user's time zone. js.timezone_offset gives the minutes to add
+// to local to reach UTC for that instant (with the system's daylight-saving rules, from Win32 on Windows and the C
+// library on Linux); the civil date is then read off the shifted day count (a well-known days-to-date algorithm),
+// portable and without a system calendar call.
 local_time :: proc(unix_ms: i64) -> Local_Time {
-	ft_v := u64(unix_ms) * 10_000 + 116_444_736_000_000_000
-	ft := win.FILETIME{dwLowDateTime = u32(ft_v), dwHighDateTime = u32(ft_v >> 32)}
-	utc, loc: win.SYSTEMTIME
-	if !win.FileTimeToSystemTime(&ft, &utc) { return {} }
-	if !win.SystemTimeToTzSpecificLocalTime(nil, &utc, &loc) { loc = utc }
-	return {int(loc.year), int(loc.month), int(loc.day), int(loc.hour), int(loc.minute), int(loc.second), int(loc.day_of_week)}
+	off_min := i64(js.timezone_offset(f64(unix_ms)))   // JS getTimezoneOffset: minutes to add to local to get UTC
+	local_ms := unix_ms - off_min * 60_000
+	// floor division into whole days and the time of day within the day (local_ms may be negative before 1970)
+	day := local_ms / 86_400_000
+	tod := local_ms % 86_400_000
+	if tod < 0 { tod += 86_400_000; day -= 1 }
+	y, m, d := civil_from_days(day)
+	secs := tod / 1000
+	// day of week: 1970-01-01 (day 0) was a Thursday (4); Sunday = 0 as the Windows wDayOfWeek was
+	weekday := int(((day % 7) + 7 + 4) % 7)
+	return {y, m, d, int(secs / 3600), int((secs / 60) % 60), int(secs % 60), weekday}
+}
+
+// Civil date (year, month 1-12, day 1-31) from a count of days since 1970-01-01 (Howard Hinnant's algorithm).
+@(private = "file")
+civil_from_days :: proc(z_in: i64) -> (year, month, day: int) {
+	z := z_in + 719_468
+	era := (z >= 0 ? z : z - 146_096) / 146_097
+	doe := z - era * 146_097                                   // [0, 146096]
+	yoe := (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365   // [0, 399]
+	y := yoe + era * 400
+	doy := doe - (365 * yoe + yoe / 4 - yoe / 100)            // [0, 365]
+	mp := (5 * doy + 2) / 153                                  // [0, 11]
+	d := doy - (153 * mp + 2) / 5 + 1                          // [1, 31]
+	m := mp < 10 ? mp + 3 : mp - 9                             // [1, 12]
+	return int(y + (m <= 2 ? 1 : 0)), int(m), int(d)
 }
 
 // Unix ms of the local midnight that starts the day of `unix_ms`.

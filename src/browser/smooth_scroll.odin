@@ -25,7 +25,6 @@ import "wb:config"
 import "wb:dom"
 import lay "wb:layout"
 import "wb:style"
-import win "core:sys/windows"
 
 SCROLL_PREFS := [?]config.Def{
 	{name = "browser.scroll.smooth.enabled", kind = .Bool, default = {b = true},
@@ -530,9 +529,7 @@ wheel_step :: proc(app: ^App, page_css: [2]f32 = {}) -> [2]f32 {
 	if app.cfg.scroll_step > 0 { return {app.cfg.scroll_step, app.cfg.scroll_step} }
 	LINE :: f32(100.0 / 3.0)
 	WHEEL_PAGESCROLL :: max(u32)
-	lines, chars: u32 = 3, 3
-	win.SystemParametersInfoW(0x0068, 0, &lines, 0)   // SPI_GETWHEELSCROLLLINES
-	win.SystemParametersInfoW(0x006C, 0, &chars, 0)   // SPI_GETWHEELSCROLLCHARS
+	lines, chars := system_wheel_scroll()   // scroll_steps_<os>.odin: the desktop's lines / chars per notch (Windows), else 3 / 3
 	step: [2]f32
 	step.y = lines == WHEEL_PAGESCROLL ? (page_css.y > 0 ? page_css.y * 0.875 : 20 * LINE) : f32(lines) * LINE
 	step.x = chars == WHEEL_PAGESCROLL ? (page_css.x > 0 ? page_css.x * 0.875 : 20 * LINE) : f32(chars) * LINE

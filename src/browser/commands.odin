@@ -10,7 +10,6 @@ package browser
 import "core:fmt"
 import "core:mem/virtual"
 import "core:strings"
-import win "core:sys/windows"
 import "toolkit:platform"
 import "toolkit:ui"
 import "wb:base"
@@ -509,10 +508,10 @@ commands_build :: proc(r: ^Command_Registry) {
 		run = proc(app: ^App, t: ^Tab, c: ^Command) { shell_open_folder(app.profile_dir) }})
 }
 
-// Explorer on `dir`.
+// The system's file manager on `dir` (platform.open_path: ShellExecute on Windows, xdg / the portal on Linux).
 shell_open_folder :: proc(dir: string) {
 	if dir == "" { return }
-	win.ShellExecuteW(nil, win.L("open"), win.utf8_to_wstring(dir, context.temp_allocator), nil, nil, win.SW_SHOWNORMAL)
+	platform.open_path(dir)
 }
 
 ////////////////////////////////

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Wren's build on Linux, beside build.bat. What is portable today builds and is checked here; the browser executable
-# links with the flags below, but does not build fully yet: the toolkit now has a Linux window (Wayland + X11, in
-# ext/gui_toolkit/platform, loaded with dlopen so no window library is hard-linked), and what remains is the toolkit's
-# render package on wgpu for Linux (libwgpu_native.a) and src/browser's own Windows calls (docs/portability.md).
-# `./build.sh wren` attempts the link so the remaining errors are visible.
+# Wren's build on Linux, beside build.bat. What is portable today builds and is checked here; the toolkit now has a
+# Linux window (Wayland + X11, dlopen so no window library is hard-linked) and a wgpu render path, and src/browser now
+# type-checks for Linux too (docs/portability.md). Linking build/wren needs libwgpu_native.a beside Odin's wgpu vendor
+# package and the native libraries from `./build.sh deps`; `./build.sh wren` attempts it so any remaining errors show.
 #   ./build.sh deps       the native libraries for this system: Wasmtime (pinned release, SHA-256), Lexbor, the Rust library
 #   ./build.sh check      odin check for Linux and the unit tests of every portable package (tools/linux_ci.sh)
 #   ./build.sh crash      the crash reports end to end (tools/crash_e2e.sh)
-#   ./build.sh wren       attempt to link build/wren (expected to fail until the toolkit platform and the shell are ported)
+#   ./build.sh wren       attempt to link build/wren (needs libwgpu_native.a and ./build.sh deps; src/browser type-checks now)
 #   ./build.sh all        deps, check, crash
 #   ./build.sh help
 # ODIN: the compiler (default: odin on PATH). PROFILE: the Rust profile (quick, the default, or release).
@@ -46,7 +45,7 @@ wren() {
   local flags=(-collection:toolkit=ext/gui_toolkit -collection:wb=src -vet -target:linux_amd64)
   flags+=(-extra-linker-flags:"$(link_flags)")
   flags+=(-define:FONT_BACKEND=native -define:FONT_NATIVE_LINK=false -define:A11Y_ACCESSKIT=true -define:A11Y_NATIVE_LINK=false)
-  echo "linking $out (expected to fail until the toolkit's render package is on wgpu for Linux and src/browser is ported)"
+  echo "linking $out (src/browser type-checks for Linux now; linking needs libwgpu_native.a beside Odin's wgpu vendor package and the build artifacts from ./build.sh deps)"
   "$ODIN" build src/browser -out:"$out" "${flags[@]}" -o:speed
 }
 

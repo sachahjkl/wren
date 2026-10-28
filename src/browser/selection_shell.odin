@@ -19,7 +19,6 @@ import "core:math"
 import "core:mem"
 import "core:strings"
 import "core:time"
-import win "core:sys/windows"
 import "toolkit:draw"
 import "toolkit:font"
 import "toolkit:platform"
@@ -110,7 +109,7 @@ in_control :: proc(t: ^Tab, target: base.Handle) -> bool {
 @(private = "file")
 double_click_ms :: proc(app: ^App) -> f64 {
 	if ms := app.page_settings.forms.double_click_ms; ms > 0 { return f64(ms) }
-	return f64(GetDoubleClickTime())
+	return system_double_click_ms()   // forms_shell_<os>.odin: the desktop's double-click time (Windows) or a default
 }
 
 // The unit (word, paragraph, user-select: all element) at `p` for a gesture of `unit`.
@@ -402,11 +401,8 @@ parse_pref_color :: proc(s: string) -> (draw.Color, bool) {
 	return {}, false
 }
 
-@(private = "file")
-sys_color :: proc(index: i32) -> draw.Color {
-	c := win.GetSysColor(index)
-	return draw.srgb(f32(c & 0xff) / 255, f32((c >> 8) & 0xff) / 255, f32((c >> 16) & 0xff) / 255, 1)
-}
+// The default selection colors (used when the preference is not a color): the system's highlight on Windows, a sensible
+// default elsewhere. system_selection_bg / _fg are in selection_colors_<os>.odin.
 
 // Before the page is painted: what is selected, in which colors, and the find matches.
 selection_paint_begin :: proc(app: ^App, t: ^Tab) {
@@ -425,11 +421,11 @@ selection_paint_begin :: proc(app: ^App, t: ^Tab) {
 		spaint.start, spaint.end = a, b
 	}
 	active := active_window(app).win.focused
-	if c, ok := parse_pref_color(active ? ix.sel_bg : ix.sel_inactive_bg); ok { spaint.bg = c } else if active { spaint.bg = sys_color(win.COLOR_HIGHLIGHT) } else {
+	if c, ok := parse_pref_color(active ? ix.sel_bg : ix.sel_inactive_bg); ok { spaint.bg = c } else if active { spaint.bg = system_selection_bg() } else {
 		spaint.bg = draw.srgb(0.78, 0.78, 0.78, 1)
 		if c2, ok2 := parse_pref_color(ix.sel_bg); ok2 { spaint.bg = c2; spaint.bg.a *= 0.5 }
 	}
-	if ix.sel_fg == "keep" || !active { spaint.keep_fg = true } else if c, ok := parse_pref_color(ix.sel_fg); ok { spaint.fg = c } else { spaint.fg = sys_color(win.COLOR_HIGHLIGHTTEXT) }
+	if ix.sel_fg == "keep" || !active { spaint.keep_fg = true } else if c, ok := parse_pref_color(ix.sel_fg); ok { spaint.fg = c } else { spaint.fg = system_selection_fg() }
 }
 
 @(private = "file")

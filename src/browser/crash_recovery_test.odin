@@ -3,7 +3,6 @@ package browser
 import "core:os"
 import "core:strings"
 import "core:testing"
-import win "core:sys/windows"
 import "wb:base"
 import "wb:config"
 import "wb:page"
@@ -243,7 +242,7 @@ live_instance_is_not_a_crash :: proc(t: ^testing.T) {
 	recovery_plan_destroy(&p)
 
 	// the real check: this very process is alive with its own creation time, another creation time or an unknown pid is not
-	self := u32(win.GetCurrentProcessId())
+	self := current_pid()
 	created, alive := process_created(self)
 	testing.expect(t, alive && created != 0)
 	testing.expect(t, marker_process_alive(self, created))

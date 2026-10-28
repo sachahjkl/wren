@@ -34,7 +34,7 @@ import "core:fmt"
 import "core:os"
 import "core:strconv"
 import "core:strings"
-import win "core:sys/windows"
+import "wb:base"
 import "wb:config"
 import "wb:page"
 import "wb:url"
@@ -361,9 +361,7 @@ session_save :: proc(app: ^App) {
 	text := session_text(app)
 	if text == session_last { return }
 	path := session_path(app)
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, transmute([]byte)text) != nil { return }
-	if !win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING) { return }
+	if !base.file_write_atomic(path, transmute([]byte)text) { return }   // temp file renamed over the old one
 	delete(session_last)
 	session_last = strings.clone(text)
 }
@@ -500,9 +498,7 @@ pinned_save :: proc(app: ^App) {
 	}
 	text := session_serialize_tabs(pins[:], 0, int(config.int_of(&app.prefs, "browser.session.max_url_bytes")), int(config.int_of(&app.prefs, "browser.session.max_state_bytes")))
 	if old, err := os.read_entire_file(path, context.temp_allocator); err == nil && string(old) == text { return }
-	tmp := strings.concatenate({path, ".tmp"}, context.temp_allocator)
-	if os.write_entire_file(tmp, transmute([]byte)text) != nil { return }
-	_ = win.MoveFileExW(win.utf8_to_wstring(tmp, context.temp_allocator), win.utf8_to_wstring(path, context.temp_allocator), win.MOVEFILE_REPLACE_EXISTING)
+	_ = base.file_write_atomic(path, transmute([]byte)text)
 }
 
 // At start-up, when the session was not restored: the pinned tabs saved by pinned_save, before the first tab.
