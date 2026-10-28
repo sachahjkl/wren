@@ -25,7 +25,7 @@ import "wb:config"
 import "wb:dom"
 import "wb:fetch"
 import "wb:forms"
-import "wb:instance"
+import "toolkit:instance"
 import lay "wb:layout"
 import "wb:page"
 
