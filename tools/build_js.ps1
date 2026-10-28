@@ -198,6 +198,7 @@ $odinified = @(
     'web_message.c',
     'web_navigator.c',
     'web_navtiming.c',
+    'web_perf.c',
     'web_pipe.c',
     'web_resize.c',
     'web_scheduler.c',
