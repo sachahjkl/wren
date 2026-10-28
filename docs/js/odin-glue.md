@@ -15,6 +15,8 @@ native/js/odin/            package odin_glue: the ported domains, one file per f
   ifaces.odin              interface indices several domains share (resolved by name, cached)
   dicts.odin               mirrors of generated dictionaries (gen/bindings.h wjd_*) the glue reads
   wj_shim.c                NO code: _Static_assert of every C struct offset the Odin side mirrors
+  jsb/                     package jsb: members bound to shared declarations (native/js/odin_abi/api_decl) and the
+                           wr_* import that carries each, by comptime bridges (odin-abi.md)
   wj/                      package wj: the one helper layer every domain imports
     wj.odin                core types (JSValue = u64, Context, Runtime, Native/Getter/Setter)
     quickjs.odin           the QuickJS-ng C API (foreign) + its static inlines reimplemented on the NAN box
@@ -58,7 +60,12 @@ both `-emit:c` and `-emit:odin` modes), next to the C header `native/js/gen/wren
 types. If an import is missing, it is missing from the API description: add it to the `.widl` (and the host side in
 `src/page`), run `build.bat`, and it appears as `wj.wr_<Name>`.
 
-The generated conventions, which the call sites follow:
+Better still, do not call it by hand: declare the function in `native/js/odin_abi/api_decl/<module>.odin` and call
+`jsb.host(&out, api_decl.X, wj.wr_X, args...)` (or bind the member with `jsb.getter` / `jsb.method` /
+`jsb.function`): the strings, the result buffer, the status and the wire shape are then the compiler's
+([odin-abi.md](odin-abi.md), "How to migrate a domain"). `web_url.odin` is written that way.
+
+The generated conventions, which a hand-written call follows:
 
 * handles are `u64`, booleans `i32` (`relative ? 1 : 0`), enums `i32`, strings `(ptr: [^]u8, len: u32)`, string
   results `(_buf: [^]u8, _cap: u32) -> i32` (the full length, or a negative `wr_Error`);
@@ -68,7 +75,9 @@ The generated conventions, which the call sites follow:
 
 ## How to add a domain
 
-1. Port `native/js/runtime/<x>.c` to `native/js/odin/<x>.odin`, `package odin_glue`, `import "../odin/wj"`.
+1. Port `native/js/runtime/<x>.c` to `native/js/odin/<x>.odin`, `package odin_glue`, `import "../odin/wj"`. Port the
+   behaviour; for what only carries a call to the host, declare it in api_decl and bind it with jsb (odin-abi.md,
+   the 10 steps) instead of translating the C line by line.
 2. Keep every symbol the generated table (`native/js/gen/bindings.c`) or other C references: `@(export, link_name =
    "wjr_<Interface>_<member>")`, `proc "c"`, the `wj` types. Same behaviour, same error messages (WPT and the test
    pages compare them).
