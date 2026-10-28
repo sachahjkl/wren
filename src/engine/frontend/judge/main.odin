@@ -44,6 +44,9 @@ main :: proc() {
 			iters = parse_int(args[3], 100)
 		}
 		os.exit(cmd_speed(args[2], iters))
+	case "prof":
+		if len(args) < 3 {usage(); os.exit(2)}
+		os.exit(cmd_prof(args[2], len(args) >= 4 ? parse_int(args[3], 200) : 200))
 	case "fuzz":
 		os.exit(cmd_fuzz(args[2:]))
 	case "batch":
