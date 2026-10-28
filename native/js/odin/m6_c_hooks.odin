@@ -12,8 +12,6 @@ foreign {
 	web_blob_preinit      :: proc(ctx: ^wj.Context) -> i32 ---
 	web_perf_preinit      :: proc(ctx: ^wj.Context) -> i32 ---
 
-	// native interfaces built into the image (intl.c, shadow.c, frames.c, web_idb.c)
-	wj_install_frames           :: proc(ctx: ^wj.Context) ---
 
 	// realm start (clone.c)
 

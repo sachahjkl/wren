@@ -145,6 +145,7 @@ $odinified = @(
     'dom_popover.c',
     'dom_style.c',
     'dom_touch.c',
+    'events.c,shadow.c,frames.c',
     'handlers.c',
     'intersection.c',
     'intl.c',
