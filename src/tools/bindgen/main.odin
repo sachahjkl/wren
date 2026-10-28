@@ -35,14 +35,13 @@ Target :: struct {
 
 // Which glue the guest side is generated in. The host trampolines, the guest SDK, the docs and the conformance tests
 // are the same whatever this is; only the low-level glue that a non-Odin / Odin guest links against differs:
-//   c    native/js/gen/*  (wren_api.h imports, bindings.c interface table and QuickJS trampolines): the default, until
-//        the JavaScript engine itself is Odin.
-//   odin native/js/odin_gen/* (the interface table, trampolines against the wj layer): what the engine will link once
-//        it is Odin (agent spk's wj_iface.odin).
+//   glue native/js/odin/bindings_gen.odin (the trampolines, dictionaries and interface tables in Odin): the default
+//   c    native/js/gen/* (wren_api.h imports, bindings.c): the C glue the engine had before, no longer used
+//   odin native/js/odin_gen/* (the interface table only)
 // The foreign wr_* imports for Odin (native/js/odin/wj/wr_imports.odin) are emitted in both modes: the ported glue
 // declares no import by hand.
 Emit :: enum { C, Odin, Glue }
-emit_mode: Emit = .C
+emit_mode: Emit = .Glue
 
 PAGE_HOST :: idl.Host_Config{
 	package_name = "page", wasm_import = "wb:wasm", call_type = "Call", begin = "api_begin", raise = "api_raise",
@@ -389,7 +388,10 @@ scan_raw_impls :: proc(dir: string) -> []string {
 					for e > 0 && (rest[e - 1] == ' ' || rest[e - 1] == '\t') { e -= 1 }
 					s := e
 					for s > 0 && (rest[s - 1] == '_' || (rest[s - 1] >= 'a' && rest[s - 1] <= 'z') || (rest[s - 1] >= 'A' && rest[s - 1] <= 'Z') || (rest[s - 1] >= '0' && rest[s - 1] <= '9')) { s -= 1 }
-					if e > s { jsgen.raw_idents[strings.clone(name)] = strings.clone(rest[s:e]) }
+					if e > s {
+						in_wj := strings.contains(fi.fullpath, "\\wj\\") || strings.contains(fi.fullpath, "/wj/")
+						jsgen.raw_idents[strings.clone(name)] = strings.concatenate({in_wj ? "wj." : "", rest[s:e]})
+					}
 				}
 				text = text[j:]
 			}
