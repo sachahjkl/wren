@@ -153,7 +153,6 @@ Runtime :: struct {
 	std_protos_touched: bool, // an index key or a new prototype on some realm's Array/Object.prototype
 	stack_limit:    uintptr, // lowest host stack address the engine may reach (set at the outermost entry)
 	interrupt_counter: int,
-	edge_budget:    int, // loop back edges left before the interrupt poll / collection check (gc.odin: back_edge)
 	jobs:           [dynamic]Job,
 	modules:        [dynamic]^Module,
 	finrec_cleanup: [dynamic]Value, // FinalizationRegistry cleanups pending (registry, held) pairs
@@ -315,7 +314,6 @@ runtime_new :: proc(allocator := context.allocator, config := DEFAULT_CONFIG) ->
 	if rt.config.max_stack_depth <= 0 {rt.config.max_stack_depth = 10_000}
 	if rt.config.max_stack_bytes <= 0 {rt.config.max_stack_bytes = 640 * 1024}
 	rt.gc_threshold = 4 << 20
-	rt.edge_budget = EDGE_BUDGET
 	rt.exception = UNINITIALIZED
 	rt.gray = make([dynamic]^Cell, 0, 256, allocator)
 	rt.temp_roots = make([dynamic]^Cell, 0, 256, allocator)
@@ -429,17 +427,9 @@ poll_interrupt :: proc(ctx: ^Context) -> bool {
 	rt.interrupt_counter += 1
 	if rt.interrupt_counter < 10_000 {return false}
 	rt.interrupt_counter = 0
-	return run_interrupt_hook(ctx)
-}
-
-// Ask the host whether to stop; true with the uncatchable "interrupted" error raised.
-run_interrupt_hook :: proc(ctx: ^Context) -> bool {
-	rt := ctx.rt
 	if rt.config.interrupt != nil && rt.config.interrupt(rt, rt.config.interrupt_user) {
 		throw_uncatchable(ctx, "interrupted")
 		return true
 	}
 	return false
 }
-
-EDGE_BUDGET :: 10_000

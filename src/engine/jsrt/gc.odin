@@ -133,7 +133,6 @@ mem_alloc :: proc(rt: ^Runtime, size: int) -> rawptr {
 	p := raw_alloc(rt, size)
 	rt.heap_bytes += i64(size)
 	if rt.heap_bytes > rt.peak_heap_bytes {rt.peak_heap_bytes = rt.heap_bytes}
-	if rt.heap_bytes > rt.gc_threshold {rt.edge_budget = 0} // the next loop back edge checks for a collection
 	return p
 }
 
@@ -166,7 +165,6 @@ mem_resize :: proc(rt: ^Runtime, p: rawptr, old_size, new_size: int) -> rawptr {
 	}
 	rt.heap_bytes += i64(new_size - old_size)
 	if rt.heap_bytes > rt.peak_heap_bytes {rt.peak_heap_bytes = rt.heap_bytes}
-	if rt.heap_bytes > rt.gc_threshold {rt.edge_budget = 0}
 	return np
 }
 
@@ -234,17 +232,21 @@ unpersist :: proc(rt: ^Runtime, v: Value) {
 
 // --- safe points ---
 
-// A loop back-edge of the interpreter: drop the temporaries of the iteration, then count the edge down
-// against `edge_budget`. The budget runs out every EDGE_BUDGET edges (interrupt poll) and whenever an
-// allocation takes the heap past the collection threshold (mem_alloc zeroes it), so the hot loop pays one
-// decrement per edge and the real tests run here, rarely.
+// A loop back-edge of the interpreter: drop the temporaries of the iteration, then the cheap tests
+// of the interrupt poll and the collection trigger (the slow path only when one is due).
+// back_edge when nothing is due (true), without any slow path (false: take back_edge).
+back_edge_cheap :: #force_inline proc(rt: ^Runtime, root_base: int) -> bool {
+	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
+	rt.interrupt_counter += 1
+	return rt.interrupt_counter < 10_000 && !gc_should_run(rt)
+}
+
 back_edge :: #force_inline proc(ctx: ^Context, root_base: int) -> bool {
 	rt := ctx.rt
 	if len(rt.temp_roots) > root_base {resize(&rt.temp_roots, root_base)}
-	rt.edge_budget -= 1
-	if rt.edge_budget > 0 {return true}
-	rt.edge_budget = EDGE_BUDGET
-	return !run_interrupt_hook(ctx) && gc_safepoint(ctx)
+	rt.interrupt_counter += 1
+	if rt.interrupt_counter < 10_000 && !gc_should_run(rt) {return true}
+	return !poll_interrupt(ctx) && gc_safepoint(ctx)
 }
 
 gc_should_run :: #force_inline proc "contextless" (rt: ^Runtime) -> bool {
@@ -654,7 +656,6 @@ rt_allocator_proc :: proc(
 			rt.heap_bytes += i64(size - old_size)
 		}
 		if rt.heap_bytes > rt.peak_heap_bytes {rt.peak_heap_bytes = rt.heap_bytes}
-		if rt.heap_bytes > rt.gc_threshold {rt.edge_budget = 0}
 	}
 	return res, err
 }
