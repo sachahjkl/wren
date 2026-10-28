@@ -5851,7 +5851,7 @@ _t_canvas_OffscreenCanvas_bitmapRenderer :: proc "c" (env: rawptr, caller: wasm.
 	return nil
 }
 
-// ImageBitmapRenderingContext_canvas :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext) -> u64
+// ImageBitmapRenderingContext_canvas :: proc(c: ^Call, ctx: Api_ImageBitmapRenderingContext) -> u64
 @(private = "file")
 _t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -5860,8 +5860,8 @@ _t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: w
 	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
 	if _p0.data == nil {
-		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_canvas: argument context is not a live ImageBitmapRenderingContext") }
-		return wasm.trap_new("canvas.ImageBitmapRenderingContext_canvas: argument context is not a live ImageBitmapRenderingContext")
+		if f.inst.lenient { return _fail_lenient(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_canvas: argument ctx is not a live ImageBitmapRenderingContext") }
+		return wasm.trap_new("canvas.ImageBitmapRenderingContext_canvas: argument ctx is not a live ImageBitmapRenderingContext")
 	}
 	_r := ImageBitmapRenderingContext_canvas(&c, _p0)
 	api_end(&c)
@@ -5871,7 +5871,7 @@ _t_canvas_ImageBitmapRenderingContext_canvas :: proc "c" (env: rawptr, caller: w
 	return nil
 }
 
-// ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, context: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error
+// ImageBitmapRenderingContext_transferFromImageBitmap :: proc(c: ^Call, ctx: Api_ImageBitmapRenderingContext, bitmap: u64, has_bitmap: bool) -> Api_Error
 @(private = "file")
 _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
 	f := wasm.frame(env, caller)
@@ -5880,7 +5880,7 @@ _t_canvas_ImageBitmapRenderingContext_transferFromImageBitmap :: proc "c" (env: 
 	_p0 := Api_ImageBitmapRenderingContext{handle = u64(a[0].i64)}
 	_p0.data = lookup_ImageBitmapRenderingContext(&c, _p0.handle)
 	if _p0.data == nil {
-		return _fail_status(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_transferFromImageBitmap: argument context is not a live ImageBitmapRenderingContext")
+		return _fail_status(&c, a, .Invalid_Handle, "canvas.ImageBitmapRenderingContext_transferFromImageBitmap: argument ctx is not a live ImageBitmapRenderingContext")
 	}
 	_p1 := u64(a[1].i64)
 	_p2 := a[2].i32 != 0

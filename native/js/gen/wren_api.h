@@ -1091,10 +1091,10 @@ WR_IMPORT("canvas", "Canvas_bitmapFromPixels") int32_t wr_Canvas_bitmapFromPixel
 WR_IMPORT("canvas", "HTMLCanvasElement_bitmapRenderer") int32_t wr_HTMLCanvasElement_bitmapRenderer(uint64_t canvas, int32_t alpha, uint64_t *_ret);
 WR_IMPORT("canvas", "OffscreenCanvas_bitmapRenderer") int32_t wr_OffscreenCanvas_bitmapRenderer(uint64_t canvas, int32_t alpha, uint64_t *_ret);
 // context.canvas: the owning <canvas> node or OffscreenCanvas object (0 when the canvas is gone).
-WR_IMPORT("canvas", "ImageBitmapRenderingContext_canvas") uint64_t wr_ImageBitmapRenderingContext_canvas(uint64_t context);
+WR_IMPORT("canvas", "ImageBitmapRenderingContext_canvas") uint64_t wr_ImageBitmapRenderingContext_canvas(uint64_t ctx);
 // transferFromImageBitmap(bitmap): display the bitmap (its pixels move into the canvas and it is detached);
 // `has_bitmap` false is the null argument (clear the canvas). Type when the argument is not an ImageBitmap.
-WR_IMPORT("canvas", "ImageBitmapRenderingContext_transferFromImageBitmap") int32_t wr_ImageBitmapRenderingContext_transferFromImageBitmap(uint64_t context, uint64_t bitmap, int32_t has_bitmap);
+WR_IMPORT("canvas", "ImageBitmapRenderingContext_transferFromImageBitmap") int32_t wr_ImageBitmapRenderingContext_transferFromImageBitmap(uint64_t ctx, uint64_t bitmap, int32_t has_bitmap);
 
 /* module compression */
 // A compressor (decompress false) or a decompressor of `format`.
