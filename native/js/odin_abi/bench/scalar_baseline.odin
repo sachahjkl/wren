@@ -25,7 +25,6 @@ scalar_imports := [2]wasm.Import{
 // URLSearchParams_size: a[0] = handle (i64), result into a[0].i32. The whole trampoline — no serialisation, the
 // argument is already a scalar, exactly as the generated C does.
 t_size :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
-	f := wasm.frame(env, caller)
 	context = wasm.default_context()
 	h := base.Handle(a[0].i64)
 	o := base.pool_get(&abi_url.host.params, h)
