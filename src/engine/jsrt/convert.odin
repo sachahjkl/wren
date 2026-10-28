@@ -192,7 +192,6 @@ to_primitive :: proc(ctx: ^Context, v: Value, hint: To_Primitive_Hint) -> Value 
 // --- ToObject ---
 
 to_object :: proc(ctx: ^Context, v: Value) -> Value {
-	rt := ctx.rt
 	realm := ctx.realm
 	#partial switch v.tag {
 	case .object:
