@@ -1,0 +1,53 @@
+# Navigation of the documentation site, read by src/tools/docsite.
+#
+# Format, line by line:
+#   # ...            a comment (blank lines are ignored too)
+#   Section Title    a top-level section (no leading whitespace, no ".md")
+#     page.md  Title       a page in the current section (two spaces of indent); the title is optional
+#     page.md              a page whose title is its first heading
+#     dir/*    Title       every *.md of a directory, as a sub-group named Title, sorted; an _index.md leads it
+#
+# The order here is the order of the sidebar. A doc under docs/ that no line names is still generated and
+# linked (it lands in a "More" section at the end), so nothing is ever dropped silently: run tools\docs_site.ps1
+# and read its report.
+
+Getting started
+  index.md            Overview
+  console-launcher.md  Wren from a terminal
+  remote.md           Remote control (wren ctl)
+  cdp.md              CDP and WebDriver BiDi
+  search-engines.md   Search engines
+  i18n.md             Translations
+
+Architecture
+  architecture.md     How Wren fits together
+  shared-memory.md    SharedArrayBuffer between realms
+  crash-recovery.md   Crash recovery
+  crash-reports.md    Crash reports and symbols
+
+Features
+  blocker.md          The content blocker
+  media.md            Media elements
+  webcodecs.md        WebCodecs
+  accessibility.md    Accessibility
+  shaders.md          Shaders in the chrome
+  newtab-art.md       Artistic new tab
+  tab-sidebar.md      Tabs in a sidebar
+  windows.md          Several windows
+  chrome-style.md     The look of the chrome
+  desktop-integration.md  Desktop integration
+  licence.md          Licences
+
+Web API
+  api/README.md       Overview
+  js/coverage.md      JavaScript bindings coverage
+  api/*               Modules
+
+Platforms
+  portability.md      Linux and macOS
+  winget.md           Publishing on winget
+  wpt-workers.md      WPT /workers/
+  conformance.md      Web platform conformance
+
+Versions
+  releases/*          Releases
