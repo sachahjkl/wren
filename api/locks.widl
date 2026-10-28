@@ -1,0 +1,25 @@
+/// The Web Locks API (src/page/bindings_locks.odin): navigator.locks.request / query, held per origin and shared
+/// across every page and worker of that origin in this process. The grant order, the shared/exclusive rule,
+/// ifAvailable, steal and the waiting queue are native; the engine holds each request's callback and the promise it
+/// returns and runs the callback when the host grants the lock (wj_cb_lock_granted).
+[Exposed=(Window,Worker)]
+module locks {
+  /// A lock mode (LockMode).
+  enum LockMode : i32 { Shared, Exclusive }
+
+  /// navigator.locks.request(name, {mode, ifAvailable, steal, signal}, callback). The result is packed: bit 0 is
+  /// "available" (clear only for ifAvailable on a busy lock, or an opaque origin), bit 1 is "granted now" (run the
+  /// callback with the Lock immediately), and the rest (>> 2) is the lock id used to release it. When available but
+  /// not granted-now, the request waits and the engine is told on grant (the callback index / user name the engine
+  /// record for that notification).
+  i64 LockManager_request(string name, LockMode mode, bool if_available, bool steal, u32 callback, i32 user);
+  /// The callback's returned promise settled, the callback was null, or a pending request was aborted: release the
+  /// lock (or drop the queued request) and grant whatever waits.
+  void LockManager_release(u64 id);
+
+  /// navigator.locks.query(): the number of held / pending locks of the caller's origin, and the i-th entry's fields.
+  i32 LockManager_queryCount(bool held);
+  string LockManager_queryName(bool held, i32 index) raises;
+  string LockManager_queryMode(bool held, i32 index) raises;
+  string LockManager_queryClient(bool held, i32 index) raises;
+}
