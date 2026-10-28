@@ -136,11 +136,11 @@ interp_hot :: proc(ctx: ^Context, rt: ^Runtime, f_in: ^Frame, pc0: int, sp0: int
 			if fo.class == .c_function {
 				// a native function: no frame, the result replaces the callee and its arguments
 				nd := &fo.data.(Native_Data)
-				if nd.kind == .constructor_only || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
+				if fo.ctor_only || rt.stack_depth >= rt.config.max_stack_depth || stack_exhausted(rt) {break loop}
 				this := UNDEFINED
 				slot := intrinsics.ptr_offset(first, -1)
 				if op == .call_method {
-					if nd.kind == .function {this = first[-2]}
+					if !fo.is_constructor {this = first[-2]}
 					slot = intrinsics.ptr_offset(first, -2)
 				}
 				ip = ip[isz:]
