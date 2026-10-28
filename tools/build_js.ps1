@@ -166,6 +166,7 @@ $odinified = @(
     'web_broadcast.c',
     'web_cache.c',
     'web_clipboard.c',
+    'web_credentials.c',
     'web_crypto.c',
     'web_dnd.c',
     'web_encoding.c',
