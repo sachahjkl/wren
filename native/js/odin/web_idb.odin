@@ -1,9 +1,9 @@
 // web_idb.odin: IndexedDB's glue. The interfaces (IDBFactory, IDBDatabase, IDBTransaction, IDBObjectStore, IDBIndex,
-// IDBCursor, IDBRequest, IDBKeyRange...) are native (web_idb_prelude), built on their first use; the data, the
+// IDBCursor, IDBRequest, IDBKeyRange...) are native (package idb), built on their first use; the data, the
 // transactions' scheduling and the journal are the browser's (src/idb, reached through one import, Idb_call). Nothing
 // of that model is in the image every realm starts from: the realm has the names of the interfaces as properties the
 // engine makes on their first use (JS_DefineHostAutoInitProperty: a script cannot tell them from data properties) and
-// the accessor `indexedDB`. The first use builds the model (web_idb_prelude_build) with the host object below and
+// the accessor `indexedDB`. The first use builds the model (idb.prelude_build) with the host object below and
 // keeps what it returns. A page that never touches IndexedDB pays for the names only. The host object:
 //   call(op, bytes)        Idb_call: the reply as a Uint8Array (its first byte is the status)
 //   serialize(value)       the structured serialization of a value (runtime/clone.c) as a Uint8Array; DataCloneError
@@ -21,6 +21,7 @@
 package odin_glue
 
 import "../odin/wj"
+import "idb"
 
 // The flag of Idb_call that asks for the last reply again (src/page/idb_host.odin).
 @(private = "file") IDB_AGAIN :: i32(0x4000)
@@ -33,12 +34,6 @@ Idb_Glue :: struct {
 	state:   enum u8 { Unloaded, Loading, Loaded },
 }
 @(private = "file") glue: Idb_Glue
-
-// web_idb_prelude.c: the object model, built from the host object.
-@(default_calling_convention = "c")
-foreign {
-	web_idb_prelude_build :: proc(ctx: ^wj.Context, host: wj.JSValue) -> wj.JSValue ---
-}
 
 // One request of the browser (Idb_call) into the scratch buffer: the reply's length or a negative status; false when
 // the scratch buffer could not grow to the reply.
@@ -154,7 +149,7 @@ load_model :: proc "contextless" (ctx: ^wj.Context) -> bool {
 	}
 	glue.state = .Loading
 	host := host_object(ctx)
-	ex := web_idb_prelude_build(ctx, host)
+	ex := idb.prelude_build(ctx, host)
 	wj.JS_FreeValue(ctx, host)
 	if wj.is_exception(ex) { glue.state = .Unloaded; return false }
 	glue.exports = ex
