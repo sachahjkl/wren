@@ -211,8 +211,9 @@ static inline wj_realm *wj_realm_of(wj_ctx *ctx) { WJ_UNUSED(ctx); return &wj_th
 
 /* ---- errors (DOMException, simple exceptions, the browser's Error codes) ---- */
 
-wj_val wj_throw_type(wj_ctx *ctx, const char *fmt, ...);
-wj_val wj_throw_range(wj_ctx *ctx, const char *fmt, ...);
+/* The engine's own throwers (the message is formatted into the engine's 256-byte buffer either way). */
+#define wj_throw_type JS_ThrowTypeError
+#define wj_throw_range JS_ThrowRangeError
 /* A DOMException with `name` ("NotFoundError", ...) and a message. */
 wj_val wj_throw_dom(wj_ctx *ctx, const char *name, const char *message);
 /* The exception for a negative wr_Error a browser function returned, with the message it recorded. */
