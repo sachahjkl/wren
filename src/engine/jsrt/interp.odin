@@ -1,5 +1,7 @@
 package jsrt
 
+// NOTE: no core:math needed here; numeric edge cases live in ops.odin/convert.odin.
+
 // The bytecode interpreter: a switch-dispatch loop over the QuickJS-ng 0.17 instruction set.
 //
 // We start with a plain `switch` on the opcode byte. Odin's switch on a dense enum compiles to a jump
@@ -11,8 +13,6 @@ package jsrt
 // The loop maintains the operand stack in the frame. Each opcode follows QuickJS's stack effect
 // (n_pop / n_push in opcode_info). Errors set ctx.exception and unwind by returning EXCEPTION up to
 // the nearest catch handler (the exception-table walk is handled by the catch/throw opcodes).
-
-import "core:math"
 
 // Run `f` to completion. Returns the function's result (owned) or EXCEPTION.
 interp_run :: proc(ctx: ^Context, f: ^Call_Frame) -> Value {

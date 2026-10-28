@@ -259,7 +259,6 @@ read_string_cell :: proc(r: ^Reader) -> ^JS_String {
 read_value :: proc(r: ^Reader) -> Value {
 	tag := BC_Tag(rd_u8(r))
 	if r.err {return EXCEPTION}
-	rt := r.ctx.rt
 	#partial switch tag {
 	case .null:
 		return NULL

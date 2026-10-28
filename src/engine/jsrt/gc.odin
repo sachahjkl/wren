@@ -14,7 +14,6 @@ package jsrt
 // native tests share one path. Allocation accounting (malloc_count/malloc_size) feeds both the limit
 // and the leak checks the project's allocator tracking performs.
 
-import "base:runtime"
 import "core:mem"
 
 // What kind of cell a GC_Header introduces. Drives both the destructor dispatch and whether the cell
