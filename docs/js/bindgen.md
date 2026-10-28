@@ -17,7 +17,7 @@ build changes until the engine is Odin (agent `spk`'s `wj` layer).
 
 | file | what | C counterpart |
 |---|---|---|
-| `native/js/odin_gen/wr_imports.odin` | the browser's imports for an Odin guest: `wr_*` handle / enum / flags / struct / callback types and one `foreign` block per module with the raw ABI (`@(link_name=...)`, the Wasm import module on `foreign import`) | `native/js/gen/wren_api.h` |
+| `native/js/odin/wj/wr_imports.odin` (emitted in both modes: the ported glue links against it) | the browser's imports for an Odin guest: `wr_*` handle / enum / flags / struct / callback types and one `foreign` block per module with the raw ABI (`@(link_name=...)`, the Wasm import module on `foreign import`) | `native/js/gen/wren_api.h` |
 | `native/js/odin_gen/js_interfaces_table.odin` | the realm's interface table: `IFACE_*` index constants, the member tables (`[]wj.Member`), and the interface table (`[]wj.Interface`) with names, kinds, flags, constants, `[Exposed]`, inheritance ranges and the legacy platform-object class | `native/js/gen/bindings.c` + `bindings.h` |
 
 The generated Odin is written against **`native/js/odin_gen/wj_iface.odin`**: the Odin counterpart of the interface-table

@@ -17,9 +17,40 @@ import "wb:wasm"
 @(private) scalar_get_wide := [4]wasm.Val_Kind{.I64, .I32, .I64, .I64}
 @(private) scalar_get_res := [1]wasm.Val_Kind{.I32}
 
-scalar_imports := [2]wasm.Import{
+@(private) scalar_has_params := [5]wasm.Val_Kind{.I64, .I32, .I32, .I32, .I32}
+@(private) scalar_has_wide := [5]wasm.Val_Kind{.I64, .I64, .I64, .I64, .I64}
+
+scalar_imports := [3]wasm.Import{
 	{module = "url_scalar", name = "size", fn = t_size, realms = 3, params = scalar_params_size[:], results = scalar_params_size_res[:]},
 	{module = "url_scalar", name = "get", fn = t_get, realms = 3, params = scalar_get_params[:], results = scalar_get_res[:], wide_params = scalar_get_wide[:], wide_results = scalar_get_res[:]},
+	{module = "url_scalar", name = "has", fn = t_has, realms = 3, params = scalar_has_params[:], results = scalar_get_res[:], wide_params = scalar_has_wide[:], wide_results = scalar_get_res[:]},
+}
+
+// URLSearchParams_has: a[0] = handle, a[1..2] = name (ptr, len), a[3..4] = value (ptr, len; len ABSENT = absent),
+// exactly as bindgen emits a (string, optional string) -> bool function: bounds, UTF-8, the absent marker.
+t_has :: proc "c" (env: rawptr, caller: wasm.Caller, a: [^]wasm.Raw, _: uint) -> wasm.Trap {
+	f := wasm.frame(env, caller)
+	context = wasm.default_context()
+	nn := wasm.addr(&f, a[2])
+	np, ok := wasm.span(&f, wasm.addr(&f, a[1]), nn)
+	if !ok { return wasm.trap_bounds(&f, "url_scalar.has", "name") }
+	name := string(np[:nn])
+	value: string
+	has_value := !wasm.is_absent(&f, a[4])
+	if has_value {
+		vn := wasm.addr(&f, a[4])
+		vp, vok := wasm.span(&f, wasm.addr(&f, a[3]), vn)
+		if !vok { return wasm.trap_bounds(&f, "url_scalar.has", "value") }
+		value = string(vp[:vn])
+	}
+	r: i32
+	if wasm.valid_utf8(name) && (!has_value || wasm.valid_utf8(value)) {
+		o := base.pool_get(&abi_url.host.params, base.Handle(a[0].i64))
+		if o != nil && url.params_has(o.sp, name, value, has_value) { r = 1 }
+	}
+	a[0] = {}
+	a[0].i32 = r
+	return nil
 }
 
 // URLSearchParams_size: a[0] = handle (i64), result into a[0].i32. The whole trampoline — no serialisation, the

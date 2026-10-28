@@ -37,8 +37,10 @@ Target :: struct {
 // are the same whatever this is; only the low-level glue that a non-Odin / Odin guest links against differs:
 //   c    native/js/gen/*  (wren_api.h imports, bindings.c interface table and QuickJS trampolines): the default, until
 //        the JavaScript engine itself is Odin.
-//   odin native/js/odin_gen/* (foreign wr_* imports, the interface table, trampolines against the wj layer): what the
-//        engine will link once it is Odin (agent spk's wj_iface.odin).
+//   odin native/js/odin_gen/* (the interface table, trampolines against the wj layer): what the engine will link once
+//        it is Odin (agent spk's wj_iface.odin).
+// The foreign wr_* imports for Odin (native/js/odin/wj/wr_imports.odin) are emitted in both modes: the ported glue
+// declares no import by hand.
 Emit :: enum { C, Odin }
 emit_mode: Emit = .C
 
@@ -59,7 +61,7 @@ TARGETS := [?]Target{
 		conf_guest = "examples/apiconformance/main.odin", conf_guest_pkg = "apiconformance",
 		conf_table = "src/tools/apiconformance/cases_generated.odin", conf_table_pkg = "apiconformance",
 		c_header = "native/js/gen/wren_api.h",
-		odin_imports = "native/js/odin_gen/wr_imports.odin", odin_imports_pkg = "wj",
+		odin_imports = "native/js/odin/wj/wr_imports.odin", odin_imports_pkg = "wj",
 	},
 	{
 		sources = {"src/tools/wasmbench/bench.widl"}, host = BENCH_HOST, host_out = "src/tools/wasmbench/bench_generated.odin",
@@ -163,12 +165,10 @@ run :: proc(t: Target) -> ^idl.Api {
 		}
 		prune(t.docs_dir, ".md", keep)
 	}
-	switch emit_mode {
-	case .C:
-		if t.c_header != "" { emit(t.c_header, idl.emit_c_header(api, "WREN_API_H")) }
-	case .Odin:
-		if t.odin_imports != "" { emit(t.odin_imports, idl.emit_odin_imports(api, t.odin_imports_pkg)) }
-	}
+	if emit_mode == .C && t.c_header != "" { emit(t.c_header, idl.emit_c_header(api, "WREN_API_H")) }
+	// the Odin imports are emitted in both modes: the ported glue (native/js/odin, package wj) links against them
+	// next to the C that still includes wren_api.h
+	if t.odin_imports != "" { emit(t.odin_imports, idl.emit_odin_imports(api, t.odin_imports_pkg)) }
 	if t.conf_guest != "" {
 		c := idl.emit_conformance(api, t.conf_guest_pkg, t.conf_table_pkg)
 		emit(t.conf_guest, c.guest)

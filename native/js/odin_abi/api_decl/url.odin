@@ -67,8 +67,8 @@ URLPatternInit :: struct {
 URL_parse :: #type proc(input: string, base: Maybe(string)) -> (URL, abi.Api_Error)
 // URL.canParse(input, base)
 URL_canParse :: #type proc(input: string, base: Maybe(string)) -> bool
-// A getter: url.href, url.protocol...
-URL_get :: #type proc(url: URL, component: URLComponent) -> string
+// A getter: url.href, url.protocol... (Invalid_Handle for a released URL)
+URL_get :: #type proc(url: URL, component: URLComponent) -> (string, abi.Api_Error)
 // A setter. Only href can fail (Type); Origin is read-only (Invalid_Argument).
 URL_set :: #type proc(url: URL, component: URLComponent, value: string) -> abi.Api_Error
 // url.searchParams: the same object every time (a borrowed handle, released with its URL).
@@ -90,8 +90,15 @@ URLSearchParams_has :: #type proc(params: URLSearchParams, name: string, value: 
 URLSearchParams_set :: #type proc(params: URLSearchParams, name: string, value: string)
 // params.sort()
 URLSearchParams_sort :: #type proc(params: URLSearchParams)
-// params.toString()
-URLSearchParams_toString :: #type proc(params: URLSearchParams) -> string
+// params.toString() (Invalid_Handle for a released object)
+URLSearchParams_toString :: #type proc(params: URLSearchParams) -> (string, abi.Api_Error)
+// params.getAll(name).length
+URLSearchParams_count :: #type proc(params: URLSearchParams, name: string) -> i32
+// params.getAll(name)[index]: Not_Found past the end.
+URLSearchParams_getNth :: #type proc(params: URLSearchParams, name: string, index: i32) -> (string, abi.Api_Error)
+// The name / the value of the pair at `index` (iteration): Not_Found past the end.
+URLSearchParams_nameAt :: #type proc(params: URLSearchParams, index: i32) -> (string, abi.Api_Error)
+URLSearchParams_valueAt :: #type proc(params: URLSearchParams, index: i32) -> (string, abi.Api_Error)
 
 // new URLPattern(init, {ignoreCase}): the whole dictionary as one argument. Type on a malformed pattern.
 URLPattern_create :: #type proc(init: URLPatternInit) -> (URLPattern, abi.Api_Error)

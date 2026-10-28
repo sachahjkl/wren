@@ -13,18 +13,19 @@ import "core:slice"
 import "core:time"
 import "../abi_host"
 import "../abi_url"
+import "../api_decl"
 import "wb:wasm"
 
 reg: abi_url.Registry
-
-median :: proc(xs: []f64) -> f64 { slice.sort(xs); return xs[len(xs) / 2] }
 
 call1 :: proc(inst: ^wasm.Instance, name: cstring, arg: i32) -> (i32, wasm.Call_Result) {
 	return wasm.call_i32(inst, name, arg)
 }
 
+// The best of five batches: on a shared machine the minimum is the estimate least disturbed by other work (a median
+// of three moved by 2x between runs).
 timed :: proc(inst: ^wasm.Instance, name: cstring, arg: i32) -> (ns_per: f64, result: i32) {
-	runs: [3]f64
+	runs: [5]f64
 	r: i32
 	for i in 0 ..< len(runs) {
 		t0 := time.tick_now()
@@ -33,7 +34,7 @@ timed :: proc(inst: ^wasm.Instance, name: cstring, arg: i32) -> (ns_per: f64, re
 		runs[i] = f64(time.duration_nanoseconds(time.tick_since(t0)))
 		if res != .Ok { fmt.eprintln(name, res, inst.last_error); os.exit(1) }
 	}
-	return median(runs[:]) / f64(arg), r
+	return slice.min(runs[:]) / f64(arg), r
 }
 
 main :: proc() {
@@ -59,9 +60,15 @@ main :: proc() {
 	// The comptime-built scalar bridge (abi_host.register_scalar_*): the same shape as url_scalar, but the trampoline
 	// is instantiated by the compiler from the signature, not hand-written. Registered under module "url_cm".
 	cfg := abi_url.config()
-	cm := [2]wasm.Import{
-		abi_host.register_scalar_i32("url_cm", "size", cfg, abi_url.URLSearchParams_size),
-		abi_host.register_scalar_string("url_cm", "get", cfg, abi_url.URL_get),
+	cm := [8]wasm.Import{
+		abi_host.register_scalar("url_cm", "size", cfg, api_decl.URLSearchParams_size, abi_url.URLSearchParams_size),
+		abi_host.register_scalar("url_cm", "get", cfg, api_decl.URL_get, abi_url.URL_get),
+		abi_host.register_scalar("url_cm", "has", cfg, api_decl.URLSearchParams_has, abi_url.URLSearchParams_has),
+		abi_host.register_scalar("url_cm", "mix8", cfg, api_decl.Abi_Mix8, abi_url.Abi_Mix8),
+		abi_host.register_scalar("url_cm", "sum", cfg, api_decl.Abi_Sum, abi_url.Abi_Sum),
+		abi_host.register_scalar("url_cm", "opt", cfg, api_decl.Abi_Opt, abi_url.Abi_Opt),
+		abi_host.register_scalar("url_cm", "find", cfg, api_decl.Abi_Find, abi_url.Abi_Find),
+		abi_host.register_scalar("url_cm", "make", cfg, api_decl.Abi_Make, abi_url.Abi_Make),
 	}
 	if !wasm.register(cm[:]) { fmt.eprintln("comptime scalar register failed"); os.exit(1) }
 	defer abi_url.host_destroy()
@@ -76,18 +83,31 @@ main :: proc() {
 	if _, r := wasm.call_i32(inst, "setup"); r != .Ok { fmt.eprintln("setup", r); os.exit(1) }
 	if p, r := wasm.call_i32(inst, "prepare"); r != .Ok || p < 0 { fmt.eprintln("prepare failed", r, p); os.exit(1) }
 
+	if bad, r := wasm.call_i32(inst, "check_shapes"); r != .Ok || bad != 0 {
+		fmt.eprintfln("check_shapes: the comptime scalar bridge and the serialised path disagree (mask %x, %v)", bad, r)
+		os.exit(1)
+	}
+	fmt.println("check_shapes: every shape agrees across the scalar and the serialised bridges")
+
 	N :: 1_000_000
 	size_ns, size_r := timed(inst, "calls_size", N)
 	get_ns, get_r := timed(inst, "calls_get", N)
+	has_ns, has_r := timed(inst, "calls_has", N)
+	mix_ns, mix_r := timed(inst, "calls_mix8", N)
 	ssize_ns, ssize_r := timed(inst, "scalar_calls_size", N)
 	sget_ns, sget_r := timed(inst, "scalar_calls_get", N)
+	shas_ns, shas_r := timed(inst, "scalar_calls_has", N)
 	csize_ns, csize_r := timed(inst, "cm_calls_size", N)
 	cget_ns, cget_r := timed(inst, "cm_calls_get", N)
+	chas_ns, chas_r := timed(inst, "cm_calls_has", N)
+	cmix_ns, cmix_r := timed(inst, "cm_calls_mix8", N)
 
 	fmt.println("| shape | wr_* scalar (hand-written) | scalar bridge (comptime) | serialised host_call (comptime) |")
 	fmt.println("|---|---:|---:|---:|")
 	fmt.printfln("| URLSearchParams_size (handle -> i32) | %.1f | %.1f | %.1f ns/call |", ssize_ns, csize_ns, size_ns)
-	fmt.printfln("| URL_get .Pathname (handle,enum -> string) | %.1f | %.1f | %.1f ns/call |", sget_ns, cget_ns, get_ns)
-	fmt.printfln("(checksums size %d/%d/%d, get %d/%d/%d)", ssize_r, csize_r, size_r, sget_r, cget_r, get_r)
+	fmt.printfln("| URL_get .Pathname (handle, enum -> string) | %.1f | %.1f | %.1f ns/call |", sget_ns, cget_ns, get_ns)
+	fmt.printfln("| URLSearchParams_has (handle, string, Maybe(string) -> bool) | %.1f | %.1f | %.1f ns/call |", shas_ns, chas_ns, has_ns)
+	fmt.printfln("| Abi_Mix8 (8 arguments: i32 i64 f64 bool enum string Maybe(string) handle -> i64) | - | %.1f | %.1f ns/call |", cmix_ns, mix_ns)
+	fmt.printfln("(checksums size %d/%d/%d, get %d/%d/%d, has %d/%d/%d, mix8 %d/%d)", ssize_r, csize_r, size_r, sget_r, cget_r, get_r, shas_r, chas_r, has_r, cmix_r, mix_r)
 	wasm.runtime_destroy()
 }
