@@ -122,6 +122,12 @@ Runtime :: struct {
 	in_gc:          bool,
 	gc_disabled:    int,
 
+	// small-block pool (gc.odin: mem_alloc / mem_free)
+	pool_free:      [POOL_CLASSES]^Pool_Block,
+	pool_bump:      [^]byte,
+	pool_left:      int,
+	pool_chunks:    rawptr,
+
 	// atoms (atom.odin)
 	atoms:          [dynamic]Atom_Entry,
 	atom_hash:      []u32,
@@ -357,6 +363,7 @@ runtime_free :: proc(rt: ^Runtime) {
 	delete(rt.join_stack)
 	mem.dynamic_arena_destroy(&rt.scratch)
 	mem.dynamic_arena_destroy(&rt.regexp_arena)
+	pool_free_chunks(rt)
 	free(rt, allocator)
 }
 

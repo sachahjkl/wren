@@ -25,6 +25,7 @@ package jsrt
 // ephemerons processed after the strong marking reaches a fixpoint; shape transition caches and the
 // per-prototype root shapes are weak too.
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:mem"
 
@@ -52,12 +53,84 @@ Cell :: struct {
 
 // --- raw memory (charged to the heap) ---
 
-mem_alloc :: proc(rt: ^Runtime, size: int) -> rawptr {
-	if size <= 0 {return nil}
+// Small blocks (up to POOL_MAX_BYTES) come from size-class free lists carved out of big chunks: an
+// allocation is a pop, a free a push, with no call into the host allocator (a malloc round trip costs more
+// than the rest of `new Point(x, y)`). The caller always passes the size it allocated with (the heap
+// accounting needs it too), which is what selects the class; blocks are zeroed when handed out.
+POOL_MAX_BYTES :: 512
+POOL_CLASSES :: POOL_MAX_BYTES / 16 + 1
+POOL_CHUNK_BYTES :: 256 * 1024
+
+Pool_Block :: struct {
+	next: ^Pool_Block,
+}
+
+@(private = "file")
+pool_refill :: proc(rt: ^Runtime) {
+	p, err := mem.alloc(POOL_CHUNK_BYTES, 16, rt.allocator)
+	if err != nil || p == nil {
+		panic("jsrt: out of memory")
+	}
+	// the first 16 bytes link the chunks (freed with the runtime)
+	(cast(^rawptr)p)^ = rt.pool_chunks
+	rt.pool_chunks = p
+	rt.pool_bump = cast([^]byte)p
+	rt.pool_bump = rt.pool_bump[16:]
+	rt.pool_left = POOL_CHUNK_BYTES - 16
+}
+
+pool_free_chunks :: proc(rt: ^Runtime) {
+	for c := rt.pool_chunks; c != nil; {
+		next := (cast(^rawptr)c)^
+		mem.free(c, rt.allocator)
+		c = next
+	}
+	rt.pool_chunks = nil
+	rt.pool_free = {}
+	rt.pool_left = 0
+}
+
+@(private = "file")
+raw_alloc :: #force_inline proc(rt: ^Runtime, size: int) -> rawptr {
+	if size <= POOL_MAX_BYTES {
+		n := (size + 15) &~ 15
+		c := n >> 4
+		if b := rt.pool_free[c]; b != nil {
+			rt.pool_free[c] = b.next
+			intrinsics.mem_zero(b, n)
+			return b
+		}
+		if rt.pool_left < n {
+			// the tail of the chunk is abandoned (at most POOL_MAX_BYTES)
+			pool_refill(rt)
+		}
+		p := rt.pool_bump // chunks come zeroed from the allocator and bump memory is used once
+		rt.pool_bump = rt.pool_bump[n:]
+		rt.pool_left -= n
+		return p
+	}
 	p, err := mem.alloc(size, 16, rt.allocator)
 	if err != nil || p == nil {
 		panic("jsrt: out of memory")
 	}
+	return p
+}
+
+@(private = "file")
+raw_free :: #force_inline proc(rt: ^Runtime, p: rawptr, size: int) {
+	if size <= POOL_MAX_BYTES {
+		c := (size + 15) >> 4
+		b := cast(^Pool_Block)p
+		b.next = rt.pool_free[c]
+		rt.pool_free[c] = b
+		return
+	}
+	mem.free(p, rt.allocator)
+}
+
+mem_alloc :: proc(rt: ^Runtime, size: int) -> rawptr {
+	if size <= 0 {return nil}
+	p := raw_alloc(rt, size)
 	rt.heap_bytes += i64(size)
 	if rt.heap_bytes > rt.peak_heap_bytes {rt.peak_heap_bytes = rt.heap_bytes}
 	return p
@@ -65,16 +138,30 @@ mem_alloc :: proc(rt: ^Runtime, size: int) -> rawptr {
 
 mem_free :: proc(rt: ^Runtime, p: rawptr, size: int) {
 	if p == nil {return}
-	mem.free(p, rt.allocator)
+	raw_free(rt, p, size)
 	rt.heap_bytes -= i64(size)
 }
 
 mem_resize :: proc(rt: ^Runtime, p: rawptr, old_size, new_size: int) -> rawptr {
 	if p == nil {return mem_alloc(rt, new_size)}
 	if new_size <= 0 {mem_free(rt, p, old_size); return nil}
-	np, err := mem.resize(p, old_size, new_size, 16, rt.allocator)
-	if err != nil || np == nil {
-		panic("jsrt: out of memory")
+	np: rawptr
+	if old_size <= POOL_MAX_BYTES || new_size <= POOL_MAX_BYTES {
+		if old_size <= POOL_MAX_BYTES && new_size <= POOL_MAX_BYTES && (old_size + 15) >> 4 == (new_size + 15) >> 4 {
+			// same class: the block already has the room; clear what a shrink leaves behind
+			if new_size < old_size {intrinsics.mem_zero(rawptr(uintptr(p) + uintptr(new_size)), old_size - new_size)}
+			np = p
+		} else {
+			np = raw_alloc(rt, new_size)
+			intrinsics.mem_copy_non_overlapping(np, p, min(old_size, new_size))
+			raw_free(rt, p, old_size)
+		}
+	} else {
+		var_err: mem.Allocator_Error
+		np, var_err = mem.resize(p, old_size, new_size, 16, rt.allocator)
+		if var_err != nil || np == nil {
+			panic("jsrt: out of memory")
+		}
 	}
 	rt.heap_bytes += i64(new_size - old_size)
 	if rt.heap_bytes > rt.peak_heap_bytes {rt.peak_heap_bytes = rt.heap_bytes}
