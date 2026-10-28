@@ -87,6 +87,12 @@ try {
         Wren-Ctl window --front --win-id $front | Out-Null
         Wren-Ctl wait frames 3 --win-id $front | Out-Null
         Wren-Ctl wait frames 2 --win-id $back | Out-Null
+        # the window behind stops its timer on one of its own frames: give it the frames it needs (a loaded machine is slower), then count
+        for ($settle = 0; $settle -lt 20; $settle++) {
+            $b0 = Caret-Of $back
+            if (-not $b0.caretBlinking -and -not $b0.caretShown) { break }
+            Wren-Ctl wait frames 2 --win-id $back | Out-Null
+        }
         $blinks = 0; $backShown = 0; $backTimer = 0
         for ($i = 0; $i -lt 6; $i++) {
             $f = Caret-Of $front; $b = Caret-Of $back
