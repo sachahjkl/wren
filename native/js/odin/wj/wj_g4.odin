@@ -35,9 +35,12 @@ PROP_CONFIGURABLE :: 1 << 0
 PROP_WRITABLE     :: 1 << 1
 PROP_ENUMERABLE   :: 1 << 2
 PROP_C_W_E        :: PROP_CONFIGURABLE | PROP_WRITABLE | PROP_ENUMERABLE
-PROP_HAS_VALUE        :: 1 << 11
-PROP_HAS_WRITABLE     :: 1 << 8
-PROP_HAS_CONFIGURABLE :: 1 << 6
+PROP_HAS_CONFIGURABLE :: 1 << 8
+PROP_HAS_WRITABLE     :: 1 << 9
+PROP_HAS_ENUMERABLE   :: 1 << 10
+PROP_HAS_GET          :: 1 << 11
+PROP_HAS_SET          :: 1 << 12
+PROP_HAS_VALUE        :: 1 << 13
 
 GPN_STRING_MASK :: 1 << 0
 GPN_SYMBOL_MASK :: 1 << 1
@@ -98,7 +101,33 @@ foreign {
 	// objects / functions
 	JS_NewObject             :: proc(ctx: ^Context) -> JSValue ---
 	JS_Call                  :: proc(ctx: ^Context, func_obj, this_obj: JSValue, argc: i32, argv: [^]JSValue) -> JSValue ---
+	JS_NewArray              :: proc(ctx: ^Context) -> JSValue ---
+	JS_SetPropertyUint32     :: proc(ctx: ^Context, this_obj: JSValue, idx: u32, val: JSValue) -> i32 ---
+	JS_SetPropertyInt64      :: proc(ctx: ^Context, this_obj: JSValue, idx: i64, val: JSValue) -> i32 ---
+
+	// jobs (microtasks) and eval
+	JS_EnqueueJob :: proc(ctx: ^Context, job_func: Job_Func, argc: i32, argv: [^]JSValue) -> i32 ---
+	JS_Eval2      :: proc(ctx: ^Context, input: [^]u8, input_len: uint, options: ^Eval_Options) -> JSValue ---
 }
+
+// quickjs.h JSToUint32 is a static inline over JS_ToInt32; reimplement as the engine does (same bits).
+JS_ToUint32 :: #force_inline proc "contextless" (ctx: ^Context, pres: ^u32, val: JSValue) -> i32 {
+	return JS_ToInt32(ctx, ([^]i32)(pres), val)
+}
+
+Job_Func :: #type proc "c" (ctx: ^Context, argc: i32, argv: [^]JSValue) -> JSValue
+
+// quickjs.h JSEvalOptions { int version; int eval_flags; const char *filename; int line_num; }.
+Eval_Options :: struct {
+	version:    i32,
+	eval_flags: i32,
+	filename:   cstring,
+	line_num:   i32,
+}
+EVAL_OPTIONS_VERSION :: 1
+EVAL_TYPE_GLOBAL     :: 0
+
+// A plain generic native function (quickjs.h JS_NewCFunction inline): new_cfunction is already in wj.odin.
 
 // ---- wj.h / web.h functions used across the G4 domains (real symbols in native/js) ----
 
@@ -182,14 +211,27 @@ foreign {
 	wj_g4_realm_proto  :: proc(iface: i32) -> JSValue ---
 	// wj_the_realm.ctx: the realm's JSContext.
 	wj_g4_realm_ctx    :: proc() -> ^Context ---
+	// wj_the_realm.kind (WINDOW or any worker). The global is wj.realm_global() (wj.odin, via wj_shim.c).
+	wj_g4_realm_kind   :: proc() -> i32 ---
 }
+
+realm_kind :: #force_inline proc "contextless" () -> i32 { return wj_g4_realm_kind() }
+
+// wj.h WJ_EXPOSE_* (realm kind / scope bits). kind stays WINDOW or WORKER for "a document or a worker?".
+EXPOSE_WINDOW :: 1 << 0
+EXPOSE_WORKER :: 1 << 1
 
 // libc realloc / free / strtod (wasi-libc, in the module): a growable pool that outlives any one call uses realloc
 // (matching the C glue), and HTML number parsing uses strtod exactly as reflect.c did.
 @(default_calling_convention = "c")
 foreign {
-	realloc :: proc(p: rawptr, n: uint) -> rawptr ---
+	@(link_name = "realloc") libc_realloc :: proc(p: rawptr, n: uint) -> rawptr ---
+	@(link_name = "malloc")  libc_malloc  :: proc(n: uint) -> rawptr ---
+	@(link_name = "calloc")  libc_calloc  :: proc(n: uint, size: uint) -> rawptr ---
+	@(link_name = "free")    libc_free    :: proc(p: rawptr) ---
 	strtod  :: proc(nptr: [^]u8, endptr: ^[^]u8) -> f64 ---
+	memset  :: proc(dst: rawptr, c: i32, n: uint) -> rawptr ---
+	fmod    :: proc(x: f64, y: f64) -> f64 ---
 }
 
 // WJ_FETCH_STRING wrappers for the specific host calls the G4 domains make (reflect.c): getAttribute and resolveURL
@@ -267,4 +309,32 @@ foreign m_events {
 foreign m_media {
 	@(link_name = "MediaQueryList_create") wr_MediaQueryList_create :: proc(query: [^]u8, query_len: u32) -> u64 ---
 	@(link_name = "Screen_get")            wr_Screen_get            :: proc(field: i32) -> i32 ---
+}
+
+foreign import m_timers "timers"
+foreign import m_performance "performance"
+
+@(default_calling_convention = "c")
+foreign m_timers {
+	@(link_name = "Timers_setTimeout64")   wr_Timers_setTimeout64   :: proc(callback: u32, user: i64, delay_ms: f64) -> u64 ---
+	@(link_name = "Timers_setInterval64")  wr_Timers_setInterval64  :: proc(callback: u32, user: i64, delay_ms: f64) -> u64 ---
+	@(link_name = "Timers_clear")          wr_Timers_clear          :: proc(timer: u64) -> i32 ---
+	@(link_name = "requestAnimationFrame") wr_requestAnimationFrame :: proc(callback: u32, user: i32) -> u64 ---
+	@(link_name = "cancelAnimationFrame")  wr_cancelAnimationFrame  :: proc(id: u64) -> i32 ---
+	@(link_name = "requestIdleCallback")   wr_requestIdleCallback   :: proc(callback: u32, user: i32, timeout_ms: f64) -> u64 ---
+	@(link_name = "cancelIdleCallback")    wr_cancelIdleCallback    :: proc(id: u64) -> i32 ---
+}
+
+@(default_calling_convention = "c")
+foreign m_performance {
+	@(link_name = "Performance_now") wr_Performance_now :: proc() -> f64 ---
+}
+
+// Weak hooks / helpers defined elsewhere in the engine (real symbols): string-handler CSP, the script's base name for
+// stack traces, and reporting a pending exception as uncaught.
+@(default_calling_convention = "c")
+foreign {
+	wj_can_compile_string :: proc(ctx: ^Context, source: JSValue) -> bool ---
+	wj_script_base_name   :: proc(out: [^]u8, cap: uint) -> uint ---
+	wj_report_pending     :: proc(ctx: ^Context) ---
 }

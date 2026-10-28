@@ -147,7 +147,7 @@ $sources = @('quickjs.c', 'libregexp.c', 'libunicode.c', 'dtoa.c') | ForEach-Obj
 $sources += @(Get-ChildItem (Join-Path $native 'engine'), (Join-Path $native 'runtime'), (Join-Path $native 'gen') -Recurse -Filter *.c -ErrorAction SilentlyContinue | ForEach-Object FullName)
 # The C glue ported to Odin (native\js\odin\*.odin) has its C file dropped here; wj_shim.c (a tiny C accessor the glue
 # still needs) is compiled with the rest. Each ported domain adds its C file name to $odinified.
-$odinified = @('promise.c', 'reflect.c', 'web_media.c', 'web_strategy.c')
+$odinified = @('promise.c', 'reflect.c', 'timers.c', 'web_media.c', 'web_strategy.c')
 $sources += (Join-Path $native 'odin\wj_shim.c')
 $sources += (Join-Path $native 'odin\wj_shim_g4.c')
 $sources = $sources | Where-Object { $odinified -notcontains (Split-Path $_ -Leaf) }
