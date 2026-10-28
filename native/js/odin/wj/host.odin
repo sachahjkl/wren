@@ -5,11 +5,6 @@
 // own imports (wr_*) are not here: they are generated (wr_imports.odin).
 package wj
 
-@(default_calling_convention = "c")
-foreign {
-	// runtime/events.c: an Event object of `iface` made as `new Event(type, init)` would (new_target: its constructor)
-}
-
 // Resolve an interface index by name (cache it in the caller if hot). -1 when unknown.
 iface :: #force_inline proc "contextless" (name: cstring) -> i32 { return wj_interface_find(name) }
 

@@ -26,11 +26,7 @@ CLAMP         :: 2
 
 // (wj_scratch_grow is qjs_realm.odin's; web_to_usv, web_to_bytestring, web_utf8_string, web_ascii_lower,
 // web_ascii_ieq and web_strndup are web_core.odin's.)
-@(default_calling_convention = "c")
-foreign {
-	// runtime/web.h string helpers
-	// (web_resolve_url, web_status_text are Odin, package odin_glue, web_fetch.odin)
-}
+// (web_resolve_url, web_status_text are Odin, package odin_glue, web_fetch.odin)
 
 // A string view of an owned/borrowed Str as an Odin slice (valid until the next conversion or wj_str_free).
 str_slice :: #force_inline proc "contextless" (s: Str) -> []u8 {
