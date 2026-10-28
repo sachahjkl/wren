@@ -17,10 +17,10 @@ build changes until the engine is Odin (agent `spk`'s `wj` layer).
 
 | file | what | C counterpart |
 |---|---|---|
-| `native/js/odin/wr_imports.odin` | the browser's imports for an Odin guest: `wr_*` handle / enum / flags / struct / callback types and one `foreign` block per module with the raw ABI (`@(link_name=...)`, the Wasm import module on `foreign import`) | `native/js/gen/wren_api.h` |
-| `native/js/odin/js_interfaces_table.odin` | the realm's interface table: `IFACE_*` index constants, the member tables (`[]wj.Member`), and the interface table (`[]wj.Interface`) with names, kinds, flags, constants, `[Exposed]`, inheritance ranges and the legacy platform-object class | `native/js/gen/bindings.c` + `bindings.h` |
+| `native/js/odin_gen/wr_imports.odin` | the browser's imports for an Odin guest: `wr_*` handle / enum / flags / struct / callback types and one `foreign` block per module with the raw ABI (`@(link_name=...)`, the Wasm import module on `foreign import`) | `native/js/gen/wren_api.h` |
+| `native/js/odin_gen/js_interfaces_table.odin` | the realm's interface table: `IFACE_*` index constants, the member tables (`[]wj.Member`), and the interface table (`[]wj.Interface`) with names, kinds, flags, constants, `[Exposed]`, inheritance ranges and the legacy platform-object class | `native/js/gen/bindings.c` + `bindings.h` |
 
-The generated Odin is written against **`native/js/odin/wj_iface.odin`**: the Odin counterpart of the interface-table
+The generated Odin is written against **`native/js/odin_gen/wj_iface.odin`**: the Odin counterpart of the interface-table
 part of `native/js/engine/wj.h` (the types `Interface`, `Member`, the `Expose` / `Member_Flag` / `Interface_Flag`
 bit-sets, the `Native` / `Getter` / `Setter` glue signatures, and the conversion / wrap / throw surface the trampolines
 call). No macros: tagged enums, `bit_set`, and plain slice literals.
@@ -104,7 +104,7 @@ renames the source, not the API).
 
 ## What `spk` must provide
 
-`native/js/odin/wj_iface.odin` is the contract. `spk` backs it with the engine-agnostic Odin layer (the `wj.h`
+`native/js/odin_gen/wj_iface.odin` is the contract. `spk` backs it with the engine-agnostic Odin layer (the `wj.h`
 equivalent): the real `Ctx` / `Val`, the `to_*` conversions, `wrap_node` / `wrap_host` / `wrap_owned`, the `throw_*`
 helpers, the scratch buffer, and it publishes `interfaces` / `interface_count` (the generated `@(init)` already assigns
 them). The member-glue body generator (the Odin equivalent of `jsgen`'s `emit_import_glue`) comes once that surface is

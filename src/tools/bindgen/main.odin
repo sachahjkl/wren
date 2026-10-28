@@ -37,7 +37,7 @@ Target :: struct {
 // are the same whatever this is; only the low-level glue that a non-Odin / Odin guest links against differs:
 //   c    native/js/gen/*  (wren_api.h imports, bindings.c interface table and QuickJS trampolines): the default, until
 //        the JavaScript engine itself is Odin.
-//   odin native/js/odin/* (foreign wr_* imports, the interface table, trampolines against the wj layer): what the
+//   odin native/js/odin_gen/* (foreign wr_* imports, the interface table, trampolines against the wj layer): what the
 //        engine will link once it is Odin (agent spk's wj_iface.odin).
 Emit :: enum { C, Odin }
 emit_mode: Emit = .C
@@ -59,7 +59,7 @@ TARGETS := [?]Target{
 		conf_guest = "examples/apiconformance/main.odin", conf_guest_pkg = "apiconformance",
 		conf_table = "src/tools/apiconformance/cases_generated.odin", conf_table_pkg = "apiconformance",
 		c_header = "native/js/gen/wren_api.h",
-		odin_imports = "native/js/odin/wr_imports.odin", odin_imports_pkg = "wj",
+		odin_imports = "native/js/odin_gen/wr_imports.odin", odin_imports_pkg = "wj",
 	},
 	{
 		sources = {"src/tools/wasmbench/bench.widl"}, host = BENCH_HOST, host_out = "src/tools/wasmbench/bench_generated.odin",
@@ -314,13 +314,13 @@ run_js :: proc(api: ^idl.Api) {
 	emit("docs/js/coverage.md", out.coverage)
 }
 
-// -emit:odin counterpart of run_js: the interface metadata table in Odin (native/js/odin), against wj_iface.odin.
+// -emit:odin counterpart of run_js: the interface metadata table in Odin (native/js/odin_gen), against wj_iface.odin.
 // The node-interface indices and the coverage are emitted either way; the member glue bodies are not generated here
 // yet (they need spk's wj conversions), so the table's fn/get/set slots stay nil and spk fills them.
 run_js_odin :: proc(api: ^idl.Api) {
 	model := load_webidl_model()
 	out := jsgen.generate(api, model, scan_raw_impls(JS_IMPL_DIR), "page", jsgen.Mode.Odin)
-	emit("native/js/odin/js_interfaces_table.odin", out.odin_tables)
+	emit("native/js/odin_gen/js_interfaces_table.odin", out.odin_tables)
 	emit("src/page/js_interfaces_generated.odin", out.odin)
 	emit("docs/js/coverage.md", out.coverage)
 }
