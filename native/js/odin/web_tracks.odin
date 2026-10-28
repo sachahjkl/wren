@@ -354,17 +354,11 @@ wjr_HTMLTrackElement_get_readyState :: proc "c" (ctx: ^wj.Context, this_val: wj.
 }
 
 // Called once when a realm is made (runtime.c): every cue the browser hands out is a WebVTT one, so a TextTrackCue
-// handed out is wrapped as a VTTCue. Sets the two int globals of qjs_platform (wj_wrap_remap_from/to).
+// handed out is wrapped as a VTTCue. Sets the two int globals of wj/qjs_platform.odin (wj_wrap_remap_from/to).
 @(export, link_name = "wj_tracks_install")
 wj_tracks_install :: proc "c" () {
-	wj_wrap_remap_from = IF_cue()
-	wj_wrap_remap_to = IF_vttcue()
-}
-
-@(default_calling_convention = "c")
-foreign {
-	wj_wrap_remap_from: i32
-	wj_wrap_remap_to: i32
+	wj.wj_wrap_remap_from = IF_cue()
+	wj.wj_wrap_remap_to = IF_vttcue()
 }
 
 // ---- host imports (modules mediatracks, htmlmedia) ----
