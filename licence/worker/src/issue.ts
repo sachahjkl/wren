@@ -5,7 +5,6 @@
 
 import type { Deps, Env } from "./env.ts";
 import { cleanField, licenceFile, loadSigner } from "./licence.ts";
-import { mailConfigured } from "./mail.ts";
 import { dayOf, editionOf, fetchCustomer, orderNumber, TXN_ID } from "./paddle.ts";
 import type { Transaction } from "./paddle.ts";
 import type { Stored } from "./store.ts";
@@ -53,7 +52,9 @@ export async function buildStored(env: Env, deps: Deps, txn: Transaction): Promi
 		licence,
 		file: licenceFile(licence, fields),
 		issued_at: new Date(deps.now()).toISOString(),
-		mail: mailConfigured(env) ? "pending" : "skipped",
+		// The mail starts owed ("pending"): the Durable Object's pump() decides the first transition and writes the KV
+		// copy for it, "skipped" (no sender configured) included, so the copy always mirrors the object's state.
+		mail: "pending",
 		mail_attempts: 0,
 	};
 	return { kind: "built", stored };
