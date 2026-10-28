@@ -109,7 +109,7 @@ wj_to_str :: proc "c" (ctx: ^Context, v: JSValue, out: ^Str, flags: i32, def: cs
 		if flags & STR_NULLABLE != 0 { return true }
 		if flags & STR_NULL_EMPTY != 0 { out.ptr = empty_ptr(); out.len = 0; return true }
 	}
-	if is_undefined(v) && def != nil && (transmute([^]u8)def)[0] != 0 { out.ptr = ([^]u8)(rawptr(def)); out.len = strlen(def); return true }
+	if is_undefined(v) && def != nil && ([^]u8)(rawptr(def))[0] != 0 { out.ptr = ([^]u8)(rawptr(def)); out.len = strlen(def); return true }
 	if is_symbol(v) { JS_ThrowTypeError(ctx, "Cannot convert a Symbol value to a string"); return false }
 	n: uint
 	s := to_cstring_len(ctx, &n, v)

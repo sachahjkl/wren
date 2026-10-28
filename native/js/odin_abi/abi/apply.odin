@@ -10,8 +10,9 @@ package abi
 
 import "base:intrinsics"
 
-// The most parameters a bound procedure may have (the host's context included).
-MAX_PARAMS :: 9
+// The most parameters a bound procedure may have (the host's context included; for a JS binding, the wire parameters
+// of the generated import it calls: a string is two).
+MAX_PARAMS :: 16
 
 // One decoded parameter, in the caller's address space. A scalar is in `a` (a float as its bits, a bool as 0 / 1);
 // a span (string, bytes, a slice) is `a` = address, `b` = length (elements for a slice); an optional span has
@@ -52,7 +53,7 @@ cell_get :: #force_inline proc "contextless" (c: ^Cell, $T: typeid) -> T {
 		return ([^]E)(uintptr(c.a))[:c.b]
 	} else when intrinsics.type_is_struct(T) {
 		return (^T)(uintptr(c.a))^
-	} else when intrinsics.type_is_pointer(T) {
+	} else when intrinsics.type_is_pointer(T) || intrinsics.type_is_multi_pointer(T) {
 		return T(uintptr(c.a))
 	} else when intrinsics.type_is_boolean(T) {
 		return c.a != 0
@@ -88,7 +89,7 @@ cell_set :: #force_inline proc "contextless" (c: ^Cell, value: $T) {
 		}
 	} else when intrinsics.type_is_slice(T) {
 		c.a = u64(uintptr(raw_data(value))); c.b = u64(len(value))
-	} else when intrinsics.type_is_pointer(T) {
+	} else when intrinsics.type_is_pointer(T) || intrinsics.type_is_multi_pointer(T) {
 		c.a = u64(uintptr(value))
 	} else when intrinsics.type_is_boolean(T) {
 		c.a = value ? 1 : 0
@@ -120,6 +121,13 @@ apply :: #force_inline proc(c: ^Cells, $P: typeid, p: P, r0: ^$R0, r1: ^$R1) whe
 	when N >= 7 { x6 := cell_get(&c[6], intrinsics.type_proc_parameter_type(P, 6)) }
 	when N >= 8 { x7 := cell_get(&c[7], intrinsics.type_proc_parameter_type(P, 7)) }
 	when N >= 9 { x8 := cell_get(&c[8], intrinsics.type_proc_parameter_type(P, 8)) }
+	when N >= 10 { x9 := cell_get(&c[9], intrinsics.type_proc_parameter_type(P, 9)) }
+	when N >= 11 { x10 := cell_get(&c[10], intrinsics.type_proc_parameter_type(P, 10)) }
+	when N >= 12 { x11 := cell_get(&c[11], intrinsics.type_proc_parameter_type(P, 11)) }
+	when N >= 13 { x12 := cell_get(&c[12], intrinsics.type_proc_parameter_type(P, 12)) }
+	when N >= 14 { x13 := cell_get(&c[13], intrinsics.type_proc_parameter_type(P, 13)) }
+	when N >= 15 { x14 := cell_get(&c[14], intrinsics.type_proc_parameter_type(P, 14)) }
+	when N >= 16 { x15 := cell_get(&c[15], intrinsics.type_proc_parameter_type(P, 15)) }
 	when N == 0 {
 		when NR == 0 { p() } else when NR == 1 { r0^ = p() } else { r0^, r1^ = p() }
 	} else when N == 1 {
@@ -138,8 +146,22 @@ apply :: #force_inline proc(c: ^Cells, $P: typeid, p: P, r0: ^$R0, r1: ^$R1) whe
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6) }
 	} else when N == 8 {
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7) }
-	} else {
+	} else when N == 9 {
 		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8) }
+	} else when N == 10 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9) }
+	} else when N == 11 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) }
+	} else when N == 12 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11) }
+	} else when N == 13 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) }
+	} else when N == 14 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) }
+	} else when N == 15 {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) }
+	} else {
+		when NR == 0 { p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) } else when NR == 1 { r0^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) } else { r0^, r1^ = p(x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) }
 	}
 }
 

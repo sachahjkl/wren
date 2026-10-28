@@ -205,7 +205,7 @@ $t0 = Get-Date
 # is freestanding (no Odin runtime), -o:size to match the engine's size budget. The wjr_* functions it exports resolve
 # the forward references the generated binding table (gen\bindings.c) holds for the ported domains.
 $odinObj = Join-Path $out 'odin_glue.o'
-& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -o:size -out:$odinObj
+& odin build (Join-Path $native 'odin') -build-mode:obj -target:freestanding_wasm32 -no-entry-point -default-to-nil-allocator -vet -o:size -out:$odinObj
 if ($LASTEXITCODE -ne 0) { throw "odin build of native\js\odin failed" }
 # Compile each C translation unit to a native wasm object (LTO stays on *within* each TU via -O3; the cross-TU LTO of
 # the one-shot link is dropped only when an Odin object is linked in, see below), then link objects + Odin object.

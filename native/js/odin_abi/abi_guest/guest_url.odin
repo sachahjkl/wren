@@ -26,6 +26,11 @@ OP_URLPattern_create :: 14
 OP_URLPattern_component :: 15
 OP_URLPattern_hasRegExpGroups :: 16
 OP_URLPattern_test :: 17
+// (18 ..< 25: the conformance functions, guest_abitest.odin)
+OP_URLSearchParams_count :: 25
+OP_URLSearchParams_getNth :: 26
+OP_URLSearchParams_nameAt :: 27
+OP_URLSearchParams_valueAt :: 28
 
 URL :: api_decl.URL
 URLSearchParams :: api_decl.URLSearchParams
@@ -51,9 +56,9 @@ URL_canParse :: proc(input: string, base: Maybe(string)) -> (ok: bool) {
 	return
 }
 
-URL_get :: proc(u: URL, component: URLComponent) -> (s: string) {
+URL_get :: proc(u: URL, component: URLComponent) -> (s: string, err: abi.Api_Error) {
 	w := begin(); arg(&w, u); arg(&w, component)
-	finish(OP_URL_get, &w, api_decl.URL_get, &s)
+	err = finish(OP_URL_get, &w, api_decl.URL_get, &s)
 	return
 }
 
@@ -115,9 +120,33 @@ URLSearchParams_sort :: proc(params: URLSearchParams) {
 	finish(OP_URLSearchParams_sort, &w, api_decl.URLSearchParams_sort, &none)
 }
 
-URLSearchParams_toString :: proc(params: URLSearchParams) -> (s: string) {
+URLSearchParams_toString :: proc(params: URLSearchParams) -> (s: string, err: abi.Api_Error) {
 	w := begin(); arg(&w, params)
-	finish(OP_URLSearchParams_toString, &w, api_decl.URLSearchParams_toString, &s)
+	err = finish(OP_URLSearchParams_toString, &w, api_decl.URLSearchParams_toString, &s)
+	return
+}
+
+URLSearchParams_count :: proc(params: URLSearchParams, name: string) -> (n: i32) {
+	w := begin(); arg(&w, params); arg(&w, name)
+	finish(OP_URLSearchParams_count, &w, api_decl.URLSearchParams_count, &n)
+	return
+}
+
+URLSearchParams_getNth :: proc(params: URLSearchParams, name: string, index: i32) -> (s: string, err: abi.Api_Error) {
+	w := begin(); arg(&w, params); arg(&w, name); arg(&w, index)
+	err = finish(OP_URLSearchParams_getNth, &w, api_decl.URLSearchParams_getNth, &s)
+	return
+}
+
+URLSearchParams_nameAt :: proc(params: URLSearchParams, index: i32) -> (s: string, err: abi.Api_Error) {
+	w := begin(); arg(&w, params); arg(&w, index)
+	err = finish(OP_URLSearchParams_nameAt, &w, api_decl.URLSearchParams_nameAt, &s)
+	return
+}
+
+URLSearchParams_valueAt :: proc(params: URLSearchParams, index: i32) -> (s: string, err: abi.Api_Error) {
+	w := begin(); arg(&w, params); arg(&w, index)
+	err = finish(OP_URLSearchParams_valueAt, &w, api_decl.URLSearchParams_valueAt, &s)
 	return
 }
 
@@ -166,6 +195,10 @@ stubs_match_url :: proc() {
 	abi.must_match(api_decl.URLSearchParams_set, type_of(URLSearchParams_set))
 	abi.must_match(api_decl.URLSearchParams_sort, type_of(URLSearchParams_sort))
 	abi.must_match(api_decl.URLSearchParams_toString, type_of(URLSearchParams_toString))
+	abi.must_match(api_decl.URLSearchParams_count, type_of(URLSearchParams_count))
+	abi.must_match(api_decl.URLSearchParams_getNth, type_of(URLSearchParams_getNth))
+	abi.must_match(api_decl.URLSearchParams_nameAt, type_of(URLSearchParams_nameAt))
+	abi.must_match(api_decl.URLSearchParams_valueAt, type_of(URLSearchParams_valueAt))
 	abi.must_match(api_decl.URLPattern_create, type_of(URLPattern_create))
 	abi.must_match(api_decl.URLPattern_component, type_of(URLPattern_component))
 	abi.must_match(api_decl.URLPattern_hasRegExpGroups, type_of(URLPattern_hasRegExpGroups))

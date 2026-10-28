@@ -112,6 +112,11 @@ build_registry :: proc() -> (reg: Registry) {
 	abi_host.bind(&reg, "Abi_Find", api_decl.Abi_Find, Abi_Find)
 	abi_host.bind(&reg, "Abi_Make", api_decl.Abi_Make, Abi_Make)
 	abi_host.bind(&reg, "Abi_Echo", api_decl.Abi_Echo, Abi_Echo)
+	// the URLSearchParams reads the JS binding uses (getAll, the iterators)
+	abi_host.bind(&reg, "URLSearchParams_count", api_decl.URLSearchParams_count, URLSearchParams_count)
+	abi_host.bind(&reg, "URLSearchParams_getNth", api_decl.URLSearchParams_getNth, URLSearchParams_getNth)
+	abi_host.bind(&reg, "URLSearchParams_nameAt", api_decl.URLSearchParams_nameAt, URLSearchParams_nameAt)
+	abi_host.bind(&reg, "URLSearchParams_valueAt", api_decl.URLSearchParams_valueAt, URLSearchParams_valueAt)
 	return
 }
 

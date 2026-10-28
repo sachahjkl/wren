@@ -80,7 +80,7 @@ calls_get :: proc "contextless" (n: i32) -> i32 {
 	context = ctx
 	s: i32
 	for _ in 0 ..< n {
-		str := abi_guest.URL_get(the_url, .Pathname)
+		str, _ := abi_guest.URL_get(the_url, .Pathname)
 		s += i32(len(str))
 	}
 	return s

@@ -46,10 +46,10 @@ URL_canParse :: proc(ctx: ^Host, input: string, base_url: Maybe(string)) -> bool
 	return uok
 }
 
-URL_get :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent) -> string {
+URL_get :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent) -> (string, abi.Api_Error) {
 	o := url_obj(u)
-	if o == nil { return "" }
-	return url.component(o.u, url.Component(component), context.temp_allocator)
+	if o == nil { return "", .Invalid_Handle }
+	return url.component(o.u, url.Component(component), context.temp_allocator), .None
 }
 
 URL_set :: proc(ctx: ^Host, u: api_decl.URL, component: api_decl.URLComponent, value: string) -> abi.Api_Error {
@@ -150,10 +150,44 @@ URLSearchParams_sort :: proc(ctx: ^Host, params: api_decl.URLSearchParams) {
 	params_update(o)
 }
 
-URLSearchParams_toString :: proc(ctx: ^Host, params: api_decl.URLSearchParams) -> string {
+URLSearchParams_toString :: proc(ctx: ^Host, params: api_decl.URLSearchParams) -> (string, abi.Api_Error) {
 	o := params_obj(params)
-	if o == nil { return "" }
-	return url.params_serialize(o.sp, context.temp_allocator)
+	if o == nil { return "", .Invalid_Handle }
+	return url.params_serialize(o.sp, context.temp_allocator), .None
+}
+
+URLSearchParams_count :: proc(ctx: ^Host, params: api_decl.URLSearchParams, name: string) -> i32 {
+	o := params_obj(params)
+	if o == nil { return 0 }
+	n: i32
+	for p in o.sp.list { if p.name == name { n += 1 } }
+	return n
+}
+
+URLSearchParams_getNth :: proc(ctx: ^Host, params: api_decl.URLSearchParams, name: string, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	k: i32
+	for p in o.sp.list {
+		if p.name != name { continue }
+		if k == index { return p.value, .None }
+		k += 1
+	}
+	return "", .Not_Found
+}
+
+URLSearchParams_nameAt :: proc(ctx: ^Host, params: api_decl.URLSearchParams, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	if index < 0 || int(index) >= len(o.sp.list) { return "", .Not_Found }
+	return o.sp.list[index].name, .None
+}
+
+URLSearchParams_valueAt :: proc(ctx: ^Host, params: api_decl.URLSearchParams, index: i32) -> (string, abi.Api_Error) {
+	o := params_obj(params)
+	if o == nil { return "", .Invalid_Handle }
+	if index < 0 || int(index) >= len(o.sp.list) { return "", .Not_Found }
+	return o.sp.list[index].value, .None
 }
 
 ////////////////////////////////
