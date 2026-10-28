@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:strings"
-import win "core:sys/windows"
+import "toolkit:platform"
 import "toolkit:ui"
 import "wb:blocker"
 import "wb:host"
@@ -32,34 +32,20 @@ file_dialog :: proc(app: ^App, save: bool, suggested: string, kind: int) {
 @(private = "file")
 dialog_work :: proc(data: rawptr) {
 	j := (^Job)(data)
-	if win.CoInitializeEx(nil, .APARTMENTTHREADED) < 0 { return }
-	defer win.CoUninitialize()
-	dlg: ^win.IFileDialog
-	if j.save {
-		sd: ^win.IFileSaveDialog
-		if win.CoCreateInstance(win.CLSID_FileSaveDialog, nil, win.CLSCTX_INPROC_SERVER, win.IID_IFileSaveDialog, cast(^rawptr)&sd) < 0 || sd == nil { return }
-		dlg = cast(^win.IFileDialog)sd
-		sd->SetFileName(win.utf8_to_wstring(j.suggested, context.temp_allocator))
-	} else {
-		od: ^win.IFileOpenDialog
-		if win.CoCreateInstance(win.CLSID_FileOpenDialog, nil, win.CLSCTX_INPROC_SERVER, win.IID_IFileOpenDialog, cast(^rawptr)&od) < 0 || od == nil { return }
-		dlg = cast(^win.IFileDialog)od
+	patterns := [1]string{"*.txt"}
+	filters := [1]platform.File_Filter{{name = i18n.tr("Text files"), patterns = patterns[:]}}
+	d := platform.File_Dialog{
+		owner            = active_window(j.app).win,
+		filters          = filters[:],
+		all_files        = true,
+		suggested_name   = j.suggested,
+		default_ext      = "txt",
+		overwrite_prompt = j.save,
+		remember_id      = "blocker-files",
 	}
-	defer dlg->Release()
-	types := [2]win.COMDLG_FILTERSPEC{{win.utf8_to_wstring(i18n.tr("Text files"), context.temp_allocator), win.L("*.txt")}, {win.utf8_to_wstring(i18n.tr("All files"), context.temp_allocator), win.L("*.*")}}
-	dlg->SetFileTypes(2, &types[0])
-	dlg->SetDefaultExtension(win.L("txt"))
-	if dlg->Show(active_window(j.app).win.hwnd) < 0 { free_all(context.temp_allocator); return }
-	item: ^win.IShellItem
-	if dlg->GetResult(&item) < 0 || item == nil { free_all(context.temp_allocator); return }
-	defer item->Release()
-	wpath: win.LPWSTR
-	if item->GetDisplayName(.FILESYSPATH, &wpath) >= 0 && wpath != nil {
-		n := 0
-		for (cast([^]u16)wpath)[n] != 0 { n += 1 }
-		if s, err := win.utf16_to_utf8((cast([^]u16)wpath)[:n], context.allocator); err == nil { j.path = s }
-		win.CoTaskMemFree(wpath)
-	}
+	res := j.save ? platform.save_file_dialog(d, context.allocator) : platform.open_file_dialog(d, context.allocator)
+	defer platform.dialog_result_destroy(&res, context.allocator)
+	if res.status == .Chosen && len(res.paths) > 0 { j.path = strings.clone(res.paths[0]) }
 	free_all(context.temp_allocator)
 }
 
